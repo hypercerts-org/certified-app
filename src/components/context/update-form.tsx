@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Paperclip, X } from "lucide-react"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"

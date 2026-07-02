@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -11,6 +12,7 @@ import {
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -48,7 +50,6 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { ActivityFancyBoard } from "@/components/contributor-board/activity-fancy-board"
 import EditBanner from "@/components/ui/edit-banner"
 import Banner from "@/components/ui/banner"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
@@ -79,7 +80,7 @@ import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import CertLocationsMap from "./cert-locations-map"
 import ContextUpdates from "@/components/context/context-updates"
 import {
@@ -101,6 +102,17 @@ import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_CERTS_TYPE } from "@/lib/atproto/typed-lists"
+
+// Tab-gated: pulls in d3-hierarchy + the treemap layout. Load it only
+// when the Contributors tab is actually opened, not in the base
+// activity-detail route bundle every viewer downloads.
+const ActivityFancyBoard = dynamic(
+  () =>
+    import("@/components/contributor-board/activity-fancy-board").then(
+      (m) => m.ActivityFancyBoard,
+    ),
+  { ssr: false },
+)
 
 interface ActivityDetailProps {
   did: string
@@ -233,8 +245,18 @@ export default function ActivityDetail({
 
   const createdAbsolute = formatDate(value.createdAt)
 
-  const contributors = value.contributors ?? []
+  const contributors = useMemo(
+    () => value.contributors ?? [],
+    [value.contributors],
+  )
   const contributorCount = contributors.length
+  // Percentages are a full pass over the contributor list; keying the
+  // memo on `contributors` keeps it stable across edit-form keystrokes
+  // (which re-render this component but never touch the contributor set).
+  const weightPercents = useMemo(
+    () => buildWeightPercents(contributors),
+    [contributors],
+  )
   const locations = value.locations ?? []
   const showFullDescription = isRenderableDescription(value.description)
   // Overview "Read full description": reveals the full description inline as
@@ -1255,7 +1277,6 @@ export default function ActivityDetail({
       </div>
       {contributorCount > 0 ? (
         (() => {
-          const weightPercents = buildWeightPercents(contributors)
           return (
             <>
               {contributors.some((c) => c.contributionWeight != null) ? (
@@ -1444,8 +1465,8 @@ export default function ActivityDetail({
                   (c) => c.contributionWeight != null,
                 )
                 // Percentages computed across the FULL list so the %
-                // column adds to 100 even when only the first 5 show.
-                const weightPercents = buildWeightPercents(contributors)
+                // column adds to 100 even when only the first 5 show
+                // (`weightPercents` above is memoized on `contributors`).
                 return (
                   <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
                     <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
@@ -1880,7 +1901,11 @@ function classifyContributorIdentity(id: unknown): {
   return { inlineIdentity: null, strongRefUri: null }
 }
 
-function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
+const ContributorRow = memo(function ContributorRow({
+  contributor,
+  role,
+  weight,
+}: ContributorRowProps) {
   const { inlineIdentity, strongRefUri } = classifyContributorIdentity(
     contributor.contributorIdentity,
   )
@@ -1984,7 +2009,7 @@ function ContributorRow({ contributor, role, weight }: ContributorRowProps) {
       ) : null}
     </li>
   )
-}
+})
 
 /**
  * Slim headline used by every tab except Overview (Description /

@@ -37,7 +37,7 @@ import { PROJECT_DETAIL_TABS } from "@/lib/detail-tabs"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import CertSearch, { type CertSearchResult } from "@/components/search/cert-search"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_PROJECTS_TYPE } from "@/lib/atproto/typed-lists"
