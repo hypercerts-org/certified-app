@@ -58,30 +58,60 @@ const HELP_FAQ_ITEMS = [
     answer:
       "Different apps on AT Protocol are essentially different front-ends over the same underlying data. Certified is the place to explore the whole network — accounts, activities, projects, and endorsements — no matter which app created them. Other apps focus on specific use cases: Ma Earth, for example, is built around funding regenerative land projects.\n\nBecause they share open lexicons, these apps interoperate instead of competing for your data: you maintain one portable record that every compatible app can build on.",
   },
+  {
+    question: "How do I build on Certified?",
+    answer:
+      "You can check out the docs, where you'll also find AI skills, and get in contact with us — best in our Telegram group.",
+  },
 ];
+
+const BUILD_LINKS = (
+  <div className="flex flex-wrap gap-4">
+    <a
+      href="https://docs.hypercerts.org/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+    >
+      docs.hypercerts.org
+    </a>
+    <a
+      href="https://t.me/+o4wPsJ7yEZYzNGFk"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+    >
+      Telegram group
+    </a>
+  </div>
+);
 
 export default function HelpFaq() {
   const [graphOpen, setGraphOpen] = useState(false);
 
   // Inject a "see it live" button into the endorsement answer that opens the
   // graph in a large modal (the cta lives here so it can drive modal state).
-  const items = HELP_FAQ_ITEMS.map((item) =>
-    item.question === "What does it mean to endorse someone?"
-      ? {
-          ...item,
-          cta: (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setGraphOpen(true)}
-            >
-              <Network size={14} strokeWidth={1.75} aria-hidden />
-              Open the endorsement graph
-            </Button>
-          ),
-        }
-      : item,
-  );
+  const items = HELP_FAQ_ITEMS.map((item) => {
+    if (item.question === "What does it mean to endorse someone?") {
+      return {
+        ...item,
+        cta: (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setGraphOpen(true)}
+          >
+            <Network size={14} strokeWidth={1.75} aria-hidden />
+            Open the endorsement graph
+          </Button>
+        ),
+      };
+    }
+    if (item.question === "How do I build on Certified?") {
+      return { ...item, cta: BUILD_LINKS };
+    }
+    return item;
+  });
 
   return (
     <>
