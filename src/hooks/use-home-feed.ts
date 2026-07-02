@@ -238,6 +238,13 @@ export function useHomeFeed(
   // it setState()s after unmount.
   const recoveryControllerRef = useRef<AbortController | null>(null)
 
+  // Holds the AbortController for the in-flight normal loadMore. Tracked
+  // in a ref so the effect cleanup can abort it when the filter or follow
+  // set changes mid-pagination — otherwise the superseded loadMore
+  // resolves and appends stale, filter-violating events into the freshly
+  // reloaded list (and setState()s after unmount on navigation away).
+  const loadMoreControllerRef = useRef<AbortController | null>(null)
+
   // Snapshot the filter so the existing load() / loadMore() callbacks
   // (which deliberately have empty deps for stability) can read the
   // latest value without re-binding.
@@ -319,6 +326,15 @@ export function useHomeFeed(
     const inc = includeCertLabelsRef.current
     if (Array.isArray(inc) && inc.length === 0) return
 
+    // Own AbortController so a filter toggle / follow-set change mid-
+    // pagination (which re-runs the effect and aborts this via cleanup)
+    // can't append stale, filter-violating events after the fresh page
+    // lands. Mirrors the signal handling in the initial load().
+    loadMoreControllerRef.current?.abort()
+    const controller = new AbortController()
+    loadMoreControllerRef.current = controller
+    const signal = controller.signal
+
     setState((prev) => ({ ...prev, isLoadingMore: true }))
     ;(async () => {
       try {
@@ -327,11 +343,14 @@ export function useHomeFeed(
           first: PAGE_SIZE,
           after: snap.cursor ?? undefined,
           sortBy: "CREATED_AT",
+          signal,
         })
         const hydrated = await hydrateFeedEvents(page.events, {
+          signal,
           excludeCertLabels: excludeCertLabelsRef.current,
           includeCertLabels: includeCertLabelsRef.current,
         })
+        if (signal.aborted) return
         const fresh = hydrated
           .map(hydratedToHomeFeedEvent)
           .filter(passesLabelFilter)
@@ -349,6 +368,9 @@ export function useHomeFeed(
           }
         })
       } catch (err) {
+        // Aborted by a superseding load (filter/follow-set change) or an
+        // unmount — the fresh load() owns the state now, so drop silently.
+        if (signal.aborted) return
         // INVALID_CURSOR: stream's sort mode changed (or the cursor
         // is otherwise stale). Drop the cursor and refetch from the
         // head — per the magic-indexer #136 / #137 contract. Keep
@@ -397,6 +419,10 @@ export function useHomeFeed(
       // effect-driven reload supersedes it).
       recoveryControllerRef.current?.abort()
       recoveryControllerRef.current = null
+      // Same for a normal loadMore still paginating — abort it so its
+      // stale, old-filter page can't append into the fresh reload.
+      loadMoreControllerRef.current?.abort()
+      loadMoreControllerRef.current = null
     }
     // followedKey covers follow-set changes; excludeKey covers filter
     // toggles — both should retrigger a from-the-head fetch. load is

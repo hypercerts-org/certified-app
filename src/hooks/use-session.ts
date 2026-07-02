@@ -36,7 +36,15 @@ export function updateCachedSessionEmail(email: string): void {
 function fetchSession(): Promise<SessionData> {
   if (cachedPromise) return cachedPromise;
   cachedPromise = authFetch("/api/xrpc/com/atproto/server/getSession")
-    .then((res) => (res.ok ? res.json() : null))
+    .then((res) => {
+      // Treat a non-OK status (500/503/401/…) like a network error: throw
+      // so the .catch below resets cachedPromise (and does NOT cache the
+      // null result), letting the next mount retry once the endpoint
+      // recovers. Returning null here would pin cachedResult to
+      // {null,null} for the life of the page.
+      if (!res.ok) throw new Error(`getSession failed: ${res.status}`);
+      return res.json();
+    })
     .then((data: { handle?: string; email?: string } | null) => {
       const result: SessionData = {
         handle: data?.handle ?? null,
