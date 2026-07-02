@@ -330,19 +330,23 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
-  // Every endorsement-typed badge award across the network — backs the
-  // /endorsement-graph page. Returns the directed edge
-  // (issuer `did` → `subject` DID) plus the issuer's denormalised actor
+  // Every badge award of one `badgeType` across the network — backs the
+  // /endorsement-graph page, which scans once per type ("endorsement" and
+  // "award"; the proxy allowlists the value). Returns the directed edge
+  // (issuer `did` → `subject`) plus the issuer's denormalised actor
   // profile (same `issuer { ... }` join as ReceivedEndorsements, drops a
-  // per-issuer resolve fan-out). Subjects that never issued an award have
-  // no inline profile here, so the client resolves those DIDs via
+  // per-issuer resolve fan-out). The subject union carries the DID for
+  // account-targeted awards and the strong-ref `uri` for record-targeted
+  // ones (award-typed badges usually point at records; the at:// authority
+  // identifies the owning account). Subjects that never issued an award
+  // have no inline profile here, so the client resolves those DIDs via
   // NetworkActorsByDids. `excludeAuthorLabels` hides awards authored by
   // likely-test accounts, mirroring AwardCount so the graph matches the
   // public counters. Paginated; the client unions pages up to a cap.
   AllEndorsements: `
-    query AllEndorsements($first: Int!, $after: String) {
+    query AllEndorsements($badgeType: String!, $first: Int!, $after: String) {
       appCertifiedBadgeAward(
-        where: { badgeType: { eq: "endorsement" } }
+        where: { badgeType: { eq: $badgeType } }
         excludeAuthorLabels: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])}
         first: $first
         after: $after
@@ -357,6 +361,7 @@ ${ACTIVITY_NODE_SELECTION}
             subject {
               __typename
               ... on AppCertifiedDefsDid { did }
+              ... on ComAtprotoRepoStrongRef { uri }
             }
             issuer { did handle displayName avatarCid pds }
             response { state }
@@ -1605,9 +1610,15 @@ function buildVariables(
       return { viewer, degree: rawDegree }
     }
     case "AllEndorsements": {
-      // Zero required vars — paginated network-wide scan. Same clamp
-      // shape as the other 100-per-page reads (ReceivedEndorsements).
+      // Paginated network-wide scan, one badge type per pass. Strict
+      // allowlist on `badgeType` (defaults to "endorsement" for older
+      // clients) — anything else 400s here rather than fanning an
+      // arbitrary string out to the indexer. Same clamp shape as the
+      // other 100-per-page reads (ReceivedEndorsements).
+      const badgeType = vars.badgeType === undefined ? "endorsement" : vars.badgeType
+      if (badgeType !== "endorsement" && badgeType !== "award") return null
       return {
+        badgeType,
         first: clampFirst(vars.first, MAX_FIRST, 100),
         after: readString(vars.after, MAX_AFTER_LEN),
       }

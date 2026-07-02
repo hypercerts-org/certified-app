@@ -4,10 +4,14 @@
  * Canvas force-directed endorsement graph. Loaded client-only (it touches
  * `window`/`canvas`) — the parent imports it via `next/dynamic({ ssr: false })`.
  *
- * Nodes are user avatars sized by degree; edges are directed endorsements
- * (arrow points issuer -> subject). Mutual edges render in the accent colour
- * with a slight curvature so the two directions bow apart into a clearly
- * bidirectional lens; one-way edges are a single muted straight arrow.
+ * Nodes are user avatars sized by degree; edges are directed badges (arrow
+ * points issuer -> subject) of two kinds, toggled by a checkbox pair (at
+ * least one always on). Endorsement edges: mutual ones render in the accent
+ * colour with a slight curvature so the two directions bow apart into a
+ * clearly bidirectional lens; one-way ones are a single muted straight
+ * arrow. Award edges render in the warning (amber) colour and always carry
+ * a small curvature so they never hide under a parallel endorsement edge
+ * between the same pair.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -19,6 +23,7 @@ import ForceGraph2D, {
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
@@ -53,9 +58,11 @@ interface EndorsementGraphProps {
 
 /**
  * Recompute sidebar stats over the visible (filtered) graph: per-node
- * given/received/mutual within the shown edges, total shown edges, and
- * mutual pairs. New node objects (not the canvas's) so the force
- * simulation isn't disturbed.
+ * given/received/mutual within the shown edges, total shown edges per
+ * kind, and mutual pairs. Node metrics stay endorsement-scoped (matching
+ * the hook and the endorsement-worded labels that consume them); award
+ * edges only feed `totalAwards`. New node objects (not the canvas's) so
+ * the force simulation isn't disturbed.
  */
 function computeFilteredStats(
   nodes: GraphNode[],
@@ -66,10 +73,17 @@ function computeFilteredStats(
   const received = new Map<string, Set<string>>()
   const mutualCount = new Map<string, number>()
   let mutualLinks = 0
+  let endorsementLinks = 0
+  let awardLinks = 0
   for (const l of links) {
     const s = linkEndId(l.source)
     const t = linkEndId(l.target)
     if (!s || !t) continue
+    if (l.kind === "award") {
+      awardLinks++
+      continue
+    }
+    endorsementLinks++
     ;(given.get(s) ?? given.set(s, new Set()).get(s)!).add(t)
     ;(received.get(t) ?? received.set(t, new Set()).get(t)!).add(s)
     if (l.mutual) {
@@ -85,7 +99,8 @@ function computeFilteredStats(
       mutual: mutualCount.get(n.id) ?? 0,
     })),
     links,
-    totalEndorsements: links.length,
+    totalEndorsements: endorsementLinks,
+    totalAwards: awardLinks,
     mutualPairs: Math.round(mutualLinks / 2),
     truncated,
   }
@@ -98,6 +113,8 @@ interface ThemeColors {
   disc: string
   discText: string
   accent: string
+  /** Award-typed edges — amber, distinct from both endorsement colours. */
+  award: string
   link: string
   bg: string
 }
@@ -112,6 +129,7 @@ function readThemeColors(): ThemeColors {
     disc: get("--bg-raised"),
     discText: get("--fg-secondary"),
     accent: get("--color-success"),
+    award: get("--color-warning"),
     link: get("--fg-muted"),
     bg: get("--bg-sunken"),
   }
@@ -253,6 +271,10 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   // than the colours ref; updated alongside the ref on theme changes.
   const [bgColor, setBgColor] = useState<string | undefined>(undefined)
   const [onlyMutual, setOnlyMutual] = useState(false)
+  // Badge-kind checkboxes. Both on by default; the UI disables the last
+  // checked one so at least one kind is always shown.
+  const [showEndorsements, setShowEndorsements] = useState(true)
+  const [showAwards, setShowAwards] = useState(true)
   const [layout, setLayout] = useState<LayoutMode>("network")
   // Default on: only show the web reachable from the trusted evaluators
   // (any number of endorsement hops). Also hides stray disconnected
@@ -315,10 +337,26 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     }
   }, [nodes])
 
-  // --- filtered working data (mutual-only toggle) ------------------------
+  // --- filtered working data (kind checkboxes + scope + mutual) ----------
   const data = useMemo(() => {
     let nds = nodes
     let lks = links
+
+    // 0. badge-kind filter — the endorsement/award checkbox pair. Runs
+    //    FIRST so the downstream filters (evaluator reachability, mutual-
+    //    only) only ever see edges of the kinds the user wants: with
+    //    awards unchecked the view is exactly the pre-award graph, and
+    //    reachability never flows through a hidden edge. Nodes left
+    //    without any visible edge drop out with their edges.
+    if (!showEndorsements || !showAwards) {
+      lks = lks.filter((l) => (l.kind === "award" ? showAwards : showEndorsements))
+      const keep = new Set<string>()
+      for (const l of lks) {
+        keep.add(linkEndId(l.source) ?? "")
+        keep.add(linkEndId(l.target) ?? "")
+      }
+      nds = nds.filter((n) => keep.has(n.id))
+    }
 
     // 1. connected-to-evaluators filter — keep only the nodes reachable
     //    from a trusted evaluator by following endorsements OUTWARD
@@ -328,20 +366,21 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     //    the evaluator set has loaded, or if none of them appear in the
     //    current graph (so we never blank the view out).
     //
-    //    Reachability is computed over the FULL graph — all nodes and all
-    //    edges — and runs BEFORE the mutual-only filter. Otherwise mutual-only
-    //    would drop one-way edges first, and an evaluator who only endorses
-    //    one-way would vanish from the seed set, leaving `seen` empty and this
-    //    whole filter a silent no-op (the reported bug).
+    //    Reachability is computed over the kind-filtered graph — all its
+    //    nodes and edges — and runs BEFORE the mutual-only filter. Otherwise
+    //    mutual-only would drop one-way edges first, and an evaluator who
+    //    only endorses one-way would vanish from the seed set, leaving
+    //    `seen` empty and this whole filter a silent no-op (the reported
+    //    bug).
     if (evaluatorConnectedOnly && evaluatorDids.length > 0) {
-      const fullNodeIds = new Set(nodes.map((n) => n.id))
+      const fullNodeIds = new Set(nds.map((n) => n.id))
       const adj = new Map<string, string[]>()
       const link2 = (k: string, v: string) => {
         const arr = adj.get(k)
         if (arr) arr.push(v)
         else adj.set(k, [v])
       }
-      for (const l of links) {
+      for (const l of lks) {
         const s = linkEndId(l.source)
         const t = linkEndId(l.target)
         if (!s || !t) continue
@@ -376,7 +415,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
 
     // 2. mutual-only filter — applied last, a pure display constraint on the
     //    (possibly evaluator-scoped) graph: keep mutual edges and the nodes
-    //    they touch.
+    //    they touch. Award edges never carry the mutual flag (mutuality is
+    //    an endorsement concept), so this filter hides them all — matching
+    //    the sidebar's endorsement-scoped "Mutual pairs" count.
     if (onlyMutual) {
       lks = lks.filter((l) => l.mutual)
       const keep = new Set<string>()
@@ -388,7 +429,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     }
 
     return { nodes: nds, links: lks }
-  }, [nodes, links, onlyMutual, evaluatorConnectedOnly, evaluatorDids])
+  }, [nodes, links, onlyMutual, showEndorsements, showAwards, evaluatorConnectedOnly, evaluatorDids])
 
   // Mirror the visible (filtered) graph's stats up to the sidebar so its
   // counts + rankings track the active scope / mutual filters.
@@ -449,6 +490,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   }, [layout, data, size.w])
 
   // --- adjacency for hover/selection highlight ---------------------------
+  // Built from the FILTERED links so hover dimming, focus zoom and the
+  // detail panel all agree with the active kind/scope/mutual filters —
+  // a hidden edge never keeps a neighbour lit or drags it into view.
   const adjacency = useMemo(() => {
     const map = new Map<string, Set<string>>()
     const add = (a: string, b: string) => {
@@ -459,7 +503,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       }
       s.add(b)
     }
-    for (const l of links) {
+    for (const l of data.links) {
       const s = linkEndId(l.source)
       const t = linkEndId(l.target)
       if (s && t) {
@@ -468,7 +512,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       }
     }
     return map
-  }, [links])
+  }, [data.links])
 
   const activeId = hoverId ?? selectedId
   const highlightNodes = useMemo(() => {
@@ -478,11 +522,13 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     return set
   }, [activeId, adjacency])
 
+  // Visible nodes only — so a selection or search can't resolve to a node
+  // the active filters removed from the canvas.
   const nodeById = useMemo(() => {
     const m = new Map<string, GraphNode>()
-    for (const n of nodes) m.set(n.id, n)
+    for (const n of data.nodes) m.set(n.id, n)
     return m
-  }, [nodes])
+  }, [data.nodes])
 
   // --- focus requests from the sidebar / search --------------------------
   // Fit the clicked node together with everyone it's connected to into
@@ -507,12 +553,13 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusReq.nonce])
 
-  // Accounts matching the search box, ranked by degree. Drives the
-  // results dropdown.
+  // VISIBLE accounts matching the search box, ranked by degree. Drives the
+  // results dropdown; filtered-out accounts don't appear (selecting one
+  // would zoom to nothing).
   const searchResults = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return [] as GraphNode[]
-    return nodes
+    return data.nodes
       .filter(
         (n) =>
           (n.handle && n.handle.toLowerCase().includes(q)) ||
@@ -520,7 +567,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       )
       .sort((a, b) => b.given + b.received - (a.given + a.received))
       .slice(0, 8)
-  }, [search, nodes])
+  }, [search, data.nodes])
 
   const selectSearchResult = useCallback(
     (did: string) => {
@@ -615,6 +662,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
         const on = s != null && t != null && highlightNodes.has(s) && highlightNodes.has(t)
         if (!on) return c.border
       }
+      if (link.kind === "award") return c.award
       return link.mutual ? c.accent : c.link
     },
     [highlightNodes],
@@ -624,23 +672,32 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   const hoverNode = hoverId ? nodeById.get(hoverId) ?? null : null
   const panelNode = hoverNode ?? selectedNode
 
+  // Panel neighbour strips, split by badge kind so the "Endorsed" headings
+  // stay truthful and an account connected by both an endorsement AND an
+  // award shows up once per section (unique keys within each strip).
+  // Derived from the filtered links, like the adjacency map above.
   const neighbourList = useMemo(() => {
-    if (!panelNode) return { endorsed: [] as GraphNode[], endorsedBy: [] as GraphNode[] }
-    const endorsed: GraphNode[] = []
-    const endorsedBy: GraphNode[] = []
-    for (const l of links) {
+    const empty = {
+      endorsed: [] as GraphNode[],
+      endorsedBy: [] as GraphNode[],
+      awarded: [] as GraphNode[],
+      awardedBy: [] as GraphNode[],
+    }
+    if (!panelNode) return empty
+    const { endorsed, endorsedBy, awarded, awardedBy } = empty
+    for (const l of data.links) {
       const s = linkEndId(l.source)
       const t = linkEndId(l.target)
       if (s === panelNode.id && t) {
         const n = nodeById.get(t)
-        if (n) endorsed.push(n)
+        if (n) (l.kind === "award" ? awarded : endorsed).push(n)
       } else if (t === panelNode.id && s) {
         const n = nodeById.get(s)
-        if (n) endorsedBy.push(n)
+        if (n) (l.kind === "award" ? awardedBy : endorsedBy).push(n)
       }
     }
-    return { endorsed, endorsedBy }
-  }, [panelNode, links, nodeById])
+    return { endorsed, endorsedBy, awarded, awardedBy }
+  }, [panelNode, data.links, nodeById])
 
   // --- draggable panel ---------------------------------------------------
   const onPanelPointerDown = useCallback(
@@ -715,8 +772,15 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           nodeCanvasObject={paintNode}
           nodePointerAreaPaint={paintPointerArea}
           linkColor={linkColor}
-          linkWidth={(l: FGLink) => (l.mutual ? 1.6 : 0.8)}
-          linkCurvature={(l: FGLink) => (l.mutual ? 0.2 : 0)}
+          linkWidth={(l: FGLink) => (l.kind === "award" ? 1.1 : l.mutual ? 1.6 : 0.8)}
+          // Award edges always curve a little so they never draw exactly on
+          // top of a parallel endorsement edge between the same pair. A
+          // reciprocal award pair bows apart naturally: curvature is
+          // relative to each link's direction, so the two opposite arrows
+          // bend to opposite sides (award edges never carry `mutual`).
+          linkCurvature={(l: FGLink) =>
+            l.kind === "award" ? 0.14 : l.mutual ? 0.2 : 0
+          }
           linkDirectionalArrowLength={3.2}
           linkDirectionalArrowRelPos={1}
           onNodeHover={(n: FGNode | null) => setHoverId(n ? (n.id as string) : null)}
@@ -807,6 +871,22 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             Mutual only
           </Button>
         </div>
+        {/* Badge-kind toggles. The last checked box is disabled so at
+            least one kind is always visible. */}
+        <div className="viz__control-row viz__kind-toggles">
+          <Checkbox
+            label="Endorsements"
+            checked={showEndorsements}
+            disabled={showEndorsements && !showAwards}
+            onChange={(e) => setShowEndorsements(e.target.checked)}
+          />
+          <Checkbox
+            label="Awards"
+            checked={showAwards}
+            disabled={showAwards && !showEndorsements}
+            onChange={(e) => setShowAwards(e.target.checked)}
+          />
+        </div>
         <div className="viz__legend" aria-hidden="true">
           <div className="viz__legend-row">
             <span className="viz__legend-swatch viz__legend-swatch--uni" />
@@ -815,6 +895,10 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           <div className="viz__legend-row">
             <span className="viz__legend-swatch viz__legend-swatch--mutual" />
             <span>Mutual endorsement</span>
+          </div>
+          <div className="viz__legend-row">
+            <span className="viz__legend-swatch viz__legend-swatch--award" />
+            <span>Award</span>
           </div>
         </div>
       </div>
@@ -953,40 +1037,32 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             </div>
           </div>
 
-          {neighbourList.endorsed.length > 0 && (
-            <div>
-              <div className="viz__panel-section-title">Endorsed ({neighbourList.endorsed.length})</div>
-              <div className="viz__neighbours">
-                {neighbourList.endorsed.slice(0, 12).map((n) => (
-                  <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
-                    <Avatar
-                      src={n.avatarUrl || undefined}
-                      size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.handle)}
-                    />
-                  </span>
-                ))}
+          {(
+            [
+              ["Endorsed", neighbourList.endorsed],
+              ["Endorsed by", neighbourList.endorsedBy],
+              ["Awarded", neighbourList.awarded],
+              ["Awarded by", neighbourList.awardedBy],
+            ] as const
+          ).map(([title, list]) =>
+            list.length > 0 ? (
+              <div key={title}>
+                <div className="viz__panel-section-title">
+                  {title} ({list.length})
+                </div>
+                <div className="viz__neighbours">
+                  {list.slice(0, 12).map((n) => (
+                    <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
+                      <Avatar
+                        src={n.avatarUrl || undefined}
+                        size="sm"
+                        fallbackInitials={getInitials(n.displayName, n.handle)}
+                      />
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {neighbourList.endorsedBy.length > 0 && (
-            <div>
-              <div className="viz__panel-section-title">
-                Endorsed by ({neighbourList.endorsedBy.length})
-              </div>
-              <div className="viz__neighbours">
-                {neighbourList.endorsedBy.slice(0, 12).map((n) => (
-                  <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
-                    <Avatar
-                      src={n.avatarUrl || undefined}
-                      size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.handle)}
-                    />
-                  </span>
-                ))}
-              </div>
-            </div>
+            ) : null,
           )}
 
           <Link
