@@ -23,6 +23,11 @@ import { establish, end } from "@/lib/auth/group-account-session"
  * Gate: auth → rate-limit(by caller DID) → CSRF → parse → execute.
  */
 const UNLOCK_LIMITER = makeLimiter("groupacct-unlock", 10, 600)
+// Per-TARGET bucket keyed on the group DID being unlocked. The per-caller
+// bucket alone lets an attacker with N caller DIDs get 10N guesses against one
+// victim; this caps aggregate attempts against a single account regardless of
+// how many caller DIDs are spun up. Deny if EITHER bucket trips.
+const UNLOCK_TARGET_LIMITER = makeLimiter("groupacct-unlock-target", 20, 600)
 const LOCK_LIMITER = makeLimiter("groupacct-lock", 30, 600)
 
 export async function POST(
@@ -38,10 +43,15 @@ export async function POST(
       return NextResponse.json({ error: "Invalid group DID" }, { status: 400 })
 
     // Fail CLOSED on this password-verification path (bounds guessing): if we
-    // can't account for the attempt, don't allow it.
-    let rate
+    // can't account for the attempt, don't allow it. Check the per-caller and
+    // per-target buckets together (both INCR so a burst attacker stays on
+    // trajectory) and deny if EITHER trips.
+    let rates
     try {
-      rate = await checkHttpRateLimit(UNLOCK_LIMITER, did)
+      rates = await Promise.all([
+        checkHttpRateLimit(UNLOCK_LIMITER, did),
+        checkHttpRateLimit(UNLOCK_TARGET_LIMITER, groupDid),
+      ])
     } catch {
       return NextResponse.json(
         {
@@ -51,7 +61,8 @@ export async function POST(
         { status: 503 },
       )
     }
-    if (!rate.allowed) return rateLimitResponse(rate)
+    const denied = rates.find((r) => !r.allowed)
+    if (denied) return rateLimitResponse(denied)
 
     const csrfError = checkCsrf(request)
     if (csrfError) return csrfError
