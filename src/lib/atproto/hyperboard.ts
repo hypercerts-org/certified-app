@@ -270,30 +270,6 @@ export async function fetchContributorInfoMap(
   return map
 }
 
-/** Fetch a contributorInformation record by its at:// uri. */
-export async function fetchContributorInformation(
-  uri: string,
-): Promise<ContributorInformationRecord | null> {
-  const parsed = parseAtUri(uri)
-  if (!parsed) return null
-  try {
-    const res = await authFetch(
-      xrpcGetRecordPath({
-        repo: parsed.did,
-        collection: parsed.collection,
-        rkey: parsed.rkey,
-      }),
-    )
-    if (!res.ok) return null
-    const data = (await res.json()) as { value?: unknown }
-    return isObj(data.value)
-      ? (data.value as unknown as ContributorInformationRecord)
-      : null
-  } catch {
-    return null
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Entry merge (pure)
 // ---------------------------------------------------------------------------

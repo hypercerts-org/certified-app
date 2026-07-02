@@ -19,10 +19,6 @@ export interface WorkspaceLayoutProps {
   onSetLexicon: (lex: WorkspaceLexicon | null) => void
 }
 
-export function scopeKey(s: WorkspaceScope): string {
-  return s.kind === "network" ? "network" : `actor:${s.did}`
-}
-
 export function findActor(
   actors: NetworkActor[],
   did: string,

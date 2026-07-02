@@ -47,15 +47,6 @@ export function markTourCompleted(did: string): void {
   }
 }
 
-export function clearTourCompleted(did: string): void {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.removeItem(completedKey(did))
-  } catch {
-    /* swallow */
-  }
-}
-
 export function isTourPending(did: string): boolean {
   if (typeof window === "undefined") return false
   try {
