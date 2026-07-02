@@ -145,6 +145,17 @@
   min-width: 200px;
 }
 
+/* Endorsement/award checkboxes float over the canvas, so give the row the
+   same card chrome as the legend for readability. */
+.viz__kind-toggles {
+  gap: var(--space-3, 12px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
 /* Layout + scope switchers fill the control panel so their segments read
    as one clear toggle rather than floating short. */
 .viz__layout-toggle,
@@ -261,6 +272,10 @@
 .viz__legend-swatch--mutual {
   border-top-color: var(--color-success);
   border-top-width: 3px;
+}
+
+.viz__legend-swatch--award {
+  border-top-color: var(--color-warning);
 }
 
 /* ---- Hover / selected node info panel ---- */
@@ -446,6 +461,13 @@
   gap: var(--space-3, 12px);
 }
 
+/* With an odd cell count (5 since the Awards stat) the last cell spans the
+   2-column grid instead of orphaning at half width. The tablet range
+   overrides this — there the five cells share one row. */
+.viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .viz__stat {
   display: flex;
   flex-direction: column;
@@ -560,7 +582,11 @@
   }
 
   .viz__stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 
@@ -571,6 +597,12 @@
 
   .viz__stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Back to 2 columns here, so the odd-count span applies again (the
+     tablet block above also matches this range and would otherwise win). */
+  .viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
   .viz__panel {

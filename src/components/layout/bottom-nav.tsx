@@ -6,6 +6,7 @@ import { useFeedback } from "@/lib/feedback-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
+import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility";
 import Tooltip from "@/components/ui/tooltip";
 
 export default function BottomNav() {
@@ -15,22 +16,11 @@ export default function BottomNav() {
   const { activeOrg } = useOrg();
   const { isDesktop, isStandalone } = useLayoutBreakpoints();
 
-  // Unmount at ≥800px — the left rail is the primary nav on desktop and
-  // bottom-nav's focusable buttons would compete for tab order.
-  if (isDesktop) return null;
-
-  // Only show in installed / standalone mode (PWA or A2HS web clip).
-  // In a regular browser tab the address bar and OS gestures provide
-  // navigation; the bar also occludes content on /welcome for guests.
-  if (!isStandalone) return null;
-
-  // Embeds render bare (board-only) inside a third-party iframe.
-  if (pathname.startsWith("/embed")) return null;
-
-  // /welcome uses the minimal landing chrome (wordmark + sign-in) at every
-  // width — no bottom nav. Matches the mobile navbar + desktop-top-bar,
-  // which both return null on /welcome.
-  if (pathname === "/welcome") return null;
+  // Visibility is centralized in isBottomNavVisible so the floating
+  // <FeedbackTrigger> can hide itself under the exact same conditions
+  // (the bar already carries a Feedback entry). See the helper for the
+  // full per-condition rationale.
+  if (!isBottomNavVisible({ pathname, isDesktop, isStandalone })) return null;
 
   const isHome = pathname === "/home" || pathname.startsWith("/home/");
 

@@ -49,6 +49,21 @@ export default function HelpPage() {
 
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+              What is certified.app?
+            </h2>
+            <p>
+              certified.app is a view into the whole Certified network. It brings together every
+              account on the network, the activities and impact data they publish, and the
+              connections between them — who endorses whom, who follows whom, and who works
+              together in which group. The data itself doesn&apos;t live in this app: each account
+              keeps its own records on AT Protocol, and certified.app reads across all of them
+              to show the network in one place. Other compatible apps can present the same network
+              in their own way.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
               Take the walk-through
             </h2>
             <p className="mb-4">

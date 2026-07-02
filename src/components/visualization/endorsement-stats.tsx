@@ -60,7 +60,7 @@ function Rank({
 }
 
 export default function EndorsementStats({ graph, onFocus }: EndorsementStatsProps) {
-  const { nodes, totalEndorsements, mutualPairs } = graph
+  const { nodes, totalEndorsements, totalAwards, mutualPairs } = graph
 
   const stats = useMemo(() => {
     const participants = nodes.length
@@ -95,6 +95,10 @@ export default function EndorsementStats({ graph, onFocus }: EndorsementStatsPro
         <div className="viz__stat">
           <span className="viz__stat-value">{totalEndorsements.toLocaleString()}</span>
           <span className="viz__stat-label">Endorsements</span>
+        </div>
+        <div className="viz__stat">
+          <span className="viz__stat-value">{totalAwards.toLocaleString()}</span>
+          <span className="viz__stat-label">Awards</span>
         </div>
         <div className="viz__stat">
           <span className="viz__stat-value">{stats.participants.toLocaleString()}</span>
