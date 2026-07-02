@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
@@ -16,7 +17,7 @@ import ExploreListRow from "./explore-list-row"
  * — no author/date columns (the compact ExploreListRow variant), so the
  * row spans the full width. Used by /explore and the project detail page.
  */
-export default function CertListRow({
+function CertListRow({
   record,
   did,
   showByline = false,
@@ -70,6 +71,8 @@ export default function CertListRow({
     />
   )
 }
+
+export default memo(CertListRow)
 
 function formatTimePeriod(
   start: string | null,

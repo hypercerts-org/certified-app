@@ -1,11 +1,13 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
+import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 
 /**
@@ -25,7 +27,7 @@ import type { NetworkActor } from "@/lib/atproto/workspace"
  * (the `NetworkActor` carries only the DID + a display name from the
  * Certified actor record, which is sparse).
  */
-export default function ExploreUserCard({
+function ExploreUserCard({
   actor,
 }: {
   actor: NetworkActor
@@ -73,6 +75,4 @@ export default function ExploreUserCard({
   )
 }
 
-function truncateDid(did: string): string {
-  return did.length > 24 ? `${did.slice(0, 16)}…${did.slice(-6)}` : did
-}
+export default memo(ExploreUserCard)

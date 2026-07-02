@@ -723,7 +723,7 @@ function ExploreMain({
   const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
   return (
-    <main className="explore__main">
+    <div className="explore__main">
           {/* Kind switcher (Certs / Projects / Accounts) is now
               rendered as a second row in the top navbar — same
               pattern profile pages use for their tab strip. See
@@ -941,7 +941,7 @@ function ExploreMain({
               isLoading={data.isLoadingMore}
             />
           ) : null}
-    </main>
+    </div>
   )
 }
 
@@ -1241,7 +1241,7 @@ function ExploreAllBlocks() {
           onFilterClick={onFilterButtonClick}
         />
 
-        <main className="explore__main">
+        <div className="explore__main">
           <div className="explore__chrome">
             <span className="explore__category-dropdown">
               <AllCategoryDropdown
@@ -1347,7 +1347,7 @@ function ExploreAllBlocks() {
               </ul>
             </AllSection>
           </div>
-        </main>
+        </div>
       </div>
     </div>
   )
@@ -1862,13 +1862,16 @@ function ResultsArea({
   confirmThirdParties?: ReadonlySet<string>
 }) {
   const closure = data.endorsementClosure
-  const degreeMatches = (did: string | null | undefined): boolean => {
-    if (!degrees || !closure) return true
-    if (!did) return false
-    const meta = closure.closureByDid.get(did)
-    if (!meta) return false
-    return degrees.has(meta.degree)
-  }
+  const degreeMatches = useCallback(
+    (did: string | null | undefined): boolean => {
+      if (!degrees || !closure) return true
+      if (!did) return false
+      const meta = closure.closureByDid.get(did)
+      if (!meta) return false
+      return degrees.has(meta.degree)
+    },
+    [degrees, closure],
+  )
 
   // Funding "Confirmed by" filter — memoized so an unrelated re-render (a
   // keystroke in search, a view toggle) doesn't re-run the O(n) attestation
@@ -1890,6 +1893,31 @@ function ResultsArea({
         : mergedFundingReceipts,
     [mergedFundingReceipts, confirmRoles, confirmThirdParties],
   )
+
+  // Degree-filtered + sorted lists, memoized so a keystroke in the search
+  // box (local state on the parent) doesn't re-allocate and re-sort the
+  // whole list each render. The underlying arrays are stable references
+  // between keystrokes (they live in useExploreData's state), so these
+  // recompute only when the loaded data, the active degree set, or the
+  // sort order actually changes.
+  const sortedUsers = useMemo(() => {
+    const actors = degrees
+      ? data.users.filter((a) => degreeMatches(a.did))
+      : data.users
+    return sortUsers(actors, sort)
+  }, [data.users, degrees, degreeMatches, sort])
+  const sortedProjects = useMemo(() => {
+    const list = degrees
+      ? data.projects.filter((p) => degreeMatches(projectAuthorDid(p)))
+      : data.projects
+    return sortProjects(list, sort)
+  }, [data.projects, degrees, degreeMatches, sort])
+  const sortedCerts = useMemo(() => {
+    const list = degrees
+      ? data.certs.filter((c) => degreeMatches(data.certDids.get(c.uri) ?? null))
+      : data.certs
+    return sortCerts(list, sort)
+  }, [data.certs, data.certDids, degrees, degreeMatches, sort])
 
   if (
     data.isLoading &&
@@ -1923,9 +1951,7 @@ function ResultsArea({
   }
 
   if (kind === "accounts") {
-    let actors = data.users
-    if (degrees) actors = actors.filter((a) => degreeMatches(a.did))
-    actors = sortUsers(actors, sort)
+    const actors = sortedUsers
     if (actors.length === 0) return <EmptyResults kind={kind} />
     if (view === "list") {
       return (
@@ -1953,10 +1979,7 @@ function ResultsArea({
   }
 
   if (kind === "projects") {
-    let projects = data.projects
-    if (degrees)
-      projects = projects.filter((p) => degreeMatches(projectAuthorDid(p)))
-    projects = sortProjects(projects, sort)
+    const projects = sortedProjects
     if (projects.length === 0) return <EmptyResults kind={kind} />
     if (view === "list") {
       return (
@@ -1990,11 +2013,8 @@ function ResultsArea({
   }
 
   // certs
-  let certs = data.certs
+  const certs = sortedCerts
   const certDids = data.certDids
-  if (degrees)
-    certs = certs.filter((c) => degreeMatches(certDids.get(c.uri) ?? null))
-  certs = sortCerts(certs, sort)
   if (certs.length === 0) return <EmptyResults kind={kind} />
 
   if (view === "list") {

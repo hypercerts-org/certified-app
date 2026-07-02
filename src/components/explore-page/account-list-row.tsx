@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
@@ -7,6 +8,7 @@ import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import EndorsementRowBadge from "./endorsement-row-badge"
@@ -27,7 +29,7 @@ import EndorsementRowBadge from "./endorsement-row-badge"
  * record — null on legacy profiles indexed before the field was
  * emitted, in which case the column collapses.
  */
-export default function AccountListRow({
+function AccountListRow({
   actor,
   endorsementMeta,
 }: {
@@ -86,6 +88,4 @@ export default function AccountListRow({
   )
 }
 
-function truncateDid(did: string): string {
-  return did.length > 24 ? `${did.slice(0, 16)}…${did.slice(-6)}` : did
-}
+export default memo(AccountListRow)

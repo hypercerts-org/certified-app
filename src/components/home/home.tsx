@@ -98,7 +98,7 @@ export default function Home() {
         <aside className="home__sidebar" aria-label="Your library">
           <HomeSidebar activeDid={activeDid} />
         </aside>
-        <main className="home__main">
+        <div className="home__main">
           <div className="home__split">
             <div className="home__feed" data-tour="home-feed">
               <HomeFeed activeDid={activeDid} />
@@ -107,7 +107,7 @@ export default function Home() {
               <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
             </aside>
           </div>
-        </main>
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type KeyboardEvent, type MouseEvent } from "react"
+import { memo, useState, type KeyboardEvent, type MouseEvent } from "react"
 import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
 import {
   FundingPartySlot,
@@ -28,7 +28,7 @@ import type { FundingReceipt } from "@/lib/atproto/indexer"
  * `showFor={false}` on surfaces where the `for` is already implied
  * (e.g. the activity detail page itself).
  */
-export default function FundingReceiptRow({
+function FundingReceiptRow({
   receipt,
   showTextParties = false,
   showFor = true,
@@ -142,6 +142,8 @@ export default function FundingReceiptRow({
     </>
   )
 }
+
+export default memo(FundingReceiptRow)
 
 /** The "Confirmed by" column — a plain-text summary of who attested the
  *  payment: the transfer parties (Sender / Recipient / Sender & Recipient)

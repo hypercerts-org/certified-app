@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { memo, useState } from "react"
 import { recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { FolderGit2 } from "lucide-react"
@@ -15,7 +15,7 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * doesn't resolve items (the grid renders many cards; N-times-K item
  * resolution would be wasteful).
  */
-export default function ExploreProjectCard({
+function ExploreProjectCard({
   project,
 }: {
   project: CollectionRecord
@@ -81,6 +81,8 @@ export default function ExploreProjectCard({
     </Link>
   )
 }
+
+export default memo(ExploreProjectCard)
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null

@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { FolderGit2, MapPin } from "lucide-react"
 import { recordUrl } from "@/lib/urls"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -17,7 +18,7 @@ import ExploreListRow from "./explore-list-row"
  * `<ExploreListRow>`, which owns the JSX scaffolding shared with
  * `<CertListRow>`.
  */
-export default function ProjectListRow({
+function ProjectListRow({
   project,
   endorsementMeta,
 }: {
@@ -113,6 +114,8 @@ export default function ProjectListRow({
     />
   )
 }
+
+export default memo(ProjectListRow)
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null

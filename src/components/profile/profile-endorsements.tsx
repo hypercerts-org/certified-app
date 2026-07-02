@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { useUrlParam } from "@/hooks/use-url-param"
 import {
   ArrowUpDown,
@@ -332,6 +332,17 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     ownStates,
   ])
 
+  // Stable post-write callbacks so the memoized cards/rows don't re-render
+  // on every keystroke just because a fresh inline arrow was handed down.
+  // `ownStates` is a memoized object and `given.refetch` a stable useCallback,
+  // so both handlers keep a constant identity between renders.
+  const onReceivedAfterWrite = useCallback(async () => {
+    ownStates.invalidate()
+    await ownStates.refetch()
+  }, [ownStates])
+  const givenRefetch = given.refetch
+  const onGivenAfterRevoke = useCallback(() => givenRefetch(), [givenRefetch])
+
   return (
     <Tabs
       value={tab}
@@ -530,29 +541,21 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             selectable={selectable}
             selected={selected}
             onToggleOne={toggleOne}
-            onAfterWrite={async () => {
-              ownStates.invalidate()
-              await ownStates.refetch()
-            }}
+            onAfterWrite={onReceivedAfterWrite}
           />
         ) : (
           <ReceivedGrid
-            endorsements={filteredReceived}
+            visible={visibleReceived}
+            total={filteredReceived.length}
             isLoading={received.isLoading}
             error={received.error}
-            query={query}
-            sort={sort}
-            names={names}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
             targetDid={manageTargetDid}
             responseFilter={responseFilter}
             resolve={ownStates.resolve}
             allResponses={ownStates.responses}
-            onAfterWrite={async () => {
-              ownStates.invalidate()
-              await ownStates.refetch()
-            }}
+            onAfterWrite={onReceivedAfterWrite}
           />
         )}
       </TabPanel>
@@ -582,20 +585,18 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             selectable={selectable}
             selected={selected}
             onToggleOne={toggleOne}
-            onAfterRevoke={() => given.refetch()}
+            onAfterRevoke={onGivenAfterRevoke}
           />
         ) : (
           <GivenGrid
-            endorsements={given.endorsements}
+            visible={visibleGiven}
+            total={given.endorsements.length}
             isLoading={given.isLoading}
             error={given.error}
-            query={query}
-            sort={sort}
-            names={names}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
             targetDid={manageTargetDid}
-            onAfterRevoke={() => given.refetch()}
+            onAfterRevoke={onGivenAfterRevoke}
           />
         )}
       </TabPanel>
@@ -648,12 +649,14 @@ function formatCount(n: number): string | null {
 // ----------------------------- Received -----------------------------
 
 interface ReceivedGridProps {
-  endorsements: ReceivedEndorsement[]
+  /** Already filtered + sorted by the parent (`visibleReceived`); the
+   *  grid renders it directly instead of recomputing the sort. */
+  visible: ReceivedEndorsement[]
+  /** Size of the pre-search set — drives the "No endorsements yet" vs
+   *  "No matches" empty-state split. */
+  total: number
   isLoading: boolean
   error: string | null
-  query: string
-  sort: SortKey
-  names: Map<string, string>
   viewerIsOwner: boolean
   viewerDid: string | null
   /** Group DID when acting AS this group — accept/reject responses route
@@ -670,12 +673,10 @@ interface ReceivedGridProps {
 }
 
 function ReceivedGrid({
-  endorsements,
+  visible,
+  total,
   isLoading,
   error,
-  query,
-  sort,
-  names,
   viewerIsOwner,
   viewerDid,
   targetDid,
@@ -684,11 +685,6 @@ function ReceivedGrid({
   allResponses,
   onAfterWrite,
 }: ReceivedGridProps) {
-  const visible = useMemo(
-    () => filterAndSortReceived(endorsements, query, sort, names),
-    [endorsements, query, sort, names],
-  )
-
   if (isLoading) {
     return (
       <div className="profile-endorsements-v2__loading">
@@ -720,12 +716,12 @@ function ReceivedGrid({
     const onlyRejectedActive = responseFilter === "only-rejected"
     const title = onlyRejectedActive
       ? "No rejected endorsements yet"
-      : endorsements.length === 0
+      : total === 0
         ? "No endorsements yet"
         : "No matches"
     const description = onlyRejectedActive
       ? "Endorsements you reject will appear here."
-      : endorsements.length === 0
+      : total === 0
         ? "Endorsements from other people will appear here."
         : "No endorsements match your search."
     return (
@@ -752,7 +748,7 @@ function ReceivedGrid({
   )
 }
 
-function ReceivedCard({
+const ReceivedCard = memo(function ReceivedCard({
   endorsement,
   viewerIsOwner,
   viewerDid,
@@ -797,17 +793,19 @@ function ReceivedCard({
       }
     />
   )
-}
+})
 
 // ------------------------------ Given -------------------------------
 
 interface GivenGridProps {
-  endorsements: GivenEndorsement[]
+  /** Already filtered + sorted by the parent (`visibleGiven`); the grid
+   *  renders it directly instead of recomputing the sort. */
+  visible: GivenEndorsement[]
+  /** Size of the pre-search set — drives the "No endorsements given yet"
+   *  vs "No matches" empty-state split. */
+  total: number
   isLoading: boolean
   error: string | null
-  query: string
-  sort: SortKey
-  names: Map<string, string>
   /** True when the profile being viewed is the signed-in user's
    *  own profile — i.e. the cards represent endorsements THEY
    *  issued. Controls whether the per-card revoke `×` renders. */
@@ -820,22 +818,15 @@ interface GivenGridProps {
 }
 
 function GivenGrid({
-  endorsements,
+  visible,
+  total,
   isLoading,
   error,
-  query,
-  sort,
-  names,
   viewerIsOwner,
   viewerDid,
   targetDid,
   onAfterRevoke,
 }: GivenGridProps) {
-  const visible = useMemo(
-    () => filterAndSortGiven(endorsements, query, sort, names),
-    [endorsements, query, sort, names],
-  )
-
   if (isLoading) {
     return (
       <div className="profile-endorsements-v2__loading">
@@ -859,9 +850,9 @@ function GivenGrid({
       <div className="profile-endorsements-v2__grid">
         <EmptyState
           icon={ThumbsUp}
-          title={endorsements.length === 0 ? "No endorsements given yet" : "No matches"}
+          title={total === 0 ? "No endorsements given yet" : "No matches"}
           description={
-            endorsements.length === 0
+            total === 0
               ? "Endorsements this user gives to others will appear here."
               : "No endorsements match your search."
           }
@@ -885,7 +876,7 @@ function GivenGrid({
   )
 }
 
-function GivenCard({
+const GivenCard = memo(function GivenCard({
   endorsement,
   canRevoke,
   viewerDid,
@@ -922,7 +913,7 @@ function GivenCard({
       }
     />
   )
-}
+})
 
 /**
  * Small `×` revoke affordance shown on the owner's Given grid.
@@ -1212,7 +1203,7 @@ function GivenList({
   )
 }
 
-function GivenListRow({
+const GivenListRow = memo(function GivenListRow({
   endorsement,
   selectable,
   selected,
@@ -1260,7 +1251,7 @@ function GivenListRow({
       ) : null}
     </li>
   )
-}
+})
 
 function ReceivedList({
   visible,
@@ -1348,7 +1339,7 @@ function ReceivedList({
   )
 }
 
-function ReceivedListRow({
+const ReceivedListRow = memo(function ReceivedListRow({
   endorsement,
   selectable,
   selected,
@@ -1407,7 +1398,7 @@ function ReceivedListRow({
       ) : null}
     </li>
   )
-}
+})
 
 // ----------------------- Filter + sort helpers -----------------------
 
