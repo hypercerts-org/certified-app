@@ -59,9 +59,9 @@ const HELP_FAQ_ITEMS = [
       "Different apps on AT Protocol are essentially different front-ends over the same underlying data. Certified is the place to explore the whole network — accounts, activities, projects, and endorsements — no matter which app created them. Other apps focus on specific use cases: Ma Earth, for example, is built around funding regenerative land projects.\n\nBecause they share open lexicons, these apps interoperate instead of competing for your data: you maintain one portable record that every compatible app can build on.",
   },
   {
-    question: "How do I build on Certified?",
+    question: "How can we build with Certified?",
     answer:
-      "You can check out the docs, where you'll also find AI skills, and get in contact with us — best in our Telegram group.",
+      "Check out the docs, where you'll also find AI skills, and get in contact with us — best in our Telegram group.",
   },
 ];
 
@@ -107,7 +107,7 @@ export default function HelpFaq() {
         ),
       };
     }
-    if (item.question === "How do I build on Certified?") {
+    if (item.question === "How can we build with Certified?") {
       return { ...item, cta: BUILD_LINKS };
     }
     return item;
