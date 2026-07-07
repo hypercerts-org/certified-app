@@ -119,7 +119,6 @@ Existing code to reuse rather than replace wholesale:
   - keep `INDEXER_URL` behavior backwards-compatible during migration.
 - [ ] Refactor `/api/indexer` internally so each operation can choose a backend: Magic or Hyperindex.
 - [ ] Add temporary logging/metrics for backend chosen per operation.
-- [ ] Add a simple parity harness for selected operations in local/staging.
 - [ ] Do not flip production behavior yet.
 
 Acceptance:
@@ -371,9 +370,9 @@ Manual/browser checks on staging:
 - [ ] `/endorsement-graph`.
 - [ ] Signed-in home feed after Stage 8.
 
-Parity checks:
+Stage-specific comparison checks:
 
-- [ ] For each stage, compare Magic vs Hyperindex for a small fixed sample of DIDs/URIs.
+- [ ] For each migration stage, document the small fixed sample of DIDs/URIs used to compare old vs new behavior.
 - [ ] Record known semantic differences before flipping production.
 - [ ] Monitor request error rate and empty-result rate after each stage.
 
