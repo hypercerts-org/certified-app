@@ -56,11 +56,13 @@ const MAGIC_INDEXER_URL =
   DEFAULT_MAGIC_INDEXER_URL
 const HYPERINDEX_URL = process.env.HYPERINDEX_URL || DEFAULT_HYPERINDEX_URL
 
-// Stage migration switchboard. Keep this empty until a stage explicitly
-// ports an operation group. Local/staging can also set
-// `HYPERINDEX_OPERATIONS=ProfileCount,ActivityCount` to test routing
+// Stage migration switchboard. Stacked Stage 1 starts with ProfileCount only;
+// all other operations remain Magic-backed until their own PR migrates them.
+// Local/staging can also set `HYPERINDEX_OPERATIONS=...` to test routing
 // without changing production defaults.
-const OPERATION_BACKENDS: Partial<Record<string, IndexerBackend>> = {}
+const OPERATION_BACKENDS: Partial<Record<string, IndexerBackend>> = {
+  ProfileCount: "hyperindex",
+}
 const HYPERINDEX_OPERATION_NAMES = new Set(
   (process.env.HYPERINDEX_OPERATIONS || "")
     .split(",")
@@ -75,6 +77,16 @@ function backendForOperation(operationName: string): IndexerBackend {
 
 function endpointForBackend(backend: IndexerBackend): string {
   return backend === "hyperindex" ? HYPERINDEX_URL : MAGIC_INDEXER_URL
+}
+
+function queryForOperation(
+  operationName: string,
+  backend: IndexerBackend,
+): string | null {
+  if (backend === "hyperindex") {
+    return HYPERINDEX_OPERATION_QUERIES[operationName] ?? OPERATIONS[operationName] ?? null
+  }
+  return OPERATIONS[operationName] ?? null
 }
 
 function logIndexerBackend(
@@ -200,6 +212,32 @@ const ACTIVITY_NODE_SELECTION = `
  * NOTE on adding ops: a new entry MUST come with a `buildVariables`
  * branch below or the request 400s on unknown variables.
  */
+const HYPERINDEX_OPERATION_QUERIES: Partial<Record<string, string>> = {
+  // Hyperindex does not support Magic's connection-level
+  // `excludeAuthorLabels` argument. Use the typed label predicate instead:
+  // hide profiles whose author/account DID has an active likely-test label,
+  // while letting unlabeled profiles pass through.
+  ProfileCount: `
+    query ProfileCount {
+      appCertifiedActorProfile(
+        first: 1
+        where: {
+          authorLabels: {
+            none: {
+              val: { in: ${JSON.stringify([...DEFAULT_HIDDEN_ORG_LABELS])} }
+              activeOnly: true
+            }
+          }
+        }
+      ) {
+        totalCount
+        edges { node { uri } }
+        pageInfo { hasNextPage }
+      }
+    }
+  `,
+}
+
 const OPERATIONS: Record<string, string> = {
   // Global activity feed + per-label / per-author filters.
   Activities: `
@@ -1800,8 +1838,7 @@ export async function POST(request: NextRequest) {
   }
   const operationName = parsed.operationName
 
-  const query = OPERATIONS[operationName]
-  if (!query) {
+  if (!OPERATIONS[operationName]) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
 
@@ -1819,6 +1856,10 @@ export async function POST(request: NextRequest) {
 
   const backend = backendForOperation(operationName)
   const upstreamUrl = endpointForBackend(backend)
+  const query = queryForOperation(operationName, backend)
+  if (!query) {
+    return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
+  }
   logIndexerBackend(operationName, backend, upstreamUrl)
 
   const timeoutController = new AbortController()

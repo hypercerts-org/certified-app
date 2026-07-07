@@ -321,6 +321,22 @@ describe("/api/indexer trust boundary", () => {
       expect(mockFetch.mock.calls[0][0]).toBe("https://hyperindex.example/graphql")
     })
 
+    it("routes ProfileCount to Hyperindex with the Hyperindex label-filter query", async () => {
+      const res = await postIndexer({
+        operationName: "ProfileCount",
+        variables: {},
+      })
+      expect(res.headers.get("x-indexer-backend")).toBe("hyperindex")
+      expect(mockFetch.mock.calls[0][0]).toBe("https://hyperindex.example/graphql")
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.operationName).toBe("ProfileCount")
+      expect(body.query).toContain("query ProfileCount")
+      expect(body.query).toContain("authorLabels")
+      expect(body.query).toContain("none")
+      expect(body.query).toContain("activeOnly")
+      expect(body.query).not.toContain("excludeAuthorLabels")
+    })
+
     it("forwards the server-held query string for the requested operation", async () => {
       await postIndexer({
         operationName: "Followers",
