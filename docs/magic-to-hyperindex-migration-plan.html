@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certified: Magic Indexer → Hyperindex migration plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+              serif: ["Fraunces", "ui-serif", "Georgia", "serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+            },
+            colors: {
+              ink: "#14110f",
+              paper: "#f7f3eb",
+              panel: "#fffaf1",
+              rule: "#d8cdbc",
+              moss: "#405c42",
+              amber: "#b7791f",
+              clay: "#9a4f33",
+              plum: "#59415f",
+            },
+            boxShadow: {
+              ledger: "0 24px 80px rgba(20, 17, 15, 0.10)",
+            },
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root { color-scheme: light; }
+      html { scroll-behavior: smooth; }
+      body {
+        background:
+          radial-gradient(circle at top left, rgba(183, 121, 31, 0.14), transparent 32rem),
+          radial-gradient(circle at 86% 10%, rgba(64, 92, 66, 0.12), transparent 34rem),
+          #f7f3eb;
+      }
+      .ledger-grid {
+        background-image:
+          linear-gradient(rgba(20, 17, 15, 0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(20, 17, 15, 0.055) 1px, transparent 1px);
+        background-size: 28px 28px;
+      }
+      .stage-card { scroll-margin-top: 2rem; }
+      .mermaid svg { margin: 0 auto; max-width: 100%; }
+      @media print {
+        .no-print { display: none !important; }
+        body { background: #fff; }
+        .break-inside-avoid { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-ink antialiased">
+    <header class="ledger-grid border-b border-rule/80">
+      <div class="mx-auto flex max-w-7xl flex-col gap-10 px-6 py-12 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+        <div class="max-w-4xl">
+          <p class="mb-4 inline-flex rounded-full border border-ink/15 bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-moss">
+            Certified migration plan
+          </p>
+          <h1 class="font-serif text-5xl font-bold leading-[0.95] tracking-tight text-ink md:text-7xl">
+            Magic Indexer → Hyperindex
+          </h1>
+          <p class="mt-6 max-w-3xl text-lg leading-8 text-ink/72">
+            A staged plan for removing Certified’s Magic Indexer dependency while keeping the app’s existing
+            read APIs stable. The sequence moves from least invasive and easiest to verify to the highest-effort
+            product-specific replacement work.
+          </p>
+        </div>
+        <aside class="rounded-sm border border-rule bg-panel p-5 shadow-ledger lg:w-80">
+          <p class="font-mono text-xs uppercase tracking-[0.16em] text-ink/50">Planning rule</p>
+          <p class="mt-2 text-sm leading-6 text-ink/75">
+            This is not a PDS-to-indexer migration. PDS and CGS remain write sources of truth. The goal is to
+            replace the Magic Indexer-compatible read proxy with Hyperindex-backed operations.
+          </p>
+        </aside>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
+      <nav class="no-print mb-10 rounded-sm border border-rule bg-panel/90 p-4 shadow-sm backdrop-blur">
+        <p class="mb-3 font-mono text-xs uppercase tracking-[0.16em] text-ink/50">Jump to stage</p>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-0">0 Foundation</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-1">1 Counts</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-2">2 Activities</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-3">3 Projects</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-4">4 Follows</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-5">5 Actors</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-6">6 Endorsements</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-7">7 Funding</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-8">8 Home feed</a>
+          <a class="rounded-full border border-rule bg-white px-3 py-1.5 hover:border-moss" href="#stage-9">9 Remove Magic</a>
+        </div>
+      </nav>
+
+      <section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div class="rounded-sm border border-rule bg-panel p-6 shadow-ledger">
+          <h2 class="font-serif text-3xl font-semibold tracking-tight">Target architecture</h2>
+          <p class="mt-3 text-sm leading-6 text-ink/70">
+            Keep the app-facing operation contract stable at first. Replace the implementation behind each
+            operation group one stage at a time. Components should not need to know whether a response came from
+            Magic Indexer or Hyperindex while the migration is in flight.
+          </p>
+          <div class="mermaid mt-6 rounded-sm border border-rule bg-white p-4">
+flowchart LR
+  UI[Certified UI + hooks] --> Proxy[/api/indexer operationName proxy/]
+  Proxy --> Today[(Magic Indexer)]
+  Proxy -. stage by stage .-> Hyper[(Hyperindex)]
+  PDS[(PDS / CGS writes)] --> Hyper
+  PDS --> UI
+  Today:::old
+  Hyper:::new
+  classDef old fill:#f3d7c9,stroke:#9a4f33,color:#14110f
+  classDef new fill:#dbe7d6,stroke:#405c42,color:#14110f
+          </div>
+        </div>
+
+        <div class="rounded-sm border border-rule bg-ink p-6 text-paper shadow-ledger">
+          <h2 class="font-serif text-3xl font-semibold tracking-tight">Migration invariant</h2>
+          <ul class="mt-5 space-y-4 text-sm leading-6 text-paper/78">
+            <li><strong class="text-white">Do not move writes.</strong> Hyperindex is the read model. PDS and CGS stay authoritative for writes, swaps, deletes, and edit prefill.</li>
+            <li><strong class="text-white">Keep operation names stable.</strong> Port the server-side query behind each operation before changing client hooks.</li>
+            <li><strong class="text-white">Dual-run where possible.</strong> In dev/staging, compare Magic and Hyperindex results for a small sample before flipping production.</li>
+            <li><strong class="text-white">Home feed is special.</strong> Magic’s <code class="rounded bg-white/10 px-1 font-mono">followerEvents</code> and <code class="rounded bg-white/10 px-1 font-mono">HydrateFeedPage</code> are product resolvers, not simple typed collection queries.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="mt-10 rounded-sm border border-rule bg-panel p-6 shadow-ledger">
+        <h2 class="font-serif text-3xl font-semibold tracking-tight">Effort ladder</h2>
+        <p class="mt-3 max-w-3xl text-sm leading-6 text-ink/70">
+          The order below intentionally starts with low-blast-radius reads that are easy to assert, then moves into
+          broader UI surfaces, joined data, and finally Magic-only custom feed behavior.
+        </p>
+        <div class="mermaid mt-6 rounded-sm border border-rule bg-white p-4">
+flowchart TD
+  S0[0 Foundation: endpoint config, proxy harness, parity checks]
+  S1[1 Counts: totals and count-only operations]
+  S2[2 Activities: activity lists, by URI, authored, contributed]
+  S3[3 Projects: project lists and projects containing activity]
+  S4[4 Follows: followers and follow-derived reads]
+  S5[5 Actors + orgs: profiles, org filters, workspace actor lookup]
+  S6[6 Endorsements: awards, definitions, responses, graph closure]
+  S7[7 Funding: funding receipts and activity funding]
+  S8[8 Home feed: replace followerEvents and HydrateFeedPage]
+  S9[9 Removal: delete Magic fallback and Magic-specific docs/code]
+  S0 --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
+        </div>
+      </section>
+
+      <section class="mt-10 grid gap-5">
+        <article id="stage-0" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-moss">Stage 0 · least invasive</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Foundation and safety rails</h3>
+            </div>
+            <span class="rounded-full bg-moss/10 px-3 py-1 font-mono text-xs font-semibold text-moss">Effort S · Risk low</span>
+          </div>
+          <div class="mt-5 grid gap-6 md:grid-cols-3">
+            <div>
+              <h4 class="font-semibold">Scope</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li>Add Hyperindex endpoint config.</li>
+                <li>Keep <code class="font-mono">/api/indexer</code> and operation names.</li>
+                <li>Add schema smoke checks for production/staging Hyperindex.</li>
+                <li>Add optional dev parity logging for selected operations.</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="font-semibold">Why first</h4>
+              <p class="mt-2 text-sm leading-6 text-ink/70">
+                It proves connectivity, schema availability, timeout behavior, and deployment config without changing
+                any user-visible data yet.
+              </p>
+            </div>
+            <div>
+              <h4 class="font-semibold">Acceptance</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li>Build passes.</li>
+                <li>Proxy rejects unknown operations exactly as before.</li>
+                <li>Hyperindex schema check confirms required root fields.</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article id="stage-1" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-moss">Stage 1</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port count operations</h3>
+            </div>
+            <span class="rounded-full bg-moss/10 px-3 py-1 font-mono text-xs font-semibold text-moss">Effort S · Risk low</span>
+          </div>
+          <p class="mt-4 max-w-3xl text-sm leading-6 text-ink/70">
+            Counts are the cleanest first real migration: small payloads, simple UI impact, and easy Magic-vs-Hyperindex
+            comparison.
+          </p>
+          <div class="mt-5 overflow-hidden rounded-sm border border-rule">
+            <table class="w-full border-collapse text-left text-sm">
+              <thead class="bg-ink text-paper">
+                <tr><th class="p-3">Current operation</th><th class="p-3">Hyperindex target</th><th class="p-3">Notes</th></tr>
+              </thead>
+              <tbody class="divide-y divide-rule bg-white">
+                <tr><td class="p-3 font-mono">ProfileCount</td><td class="p-3 font-mono">appCertifiedActorProfile.totalCount</td><td class="p-3">Users/profile records.</td></tr>
+                <tr><td class="p-3 font-mono">OrganizationCount</td><td class="p-3 font-mono">appCertifiedActorOrganization.totalCount</td><td class="p-3">Organization profile records.</td></tr>
+                <tr><td class="p-3 font-mono">ActivityCount</td><td class="p-3 font-mono">orgHypercertsClaimActivity.totalCount</td><td class="p-3">May need author-label exclusion parity.</td></tr>
+                <tr><td class="p-3 font-mono">ProjectCount</td><td class="p-3 font-mono">orgHypercertsCollection(where:{type})</td><td class="p-3">Restrict to project collections.</td></tr>
+                <tr><td class="p-3 font-mono">AwardCount</td><td class="p-3 font-mono">appCertifiedBadgeAward.totalCount</td><td class="p-3">Preserve endorsement-only semantics if current UI expects that.</td></tr>
+                <tr><td class="p-3 font-mono">UserActivityCount</td><td class="p-3 font-mono">orgHypercertsClaimActivity(where:{_or})</td><td class="p-3">Created ∪ contributed, counted once.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="stage-2" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-amber">Stage 2</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port activity read operations</h3>
+            </div>
+            <span class="rounded-full bg-amber/10 px-3 py-1 font-mono text-xs font-semibold text-amber">Effort M · Risk medium</span>
+          </div>
+          <p class="mt-4 max-w-3xl text-sm leading-6 text-ink/70">
+            Activities power Explore, profile Activities, search snippets, and detail fallback. Keep the helper API stable
+            and translate Magic’s convenience args into Hyperindex <code class="font-mono">where</code> inputs.
+          </p>
+          <div class="mt-5 grid gap-5 lg:grid-cols-2">
+            <div class="rounded-sm border border-rule bg-white p-4">
+              <h4 class="font-semibold">Operations</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li><code class="font-mono">Activities</code></li>
+                <li><code class="font-mono">ActivitiesByUris</code></li>
+                <li><code class="font-mono">AuthoredActivities</code></li>
+                <li><code class="font-mono">ContributedActivities</code></li>
+              </ul>
+            </div>
+            <div class="rounded-sm border border-rule bg-white p-4">
+              <h4 class="font-semibold">Main translation</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li><code class="font-mono">authors</code> → <code class="font-mono">where.did.in</code></li>
+                <li><code class="font-mono">where.did.eq</code> for authored profile tab.</li>
+                <li><code class="font-mono">where.contributorDid.eq</code> for contributed tab.</li>
+                <li><code class="font-mono">labels/excludeLabels</code> → external label predicates.</li>
+                <li><code class="font-mono">authorLabels</code> → author label predicates.</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article id="stage-3" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-amber">Stage 3</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port project operations</h3>
+            </div>
+            <span class="rounded-full bg-amber/10 px-3 py-1 font-mono text-xs font-semibold text-amber">Effort M · Risk medium</span>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-ink/70">
+            Project queries map to <code class="font-mono">orgHypercertsCollection</code>, usually with
+            <code class="font-mono">where.type.eq = "project"</code>. This follows activities because project cards often
+            include activity counts and linked activity previews.
+          </p>
+          <div class="mt-5 grid gap-5 md:grid-cols-3">
+            <div class="rounded-sm border border-rule bg-white p-4"><h4 class="font-semibold">Operations</h4><p class="mt-2 font-mono text-sm leading-6 text-ink/70">Projects<br />UserProjects<br />ProjectsContainingCert</p></div>
+            <div class="rounded-sm border border-rule bg-white p-4"><h4 class="font-semibold">Hyperindex fields</h4><p class="mt-2 font-mono text-sm leading-6 text-ink/70">orgHypercertsCollection<br />where.did<br />where.type<br />where.items.any</p></div>
+            <div class="rounded-sm border border-rule bg-white p-4"><h4 class="font-semibold">Verify on</h4><p class="mt-2 text-sm leading-6 text-ink/70">Profile Projects tab, project detail related activities, and activity detail “linked projects”.</p></div>
+          </div>
+        </article>
+
+        <article id="stage-4" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-amber">Stage 4</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port follow graph reads</h3>
+            </div>
+            <span class="rounded-full bg-amber/10 px-3 py-1 font-mono text-xs font-semibold text-amber">Effort M · Risk medium</span>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-ink/70">
+            Followers are a straightforward typed-collection migration via <code class="font-mono">appCertifiedGraphFollow</code>.
+            Keep follow/unfollow writes unchanged. Do not include home-feed event generation in this stage.
+          </p>
+        </article>
+
+        <article id="stage-5" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-clay">Stage 5</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port actor and organization lookup</h3>
+            </div>
+            <span class="rounded-full bg-clay/10 px-3 py-1 font-mono text-xs font-semibold text-clay">Effort M/L · Risk medium</span>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-ink/70">
+            These operations feed workspace actor pickers, global search support, organization filters, and quality-filtered
+            account lists. They should happen after the simpler record lists because label semantics and profile completeness
+            matter more here.
+          </p>
+          <div class="mt-5 rounded-sm border border-rule bg-white p-4 font-mono text-sm leading-7 text-ink/70">
+            NetworkActors · NetworkActorsByKind · OrganizationDids · OrganizationDidsByLabel · NetworkActorsByDids · OrganizationDidsForSet · DidsByKindInSet
+          </div>
+        </article>
+
+        <article id="stage-6" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-clay">Stage 6</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port endorsement reads</h3>
+            </div>
+            <span class="rounded-full bg-clay/10 px-3 py-1 font-mono text-xs font-semibold text-clay">Effort L · Risk medium/high</span>
+          </div>
+          <p class="mt-4 max-w-3xl text-sm leading-6 text-ink/70">
+            Endorsements are typed, but Magic currently provides useful joins such as issuer profile and latest response.
+            Before flipping, confirm Hyperindex exposes equivalent fields or add a compatibility join/fallback.
+          </p>
+          <div class="mt-5 grid gap-5 lg:grid-cols-2">
+            <div class="rounded-sm border border-rule bg-white p-4">
+              <h4 class="font-semibold">Operations</h4>
+              <p class="mt-2 font-mono text-sm leading-7 text-ink/70">ReceivedEndorsements<br />EvaluatorEndorsements<br />AllEndorsements<br />EndorsementDefs<br />EndorsementClosure</p>
+            </div>
+            <div class="rounded-sm border border-rule bg-white p-4">
+              <h4 class="font-semibold">Parity checks</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li>Rejected responses stay hidden where expected.</li>
+                <li>Default endorsement vs list endorsement semantics stay intact.</li>
+                <li>Issuer/subject display still avoids N+1 regressions where possible.</li>
+                <li>Endorsement graph counts match the public graph page.</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article id="stage-7" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-clay">Stage 7</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Port funding reads</h3>
+            </div>
+            <span class="rounded-full bg-clay/10 px-3 py-1 font-mono text-xs font-semibold text-clay">Effort L · Risk high</span>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-ink/70">
+            Funding uses <code class="font-mono">orgHypercertsFundingReceipt</code>, but the UI depends on role semantics,
+            confirmation/provenance display, and post-write indexer lag handling. Port after endorsements so shared actor
+            and profile resolution patterns are already stable.
+          </p>
+        </article>
+
+        <article id="stage-8" class="stage-card break-inside-avoid rounded-sm border border-rule bg-ink p-6 text-paper shadow-ledger">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-paper/55">Stage 8 · hardest</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Replace Magic-only home feed resolvers</h3>
+            </div>
+            <span class="rounded-full bg-white/10 px-3 py-1 font-mono text-xs font-semibold text-white">Effort XL · Risk high</span>
+          </div>
+          <p class="mt-4 max-w-3xl text-sm leading-6 text-paper/75">
+            Hyperindex production exposes <code class="font-mono">recordTimeline</code>, but not Magic’s
+            <code class="font-mono">followerEvents</code> or <code class="font-mono">HydrateFeedPage</code>. This should be the
+            last substantive migration because it changes the feed’s data model, pagination, and hydration strategy.
+          </p>
+          <div class="mt-5 grid gap-5 lg:grid-cols-3">
+            <div class="rounded-sm border border-white/15 bg-white/5 p-4">
+              <h4 class="font-semibold text-white">Option A</h4>
+              <p class="mt-2 text-sm leading-6 text-paper/70">Use <code class="font-mono">recordTimeline</code> with followed DIDs, then hydrate per collection client/server side.</p>
+            </div>
+            <div class="rounded-sm border border-white/15 bg-white/5 p-4">
+              <h4 class="font-semibold text-white">Option B</h4>
+              <p class="mt-2 text-sm leading-6 text-paper/70">Add a Hyperindex resolver equivalent to <code class="font-mono">followerEvents</code> and keep the app contract close to today.</p>
+            </div>
+            <div class="rounded-sm border border-white/15 bg-white/5 p-4">
+              <h4 class="font-semibold text-white">Option C</h4>
+              <p class="mt-2 text-sm leading-6 text-paper/70">Temporarily keep Magic only for home feed while every typed operation moves to Hyperindex.</p>
+            </div>
+          </div>
+        </article>
+
+        <article id="stage-9" class="stage-card break-inside-avoid rounded-sm border border-rule bg-panel p-6 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-plum">Stage 9</p>
+              <h3 class="mt-2 font-serif text-3xl font-semibold">Remove Magic Indexer completely</h3>
+            </div>
+            <span class="rounded-full bg-plum/10 px-3 py-1 font-mono text-xs font-semibold text-plum">Effort M · Risk release</span>
+          </div>
+          <div class="mt-5 grid gap-6 md:grid-cols-2">
+            <div>
+              <h4 class="font-semibold">Remove</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li>Magic fallback URL.</li>
+                <li>Magic-specific docs/comments.</li>
+                <li>Operation branches no longer used by any caller.</li>
+                <li>Compatibility code for Magic-only label/search args.</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="font-semibold">Release gate</h4>
+              <ul class="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink/70">
+                <li>No production requests to Magic for a full observation window.</li>
+                <li>Staging parity suite passes against Hyperindex only.</li>
+                <li>Feature smoke checks pass: Explore, profile tabs, endorsements, funding, home feed.</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="mt-10 rounded-sm border border-rule bg-panel p-6 shadow-ledger">
+        <h2 class="font-serif text-3xl font-semibold tracking-tight">Operation grouping summary</h2>
+        <div class="mt-5 overflow-hidden rounded-sm border border-rule">
+          <table class="w-full border-collapse text-left text-sm">
+            <thead class="bg-ink text-paper">
+              <tr><th class="p-3">Stage</th><th class="p-3">Operation group</th><th class="p-3">Why here</th></tr>
+            </thead>
+            <tbody class="divide-y divide-rule bg-white align-top">
+              <tr><td class="p-3 font-mono">1</td><td class="p-3">Counts</td><td class="p-3">Small payloads, lowest UI risk, easy parity comparison.</td></tr>
+              <tr><td class="p-3 font-mono">2</td><td class="p-3">Activities</td><td class="p-3">Central surface, but typed Hyperindex support is strong.</td></tr>
+              <tr><td class="p-3 font-mono">3</td><td class="p-3">Projects</td><td class="p-3">Similar to activities, with collection item filters.</td></tr>
+              <tr><td class="p-3 font-mono">4</td><td class="p-3">Followers/follows</td><td class="p-3">Single collection; keep writes unchanged.</td></tr>
+              <tr><td class="p-3 font-mono">5</td><td class="p-3">Actors/org lookup</td><td class="p-3">Label and profile completeness make this more sensitive.</td></tr>
+              <tr><td class="p-3 font-mono">6</td><td class="p-3">Endorsements</td><td class="p-3">Requires joins and response-state parity.</td></tr>
+              <tr><td class="p-3 font-mono">7</td><td class="p-3">Funding</td><td class="p-3">Domain-specific semantics and provenance display.</td></tr>
+              <tr><td class="p-3 font-mono">8</td><td class="p-3">Home feed</td><td class="p-3">Magic-only custom resolver; biggest design decision.</td></tr>
+              <tr><td class="p-3 font-mono">9</td><td class="p-3">Remove Magic</td><td class="p-3">Only after traffic confirms every operation has moved.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-rule bg-panel/70 px-6 py-8 text-center text-sm text-ink/60">
+      <p>Prepared for the Certified app migration from Magic Indexer to Hyperindex. Last updated 2026-07-01.</p>
+    </footer>
+
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        themeVariables: {
+          background: "#fffaf1",
+          primaryColor: "#fffaf1",
+          primaryTextColor: "#14110f",
+          primaryBorderColor: "#d8cdbc",
+          lineColor: "#405c42",
+          secondaryColor: "#dbe7d6",
+          tertiaryColor: "#f3d7c9",
+          fontFamily: "Inter, sans-serif",
+        },
+      })
+    </script>
+  </body>
+</html>

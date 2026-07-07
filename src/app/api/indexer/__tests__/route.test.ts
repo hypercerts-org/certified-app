@@ -18,6 +18,10 @@ const mockFetch = vi.fn()
 const originalFetch = globalThis.fetch
 
 beforeEach(() => {
+  vi.resetModules()
+  vi.stubEnv("MAGIC_INDEXER_URL", "https://magic.example/graphql")
+  vi.stubEnv("HYPERINDEX_URL", "https://hyperindex.example/graphql")
+  vi.stubEnv("HYPERINDEX_OPERATIONS", "")
   globalThis.fetch = mockFetch as unknown as typeof fetch
   mockFetch.mockReset()
   // Default upstream response — happy GraphQL. Use an implementation
@@ -36,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch
+  vi.unstubAllEnvs()
 })
 
 async function postIndexer(body: unknown): Promise<Response> {
@@ -297,6 +302,25 @@ describe("/api/indexer trust boundary", () => {
   })
 
   describe("upstream forwarding", () => {
+    it("routes operations to the Magic backend by default", async () => {
+      const res = await postIndexer({
+        operationName: "Activities",
+        variables: { first: 10 },
+      })
+      expect(res.headers.get("x-indexer-backend")).toBe("magic")
+      expect(mockFetch.mock.calls[0][0]).toBe("https://magic.example/graphql")
+    })
+
+    it("can route a selected operation to Hyperindex via the Stage-0 switchboard", async () => {
+      vi.stubEnv("HYPERINDEX_OPERATIONS", "Followers")
+      const res = await postIndexer({
+        operationName: "Followers",
+        variables: { did: "did:plc:abc", first: 50 },
+      })
+      expect(res.headers.get("x-indexer-backend")).toBe("hyperindex")
+      expect(mockFetch.mock.calls[0][0]).toBe("https://hyperindex.example/graphql")
+    })
+
     it("forwards the server-held query string for the requested operation", async () => {
       await postIndexer({
         operationName: "Followers",

@@ -9,14 +9,18 @@ import {
 } from "@/lib/atproto/labels"
 
 /**
- * Same-origin proxy in front of the Magic Indexer's public GraphQL
- * endpoint.
+ * Same-origin proxy in front of Certified's GraphQL indexer reads.
+ *
+ * During the Magic Indexer → Hyperindex migration this route keeps the
+ * client-facing operation contract stable while individual operations
+ * are routed to either backend. The default remains Magic Indexer until
+ * a stage explicitly moves an operation group to Hyperindex.
  *
  * Trust boundary: the client sends an `operationName` + `variables`.
  * The server holds the actual query strings (see `OPERATIONS` below)
- * and per-operation variable validators. The indexer endpoint itself
- * is public (read-only, no service-auth required for these
- * operations), but holding the queries server-side means:
+ * and per-operation variable validators. The indexer endpoints are
+ * public read-only services for these operations, but holding the
+ * queries server-side means:
  *
  *   - Same-origin contexts (including any XSS payload that lands
  *     in our origin via a leaflet link / facet) can only invoke
@@ -28,28 +32,89 @@ import {
  *     (10k-element arrays, multi-MB strings) downstream.
  *
  * The operations below are public reads (feed, followers, received
- * endorsements) and run unauthenticated against the indexer.
+ * endorsements) and run unauthenticated against the selected indexer.
  */
 
-const UPSTREAM_INDEXER_URL =
+type IndexerBackend = "magic" | "hyperindex"
+
+const DEFAULT_MAGIC_INDEXER_URL =
+  "https://magic-indexer-prod.up.railway.app/graphql"
+const DEFAULT_HYPERINDEX_URL = "https://api.indexer.hypercerts.dev/graphql"
+
+/**
+ * Temporary migration config.
+ *
+ * - `MAGIC_INDEXER_URL` is the explicit Magic endpoint for unported ops.
+ * - `HYPERINDEX_URL` is the explicit Hyperindex endpoint for migrated ops.
+ * - `INDEXER_URL` / `NEXT_PUBLIC_INDEXER_URL` remain backwards-compatible
+ *   aliases for the Magic endpoint until the final removal stage.
+ */
+const MAGIC_INDEXER_URL =
+  process.env.MAGIC_INDEXER_URL ||
   process.env.INDEXER_URL ||
   process.env.NEXT_PUBLIC_INDEXER_URL ||
-  "https://magic-indexer-prod.up.railway.app/graphql"
+  DEFAULT_MAGIC_INDEXER_URL
+const HYPERINDEX_URL = process.env.HYPERINDEX_URL || DEFAULT_HYPERINDEX_URL
 
-// Module-load warning — flags the case where neither INDEXER_URL nor
-// NEXT_PUBLIC_INDEXER_URL is
-// set so the fallback default is silent in dev too. Production used
-// to fall back to the dev indexer here; the default now points at
-// prod so an unset env doesn't break the feed.
+// Stage migration switchboard. Keep this empty until a stage explicitly
+// ports an operation group. Local/staging can also set
+// `HYPERINDEX_OPERATIONS=ProfileCount,ActivityCount` to test routing
+// without changing production defaults.
+const OPERATION_BACKENDS: Partial<Record<string, IndexerBackend>> = {}
+const HYPERINDEX_OPERATION_NAMES = new Set(
+  (process.env.HYPERINDEX_OPERATIONS || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean),
+)
+
+function backendForOperation(operationName: string): IndexerBackend {
+  return OPERATION_BACKENDS[operationName] ??
+    (HYPERINDEX_OPERATION_NAMES.has(operationName) ? "hyperindex" : "magic")
+}
+
+function endpointForBackend(backend: IndexerBackend): string {
+  return backend === "hyperindex" ? HYPERINDEX_URL : MAGIC_INDEXER_URL
+}
+
+function logIndexerBackend(
+  operationName: string,
+  backend: IndexerBackend,
+  upstreamUrl: string,
+): void {
+  // Temporary Stage-0 observability. Avoid noisy production logs unless
+  // explicitly enabled, but always log in local/staging so developers can
+  // verify which backend served each operation.
+  if (
+    (process.env.NODE_ENV === "production" ||
+      process.env.NODE_ENV === "test") &&
+    process.env.INDEXER_BACKEND_LOGGING !== "true"
+  ) {
+    return
+  }
+  let host = "unknown"
+  try {
+    host = new URL(upstreamUrl).host
+  } catch {
+    host = "invalid-url"
+  }
+  console.info(
+    `[indexer] operation=${operationName} backend=${backend} upstream=${host}`,
+  )
+}
+
+// Module-load warning — flags the case where no explicit Magic endpoint
+// is configured while Magic is still the default backend.
 if (
   process.env.NODE_ENV === "production" &&
+  !process.env.MAGIC_INDEXER_URL &&
   !process.env.INDEXER_URL &&
   !process.env.NEXT_PUBLIC_INDEXER_URL
 ) {
   console.warn(
-    "[indexer] no INDEXER_URL set in production — using the built-in " +
-      "fallback (magic-indexer-prod). Set INDEXER_URL in the Vercel project " +
-      "env to override.",
+    "[indexer] no MAGIC_INDEXER_URL/INDEXER_URL set in production — using " +
+      "the built-in fallback (magic-indexer-prod). Set MAGIC_INDEXER_URL " +
+      "while unported operations still route to Magic.",
   )
 }
 
@@ -1752,6 +1817,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const backend = backendForOperation(operationName)
+  const upstreamUrl = endpointForBackend(backend)
+  logIndexerBackend(operationName, backend, upstreamUrl)
+
   const timeoutController = new AbortController()
   const timeoutId = setTimeout(
     () => timeoutController.abort(),
@@ -1759,9 +1828,9 @@ export async function POST(request: NextRequest) {
   )
   const signal = AbortSignal.any([request.signal, timeoutController.signal])
 
-  // Bypass the indexer's per-IP `/graphql` rate limiter (magic-indexer
-  // R-7): the app's own proxied traffic should never be throttled.
-  // Mirrors `resolve-did`; the header is only attached when
+  // Bypass the indexer's per-IP `/graphql` rate limiter when configured:
+  // the app's own proxied traffic should never be throttled. Mirrors
+  // `resolve-did`; the header is only attached when
   // `INDEXER_RATELIMIT_BYPASS_KEY` is set, so the public default stays
   // limiter-eligible and unset envs are a no-op.
   const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
@@ -1771,7 +1840,7 @@ export async function POST(request: NextRequest) {
   if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
 
   try {
-    const upstream = await fetch(UPSTREAM_INDEXER_URL, {
+    const upstream = await fetch(upstreamUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({ query, variables, operationName }),
@@ -1784,6 +1853,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type":
           upstream.headers.get("content-type") || "application/json",
+        "X-Indexer-Backend": backend,
       },
     })
   } catch (err: unknown) {
