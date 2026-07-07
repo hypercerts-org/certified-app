@@ -83,8 +83,8 @@ Critical files:
 
 Documentation:
 
-- `docs/magic-to-hyperindex-migration-plan.html`
-- `docs/hyperindex-feature-request.md` — update/remove stale gap claims as each stage verifies current schema support.
+- Keep this migration spec current as stage boundaries or rollout rules change.
+- `docs/hyperindex-feature-request.md` is pre-existing context; update it only when a stage verifies that a listed gap is stale or resolved.
 
 ## Reuse
 
@@ -112,7 +112,7 @@ Existing code to reuse rather than replace wholesale:
 
 ### Stage 0 — Foundation and re-baseline
 
-- [ ] Re-introspect production Hyperindex and save a current schema capability note.
+- [ ] Re-check the live Hyperindex schema for the operation group being prepared and record relevant findings in the PR notes.
 - [ ] Add explicit endpoint config:
   - `HYPERINDEX_URL=https://api.indexer.hypercerts.dev/graphql`
   - temporary `MAGIC_INDEXER_URL=https://magic-indexer-prod.up.railway.app/graphql`
@@ -125,7 +125,7 @@ Acceptance:
 
 - [ ] Existing app behavior unchanged.
 - [ ] Tests still pass against the Magic-backed default.
-- [ ] Hyperindex connectivity/schema smoke test passes.
+- [ ] Existing Magic-backed behavior remains unchanged.
 
 ### Stage 1 — Counts first
 
@@ -348,7 +348,7 @@ Automated checks:
 - [ ] Unit tests for `/api/indexer` trust boundary and variable validation.
 - [ ] Mapper tests for activity, project, actor, endorsement, and funding nodes.
 - [ ] Hook tests for profile Activities, Projects, Followers, Endorsements, and Funding where existing coverage exists.
-- [ ] Schema smoke test against Hyperindex root fields and required input fields.
+- [ ] Stage-specific schema checks for the operation group being migrated.
 
 Manual/browser checks on staging:
 
@@ -383,7 +383,7 @@ This migration should proceed **one manual PR at a time**. The assistant should 
 Per-stage cadence:
 
 - [ ] Implement exactly one operation group/stage in a dedicated branch/PR.
-- [ ] Run local automated checks and a local smoke test.
+- [ ] Run local automated checks and stage-specific manual checks.
 - [ ] Open a PR for that stage with:
   - a concise summary of migrated operations;
   - manual test instructions;
