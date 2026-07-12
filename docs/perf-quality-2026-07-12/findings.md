@@ -164,7 +164,7 @@ The exhaustive lint triage (all 63 warnings) is at the bottom; an adversarial au
 
 ### 19. Ma Earth featured Projects filter fans out one PDS getRecord per curated URI; the indexer batch pattern used for certs is missing for collections
 
-- **id:** `ma-earth-projects-pds-fanout` · **track:** T2-explore
+- **id:** `ma-earth-projects-pds-fanout` · **track:** P15-ma-earth
 - **severity / effort / regression risk:** medium (adjusted from medium) / M / medium
 - **location:** `src/hooks/use-explore.ts:1048`
 - **evidence:** `const res = await fetchProjectsByUris(itemUris, signal ?? undefined)` where fetchProjectsByUris does `await Promise.all(uris.map((u) => fetchOne(u, signal)))` (records-by-uri.ts:105-109) — one /api/xrpc getRecord per URI, uncached, re-fired on every filter activation. indexer.ts:224-231 notes curated sets 'can carry well over 100 URIs', and the certs-side Ma Earth path already solved this with the chunked indexer batch fetchIndexerActivitiesByUris (50 URIs/request). No CollectionsByUris op exists in the proxy (checked OPERATIONS in src/app/api/indexer/route.ts:138-1069).
