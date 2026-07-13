@@ -72,7 +72,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               // The native input is the real control: it stays in the a11y tree
               // and stacks above the box so clicks/keyboard hit it. `peer` lets
               // the box react to its :checked / :focus-visible / :disabled state.
-              className="peer absolute inset-0 z-[1] m-0 h-4 w-4 cursor-pointer appearance-none rounded opacity-0 disabled:cursor-not-allowed"
+              className="peer absolute inset-0 z-[var(--z-local-raise)] m-0 h-4 w-4 cursor-pointer appearance-none rounded opacity-0 disabled:cursor-not-allowed"
               {...props}
             />
             <span

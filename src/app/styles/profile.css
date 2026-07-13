@@ -296,22 +296,7 @@
 .profile-tabs__tab:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
-  border-radius: 2px;
-}
-
-.profile-panel {
-  padding: 16px;
-}
-
-/* Reading-column constraint for the non-Overview tab panels (Activities,
-   Endorsements, Groups) on desktop. The profile page widens to 1280px
-   for the GitHub-style Overview, but list views still want a narrow
-   reading column. */
-@media (min-width: 800px) {
-  .profile-panel--reading {
-    max-width: 720px;
-    margin: 0 auto;
-  }
+  border-radius: var(--radius);
 }
 
 /* ========== Profile › Groups tab ========== */

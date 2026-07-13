@@ -1,29 +1,4 @@
 /* ==========================================================================
-   Search Page (mobile-first)
-   ========================================================================== */
-
-.search-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 8px;
-}
-
-/* The legacy `.search-page__bar` / `__icon` / `__input` rules were
-   removed after the Explore page migrated to the people-search
-   typeahead (`/api/search-actors`). The remaining `.search-page` +
-   `.search-page__hint` selectors are still in use by /search and
-   embedded versions of the typeahead. */
-
-.search-page__hint {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  margin-top: 12px;
-}
-
-
-/* ==========================================================================
    Create Form (mobile-first)
    ========================================================================== */
 
@@ -362,22 +337,6 @@
   color: var(--fg-primary);
 }
 
-/* ---- Unfiltered Warning Banner ---- */
-
-.feed-unfiltered-banner {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  text-align: center;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border-default);
-}
-
 
 /* ==========================================================================
    Activity Feed (mobile-first)
@@ -707,124 +666,6 @@
 /* Contributor-row skeleton bars now render via the <Skeleton> primitive.
    The hand-rolled *-skel rules were removed in the consolidation. */
 
-/* ========== Location cards (activity detail) ========== */
-
-.location-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.location-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-}
-
-.location-card--fallback {
-  background: transparent;
-  border-style: dashed;
-}
-
-.location-card__icon {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  color: var(--fg-muted);
-  margin-top: 2px;
-}
-
-.location-card__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.location-card__name {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.location-card__desc {
-  margin: 2px 0 0;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.location-card__detail {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.location-card__coords {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  color: var(--fg-secondary);
-  font-size: 0.75rem;
-}
-
-.location-card__type {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--fg-muted);
-  padding: 2px 6px;
-  background: var(--overlay-weak);
-  border-radius: var(--radius);
-}
-
-.location-card__fallback {
-  word-break: break-word;
-}
-
-.location-card__map-link {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-weight: 500;
-}
-
-.location-card__map-link:hover {
-  color: var(--fg-secondary);
-}
-
-.location-card__uri {
-  margin: 2px 0 0;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  word-break: break-all;
-}
-
-/* The .location-card skeleton (icon/name/detail bars + location-card-pulse
-   keyframe) was dead CSS — no TSX consumer — and was removed in the
-   consolidation. */
-
 /* ========== Map (Leaflet wrapper) ========== */
 
 .certs-map {
@@ -833,9 +674,10 @@
   overflow: hidden;
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  /* Keep map above our own stacking contexts but below modals. */
+  /* Atomic stacking context so Leaflet's internal panes (z 200-700)
+     stay contained below app chrome and sibling controls. */
   position: relative;
-  z-index: 0;
+  isolation: isolate;
 }
 
 .certs-map .leaflet-container {
@@ -919,11 +761,6 @@
   }
 }
 
-/* Spacing for the inline map inside a LocationCard */
-.location-card__map {
-  margin-top: 8px;
-}
-
 /* Endorsements
  * -----------------------------------------------------------------
  * - Main /endorsements page uses the settings dashboard shell
@@ -938,7 +775,6 @@
  * the bottom of the bar so the active-tab underline coincides with
  * the bar border; the "New" button is vertically centered on the
  * same row. */
-.page-tabs-bar,
 .endorsements-tabs-bar {
   display: flex;
   justify-content: space-between;
@@ -948,9 +784,8 @@
 }
 
 /* Generic "+ New X" toolbar button used in the tab-bar pattern
-   (endorsements, groups). Subtle text-button styling so it doesn't
+   (endorsements). Subtle text-button styling so it doesn't
    compete with primary content actions further down the page. */
-.page-tabs-bar__new,
 .endorsements-new-btn {
   align-self: center;
   display: inline-flex;
@@ -968,27 +803,13 @@
   flex-shrink: 0;
 }
 
-.page-tabs-bar__new:hover:not(:disabled),
 .endorsements-new-btn:hover:not(:disabled) {
   background: var(--overlay-weak);
 }
 
-.page-tabs-bar__new:disabled,
 .endorsements-new-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* Section heading shown above a tab bar (e.g. "Membership" above
-   Public/Private tabs on /groups). */
-.page-section-heading {
-  margin: 0 0 12px;
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--fg-primary);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
 }
 
 /* Inline "new endorsement" panel that sits at the top of the Given
@@ -1445,7 +1266,7 @@
   color: var(--fg-primary);
   text-align: left;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background var(--transition-fast);
 }
 
@@ -1507,7 +1328,7 @@
   padding: 2px 6px;
   background: transparent;
   border: 1px solid var(--bg-elevated);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--bg-elevated);
   font: inherit;
   font-weight: 600;
@@ -1557,40 +1378,10 @@
     min-height: 44px;
     padding: 10px;
   }
-  /* Tab-bar "New" buttons (endorsements, groups) → 44px tall. */
-  .page-tabs-bar__new,
+  /* Tab-bar "New" buttons (endorsements) → 44px tall. */
   .endorsements-new-btn {
     min-height: 44px;
   }
-}
-
-/* Preview block inside the New endorsement modal */
-.endorsement-preview {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-}
-
-.endorsement-preview__meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.endorsement-preview__name {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-}
-
-.endorsement-preview__handle {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
 }
 
 /* Multi-recipient endorsement modal — list of selected recipients
@@ -1846,58 +1637,6 @@
   display: flex;
   justify-content: center;
   padding: 24px 0;
-}
-
-/* Received endorsement card (endorsements page) */
-.received-endorsement-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-default);
-}
-
-.received-endorsement-card:last-child {
-  border-bottom: none;
-}
-
-.received-endorsement-card__endorsers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-left: 60px; /* align with text after avatar */
-}
-
-/* Endorser chip — compact inline link */
-.endorser-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px 4px 4px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: 9999px;
-  text-decoration: none;
-  color: inherit;
-  font-size: 0.8125rem;
-  line-height: 1.2;
-  transition: background 0.15s ease;
-}
-
-.endorser-chip:hover {
-  background: var(--overlay-medium);
-}
-
-.endorser-chip__name {
-  font-weight: 600;
-  color: var(--fg-primary);
-  white-space: nowrap;
-}
-
-.endorser-chip__date {
-  color: var(--fg-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
 }
 
 /* iOS auto-zoom rule: any input touched on mobile must be >=16px or

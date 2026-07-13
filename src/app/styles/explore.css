@@ -711,6 +711,15 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Skip layout/paint for offscreen rows — load-more appends 50 per page
+   with no cap. Estimate matches the ~60px row (40px thumb + padding);
+   rendered rows are re-measured via the `auto` keyword, keeping
+   back-button scroll restoration stable. */
+.explore__list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
 .cert-list-row {
   /* Four columns: link block (thumb + title/meta), author column,
      and time. The link block shrinks; the author column has a
@@ -948,6 +957,12 @@
   padding: 0;
   display: grid;
   gap: 12px;
+}
+
+/* Same containment for grid cards (user / project / cert results). */
+.explore__grid > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
 .explore__grid--users {

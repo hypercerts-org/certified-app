@@ -10,7 +10,7 @@
   width: 1px;
   height: 1px;
   overflow: hidden;
-  z-index: 9999;
+  z-index: var(--z-skip-nav);
   padding: 8px 16px;
   background: var(--color-primary);
   color: var(--color-white);
@@ -112,6 +112,10 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+  /* Modal chrome elevation (AppDialog, feedback + domain modals). Single
+     definition: --navy-overlay-30 carries its own dark override on :root,
+     so this resolves theme-correctly without a dark-theme duplicate. */
+  --shadow-modal: 0 24px 64px var(--navy-overlay-30);
 
   /* Focus + selection */
   --focus-ring: var(--color-accent);
@@ -132,6 +136,8 @@
      Soft red consistent with #ba1a1a at low alpha over the light canvas. */
   --color-error-bg: rgba(186, 26, 26, 0.08);
   --color-error-border: rgba(186, 26, 26, 0.22);
+  /* Focus ring on invalid inputs (0 0 0 2px geometry). */
+  --color-error-ring: rgba(186, 26, 26, 0.15);
 
   /* Badges */
   --badge-success-bg: #e8f5e9;
@@ -207,7 +213,8 @@
   --bp-gt-desktop: 1300px;          /* + left rail expands to icon+label */
 
   /* ===== Z-index map — keep all UI layers here. */
-  --z-rail-sticky: 10;              /* sticky elements inside the rails */
+  --z-local-raise: 1;               /* raise above overlapping siblings inside a local stacking context */
+  --z-rail-sticky: 10;              /* sticky elements inside rails and content columns */
   --z-rail: 30;                     /* left + right rails (below navbar) */
   --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
   --z-navbar: 50;                   /* fixed top navbar */
@@ -317,6 +324,9 @@
      #f87171) that pair with --color-error text. */
   --color-error-bg: rgba(248, 113, 113, 0.12);
   --color-error-border: rgba(248, 113, 113, 0.3);
+  /* Focus ring on invalid inputs — lighter red, higher alpha so the ring
+     stays visible over the near-black canvas. */
+  --color-error-ring: rgba(248, 113, 113, 0.25);
 
   /* Badges */
   --badge-success-bg: rgba(46, 204, 113, 0.15);
@@ -420,15 +430,13 @@ h1, h2, h3, h4, h5, h6 {
   font-feature-settings: 'tnum' 1;
 }
 
-.app-card__label,
 .dash-card__title,
 .dash-card__preview-label,
 .navbar__app-link,
 .domain-modal__label,
 .domain-modal__dns-label,
 .domain-modal__verify-label,
-.username-card__form-label,
-.location-card__type {
+.username-card__form-label {
   font-feature-settings: 'case' 1;
 }
 
