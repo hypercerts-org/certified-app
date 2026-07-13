@@ -31,11 +31,9 @@ export function useNetworkActors(): {
   const [isLoading, setIsLoading] = useState(!actorsCache)
 
   useEffect(() => {
-    if (actorsCache) {
-      setActors(actorsCache)
-      setIsLoading(false)
-      return
-    }
+    // Cache hit needs no state sync: this []-dep effect runs right after
+    // mount and the initializers above already read the same cache.
+    if (actorsCache) return
     const controller = new AbortController()
     if (!actorsInflight) {
       actorsInflight = fetchNetworkActors({ first: 30, signal: controller.signal })
@@ -70,16 +68,20 @@ export function useActorWorkspaceCounts(did: string | null): {
   isLoading: boolean
 } {
   const [counts, setCounts] = useState<WorkspaceCounts>(EMPTY_COUNTS)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!did)
+
+  // Adjust state during render when the actor changes, so the effect
+  // holds only the fetch lifecycle.
+  const [prevDid, setPrevDid] = useState(did)
+  if (prevDid !== did) {
+    setPrevDid(did)
+    setCounts(EMPTY_COUNTS)
+    setIsLoading(!!did)
+  }
 
   useEffect(() => {
-    if (!did) {
-      setCounts(EMPTY_COUNTS)
-      setIsLoading(false)
-      return
-    }
+    if (!did) return
     const controller = new AbortController()
-    setIsLoading(true)
     fetchActorWorkspaceCounts(did, controller.signal)
       .then((next) => {
         if (controller.signal.aborted) return

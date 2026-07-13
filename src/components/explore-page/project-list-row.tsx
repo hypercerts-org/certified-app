@@ -7,7 +7,12 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { useLocation } from "@/hooks/use-location"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import ExploreListRow from "./explore-list-row"
 
@@ -34,23 +39,14 @@ function ProjectListRow({
     ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
 
-  const title =
-    asString(value.title) || asString(value.name) || "Untitled project"
+  const title = projectTitle(value)
   const createdAt = asString(value.createdAt)
 
-  // Priority: avatar (the project's primary identity image) →
-  // image (legacy field on older records) → banner (decorative
-  // hero). Mirrors the home feed's CollectionPreview precedence so
-  // the same project reads identically across surfaces.
-  const v = value as Record<string, unknown>
-  const rawImage = v.avatar ?? v.image ?? v.banner
+  // Compact row thumbnail — avatar-first (`projectImage` thumb slot),
+  // so the same project reads identically across feed + list surfaces.
+  const rawImage = projectImage(value, "thumb")
   const imageUrl =
-    rawImage && did
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          did,
-        )
-      : null
+    rawImage && did ? resolveActivityImageUrl(rawImage, did) : null
 
   // Author byline for the mobile "by Display Name" subtitle. Desktop
   // keeps the avatar byline column (rendered by ExploreListRow); this
@@ -116,10 +112,6 @@ function ProjectListRow({
 }
 
 export default memo(ProjectListRow)
-
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
-}
 
 function countItems(items: unknown): number {
   return Array.isArray(items) ? items.length : 0

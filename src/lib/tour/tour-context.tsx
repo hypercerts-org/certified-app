@@ -23,7 +23,9 @@ import {
 export interface TourContextValue {
   /** True while the walk-through is running. */
   readonly isActive: boolean
-  /** Index into TOUR_STEPS of the current step (0-based). */
+  /** Index into the platform-filtered steps of the current step
+   *  (0-based). Always clamped into range, even right after a layout
+   *  flip shrinks the steps array. */
   readonly stepIndex: number
   /** The current step, or null when inactive. */
   readonly step: TourStep | null
@@ -70,6 +72,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // Reset everything when the signed-in identity goes away.
   useEffect(() => {
     if (!isAuthenticated || !did) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset tour state on sign-out (external auth input); all three setStates bail out when already reset
       setIsActive(false)
       setStepIndex(0)
       setAutoCheckedDid(null)
@@ -84,6 +87,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !did) return
     if (activeOrg) return
     if (autoCheckedDid === did) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- once-per-DID auto-start decision (pending-flag check + clear) on auth/org settle; the autoCheckedDid latch prevents re-fire
     setAutoCheckedDid(did)
     if (isTourPending(did) && !isTourCompleted(did)) {
       clearTourPending(did)
@@ -91,16 +95,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
       setIsActive(true)
     }
   }, [isAuthenticated, did, activeOrg, autoCheckedDid])
-
-  // If the layout flips mid-tour (crossing 800px swaps the desktop/mobile
-  // nav steps, which can differ in length), clamp the active step so it
-  // never points past the new end — otherwise `step` resolves to null and
-  // the tour card silently vanishes while still "active". A no-op when the
-  // index is already in range (React bails out of the identical state).
-  useEffect(() => {
-    if (!isActive) return
-    setStepIndex((i) => Math.min(i, Math.max(0, steps.length - 1)))
-  }, [steps.length, isActive])
 
   const start = useCallback(() => {
     setStepIndex(0)
@@ -120,18 +114,26 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setStepIndex((i) => Math.min(steps.length - 1, i + 1))
   }, [steps.length])
 
+  // Clamp against the current steps array so stepping back from an
+  // index that overflowed after a layout flip lands on the new last
+  // step instead of appearing dead for several clicks.
   const back = useCallback(() => {
-    setStepIndex((i) => Math.max(0, i - 1))
-  }, [])
+    setStepIndex((i) => Math.max(0, Math.min(i, steps.length - 1) - 1))
+  }, [steps.length])
 
+  // If the layout flips mid-tour (crossing 800px swaps the desktop/mobile
+  // nav steps, which can differ in length), the stored index can point
+  // past the new end. Expose a clamped index instead of storing one —
+  // every consumer (progress dots, "Step N of M", isLast) sees an
+  // in-range value with no corrective re-render. `next` self-heals via
+  // its own Math.min and `back` clamps above.
   const value = useMemo<TourContextValue>(() => {
+    const effectiveStepIndex = Math.min(stepIndex, Math.max(0, steps.length - 1))
     const step =
-      isActive && stepIndex >= 0 && stepIndex < steps.length
-        ? steps[stepIndex]
-        : null
+      isActive && steps.length > 0 ? steps[effectiveStepIndex] : null
     return {
       isActive,
-      stepIndex,
+      stepIndex: effectiveStepIndex,
       step,
       totalSteps: steps.length,
       start,

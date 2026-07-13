@@ -2,12 +2,17 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useNetworkCounts } from "@/hooks/use-network-counts"
+import type { NetworkCounts } from "@/lib/atproto/indexer"
 
 /**
  * Five live network-wide counters on the /welcome landing page —
  * Users / Organizations / Projects / Activities / Endorsements.
  *
- * Cells render `—` while the indexer fetch is in flight and on
+ * Counts arrive server-side via `initialCounts` (resolved during the
+ * ISR render of the landing page); the client fetch through the
+ * /api/indexer proxy runs only as a fallback for fields the server
+ * couldn't resolve, so the common anonymous visit costs zero count
+ * RPCs. Cells render `—` while a fallback fetch is in flight and on
  * per-op failure; otherwise the formatted count with
  * `Intl.NumberFormat` thousands separators. The count-up is gated on
  * the section entering the viewport (the section sits far down the
@@ -20,8 +25,25 @@ import { useNetworkCounts } from "@/hooks/use-network-counts"
  * small uppercase labels, divided by hairlines (see .lp-stats in
  * landing.css).
  */
-export default function NetworkStats() {
-  const { counts, isLoading } = useNetworkCounts()
+export default function NetworkStats({
+  initialCounts = null,
+}: {
+  initialCounts?: NetworkCounts | null
+}) {
+  const serverComplete =
+    initialCounts !== null &&
+    Object.values(initialCounts).every((v) => v !== null)
+  const { counts: clientCounts, isLoading } = useNetworkCounts(!serverComplete)
+  const counts: NetworkCounts = initialCounts
+    ? {
+        users: initialCounts.users ?? clientCounts.users,
+        organizations:
+          initialCounts.organizations ?? clientCounts.organizations,
+        achievements: initialCounts.achievements ?? clientCounts.achievements,
+        projects: initialCounts.projects ?? clientCounts.projects,
+        endorsements: initialCounts.endorsements ?? clientCounts.endorsements,
+      }
+    : clientCounts
   const sectionRef = useRef<HTMLElement>(null)
   const [inView, setInView] = useState(false)
 
@@ -132,6 +154,7 @@ function useCountUp(target: number | null, delayMs: number): number | null {
       "(prefers-reduced-motion: reduce)",
     ).matches
     if (reduced) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- rAF count-up animation driver; the sync setDisplay writes the terminal value for the prefers-reduced-motion and zero-delta cases — the effect IS the animation's external-system sync
       setDisplay(target)
       fromRef.current = target
       return

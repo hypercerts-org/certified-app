@@ -554,7 +554,7 @@
   position: absolute;
   width: 7px;
   height: 7px;
-  border-radius: 1px;
+  border-radius: var(--radius);
   opacity: 0;
   animation: groupConfetti 0.9s ease-out 0.08s both;
 }

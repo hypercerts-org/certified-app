@@ -101,55 +101,68 @@ export async function POST(request: NextRequest) {
 
         const membershipsRes = await fetch(url.toString(), {
           headers: { Authorization: `Bearer ${membershipToken}` },
+          signal: AbortSignal.timeout(15_000),
         })
         if (membershipsRes.ok) {
           const data = await membershipsRes.json()
-          allGroups.push(...(data.groups || []))
+          if (Array.isArray(data.groups)) allGroups.push(...data.groups)
           cursor = data.cursor
         } else {
-          cursor = undefined
+          // Fail CLOSED — treating a non-ok page as end-of-pagination
+          // would truncate the list, zero the self-created count, and
+          // wave a user already at the cap through while group.register
+          // still succeeds. Throw into the catch below (503), matching
+          // how a thrown getServiceAuth/network error is handled.
+          throw new Error(`membership.list returned ${membershipsRes.status}`)
         }
       } while (cursor)
 
       // For each group, check if the user's member entry has addedBy === ownerDid
-      // Process in batches of 5 with early exit once the limit is reached
+      // Process in batches of 5 with early exit once the limit is reached.
+      // Skipped entirely when the user belongs to fewer groups than the
+      // cap: selfCreatedCount can never exceed allGroups.length, so the
+      // limit is unreachable and the walk — one service-auth mint + CGS
+      // member.list (possibly paginated) per group — is pure wasted
+      // latency on the typical registrant's critical path.
       let selfCreatedCount = 0
       const BATCH_SIZE = 5
-      for (let i = 0; i < allGroups.length; i += BATCH_SIZE) {
-        if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) break
-        const batch = allGroups.slice(i, i + BATCH_SIZE)
-        const results = await Promise.all(
-          batch.map(async (g) => {
-            try {
-              const groupAgent = createGroupClient(auth.agent, g.groupDid)
-              // We only need to know whether the caller's OWN entry was
-              // self-added, so stop paginating the member list as soon as that
-              // entry is found — no later page can change the boolean answer.
-              let memberCursor: string | undefined
-              do {
-                const params: Record<string, unknown> = {
-                  repo: g.groupDid,
-                  limit: 100,
-                }
-                if (memberCursor) params.cursor = memberCursor
-                const { data } = await groupAgent.call(
-                  "app.certified.group.member.list",
-                  params
-                )
-                const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
-                const selfAdded = (page.members || []).some(
-                  (m) => m.did === ownerDid && m.addedBy === ownerDid
-                )
-                if (selfAdded) return true
-                memberCursor = page.cursor
-              } while (memberCursor)
-              return false
-            } catch {
-              return false
-            }
-          })
-        )
-        selfCreatedCount += results.filter(Boolean).length
+      if (allGroups.length >= MAX_SELF_CREATED_ORGS) {
+        for (let i = 0; i < allGroups.length; i += BATCH_SIZE) {
+          if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) break
+          const batch = allGroups.slice(i, i + BATCH_SIZE)
+          const results = await Promise.all(
+            batch.map(async (g) => {
+              try {
+                const groupAgent = createGroupClient(auth.agent, g.groupDid)
+                // We only need to know whether the caller's OWN entry was
+                // self-added, so stop paginating the member list as soon as that
+                // entry is found — no later page can change the boolean answer.
+                let memberCursor: string | undefined
+                do {
+                  const params: Record<string, unknown> = {
+                    repo: g.groupDid,
+                    limit: 100,
+                  }
+                  if (memberCursor) params.cursor = memberCursor
+                  const { data } = await groupAgent.call(
+                    "app.certified.group.member.list",
+                    params
+                  )
+                  const page = data as { members?: { did: string; addedBy: string }[]; cursor?: string }
+                  const selfAdded = (page.members || []).some(
+                    (m) => m.did === ownerDid && m.addedBy === ownerDid
+                  )
+                  if (selfAdded) return true
+                  memberCursor = page.cursor
+                } while (memberCursor)
+                return false
+              } catch {
+                return false
+              }
+            })
+          )
+          selfCreatedCount += results.filter(Boolean).length
+        }
       }
 
       if (selfCreatedCount >= MAX_SELF_CREATED_ORGS) {
@@ -182,6 +195,10 @@ export async function POST(request: NextRequest) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ handle, ownerDid, email }),
+        // Bound like every other CGS upstream (groupServiceFetch uses
+        // the same 15s) — a hung group service must not pin the
+        // invocation to the platform ceiling.
+        signal: AbortSignal.timeout(15_000),
       }
     )
 

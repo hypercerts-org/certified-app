@@ -202,6 +202,40 @@ describe("useProjectItems — batched indexer resolution", () => {
     expect(result.current.resolutions[1].error).toBe("Activity not found")
   })
 
+  it("coerces malformed string fields on the PDS fallback path", async () => {
+    const did = "did:plc:projitemsffffffffffff1"
+    const uri = uriFor(did, "malformed")
+
+    // Indexer misses (its path normalizes server-side); the PDS fallback
+    // returns a foreign record whose string-declared fields are objects.
+    fetchIndexerActivitiesByUris.mockResolvedValue(indexerResult([]))
+    authFetch.mockResolvedValue(
+      jsonResponse({
+        uri,
+        cid: "cid-mal",
+        value: {
+          title: { evil: true },
+          shortDescription: ["not a string"],
+          createdAt: "2026-01-01T00:00:00.000Z",
+          contributors: [{ contributorIdentity: { identity: "did:plc:x" } }],
+        },
+      }),
+    )
+
+    const { result } = renderHook(() => useProjectItems(itemsFor(uri)))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const record = result.current.resolutions[0].record
+    expect(result.current.resolutions[0].error).toBeNull()
+    expect(record?.value.title).toBe("")
+    expect(record?.value.shortDescription).toBe("")
+    // Non-render fields pass through untouched.
+    expect(record?.value.contributors).toEqual([
+      { contributorIdentity: { identity: "did:plc:x" } },
+    ])
+  })
+
   it("ignores non-activity item URIs (only cert cards resolve)", async () => {
     const did = "did:plc:projitemseeeeeeeeeeee1"
     const activityUri = uriFor(did, "cert")

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -79,8 +79,6 @@ import { countGraphemes } from "@/lib/utils/graphemes"
  *   shortDescriptionFacets is derived at parse time elsewhere; the
  *   form itself stays plain-text.
  */
-
-const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/
 
 /**
  * Single curated publisher of org.hypercerts.claim.rights records.
@@ -244,7 +242,7 @@ export default function CreatePage() {
             typeof rec.value?.rightsName === "string"
               ? rec.value.rightsName.trim()
               : ""
-          const fallback = rec.uri.split("/").pop() ?? "(unnamed rights)"
+          const fallback = rkeyFromUri(rec.uri) || "(unnamed rights)"
           return {
             ref: { uri: rec.uri, cid: rec.cid },
             name: rawName || fallback,
@@ -550,11 +548,10 @@ export default function CreatePage() {
       }
 
       const uri: unknown = data?.uri
-      const match = typeof uri === "string" ? AT_URI_RE.exec(uri) : null
-      if (match) {
-        const [, ownerDid, , rkey] = match
+      const parsed = typeof uri === "string" ? parseAtUri(uri) : null
+      if (parsed) {
         router.push(
-          recordUrl(ownerDid, "activity", rkey),
+          recordUrl(parsed.did, "activity", parsed.rkey),
         )
       } else {
         router.push("/")

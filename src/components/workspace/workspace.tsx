@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
@@ -83,17 +83,18 @@ export default function Workspace() {
 
   // Help with first-time-empty: if there's no `actor` param yet but
   // we have actors loaded, pick the first one as a default scope so
-  // the comparison surfaces start populated.
-  const [defaulted, setDefaulted] = useState(false)
+  // the comparison surfaces start populated. The latch is only read
+  // inside this effect, so a ref avoids a render.
+  const defaultedRef = useRef(false)
   useEffect(() => {
-    if (defaulted) return
+    if (defaultedRef.current) return
     if (scope.kind !== "network") return
     if (!actors.length) return
-    setDefaulted(true)
+    defaultedRef.current = true
     const params = new URLSearchParams(searchParams?.toString() ?? "")
     params.set("actor", actors[0].did)
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [actors, defaulted, scope.kind, searchParams, pathname, router])
+  }, [actors, scope.kind, searchParams, pathname, router])
 
   const setUrl = useCallback(
     (next: Partial<{ layout: LayoutKey; actor: string | null; lexicon: WorkspaceLexicon | null }>) => {

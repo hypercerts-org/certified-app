@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { RadioGroup, Radio } from "./radio";
 import Tooltip from "./tooltip";
+import { useMounted } from "@/hooks/use-mounted";
 
 type ThemeValue = "light" | "dark" | "system";
 
@@ -56,11 +57,9 @@ export default function ThemeToggle({
   className = "",
 }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // next-themes only knows the real theme on the client; render the
+  // undefined (system-default) state until hydration completes.
+  const mounted = useMounted();
 
   const current = mounted ? (theme as ThemeValue | undefined) : undefined;
 

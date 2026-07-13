@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-received-endorsements"
 import { useEndorsementLists } from "@/hooks/use-endorsement-lists"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { deriveIdentity } from "@/lib/utils/identity"
 import EndorseReasonModal, {
   type EndorseReasonActingAs,
 } from "@/components/profile/endorse-reason-modal"
@@ -226,8 +227,7 @@ export function EndorseButton({
   // group (the reason modal hides the picker too).
   const ownLists = useEndorsementLists(activeOrg ? null : viewerDid)
   const { info: subjectInfo } = useAuthorInfo(subjectDid)
-  const subjectLabel =
-    subjectInfo?.displayName || subjectInfo?.handle || subjectDid
+  const subjectLabel = deriveIdentity(subjectInfo, subjectDid).displayName
   const [isWriting, setIsWriting] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const [reasonOpen, setReasonOpen] = useState(false)

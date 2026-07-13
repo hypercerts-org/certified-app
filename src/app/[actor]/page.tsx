@@ -19,16 +19,13 @@ import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useProfileInlineEdit } from "@/hooks/use-profile-inline-edit"
+import dynamic from "next/dynamic"
 import ProfileHeader from "@/components/profile/profile-header"
 import ProfileSidebar from "@/components/profile/profile-sidebar"
 import ProfileOverview from "@/components/profile/profile-overview"
-import ProfileEndorsements from "@/components/profile/profile-endorsements"
-import ProfileFollowers from "@/components/profile/profile-followers"
-import ProfileLists from "@/components/profile/profile-lists"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
-import SettingsPanel from "@/components/settings/settings-panel"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -39,6 +36,29 @@ import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+
+// Non-default tab panels + the own-profile settings surface are
+// code-split out of the route's first-load chunk: profiles are the
+// most-shared public URL, and anonymous visitors land on the static
+// Overview tab — they should not download the endorsement/list/
+// follower panels or the settings + org-admin subtree up front.
+// Overview, header, and sidebar stay static (default-tab paint).
+const ProfileEndorsements = dynamic(
+  () => import("@/components/profile/profile-endorsements"),
+  { loading: () => <LoadingSpinner /> },
+)
+const ProfileFollowers = dynamic(
+  () => import("@/components/profile/profile-followers"),
+  { loading: () => <LoadingSpinner /> },
+)
+const ProfileLists = dynamic(
+  () => import("@/components/profile/profile-lists"),
+  { loading: () => <LoadingSpinner /> },
+)
+const SettingsPanel = dynamic(
+  () => import("@/components/settings/settings-panel"),
+  { loading: () => <LoadingSpinner /> },
+)
 
 type TabKey =
   | "overview"

@@ -1,17 +1,14 @@
 "use client"
 
 import {
-  memo,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
-import Link from "next/link"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -22,12 +19,9 @@ import {
   ChevronDown,
   FileText,
   MapPin,
-  MoreVertical,
-  Pencil,
   Plus,
   RefreshCw,
   Target,
-  Trash2,
   Users,
 } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
@@ -38,23 +32,15 @@ import {
   resolveActivityImageUrl,
   evaluateWorkScope,
 } from "@/lib/atproto/activity"
-import {
-  useContributorInfo,
-  isAtprotoIdentity,
-} from "@/hooks/use-contributor-info"
-import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import { useRights } from "@/hooks/use-rights"
-import { getInitials } from "@/lib/utils/initials"
 import { formatShortDate } from "@/lib/utils/format-date"
-import Avatar from "@/components/ui/avatar"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import Banner from "@/components/ui/banner"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
-import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useActivityFunding } from "@/hooks/use-activity-funding"
 import { useContextUpdates } from "@/hooks/use-context-updates"
 import { useMergedFunding } from "@/hooks/use-merged-funding"
@@ -68,20 +54,24 @@ import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-m
 import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverItem,
-} from "@/components/ui/popover"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
-import { useAuthorInfo } from "@/hooks/use-author-info"
 import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import CertLocationsMap from "./cert-locations-map"
+import {
+  ContributorWeightHeader,
+  ContributorRow,
+  SlimTabHeadline,
+  CertHeadlineColumns,
+} from "./cert-detail-parts"
+import {
+  contributorKey,
+  contributionRoleText,
+  buildWeightPercents,
+} from "@/lib/atproto/contributor-display"
 import ContextUpdates from "@/components/context/context-updates"
 import {
   uploadBlob,
@@ -90,14 +80,10 @@ import {
 import { putCertRecord } from "@/lib/atproto/cert"
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
-import { saveDraft, clearDraft } from "@/lib/utils/swap-drafts"
 import { asLinearDocument } from "@/lib/leaflet/guards"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import type { LinearDocument } from "@/lib/leaflet/types"
-import type {
-  ActivityContributor as ActivityContributorType,
-  ClaimActivity,
-} from "@/lib/atproto/activity-types"
+import type { ClaimActivity } from "@/lib/atproto/activity-types"
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
@@ -125,70 +111,10 @@ interface ActivityDetailProps {
   handle: string | null
 }
 
-/**
- * Stable React key for a contributor row. Contributors carry no id of
- * their own, so we use the strong-ref URI / inline identity plus the
- * position to disambiguate duplicates — avoids the `key={i}` antipattern.
- */
-function contributorKey(c: ActivityContributorType, index: number): string {
-  const id = c.contributorIdentity as unknown
-  if (id && typeof id === "object") {
-    const obj = id as Record<string, unknown>
-    if (typeof obj.uri === "string") return `${obj.uri}#${index}`
-    if (typeof obj.identity === "string") return `${obj.identity}#${index}`
-  }
-  if (typeof id === "string") return `${id}#${index}`
-  return `contributor-${index}`
-}
-
-/**
- * Extract role text defensively. The lexicon types this as an object
- * but some records store it as a bare string. `"role" in details`
- * throws when `details` is a primitive, so we type-check at runtime.
- */
-function contributionRoleText(details: unknown): string | null {
-  if (typeof details === "string") return details
-  if (!details || typeof details !== "object") return null
-  const obj = details as Record<string, unknown>
-  return typeof obj.role === "string" ? obj.role : null
-}
-
 // Single date format used throughout this view: "Mon D, YYYY".
 // Identical output to lib/utils/format-date.ts#formatShortDate, which
 // also handles invalid input by returning the raw string.
 const formatDate = formatShortDate
-
-/**
- * Normalise contributor weights to a percent out of 100. The
- * lexicon stores `contributionWeight` as a free-form string so a
- * record can hold values like "1", "0.25", or "high". This helper
- * sums every parseable numeric weight and rewrites each as
- * `round(weight / total * 100)`, returning a map from contributor
- * index to display string. Non-numeric weights are left out of the
- * map; the caller falls back to the raw value so they still
- * render. When no weights parse (or the sum is zero) the returned
- * map is empty — every row falls back to its raw weight.
- */
-function buildWeightPercents(
-  contribs: readonly ActivityContributorType[],
-): Map<number, string> {
-  const out = new Map<number, string>()
-  const parsed: Array<{ idx: number; n: number }> = []
-  let total = 0
-  contribs.forEach((c, idx) => {
-    const raw = c.contributionWeight?.trim() ?? ""
-    if (!raw) return
-    const n = parseFloat(raw)
-    if (!Number.isFinite(n) || n < 0) return
-    parsed.push({ idx, n })
-    total += n
-  })
-  if (total <= 0) return out
-  for (const { idx, n } of parsed) {
-    out.set(idx, `${Math.round((n / total) * 100)}`)
-  }
-  return out
-}
 
 /**
  * Detail view of a single activity claim.
@@ -265,12 +191,25 @@ export default function ActivityDetail({
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   // ClaimActivity doesn't carry its own rkey. The page route at
-  // /activity/[did]/[rkey] does, and we want to pass it to the
+  // /[actor]/[type]/[rkey] does, and we want to pass it to the
   // Projects section. Rather than threading another prop from the
   // page (the page file is carved out beyond the breadcrumb wiring),
-  // we read the last pathname segment client-side — same value the
-  // page already decoded via `useParams`.
-  const rkey = useRouteRkey()
+  // we derive it from the trailing pathname segment — same value the
+  // page already decoded via `useParams`. Derived during render (not
+  // in a mount effect) so rkey is available on the first commit: the
+  // funding/updates/projects fetches and the record-menu publication
+  // start immediately instead of after a guaranteed second render.
+  const pathname = usePathname()
+  const rkey = useMemo(() => {
+    const segments = (pathname ?? "").split("/").filter(Boolean)
+    const last = segments[segments.length - 1]
+    if (!last) return null
+    try {
+      return decodeURIComponent(last)
+    } catch {
+      return last
+    }
+  }, [pathname])
 
   const { name: rightsName, isLoading: rightsLoading } = useRights(
     value.rights?.uri ?? null,
@@ -406,8 +345,8 @@ export default function ActivityDetail({
 
   // Tab strip on the top bar (back-row) drives which slice of the
   // record renders in the right pane. Keep the left aside identical
-  // across all tabs.
-  const pathname = usePathname()
+  // across all tabs. (`pathname` is read above, where rkey derives
+  // from it.)
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
   const activeTab:
@@ -958,24 +897,18 @@ export default function ActivityDetail({
       })
 
       if (!result.ok) {
-        saveDraft(sessionDid, "org.hypercerts.claim.activity", rkey, {
-          title: trimmedTitle,
-          shortDescription: trimmedShort,
-          description: drafts.description,
-        })
         if (result.reason === "conflict") {
           setSaveError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Your draft is saved locally; refresh and re-apply.`,
+            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to see the latest version and re-apply your changes.`,
           )
         } else {
           setSaveError(
-            "Couldn't auto-merge after several retries — your draft is saved locally; refresh to see the latest version.",
+            "Couldn't auto-merge after several retries — refresh to see the latest version and try again.",
           )
         }
         return
       }
 
-      clearDraft(sessionDid, "org.hypercerts.claim.activity", rkey)
       if (nextSaved) setLocalValue(nextSaved)
       if (pendingImagePreviewUrl) {
         setLocalImageUrl((prev) => {
@@ -1817,491 +1750,3 @@ export default function ActivityDetail({
     </>
   )
 }
-
-/**
- * Read the trailing rkey segment off the current URL. The cert detail
- * page sits at `/activity/[did]/[rkey]`, so we slice the last
- * pathname segment — decoded so it matches what the page already
- * normalised through `decodeURIComponent`. Returns null until the
- * window object is available (SSR pass).
- */
-function useRouteRkey(): string | null {
-  const [rkey, setRkey] = useState<string | null>(null)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const segments = window.location.pathname.split("/").filter(Boolean)
-    const last = segments[segments.length - 1]
-    if (!last) {
-      setRkey(null)
-      return
-    }
-    try {
-      setRkey(decodeURIComponent(last))
-    } catch {
-      setRkey(last)
-    }
-  }, [])
-  return rkey
-}
-
-/**
- * Right-aligned `%` column heading rendered above a contributors
- * list when at least one row carries a `contributionWeight`. The
- * pill-shaped weight chips below align to the row's right edge, so
- * the `%` sits over that column to label what the numbers mean.
- * Hovering surfaces the full sentence via a native browser tooltip
- * (`title`); the `aria-label` mirrors the same text for AT.
- */
-function ContributorWeightHeader() {
-  return (
-    <div
-      className="cert-detail__contributors-weight-header"
-      title="Relative weight of the contribution"
-      aria-label="Relative weight of the contribution"
-    >
-      <span aria-hidden="true">%</span>
-    </div>
-  )
-}
-
-/* ---------- Contributor row ----------
- *
- * Compact row for the cert detail contributors grid. Resolves the
- * contributor identity the same way `ActivityContributor` does — see
- * `useContributorInfo` / `useContributorInformationRecord` — but renders with
- * the `cert-detail__contributor-*` class set so it inherits the new
- * pill-hover styling rather than the older `activity-detail__contributor-*`
- * rules in feed.css.
- */
-
-interface ContributorRowProps {
-  readonly contributor: ActivityContributorType
-  readonly role: string | null
-  readonly weight: string | null
-}
-
-function classifyContributorIdentity(id: unknown): {
-  inlineIdentity: string | null
-  strongRefUri: string | null
-} {
-  if (id == null) return { inlineIdentity: null, strongRefUri: null }
-  if (typeof id === "string") {
-    return { inlineIdentity: id, strongRefUri: null }
-  }
-  if (typeof id !== "object") {
-    return { inlineIdentity: null, strongRefUri: null }
-  }
-  const obj = id as Record<string, unknown>
-  if (typeof obj.identity === "string") {
-    return { inlineIdentity: obj.identity, strongRefUri: null }
-  }
-  if (typeof obj.uri === "string" && obj.uri.startsWith("at://")) {
-    return { inlineIdentity: null, strongRefUri: obj.uri }
-  }
-  return { inlineIdentity: null, strongRefUri: null }
-}
-
-const ContributorRow = memo(function ContributorRow({
-  contributor,
-  role,
-  weight,
-}: ContributorRowProps) {
-  const { inlineIdentity, strongRefUri } = classifyContributorIdentity(
-    contributor.contributorIdentity,
-  )
-
-  const { record: contribInfo, isLoading: contribInfoLoading } =
-    useContributorInformationRecord(strongRefUri)
-
-  const atprotoCandidate =
-    inlineIdentity ??
-    (contribInfo?.identifier && isAtprotoIdentity(contribInfo.identifier)
-      ? contribInfo.identifier
-      : null)
-
-  const { info, isLoading: atprotoLoading } =
-    useContributorInfo(atprotoCandidate)
-
-  const isLoading = contribInfoLoading || atprotoLoading
-
-  const fallbackLabel = strongRefUri ? "Unknown contributor" : "Anonymous"
-  const displayName =
-    info?.displayName ||
-    contribInfo?.displayName ||
-    (inlineIdentity && !isAtprotoIdentity(inlineIdentity)
-      ? inlineIdentity
-      : null) ||
-    fallbackLabel
-
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const avatarUrl = info?.avatarUrl || contribInfo?.image?.uri || null
-  const profileHref = info?.did
-    ? profileUrl(info.handle || info.did)
-    : null
-  const initials = getInitials(
-    info?.displayName || contribInfo?.displayName || null,
-    handle,
-  )
-
-  const hasAnyHydratedField =
-    !!info?.did ||
-    !!contribInfo?.displayName ||
-    !!contribInfo?.image?.uri ||
-    !!inlineIdentity
-
-  if (isLoading && !hasAnyHydratedField) {
-    return (
-      <li
-        className="cert-detail__contributor cert-detail__contributor--skeleton"
-        aria-hidden="true"
-      >
-        <div className="cert-detail__contributor-avatar-skel" />
-        <div className="cert-detail__contributor-meta">
-          <div className="cert-detail__contributor-name-skel" />
-          <div className="cert-detail__contributor-handle-skel" />
-        </div>
-        {weight ? (
-          <span className="cert-detail__contributor-weight">{weight}</span>
-        ) : null}
-      </li>
-    )
-  }
-
-  const body = (
-    <>
-      <Avatar
-        size="sm"
-        src={avatarUrl || undefined}
-        alt=""
-        fallbackInitials={initials}
-      />
-      <span className="cert-detail__contributor-meta">
-        <span className="cert-detail__contributor-name">
-          {displayName}
-          {role ? (
-            <span className="cert-detail__contributor-role"> · {role}</span>
-          ) : null}
-        </span>
-        {handle ? (
-          <span className="cert-detail__contributor-handle">@{handle}</span>
-        ) : null}
-      </span>
-    </>
-  )
-
-  return (
-    <li className="cert-detail__contributor">
-      {profileHref ? (
-        <Link
-          href={profileHref}
-          className="cert-detail__contributor-link"
-          aria-label={`View ${displayName}'s profile`}
-        >
-          {body}
-        </Link>
-      ) : (
-        <span className="cert-detail__contributor-link cert-detail__contributor-link--static">
-          {body}
-        </span>
-      )}
-      {weight ? (
-        <span className="cert-detail__contributor-weight">{weight}</span>
-      ) : null}
-    </li>
-  )
-})
-
-/**
- * Slim headline used by every tab except Overview (Description /
- * Contributors / Funding / Updates): the activity title with the author
- * pulled onto the same row (right-aligned, no "Author" label) and the owner
- * actions (Edit / Delete) collapsed into a three-dot menu. No date-created /
- * project byline — that detail lives on the Overview tab's full headline.
- */
-function SlimTabHeadline({
-  did,
-  title,
-  isCreator,
-  editHref,
-  editAsGroupLabel,
-  onEditAsGroup,
-  onDelete,
-}: {
-  did: string
-  title: string
-  isCreator: boolean
-  editHref: string
-  /** Display label of the group the viewer may edit as, or null. */
-  editAsGroupLabel: string | null
-  onEditAsGroup: () => void
-  onDelete: () => void
-}) {
-  const router = useRouter()
-  const { info, isLoading: authorLoading } = useAuthorInfo(did)
-  const showMenu = isCreator || !!editAsGroupLabel
-
-  const displayName = info?.displayName || info?.handle || "Anonymous"
-  const profileHref = profileUrl(info?.handle || did)
-
-  return (
-    <header className="cert-detail__headline cert-detail__headline--slim">
-      <div className="cert-detail__title-row">
-        <h1 className="cert-detail__title">{title}</h1>
-
-        {/* Author + actions sit together at the right edge; the author's
-            own content stays left-aligned (avatar then name/handle). The
-            trailing row stretches so the menu button matches the author's
-            height. */}
-        <div className="cert-slim-headline__trailing">
-          {!authorLoading && info ? (
-            <Link
-              href={profileHref}
-              className="cert-detail__headline-author cert-slim-headline__author"
-              aria-label={`View ${displayName}'s profile`}
-            >
-              <Avatar
-                size="sm"
-                src={info.avatarUrl || undefined}
-                alt=""
-                fallbackInitials={getInitials(info.displayName, info.handle)}
-              />
-              <span className="cert-detail__headline-author-meta">
-                <span className="cert-detail__headline-name">
-                  {displayName}
-                </span>
-                {info.handle ? (
-                  <span className="cert-detail__headline-handle">
-                    @{info.handle}
-                  </span>
-                ) : null}
-              </span>
-            </Link>
-          ) : null}
-
-          {showMenu ? (
-            <Popover>
-              <PopoverTrigger>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="cert-slim-headline__menu"
-                  aria-label="Activity actions"
-                >
-                  <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end">
-                {isCreator ? (
-                  <PopoverItem onClick={() => router.push(editHref)}>
-                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
-                  </PopoverItem>
-                ) : (
-                  <PopoverItem onClick={onEditAsGroup}>
-                    <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
-                    {editAsGroupLabel}
-                  </PopoverItem>
-                )}
-                {isCreator ? (
-                  <PopoverItem onClick={onDelete}>
-                    <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
-                  </PopoverItem>
-                ) : null}
-              </PopoverContent>
-            </Popover>
-          ) : null}
-        </div>
-      </div>
-    </header>
-  )
-}
-
-/**
- * Three-column byline below the cert title — invisible grid (no
- * borders, no card chrome) with three small labelled cells:
- *
- *   Date created · Author · Project
- *
- * Each cell carries the same `cert-detail__meta-label` styling used
- * in the aside meta list so the three blocks read as a peer of the
- * Work scope / Locations / Rights metadata that lives on the right.
- *
- * "Project" surfaces the first project that contains this cert
- * (via the existing `useCertProjects` hook, same data source as the
- * main-pane Projects section below — module-cached so the lookup
- * doesn't double-fire). When the cert isn't in any project the
- * column renders a quiet em-dash so the three columns stay aligned.
- *
- * Below ~640px the grid collapses to a single-column stack — the
- * column track widths can't shrink further without truncating the
- * author handle or the project title past readability.
- */
-function CertHeadlineColumns({
-  did,
-  rkey,
-  createdAt,
-  formattedDate,
-  action,
-}: {
-  did: string
-  rkey: string | null
-  createdAt: string
-  formattedDate: string
-  /** Trailing control (the three-dot menu) shown on the author's row,
-   *  right-aligned, on mobile. */
-  action?: ReactNode
-}) {
-  const { info, isLoading: authorLoading } = useAuthorInfo(did)
-  const { projects } = useCertProjects(did, rkey)
-
-  return (
-    <div className="cert-detail__headline-cols">
-      <div className="cert-detail__headline-col cert-detail__headline-col--author">
-        <span className="cert-detail__meta-label">Author</span>
-        {authorLoading || !info ? (
-          <span
-            className="cert-detail__headline-col-value cert-detail__headline-col-value--skel"
-            aria-hidden="true"
-          />
-        ) : (
-          (() => {
-            const displayName = info.displayName || info.handle || "Anonymous"
-            const initials = getInitials(info.displayName, info.handle)
-            const profileHref = profileUrl(info.handle || did)
-            return (
-              <Link
-                href={profileHref}
-                className="cert-detail__headline-author"
-                aria-label={`View ${displayName}'s profile`}
-              >
-                <Avatar
-                  size="sm"
-                  src={info.avatarUrl || undefined}
-                  alt=""
-                  fallbackInitials={initials}
-                />
-                <span className="cert-detail__headline-author-meta">
-                  <span className="cert-detail__headline-name">
-                    {displayName}
-                  </span>
-                  {info.handle ? (
-                    <span className="cert-detail__headline-handle">
-                      @{info.handle}
-                    </span>
-                  ) : null}
-                </span>
-              </Link>
-            )
-          })()
-        )}
-      </div>
-
-      {action ? (
-        <div className="cert-detail__headline-action">{action}</div>
-      ) : null}
-
-      <div className="cert-detail__headline-col cert-detail__headline-col--date">
-        <span className="cert-detail__meta-label">Date created</span>
-        <time
-          dateTime={createdAt}
-          className="cert-detail__headline-col-value"
-          title={createdAt}
-        >
-          {formattedDate}
-        </time>
-      </div>
-
-      <div className="cert-detail__headline-col">
-        <span className="cert-detail__meta-label">Project</span>
-        {projects.length === 0 ? (
-          <span className="cert-detail__headline-col-value cert-detail__meta-aux">
-            —
-          </span>
-        ) : (
-          (() => {
-            // First-project preview — same scope-rule the Projects
-            // section in the main pane uses (single primary
-            // association for the heads-up byline). A "+N more"
-            // count surfaces when the cert belongs to additional
-            // projects so the reader knows to scroll down to the
-            // full list.
-            const first = projects[0]
-            const remaining = projects.length - 1
-            const firstParts = first.uri.match(
-              /^at:\/\/([^/]+)\/[^/]+\/(.+)$/,
-            )
-            const firstHref = firstParts
-              ? recordUrl(firstParts[1], "project", firstParts[2])
-              : null
-            const v = first.value as Record<string, unknown>
-            const title =
-              (typeof v.title === "string" && v.title.length > 0
-                ? v.title
-                : null) ||
-              (typeof v.name === "string" && v.name.length > 0
-                ? v.name
-                : null) ||
-              "Untitled project"
-            // Image precedence mirrors the home-feed CollectionPreview
-            // and explore-page ProjectListRow: avatar (primary
-            // identity image) → image (legacy field) → banner
-            // (decorative). Resolved against the project's own DID
-            // so foreign-PDS blobs come through the xrpc proxy.
-            const projectDid = firstParts ? firstParts[1] : ""
-            const rawImage = v.avatar ?? v.image ?? v.banner
-            const imageUrl =
-              rawImage && projectDid
-                ? resolveActivityImageUrl(
-                    rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-                    projectDid,
-                  )
-                : null
-            const thumb = (
-              <span
-                className="cert-detail__headline-project-thumb"
-                aria-hidden="true"
-              >
-                {imageUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    className="cert-detail__headline-project-thumb-img"
-                  />
-                ) : null}
-              </span>
-            )
-            const innerBody = (
-              <>
-                {thumb}
-                <span className="cert-detail__headline-project-title">
-                  {title}
-                </span>
-              </>
-            )
-            const label = firstHref ? (
-              <Link
-                href={firstHref}
-                className="cert-detail__headline-project-link"
-              >
-                {innerBody}
-              </Link>
-            ) : (
-              <span className="cert-detail__headline-project-link cert-detail__headline-project-link--static">
-                {innerBody}
-              </span>
-            )
-            return (
-              <span className="cert-detail__headline-col-value cert-detail__headline-project-value">
-                {label}
-                {remaining > 0 ? (
-                  <span className="cert-detail__meta-aux"> +{remaining}</span>
-                ) : null}
-              </span>
-            )
-          })()
-        )}
-      </div>
-    </div>
-  )
-}
-

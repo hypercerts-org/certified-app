@@ -19,7 +19,7 @@ import {
   useSocialGraphSync,
   type SocialGraphSyncResult,
 } from "@/hooks/use-social-graph-sync"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 
 interface SyncSocialGraphSectionProps {
   /**
@@ -614,8 +614,7 @@ interface CandidateRowProps {
 
 function CandidateRow({ did, checked, onToggle, disabled }: CandidateRowProps) {
   const { info, isLoading } = useAuthorInfo(did)
-  const name = info?.displayName || info?.handle || did
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
+  const { displayName: name, handle, initials } = deriveIdentity(info, did)
 
   return (
     <li className="social-graph-sync__modal-row">
@@ -632,7 +631,7 @@ function CandidateRow({ did, checked, onToggle, disabled }: CandidateRowProps) {
               <Avatar
                 size="sm"
                 src={info?.avatarUrl || undefined}
-                fallbackInitials={getInitials(info?.displayName, info?.handle)}
+                fallbackInitials={initials}
               />
             )}
             <span className="social-graph-sync__modal-row-info">

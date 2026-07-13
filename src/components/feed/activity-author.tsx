@@ -1,12 +1,11 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Skeleton from "@/components/ui/skeleton"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 
 interface ActivityAuthorProps {
   /** DID of the user who created the activity claim. */
@@ -43,9 +42,10 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
     )
   }
 
-  const displayName = info.displayName || info.handle || "Anonymous"
-  const initials = getInitials(info.displayName, info.handle)
-  const profileHref = profileUrl(info.handle || did)
+  const { displayName, handle, initials, profileHref } = deriveIdentity(
+    info,
+    did,
+  )
 
   return (
     <Link
@@ -69,8 +69,8 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
           <span className="feed-card__author-name">{displayName}</span>
           {nameSuffix}
         </span>
-        {info.handle ? (
-          <span className="feed-card__author-handle">@{info.handle}</span>
+        {handle ? (
+          <span className="feed-card__author-handle">@{handle}</span>
         ) : null}
       </span>
     </Link>

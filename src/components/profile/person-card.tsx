@@ -1,11 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { profileUrl } from "@/lib/urls"
 import type { AuthorInfo } from "@/hooks/use-author-info"
 import Avatar from "@/components/ui/avatar"
 import { formatShortDate } from "@/lib/utils/format-date"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 
 /**
  * Shared person row used by the profile Endorsements and Followers
@@ -43,10 +42,12 @@ export default function PersonCard({
    *  plug in the per-card revoke / unfollow affordance. */
   menu?: React.ReactNode
 }) {
-  const displayName = info?.displayName || info?.handle || did
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, info?.handle ?? did)
-  const href = profileUrl(info?.handle || did)
+  const {
+    displayName,
+    handle,
+    initials,
+    profileHref: href,
+  } = deriveIdentity(info, did)
 
   return (
     <li className="profile-endorsements-v2__card">

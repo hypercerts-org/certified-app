@@ -15,7 +15,8 @@ import {
   PopoverItem,
 } from "@/components/ui/popover"
 import { useAuth } from "@/lib/auth/auth-context"
-import { recordUrlFromAtUri } from "@/lib/urls"
+import { recordUrlFromAtUri, rkeyFromUri } from "@/lib/urls"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
   itemUriMatchesType,
@@ -77,7 +78,10 @@ export default function AddToListMenu({
   const { did: viewerDid, openSignIn } = useAuth()
   const [open, setOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const [copied, setCopied] = useState<"share" | "uri" | null>(null)
+  // One shared-hook instance per copy target so each menu item shows its
+  // own "Copied" label; the hook auto-resets the flags.
+  const { copied: shareCopied, copy: copyShare } = useCopyToClipboard()
+  const { copied: uriCopied, copy: copyUri } = useCopyToClipboard()
 
   // DID-based web path for sharing — recordUrlFromAtUri maps the
   // collection to its friendly route segment and defaults to the URI's
@@ -95,25 +99,16 @@ export default function AddToListMenu({
     return shareTab ? `${base}?tab=${encodeURIComponent(shareTab)}` : base
   }, [targetUri, shareTab])
 
-  // Reset the brief "Copied" affordance whenever the popover opens
-  // again, so the previous run's feedback doesn't leak across opens.
+  // Keep the popover open briefly after a successful copy so the user
+  // sees the confirmation, then auto-close. Driven off the hook's copied
+  // flags — the hook swallows clipboard failures (flag stays false), so
+  // a failed copy leaves the popover open.
+  const anyCopied = shareCopied || uriCopied
   useEffect(() => {
-    if (open) setCopied(null)
-  }, [open])
-
-  const copyText = useCallback(async (text: string, which: "share" | "uri") => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(which)
-      // Keep the popover open briefly so the user sees the
-      // confirmation, then auto-close.
-      window.setTimeout(() => {
-        setOpen(false)
-      }, 900)
-    } catch (err) {
-      console.error("Failed to copy:", err)
-    }
-  }, [])
+    if (!anyCopied) return
+    const t = window.setTimeout(() => setOpen(false), 900)
+    return () => window.clearTimeout(t)
+  }, [anyCopied])
 
   // Shown to logged-out viewers too: "Copy AT URI" works without auth,
   // and "Add to list" funnels them to sign-in. Only the URI→type guard
@@ -170,11 +165,11 @@ export default function AddToListMenu({
           {sharePath ? (
             <PopoverItem
               onClick={() =>
-                copyText(`${window.location.origin}${sharePath}`, "share")
+                void copyShare(`${window.location.origin}${sharePath}`)
               }
             >
               <Share2 size={13} strokeWidth={1.75} aria-hidden />
-              {copied === "share" ? "Link copied" : "Share"}
+              {shareCopied ? "Link copied" : "Share"}
             </PopoverItem>
           ) : null}
           <PopoverItem
@@ -189,9 +184,9 @@ export default function AddToListMenu({
             <ListPlus size={13} strokeWidth={1.75} aria-hidden />
             Add to list
           </PopoverItem>
-          <PopoverItem onClick={() => copyText(targetUri, "uri")}>
+          <PopoverItem onClick={() => void copyUri(targetUri)}>
             <Copy size={13} strokeWidth={1.75} aria-hidden />
-            {copied === "uri" ? "Copied" : "Copy AT URI"}
+            {uriCopied ? "Copied" : "Copy AT URI"}
           </PopoverItem>
         </PopoverContent>
       </Popover>
@@ -321,7 +316,7 @@ function AddToListModal({
         const targetRef = await resolveTargetRef()
         if (!targetRef) throw new Error("Couldn't resolve record CID")
         const ref = await createList(targetType, title)
-        const rkey = ref.uri.split("/").pop()
+        const rkey = rkeyFromUri(ref.uri)
         if (!rkey) throw new Error("New list missing rkey")
         await addItem(rkey, targetType, targetRef)
         // Optimistic state: preview the new list immediately so it

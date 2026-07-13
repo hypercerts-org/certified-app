@@ -39,18 +39,6 @@
   display: inline-flex;
 }
 
-/* ========== Theme-aware image swap (dual-image pattern) ==========
-   Uses html[data-theme] / html:not([data-theme="dark"]) selectors for
-   higher specificity (0,2,1) so component-level display rules still take
-   effect on the visible image. Both images must carry the --light and
-   --dark class respectively. */
-html:not([data-theme="dark"]) .signin-mark__img--dark {
-  display: none;
-}
-html[data-theme="dark"] .signin-mark__img--light {
-  display: none;
-}
-
 /* ========== Loading Screen ========== */
 .loading-screen {
   /* Fix the loading screen to the viewport so the logo always sits at
@@ -647,27 +635,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding: 16px 0;
 }
 
-/* ========== Cards (app pages) ========== */
-.app-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 24px;
-  transition: border-color var(--transition-fast);
-}
-
-.app-card:hover {
-  border-color: var(--border-hover-soft);
-}
-
-.app-card__label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--fg-muted);
-  margin-bottom: 8px;
-}
-
 /* ========== App Shell (editorial layout) ==========
    Mobile (<800px): single column, content max-width 720px.
    Desktop (≥800px): foundation for the 3-column rail layout in PR2.
@@ -832,8 +799,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 /* Profile pages on desktop expand the content area to a GitHub-style
-   1280px container. Non-Overview tabs inside the profile page constrain
-   themselves to a reading column via .profile-panel--reading. */
+   1280px container. */
 @media (min-width: 800px) {
   .app-shell--fullbleed .app-shell__content {
     max-width: 1280px;
@@ -972,79 +938,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: block;
 }
 
-.personal-info__hint {
-  font-size: 0.6875rem;
-  color: var(--fg-muted);
-  margin-top: 4px;
-  line-height: 1.4;
-}
-
-.personal-info__field--link {
-  color: var(--color-accent);
-  text-decoration: none;
-}
-
-.personal-info__field--link:hover {
-  text-decoration: underline;
-}
-
-.personal-info__full-width {
-  grid-column: 1 / -1;
-}
-
-.profile-fallback-note {
-  background: var(--color-warning-bg);
-  border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  margin-top: 16px;
-}
-
-.profile-fallback-note p {
-  font-size: 0.8125rem;
-  color: var(--color-warning-text);
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* Personal Information form fields */
-.personal-info__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.personal-info__label {
-  display: block;
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin-bottom: 6px;
-}
-
-.personal-info__field {
-  padding: 12px 0;
-  border: none;
-  border-radius: 0;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  background: transparent;
-}
-
-.personal-info__field--mono {
-  font-family: monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  color: var(--fg-muted);
-  word-break: break-all;
-  background: transparent;
-  border: none;
-  padding: 12px 0;
-}
-
 /* Utility */
 .mt-4 {
   margin-top: 16px;
@@ -1181,8 +1074,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .right-rail__heading {
   font-family: var(--font-inter), system-ui, sans-serif;
-  /* Caption scale per DESIGN.md §3 — matches .app-card__label and other
-     uppercase labels (0.6875rem / 0.08em). */
+  /* Caption scale per DESIGN.md §3 — matches the app's other uppercase
+     labels (0.6875rem / 0.08em). */
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -1320,7 +1213,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .news__rich-link:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 /* The relative-time element is the canonical "view this post on
@@ -1341,7 +1234,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .news__time-link:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .news__more {
@@ -1372,7 +1265,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .news__more:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 /* ========== People search typeahead ==========
@@ -3355,6 +3248,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .site-footer__link:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 

@@ -13,7 +13,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import type {
   SocialGraphSyncStats,
 } from "@/hooks/use-social-graph-sync"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 import type { CommitState } from "../use-onboarding-commit"
 
 /**
@@ -308,8 +308,7 @@ function PickerRow({
   onToggle: () => void
 }) {
   const { info, isLoading } = useAuthorInfo(did)
-  const name = info?.displayName || info?.handle || did
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
+  const { displayName: name, handle, initials } = deriveIdentity(info, did)
   return (
     <li className="onboarding-step__picker-row">
       <label>
@@ -320,7 +319,7 @@ function PickerRow({
           <Avatar
             size="sm"
             src={info?.avatarUrl || undefined}
-            fallbackInitials={getInitials(info?.displayName, did)}
+            fallbackInitials={initials}
           />
         )}
         <div className="onboarding-step__picker-row-info">

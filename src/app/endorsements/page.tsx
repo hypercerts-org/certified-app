@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { profileUrl } from "@/lib/urls"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Plus, Award } from "lucide-react"
@@ -24,7 +23,7 @@ import ErrorMessage from "@/components/ui/error-message"
 import Skeleton from "@/components/ui/skeleton"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import { formatShortDate } from "@/lib/utils/format-date"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 
 type TabKey = "received" | "given"
 
@@ -111,10 +110,12 @@ function ReceivedRow({
   onAfterWrite: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(endorsement.issuerDid)
-  const displayName = info?.displayName || info?.handle || endorsement.issuerDid
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, endorsement.issuerDid)
-  const href = profileUrl(info?.handle || endorsement.issuerDid)
+  const {
+    displayName,
+    handle,
+    initials,
+    profileHref: href,
+  } = deriveIdentity(info, endorsement.issuerDid)
 
   return (
     <li className="endorsement-row">

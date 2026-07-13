@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -157,14 +157,6 @@ interface ResolvedLocationRow {
   name: string
 }
 
-const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/
-
-function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
-  const m = AT_URI_RE.exec(uri)
-  if (!m) return null
-  return { did: m[1], collection: m[2], rkey: m[3] }
-}
-
 /**
  * `/{actor}/activity/{rkey}/edit` — full-page cert editor. `actor` is
  * resolved to a DID by the parent route; this component takes the resolved
@@ -247,9 +239,9 @@ export default function ActivityEditRoute({
   // Rights options — same listRecords call /create uses.
   // -------------------------------------------------------------------
   useEffect(() => {
+    // No sync resets here: this []-dep effect runs once right after
+    // mount and the useState initializers are already true/null.
     const controller = new AbortController()
-    setRightsLoading(true)
-    setRightsLoadError(null)
     const qs = new URLSearchParams({
       repo: RIGHTS_PUBLISHER_DID,
       collection: RIGHTS_COLLECTION,
@@ -272,7 +264,7 @@ export default function ActivityEditRoute({
             typeof rec.value?.rightsName === "string"
               ? rec.value.rightsName.trim()
               : ""
-          const fallback = rec.uri.split("/").pop() ?? "(unnamed rights)"
+          const fallback = rkeyFromUri(rec.uri) || "(unnamed rights)"
           return {
             ref: { uri: rec.uri, cid: rec.cid },
             name: rawName || fallback,
@@ -303,6 +295,7 @@ export default function ActivityEditRoute({
     if (seededRef.current) return
     if (!activity) return
     const v = activity.value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap-record cid baseline after the async record load; re-running would clobber user edits. Long-term fix is a key-remount form child, tracked separately
     setTitle(v.title ?? "")
     setShortDescription(v.shortDescription ?? "")
     setStartDate(
@@ -344,13 +337,23 @@ export default function ActivityEditRoute({
   // location record itself (one getRecord per strongRef) — we use the
   // same shape `LocationPickerDialog` emits so the row UI is uniform.
   // -------------------------------------------------------------------
+  // The refs-empty reset is adjusted during render when the record
+  // identity changes (keyed on uri|cid, not object identity, which
+  // isn't render-stable); initial state is already []. Only the async
+  // name hydration lives in the effect.
+  const activityKey = activity ? `${activity.uri}|${activity.cid}` : null
+  const [prevActivityKey, setPrevActivityKey] = useState(activityKey)
+  if (prevActivityKey !== activityKey) {
+    setPrevActivityKey(activityKey)
+    if (activity && (activity.value.locations ?? []).length === 0) {
+      setLocations([])
+    }
+  }
+
   useEffect(() => {
     if (!activity) return
     const refs = activity.value.locations ?? []
-    if (refs.length === 0) {
-      setLocations([])
-      return
-    }
+    if (refs.length === 0) return
     let aborted = false
     Promise.all(
       refs.map(async (ref): Promise<ResolvedLocationRow> => {
@@ -365,15 +368,15 @@ export default function ActivityEditRoute({
           const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) return { ref, name: ref.uri.split("/").pop() ?? ref.uri }
+          if (!res.ok) return { ref, name: rkeyFromUri(ref.uri) || ref.uri }
           const data = (await res.json()) as { value?: { name?: string } }
           const raw = data.value?.name?.trim() ?? ""
           const split = splitLocationName(raw)
           const name =
-            split.name || raw || ref.uri.split("/").pop() || "Location"
+            split.name || raw || rkeyFromUri(ref.uri) || "Location"
           return { ref, name }
         } catch {
-          return { ref, name: ref.uri.split("/").pop() ?? ref.uri }
+          return { ref, name: rkeyFromUri(ref.uri) || ref.uri }
         }
       }),
     ).then((rows) => {
@@ -401,6 +404,7 @@ export default function ActivityEditRoute({
 
   // Clear save error whenever any field changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null, so cost is one render only while an error is showing
     setError(null)
   }, [
     title,

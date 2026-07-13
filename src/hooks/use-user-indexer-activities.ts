@@ -220,7 +220,7 @@ function mergeBucket(
   // Drop records already present from a prior page (the indexer can
   // return an overlapping edge across a cursor boundary), preventing
   // duplicate rows and duplicate React keys. Matches the sibling
-  // pagination hooks (use-user-activities, use-home-feed, use-explore).
+  // pagination hooks (use-home-feed, use-explore).
   const seen = new Set(prev.records.map((r) => r.uri))
   const append = data.records.filter((r) => !seen.has(r.uri))
   return {

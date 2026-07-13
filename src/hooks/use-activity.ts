@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import { createBoundedCache } from "@/lib/utils/bounded-cache"
 import { fetchIndexerActivitiesByUris } from "@/lib/atproto/indexer"
+import { coerceClaimActivityValue } from "@/lib/atproto/coerce-claim-activity"
 import type { ClaimActivity } from "@/lib/atproto/activity-types"
 
 const COLLECTION = "org.hypercerts.claim.activity"
@@ -119,14 +120,16 @@ function loadActivity(did: string, rkey: string): Promise<SingleActivity> {
       const data = (await res.json()) as {
         uri: string
         cid: string
-        value: ClaimActivity
+        value: unknown
       }
+      // A foreign PDS record can carry any shape — coerce the
+      // string-declared render fields before anything renders them.
       const activity: SingleActivity = {
         uri: data.uri,
         cid: data.cid,
         did,
         rkey,
-        value: data.value,
+        value: coerceClaimActivityValue(data.value),
       }
       cache.set(key, activity)
       return activity

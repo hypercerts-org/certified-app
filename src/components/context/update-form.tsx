@@ -10,6 +10,7 @@ import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
 import Tooltip from "@/components/ui/tooltip"
 import { uploadBlob, buildAvatarUrlFromCid } from "@/lib/atproto/profile"
+import { invalidateContextUpdates } from "@/hooks/use-context-updates"
 import {
   writeContextUpdate,
   resolveAttachment,
@@ -161,6 +162,17 @@ export default function UpdateForm({
         rkey: mode === "edit" ? rkey : undefined,
         swapRecord: mode === "edit" ? initialCid : undefined,
       })
+      // The detail pages read updates through a shared module cache
+      // (use-context-updates). This form lives on its own route, so no
+      // hook instance is mounted to refetch — mark every targeted
+      // subject stale so the page we navigate back to re-fetches
+      // instead of serving the pre-save list.
+      invalidateContextUpdates(subjectUri)
+      for (const s of subjects) {
+        if (typeof s.uri === "string" && s.uri !== subjectUri) {
+          invalidateContextUpdates(s.uri)
+        }
+      }
       router.push(backHref)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save update")

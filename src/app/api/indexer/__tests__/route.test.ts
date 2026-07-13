@@ -72,6 +72,20 @@ describe("/api/indexer trust boundary", () => {
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
+    it("rejects Object.prototype keys with 400 (own-key allowlist check)", async () => {
+      // OPERATIONS is a plain object literal — without the
+      // Object.hasOwn guard, inherited members (`constructor`,
+      // `toString`, …) are truthy and would slip past the first gate.
+      for (const op of ["constructor", "toString", "hasOwnProperty"]) {
+        mockFetch.mockClear()
+        const res = await postIndexer({ operationName: op, variables: {} })
+        expect(res.status, `op=${op}`).toBe(400)
+        const body = await res.json()
+        expect(body.error, `op=${op}`).toBe("Unknown operation")
+        expect(mockFetch).not.toHaveBeenCalled()
+      }
+    })
+
     it("rejects missing operationName with 400", async () => {
       const res = await postIndexer({ variables: { first: 10 } })
       expect(res.status).toBe(400)
@@ -556,6 +570,53 @@ describe("/api/indexer trust boundary", () => {
       })
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
       expect(body.variables.sortBy).toBeNull()
+    })
+  })
+
+  describe("CollectionsByUris", () => {
+    it("forwards a valid uri batch against the collections connection", async () => {
+      const uris = [
+        "at://did:plc:a/org.hypercerts.collection/one",
+        "at://did:plc:b/org.hypercerts.collection/two",
+      ]
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.operationName).toBe("CollectionsByUris")
+      expect(body.query).toContain("query CollectionsByUris")
+      expect(body.query).toContain("orgHypercertsCollection")
+      expect(body.variables).toEqual({ uris })
+    })
+
+    it("400s on an empty uris array (callers skip the call instead)", async () => {
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: [] },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s on non-at:// entries", async () => {
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: ["https://example.com/x"] },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s when the batch exceeds MAX_URI_LIST_PER_KIND (50)", async () => {
+      const tooMany = Array.from({ length: 51 }, (_, i) => `at://did:plc:a/c/${i}`)
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: tooMany },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 

@@ -1,5 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
-import { parseAtUri } from "@/lib/urls"
+import { parseAtUri, rkeyFromUri } from "@/lib/urls"
 import { purgeAwardFromLists } from "@/lib/atproto/collection"
 import { invalidateEndorsementClosure } from "@/lib/atproto/endorsement-closure-cache"
 import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
@@ -135,11 +135,6 @@ export interface BadgeAwardRecord {
   value: BadgeAwardValue
 }
 
-function extractRkey(uri: string): string {
-  const idx = uri.lastIndexOf("/")
-  return idx >= 0 ? uri.slice(idx + 1) : uri
-}
-
 /**
  * Pull the subject DID out of an award's `subject` field, which the
  * lexicon types as a union of three shapes:
@@ -250,7 +245,7 @@ export async function listDefinitions(
   return records.map((r) => ({
     uri: r.uri,
     cid: r.cid,
-    rkey: extractRkey(r.uri),
+    rkey: rkeyFromUri(r.uri),
     value: r.value,
   }))
 }
@@ -552,7 +547,7 @@ export async function listAwards(
   return records.map((r) => ({
     uri: r.uri,
     cid: r.cid,
-    rkey: extractRkey(r.uri),
+    rkey: rkeyFromUri(r.uri),
     value: r.value,
   }))
 }
@@ -903,7 +898,7 @@ export async function listResponses(
   return (data.records ?? []).map((r) => ({
     uri: r.uri,
     cid: r.cid,
-    rkey: extractRkey(r.uri),
+    rkey: rkeyFromUri(r.uri),
     value: r.value,
   }))
 }

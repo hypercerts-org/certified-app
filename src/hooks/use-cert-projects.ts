@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { CollectionRecord, CollectionValue } from "@/lib/atproto/collection"
-import { INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
+import { postIndexer } from "@/lib/atproto/indexer"
 
 /**
  * Given a cert (did + rkey), find every `org.hypercerts.collection`
@@ -16,61 +16,55 @@ import { INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
  * below replaces that stopgap and picks up cross-DID curation for
  * free.
  */
-interface ProjectsContainingCertResponse {
-  data?: {
-    orgHypercertsCollection?: {
-      edges: {
-        node:
-          | (Pick<CollectionRecord, "uri" | "cid"> & {
-              did: string
-              createdAt: string | null
-              title: string | null
-              shortDescription: string | null
-              items: { itemIdentifier?: { uri?: string; cid?: string } }[] | null
-              banner: unknown | null
-            })
-          | null
-      }[]
-    } | null
+interface ProjectsContainingCertData {
+  orgHypercertsCollection?: {
+    edges: {
+      node:
+        | (Pick<CollectionRecord, "uri" | "cid"> & {
+            did: string
+            createdAt: string | null
+            title: string | null
+            shortDescription: string | null
+            items: { itemIdentifier?: { uri?: string; cid?: string } }[] | null
+            banner: unknown | null
+          })
+        | null
+    }[]
   } | null
-  errors?: { message: string }[]
 }
 
 export function useCertProjects(did: string | null, rkey: string | null) {
   const [projects, setProjects] = useState<CollectionRecord[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!did && !!rkey)
   const [error, setError] = useState<string | null>(null)
 
+  // Adjust state during render when the cert identity changes, so the
+  // effect holds only the fetch lifecycle.
+  const certKey = `${did}|${rkey}`
+  const [prevCertKey, setPrevCertKey] = useState(certKey)
+  if (prevCertKey !== certKey) {
+    setPrevCertKey(certKey)
+    setProjects([])
+    setIsLoading(!!did && !!rkey)
+    setError(null)
+  }
+
   useEffect(() => {
-    if (!did || !rkey) {
-      setProjects([])
-      setIsLoading(false)
-      setError(null)
-      return
-    }
+    if (!did || !rkey) return
 
     const certUri = `at://${did}/org.hypercerts.claim.activity/${rkey}`
     const controller = new AbortController()
     const signal = controller.signal
 
-    setIsLoading(true)
-    setError(null)
-
-    fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "ProjectsContainingCert",
-        variables: { certUri, first: 50 },
-      }),
-      signal,
-    })
-      .then(async (res) => {
+    postIndexer<ProjectsContainingCertData>(
+      "ProjectsContainingCert",
+      { certUri, first: 50 },
+      { signal },
+    )
+      .then((res) => {
         if (signal.aborted) return
         if (!res.ok) throw new Error(`Indexer returned ${res.status}`)
-        const json = (await res.json()) as ProjectsContainingCertResponse
-        if (signal.aborted) return
-        const edges = json.data?.orgHypercertsCollection?.edges ?? []
+        const edges = res.data?.orgHypercertsCollection?.edges ?? []
         const out: CollectionRecord[] = []
         for (const edge of edges) {
           if (!edge.node) continue

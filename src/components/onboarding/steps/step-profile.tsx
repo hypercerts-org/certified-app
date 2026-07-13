@@ -22,18 +22,6 @@ export interface ProfileDraft {
   replacementBannerFile: File | null
 }
 
-export function emptyProfileDraft(): ProfileDraft {
-  return {
-    displayName: "",
-    description: "",
-    website: "",
-    sourceAvatarUrl: null,
-    sourceBannerUrl: null,
-    replacementAvatarFile: null,
-    replacementBannerFile: null,
-  }
-}
-
 interface StepProfileProps {
   readonly draft: ProfileDraft
   onChange: (draft: ProfileDraft) => void
@@ -90,6 +78,7 @@ export default function StepProfile({
     <div className="onboarding-step onboarding-step--profile">
       <div className="onboarding-step__hero">
         {previewBannerUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- previewBannerUrl is a blob: object URL or an arbitrary remote bsky banner; next/image supports neither (remotePatterns is limited to **.certified.app)
           <img
             src={previewBannerUrl}
             alt=""
@@ -101,6 +90,7 @@ export default function StepProfile({
         )}
         <div className="onboarding-step__avatar-slot">
           {previewAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- previewAvatarUrl is a blob: object URL or an arbitrary remote bsky avatar; same remotePatterns constraint as the banner above
             <img
               src={previewAvatarUrl}
               alt=""

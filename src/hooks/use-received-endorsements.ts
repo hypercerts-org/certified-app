@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import { postIndexer, type IndexerPostResult } from "@/lib/atproto/indexer"
 
 /**
  * One endorsement received: who endorsed me, when, and the optional
@@ -64,11 +65,9 @@ export interface ReceivedEndorsement {
  * user (N round-trips) into one query.
  *
  * Query string lives server-side in `OPERATIONS.ReceivedEndorsements`
- * (`src/app/api/indexer/route.ts`); the client only sends
+ * (`src/app/api/indexer/operations.ts`); the client only sends
  * `{ operationName, variables }`.
  */
-const INDEXER_PROXY_URL = "/api/indexer"
-
 interface IndexerIssuerBlock {
   did?: string | null
   handle?: string | null
@@ -95,49 +94,39 @@ interface IndexerAwardNode {
   response?: IndexerResponseBlock | null
 }
 
+interface ReceivedAwardsData {
+  appCertifiedBadgeAward?: {
+    edges: { node: IndexerAwardNode | null }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
+  } | null
+}
+
+// No AbortSignal: this runs inside the shared (singleflight) scan
+// promise, which must not be bound to any single caller's signal.
 async function fetchReceivedAwardsFromIndexer(
   profileDid: string,
-  signal?: AbortSignal,
 ): Promise<IndexerAwardNode[]> {
   const PAGE_SIZE = 100
   const SAFETY_CAP = 10_000
   const out: IndexerAwardNode[] = []
   let cursor: string | null = null
   while (out.length < SAFETY_CAP) {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "ReceivedEndorsements",
-        variables: { did: profileDid, first: PAGE_SIZE, after: cursor },
-      }),
-      signal,
-    })
-    if (!res.ok) {
-      // Surface the proxy's actual reject reason in the message —
-      // issue #73 noted that "Indexer query failed: 400" swallowed
-      // which of the three proxy 400 branches fired. Reading
-      // `body.error` puts the proxy's `{error: "..."}` string into
-      // the diagnostic so the next 400 is debuggable from the
-      // network panel + the error message alone.
-      let detail = ""
-      try {
-        const body = (await res.json()) as { error?: string }
-        if (typeof body.error === "string") detail = `: ${body.error}`
-      } catch {
-        // Body wasn't JSON — fall through to the status-only message.
-      }
-      throw new Error(`Indexer query failed: ${res.status}${detail}`)
+    // Explicit annotation: the loop-carried `cursor` feeds the
+    // variables object, and inferring through it trips TS7022.
+    const result: IndexerPostResult<ReceivedAwardsData> = await postIndexer(
+      "ReceivedEndorsements",
+      { did: profileDid, first: PAGE_SIZE, after: cursor },
+    )
+    if (!result.ok) {
+      // Surface the reject reason when the body carried a GraphQL
+      // errors array — issue #73 noted that a bare "Indexer query
+      // failed: 400" swallowed which proxy branch fired. Proxy-side
+      // rejects with plain `{error}` bodies stay status-only here;
+      // the network panel carries the string.
+      const detail = result.errors[0] ? `: ${result.errors[0].message}` : ""
+      throw new Error(`Indexer query failed: ${result.status}${detail}`)
     }
-    const json = (await res.json()) as {
-      data?: {
-        appCertifiedBadgeAward?: {
-          edges: { node: IndexerAwardNode | null }[]
-          pageInfo: { hasNextPage: boolean; endCursor: string | null }
-        } | null
-      } | null
-    }
-    const conn = json.data?.appCertifiedBadgeAward
+    const conn = result.data?.appCertifiedBadgeAward
     if (!conn) break
     for (const edge of conn.edges) {
       if (edge.node) out.push(edge.node)
@@ -173,10 +162,8 @@ async function fetchReceivedAwardsFromIndexer(
  */
 async function scanReceivedEndorsements(
   profileDid: string,
-  signal?: AbortSignal,
 ): Promise<ReceivedEndorsement[]> {
-  const awards = await fetchReceivedAwardsFromIndexer(profileDid, signal)
-  if (signal?.aborted) return []
+  const awards = await fetchReceivedAwardsFromIndexer(profileDid)
 
   const out: ReceivedEndorsement[] = []
   for (const a of awards) {
@@ -243,6 +230,12 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>()
+
+// Singleflight: on a cold profile visit the header, sidebar and
+// overview all mount this hook for the same DID in one commit — they
+// share ONE scan instead of racing three identical page-walks against
+// the cold cache (mirrors `inflightByDid` in use-profile-responses).
+const inflightByDid = new Map<string, Promise<ReceivedEndorsement[]>>()
 
 // ---------------------------------------------------------------------------
 // Shared optimistic overlay, keyed by profileDid. Lets a mutation in one
@@ -327,25 +320,6 @@ export function removeOptimisticReceivedEndorsement(
 }
 
 /**
- * Read the cached scan result for a DID without triggering a
- * network fetch. Used by `usePendingAwardsCount` on the nav rail —
- * we don't want the nav-rail render on every authed page to kick
- * off a fan-out scan (R2 I-1). Callers get `null` when the cache
- * is cold; the chip stays hidden until something else populates
- * the cache (typically when the user actually visits /endorsements
- * or their own profile).
- */
-export function peekCachedReceivedEndorsements(
-  profileDid: string | null,
-): ReceivedEndorsement[] | null {
-  if (!profileDid) return null
-  const entry = cache.get(profileDid)
-  if (!entry) return null
-  if (Date.now() - entry.fetchedAt >= STALE_MS) return null
-  return mergeOverlay(profileDid, entry.data)
-}
-
-/**
  * Fetch every public endorsement award targeting `profileDid`, AND
  * filter out awards whose latest response (on the profile owner's
  * PDS) is `"rejected"`. Scoped to the badge.{definition,award,response}
@@ -407,9 +381,34 @@ export function useReceivedEndorsements(
     setScanLoading(true)
     setError(null)
     try {
-      const data = await scanReceivedEndorsements(did, signal)
+      // Share the in-flight scan across instances. The promise is
+      // deliberately NOT bound to any single caller's AbortSignal —
+      // one consumer unmounting must not fail its siblings (same
+      // contract as useTypedLists' shared fetch). Each instance keeps
+      // its own aborted guard below before touching state.
+      let promise = inflightByDid.get(did)
+      if (!promise) {
+        promise = scanReceivedEndorsements(did).then((data) => {
+          cache.set(did, { data, fetchedAt: Date.now() })
+          return data
+        })
+        inflightByDid.set(did, promise)
+        const created = promise
+        created
+          .catch(() => {
+            // Swallowed here only — each awaiting instance surfaces
+            // its own error from its `await`.
+          })
+          .finally(() => {
+            // Only clear if still ours (a later scan may have taken
+            // the slot during the await window).
+            if (inflightByDid.get(did) === created) {
+              inflightByDid.delete(did)
+            }
+          })
+      }
+      const data = await promise
       if (signal?.aborted) return
-      cache.set(did, { data, fetchedAt: Date.now() })
       setScanResult(data)
     } catch (err) {
       if (signal?.aborted) return

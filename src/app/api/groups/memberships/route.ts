@@ -30,11 +30,15 @@ export async function GET(request: NextRequest) {
       url.searchParams.set("cursor", cursor)
     }
 
-    // Fetch from group service with service auth
+    // Fetch from group service with service auth. Bound like every
+    // other CGS upstream (groupServiceFetch uses the same 15s) — a
+    // hung group service must not pin the invocation to the platform
+    // ceiling.
     const res = await fetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (!res.ok) {

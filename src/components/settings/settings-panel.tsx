@@ -14,7 +14,6 @@ import {
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
-import OrgSettings from "@/components/groups/org-settings"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import AppPasswordsSection from "@/components/settings/app-passwords-section"
@@ -30,6 +29,12 @@ const EmailSection = dynamic(
 )
 const PasswordSection = dynamic(
   () => import("@/components/account/password-section"),
+)
+// Group-admin subtree (member management, group password reset) —
+// only group accounts render it, so keep it out of the personal
+// /settings first-load chunk.
+const OrgSettings = dynamic(
+  () => import("@/components/groups/org-settings"),
 )
 
 type PageKey =

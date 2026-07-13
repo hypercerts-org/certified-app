@@ -5,7 +5,8 @@ import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Tooltip from "@/components/ui/tooltip"
 import { useContributorInfo } from "@/hooks/use-contributor-info"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
+import { isDid } from "@/lib/utils/did"
 
 interface ContributorIdentityCardProps {
   /** Normalised identity string (DID or handle without leading `@`). */
@@ -35,10 +36,14 @@ export function ContributorIdentityCard({
 }: ContributorIdentityCardProps) {
   const { info, isLoading } = useContributorInfo(identity)
 
-  const displayName = info?.displayName || info?.handle || identity
-  const handle =
-    info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName ?? null, info?.did ?? identity)
+  // `identity` is a handle-or-DID string: a handle stays the display
+  // fallback while resolution is pending / failed; a DID falls through
+  // to deriveIdentity's canonical truncated-DID fallback.
+  const { displayName, handle, initials } = deriveIdentity(
+    info,
+    info?.did ?? identity,
+    { fallbackLabel: isDid(identity) ? undefined : identity },
+  )
 
   return (
     <div

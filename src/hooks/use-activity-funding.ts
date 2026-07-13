@@ -24,7 +24,7 @@ export function useActivityFunding(
   const { first = 100 } = options
   const [receipts, setReceipts] = useState<FundingReceipt[]>([])
   const [totalCount, setTotalCount] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!did && !!rkey)
   const [error, setError] = useState<string | null>(null)
   // Bumped by `refetch()` to re-run the fetch effect — e.g. the "refresh"
   // affordance shown after recording, since the indexer is eventually
@@ -32,21 +32,31 @@ export function useActivityFunding(
   const [refreshNonce, setRefreshNonce] = useState(0)
   const refetch = useCallback(() => setRefreshNonce((n) => n + 1), [])
 
-  useEffect(() => {
-    if (!did || !rkey) {
+  // Adjust state during render when the fetch identity changes (the nonce
+  // is part of the key so refetch() still flips isLoading). Stale receipts
+  // are kept while a same-target refetch is in flight, matching the old
+  // effect's behavior.
+  const fetchKey = `${did}|${rkey}|${first}|${refreshNonce}`
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey)
+  if (prevFetchKey !== fetchKey) {
+    setPrevFetchKey(fetchKey)
+    if (did && rkey) {
+      setIsLoading(true)
+      setError(null)
+    } else {
       setReceipts([])
       setTotalCount(null)
       setIsLoading(false)
       setError(null)
-      return
     }
+  }
+
+  useEffect(() => {
+    if (!did || !rkey) return
 
     const forUri = `at://${did}/org.hypercerts.claim.activity/${rkey}`
     const controller = new AbortController()
     const { signal } = controller
-
-    setIsLoading(true)
-    setError(null)
 
     fetchFundingReceiptsForActivity(forUri, { first, signal })
       .then((result) => {

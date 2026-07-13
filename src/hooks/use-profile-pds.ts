@@ -26,20 +26,28 @@ export function useProfilePds(did: string | null): ProfilePdsResult {
   )
   const [isLoading, setIsLoading] = useState<boolean>(() => !!did && !cache.has(did))
 
+  // Adjust state during render when the DID changes, re-running the
+  // cache-aware initializer expressions. Inflight-map bookkeeping stays
+  // in the effect (module-map mutation must not happen during render).
+  const [prevDid, setPrevDid] = useState(did)
+  if (prevDid !== did) {
+    setPrevDid(did)
+    setPdsUrl(did && cache.has(did) ? (cache.get(did) ?? null) : null)
+    setIsLoading(!!did && !cache.has(did))
+  }
+
   useEffect(() => {
-    if (!did) {
-      setPdsUrl(null)
-      setIsLoading(false)
-      return
-    }
-    if (cache.has(did)) {
-      setPdsUrl(cache.get(did) ?? null)
-      setIsLoading(false)
-      return
-    }
+    if (!did) return
     let cancelled = false
-    setIsLoading(true)
-    const promise = inflight.get(did) ?? resolvePdsUrl(did)
+    // A cache hit still flows through a resolved promise so a fill that
+    // races the mount (another component's resolve landing between our
+    // render and this effect) can't leave isLoading stuck true — the
+    // async sets bail out when nothing changed.
+    const promise =
+      inflight.get(did) ??
+      (cache.has(did)
+        ? Promise.resolve(cache.get(did) ?? null)
+        : resolvePdsUrl(did))
     inflight.set(did, promise)
     promise
       .then((url) => {

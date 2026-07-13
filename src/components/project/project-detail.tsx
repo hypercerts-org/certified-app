@@ -55,12 +55,20 @@ import {
 import { putProjectRecord } from "@/lib/atproto/project"
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
-import { saveDraft } from "@/lib/utils/swap-drafts"
+import {
+  contributorKey,
+  contributionRoleText,
+} from "@/lib/atproto/contributor-display"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatShortDate, formatTimePeriod } from "@/lib/utils/format-date"
 import type { LinearDocument } from "@/lib/leaflet/types"
-import type { CollectionValue } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  projectTitle,
+  type CollectionValue,
+} from "@/lib/atproto/collection"
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import type {
   ActivityContributor as ActivityContributorType,
@@ -88,10 +96,6 @@ interface ProjectDetailProps {
   handle: string | null
 }
 
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
-}
-
 /** True when the existing description is present but in a shape the
  *  leaflet editor can't open in-place — a `com.atproto.repo.strongRef`
  *  union member, a `org.hypercerts.defs#descriptionString`, or any
@@ -113,27 +117,6 @@ function shouldPreserveDescription(
   if (typeof value === "string") return false
   if (linear != null) return false
   return true
-}
-
-function contributorKey(
-  c: ActivityContributorType,
-  index: number,
-): string {
-  const id = c.contributorIdentity as unknown
-  if (id && typeof id === "object") {
-    const obj = id as Record<string, unknown>
-    if (typeof obj.uri === "string") return `${obj.uri}#${index}`
-    if (typeof obj.identity === "string") return `${obj.identity}#${index}`
-  }
-  if (typeof id === "string") return `${id}#${index}`
-  return `contributor-${index}`
-}
-
-function contributionRoleText(details: unknown): string | null {
-  if (typeof details === "string") return details
-  if (!details || typeof details !== "object") return null
-  const obj = details as Record<string, unknown>
-  return typeof obj.role === "string" ? obj.role : null
 }
 
 /**
@@ -265,9 +248,7 @@ export default function ProjectDetail({
   // no hand-rolled document listeners are needed here.
 
   const title =
-    asString(effectiveValue.title) ||
-    asString(effectiveValue.name) ||
-    "Untitled project"
+    projectTitle(effectiveValue)
 
   const shortDesc = asString(effectiveValue.shortDescription)
   const showFullDescription = isRenderableDescription(effectiveValue.description)
@@ -361,16 +342,9 @@ export default function ProjectDetail({
   //   2. Post-save local mirror.
   //   3. Re-resolved from the local mirror's record.
   //   4. Original server value.
-  const rawImage =
-    (effectiveValue as Record<string, unknown>).banner ??
-    (effectiveValue as Record<string, unknown>).image
+  const rawImage = projectImage(effectiveValue, "banner")
   const serverImageUrl =
-    rawImage && !imageRemoved
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          did,
-        )
-      : null
+    rawImage && !imageRemoved ? resolveActivityImageUrl(rawImage, did) : null
   const effectiveImageUrl =
     pendingImagePreviewUrl ?? localImageUrl ?? serverImageUrl
 
@@ -448,14 +422,7 @@ export default function ProjectDetail({
   }, [resolutions])
 
   // Time period rendering — same rules as the cert detail.
-  let timePeriodLabel: string | null = null
-  if (startDate && endDate) {
-    timePeriodLabel = `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
-  } else if (startDate) {
-    timePeriodLabel = `${formatShortDate(startDate)} (ongoing)`
-  } else if (endDate) {
-    timePeriodLabel = `Until ${formatShortDate(endDate)}`
-  }
+  const timePeriodLabel = formatTimePeriod(startDate, endDate)
 
   const certCount = resolutions.length
   // Phones show the activities preview as full-width list rows (the
@@ -821,36 +788,21 @@ export default function ProjectDetail({
       })
 
       if (!result.ok) {
-        // Conflict or livelock — persist drafts to localStorage so
-        // the user can recover after refresh, and surface a clear
-        // error in the EditBanner. Don't throw; the save handler's
-        // catch below is for unexpected errors.
-        saveDraft(sessionDid, "org.hypercerts.collection", rkey, {
-          title: trimmedTitle,
-          shortDescription: trimmedShort,
-          description: drafts.description,
-          items: draftItems,
-        })
+        // Conflict or livelock — surface a clear error in the
+        // EditBanner. Don't throw; the save handler's catch below
+        // is for unexpected errors.
         if (result.reason === "conflict") {
           setSaveError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Your draft is saved locally; refresh to see the latest version and re-apply.`,
+            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to see the latest version and re-apply your changes.`,
           )
         } else {
           setSaveError(
-            "Couldn't auto-merge after several retries — your draft is saved locally; refresh to see the latest version.",
+            "Couldn't auto-merge after several retries — refresh to see the latest version and try again.",
           )
         }
         return
       }
 
-      // Success — clear any prior conflict draft.
-      try {
-        const { clearDraft } = await import("@/lib/utils/swap-drafts")
-        clearDraft(sessionDid, "org.hypercerts.collection", rkey)
-      } catch {
-        // Non-fatal — module load shouldn't fail; if it does,
-        // a stale draft just sticks around until next conflict.
-      }
       if (nextSaved) setLocalValue(nextSaved)
       if (pendingImagePreviewUrl) {
         // Revoke any prior local mirror before promoting the

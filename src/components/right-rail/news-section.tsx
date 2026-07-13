@@ -3,6 +3,7 @@
 import React, { useId } from "react"
 import { useBskyPosts, type BskyPost } from "@/hooks/use-bsky-posts"
 import { formatRelativeTime } from "@/lib/atproto/activity"
+import { rkeyFromUri } from "@/lib/urls"
 import RichText from "./rich-text"
 
 const DEFAULT_ACTOR = "certified.app"
@@ -72,7 +73,7 @@ export default function NewsSection({
 function NewsPost({ post }: { post: BskyPost }) {
   // The AT-URI ends in the rkey: at://<did>/app.bsky.feed.post/<rkey>.
   // Bluesky's public web link is /profile/<handle>/post/<rkey>.
-  const rkey = post.uri.split("/").pop() ?? ""
+  const rkey = rkeyFromUri(post.uri)
   const permalink = rkey
     ? `https://bsky.app/profile/${encodeURIComponent(post.author.handle)}/post/${encodeURIComponent(rkey)}`
     : `https://bsky.app/profile/${encodeURIComponent(post.author.handle)}`

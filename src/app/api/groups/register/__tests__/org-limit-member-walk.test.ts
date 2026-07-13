@@ -17,6 +17,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  * asserting the second page is never fetched, while the limit decision is
  * unchanged.
  *
+ * A second guard skips the walk outright when the user belongs to fewer than
+ * MAX_SELF_CREATED_ORGS groups — selfCreatedCount <= allGroups.length, so the
+ * cap is unreachable and the per-group fan-out is provably wasted latency.
+ *
  * The route pulls in server-only deps (OAuth client, session, atproto Agent)
  * at import time, so we mock those and drive the POST handler through the
  * org-limit check via a mocked `createGroupClient`.
@@ -63,17 +67,17 @@ function makeAuth() {
 }
 
 /**
- * Global fetch returning a single group for the membership.list call and a
- * 200 success for the final register call.
+ * Global fetch returning the given groups for the membership.list call and
+ * a 200 success for the final register call.
  */
-function installFetch() {
+function installFetch(groupDids: string[]) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString()
       if (url.includes("membership.list")) {
         return new Response(
-          JSON.stringify({ groups: [{ groupDid: "did:plc:groupA" }] }),
+          JSON.stringify({ groups: groupDids.map((groupDid) => ({ groupDid })) }),
           { status: 200 }
         )
       }
@@ -96,27 +100,38 @@ afterEach(() => {
 describe("groups/register org-limit member-walk early exit (quality-056-authz-repo-4)", () => {
   it("stops paginating a group's member list once the self-added entry is found", async () => {
     vi.mocked(getAuthenticatedAgent).mockResolvedValue(makeAuth())
-    installFetch()
+    // Five memberships — at MAX_SELF_CREATED_ORGS, so the walk runs (below
+    // the cap it is skipped entirely; see the next test).
+    installFetch([
+      "did:plc:groupA",
+      "did:plc:groupB",
+      "did:plc:groupC",
+      "did:plc:groupD",
+      "did:plc:groupE",
+    ])
 
-    // member.list mock: page 1 contains the owner's self-added entry AND a
-    // cursor pointing at a (nonexistent-in-spirit) page 2. The pre-fix walk
-    // would follow the cursor and call again; the fixed walk must stop.
-    const memberListCall = vi.fn(async (_lxm: string, params: { cursor?: string }) => {
-      if (!params.cursor) {
+    // member.list mock: groupA's page 1 contains the owner's self-added
+    // entry AND a cursor pointing at a (nonexistent-in-spirit) page 2. The
+    // pre-fix walk would follow the cursor and call again; the fixed walk
+    // must stop. The other groups return a single page without the entry.
+    const memberListCall = vi.fn(
+      async (_lxm: string, params: { repo?: string; cursor?: string }) => {
+        if (params.repo === "did:plc:groupA" && !params.cursor) {
+          return {
+            data: {
+              members: [{ did: OWNER_DID, addedBy: OWNER_DID }],
+              cursor: "page2",
+            },
+          }
+        }
         return {
           data: {
-            members: [{ did: OWNER_DID, addedBy: OWNER_DID }],
-            cursor: "page2",
+            members: [{ did: "did:plc:other", addedBy: "did:plc:other" }],
+            cursor: undefined,
           },
         }
       }
-      return {
-        data: {
-          members: [{ did: "did:plc:other", addedBy: "did:plc:other" }],
-          cursor: undefined,
-        },
-      }
-    })
+    )
     vi.mocked(createGroupClient).mockReturnValue({
       call: memberListCall,
     } as never)
@@ -130,8 +145,33 @@ describe("groups/register org-limit member-walk early exit (quality-056-authz-re
     // proceeds — the limit decision is unchanged by the early exit.
     expect(res.status).toBe(200)
 
-    // Early exit: the matching entry was on page 1, so page 2 must never be
-    // requested. Pre-fix code calls member.list twice (page 1 + page 2).
-    expect(memberListCall).toHaveBeenCalledTimes(1)
+    // Page-level early exit: groupA's matching entry was on page 1, so its
+    // page 2 must never be requested — every group contributes exactly one
+    // call. Pre-fix code follows groupA's cursor for a sixth call.
+    expect(memberListCall).toHaveBeenCalledTimes(5)
+    const cursors = memberListCall.mock.calls.map(([, params]) => params.cursor)
+    expect(cursors.every((c) => c === undefined)).toBe(true)
+  })
+
+  it("skips the member walk entirely below MAX_SELF_CREATED_ORGS memberships", async () => {
+    vi.mocked(getAuthenticatedAgent).mockResolvedValue(makeAuth())
+    // One membership: selfCreatedCount <= allGroups.length < 5, so the cap
+    // is unreachable and the per-group walk (a service-auth mint + CGS
+    // call per group) must not run at all.
+    installFetch(["did:plc:groupA"])
+
+    const memberListCall = vi.fn()
+    vi.mocked(createGroupClient).mockReturnValue({
+      call: memberListCall,
+    } as never)
+
+    const { POST } = await import("../route")
+    const res = await POST(
+      makeRequest({ handle: "owner.test", ownerDid: OWNER_DID }) as never
+    )
+
+    expect(res.status).toBe(200)
+    expect(createGroupClient).not.toHaveBeenCalled()
+    expect(memberListCall).not.toHaveBeenCalled()
   })
 })

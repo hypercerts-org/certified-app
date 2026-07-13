@@ -42,10 +42,11 @@ export function useBottomSheetDrag({
     }
   }, [])
 
-  // Reset sheet expanded state when closed
-  useEffect(() => {
-    if (!isOpen) setSheetExpanded(false)
-  }, [isOpen])
+  // Reset sheet expanded state when closed — adjusted during render so
+  // the collapse doesn't wait for an effect pass.
+  if (!isOpen && sheetExpanded) {
+    setSheetExpanded(false)
+  }
 
   // Auto-expand sheet when input is focused on mobile (keyboard opens)
   useEffect(() => {

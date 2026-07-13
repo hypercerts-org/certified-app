@@ -30,7 +30,7 @@
 import type { ActivityRecord } from "./activity-types"
 import type { CollectionRecord } from "./collection"
 import {
-  INDEXER_PROXY_URL,
+  postIndexer,
   type ActivityGraphQLNode,
   type CollectionGraphQLNode,
   nodeToActivityRecord,
@@ -138,23 +138,21 @@ export interface FetchFollowerEventsOptions {
   signal?: AbortSignal
 }
 
-interface FollowerEventsResponse {
-  data?: {
-    followerEvents?: {
-      edges: {
-        cursor: string
-        node: {
-          id: string
-          kind: string
-          subjectUri: string
-          sortAt: string
-          actor: FeedActor
-        } | null
-      }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
+/** GraphQL `data` payload of the FollowerEvents op. */
+interface FollowerEventsData {
+  followerEvents?: {
+    edges: {
+      cursor: string
+      node: {
+        id: string
+        kind: string
+        subjectUri: string
+        sortAt: string
+        actor: FeedActor
+      } | null
+    }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
   } | null
-  errors?: { message: string; extensions?: { code?: string } }[]
 }
 
 export async function fetchFollowerEvents(
@@ -162,21 +160,17 @@ export async function fetchFollowerEvents(
 ): Promise<FeedEventPage> {
   const { authors, first = DEFAULT_FEED_PAGE_SIZE, after, kinds, sortBy, signal } = options
 
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "FollowerEvents",
-      variables: {
-        authors,
-        first,
-        after: after ?? null,
-        kinds: kinds && kinds.length > 0 ? kinds : null,
-        sortBy: sortBy ?? null,
-      },
-    }),
-    signal,
-  })
+  const res = await postIndexer<FollowerEventsData>(
+    "FollowerEvents",
+    {
+      authors,
+      first,
+      after: after ?? null,
+      kinds: kinds && kinds.length > 0 ? kinds : null,
+      sortBy: sortBy ?? null,
+    },
+    { signal },
+  )
 
   if (!res.ok) {
     throw new FollowerEventsError(
@@ -185,24 +179,22 @@ export async function fetchFollowerEvents(
     )
   }
 
-  const json = (await res.json()) as FollowerEventsResponse
-
-  if (json.errors?.length) {
-    const first = json.errors[0]
+  if (res.errors.length > 0) {
+    const firstError = res.errors[0]
     throw new FollowerEventsError(
-      first.message,
-      parseErrorCode(first.extensions?.code),
+      firstError.message,
+      parseErrorCode(firstError.extensions?.code),
     )
   }
 
-  if (!json.data?.followerEvents) {
+  if (!res.data?.followerEvents) {
     throw new FollowerEventsError(
       "Indexer returned no followerEvents payload",
       null,
     )
   }
 
-  const conn = json.data.followerEvents
+  const conn = res.data.followerEvents
   const events: FeedEvent[] = []
   for (const edge of conn.edges) {
     if (!edge.node) continue
@@ -361,19 +353,17 @@ interface AttachmentGraphQLNode {
   content: AttachmentContentItem[] | null
 }
 
-interface HydrateFeedPageResponse {
-  data?: {
-    activities?: { edges: { node: ActivityGraphQLNode | null }[] } | null
-    collections?: {
-      edges: { node: CollectionWithTypeGraphQLNode | null }[]
-    } | null
-    badgeAwards?: { edges: { node: BadgeAwardGraphQLNode | null }[] } | null
-    evaluations?: { edges: { node: EvaluationGraphQLNode | null }[] } | null
-    measurements?: { edges: { node: MeasurementGraphQLNode | null }[] } | null
-    hyperboards?: { edges: { node: HyperboardGraphQLNode | null }[] } | null
-    attachments?: { edges: { node: AttachmentGraphQLNode | null }[] } | null
+/** GraphQL `data` payload of the HydrateFeedPage op. */
+interface HydrateFeedPageData {
+  activities?: { edges: { node: ActivityGraphQLNode | null }[] } | null
+  collections?: {
+    edges: { node: CollectionWithTypeGraphQLNode | null }[]
   } | null
-  errors?: { message: string }[]
+  badgeAwards?: { edges: { node: BadgeAwardGraphQLNode | null }[] } | null
+  evaluations?: { edges: { node: EvaluationGraphQLNode | null }[] } | null
+  measurements?: { edges: { node: MeasurementGraphQLNode | null }[] } | null
+  hyperboards?: { edges: { node: HyperboardGraphQLNode | null }[] } | null
+  attachments?: { edges: { node: AttachmentGraphQLNode | null }[] } | null
 }
 
 export interface HydrateFeedEventsOptions {
@@ -475,51 +465,45 @@ export async function hydrateFeedEvents(
     return events.map((event) => ({ event, payload: null }))
   }
 
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "HydrateFeedPage",
-      variables: {
-        activityUris,
-        collectionUris,
-        badgeAwardUris,
-        evaluationUris,
-        measurementUris,
-        hyperboardUris,
-        attachmentUris,
-        activityExcludeLabels:
-          excludeCertLabels && excludeCertLabels.length > 0
-            ? [...excludeCertLabels]
-            : null,
-        activityIncludeLabels:
-          includeCertLabels && includeCertLabels.length > 0
-            ? [...includeCertLabels]
-            : null,
-      },
-    }),
-    signal,
-  })
+  const res = await postIndexer<HydrateFeedPageData>(
+    "HydrateFeedPage",
+    {
+      activityUris,
+      collectionUris,
+      badgeAwardUris,
+      evaluationUris,
+      measurementUris,
+      hyperboardUris,
+      attachmentUris,
+      activityExcludeLabels:
+        excludeCertLabels && excludeCertLabels.length > 0
+          ? [...excludeCertLabels]
+          : null,
+      activityIncludeLabels:
+        includeCertLabels && includeCertLabels.length > 0
+          ? [...includeCertLabels]
+          : null,
+    },
+    { signal },
+  )
 
   if (!res.ok) {
     throw new Error(`Hydration request failed: ${res.status}`)
   }
 
-  const json = (await res.json()) as HydrateFeedPageResponse
-
-  if (json.errors?.length) {
+  if (res.errors.length > 0) {
     // GraphQL can return partial data alongside errors. Log and keep
     // going — events whose hydration failed will fall through to the
     // fallback card via `payload: null`.
     console.warn(
       "[follower-events] HydrateFeedPage error:",
-      json.errors[0].message,
+      res.errors[0].message,
     )
   }
 
   const payloadByUri = new Map<string, HydratedPayload>()
 
-  for (const edge of json.data?.activities?.edges ?? []) {
+  for (const edge of res.data?.activities?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "cert.create",
@@ -527,7 +511,7 @@ export async function hydrateFeedEvents(
       labels: edge.node.labels ?? [],
     })
   }
-  for (const edge of json.data?.collections?.edges ?? []) {
+  for (const edge of res.data?.collections?.edges ?? []) {
     if (!edge.node) continue
     const record = nodeToCollectionRecord(edge.node)
     // nodeToCollectionRecord hardcodes `type: "project"` because the
@@ -546,7 +530,7 @@ export async function hydrateFeedEvents(
       record,
     })
   }
-  for (const edge of json.data?.badgeAwards?.edges ?? []) {
+  for (const edge of res.data?.badgeAwards?.edges ?? []) {
     if (!edge.node || !edge.node.subject) continue
     payloadByUri.set(edge.node.uri, {
       kind: "endorsement.award",
@@ -567,7 +551,7 @@ export async function hydrateFeedEvents(
   //     until @hypercerts-org/lexicon is enriched (magic-indexer#129
   //     §3). Renders as the actor + verb sentence alone.
   //   - update: attachment's `title`
-  for (const edge of json.data?.evaluations?.edges ?? []) {
+  for (const edge of res.data?.evaluations?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "evaluation.create",
@@ -578,7 +562,7 @@ export async function hydrateFeedEvents(
       imageUrl: null,
     })
   }
-  for (const edge of json.data?.measurements?.edges ?? []) {
+  for (const edge of res.data?.measurements?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "measurement.create",
@@ -592,7 +576,7 @@ export async function hydrateFeedEvents(
       imageUrl: null,
     })
   }
-  for (const edge of json.data?.hyperboards?.edges ?? []) {
+  for (const edge of res.data?.hyperboards?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "hyperboard.create",
@@ -603,7 +587,7 @@ export async function hydrateFeedEvents(
       imageUrl: null,
     })
   }
-  for (const edge of json.data?.attachments?.edges ?? []) {
+  for (const edge of res.data?.attachments?.edges ?? []) {
     if (!edge.node) continue
     payloadByUri.set(edge.node.uri, {
       kind: "update.create",

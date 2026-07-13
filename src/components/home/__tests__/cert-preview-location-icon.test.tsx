@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest"
 import { render, screen, cleanup, within } from "@testing-library/react"
 
-import { CertPreview } from "../home-feed"
+import { CertPreview } from "../home-feed-rows"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 // bug-010: the feed PreviewCard's MapPin was gated on

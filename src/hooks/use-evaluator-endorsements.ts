@@ -23,16 +23,19 @@ export function useEvaluatorEndorsements(selected: Set<string>) {
   const [isLoading, setIsLoading] = useState(selected.size > 0)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (selectedKey === "") {
-      setEndorsedDids(new Set())
-      setIsLoading(false)
-      setError(null)
-      return
-    }
-    const controller = new AbortController()
-    setIsLoading(true)
+  // Adjust state during render when the selection changes, so the effect
+  // holds only the fetch lifecycle.
+  const [prevSelectedKey, setPrevSelectedKey] = useState(selectedKey)
+  if (prevSelectedKey !== selectedKey) {
+    setPrevSelectedKey(selectedKey)
+    if (selectedKey === "") setEndorsedDids(new Set())
+    setIsLoading(selectedKey !== "")
     setError(null)
+  }
+
+  useEffect(() => {
+    if (selectedKey === "") return
+    const controller = new AbortController()
     fetchEvaluatorEndorsedDids(selectedKey.split(","), controller.signal)
       .then((dids) => {
         if (controller.signal.aborted) return

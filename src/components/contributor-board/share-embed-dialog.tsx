@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Copy, Check } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { recordUrl } from "@/lib/urls"
 
 interface ShareEmbedDialogProps {
@@ -19,16 +19,10 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
   const embedUrl = `${origin}/embed/board/${encodeURIComponent(did)}/${encodeURIComponent(rkey)}`
   const embedCode = `<iframe src="${embedUrl}" width="100%" height="420" style="border:0" title="Contributor board"></iframe>`
 
-  const [copied, setCopied] = useState<string | null>(null)
-  const copy = async (text: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(key)
-      window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1500)
-    } catch {
-      /* clipboard unavailable — no-op */
-    }
-  }
+  // One shared-hook instance per copy target so each button shows its
+  // own check mark; the hook auto-resets after 1500ms.
+  const { copied: linkCopied, copy: copyLink } = useCopyToClipboard()
+  const { copied: embedCopied, copy: copyEmbed } = useCopyToClipboard()
 
   return (
     <AppDialog ariaLabel="Share contributor board" onClose={onClose} maxWidth={520}>
@@ -48,9 +42,9 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
               size="icon"
               variant="secondary"
               aria-label="Copy link"
-              onClick={() => copy(shareUrl, "link")}
+              onClick={() => void copyLink(shareUrl)}
             >
-              {copied === "link" ? <Check size={16} /> : <Copy size={16} />}
+              {linkCopied ? <Check size={16} /> : <Copy size={16} />}
             </Button>
           </div>
         </div>
@@ -70,9 +64,9 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
               size="icon"
               variant="secondary"
               aria-label="Copy embed code"
-              onClick={() => copy(embedCode, "embed")}
+              onClick={() => void copyEmbed(embedCode)}
             >
-              {copied === "embed" ? <Check size={16} /> : <Copy size={16} />}
+              {embedCopied ? <Check size={16} /> : <Copy size={16} />}
             </Button>
           </div>
         </div>

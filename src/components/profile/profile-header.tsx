@@ -85,11 +85,14 @@ export default function ProfileHeader({
 
   // Track banner load failures so we fall back to the plain gradient
   // instead of showing the browser's broken-image icon. Reset the flag
-  // when the URL changes (e.g. when the user switches profiles).
+  // during render when the URL changes (e.g. when the user switches
+  // profiles) — React's adjust-state-during-render pattern.
   const [bannerFailed, setBannerFailed] = useState(false)
-  useEffect(() => {
+  const [prevBannerUrl, setPrevBannerUrl] = useState(bannerUrl)
+  if (prevBannerUrl !== bannerUrl) {
+    setPrevBannerUrl(bannerUrl)
     setBannerFailed(false)
-  }, [bannerUrl])
+  }
 
   const hasAdminActions = !!editHref || !!settingsHref
 
