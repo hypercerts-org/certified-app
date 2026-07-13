@@ -55,7 +55,10 @@ import {
 import { putProjectRecord } from "@/lib/atproto/project"
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
-import { saveDraft } from "@/lib/utils/swap-drafts"
+import {
+  contributorKey,
+  contributionRoleText,
+} from "@/lib/atproto/contributor-display"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { formatShortDate } from "@/lib/utils/format-date"
@@ -113,27 +116,6 @@ function shouldPreserveDescription(
   if (typeof value === "string") return false
   if (linear != null) return false
   return true
-}
-
-function contributorKey(
-  c: ActivityContributorType,
-  index: number,
-): string {
-  const id = c.contributorIdentity as unknown
-  if (id && typeof id === "object") {
-    const obj = id as Record<string, unknown>
-    if (typeof obj.uri === "string") return `${obj.uri}#${index}`
-    if (typeof obj.identity === "string") return `${obj.identity}#${index}`
-  }
-  if (typeof id === "string") return `${id}#${index}`
-  return `contributor-${index}`
-}
-
-function contributionRoleText(details: unknown): string | null {
-  if (typeof details === "string") return details
-  if (!details || typeof details !== "object") return null
-  const obj = details as Record<string, unknown>
-  return typeof obj.role === "string" ? obj.role : null
 }
 
 /**
@@ -821,36 +803,21 @@ export default function ProjectDetail({
       })
 
       if (!result.ok) {
-        // Conflict or livelock — persist drafts to localStorage so
-        // the user can recover after refresh, and surface a clear
-        // error in the EditBanner. Don't throw; the save handler's
-        // catch below is for unexpected errors.
-        saveDraft(sessionDid, "org.hypercerts.collection", rkey, {
-          title: trimmedTitle,
-          shortDescription: trimmedShort,
-          description: drafts.description,
-          items: draftItems,
-        })
+        // Conflict or livelock — surface a clear error in the
+        // EditBanner. Don't throw; the save handler's catch below
+        // is for unexpected errors.
         if (result.reason === "conflict") {
           setSaveError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Your draft is saved locally; refresh to see the latest version and re-apply.`,
+            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to see the latest version and re-apply your changes.`,
           )
         } else {
           setSaveError(
-            "Couldn't auto-merge after several retries — your draft is saved locally; refresh to see the latest version.",
+            "Couldn't auto-merge after several retries — refresh to see the latest version and try again.",
           )
         }
         return
       }
 
-      // Success — clear any prior conflict draft.
-      try {
-        const { clearDraft } = await import("@/lib/utils/swap-drafts")
-        clearDraft(sessionDid, "org.hypercerts.collection", rkey)
-      } catch {
-        // Non-fatal — module load shouldn't fail; if it does,
-        // a stale draft just sticks around until next conflict.
-      }
       if (nextSaved) setLocalValue(nextSaved)
       if (pendingImagePreviewUrl) {
         // Revoke any prior local mirror before promoting the
