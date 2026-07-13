@@ -1,17 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { profileUrl } from "@/lib/urls"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
-import { useOnboarding } from "@/lib/onboarding/onboarding-context"
+import {
+  useOnboarding,
+  type BlueskySeed,
+} from "@/lib/onboarding/onboarding-context"
 import { useSocialGraphSync } from "@/hooks/use-social-graph-sync"
-import StepProfile, {
-  type ProfileDraft,
-  emptyProfileDraft,
-} from "./steps/step-profile"
+import StepProfile, { type ProfileDraft } from "./steps/step-profile"
 import StepGraph, { type GraphIntent } from "./steps/step-graph"
 import {
   useOnboardingCommit,
@@ -41,6 +41,10 @@ const STEP_TITLES: Record<StepKey, string> = {
  * screen. The footer's primary button is dual-purpose: on Step 1
  * it's "Continue", on Step 2 it labels the actual finish action
  * based on the selected sync intent.
+ *
+ * The form child mounts fresh per open and per DID (key={did}), so
+ * its useState initializers do the bsky seeding — every open starts
+ * from the seed, and a draft can never leak across account switches.
  */
 export default function OnboardingModal() {
   const { isOpen, bskySeed, dismissOnboarding, completeOnboarding } =
@@ -48,50 +52,63 @@ export default function OnboardingModal() {
   const { did } = useAuth()
   const { handle } = useSession()
 
-  const [step, setStep] = useState<StepKey>("profile")
-  const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() =>
-    emptyProfileDraft(),
+  if (!isOpen) return null
+  if (!did) return null
+
+  return (
+    <OnboardingModalContent
+      key={did}
+      did={did}
+      handle={handle}
+      bskySeed={bskySeed}
+      onDismiss={dismissOnboarding}
+      onComplete={completeOnboarding}
+    />
   )
+}
+
+interface OnboardingModalContentProps {
+  readonly did: string
+  readonly handle: string | null
+  readonly bskySeed: BlueskySeed | null
+  /** User skipped or closed the modal (sets the dismissed sentinel). */
+  onDismiss: () => void
+  /** Commit pipeline finished successfully. */
+  onComplete: () => void
+}
+
+function OnboardingModalContent({
+  did,
+  handle,
+  bskySeed,
+  onDismiss,
+  onComplete,
+}: OnboardingModalContentProps) {
+  const [step, setStep] = useState<StepKey>("profile")
+  // Seeded once at mount from the bsky values available when the modal
+  // opened (the auto-popup only fires after resolve-did settles).
+  const [profileDraft, setProfileDraft] = useState<ProfileDraft>(() => ({
+    displayName: bskySeed?.displayName?.trim() ?? "",
+    description: bskySeed?.description?.trim() ?? "",
+    website: "",
+    sourceAvatarUrl: bskySeed?.avatar ?? null,
+    sourceBannerUrl: bskySeed?.banner ?? null,
+    replacementAvatarFile: null,
+    replacementBannerFile: null,
+  }))
   const [graphIntent, setGraphIntent] = useState<GraphIntent>({
     kind: "all",
   })
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
 
-  // Seed the profile draft from bsky values the first time the modal
-  // opens for this DID. Subsequent re-opens (banner clicks) keep
-  // whatever the user already typed.
-  const seededForDid = useRef<string | null>(null)
-  useEffect(() => {
-    if (!isOpen) return
-    if (!did) return
-    if (seededForDid.current === did) return
-    seededForDid.current = did
-    setProfileDraft({
-      displayName: bskySeed?.displayName?.trim() ?? "",
-      description: bskySeed?.description?.trim() ?? "",
-      website: "",
-      sourceAvatarUrl: bskySeed?.avatar ?? null,
-      sourceBannerUrl: bskySeed?.banner ?? null,
-      replacementAvatarFile: null,
-      replacementBannerFile: null,
-    })
-    setGraphIntent({ kind: "all" })
-    setSelected(new Set())
-    setStep("profile")
-  }, [isOpen, did, bskySeed])
-
-  useEffect(() => {
-    if (!isOpen) seededForDid.current = null
-  }, [isOpen])
-
   // Lifted to the modal so Step 2 can render stats inline and the
   // commit pipeline shares the same hook instance during in-place
   // imports (no double-fetch).
-  const sync = useSocialGraphSync(did ?? "", { ownDid: did ?? "" })
+  const sync = useSocialGraphSync(did, { ownDid: did })
 
   const commit = useOnboardingCommit({
     did,
-    onSuccess: completeOnboarding,
+    onSuccess: onComplete,
   })
 
   const runCommit = useCallback(
@@ -138,20 +155,30 @@ export default function OnboardingModal() {
 
   const handleClose = useCallback(() => {
     if (commit.state.status === "running") return
-    dismissOnboarding()
-  }, [commit.state.status, dismissOnboarding])
+    onDismiss()
+  }, [commit.state.status, onDismiss])
 
-  if (!isOpen) return null
-  if (!did) return null
+  // Object URL for a replacement avatar, revoked on change/unmount —
+  // creating it inline in the success render leaked one URL per
+  // re-render.
+  const replacementAvatarUrl = useMemo(
+    () =>
+      profileDraft.replacementAvatarFile
+        ? URL.createObjectURL(profileDraft.replacementAvatarFile)
+        : null,
+    [profileDraft.replacementAvatarFile],
+  )
+  useEffect(() => {
+    return () => {
+      if (replacementAvatarUrl) URL.revokeObjectURL(replacementAvatarUrl)
+    }
+  }, [replacementAvatarUrl])
 
   // Success state takes over the whole modal — no steps, no body,
   // just celebration. Button does a full reload so resolve-did's
   // 10s own-DID cache doesn't serve stale data to the profile page.
   if (commit.state.status === "success") {
-    const previewUrl =
-      (profileDraft.replacementAvatarFile
-        ? URL.createObjectURL(profileDraft.replacementAvatarFile)
-        : profileDraft.sourceAvatarUrl) || null
+    const previewUrl = replacementAvatarUrl || profileDraft.sourceAvatarUrl || null
     const goToProfile = () => {
       const target = handle ? profileUrl(handle) : "/"
       window.location.assign(target)
@@ -165,6 +192,7 @@ export default function OnboardingModal() {
       >
         <div className="onboarding-success">
           {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- previewUrl is a blob: object URL (picked file) or an arbitrary bsky-CDN avatar; next/image supports neither (remotePatterns is limited to **.certified.app)
             <img
               src={previewUrl}
               alt=""
