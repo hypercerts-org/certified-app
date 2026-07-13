@@ -559,6 +559,53 @@ describe("/api/indexer trust boundary", () => {
     })
   })
 
+  describe("CollectionsByUris", () => {
+    it("forwards a valid uri batch against the collections connection", async () => {
+      const uris = [
+        "at://did:plc:a/org.hypercerts.collection/one",
+        "at://did:plc:b/org.hypercerts.collection/two",
+      ]
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris },
+      })
+      expect(res.status).toBe(200)
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string)
+      expect(body.operationName).toBe("CollectionsByUris")
+      expect(body.query).toContain("query CollectionsByUris")
+      expect(body.query).toContain("orgHypercertsCollection")
+      expect(body.variables).toEqual({ uris })
+    })
+
+    it("400s on an empty uris array (callers skip the call instead)", async () => {
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: [] },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s on non-at:// entries", async () => {
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: ["https://example.com/x"] },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("400s when the batch exceeds MAX_URI_LIST_PER_KIND (50)", async () => {
+      const tooMany = Array.from({ length: 51 }, (_, i) => `at://did:plc:a/c/${i}`)
+      const res = await postIndexer({
+        operationName: "CollectionsByUris",
+        variables: { uris: tooMany },
+      })
+      expect(res.status).toBe(400)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
+
   describe("HydrateFeedPage", () => {
     const allEmpty = {
       activityUris: [],
