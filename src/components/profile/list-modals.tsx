@@ -6,7 +6,7 @@ import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-d
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import { fetchIndexerActivities, INDEXER_PROXY_URL } from "@/lib/atproto/indexer"
+import { fetchIndexerActivities, postIndexer } from "@/lib/atproto/indexer"
 import { searchMergedActors } from "@/lib/atproto/actor-search"
 import {
   ITEM_NSID,
@@ -664,35 +664,28 @@ async function searchCerts(query: string, signal: AbortSignal): Promise<SearchRe
   return out
 }
 
-interface ProjectsResponse {
-  data?: {
-    orgHypercertsCollection?: {
-      edges: {
-        node: {
-          uri: string
-          cid: string
-          title: string | null
-          shortDescription: string | null
-        } | null
-      }[]
-    } | null
+interface ProjectSearchData {
+  orgHypercertsCollection?: {
+    edges: {
+      node: {
+        uri: string
+        cid: string
+        title: string | null
+        shortDescription: string | null
+      } | null
+    }[]
   } | null
 }
 
 async function searchProjects(query: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "Projects",
-      variables: { first: 10, after: null, authors: null, search: query },
-    }),
-    signal,
-  })
+  const res = await postIndexer<ProjectSearchData>(
+    "Projects",
+    { first: 10, after: null, authors: null, search: query },
+    { signal },
+  )
   if (!res.ok) throw new Error(`Project search failed: ${res.status}`)
-  const json = (await res.json()) as ProjectsResponse
   const out: SearchResult[] = []
-  for (const edge of json.data?.orgHypercertsCollection?.edges ?? []) {
+  for (const edge of res.data?.orgHypercertsCollection?.edges ?? []) {
     if (!edge.node) continue
     out.push({
       uri: edge.node.uri,
