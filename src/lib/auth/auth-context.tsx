@@ -126,7 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Shared logic: handle the login API response (restored session or redirect URL)
   const handleLoginResponse = useCallback(async (res: Response) => {
     if (!res.ok) {
-      const data = await res.json() as { error?: string };
+      // A platform-level 502/504 returns HTML, not JSON — don't surface the
+      // raw SyntaxError to the sign-in modal.
+      const data = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(data.error ?? "Failed to sign in");
     }
     const data = await res.json() as { restored?: boolean; url?: string; did?: string };
@@ -239,11 +241,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.ok) {
-        const data = await res.json() as { error?: string };
+        // Non-JSON error body (platform 502/504) must not surface a raw
+        // SyntaxError to the sign-in modal.
+        const data = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(data.error ?? "Failed to sign in");
       }
 
-      const data = await res.json() as { url: string };
+      const data = await res.json() as { url?: string };
+      if (typeof data.url !== "string") {
+        throw new Error("Unexpected login response");
+      }
       safeRedirect(data.url);
     } catch (err) {
       console.error("Email sign-in error:", err);

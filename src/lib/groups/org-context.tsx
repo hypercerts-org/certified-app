@@ -38,7 +38,20 @@ function loadPersistedOrg(): Group | null {
   try {
     const raw = window.sessionStorage.getItem(ACTIVE_ORG_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as Group
+    const parsed = JSON.parse(raw) as Partial<Group> | null
+    // A stale or tampered payload (e.g. persisted before a Group schema
+    // change) would drive /api/groups/undefined/... requests until fetchOrgs
+    // reconciles — require the fields every acting-as-group consumer uses.
+    if (
+      !parsed ||
+      typeof parsed.groupDid !== "string" ||
+      !parsed.groupDid.startsWith("did:") ||
+      typeof parsed.handle !== "string"
+    ) {
+      window.sessionStorage.removeItem(ACTIVE_ORG_KEY)
+      return null
+    }
+    return parsed as Group
   } catch {
     return null
   }

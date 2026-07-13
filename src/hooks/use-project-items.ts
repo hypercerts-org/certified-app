@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { fetchIndexerActivitiesByUris } from "@/lib/atproto/indexer"
-import type { ActivityRecord, ClaimActivity } from "@/lib/atproto/activity-types"
+import { coerceClaimActivityValue } from "@/lib/atproto/coerce-claim-activity"
+import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
 
@@ -125,14 +126,16 @@ export function useProjectItems(items: unknown): {
         const data = (await res.json()) as {
           uri: string
           cid: string
-          value: ClaimActivity
+          value: unknown
         }
+        // A foreign PDS record can carry any shape — coerce the
+        // string-declared render fields before anything renders them.
         next[idx] = {
           ...next[idx],
           record: {
             uri: data.uri,
             cid: data.cid,
-            value: data.value,
+            value: coerceClaimActivityValue(data.value),
           },
         }
       } catch (err) {
