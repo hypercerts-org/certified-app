@@ -3,6 +3,7 @@ import {
   fetchFundingReceipts,
   fetchIndexerActivities,
   fetchIndexerActivitiesByUris,
+  fetchIndexerProjectsByUris,
   fetchProjects,
   fetchUserIndexerActivities,
   EndorsementClosureError,
@@ -609,10 +610,11 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
   // Account-quality (orglabeler) include / exclude filter server-side
   // on the `orgHypercertsCollection` connection via `authorLabels` /
   // `excludeAuthorLabels` (magic-indexer#207). Only the indexer-backed
-  // branches (by-endorsed + the default Projects listing) can apply
-  // these; the URI-keyed branches (Ma Earth featured, Recently viewed)
-  // resolve via PDS getRecord, which has no label-filterable
-  // connection, so they ignore the org-quality filter by design.
+  // listing branches (by-endorsed + the default Projects listing) can
+  // apply these; the URI-keyed branches (Ma Earth featured, Recently
+  // viewed) resolve exact record sets — via the `CollectionsByUris`
+  // batch (which carries no label args) or per-URI PDS getRecord — so
+  // they ignore the org-quality filter by design.
   const authorLabels = toLabelArg(includeOrgLabels)
   const excludeAuthorLabels = toLabelArg(excludeOrgLabels)
 
@@ -624,9 +626,41 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
     )
     if (signal?.aborted) return EMPTY_PAGE
     if (itemUris.length === 0) return EMPTY_PAGE
-    const res = await fetchProjectsByUris(itemUris, signal ?? undefined)
+    // Batch the curated URIs through the indexer (`CollectionsByUris`,
+    // 50-URI chunks) instead of fanning out one PDS getRecord per URI —
+    // curated sets can carry well over 100 URIs, re-fetched on every
+    // filter activation. FAIL-SOFT: the deployed indexer may not
+    // support the `uri: { in }` filter on `orgHypercertsCollection`
+    // yet, so an HTTP / GraphQL failure — or an all-empty result for
+    // URIs the curator says exist — falls back to the per-URI PDS path
+    // below. Not-yet-ingested URIs inside an otherwise-successful batch
+    // drop silently, matching the certs featured path's accepted
+    // tradeoff (see fetchIndexerActivitiesByUris).
+    let projects: CollectionRecord[] | null = null
+    try {
+      const batch = await fetchIndexerProjectsByUris(
+        itemUris,
+        signal ?? undefined,
+      )
+      if (batch.ok && batch.records.length > 0) {
+        // The indexer returns rows in indexed order; restore the
+        // curator's item order (the PDS path preserves it implicitly
+        // via the per-URI Promise.all).
+        const order = new Map(itemUris.map((u, i) => [u, i] as const))
+        projects = [...batch.records].sort(
+          (a, b) => (order.get(a.uri) ?? 0) - (order.get(b.uri) ?? 0),
+        )
+      }
+    } catch {
+      // Network-level failure (an abort exits via the check below) —
+      // fall through to the PDS path.
+    }
     if (signal?.aborted) return EMPTY_PAGE
-    let projects = res.records
+    if (projects === null) {
+      const res = await fetchProjectsByUris(itemUris, signal ?? undefined)
+      if (signal?.aborted) return EMPTY_PAGE
+      projects = res.records
+    }
     if (search.trim().length > 0) {
       const q = search.trim().toLowerCase()
       projects = projects.filter((p) => {

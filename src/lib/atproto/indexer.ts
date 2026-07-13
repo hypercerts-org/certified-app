@@ -1404,6 +1404,92 @@ export async function fetchProjects(
   }
 }
 
+/** Per-request URI cap for `CollectionsByUris`. The proxy validator
+ *  enforces the same `MAX_URI_LIST_PER_KIND` (50) cap as
+ *  `ActivitiesByUris` (mirroring the upstream indexer's "in list must
+ *  contain 1 to 50 values" limit), so larger curated sets are chunked
+ *  and the results merged client-side — same convention as
+ *  {@link fetchIndexerActivitiesByUris}. */
+const COLLECTIONS_BY_URIS_CHUNK = 50
+
+interface CollectionsByUrisData {
+  orgHypercertsCollection?: {
+    edges: {
+      node: (CollectionGraphQLNode & { type?: string | null }) | null
+    }[]
+  } | null
+}
+
+export interface IndexerProjectsByUrisResult {
+  /** Resolved records mapped through {@link nodeToCollectionRecord}
+   *  (the same shape every other indexer collections fetcher returns),
+   *  deduped by URI, in the indexer's own order. Callers that care
+   *  about the curator's item order re-sort against their input list. */
+  records: CollectionRecord[]
+  /** False when any chunk failed at the HTTP level or carried GraphQL
+   *  errors — e.g. the deployed indexer doesn't support the
+   *  `uri: { in }` filter on `orgHypercertsCollection` yet. Callers
+   *  treat false as "batch unavailable" and fall back to the per-URI
+   *  PDS path instead of rendering a silently partial set. */
+  ok: boolean
+}
+
+/**
+ * Batch fetch of specific `org.hypercerts.collection` (project) URIs
+ * through the indexer — the collections counterpart of
+ * {@link fetchIndexerActivitiesByUris}. Used by the explore page's
+ * Ma Earth featured Projects filter instead of fanning out one PDS
+ * getRecord per curated URI (curated sets can carry well over 100
+ * URIs).
+ *
+ * Fail-soft contract: HTTP failures and GraphQL errors are reported
+ * via `ok: false`, never thrown (the `postIndexer` policy), so the
+ * caller can fall back to the PDS path. Aborts still reject. Records
+ * the indexer hasn't ingested are silently absent from `records` —
+ * the same accepted tradeoff as the certs featured path.
+ */
+export async function fetchIndexerProjectsByUris(
+  uris: string[],
+  signal?: AbortSignal,
+): Promise<IndexerProjectsByUrisResult> {
+  if (uris.length === 0) return { records: [], ok: true }
+
+  const chunks = chunkArray(uris, COLLECTIONS_BY_URIS_CHUNK)
+  const responses = await Promise.all(
+    chunks.map((chunk) =>
+      postIndexer<CollectionsByUrisData>(
+        "CollectionsByUris",
+        { uris: [...chunk] },
+        signal ? { signal } : undefined,
+      ),
+    ),
+  )
+
+  const records: CollectionRecord[] = []
+  const seen = new Set<string>()
+  let ok = true
+  for (const res of responses) {
+    const connection = res.data?.orgHypercertsCollection
+    if (!res.ok || res.errors.length > 0 || !connection) {
+      if (res.errors.length > 0) {
+        console.warn(
+          "[Indexer] CollectionsByUris error:",
+          res.errors[0].message,
+        )
+      }
+      ok = false
+      continue
+    }
+    for (const edge of connection.edges) {
+      if (!edge.node) continue
+      if (seen.has(edge.node.uri)) continue
+      seen.add(edge.node.uri)
+      records.push(nodeToCollectionRecord(edge.node))
+    }
+  }
+  return { records, ok }
+}
+
 /**
  * Fetch `org.hypercerts.collection` records authored by `did` whose
  * `type === "project"` (case-insensitive). Replaces the per-DID PDS
