@@ -1,4 +1,4 @@
-import { postIndexer } from "./indexer"
+import { postIndexer } from "./indexer-client"
 
 // ----------------------------- Endorsement closure (BFS) ---------------------
 //

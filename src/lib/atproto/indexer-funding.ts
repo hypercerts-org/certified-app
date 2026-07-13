@@ -1,4 +1,4 @@
-import { postIndexer, type IndexerPostResult } from "./indexer"
+import { postIndexer, type IndexerPostResult } from "./indexer-client"
 
 // ---------------------------------------------------------------------------
 // Funding receipts (org.hypercerts.funding.receipt)

@@ -96,7 +96,7 @@ export function filtersForView(view: ExploreView): FilterOption[] {
   return filtersForKind(view)
 }
 
-export function defaultFilterForKind(kind: ExploreKind): string {
+function defaultFilterForKind(kind: ExploreKind): string {
   // Funding has no curated Ma Earth front door — its only filter is the
   // plain "all" listing, so default there.
   if (kind === "funding") return "all"

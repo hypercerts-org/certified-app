@@ -562,7 +562,7 @@ export function AddItemsModal({
                   <div className="profile-lists__add-row">
                     <span className="profile-lists__add-avatar">
                       {r.imageUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
+                        /* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob URL; next/image remotePatterns limited to **.certified.app */
                         <img src={r.imageUrl} alt="" className="profile-lists__thumb" />
                       ) : type === LIST_ACCOUNTS_TYPE ? (
                         <Avatar

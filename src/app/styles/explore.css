@@ -714,8 +714,14 @@
 /* Skip layout/paint for offscreen rows — load-more appends 50 per page
    with no cap. Estimate matches the ~60px row (40px thumb + padding);
    rendered rows are re-measured via the `auto` keyword, keeping
-   back-button scroll restoration stable. */
-.explore__list > li {
+   back-button scroll restoration stable.
+   Scoped to the three variants it helps: --funding is excluded because
+   its desktop subgrid rows need `display: contents` on the li, and
+   content-visibility / containment cannot apply to a boxless element
+   — the declaration would be inert there. */
+.explore__list--certs > li,
+.explore__list--accounts > li,
+.explore__list--projects > li {
   content-visibility: auto;
   contain-intrinsic-size: auto 64px;
 }

@@ -42,7 +42,7 @@ interface FollowersData {
  * is a single round-trip regardless of how many PDSes host followers.
  *
  * Query string lives server-side in `OPERATIONS.Followers`
- * (`src/app/api/indexer/route.ts`); the client only sends
+ * (`src/app/api/indexer/operations.ts`); the client only sends
  * `{ operationName, variables }` per the indexer proxy's trust model.
  */
 async function fetchFollowersPage(

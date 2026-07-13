@@ -1,4 +1,4 @@
-import { INDEXER_PROXY_URL, postIndexer } from "./indexer"
+import { INDEXER_PROXY_URL, postIndexer } from "./indexer-client"
 
 // ============================================================================
 // Network counts (for the /welcome landing-page stats strip)

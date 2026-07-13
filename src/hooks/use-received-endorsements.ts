@@ -65,7 +65,7 @@ export interface ReceivedEndorsement {
  * user (N round-trips) into one query.
  *
  * Query string lives server-side in `OPERATIONS.ReceivedEndorsements`
- * (`src/app/api/indexer/route.ts`); the client only sends
+ * (`src/app/api/indexer/operations.ts`); the client only sends
  * `{ operationName, variables }`.
  */
 interface IndexerIssuerBlock {

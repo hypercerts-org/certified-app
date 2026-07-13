@@ -238,7 +238,7 @@ export function ResultsArea({
   )
 }
 
-export function EmptyResults({ kind }: { kind: ExploreKind }) {
+function EmptyResults({ kind }: { kind: ExploreKind }) {
   const label =
     kind === "accounts"
       ? "accounts"

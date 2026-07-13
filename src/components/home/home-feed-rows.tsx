@@ -714,7 +714,7 @@ function PreviewCard({
     <>
       {imageUrl ? (
         <span className="home-feed__card-image">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob card image URL; next/image remotePatterns limited to **.certified.app */}
           <img
             src={imageUrl}
             alt={title ? `Image for ${title}` : ""}

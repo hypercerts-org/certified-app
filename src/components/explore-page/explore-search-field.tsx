@@ -39,19 +39,33 @@ export default function ExploreSearchField({
   const lastWroteToUrlRef = useRef<string | null>(null)
   useEffect(() => {
     if (search === lastWroteToUrlRef.current) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional external-sync escape hatch: back/forward or a filter switch rewrites `?q=` and must overwrite the local draft; a render-time adjustment would need to read lastWroteToUrlRef during render (react-hooks/refs)
     setLocalQuery(search)
   }, [search])
+  // Latest-prop mirrors for the debounce timer. The timeout callback
+  // must read the CURRENT `search` / `onCommit`, not the ones captured
+  // at the last keystroke's render: the parents' onCommit closes over a
+  // URLSearchParams snapshot, so a stale one would rebuild the URL from
+  // a pre-click state and silently revert a sort / filter / view change
+  // made during the 350ms window. Updated in an effect (never during
+  // render — react-hooks/refs).
+  const searchRef = useRef(search)
+  const onCommitRef = useRef(onCommit)
   useEffect(() => {
+    searchRef.current = search
+    onCommitRef.current = onCommit
+  }, [search, onCommit])
+  useEffect(() => {
+    // Debounce restarts on keystrokes only — the timer reads `search` /
+    // `onCommit` through the refs above, so it always sees the latest
+    // values without restarting per URL change.
     const t = setTimeout(() => {
-      if (localQuery !== search) {
+      if (localQuery !== searchRef.current) {
         lastWroteToUrlRef.current = localQuery
-        onCommit(localQuery || null)
+        onCommitRef.current(localQuery || null)
       }
     }, 350)
     return () => clearTimeout(t)
-    // Debounce fires on keystrokes only — `search` / `onCommit` are
-    // read fresh but must not restart the timer.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localQuery])
 
   return (

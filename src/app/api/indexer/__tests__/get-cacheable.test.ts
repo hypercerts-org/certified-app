@@ -62,7 +62,9 @@ async function getIndexer(query: string): Promise<Response> {
 describe("GET /api/indexer (edge-cacheable allowlist)", () => {
   describe("allowlist", () => {
     it("400s on an op outside CACHEABLE_OPS, even one POST accepts", async () => {
-      for (const op of ["FollowerEvents", "ReceivedEndorsements", "FundingReceipts", "nope"]) {
+      // "constructor" / "toString" pin the Object.hasOwn own-key check —
+      // a plain object lookup would return truthy inherited members.
+      for (const op of ["FollowerEvents", "ReceivedEndorsements", "FundingReceipts", "nope", "constructor", "toString"]) {
         mockFetch.mockClear()
         const res = await getIndexer(`?op=${op}`)
         expect(res.status, `op=${op}`).toBe(400)

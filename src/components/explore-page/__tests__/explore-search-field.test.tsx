@@ -74,6 +74,39 @@ describe("ExploreSearchField", () => {
     expect(input.value).toBe("mangrove")
   })
 
+  it("commits through the latest onCommit when the prop changes mid-debounce", () => {
+    vi.useFakeTimers()
+    const staleCommit = vi.fn()
+    const freshCommit = vi.fn()
+    const { rerender } = render(
+      <ExploreSearchField
+        search=""
+        placeholder="Search…"
+        onCommit={staleCommit}
+      />,
+    )
+    const input = screen.getByRole("searchbox", { name: "Search…" })
+    fireEvent.change(input, { target: { value: "coral" } })
+    // A sort / filter / view click during the 350ms window re-renders
+    // the parent with a NEW onCommit whose setUrl closes over the fresh
+    // URLSearchParams. The pending timer must commit through that one —
+    // the stale closure would rebuild the URL from the pre-click
+    // snapshot and revert the click.
+    rerender(
+      <ExploreSearchField
+        search=""
+        placeholder="Search…"
+        onCommit={freshCommit}
+      />,
+    )
+    act(() => {
+      vi.advanceTimersByTime(350)
+    })
+    expect(staleCommit).not.toHaveBeenCalled()
+    expect(freshCommit).toHaveBeenCalledTimes(1)
+    expect(freshCommit).toHaveBeenCalledWith("coral")
+  })
+
   it("does not stomp a newer keystroke when its own write echoes back", () => {
     vi.useFakeTimers()
     const onCommit = vi.fn()

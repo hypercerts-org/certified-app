@@ -11,8 +11,8 @@ import { buildVariables, type ClientVariables } from "./variables"
  * endpoint.
  *
  * Trust boundary: the client sends an `operationName` + `variables`.
- * The server holds the actual query strings (see `OPERATIONS` below)
- * and per-operation variable validators. The indexer endpoint itself
+ * The server holds the actual query strings (see `OPERATIONS` in
+ * ./operations.ts) and per-operation variable validators. The indexer endpoint itself
  * is public (read-only, no service-auth required for these
  * operations), but holding the queries server-side means:
  *
@@ -116,10 +116,13 @@ export async function POST(request: NextRequest) {
   }
   const operationName = parsed.operationName
 
-  const query = OPERATIONS[operationName]
-  if (!query) {
+  // Own-key check: a plain `OPERATIONS[operationName]` lookup would let
+  // Object.prototype keys (`constructor`, `toString`, …) return truthy
+  // inherited members and slip past this gate.
+  if (!Object.hasOwn(OPERATIONS, operationName)) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
+  const query = OPERATIONS[operationName]
 
   const clientVars =
     parsed.variables && typeof parsed.variables === "object"
@@ -265,10 +268,12 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams
   const operationName = searchParams.get("op") ?? ""
-  const cacheControl = CACHEABLE_OPS[operationName]
-  if (!cacheControl) {
+  // Own-key check — same reason as POST: prototype keys must not pass
+  // the allowlist.
+  if (!Object.hasOwn(CACHEABLE_OPS, operationName)) {
     return NextResponse.json({ error: "Unknown operation" }, { status: 400 })
   }
+  const cacheControl = CACHEABLE_OPS[operationName]
 
   // Re-materialise the POST variable shape from the query string; the
   // per-op validators clamp exactly as they do for POST.

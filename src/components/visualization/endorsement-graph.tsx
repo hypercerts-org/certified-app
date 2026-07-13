@@ -329,23 +329,45 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   }, [])
 
   // --- preload avatars ---------------------------------------------------
+  // Coalesce repaint bumps to one per animation frame: image load events
+  // fire as separate tasks (React can't batch them), so a graph with
+  // hundreds of avatar nodes would otherwise re-render this component
+  // once per image in a burst after mount. The pending rAF is cancelled
+  // on unmount so a mid-burst unmount can't fire a stray callback.
+  const repaintRafRef = useRef<number | null>(null)
+  const scheduleRepaint = useCallback(() => {
+    if (repaintRafRef.current !== null) return
+    repaintRafRef.current = requestAnimationFrame(() => {
+      repaintRafRef.current = null
+      setRepaintEpoch((e) => e + 1)
+    })
+  }, [])
+  useEffect(
+    () => () => {
+      if (repaintRafRef.current !== null) {
+        cancelAnimationFrame(repaintRafRef.current)
+      }
+    },
+    [],
+  )
+
   // Preload into a stable map so the paint loop never mints a new Image per
-  // frame. Each image that finishes (or fails) bumps repaintEpoch so the
-  // paused canvas repaints once and the avatar appears — the ref has no
-  // public refresh(), and load events fire asynchronously even for cached
-  // images, so hooking them here misses nothing.
+  // frame. Each image that finishes (or fails) schedules a coalesced
+  // repaintEpoch bump so the paused canvas repaints and the avatar appears
+  // — the ref has no public refresh(), and load events fire asynchronously
+  // even for cached images, so hooking them here misses nothing.
   useEffect(() => {
     const map = imagesRef.current
     for (const n of nodes) {
       if (!n.avatarUrl || map.has(n.id)) continue
       const img = new Image()
       img.decoding = "async"
-      img.onload = () => setRepaintEpoch((e) => e + 1)
-      img.onerror = () => setRepaintEpoch((e) => e + 1)
+      img.onload = scheduleRepaint
+      img.onerror = scheduleRepaint
       img.src = n.avatarUrl
       map.set(n.id, img)
     }
-  }, [nodes])
+  }, [nodes, scheduleRepaint])
 
   // --- filtered working data (kind checkboxes + scope + mutual) ----------
   const data = useMemo(() => {

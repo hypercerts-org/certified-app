@@ -1,6 +1,6 @@
 import type { CollectionRecord, CollectionValue } from "./collection"
 import { getBlobRefLink } from "./types"
-import { chunkArray, postIndexer } from "./indexer"
+import { chunkArray, postIndexer } from "./indexer-client"
 
 // ============================================================================
 // User projects — org.hypercerts.collection records authored by one DID
@@ -297,7 +297,8 @@ export async function fetchIndexerProjectsByUris(
  *
  * Records that store the legacy `value.name` (title fallback) or
  * `value.image` (banner fallback) fields will land here with neither
- * surfaced — see the UserProjects op comment in route.ts for why. The
+ * surfaced — see the UserProjects op comment in
+ * src/app/api/indexer/operations.ts for why. The
  * Projects tab renders "Untitled project" / no banner for those so
  * authors notice and republish on the canonical shape.
  */

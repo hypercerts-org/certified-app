@@ -229,6 +229,10 @@ function isExplicitlyEmpty(v: readonly string[] | null | undefined): boolean {
  * the explore loader hits this path on every filter activation /
  * loadMore on the Ma Earth filter — the cache prevents redundant
  * fan-outs to the PDS for the same URI list across navigations.
+ *
+ * Hand-rolled rather than `createBoundedCache` because overwrites must
+ * refresh recency (delete-then-set LRU touch); the shared util evicts
+ * on insert order only.
  */
 const MAX_FEATURED_CACHE_ENTRIES = 8
 const featuredItemUrisCache = new Map<string, string[]>()
@@ -789,7 +793,7 @@ async function loadCertsPage(args: LoadArgs): Promise<LoadedPage> {
     // popover's label filters are honored on this surface too. The
     // server-side filter lives on the `orgHypercertsClaimActivity`
     // connection — see `ActivitiesByUris` op in
-    // `src/app/api/indexer/route.ts`.
+    // `src/app/api/indexer/operations.ts`.
     const res = await fetchIndexerActivitiesByUris(itemUris, {
       labels: args.includeCertLabels?.length ? [...args.includeCertLabels] : undefined,
       excludeLabels: args.excludeCertLabels?.length ? [...args.excludeCertLabels] : undefined,

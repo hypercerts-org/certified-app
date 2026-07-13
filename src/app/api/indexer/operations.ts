@@ -14,7 +14,7 @@ import { MAX_URI_LIST_PER_KIND } from "./variables"
  */
 
 /** Activity node selection — shared by the three activity ops below. */
-export const ACTIVITY_NODE_SELECTION = `
+const ACTIVITY_NODE_SELECTION = `
   totalCount
   edges {
     cursor

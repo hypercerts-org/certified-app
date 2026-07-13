@@ -34,10 +34,6 @@ import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
 
-// CertPreview moved to the rows layer; re-exported so the colocated
-// test's `import { CertPreview } from "../home-feed"` keeps working.
-export { CertPreview } from "./home-feed-rows"
-
 const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
   HYPERLABEL_TIERS.filter(
     (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),

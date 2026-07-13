@@ -72,6 +72,20 @@ describe("/api/indexer trust boundary", () => {
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
+    it("rejects Object.prototype keys with 400 (own-key allowlist check)", async () => {
+      // OPERATIONS is a plain object literal — without the
+      // Object.hasOwn guard, inherited members (`constructor`,
+      // `toString`, …) are truthy and would slip past the first gate.
+      for (const op of ["constructor", "toString", "hasOwnProperty"]) {
+        mockFetch.mockClear()
+        const res = await postIndexer({ operationName: op, variables: {} })
+        expect(res.status, `op=${op}`).toBe(400)
+        const body = await res.json()
+        expect(body.error, `op=${op}`).toBe("Unknown operation")
+        expect(mockFetch).not.toHaveBeenCalled()
+      }
+    })
+
     it("rejects missing operationName with 400", async () => {
       const res = await postIndexer({ variables: { first: 10 } })
       expect(res.status).toBe(400)

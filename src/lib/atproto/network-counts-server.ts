@@ -15,9 +15,9 @@ import {
  *
  * The query strings duplicate the ProfileCount / OrganizationCount /
  * ActivityCount / ProjectCount / AwardCount operations in
- * src/app/api/indexer/route.ts, including the label-exclusion policy
- * (shared via labels.ts). Keep the two in sync when count semantics
- * change.
+ * src/app/api/indexer/operations.ts, including the label-exclusion
+ * policy (shared via labels.ts). Keep the two in sync when count
+ * semantics change.
  *
  * Fail-soft contract, mirroring the client's fetchNetworkCounts:
  * never throws; any per-query failure (HTTP !ok, GraphQL errors,
