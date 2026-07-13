@@ -7,8 +7,6 @@ import {
   useRef,
   useState,
 } from "react"
-import { profileUrl } from "@/lib/urls"
-import Link from "next/link"
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -22,7 +20,6 @@ import {
 import { resolveHandleToDid } from "@/lib/atproto/did"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
-import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import {
   Popover,
@@ -33,8 +30,10 @@ import {
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
+import EndorsementSubjectRow, {
+  type EndorsementSubjectRowClasses,
+} from "@/components/endorsements/endorsement-subject-row"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import Skeleton from "@/components/ui/skeleton"
 import Tooltip from "@/components/ui/tooltip"
 import {
   useEndorsementLists,
@@ -43,7 +42,7 @@ import {
 import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { formatShortDate } from "@/lib/utils/format-date"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 import {
   deleteEndorsementAward,
   extractAwardSubjectDid,
@@ -595,63 +594,46 @@ interface ListItemRowProps {
   } | null
 }
 
+const ITEM_ROW_CLASSES: EndorsementSubjectRowClasses = {
+  main: "endorsement-lists__item-link",
+  meta: "endorsement-lists__item-body",
+  name: "endorsement-lists__item-name",
+  handle: "endorsement-lists__item-handle",
+  note: "endorsement-lists__item-note",
+  date: "endorsement-lists__item-date",
+}
+
 function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) {
   const { info, isLoading } = useAuthorInfo(subjectDid)
-  const displayName = info?.displayName || info?.handle || subjectDid || "Unknown"
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const initials = getInitials(info?.displayName, info?.handle ?? subjectDid ?? undefined)
-  const href = subjectDid
-    ? profileUrl(info?.handle || subjectDid)
-    : null
-
-  const body = (
-    <>
-      {isLoading && !info ? (
-        <Skeleton circle animate={false} width={32} height={32} />
-      ) : (
-        <Avatar
-          size="md"
-          src={info?.avatarUrl || undefined}
-          alt=""
-          fallbackInitials={initials}
-        />
-      )}
-      <div className="endorsement-lists__item-body">
-        <span className="endorsement-lists__item-name">{displayName}</span>
-        {handle ? (
-          <span className="endorsement-lists__item-handle">@{handle}</span>
-        ) : null}
-        <time
-          className="endorsement-lists__item-date"
-          dateTime={createdAt}
-          title={new Date(createdAt).toLocaleString()}
-        >
-          {formatShortDate(createdAt)}
-        </time>
-        {note ? (
-          <p className="endorsement-lists__item-note">{note}</p>
-        ) : null}
-      </div>
-    </>
+  // Same derivation the shared row renders, so the confirm dialog and
+  // aria-label match the visible display name.
+  const { displayName } = deriveIdentity(
+    info,
+    subjectDid ?? "",
+    subjectDid ? undefined : { fallbackLabel: "Unknown" },
   )
 
   return (
     <li className="endorsement-lists__item">
-      {href ? (
-        <Link href={href} className="endorsement-lists__item-link">
-          {body}
-        </Link>
-      ) : (
-        <div className="endorsement-lists__item-link">{body}</div>
-      )}
-      {revoke ? (
-        <RevokeListItemButton
-          listTitle={revoke.listTitle}
-          subjectDisplay={displayName}
-          onRemove={revoke.onRemove}
-          onRevokeAward={revoke.onRevokeAward}
-        />
-      ) : null}
+      <EndorsementSubjectRow
+        did={subjectDid}
+        info={info}
+        isLoading={isLoading}
+        createdAt={createdAt}
+        note={note}
+        dateInMeta
+        classes={ITEM_ROW_CLASSES}
+        trailing={
+          revoke ? (
+            <RevokeListItemButton
+              listTitle={revoke.listTitle}
+              subjectDisplay={displayName}
+              onRemove={revoke.onRemove}
+              onRevokeAward={revoke.onRevokeAward}
+            />
+          ) : null
+        }
+      />
     </li>
   )
 }
