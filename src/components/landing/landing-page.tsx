@@ -14,26 +14,36 @@ import FaqSection from "@/components/landing/sections/faq-content";
 import ClosingCta from "@/components/landing/sections/closing-cta";
 import { CURATED_PROFILES } from "@/lib/constants/curated-profiles";
 import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core";
+import { fetchNetworkCountsServer } from "@/lib/atproto/network-counts-server";
 
 /**
  * The /welcome landing page. Server component: resolves the three
- * featured profiles for the Explore section at render time (the page
- * is ISR'd — see `revalidate` in src/app/welcome/page.tsx), so the
- * section ships real network content with zero client fetches.
- * buildProfilePayload swallows its own failures; the extra catch
- * guards the page against anything unexpected so a dead indexer or
- * PDS can never take the landing page down.
+ * featured profiles for the Explore section AND the five network
+ * counts for the stats strip at render time (the page is ISR'd — see
+ * `revalidate` in src/app/welcome/page.tsx), so both sections ship
+ * real network content with zero client fetches. Both helpers
+ * swallow their own failures; the extra catches guard the page
+ * against anything unexpected so a dead indexer or PDS can never
+ * take the landing page down.
  */
 export default async function LandingPage() {
-  const profiles: FeaturedProfile[] = await Promise.all(
-    CURATED_PROFILES.map(async (curated) => {
-      try {
-        return { curated, resolved: await buildProfilePayload(curated.did) };
-      } catch {
-        return { curated, resolved: null };
-      }
-    }),
-  );
+  const [profiles, counts] = await Promise.all([
+    Promise.all(
+      CURATED_PROFILES.map(
+        async (curated): Promise<FeaturedProfile> => {
+          try {
+            return {
+              curated,
+              resolved: await buildProfilePayload(curated.did),
+            };
+          } catch {
+            return { curated, resolved: null };
+          }
+        },
+      ),
+    ),
+    fetchNetworkCountsServer().catch(() => null),
+  ]);
 
   return (
     <div className="lp">
@@ -44,7 +54,7 @@ export default async function LandingPage() {
       <AiWorld />
       <PartnerApps />
       <ExploreProfiles profiles={profiles} />
-      <NetworkStats />
+      <NetworkStats initialCounts={counts} />
       <Trust />
       <OrganizationsStrip />
       <FaqSection />

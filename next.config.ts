@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@atproto/oauth-client-node"],
+  // Client router cache: dynamic segments (/explore, /groups, profile
+  // and record-detail routes) default to staleTime 0 in Next 15/16,
+  // so every repeat Link/bottom-nav navigation refetches an RSC shell
+  // whose real data comes from client hooks with their own caches.
+  // 30s lets a just-visited shell be reused. Sign-in goes through a
+  // full reload (oauth/callback), but signOut is client-side — the
+  // cached / redirect can replay to /home within 30s, where the
+  // session re-check bounces anonymous viewers back out.
+  experimental: {
+    staleTimes: { dynamic: 30 },
+  },
   // Next 16 dev blocks /_next/* requests (including the HMR WebSocket)
   // when the request Origin doesn't match the canonical localhost form.
   // Our PUBLIC_URL convention is 127.0.0.1 (for OAuth + cookie reasons),
