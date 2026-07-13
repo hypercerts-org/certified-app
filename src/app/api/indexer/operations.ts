@@ -672,6 +672,11 @@ ${ACTIVITY_NODE_SELECTION}
                 ... on ComAtprotoRepoStrongRef { uri cid }
               }
             }
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
+            }
             banner {
               __typename
               ... on OrgHypercertsDefsUri { uri }
@@ -691,7 +696,8 @@ ${ACTIVITY_NODE_SELECTION}
   // as "Project" / "PROJECT" surface here too.
   //
   // Selected fields cover what profile-projects renders: title,
-  // shortDescription, createdAt, banner, items[]. The indexer does NOT
+  // shortDescription, createdAt, avatar, banner, items[] (avatar feeds
+  // the thumb slot's avatar-first precedence). The indexer does NOT
   // surface the legacy value.name / value.image fallback fields some
   // older records use — that's intentional. Records on the older shape
   // will read "Untitled project" / no banner here so authors notice
@@ -717,6 +723,11 @@ ${ACTIVITY_NODE_SELECTION}
               itemIdentifier {
                 ... on ComAtprotoRepoStrongRef { uri cid }
               }
+            }
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
             }
             banner {
               __typename
@@ -760,6 +771,11 @@ ${ACTIVITY_NODE_SELECTION}
               itemIdentifier {
                 ... on ComAtprotoRepoStrongRef { uri cid }
               }
+            }
+            avatar {
+              __typename
+              ... on OrgHypercertsDefsUri { uri }
+              ... on OrgHypercertsDefsSmallImage { image { ref mimeType } }
             }
             banner {
               __typename

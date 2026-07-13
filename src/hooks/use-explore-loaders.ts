@@ -633,11 +633,11 @@ async function loadProjectsPage(args: LoadArgs): Promise<LoadedPage> {
     // Batch the curated URIs through the indexer (`CollectionsByUris`,
     // 50-URI chunks) instead of fanning out one PDS getRecord per URI —
     // curated sets can carry well over 100 URIs, re-fetched on every
-    // filter activation. FAIL-SOFT: the deployed indexer may not
-    // support the `uri: { in }` filter on `orgHypercertsCollection`
-    // yet, so an HTTP / GraphQL failure — or an all-empty result for
-    // URIs the curator says exist — falls back to the per-URI PDS path
-    // below. Not-yet-ingested URIs inside an otherwise-successful batch
+    // filter activation. FAIL-SOFT: an HTTP / GraphQL failure — or an
+    // all-empty result for URIs the curator says exist — falls back to
+    // the per-URI PDS path below (defense-in-depth for dev /
+    // self-hosted indexers; the prod schema's `uri: { in }` support
+    // was verified live 2026-07-13). Not-yet-ingested URIs inside an otherwise-successful batch
     // drop silently, matching the certs featured path's accepted
     // tradeoff (see fetchIndexerActivitiesByUris).
     let projects: CollectionRecord[] | null = null

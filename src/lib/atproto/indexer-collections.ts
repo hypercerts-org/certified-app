@@ -16,10 +16,10 @@ export interface CollectionGraphQLNode {
   shortDescription: string | null
   items: { itemIdentifier: { uri?: string; cid?: string } | null }[] | null
   /**
-   * The collection's avatar — distinct from the banner. Optional in
-   * the GraphQL query; the legacy fetchers (`fetchUserProjects`,
-   * `fetchProjects`) don't select it so node.avatar is undefined for
-   * those code paths. `HydrateFeedPage` does select it.
+   * The collection's avatar — distinct from the banner. All collection
+   * ops select it now (it feeds `projectImage`'s avatar-first thumb
+   * precedence), but it stays optional here: older self-hosted proxy
+   * deployments may still serve selections without it.
    *
    * Note: the schema union is `OrgHypercertsDefsSmallImage`, not the
    * `LargeImage` variant the banner uses.
