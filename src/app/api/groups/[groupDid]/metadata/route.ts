@@ -18,6 +18,17 @@ const METADATA_FIELDS = [
 ] as const
 
 /**
+ * Short Cache-Control for the public GET read below — mirrors the
+ * profile route's GROUP_READ_CACHE_HEADERS rationale: `private` so
+ * the browser cache is invalidated by the same-URL PUT on save,
+ * which a shared edge cache would not be. Error paths (including
+ * the 404 absent case) stay uncached.
+ */
+const GROUP_READ_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30",
+} as const
+
+/**
  * GET /api/groups/[groupDid]/metadata
  * Read the org's app.certified.actor.organization record.
  * Reads go directly to the group's own PDS.
@@ -50,7 +61,7 @@ export async function GET(
     }
 
     const data = await res.json()
-    return NextResponse.json(data.value)
+    return NextResponse.json(data.value, { headers: GROUP_READ_CACHE_HEADERS })
   } catch (err: unknown) {
     // extractRouteError calls logSafe internally; bare console.error
     // duplicated the log and skipped the redactSecrets pass.
