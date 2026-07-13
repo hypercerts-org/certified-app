@@ -47,10 +47,18 @@ export default function NewUpdatePage() {
 
   const [subjectCid, setSubjectCid] = useState<string | null>(null)
   const [cidResolving, setCidResolving] = useState(true)
+
+  // Adjust state during render when the subject changes, so the effect
+  // holds only the resolveRecordCid lifecycle.
+  const [prevSubjectUri, setPrevSubjectUri] = useState(subjectUri)
+  if (prevSubjectUri !== subjectUri) {
+    setPrevSubjectUri(subjectUri)
+    setCidResolving(true)
+  }
+
   useEffect(() => {
     if (!subjectUri) return
     let cancelled = false
-    setCidResolving(true)
     resolveRecordCid(subjectUri)
       .then((cid) => {
         if (!cancelled) setSubjectCid(cid)

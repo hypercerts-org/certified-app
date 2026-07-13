@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Check, X } from "lucide-react"
 import {
   createResponse,
@@ -113,12 +113,17 @@ export default function ResponseMenu({
   // reject), empty for default/unknown. A toggle of "accepted" routes
   // to onAccept and "rejected" to onReject regardless of direction —
   // both pressing and un-pressing a value emit it in the diff below.
-  const pressedValues =
-    state === "accepted"
-      ? ["accepted"]
-      : state === "rejected"
-        ? ["rejected"]
-        : []
+  // Memoized so onValueChange keeps a stable identity across unrelated
+  // re-renders.
+  const pressedValues = useMemo(
+    () =>
+      state === "accepted"
+        ? ["accepted"]
+        : state === "rejected"
+          ? ["rejected"]
+          : [],
+    [state],
+  )
 
   const onValueChange = useCallback(
     (next: string[]) => {

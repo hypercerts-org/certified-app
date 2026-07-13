@@ -12,18 +12,20 @@ export function useOrgCreationLimit() {
   const [selfCreatedCount, setSelfCreatedCount] = useState<number | null>(null)
   const [isChecking, setIsChecking] = useState(true)
 
+  // Adjust state during render once the org list settles: with no
+  // signed-in DID there is nothing to check (don't sit on the spinner
+  // forever), with one the count fetch is about to start.
+  const limitKey = `${did}|${orgsLoading}`
+  const [prevLimitKey, setPrevLimitKey] = useState(limitKey)
+  if (prevLimitKey !== limitKey) {
+    setPrevLimitKey(limitKey)
+    if (!orgsLoading) setIsChecking(!!did)
+  }
+
   useEffect(() => {
     // Wait while the org list is still resolving — `did` may arrive late.
-    if (orgsLoading) return
-    // Auth has settled but there's no signed-in DID. Don't sit in the
-    // "checking" state forever (which leaves consumers stuck on a spinner
-    // with no way out); resolve so they can render a recoverable state.
-    if (!did) {
-      setIsChecking(false)
-      return
-    }
+    if (orgsLoading || !did) return
     const controller = new AbortController()
-    setIsChecking(true)
     getSelfCreatedOrgCount(did, groups, controller.signal)
       .then((count) => {
         if (!controller.signal.aborted) setSelfCreatedCount(count)

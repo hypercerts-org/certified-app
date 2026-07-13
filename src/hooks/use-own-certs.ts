@@ -29,14 +29,23 @@ export function useOwnCerts(did: string | null): {
   isLoading: boolean
 } {
   const { activeOrg } = useOrg()
+  const sourceDid = activeOrg ? activeOrg.groupDid : did
   const [ownCerts, setOwnCerts] = useState<OwnCert[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // No source repo means no fetch — isLoading must be false then, not
+  // stuck on a true initializer.
+  const [isLoading, setIsLoading] = useState(!!sourceDid)
+
+  // Adjust state during render when the source repo changes, so the
+  // effect holds only the fetch lifecycle.
+  const [prevSourceDid, setPrevSourceDid] = useState(sourceDid)
+  if (prevSourceDid !== sourceDid) {
+    setPrevSourceDid(sourceDid)
+    setIsLoading(!!sourceDid)
+  }
 
   useEffect(() => {
-    const sourceDid = activeOrg ? activeOrg.groupDid : did
     if (!sourceDid) return
     const controller = new AbortController()
-    setIsLoading(true)
     const params = new URLSearchParams({
       repo: sourceDid,
       collection: "org.hypercerts.claim.activity",
@@ -84,7 +93,7 @@ export function useOwnCerts(did: string | null): {
         if (!controller.signal.aborted) setIsLoading(false)
       })
     return () => controller.abort()
-  }, [did, activeOrg])
+  }, [sourceDid])
 
   return { ownCerts, isLoading }
 }

@@ -73,15 +73,20 @@ export function useContributorInfo(identity: string | null | undefined): {
   const [info, setInfo] = useState<ContributorInfo | null>(null)
   const [isLoading, setIsLoading] = useState(isAtproto)
 
+  // Adjust state during render when the identity changes, so the effect
+  // holds only the fetch lifecycle.
+  const identityKey = `${trimmed}|${isAtproto}`
+  const [prevIdentityKey, setPrevIdentityKey] = useState(identityKey)
+  if (prevIdentityKey !== identityKey) {
+    setPrevIdentityKey(identityKey)
+    setInfo(null)
+    setIsLoading(isAtproto)
+  }
+
   useEffect(() => {
-    if (!isAtproto) {
-      setInfo(null)
-      setIsLoading(false)
-      return
-    }
+    if (!isAtproto) return
 
     let cancelled = false
-    setIsLoading(true)
 
     fetchContributor(trimmed)
       .then((data) => {

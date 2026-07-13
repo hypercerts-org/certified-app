@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
   createResponse,
   type ResponseState,
@@ -99,12 +99,12 @@ export default function ResponseButtons({
 
   // The set of currently-pressed values for the ToggleGroup. At most one
   // of accept/reject is pressed at a time (accepted XOR rejected); an
-  // unknown/default state presses neither.
-  const pressedValues = isAccepted
-    ? ["accepted"]
-    : isRejected
-      ? ["rejected"]
-      : []
+  // unknown/default state presses neither. Memoized so onValueChange
+  // keeps a stable identity across unrelated re-renders.
+  const pressedValues = useMemo(
+    () => (isAccepted ? ["accepted"] : isRejected ? ["rejected"] : []),
+    [isAccepted, isRejected],
+  )
 
   // Translate a toggle into a write. Clicking either button always
   // writes its response (matching the original "no reset here" intent),

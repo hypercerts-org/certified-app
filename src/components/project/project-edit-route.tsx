@@ -154,6 +154,7 @@ export default function ProjectEditRoute({
     if (seededRef.current) return
     if (!project) return
     const v = project.value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap baseline from the loaded project record; key-remount refactor tracked separately
     setTitle(asString(v.title))
     setShortDescription(asString(v.shortDescription))
     setDescription(
@@ -198,26 +199,36 @@ export default function ProjectEditRoute({
             ? r.record!.value.title.trim()
             : r.record!.uri.split("/").pop() ?? "(untitled activity)",
       }))
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (itemsSeededRef) hydration of the editable items list once useProjectItems resolutions settle; re-running would stomp user reordering/removal
     setItems(hydrated)
     itemsSeededRef.current = true
   }, [itemResolutions, itemsResolving, rawItems.length])
 
   // Hydrate the location (single strongRef → AddedLocation) so the
   // edit form shows the existing place name + lets the user clear
-  // or replace it.
+  // or replace it. The synchronous outcomes (no ref, unparsable URI)
+  // are adjusted during render when the record identity changes (keyed
+  // on uri|cid, not object identity, which isn't render-stable); only
+  // the getRecord name lookup lives in the effect.
+  const projectKey = project ? `${project.uri}|${project.cid}` : null
+  const [prevProjectKey, setPrevProjectKey] = useState(projectKey)
+  if (prevProjectKey !== projectKey) {
+    setPrevProjectKey(projectKey)
+    const locRef = project?.value.location as { uri?: string; cid?: string } | undefined
+    if (!locRef?.uri || !locRef.cid) {
+      setLocation(null)
+    } else if (!parseAtUri(locRef.uri)) {
+      setLocation({ ref: { uri: locRef.uri, cid: locRef.cid }, name: locRef.uri })
+    }
+  }
+
   useEffect(() => {
     if (!project) return
     const locRef = project.value.location as { uri?: string; cid?: string } | undefined
-    if (!locRef?.uri || !locRef.cid) {
-      setLocation(null)
-      return
-    }
-    let aborted = false
+    if (!locRef?.uri || !locRef.cid) return
     const parsed = parseAtUri(locRef.uri)
-    if (!parsed) {
-      setLocation({ ref: { uri: locRef.uri, cid: locRef.cid }, name: locRef.uri })
-      return
-    }
+    if (!parsed) return
+    let aborted = false
     const qs = new URLSearchParams({
       repo: parsed.did,
       collection: parsed.collection,
@@ -266,6 +277,7 @@ export default function ProjectEditRoute({
   const SHORT_DESC_MAX = 300
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null
     setError(null)
   }, [
     title,

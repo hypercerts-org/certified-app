@@ -38,23 +38,26 @@ interface ProjectsContainingCertResponse {
 
 export function useCertProjects(did: string | null, rkey: string | null) {
   const [projects, setProjects] = useState<CollectionRecord[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!did && !!rkey)
   const [error, setError] = useState<string | null>(null)
 
+  // Adjust state during render when the cert identity changes, so the
+  // effect holds only the fetch lifecycle.
+  const certKey = `${did}|${rkey}`
+  const [prevCertKey, setPrevCertKey] = useState(certKey)
+  if (prevCertKey !== certKey) {
+    setPrevCertKey(certKey)
+    setProjects([])
+    setIsLoading(!!did && !!rkey)
+    setError(null)
+  }
+
   useEffect(() => {
-    if (!did || !rkey) {
-      setProjects([])
-      setIsLoading(false)
-      setError(null)
-      return
-    }
+    if (!did || !rkey) return
 
     const certUri = `at://${did}/org.hypercerts.claim.activity/${rkey}`
     const controller = new AbortController()
     const signal = controller.signal
-
-    setIsLoading(true)
-    setError(null)
 
     fetch(INDEXER_PROXY_URL, {
       method: "POST",

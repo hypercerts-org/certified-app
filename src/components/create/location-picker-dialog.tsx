@@ -99,10 +99,18 @@ export default function LocationPickerDialog({
   const [myLocationsError, setMyLocationsError] = useState<string | null>(null)
   const [selectedExistingUri, setSelectedExistingUri] = useState<string>("")
 
-  useEffect(() => {
-    const controller = new AbortController()
+  // Adjust state during render when the source repo changes (first mount
+  // already starts loading via the initializers), so the effect holds
+  // only the listRecords lifecycle.
+  const [prevOwnDid, setPrevOwnDid] = useState(ownDid)
+  if (prevOwnDid !== ownDid) {
+    setPrevOwnDid(ownDid)
     setMyLocationsLoading(true)
     setMyLocationsError(null)
+  }
+
+  useEffect(() => {
+    const controller = new AbortController()
     const params = new URLSearchParams({
       repo: ownDid,
       collection: "app.certified.location",
@@ -177,6 +185,7 @@ export default function LocationPickerDialog({
     if (mode !== "new" || fieldMode !== "search") return
     const trimmed = name.trim()
     if (trimmed.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced geocode keyed on the typed name: this clears now-stale suggestions when input drops below 2 chars and bails out when already empty; onChange/pick/map handlers don't cover every write path
       setSuggestions([])
       return
     }

@@ -247,9 +247,9 @@ export default function ActivityEditRoute({
   // Rights options — same listRecords call /create uses.
   // -------------------------------------------------------------------
   useEffect(() => {
+    // No sync resets here: this []-dep effect runs once right after
+    // mount and the useState initializers are already true/null.
     const controller = new AbortController()
-    setRightsLoading(true)
-    setRightsLoadError(null)
     const qs = new URLSearchParams({
       repo: RIGHTS_PUBLISHER_DID,
       collection: RIGHTS_COLLECTION,
@@ -303,6 +303,7 @@ export default function ActivityEditRoute({
     if (seededRef.current) return
     if (!activity) return
     const v = activity.value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap-record cid baseline after the async record load; re-running would clobber user edits. Long-term fix is a key-remount form child, tracked separately
     setTitle(v.title ?? "")
     setShortDescription(v.shortDescription ?? "")
     setStartDate(
@@ -344,13 +345,23 @@ export default function ActivityEditRoute({
   // location record itself (one getRecord per strongRef) — we use the
   // same shape `LocationPickerDialog` emits so the row UI is uniform.
   // -------------------------------------------------------------------
+  // The refs-empty reset is adjusted during render when the record
+  // identity changes (keyed on uri|cid, not object identity, which
+  // isn't render-stable); initial state is already []. Only the async
+  // name hydration lives in the effect.
+  const activityKey = activity ? `${activity.uri}|${activity.cid}` : null
+  const [prevActivityKey, setPrevActivityKey] = useState(activityKey)
+  if (prevActivityKey !== activityKey) {
+    setPrevActivityKey(activityKey)
+    if (activity && (activity.value.locations ?? []).length === 0) {
+      setLocations([])
+    }
+  }
+
   useEffect(() => {
     if (!activity) return
     const refs = activity.value.locations ?? []
-    if (refs.length === 0) {
-      setLocations([])
-      return
-    }
+    if (refs.length === 0) return
     let aborted = false
     Promise.all(
       refs.map(async (ref): Promise<ResolvedLocationRow> => {
@@ -401,6 +412,7 @@ export default function ActivityEditRoute({
 
   // Clear save error whenever any field changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null, so cost is one render only while an error is showing
     setError(null)
   }, [
     title,

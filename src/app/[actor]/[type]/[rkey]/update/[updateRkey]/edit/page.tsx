@@ -54,11 +54,20 @@ export default function EditUpdatePage() {
   const [record, setRecord] = useState<ContextAttachmentRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+
+  // Adjust state during render when the load target changes, so the
+  // effect holds only the getContextAttachment lifecycle.
+  const loadKey = `${did}|${updateRkey}`
+  const [prevLoadKey, setPrevLoadKey] = useState(loadKey)
+  if (prevLoadKey !== loadKey) {
+    setPrevLoadKey(loadKey)
+    setLoading(true)
+    setLoadError(false)
+  }
+
   useEffect(() => {
     if (!did || !updateRkey) return
     let cancelled = false
-    setLoading(true)
-    setLoadError(false)
     getContextAttachment(did, updateRkey)
       .then((r) => {
         if (cancelled) return

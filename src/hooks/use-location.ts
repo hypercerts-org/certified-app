@@ -52,9 +52,17 @@ export function useLocation(uri: string): {
   const [location, setLocation] = useState<LocationRecord | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Adjust state during render when the URI changes (first mount already
+  // starts loading via the initializer), so the effect holds only the
+  // fetch lifecycle.
+  const [prevUri, setPrevUri] = useState(uri)
+  if (prevUri !== uri) {
+    setPrevUri(uri)
+    setIsLoading(true)
+  }
+
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
     fetchLocation(uri)
       .then((data) => {
         if (cancelled) return

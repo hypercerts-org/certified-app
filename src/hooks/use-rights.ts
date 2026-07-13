@@ -68,14 +68,18 @@ export function useRights(uri: string | null | undefined): {
   const [record, setRecord] = useState<RightsRecordValue | null>(null)
   const [isLoading, setIsLoading] = useState(!!uri)
 
+  // Adjust state during render when the URI changes, mirroring the
+  // initializers, so the effect holds only the fetch lifecycle.
+  const [prevUri, setPrevUri] = useState(uri)
+  if (prevUri !== uri) {
+    setPrevUri(uri)
+    setRecord(null)
+    setIsLoading(!!uri)
+  }
+
   useEffect(() => {
-    if (!uri) {
-      setRecord(null)
-      setIsLoading(false)
-      return
-    }
+    if (!uri) return
     let cancelled = false
-    setIsLoading(true)
     fetchRights(uri)
       .then((data) => {
         if (cancelled) return

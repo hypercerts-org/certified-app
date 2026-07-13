@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseActor, profileUrl } from "@/lib/urls"
 import {
   CERT_DETAIL_TABS,
@@ -267,35 +267,35 @@ export default function DesktopTopBar() {
   // Close the switcher on navigation. Positioning, click-outside and
   // Esc-to-close are owned by the <Popover> primitive.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- close switcher on route change (external router input); covers back/forward nav that no click handler sees; setState bails out when already closed
     setSwitcherOpen(false);
   }, [pathname]);
 
   // ----- Create-menu effects (mirror the switcher) -----
+  // Anchor the menu's LEFT edge to the trigger's left edge so it opens
+  // to the right of the "+" button (no chance of running off the
+  // viewport's left side when the button sits near the chrome's right
+  // edge — same affordance as GitHub's "+" menu). The initial compute
+  // happens in the trigger's onClick; a stale anchor while closed is
+  // unobservable because the portal gates on createOpen && createAnchor.
+  const computeCreateAnchor = useCallback(() => {
+    const rect = createRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setCreateAnchor({
+      left: rect.left,
+      top: rect.bottom + 8,
+    });
+  }, []);
+
   useEffect(() => {
-    if (!createOpen || !createRef.current) {
-      setCreateAnchor(null);
-      return;
-    }
-    const compute = () => {
-      const rect = createRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      // Anchor the menu's LEFT edge to the trigger's left edge so it
-      // opens to the right of the "+" button (no chance of running off
-      // the viewport's left side when the button sits near the chrome's
-      // right edge — same affordance as GitHub's "+" menu).
-      setCreateAnchor({
-        left: rect.left,
-        top: rect.bottom + 8,
-      });
-    };
-    compute();
-    globalThis.addEventListener("resize", compute);
-    globalThis.addEventListener("scroll", compute, true);
+    if (!createOpen) return;
+    globalThis.addEventListener("resize", computeCreateAnchor);
+    globalThis.addEventListener("scroll", computeCreateAnchor, true);
     return () => {
-      globalThis.removeEventListener("resize", compute);
-      globalThis.removeEventListener("scroll", compute, true);
+      globalThis.removeEventListener("resize", computeCreateAnchor);
+      globalThis.removeEventListener("scroll", computeCreateAnchor, true);
     };
-  }, [createOpen]);
+  }, [createOpen, computeCreateAnchor]);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -323,6 +323,7 @@ export default function DesktopTopBar() {
   }, [createOpen]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- close create-menu on route change; same rationale as the switcher close above
     setCreateOpen(false);
   }, [pathname]);
 
@@ -382,6 +383,7 @@ export default function DesktopTopBar() {
             {breadcrumb || desktopShownTitle ? (
               <Brandmark size={28} className="desktop-top-bar__brand-mark" />
             ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG wordmark; next/image performs no optimization on SVG sources and the element is CSS-sized (no CLS)
               <img
                 src="/brand/wordmark/certified_wordmark_black.svg"
                 alt="Certified"
@@ -427,7 +429,10 @@ export default function DesktopTopBar() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => setCreateOpen((v) => !v)}
+                onClick={() => {
+                  if (!createOpen) computeCreateAnchor();
+                  setCreateOpen((v) => !v);
+                }}
                 aria-haspopup="menu"
                 aria-expanded={createOpen}
                 aria-label="Create new"
@@ -563,6 +568,7 @@ export default function DesktopTopBar() {
                 className="desktop-top-bar__signin-btn"
                 aria-label="Sign in"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG sign-in glyph; no optimization benefit from next/image */}
                 <img
                   src="/brand/signin/certified_signin_black.svg"
                   alt=""

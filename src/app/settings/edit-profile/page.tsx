@@ -82,7 +82,20 @@ export default function EditProfilePage() {
 
   const [orgMarker, setOrgMarker] = useState<GroupMetadata | null>(null);
   const [isOrg, setIsOrg] = useState(false);
-  const [orgLoaded, setOrgLoaded] = useState(false);
+  // No DID means no marker fetch — the org state is already settled.
+  const [orgLoaded, setOrgLoaded] = useState(!did);
+
+  // Adjust state during render when the signed-in DID goes away, so the
+  // effect holds only the fetchOwnOrgMarker lifecycle.
+  const [prevDid, setPrevDid] = useState(did);
+  if (prevDid !== did) {
+    setPrevDid(did);
+    if (!did) {
+      setOrgMarker(null);
+      setIsOrg(false);
+      setOrgLoaded(true);
+    }
+  }
 
   // Drive the navbar breadcrumb. When we know the handle, render
   // `@handle / Edit profile`; otherwise fall through to a plain title.
@@ -102,12 +115,7 @@ export default function EditProfilePage() {
   );
 
   useEffect(() => {
-    if (!did) {
-      setOrgMarker(null);
-      setIsOrg(false);
-      setOrgLoaded(true);
-      return;
-    }
+    if (!did) return;
     const controller = new AbortController();
     fetchOwnOrgMarker(did, controller.signal)
       .then((record) => {
