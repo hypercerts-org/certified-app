@@ -115,7 +115,7 @@ describe("foreign-DID getBlob — Content-Length cap + fixed Cache-Control", () 
 
     expect(res.status).toBe(200)
     expect(res.headers.get("cache-control")).toBe(
-      "public, max-age=3600, immutable",
+      "public, max-age=3600, s-maxage=86400, immutable",
     )
     expect(res.headers.get("cache-control")).not.toContain("no-store")
     fetchSpy.mockRestore()

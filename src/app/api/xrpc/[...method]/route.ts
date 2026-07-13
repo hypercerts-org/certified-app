@@ -103,9 +103,24 @@ const GET_LIMITER = makeLimiter("xrpc-get-ip", 300, 60)
  * addressed and immutable, so we own the directive rather than
  * forwarding the upstream PDS's (which an attacker-chosen, hostile
  * PDS controls). Mirrors the FOREIGN_READ_CACHE_HEADERS pattern.
+ * `s-maxage` lets the Vercel edge serve repeat visitors without a
+ * function invocation (max-age alone is browser-only there); 24h
+ * bounds takedown latency for deleted blobs, so no longer-lived
+ * CDN directive.
  */
 const FOREIGN_BLOB_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=3600, immutable",
+  "Cache-Control": "public, max-age=3600, s-maxage=86400, immutable",
+} as const
+
+/**
+ * Same-session blob reads went through the bound OAuth agent, so keep
+ * them out of shared caches — but the cid in the URL still makes the
+ * bytes immutable, so let the browser keep the user's own avatar /
+ * banner instead of re-streaming it through a full agent restore on
+ * every mount.
+ */
+const SAME_SESSION_BLOB_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=3600, immutable",
 } as const
 
 function asString(v: unknown): string | undefined {
@@ -388,37 +403,42 @@ export async function GET(
     // resolves a client-supplied repo/did to a PDS it then fetches, so
     // block floods (SSRF / amplification fan-out) before any upstream
     // work. IP-scoped; fail-open on a limiter backend error (handled
-    // inside enforceRateLimit).
-    const rateDenied = await enforceRateLimit(GET_LIMITER, clientIp(request))
+    // inside enforceRateLimit). Run the session lookup concurrently —
+    // both are independent Upstash round-trips, and the limiter INCRs
+    // regardless, so discarding the session result on the (rare)
+    // denied path changes no semantics.
+    const [rateDenied, did] = await Promise.all([
+      enforceRateLimit(GET_LIMITER, clientIp(request)),
+      getSessionDid(),
+    ])
     if (rateDenied) return rateDenied
 
     const { method } = await params
     const methodName = method.join(".")
 
-    const did = await getSessionDid()
+    if (!did && !PUBLIC_READ_METHODS.has(methodName)) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
 
-    // Try to build a bound agent if we have a session — it's nice to
-    // have for methods that target the user's own repo (avoids a
-    // roundtrip through resolvePdsUrl). Not having one is fine for the
-    // public read methods below, which will always federate via plain
-    // fetch against the target PDS.
-    let agent: Agent | null = null
-    if (did) {
+    // Lazily build the bound agent — restoring the OAuth session costs
+    // at least one Upstash round-trip plus DPoP deserialization and can
+    // trigger a token refresh, and the foreign-repo/blob branches below
+    // never touch the agent (feeds fan out dozens of those per page).
+    // Only the same-session branches and the auth-required methods pay
+    // for it. Restore failure keeps its semantics: log, drop the stale
+    // session cookie, and return null — same-session reads then fall
+    // back to the public proxy, auth-required methods 401.
+    const getAgent = async (): Promise<Agent | null> => {
+      if (!did) return null
       try {
         const client = await getOAuthClient()
         const oauthSession = await client.restore(did)
-        agent = new Agent(oauthSession)
+        return new Agent(oauthSession)
       } catch (err) {
         logSafe("[xrpc] oauth restore failed", err, { method: methodName })
         await deleteSession()
-        // If it's a public read method, we can still proceed unauth;
-        // otherwise fall through to the 401 below.
-        if (!PUBLIC_READ_METHODS.has(methodName)) {
-          return NextResponse.json({ error: "Session expired" }, { status: 401 })
-        }
+        return null
       }
-    } else if (!PUBLIC_READ_METHODS.has(methodName)) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
     // Query params come as Record<string, string> from URLSearchParams.
@@ -444,6 +464,7 @@ export async function GET(
         // no-store). If it throws (expired/unrefreshable OAuth session or
         // a transient PDS-auth error) fall back to the public read so a
         // degraded session doesn't 500 a read of the user's own record.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
@@ -477,6 +498,7 @@ export async function GET(
         // OAuth session or a transient PDS-auth error) fall back to the
         // public read so a degraded session doesn't 500 the user's own
         // Lists/Activities tabs — listRecords is a public XRPC.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.repo.listRecords({
@@ -496,15 +518,19 @@ export async function GET(
         return proxyPublicListRecords(methodName, repo, collection, queryParams)
       }
       case "com.atproto.server.getSession": {
+        // Auth-required: a cookie whose session no longer restores must
+        // still 401 (getAgent already dropped the stale cookie).
+        const agent = await getAgent()
         if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+          return NextResponse.json({ error: "Session expired" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.getSession()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
       case "com.atproto.server.listAppPasswords": {
+        const agent = await getAgent()
         if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+          return NextResponse.json({ error: "Session expired" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.listAppPasswords()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
@@ -524,6 +550,7 @@ export async function GET(
 
         // Same-session blob → prefer the bound agent, fall back to the
         // public read if a degraded session makes it throw.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
@@ -532,6 +559,7 @@ export async function GET(
               headers: {
                 "Content-Type":
                   result.headers["content-type"] || "application/octet-stream",
+                ...SAME_SESSION_BLOB_CACHE_HEADERS,
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
               },
