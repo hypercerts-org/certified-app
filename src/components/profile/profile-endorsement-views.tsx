@@ -169,7 +169,7 @@ const ReceivedCard = memo(function ReceivedCard({
             awardUri={endorsement.uri}
             awardCid={endorsement.cid}
             issuerDisplayName={
-              info?.displayName || info?.handle || endorsement.issuerDid
+              deriveIdentity(info, endorsement.issuerDid).displayName
             }
             ownerDid={viewerDid}
             targetDid={targetDid}
@@ -293,7 +293,7 @@ const GivenCard = memo(function GivenCard({
             rkeys={endorsement.rkeys}
             targetDid={targetDid}
             subjectDisplay={
-              info?.displayName || info?.handle || endorsement.subjectDid
+              deriveIdentity(info, endorsement.subjectDid).displayName
             }
             onAfterRevoke={onAfterRevoke}
           />

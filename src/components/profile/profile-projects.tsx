@@ -19,9 +19,14 @@ import { useManagedProjects } from "@/hooks/use-managed-projects"
 import { useProjectItems, type ProjectItemResolution } from "@/hooks/use-project-items"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatShortDate, formatTimePeriod } from "@/lib/utils/format-date"
 import OwnerByline from "@/components/ui/owner-byline"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
 import type { OwnerTag } from "@/lib/atproto/owner-tag"
 
 interface ProfileProjectsProps {
@@ -248,25 +253,19 @@ function ProjectBox({ project, owner }: ProjectBoxProps) {
     ? recordUrl(parsed.did, "project", parsed.rkey)
     : null
 
-  const title =
-    asString(value.title) || asString(value.name) || "Untitled project"
+  const title = projectTitle(value)
   const shortDesc = asString(value.shortDescription)
   const createdAt = asString(value.createdAt)
   const createdLabel = createdAt ? formatShortDate(createdAt) : null
 
   const { resolutions, isLoading } = useProjectItems(value.items)
 
-  // Banner falls back to legacy `image`. Rendered much larger than
-  // the previous compact thumbnail so the project reads as the
+  // Hero slot — banner-first (`projectImage` banner slot). Rendered
+  // much larger than a compact thumbnail so the project reads as the
   // primary unit on the page.
-  const rawImage = (value as Record<string, unknown>).banner ?? value.image
+  const rawImage = projectImage(value, "banner")
   const imageUrl =
-    rawImage && projectDid
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          projectDid,
-        )
-      : null
+    rawImage && projectDid ? resolveActivityImageUrl(rawImage, projectDid) : null
   const [imageFailed, setImageFailed] = useState(false)
   const showImage = !!imageUrl && !imageFailed
 
@@ -438,14 +437,6 @@ function CertThumb({ url }: { url: string | null }) {
   )
 }
 
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
-}
-
-function projectTitle(p: CollectionRecord): string {
-  return asString(p.value.title) || asString(p.value.name) || "Untitled project"
-}
-
 function filterAndSort(
   projects: CollectionRecord[],
   query: string,
@@ -454,7 +445,7 @@ function filterAndSort(
   const q = query.trim().toLowerCase()
   const matches = q
     ? projects.filter((p) => {
-        const t = projectTitle(p).toLowerCase()
+        const t = projectTitle(p.value).toLowerCase()
         const d = (asString(p.value.shortDescription) ?? "").toLowerCase()
         return t.includes(q) || d.includes(q)
       })
@@ -468,9 +459,9 @@ function filterAndSort(
       case "created-asc":
         return compareDate(asString(a.value.createdAt) ?? "", asString(b.value.createdAt) ?? "")
       case "alpha-asc":
-        return projectTitle(a).localeCompare(projectTitle(b))
+        return projectTitle(a.value).localeCompare(projectTitle(b.value))
       case "alpha-desc":
-        return projectTitle(b).localeCompare(projectTitle(a))
+        return projectTitle(b.value).localeCompare(projectTitle(a.value))
     }
   })
   return sorted
@@ -480,25 +471,6 @@ function compareDate(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0
 }
 
-/**
- * Render the cert's time period exactly the way the cert detail page
- * formats it — so the row reads the same whether the user sees it
- * here or on the cert itself.
- *
- *   - both set    → "Jan 1, 2026 – Mar 15, 2026"
- *   - only start  → "Jan 1, 2026 (ongoing)"
- *   - only end    → "Until Mar 15, 2026"
- *   - neither     → null (caller skips the row)
- */
-function formatTimePeriod(start: string | null, end: string | null): string | null {
-  if (!start && !end) return null
-  const s = start ? formatShortDate(start) : null
-  const e = end ? formatShortDate(end) : null
-  if (s && e) return `${s} – ${e}`
-  if (s) return `${s} (ongoing)`
-  if (e) return `Until ${e}`
-  return null
-}
 
 function countActivityItems(items: unknown): number {
   if (!Array.isArray(items)) return 0

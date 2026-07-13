@@ -20,6 +20,7 @@ import {
   getEndorsementListsVersionSnapshot,
   subscribeEndorsementListsVersion,
 } from "@/lib/atproto/endorsement-lists-cache"
+import { rkeyFromUri } from "@/lib/urls"
 
 /**
  * One "list" on a profile's Endorsements tab.
@@ -269,7 +270,7 @@ export function useEndorsementLists(did: string | null): {
       const entry: EndorsementList = {
         uri: ref.uri,
         cid: ref.cid,
-        rkey: ref.uri.split("/").pop() ?? "",
+        rkey: rkeyFromUri(ref.uri),
         title: title.trim(),
         description: description?.trim() || undefined,
         createdAt: new Date().toISOString(),

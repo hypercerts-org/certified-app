@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
+import { rkeyFromUri } from "@/lib/urls"
 
 export interface OwnCert {
   uri: string
@@ -70,7 +71,7 @@ export function useOwnCerts(did: string | null): {
           title:
             typeof rec.value?.title === "string" && rec.value.title.trim()
               ? rec.value.title.trim()
-              : rec.uri.split("/").pop() ?? "(untitled activity)",
+              : rkeyFromUri(rec.uri) || "(untitled activity)",
           createdAt:
             typeof rec.value?.createdAt === "string"
               ? rec.value.createdAt

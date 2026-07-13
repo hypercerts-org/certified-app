@@ -11,8 +11,9 @@ import { memo, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MoreVertical, Pencil, Trash2 } from "lucide-react"
-import { profileUrl, recordUrl } from "@/lib/urls"
+import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { projectImage, projectTitle } from "@/lib/atproto/collection"
 import {
   useContributorInfo,
   isAtprotoIdentity,
@@ -21,6 +22,7 @@ import { useContributorInformationRecord } from "@/hooks/use-contributor-informa
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useCertProjects } from "@/hooks/use-cert-projects"
 import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import {
@@ -227,8 +229,10 @@ export function SlimTabHeadline({
   const { info, isLoading: authorLoading } = useAuthorInfo(did)
   const showMenu = isCreator || !!editAsGroupLabel
 
-  const displayName = info?.displayName || info?.handle || "Anonymous"
-  const profileHref = profileUrl(info?.handle || did)
+  const { displayName, handle, initials, profileHref } = deriveIdentity(
+    info,
+    did,
+  )
 
   return (
     <header className="cert-detail__headline cert-detail__headline--slim">
@@ -250,15 +254,15 @@ export function SlimTabHeadline({
                 size="sm"
                 src={info.avatarUrl || undefined}
                 alt=""
-                fallbackInitials={getInitials(info.displayName, info.handle)}
+                fallbackInitials={initials}
               />
               <span className="cert-detail__headline-author-meta">
                 <span className="cert-detail__headline-name">
                   {displayName}
                 </span>
-                {info.handle ? (
+                {handle ? (
                   <span className="cert-detail__headline-handle">
-                    @{info.handle}
+                    @{handle}
                   </span>
                 ) : null}
               </span>
@@ -351,9 +355,8 @@ export function CertHeadlineColumns({
           />
         ) : (
           (() => {
-            const displayName = info.displayName || info.handle || "Anonymous"
-            const initials = getInitials(info.displayName, info.handle)
-            const profileHref = profileUrl(info.handle || did)
+            const { displayName, handle, initials, profileHref } =
+              deriveIdentity(info, did)
             return (
               <Link
                 href={profileHref}
@@ -370,9 +373,9 @@ export function CertHeadlineColumns({
                   <span className="cert-detail__headline-name">
                     {displayName}
                   </span>
-                  {info.handle ? (
+                  {handle ? (
                     <span className="cert-detail__headline-handle">
-                      @{info.handle}
+                      @{handle}
                     </span>
                   ) : null}
                 </span>
@@ -413,34 +416,20 @@ export function CertHeadlineColumns({
             // full list.
             const first = projects[0]
             const remaining = projects.length - 1
-            const firstParts = first.uri.match(
-              /^at:\/\/([^/]+)\/[^/]+\/(.+)$/,
-            )
+            const firstParts = parseAtUri(first.uri)
             const firstHref = firstParts
-              ? recordUrl(firstParts[1], "project", firstParts[2])
+              ? recordUrl(firstParts.did, "project", firstParts.rkey)
               : null
-            const v = first.value as Record<string, unknown>
-            const title =
-              (typeof v.title === "string" && v.title.length > 0
-                ? v.title
-                : null) ||
-              (typeof v.name === "string" && v.name.length > 0
-                ? v.name
-                : null) ||
-              "Untitled project"
-            // Image precedence mirrors the home-feed CollectionPreview
-            // and explore-page ProjectListRow: avatar (primary
-            // identity image) → image (legacy field) → banner
-            // (decorative). Resolved against the project's own DID
-            // so foreign-PDS blobs come through the xrpc proxy.
-            const projectDid = firstParts ? firstParts[1] : ""
-            const rawImage = v.avatar ?? v.image ?? v.banner
+            const title = projectTitle(first.value)
+            // Compact byline thumb — avatar-first (`projectImage`
+            // thumb slot), same read as the home-feed and explore
+            // rows. Resolved against the project's own DID so
+            // foreign-PDS blobs come through the xrpc proxy.
+            const projectDid = firstParts?.did ?? ""
+            const rawImage = projectImage(first.value, "thumb")
             const imageUrl =
               rawImage && projectDid
-                ? resolveActivityImageUrl(
-                    rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-                    projectDid,
-                  )
+                ? resolveActivityImageUrl(rawImage, projectDid)
                 : null
             const thumb = (
               <span

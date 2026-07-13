@@ -22,7 +22,11 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import {
+  projectImage,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { OwnerTag } from "@/lib/atproto/owner-tag"
 import type { Group } from "@/lib/groups/types"
@@ -277,20 +281,11 @@ function ProjectRow({
     ? recordUrl(parsed.did, "project", parsed.rkey)
     : "#"
 
-  const title =
-    asString(project.value.title) ||
-    asString(project.value.name) ||
-    "Untitled project"
+  const title = projectTitle(project.value)
 
-  const rawImage =
-    (project.value as Record<string, unknown>).banner ?? project.value.image
+  const rawImage = projectImage(project.value, "thumb")
   const imageUrl =
-    rawImage && did
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          did,
-        )
-      : null
+    rawImage && did ? resolveActivityImageUrl(rawImage, did) : null
 
   // Only group-owned records carry a "by {group}" line; personal records
   // are the viewer's own, so no byline is shown.
@@ -377,8 +372,4 @@ function CertRow({
       </Link>
     </li>
   )
-}
-
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
 }

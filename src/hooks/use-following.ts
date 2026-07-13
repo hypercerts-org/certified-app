@@ -7,6 +7,7 @@ import {
   type FollowRecord,
 } from "@/lib/atproto/follow"
 import { createCachedDidResource } from "@/hooks/create-cached-did-resource"
+import { rkeyFromUri } from "@/lib/urls"
 
 const STALE_MS = 5 * 60 * 1000
 
@@ -16,11 +17,6 @@ interface FollowingSnapshot {
    *  more upstream — preserved through the shared fetch so every
    *  consumer sees the same completeness signal. */
   truncated: boolean
-}
-
-function extractRkey(uri: string): string {
-  const idx = uri.lastIndexOf("/")
-  return idx >= 0 ? uri.slice(idx + 1) : uri
 }
 
 // Module-level cache + singleflight (inside the factory) keyed by DID.
@@ -110,7 +106,7 @@ export function useFollowing(did: string | null): {
         const record: FollowRecord = {
           uri,
           cid,
-          rkey: extractRkey(uri),
+          rkey: rkeyFromUri(uri),
           value: {
             $type: FOLLOW_COLLECTION,
             subject: subjectDid,

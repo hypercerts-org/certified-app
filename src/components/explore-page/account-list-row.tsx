@@ -2,11 +2,10 @@
 
 import { memo } from "react"
 import Link from "next/link"
-import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
@@ -37,15 +36,13 @@ function AccountListRow({
   endorsementMeta?: EndorsementClosureAccount
 }) {
   const { info } = useAuthorInfo(actor.did)
-  const displayName =
-    actor.displayName ||
-    info?.displayName ||
-    info?.handle ||
-    truncateDid(actor.did)
-  const handle = info?.handle ?? null
-  const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
-  const initials = getInitials(displayName, handle)
-  const profileHref = profileUrl(handle || actor.did)
+  // Record-level name/avatar (from the Certified actor record) outrank
+  // the resolved Bluesky profile — same data the search index returned.
+  const { displayName, handle, initials, profileHref, avatarUrl } =
+    deriveIdentity(info, actor.did, {
+      preferredName: actor.displayName,
+      preferredAvatarUrl: actor.avatarUrl,
+    })
 
   return (
     <article className="account-list-row">

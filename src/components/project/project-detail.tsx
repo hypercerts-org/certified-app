@@ -61,9 +61,14 @@ import {
 } from "@/lib/atproto/contributor-display"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatShortDate, formatTimePeriod } from "@/lib/utils/format-date"
 import type { LinearDocument } from "@/lib/leaflet/types"
-import type { CollectionValue } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  projectTitle,
+  type CollectionValue,
+} from "@/lib/atproto/collection"
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import type {
   ActivityContributor as ActivityContributorType,
@@ -89,10 +94,6 @@ interface ProjectDetailProps {
   cid: string
   /** Resolved handle, for the navbar breadcrumb (overview tab). */
   handle: string | null
-}
-
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
 }
 
 /** True when the existing description is present but in a shape the
@@ -247,9 +248,7 @@ export default function ProjectDetail({
   // no hand-rolled document listeners are needed here.
 
   const title =
-    asString(effectiveValue.title) ||
-    asString(effectiveValue.name) ||
-    "Untitled project"
+    projectTitle(effectiveValue)
 
   const shortDesc = asString(effectiveValue.shortDescription)
   const showFullDescription = isRenderableDescription(effectiveValue.description)
@@ -343,16 +342,9 @@ export default function ProjectDetail({
   //   2. Post-save local mirror.
   //   3. Re-resolved from the local mirror's record.
   //   4. Original server value.
-  const rawImage =
-    (effectiveValue as Record<string, unknown>).banner ??
-    (effectiveValue as Record<string, unknown>).image
+  const rawImage = projectImage(effectiveValue, "banner")
   const serverImageUrl =
-    rawImage && !imageRemoved
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          did,
-        )
-      : null
+    rawImage && !imageRemoved ? resolveActivityImageUrl(rawImage, did) : null
   const effectiveImageUrl =
     pendingImagePreviewUrl ?? localImageUrl ?? serverImageUrl
 
@@ -430,14 +422,7 @@ export default function ProjectDetail({
   }, [resolutions])
 
   // Time period rendering — same rules as the cert detail.
-  let timePeriodLabel: string | null = null
-  if (startDate && endDate) {
-    timePeriodLabel = `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
-  } else if (startDate) {
-    timePeriodLabel = `${formatShortDate(startDate)} (ongoing)`
-  } else if (endDate) {
-    timePeriodLabel = `Until ${formatShortDate(endDate)}`
-  }
+  const timePeriodLabel = formatTimePeriod(startDate, endDate)
 
   const certCount = resolutions.length
   // Phones show the activities preview as full-width list rows (the

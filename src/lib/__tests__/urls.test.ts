@@ -11,6 +11,7 @@ import {
   buildAtUri,
   parsePastedAtUri,
   recordUrlFromAtUri,
+  rkeyFromUri,
   RESERVED_ROUTES,
 } from "@/lib/urls"
 
@@ -128,5 +129,26 @@ describe("at-uri parsing", () => {
 
   it("returns null when the pasted at-uri lacks a DID authority", () => {
     expect(parsePastedAtUri("/at/alice.eco/coll/rk")).toBeNull()
+  })
+})
+
+describe("rkeyFromUri", () => {
+  it("returns the trailing rkey segment of a canonical at:// URI", () => {
+    expect(
+      rkeyFromUri("at://did:plc:abc/org.hypercerts.collection/3kabc123"),
+    ).toBe("3kabc123")
+  })
+
+  it("agrees with parseAtUri on well-formed URIs", () => {
+    const uri = "at://did:plc:abc/app.certified.badge.award/rk9"
+    expect(rkeyFromUri(uri)).toBe(parseAtUri(uri)?.rkey)
+  })
+
+  it("returns the empty string for a trailing slash (falsy for || fallbacks)", () => {
+    expect(rkeyFromUri("at://did:plc:abc/coll/")).toBe("")
+  })
+
+  it("returns the input itself when there is no slash", () => {
+    expect(rkeyFromUri("bare-rkey")).toBe("bare-rkey")
   })
 })

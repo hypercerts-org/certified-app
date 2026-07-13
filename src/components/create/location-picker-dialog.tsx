@@ -9,6 +9,7 @@ import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Tooltip from "@/components/ui/tooltip"
 import Map from "@/components/map/map-dynamic"
 import { authFetch } from "@/lib/auth/fetch"
+import { rkeyFromUri } from "@/lib/urls"
 import {
   parseLocationShape,
   putLocationRecord,
@@ -140,7 +141,7 @@ export default function LocationPickerDialog({
           const display =
             split?.name ||
             rawName ||
-            rec.uri.split("/").pop() ||
+            rkeyFromUri(rec.uri) ||
             "(unnamed location)"
           const lt =
             typeof rec.value?.locationType === "string"

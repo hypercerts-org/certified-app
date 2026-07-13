@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { deriveIdentity } from "@/lib/utils/identity"
+import { rkeyFromUri } from "@/lib/urls"
 import {
   deleteEndorsementAward,
   extractAwardSubjectDid,
@@ -167,7 +168,7 @@ export default function EndorsementLists({
                   // deleteEndorsementAward purges the award from every
                   // list owned by the issuer, so a list-side refetch
                   // catches the cleanup across all lists.
-                  const rkey = awardUri.split("/").pop()
+                  const rkey = rkeyFromUri(awardUri)
                   if (!rkey) return
                   await deleteEndorsementAward(viewerDid, rkey)
                   await refetch()

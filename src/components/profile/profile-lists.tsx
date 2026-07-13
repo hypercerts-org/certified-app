@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { profileUrl, recordUrl } from "@/lib/urls"
+import { recordUrl, rkeyFromUri } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useUrlParam } from "@/hooks/use-url-param"
@@ -41,7 +41,7 @@ import {
 } from "@/lib/atproto/typed-lists"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 
 const SECTIONS: { type: TypedListType; title: string; emptyHint: string }[] = [
   { type: LIST_CERTS_TYPE, title: "Activities", emptyHint: "No activity lists yet." },
@@ -157,7 +157,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
           onSubmit={async (title, description) => {
             const ref = await createList(creating, title, description)
             setCreating(null)
-            const rkey = ref.uri.split("/").pop() ?? null
+            const rkey = rkeyFromUri(ref.uri) || null
             // push: entering the new list creates a back-able history
             // entry. The same gesture as clicking an existing row.
             if (rkey) setSelectedRkey(rkey)
@@ -554,9 +554,10 @@ function AccountItemRow({
   // at://<did>/<nsid>/<rkey> — the subject DID is the second segment.
   const did = uri.split("/")[2] ?? null
   const { info } = useAuthorInfo(did)
-  const display = info?.displayName || info?.handle || did || "Unknown"
-  const initials = getInitials(info?.displayName, info?.handle ?? did ?? undefined)
-  const href = did ? profileUrl(info?.handle || did) : null
+  const identity = did ? deriveIdentity(info, did) : null
+  const display = identity?.displayName ?? "Unknown"
+  const initials = identity?.initials ?? "?"
+  const href = identity?.profileHref ?? null
   return (
     <ItemRowShell
       href={href}
@@ -569,7 +570,7 @@ function AccountItemRow({
         />
       }
       title={display}
-      subtitle={info?.handle && info.handle !== info.did ? `@${info.handle}` : null}
+      subtitle={identity?.handle ? `@${identity.handle}` : null}
       canRemove={canRemove}
       onRemove={onRemove}
     />

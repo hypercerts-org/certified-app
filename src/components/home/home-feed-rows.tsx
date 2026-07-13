@@ -16,12 +16,16 @@ import type { EndorsementGroupItem } from "@/lib/utils/group-feed"
 import { formatRelativeTime, resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { FeedActor } from "@/lib/atproto/follower-events"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatTimePeriod } from "@/lib/utils/format-date"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import { getInitials } from "@/lib/utils/initials"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import {
+  projectImage,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
 import { TYPED_LIST_TYPES, type TypedListType } from "@/lib/atproto/typed-lists"
 
 /**
@@ -535,7 +539,7 @@ export function CertPreview({
     record.value.image && parsed
       ? resolveActivityImageUrl(record.value.image, parsed.did)
       : null
-  const period = formatPeriod(
+  const period = formatTimePeriod(
     typeof record.value.startDate === "string" ? record.value.startDate : null,
     typeof record.value.endDate === "string" ? record.value.endDate : null,
   )
@@ -590,26 +594,16 @@ function CollectionPreview({
       : collectionType === "portfolio"
         ? "Untitled portfolio"
         : "Untitled project"
-  const title =
-    (typeof v.title === "string" && v.title.length > 0 ? v.title : null) ||
-    (typeof v.name === "string" && v.name.length > 0 ? v.name : null) ||
-    fallbackTitle
+  const title = projectTitle(record.value, fallbackTitle)
   const description =
     typeof v.shortDescription === "string" && v.shortDescription.length > 0
       ? v.shortDescription
       : null
-  // Priority: avatar (the collection's primary image) → image
-  // (legacy field on older records) → banner (decorative). Avatar
-  // is the identity image; banner is the wide hero. For a feed
-  // card the avatar reads as the project, not the banner.
-  const rawImage = v.avatar ?? v.image ?? v.banner
+  // Feed-card thumbnail — avatar-first (`projectImage` thumb slot):
+  // the avatar is the identity image; the banner is the wide hero.
+  const rawImage = projectImage(record.value, "thumb")
   const imageUrl =
-    rawImage && parsed
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          parsed.did,
-        )
-      : null
+    rawImage && parsed ? resolveActivityImageUrl(rawImage, parsed.did) : null
   const itemCount = Array.isArray(v.items) ? v.items.length : 0
   const itemNoun =
     collectionType === "list:endorsements"
@@ -760,17 +754,4 @@ function PreviewCard({
     )
   }
   return <div className="home-feed__card-body">{body}</div>
-}
-
-function formatPeriod(
-  start: string | null,
-  end: string | null,
-): string | null {
-  if (!start && !end) return null
-  const s = start ? formatShortDate(start) : null
-  const e = end ? formatShortDate(end) : null
-  if (s && e) return `${s} – ${e}`
-  if (s) return `${s} (ongoing)`
-  if (e) return `Until ${e}`
-  return null
 }

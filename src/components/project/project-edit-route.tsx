@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
@@ -28,7 +28,11 @@ import { useProjectItems } from "@/hooks/use-project-items"
 import { putProjectRecord } from "@/lib/atproto/project"
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
 import { saveWithSwap } from "@/lib/atproto/save-with-swap"
-import type { CollectionValue } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  type CollectionValue,
+} from "@/lib/atproto/collection"
 import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -53,18 +57,6 @@ interface SelectedCert {
   uri: string
   cid: string
   title: string
-}
-
-const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/
-
-function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
-  const m = AT_URI_RE.exec(uri)
-  if (!m) return null
-  return { did: m[1], collection: m[2], rkey: m[3] }
-}
-
-function asString(v: unknown): string {
-  return typeof v === "string" ? v : ""
 }
 
 /**
@@ -155,8 +147,8 @@ export default function ProjectEditRoute({
     if (!project) return
     const v = project.value
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap baseline from the loaded project record; key-remount refactor tracked separately
-    setTitle(asString(v.title))
-    setShortDescription(asString(v.shortDescription))
+    setTitle(asString(v.title) ?? "")
+    setShortDescription(asString(v.shortDescription) ?? "")
     setDescription(
       asLinearDocument(v.description) ??
         (typeof v.description === "string" && v.description.trim().length > 0
@@ -197,7 +189,7 @@ export default function ProjectEditRoute({
         title:
           typeof r.record!.value.title === "string" && r.record!.value.title.trim()
             ? r.record!.value.title.trim()
-            : r.record!.uri.split("/").pop() ?? "(untitled activity)",
+            : rkeyFromUri(r.record!.uri) || "(untitled activity)",
       }))
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (itemsSeededRef) hydration of the editable items list once useProjectItems resolutions settle; re-running would stomp user reordering/removal
     setItems(hydrated)
@@ -240,7 +232,7 @@ export default function ProjectEditRoute({
         if (!res.ok) {
           setLocation({
             ref: { uri: locRef.uri!, cid: locRef.cid! },
-            name: locRef.uri!.split("/").pop() ?? locRef.uri!,
+            name: rkeyFromUri(locRef.uri!) || locRef.uri!,
           })
           return
         }
@@ -248,14 +240,14 @@ export default function ProjectEditRoute({
         const raw = data.value?.name?.trim() ?? ""
         const split = splitLocationName(raw)
         const name =
-          split.name || raw || locRef.uri!.split("/").pop() || "Location"
+          split.name || raw || rkeyFromUri(locRef.uri!) || "Location"
         setLocation({ ref: { uri: locRef.uri!, cid: locRef.cid! }, name })
       })
       .catch(() => {
         if (aborted) return
         setLocation({
           ref: { uri: locRef.uri!, cid: locRef.cid! },
-          name: locRef.uri!.split("/").pop() ?? locRef.uri!,
+          name: rkeyFromUri(locRef.uri!) || locRef.uri!,
         })
       })
     return () => {
@@ -335,15 +327,10 @@ export default function ProjectEditRoute({
   // shape (BlobRef under `.image`); the same resolver project-detail
   // uses works for both. `banner` is the new field; legacy projects
   // sometimes only carry `image` as a square hero. Prefer banner.
-  const rawBannerOrImage =
-    (project?.value as Record<string, unknown> | undefined)?.banner ??
-    (project?.value as Record<string, unknown> | undefined)?.image
+  const rawBannerOrImage = project ? projectImage(project.value, "banner") : null
   const existingBannerUrl =
     !bannerRemoved && rawBannerOrImage && did
-      ? resolveActivityImageUrl(
-          rawBannerOrImage as Parameters<typeof resolveActivityImageUrl>[0],
-          did,
-        )
+      ? resolveActivityImageUrl(rawBannerOrImage, did)
       : null
   const displayBannerUrl = pendingBannerPreviewUrl ?? existingBannerUrl
 
@@ -486,8 +473,8 @@ export default function ProjectEditRoute({
         description: description,
       }
       const userMountSnapshot: UserShape = {
-        title: asString(mountSnapshot.value.title),
-        shortDescription: asString(mountSnapshot.value.shortDescription),
+        title: asString(mountSnapshot.value.title) ?? "",
+        shortDescription: asString(mountSnapshot.value.shortDescription) ?? "",
         description: asLinearDocument(mountSnapshot.value.description) ?? null,
       }
       const result = await saveWithSwap<UserShape, UserShape>({
@@ -521,8 +508,8 @@ export default function ProjectEditRoute({
           return {
             cid: data.cid,
             value: {
-              title: asString(data.value.title),
-              shortDescription: asString(data.value.shortDescription),
+              title: asString(data.value.title) ?? "",
+              shortDescription: asString(data.value.shortDescription) ?? "",
               description:
                 asLinearDocument(data.value.description) ?? null,
             },

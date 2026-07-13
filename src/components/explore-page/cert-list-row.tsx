@@ -8,7 +8,7 @@ import {
   resolveActivityImageUrl,
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatTimePeriod } from "@/lib/utils/format-date"
 import ExploreListRow from "./explore-list-row"
 
 /**
@@ -73,16 +73,3 @@ function CertListRow({
 }
 
 export default memo(CertListRow)
-
-function formatTimePeriod(
-  start: string | null,
-  end: string | null,
-): string | null {
-  if (!start && !end) return null
-  const s = start ? formatShortDate(start) : null
-  const e = end ? formatShortDate(end) : null
-  if (s && e) return `${s} – ${e}`
-  if (s) return `${s} (ongoing)`
-  if (e) return `Until ${e}`
-  return null
-}

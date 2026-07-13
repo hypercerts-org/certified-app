@@ -15,7 +15,7 @@ import {
   PopoverItem,
 } from "@/components/ui/popover"
 import { useAuth } from "@/lib/auth/auth-context"
-import { recordUrlFromAtUri } from "@/lib/urls"
+import { recordUrlFromAtUri, rkeyFromUri } from "@/lib/urls"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import {
@@ -316,7 +316,7 @@ function AddToListModal({
         const targetRef = await resolveTargetRef()
         if (!targetRef) throw new Error("Couldn't resolve record CID")
         const ref = await createList(targetType, title)
-        const rkey = ref.uri.split("/").pop()
+        const rkey = rkeyFromUri(ref.uri)
         if (!rkey) throw new Error("New list missing rkey")
         await addItem(rkey, targetType, targetRef)
         // Optimistic state: preview the new list immediately so it

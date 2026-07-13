@@ -81,6 +81,54 @@ describe("asEndorsementListValue", () => {
   })
 })
 
+describe("projectTitle", () => {
+  it("prefers title over the legacy name field", async () => {
+    const { projectTitle } = await loadModule()
+    expect(projectTitle({ title: "Reforest Bern", name: "old" })).toBe(
+      "Reforest Bern",
+    )
+  })
+
+  it("falls back to name, then the default label", async () => {
+    const { projectTitle } = await loadModule()
+    expect(projectTitle({ name: "Legacy name" })).toBe("Legacy name")
+    expect(projectTitle({})).toBe("Untitled project")
+    // Empty strings are treated as absent, not rendered blank.
+    expect(projectTitle({ title: "", name: "" })).toBe("Untitled project")
+  })
+
+  it("uses the caller-supplied fallback for non-project collections", async () => {
+    const { projectTitle } = await loadModule()
+    expect(projectTitle({}, "Untitled list")).toBe("Untitled list")
+  })
+})
+
+describe("projectImage", () => {
+  const avatar = { $type: "org.hypercerts.defs#uri", uri: "https://a/avatar" }
+  const image = { $type: "org.hypercerts.defs#uri", uri: "https://a/image" }
+  const banner = { $type: "org.hypercerts.defs#uri", uri: "https://a/banner" }
+
+  it("thumb slot is avatar-first: avatar -> image -> banner", async () => {
+    const { projectImage } = await loadModule()
+    expect(projectImage({ avatar, image, banner }, "thumb")).toBe(avatar)
+    expect(projectImage({ image, banner }, "thumb")).toBe(image)
+    expect(projectImage({ banner }, "thumb")).toBe(banner)
+  })
+
+  it("banner slot is banner-first and never picks the avatar", async () => {
+    const { projectImage } = await loadModule()
+    expect(projectImage({ avatar, image, banner }, "banner")).toBe(banner)
+    expect(projectImage({ avatar, image }, "banner")).toBe(image)
+    expect(projectImage({ avatar }, "banner")).toBeNull()
+  })
+
+  it("returns null when nothing usable is set", async () => {
+    const { projectImage } = await loadModule()
+    expect(projectImage({}, "thumb")).toBeNull()
+    expect(projectImage({}, "banner")).toBeNull()
+  })
+})
+
 describe("createEndorsementListCollection", () => {
   it("posts the canonical record shape and returns the new ref", async () => {
     mockAuthFetch.mockResolvedValueOnce(ok({ uri: "at://x", cid: "c" }))

@@ -178,6 +178,17 @@ export function buildAtUri(did: string, collection: string, rkey: string): strin
 }
 
 /**
+ * Return the `rkey` slice of `at://<did>/<collection>/<rkey>` — the
+ * trailing path segment. `""` for a malformed URI with a trailing
+ * slash, the input itself when there is no slash at all. Lighter than
+ * `parseAtUri` for callers that only need the rkey and already trust
+ * the URI's shape.
+ */
+export function rkeyFromUri(uri: string): string {
+  return uri.split("/").pop() ?? ""
+}
+
+/**
  * Parse a *pasted* pdsls-style path into its at-uri parts. Tolerates the
  * several shapes the prefix can arrive in:
  *   /at://did:plc:…/coll/rkey   (literal — may be normalized by the host)

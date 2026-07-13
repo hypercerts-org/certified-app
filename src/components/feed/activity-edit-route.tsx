@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import {
   Calendar,
@@ -157,14 +157,6 @@ interface ResolvedLocationRow {
   name: string
 }
 
-const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/
-
-function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
-  const m = AT_URI_RE.exec(uri)
-  if (!m) return null
-  return { did: m[1], collection: m[2], rkey: m[3] }
-}
-
 /**
  * `/{actor}/activity/{rkey}/edit` — full-page cert editor. `actor` is
  * resolved to a DID by the parent route; this component takes the resolved
@@ -272,7 +264,7 @@ export default function ActivityEditRoute({
             typeof rec.value?.rightsName === "string"
               ? rec.value.rightsName.trim()
               : ""
-          const fallback = rec.uri.split("/").pop() ?? "(unnamed rights)"
+          const fallback = rkeyFromUri(rec.uri) || "(unnamed rights)"
           return {
             ref: { uri: rec.uri, cid: rec.cid },
             name: rawName || fallback,
@@ -376,15 +368,15 @@ export default function ActivityEditRoute({
           const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) return { ref, name: ref.uri.split("/").pop() ?? ref.uri }
+          if (!res.ok) return { ref, name: rkeyFromUri(ref.uri) || ref.uri }
           const data = (await res.json()) as { value?: { name?: string } }
           const raw = data.value?.name?.trim() ?? ""
           const split = splitLocationName(raw)
           const name =
-            split.name || raw || ref.uri.split("/").pop() || "Location"
+            split.name || raw || rkeyFromUri(ref.uri) || "Location"
           return { ref, name }
         } catch {
-          return { ref, name: ref.uri.split("/").pop() ?? ref.uri }
+          return { ref, name: rkeyFromUri(ref.uri) || ref.uri }
         }
       }),
     ).then((rows) => {

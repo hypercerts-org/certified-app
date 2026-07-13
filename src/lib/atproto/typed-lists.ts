@@ -20,6 +20,7 @@
  * surface as a typo'd row.
  */
 import { authFetch } from "@/lib/auth/fetch"
+import { rkeyFromUri } from "@/lib/urls"
 import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
 import type {
   CollectionValue,
@@ -86,11 +87,6 @@ export interface TypedListRecord {
   createdAt: string
   type: TypedListType
   items: { itemIdentifier: ItemIdentifier; addedAt?: string }[]
-}
-
-/** Return the `rkey` slice of `at://<did>/<collection>/<rkey>`. */
-export function rkeyFromUri(uri: string): string {
-  return uri.split("/").pop() ?? ""
 }
 
 /** Check that an at:// URI targets a lexicon accepted for the list type.
