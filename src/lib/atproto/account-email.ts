@@ -10,21 +10,14 @@ import { authFetch } from "@/lib/auth/fetch"
  * passwords also unlocks email and vice-versa.
  *
  * Flow:
- *   1. `readEmail()` returns the current address (or throws `EmailLockedError`
- *      when no session is open, so the UI shows the unlock gate).
- *   2. `requestEmailUpdate()` asks the PDS to start a change. If the current
+ *   1. `requestEmailUpdate()` asks the PDS to start a change. If the current
  *      email is confirmed the PDS emails a code and returns `tokenRequired`.
- *   3. `updateEmail(email, token?)` commits the new address (with the code when
+ *   2. `updateEmail(email, token?)` commits the new address (with the code when
  *      one was required).
  *
  * Each call throws `EmailLockedError` when the route reports
  * `401 { error: "locked" }`, so the UI can drop back to the unlock step.
  */
-
-export interface EmailInfo {
-  email: string | null
-  emailConfirmed: boolean
-}
 
 /**
  * Thrown when the route reports `401 { error: "locked" }` — there's no elevated
@@ -56,17 +49,6 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
     return data.message || data.error || fallback
   } catch {
     return fallback
-  }
-}
-
-export async function readEmail(signal?: AbortSignal): Promise<EmailInfo> {
-  const res = await authFetch(BASE, { signal })
-  if (await isLocked(res)) throw new EmailLockedError()
-  if (!res.ok) throw new Error(await errorMessage(res, "Failed to read email"))
-  const data = (await res.json()) as Partial<EmailInfo>
-  return {
-    email: data.email ?? null,
-    emailConfirmed: !!data.emailConfirmed,
   }
 }
 

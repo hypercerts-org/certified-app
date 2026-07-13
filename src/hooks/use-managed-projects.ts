@@ -57,7 +57,7 @@ export function useManagedProjects(
 
   // Bumped on every initial-load run so a late loadMore for a stale
   // author set can't append to a freshly reset list. Mirrors
-  // use-user-activities.
+  // use-explore.
   const generationRef = useRef(0)
 
   // Stable key so the effect only re-runs when the author DIDs actually

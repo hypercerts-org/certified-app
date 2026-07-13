@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest"
 import {
   profileUrl,
   recordUrl,
-  activityUrl,
-  projectUrl,
   parseActor,
   isDid,
   isRecordType,
@@ -13,8 +11,6 @@ import {
   buildAtUri,
   parsePastedAtUri,
   recordUrlFromAtUri,
-  shareRecordUrl,
-  shareProfileUrl,
   RESERVED_ROUTES,
 } from "@/lib/urls"
 
@@ -31,17 +27,6 @@ describe("builders", () => {
     expect(recordUrl("did:plc:abc", "project", "rk")).toBe(
       "/did:plc:abc/project/rk",
     )
-    expect(activityUrl("alice.eco", "r")).toBe("/alice.eco/activity/r")
-    expect(projectUrl("alice.eco", "r")).toBe("/alice.eco/project/r")
-  })
-
-  it("share* builders force the DID form with an absolute origin", () => {
-    expect(shareProfileUrl("did:plc:abc", "https://certified.app")).toBe(
-      "https://certified.app/did:plc:abc",
-    )
-    expect(
-      shareRecordUrl("did:plc:abc", "activity", "rk", "https://certified.app"),
-    ).toBe("https://certified.app/did:plc:abc/activity/rk")
   })
 })
 

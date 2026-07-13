@@ -127,14 +127,6 @@ export function recordUrl(actor: string, type: RecordType, rkey: string): string
   return `/${actor}/${type}/${rkey}`
 }
 
-/** Convenience builders for the two concrete record types. */
-export function activityUrl(actor: string, rkey: string): string {
-  return recordUrl(actor, "activity", rkey)
-}
-export function projectUrl(actor: string, rkey: string): string {
-  return recordUrl(actor, "project", rkey)
-}
-
 /**
  * In-app link to a single typed list on the owner's profile. Typed
  * lists (`list:projects` / `list:accounts` / `list:certs`) don't get
@@ -158,23 +150,6 @@ export function recordUrlFromAtUri(uri: string, actor?: string): string | null {
   const type = typeForCollection(parsed.collection)
   if (!type) return null
   return recordUrl(actor ?? parsed.did, type, parsed.rkey)
-}
-
-// --- Durable (share) variants — always the DID form ------------------------
-
-/** Absolute, DID-based profile URL for sharing. */
-export function shareProfileUrl(did: string, origin: string): string {
-  return `${origin}${profileUrl(did)}`
-}
-
-/** Absolute, DID-based record URL for sharing. */
-export function shareRecordUrl(
-  did: string,
-  type: RecordType,
-  rkey: string,
-  origin: string,
-): string {
-  return `${origin}${recordUrl(did, type, rkey)}`
 }
 
 // ---------------------------------------------------------------------------

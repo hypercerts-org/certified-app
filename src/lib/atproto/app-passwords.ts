@@ -17,7 +17,6 @@ import { authFetch } from "@/lib/auth/fetch"
  *   2. `list` / `create` / `revoke` operate inside that session. Each throws
  *      `AppPasswordsLockedError` when the session is gone (TTL expiry), so
  *      the UI can drop back to the locked gate.
- *   3. `lockAppPasswords()` tears the session down.
  *
  * `createAppPassword` returns the generated secret EXACTLY ONCE — the PDS
  * never reveals it again — so the caller must surface it for copy
@@ -95,11 +94,6 @@ export async function unlockAppPasswords(
     return { status: data.status }
   }
   throw new Error("Unexpected response from the unlock service.")
-}
-
-/** Tear down the elevated session (best-effort `deleteSession` + clear). */
-export async function lockAppPasswords(): Promise<void> {
-  await authFetch(`${BASE}/session`, { method: "DELETE" })
 }
 
 export async function listAppPasswords(
