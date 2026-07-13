@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { authFetch } from "@/lib/auth/fetch"
+import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
 import { fetchRemoteMemberships } from "@/lib/groups/api"
 
 export interface UserGroup {
@@ -12,14 +12,6 @@ export interface UserGroup {
   avatarUrl?: string
   role?: string
   joinedAt?: string
-}
-
-interface ResolvedDid {
-  did: string
-  handle: string
-  displayName?: string
-  description?: string
-  avatar?: string
 }
 
 /**
@@ -63,38 +55,34 @@ export function useCgsMemberships(did: string | null): {
         const remote = await fetchRemoteMemberships(signal)
         if (signal.aborted) return
 
+        // Resolve group profiles through the batched coalescer — one
+        // coalesced POST /api/resolve-dids for all K groups, plus
+        // session caching across refreshes. The previous per-row
+        // GET /api/resolve-did pattern is exactly what blew that
+        // route's 60/min rate limit (see resolve-did-batch.ts).
+        // loadResolvedProfile never rejects (null on failure) and
+        // takes no signal; a fetch completing after unmount only
+        // warms the shared cache — the aborted guard below still
+        // gates setState.
         const hydrated = await Promise.all(
           remote.map(async (m): Promise<UserGroup> => {
-            try {
-              const res = await authFetch(
-                `/api/resolve-did?did=${encodeURIComponent(m.groupDid)}`,
-                { signal },
-              )
-              if (!res.ok) {
-                return {
-                  groupDid: m.groupDid,
-                  handle: m.groupDid,
-                  role: m.role,
-                  joinedAt: m.joinedAt,
-                }
-              }
-              const data = (await res.json()) as ResolvedDid
-              return {
-                groupDid: m.groupDid,
-                handle: data.handle || m.groupDid,
-                displayName: data.displayName,
-                description: data.description,
-                avatarUrl: data.avatar,
-                role: m.role,
-                joinedAt: m.joinedAt,
-              }
-            } catch {
+            const profile = await loadResolvedProfile(m.groupDid)
+            if (!profile) {
               return {
                 groupDid: m.groupDid,
                 handle: m.groupDid,
                 role: m.role,
                 joinedAt: m.joinedAt,
               }
+            }
+            return {
+              groupDid: m.groupDid,
+              handle: profile.handle || m.groupDid,
+              displayName: profile.displayName,
+              description: profile.description,
+              avatarUrl: profile.avatar ?? undefined,
+              role: m.role,
+              joinedAt: m.joinedAt,
             }
           }),
         )

@@ -18,7 +18,6 @@ import {
 } from "@/lib/atproto/collection"
 import {
   getEndorsementListsVersionSnapshot,
-  invalidateEndorsementLists,
   subscribeEndorsementListsVersion,
 } from "@/lib/atproto/endorsement-lists-cache"
 
@@ -55,10 +54,28 @@ export interface EndorsementList {
 interface CacheEntry {
   lists: EndorsementList[]
   fetchedAt: number
+  /** Invalidation-bus version this entry was fetched under. A bump
+   *  (any list mutation, anywhere) makes the entry a miss exactly
+   *  once — previously `force = listsVersion > 0` bypassed the cache
+   *  AND the proxy's HTTP cache on every mount for the rest of the
+   *  session after the first mutation. */
+  version: number
 }
 
 const STALE_MS = 5 * 60 * 1000
 const cache = new Map<string, CacheEntry>()
+
+// Optimistic write-through used by the mutation callbacks: stamps the
+// entry with the CURRENT bus version — the local state already
+// reflects the mutation, so a version bump fired during the write
+// must not force an immediate redundant refetch of what we just set.
+function writeCache(targetDid: string, lists: EndorsementList[]): void {
+  cache.set(targetDid, {
+    lists,
+    fetchedAt: Date.now(),
+    version: getEndorsementListsVersionSnapshot(),
+  })
+}
 
 /**
  * Read every endorsement-list on `did`'s repo plus the awards that
@@ -147,12 +164,25 @@ export function useEndorsementLists(did: string | null): {
         setError(null)
         return
       }
+      // Snapshot the bus version at fetch start: the entry is stamped
+      // with it, so a mutation landing mid-fetch (bumping the version)
+      // still invalidates what this fetch writes.
+      const version = getEndorsementListsVersionSnapshot()
+      let noCache = force
       if (!force) {
         const cached = cache.get(targetDid)
-        if (cached && Date.now() - cached.fetchedAt < STALE_MS) {
-          setLists(cached.lists)
-          setIsLoading(false)
-          return
+        if (cached) {
+          const fresh = Date.now() - cached.fetchedAt < STALE_MS
+          if (fresh && cached.version === version) {
+            setLists(cached.lists)
+            setIsLoading(false)
+            return
+          }
+          // Version-driven miss: a mutation outside this hook landed
+          // after this entry was cached. Bypass the proxy's 5s
+          // listRecords cache on the refetch, or a pre-write response
+          // could get pinned here for another STALE_MS window.
+          if (cached.version !== version) noCache = true
         }
       }
       setIsLoading(true)
@@ -160,7 +190,7 @@ export function useEndorsementLists(did: string | null): {
       try {
         const [collections, awards] = await Promise.all([
           listEndorsementListCollections(targetDid, signal),
-          listAwards(targetDid, signal, force ? { noCache: true } : undefined),
+          listAwards(targetDid, signal, noCache ? { noCache: true } : undefined),
         ])
         if (signal?.aborted) return
         const awardByUri = new Map<string, BadgeAwardRecord>()
@@ -186,7 +216,7 @@ export function useEndorsementLists(did: string | null): {
             }
           })
           .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
-        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        cache.set(targetDid, { lists: next, fetchedAt: Date.now(), version })
         setLists(next)
       } catch (err) {
         if (signal?.aborted) return
@@ -210,10 +240,10 @@ export function useEndorsementLists(did: string | null): {
 
   useEffect(() => {
     const controller = new AbortController()
-    // Force a cache bypass when the version bumped — the broadcast
-    // means something outside this hook just mutated the lists.
-    const force = listsVersion > 0
-    doFetch(did, controller.signal, force)
+    // The version dep re-runs this when something outside this hook
+    // mutated the lists; doFetch spots the version mismatch on the
+    // cached entry and refetches (with noCache) exactly once.
+    doFetch(did, controller.signal)
     return () => controller.abort()
   }, [did, doFetch, listsVersion])
 
@@ -247,7 +277,7 @@ export function useEndorsementLists(did: string | null): {
       }
       setLists((prev) => {
         const next = [entry, ...prev]
-        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        writeCache(targetDid, next)
         return next
       })
       return entry
@@ -283,7 +313,7 @@ export function useEndorsementLists(did: string | null): {
           }
           return updated
         })
-        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        writeCache(targetDid, next)
         return next
       })
       return updated
@@ -302,7 +332,7 @@ export function useEndorsementLists(did: string | null): {
       await deleteEndorsementListCollection(targetDid, rkey)
       setLists((prev) => {
         const next = prev.filter((l) => l.rkey !== rkey)
-        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        writeCache(targetDid, next)
         return next
       })
     },
@@ -481,7 +511,7 @@ export function useEndorsementLists(did: string | null): {
           }
           return updated
         })
-        cache.set(targetDid, { lists: next, fetchedAt: Date.now() })
+        writeCache(targetDid, next)
         return next
       })
       return updated

@@ -177,10 +177,17 @@ async function listRecords(
 }
 
 const boardCache = createBoundedCache<string, BoardWithRef | null>(200)
+// Concurrent callers for the same activity (re-mount mid-fetch,
+// StrictMode double-effects) share one listRecords walk instead of
+// each paginating the repo — the fetchOrgMarker pattern.
+const boardInFlight = new Map<string, Promise<BoardWithRef | null>>()
 
 /** Drop the cached board for an activity so the next read re-fetches. */
 export function invalidateBoardForActivity(activityUri: string): void {
   boardCache.delete(activityUri)
+  // Also drop any pending fetch — it resolves to the pre-invalidation
+  // value and must not be re-used by the next caller.
+  boardInFlight.delete(activityUri)
 }
 
 /**
@@ -195,35 +202,54 @@ export async function fetchBoardForActivity(
   const cached = boardCache.get(activityUri)
   if (cached !== undefined) return cached
 
-  const records = await listRecords(authorDid, BOARD_NSID)
-  let result: BoardWithRef | null = null
-  for (const rec of records) {
-    const subject = isObj(rec.value) ? asStrongRef(rec.value.subject) : null
-    if (subject?.uri !== activityUri) continue
-    const board = parseBoardRecord(rec.value)
-    if (!board) continue
-    const parsed = parseAtUri(rec.uri)
-    result = {
-      uri: rec.uri,
-      cid: rec.cid,
-      rkey: parsed?.rkey ?? "",
-      did: parsed?.did ?? authorDid,
-      board,
+  const existing = boardInFlight.get(activityUri)
+  if (existing) return existing
+
+  const promise = (async (): Promise<BoardWithRef | null> => {
+    try {
+      const records = await listRecords(authorDid, BOARD_NSID)
+      let result: BoardWithRef | null = null
+      for (const rec of records) {
+        const subject = isObj(rec.value) ? asStrongRef(rec.value.subject) : null
+        if (subject?.uri !== activityUri) continue
+        const board = parseBoardRecord(rec.value)
+        if (!board) continue
+        const parsed = parseAtUri(rec.uri)
+        result = {
+          uri: rec.uri,
+          cid: rec.cid,
+          rkey: parsed?.rkey ?? "",
+          did: parsed?.did ?? authorDid,
+          board,
+        }
+        break
+      }
+      boardCache.set(activityUri, result)
+      return result
+    } finally {
+      boardInFlight.delete(activityUri)
     }
-    break
-  }
-  boardCache.set(activityUri, result)
-  return result
+  })()
+  boardInFlight.set(activityUri, promise)
+  return promise
 }
 
 const displayProfileCache = createBoundedCache<
   string,
   DisplayProfileRecord | null
 >(500)
+// Same singleflight as boardInFlight: settled results alone don't
+// dedupe concurrent callers for one DID.
+const displayProfileInFlight = new Map<
+  string,
+  Promise<DisplayProfileRecord | null>
+>()
 
 /** Drop a cached displayProfile so the next read re-fetches (after edit). */
 export function invalidateDisplayProfile(did: string): void {
   displayProfileCache.delete(did)
+  // A pending fetch resolves to the pre-edit record — drop it too.
+  displayProfileInFlight.delete(did)
 }
 
 /** Fetch a user's own org.hyperboards.displayProfile (rkey self). */
@@ -232,24 +258,34 @@ export async function fetchDisplayProfile(
 ): Promise<DisplayProfileRecord | null> {
   const cached = displayProfileCache.get(did)
   if (cached !== undefined) return cached
-  let result: DisplayProfileRecord | null = null
-  try {
-    const res = await authFetch(
-      xrpcGetRecordPath({
-        repo: did,
-        collection: DISPLAY_PROFILE_NSID,
-        rkey: "self",
-      }),
-    )
-    if (res.ok) {
-      const data = (await res.json()) as { value?: unknown }
-      result = parseDisplayProfile(data.value)
+
+  const existing = displayProfileInFlight.get(did)
+  if (existing) return existing
+
+  const promise = (async (): Promise<DisplayProfileRecord | null> => {
+    let result: DisplayProfileRecord | null = null
+    try {
+      const res = await authFetch(
+        xrpcGetRecordPath({
+          repo: did,
+          collection: DISPLAY_PROFILE_NSID,
+          rkey: "self",
+        }),
+      )
+      if (res.ok) {
+        const data = (await res.json()) as { value?: unknown }
+        result = parseDisplayProfile(data.value)
+      }
+    } catch {
+      result = null
+    } finally {
+      displayProfileInFlight.delete(did)
     }
-  } catch {
-    result = null
-  }
-  displayProfileCache.set(did, result)
-  return result
+    displayProfileCache.set(did, result)
+    return result
+  })()
+  displayProfileInFlight.set(did, promise)
+  return promise
 }
 
 /**
