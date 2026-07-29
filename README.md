@@ -60,6 +60,8 @@ Edit `.env.local` with your values:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_PDS_URL` | Yes | PDS / handle resolver URL (default: `https://certified.one`) |
+| `NEXT_PUBLIC_HOME_FEED_SOURCE` | No | Home feed transport: `indexer` (default/rollback) or `service` |
+| `NEXT_PUBLIC_CERTIFIED_FEED_SERVICE_URL` | Service mode | Exact HTTPS origin of the Certified Feed Service; local loopback HTTP is allowed in development |
 | `PUBLIC_URL` | Recommended in production | Canonical app origin used for OAuth metadata and callbacks |
 | `VERCEL_BRANCH_URL` | Vercel-provided fallback | Stable branch hostname used when `PUBLIC_URL` is absent |
 | `VERCEL_URL` | Vercel-provided fallback | Commit deployment hostname used when the first two values are absent |

@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 
 import { EndorsementGroupRow } from "../home-feed-rows"
 import type { EndorsementGroupItem } from "@/lib/utils/group-feed"
-import type { FeedActor } from "@/lib/atproto/follower-events"
+import type { HomeFeedActor } from "@/hooks/use-home-feed"
 
 // useAuthorInfo goes through the batched DID resolver (network). Stub
 // it so rows render DID-only bylines synchronously; the spy doubles as
@@ -17,12 +17,17 @@ vi.mock("@/hooks/use-author-info", () => ({
   useAuthorInfo: (did: string | null) => useAuthorInfoMock(did),
 }))
 
-const ACTOR_PROFILE: FeedActor = {
-  did: "did:plc:actor",
-  handle: null,
-  displayName: null,
-  avatarCid: null,
+function actor(did: string): HomeFeedActor {
+  return {
+    did,
+    handle: null,
+    displayName: null,
+    avatarUrl: null,
+    complete: false,
+  }
 }
+
+const ACTOR_PROFILE = actor("did:plc:actor")
 
 function makeGroup(
   count: number,
@@ -34,7 +39,9 @@ function makeGroup(
     actor: "did:plc:actor",
     actorProfile: ACTOR_PROFILE,
     createdAt: "2026-07-01T00:00:00.000Z",
-    subjectDids: Array.from({ length: count }, (_, i) => `did:plc:subject${i}`),
+    subjects: Array.from({ length: count }, (_, i) =>
+      actor(`did:plc:subject${i}`),
+    ),
     ...overrides,
   }
 }
@@ -90,15 +97,15 @@ describe("EndorsementGroupRow expanded-list windowing", () => {
 
 describe("EndorsementGroupRow memo comparator", () => {
   // groupConsecutiveEndorsements rebuilds group objects (and their
-  // subjectDids arrays) on every events change; the memo comparator
-  // must bail on a structurally-equal rebuild and re-render when the
-  // group absorbs another subject.
+  // subjects arrays) on every events change; the memo comparator must
+  // bail on a structurally-equal rebuild and re-render when the group
+  // absorbs another subject.
   it("skips re-render for a rebuilt-but-equal group and re-renders on growth", () => {
     const { rerender } = render(<EndorsementGroupRow group={makeGroup(5)} />)
     const baseline = useAuthorInfoMock.mock.calls.length
     expect(baseline).toBeGreaterThan(0)
 
-    // Fresh group + fresh subjectDids array, same values (actorProfile
+    // Fresh group + fresh subject summaries, same values (actorProfile
     // ref is stable in production — it comes from the stable event).
     rerender(<EndorsementGroupRow group={makeGroup(5)} />)
     expect(useAuthorInfoMock.mock.calls.length).toBe(baseline)

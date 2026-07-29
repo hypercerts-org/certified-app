@@ -1,0 +1,429 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  certifiedFeedImageUrl,
+  CertifiedFeedError,
+  fetchCertifiedFeed,
+  parseCertifiedFeedResponse,
+  parseCertifiedFeedServiceOrigin,
+  parseHomeFeedSource,
+} from "../certified-feed"
+
+const did = "did:plc:abcdefghijklmnopqrstuvwx"
+const subjectDid = "did:plc:zyxwvutsrqponmlkjihgfedc"
+const uri = `at://${did}/org.hypercerts.claim.activity/3abc`
+const cid = "bafyreia3tbsfxe3cc75xrxyyn6qc42oupi73fxiox76prlyi5bpx7hr72u"
+const timestamp = "2026-07-21T10:00:00.000Z"
+
+function actor(actorDid = did) {
+  return { did: actorDid, handle: "actor.example", displayName: "Actor" }
+}
+
+function item(kind: string, view: Record<string, unknown>) {
+  return {
+    id: uri,
+    kind,
+    subject: { uri, cid },
+    feedTimestamp: timestamp,
+    actor: actor(),
+    view,
+  }
+}
+
+const knownViews = [
+  [
+    "cert.create",
+    {
+      $type: "app.certified.feed.beta.defs#activityView",
+      title: "Restore",
+      locationCount: 2,
+    },
+  ],
+  [
+    "collection.create",
+    {
+      $type: "app.certified.feed.beta.defs#collectionView",
+      title: "Program",
+      itemCount: 3,
+    },
+  ],
+  [
+    "project.created_with_cert",
+    {
+      $type: "app.certified.feed.beta.defs#collectionView",
+      title: "Paired program",
+      itemCount: 1,
+    },
+  ],
+  [
+    "endorsement.award",
+    {
+      $type: "app.certified.feed.beta.defs#endorsementView",
+      subject: actor(subjectDid),
+    },
+  ],
+  [
+    "evaluation.create",
+    { $type: "app.certified.feed.beta.defs#evaluationView", summary: "Strong" },
+  ],
+  [
+    "measurement.create",
+    { $type: "app.certified.feed.beta.defs#measurementView", metric: "hectares" },
+  ],
+  [
+    "hyperboard.create",
+    { $type: "app.certified.feed.beta.defs#hyperboardView" },
+  ],
+  [
+    "update.create",
+    {
+      $type: "app.certified.feed.beta.defs#updateView",
+      title: "Progress",
+      image: {
+        $type: "org.hypercerts.defs#smallBlob",
+        blob: {
+          $type: "blob",
+          ref: { $link: cid },
+          mimeType: "image/png",
+          size: 123,
+        },
+      },
+    },
+  ],
+] as const
+
+describe("feed configuration", () => {
+  it("defaults the source to indexer and accepts only known values", () => {
+    expect(parseHomeFeedSource(undefined)).toBe("indexer")
+    expect(parseHomeFeedSource("service")).toBe("service")
+    expect(() => parseHomeFeedSource("other")).toThrow(/use "indexer".*"service"/)
+  })
+
+  it("accepts HTTPS origins and non-production loopback HTTP", () => {
+    expect(parseCertifiedFeedServiceOrigin("https://feed.example", "production")).toBe(
+      "https://feed.example",
+    )
+    expect(parseCertifiedFeedServiceOrigin("http://127.0.0.1:3001", "development")).toBe(
+      "http://127.0.0.1:3001",
+    )
+  })
+
+  it.each([
+    "https://user:secret@feed.example",
+    "https://feed.example/xrpc",
+    "https://feed.example?x=1",
+    "https://feed.example#fragment",
+    "ftp://feed.example",
+    "http://feed.example",
+  ])("rejects a non-origin or unsafe service URL: %s", (value) => {
+    expect(() => parseCertifiedFeedServiceOrigin(value, "production")).toThrow()
+  })
+})
+
+describe("parseCertifiedFeedResponse", () => {
+  it.each(knownViews)("parses %s", (kind, view) => {
+    const page = parseCertifiedFeedResponse({ items: [item(kind, view)], cursor: "next" })
+    expect(page.items[0]).toMatchObject({ kind, view: { $type: view.$type } })
+    expect(page.cursor).toBe("next")
+  })
+
+  it("derives a missing event actor DID from the source AT URI", () => {
+    const value = item("cert.create", knownViews[0][1])
+    value.actor = { handle: "actor.example", displayName: "Actor" } as ReturnType<typeof actor>
+    expect(parseCertifiedFeedResponse({ items: [value] }).items[0].actor.did).toBe(did)
+  })
+
+  it("rejects an explicit event actor DID that disagrees with source ownership", () => {
+    const value = item("cert.create", knownViews[0][1])
+    value.actor = actor(subjectDid)
+    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
+      /must match the source AT-URI authority/,
+    )
+  })
+
+  it("uses the validated event actor DID as actor-avatar blob owner", () => {
+    const value = item("cert.create", knownViews[0][1])
+    value.actor = {
+      ...actor(),
+      avatar: {
+        $type: "org.hypercerts.defs#smallImage",
+        image: {
+          $type: "blob",
+          ref: { $link: cid },
+          mimeType: "image/png",
+          size: 123,
+        },
+      },
+    } as ReturnType<typeof actor>
+    const parsed = parseCertifiedFeedResponse({ items: [value] }).items[0]
+    expect(certifiedFeedImageUrl(parsed.actor.avatar, parsed.actor.did)).toBe(
+      `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
+    )
+  })
+
+  it("keeps unknown views as an open-union fallback", () => {
+    const page = parseCertifiedFeedResponse({
+      items: [item("future.create", { $type: "app.certified.feed.beta.defs#futureView" })],
+    })
+    expect(page.items[0].view).toEqual({
+      $type: "app.certified.feed.beta.defs#futureView",
+      unknown: true,
+    })
+  })
+
+  it("rejects known kind/view mismatches and malformed known views", () => {
+    expect(() =>
+      parseCertifiedFeedResponse({ items: [item("cert.create", knownViews[1][1])] }),
+    ).toThrow(/requires view/)
+    expect(() =>
+      parseCertifiedFeedResponse({
+        items: [
+          item("cert.create", {
+            $type: "app.certified.feed.beta.defs#activityView",
+            title: "Missing count",
+          }),
+        ],
+      }),
+    ).toThrow(/locationCount/)
+  })
+
+  it("uses contextual blob variants and rejects a known variant in the wrong view", () => {
+    const parsed = parseCertifiedFeedResponse({ items: [item("update.create", knownViews[7][1])] })
+    expect(parsed.items[0].view).toMatchObject({ image: { kind: "blob", cid } })
+    expect(() =>
+      parseCertifiedFeedResponse({
+        items: [
+          item("cert.create", {
+            $type: "app.certified.feed.beta.defs#activityView",
+            title: "Bad image",
+            locationCount: 0,
+            image: knownViews[7][1].image,
+          }),
+        ],
+      }),
+    ).toThrow(/does not allow/)
+  })
+
+  it.each(["", "x".repeat(4097)])("rejects invalid cursors", (cursor) => {
+    expect(() => parseCertifiedFeedResponse({ items: [], cursor })).toThrow(/cursor/)
+  })
+
+  it("accepts calendar-valid fractional RFC3339 with an offset", () => {
+    const value = item("cert.create", knownViews[0][1])
+    value.feedTimestamp = "2024-02-29T23:59:59.123456789+05:30"
+    expect(parseCertifiedFeedResponse({ items: [value] }).items[0].feedTimestamp).toBe(
+      value.feedTimestamp,
+    )
+  })
+
+  it.each([
+    "2026-07-21 10:00:00Z",
+    "2026-07-21",
+    "July 21, 2026 10:00:00 UTC",
+    "2026-02-30T10:00:00Z",
+    "2025-02-29T10:00:00Z",
+    "2026-07-21T24:00:00Z",
+    "2026-07-21T10:60:00Z",
+    "2026-07-21T10:00:00+24:00",
+  ])("rejects non-RFC3339 feed datetimes: %s", (feedTimestamp) => {
+    const value = item("cert.create", knownViews[0][1])
+    value.feedTimestamp = feedTimestamp
+    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
+      /RFC3339/,
+    )
+  })
+
+  it.each([
+    ["handle", "not-a-handle"],
+    ["handle", "-bad.example"],
+    ["handle", "bad_.example"],
+  ])("rejects malformed actor %s %s", (_field, handle) => {
+    const value = item("cert.create", knownViews[0][1])
+    value.actor = { ...actor(), handle }
+    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
+      /valid AT Protocol handle/,
+    )
+  })
+
+  it("rejects malformed generic image URIs", () => {
+    expect(() =>
+      parseCertifiedFeedResponse({
+        items: [
+          item("cert.create", {
+            $type: "app.certified.feed.beta.defs#activityView",
+            title: "Bad URI",
+            locationCount: 0,
+            image: {
+              $type: "org.hypercerts.defs#uri",
+              uri: "not an absolute uri",
+            },
+          }),
+        ],
+      }),
+    ).toThrow(/valid absolute URI/)
+  })
+
+  it("rejects malformed source, target, and blob CIDs", () => {
+    const badSource = item("cert.create", knownViews[0][1])
+    badSource.subject.cid = "not-a-cid"
+    expect(() => parseCertifiedFeedResponse({ items: [badSource] })).toThrow(
+      /valid CID/,
+    )
+
+    expect(() =>
+      parseCertifiedFeedResponse({
+        items: [
+          item("evaluation.create", {
+            $type: "app.certified.feed.beta.defs#evaluationView",
+            target: { uri, cid: "bad-target" },
+          }),
+        ],
+      }),
+    ).toThrow(/valid CID/)
+
+    const badBlob = structuredClone(knownViews[7][1]) as Record<string, unknown>
+    ;(
+      (badBlob.image as { blob: { ref: { $link: string } } }).blob.ref
+    ).$link = "bad-blob"
+    expect(() =>
+      parseCertifiedFeedResponse({
+        items: [item("update.create", badBlob)],
+      }),
+    ).toThrow(/valid CID/)
+  })
+})
+
+describe("fetchCertifiedFeed", () => {
+  const mockFetch = vi.fn()
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    globalThis.fetch = mockFetch as unknown as typeof fetch
+    mockFetch.mockReset()
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  async function fetchRateLimitError(retryAfter: string): Promise<CertifiedFeedError> {
+    mockFetch.mockResolvedValueOnce(
+      new Response("busy", {
+        status: 429,
+        headers: { "Retry-After": retryAfter },
+      }),
+    )
+    try {
+      await fetchCertifiedFeed(
+        { viewerDid: did },
+        { origin: "https://feed.example" },
+      )
+      throw new Error("Expected the feed request to be rate limited")
+    } catch (error) {
+      expect(error).toBeInstanceOf(CertifiedFeedError)
+      return error as CertifiedFeedError
+    }
+  }
+
+  it("sends one credentialless no-store XRPC POST", async () => {
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ items: [item("cert.create", knownViews[0][1])] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    await fetchCertifiedFeed(
+      { viewerDid: did, trustedEvaluators: [subjectDid], limit: 50 },
+      { origin: "https://feed.example" },
+    )
+    expect(mockFetch).toHaveBeenCalledOnce()
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "https://feed.example/xrpc/app.certified.feed.beta.getFeed",
+    )
+    expect(mockFetch.mock.calls[0][1]).toMatchObject({
+      method: "POST",
+      credentials: "omit",
+      cache: "no-store",
+    })
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
+      viewerDid: did,
+      trustedEvaluators: [subjectDid],
+    })
+  })
+
+  it("preserves recognized safe errors and parses visible Retry-After", async () => {
+    mockFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: "InvalidCursor", message: "Discard the cursor." }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    await expect(
+      fetchCertifiedFeed({ viewerDid: did }, { origin: "https://feed.example" }),
+    ).rejects.toMatchObject({ code: "InvalidCursor", message: "Discard the cursor." })
+
+    mockFetch.mockResolvedValue(
+      new Response("gateway busy", { status: 429, headers: { "Retry-After": "2" } }),
+    )
+    const before = Date.now()
+    let caught: unknown
+    try {
+      await fetchCertifiedFeed(
+        { viewerDid: did },
+        { origin: "https://feed.example" },
+      )
+    } catch (error) {
+      caught = error
+    }
+    expect(caught).toBeInstanceOf(CertifiedFeedError)
+    const error = caught as CertifiedFeedError
+    expect(error.code).toBeNull()
+    expect(error.retryAt).toBeGreaterThanOrEqual(before + 1900)
+    expect(error.message).not.toContain("gateway busy")
+  })
+
+  it("uses a generic message for recognized server-side failures", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: "InternalError",
+          message: "sensitive internal service detail",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    let caught: unknown
+    try {
+      await fetchCertifiedFeed(
+        { viewerDid: did },
+        { origin: "https://feed.example" },
+      )
+    } catch (error) {
+      caught = error
+    }
+    expect(caught).toBeInstanceOf(CertifiedFeedError)
+    const error = caught as CertifiedFeedError
+    expect(error.code).toBe("InternalError")
+    expect(error.message).toBe(
+      "The feed service request failed. Try again; if it keeps failing, contact support.",
+    )
+    expect(error.message).not.toContain("sensitive")
+  })
+
+  it("accepts strict HTTP-date Retry-After and rejects other parseable date forms", async () => {
+    const strictDate = new Date(Date.now() + 60_000).toUTCString()
+    const valid = await fetchRateLimitError(strictDate)
+    expect(valid.retryAt).toBe(Date.parse(strictDate))
+
+    for (const retryAfter of [
+      "-1",
+      "1.5",
+      "2026-07-21T10:00:00Z",
+      "July 21, 2026 10:00:00 UTC",
+      "Sun, 6 Nov 2094 08:49:37 GMT",
+      "2147484",
+      "999999999999999999999999",
+    ]) {
+      const invalid = await fetchRateLimitError(retryAfter)
+      expect(invalid.retryAt, retryAfter).toBeNull()
+    }
+  })
+})

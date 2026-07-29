@@ -9,8 +9,8 @@ import type {
 
 // Deferred mock of fetchFollowerEvents / hydrateFeedEvents. Each fetch
 // records its args (crucially the AbortSignal) and returns a promise we
-// settle by hand, so a test can toggle the filter between a loadMore
-// fetch starting and resolving.
+// settle by hand, so a test can change the legacy feed scope between a
+// loadMore fetch starting and resolving.
 interface PendingFetch {
   after: string | undefined
   signal: AbortSignal | undefined
@@ -46,7 +46,7 @@ vi.mock("@/lib/atproto/follower-events", async () => {
   }
 })
 
-import { useHomeFeed } from "../use-home-feed"
+import { useLegacyHomeFeed } from "../use-home-feed"
 
 function page(endCursor: string | null, hasNextPage: boolean): FeedEventPage {
   return { events: [], endCursor, hasNextPage }
@@ -57,13 +57,12 @@ beforeEach(() => {
   fetchCalls.length = 0
 })
 
-describe("useHomeFeed — loadMore abort guard", () => {
-  it("aborts an in-flight loadMore when the filter changes and drops its stale page", async () => {
-    const followed = new Set(["did:a"])
+describe("useLegacyHomeFeed — loadMore abort guard", () => {
+  it("aborts an in-flight loadMore when the scope changes and drops its stale page", async () => {
     const { result, rerender } = renderHook(
-      ({ exclude }: { exclude: string[] }) =>
-        useHomeFeed(followed, { excludeCertLabels: exclude }),
-      { initialProps: { exclude: ["draft"] } },
+      ({ actor }: { actor: string }) =>
+        useLegacyHomeFeed(new Set([actor])),
+      { initialProps: { actor: "did:a" } },
     )
 
     // Page 1 (initial load) — gives a cursor + hasMore so loadMore runs.
@@ -85,12 +84,12 @@ describe("useHomeFeed — loadMore abort guard", () => {
     expect(loadMoreFetch.signal).toBeDefined()
     expect(loadMoreFetch.signal!.aborted).toBe(false)
 
-    // Toggle the quality filter mid-pagination. The effect re-runs; its
+    // Change the author scope mid-pagination. The effect re-runs; its
     // cleanup must abort the in-flight loadMore.
-    rerender({ exclude: ["draft", "likely-test"] })
+    rerender({ actor: "did:b" })
     expect(loadMoreFetch.signal!.aborted).toBe(true)
 
-    // The fresh, re-filtered load() lands.
+    // The fresh, re-scoped load lands.
     await waitFor(() =>
       expect(fetchCalls.filter((c) => c.after === undefined).length).toBe(2),
     )
@@ -100,7 +99,7 @@ describe("useHomeFeed — loadMore abort guard", () => {
     })
     await waitFor(() => expect(result.current.cursor).toBe("fresh-cursor"))
 
-    // The stale loadMore resolves late with a page from the OLD filter.
+    // The stale loadMore resolves late with a page from the old scope.
     // Its success setState is guarded by `signal.aborted`, so it must NOT
     // overwrite the fresh cursor/hasMore.
     await act(async () => {

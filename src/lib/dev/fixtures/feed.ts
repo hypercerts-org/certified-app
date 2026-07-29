@@ -1,7 +1,8 @@
 /**
  * Dev-only preview fixtures — home feed.
  *
- * The home feed fans out through three indexer ops behind `/api/indexer`:
+ * The rollback home feed fans out through indexer operations behind
+ * `/api/indexer`; service-mode previews use `certifiedFeedPage()` below:
  *
  *   1. `FollowerEvents`  → a page of `{ id, kind, subjectUri, sortAt, actor }`
  *      events authored by the viewer's follow union. (`fetchFollowerEvents`)
@@ -28,6 +29,9 @@ import {
 import { MOCK_DID } from "./session"
 
 type FeedKind = "cert.create" | "collection.create" | "endorsement.award"
+
+const CERTIFIED_FEED_FIXTURE_CID =
+  "bafyreia3tbsfxe3cc75xrxyyn6qc42oupi73fxiox76prlyi5bpx7hr72u"
 
 interface FeedSpec {
   /** Authoring actor DID — must be in MOCK_ACTORS. */
@@ -101,6 +105,58 @@ function feedActorBlock(actor: MockActor) {
     handle: actor.handle,
     displayName: actor.displayName,
     avatarCid: actor.avatarCid,
+  }
+}
+
+/** Direct hydrated XRPC fixture used when the preview build selects the service source. */
+export function certifiedFeedPage(): { items: Record<string, unknown>[] } {
+  return {
+    items: FEED_SPECS.map((spec, index) => {
+      const sourceActor = actorByDid(spec.authorDid) ?? MOCK_ACTORS[0]
+      const uri = uriFor(spec, index)
+      const createdAt = sortAtFor(index)
+      const base = {
+        id: uri,
+        kind: spec.kind,
+        subject: { uri, cid: CERTIFIED_FEED_FIXTURE_CID },
+        feedTimestamp: createdAt,
+        actor: feedActorBlock(sourceActor),
+      }
+      if (spec.kind === "cert.create") {
+        return {
+          ...base,
+          view: {
+            $type: "app.certified.feed.beta.defs#activityView",
+            title: spec.title,
+            shortDescription: spec.shortDescription,
+            createdAt,
+            locationCount: 0,
+          },
+        }
+      }
+      if (spec.kind === "collection.create") {
+        return {
+          ...base,
+          view: {
+            $type: "app.certified.feed.beta.defs#collectionView",
+            collectionType: "project",
+            title: spec.title,
+            shortDescription: spec.shortDescription,
+            createdAt,
+            itemCount: 0,
+          },
+        }
+      }
+      const subject = actorByDid(spec.subjectDid ?? MOCK_DID) ?? MOCK_ACTORS[0]
+      return {
+        ...base,
+        view: {
+          $type: "app.certified.feed.beta.defs#endorsementView",
+          subject: feedActorBlock(subject),
+          createdAt,
+        },
+      }
+    }),
   }
 }
 

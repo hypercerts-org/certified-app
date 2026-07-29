@@ -1,27 +1,14 @@
-import type { HomeFeedEvent } from "@/hooks/use-home-feed"
-import type { FeedActor } from "@/lib/atproto/follower-events"
+import type { HomeFeedActor, HomeFeedEvent } from "@/hooks/use-home-feed"
 
-/**
- * Render-time grouping for the home feed: a run of consecutive
- * `endorsement.award` events by the same actor collapses into one
- * "X endorsed Y and N others" descriptor. Anything else falls
- * through as a single event.
- *
- * Grouping is consecutive-only — any non-endorsement event between
- * two endorsements from the same actor breaks the group, since the
- * feed reads chronologically and a gap means the run wasn't actually
- * a burst.
- */
+/** A consecutive burst of current endorsement awards by one actor. */
 export interface EndorsementGroupItem {
   type: "endorsementGroup"
-  /** Stable React key — uses the first event's URI. */
   key: string
   actor: string
-  actorProfile: FeedActor
-  /** RFC3339 — the latest event's createdAt (group's headline time). */
+  actorProfile: HomeFeedActor
   createdAt: string
-  /** Most-recent first (matches the descending-sort the feed lands in). */
-  subjectDids: string[]
+  /** Most-recent first, preserving hydrated service summaries. */
+  subjects: HomeFeedActor[]
 }
 
 export type FeedItem =
@@ -31,15 +18,15 @@ export type FeedItem =
 export function groupConsecutiveEndorsements(
   events: readonly HomeFeedEvent[],
 ): FeedItem[] {
-  const out: FeedItem[] = []
+  const output: FeedItem[] = []
   for (const event of events) {
     if (event.kind !== "endorsement.award") {
-      out.push({ type: "single", event })
+      output.push({ type: "single", event })
       continue
     }
-    const last = out[out.length - 1]
+    const last = output.at(-1)
     if (last?.type === "endorsementGroup" && last.actor === event.actor) {
-      last.subjectDids.push(event.subjectDid)
+      last.subjects.push(event.subject)
       continue
     }
     if (
@@ -47,18 +34,17 @@ export function groupConsecutiveEndorsements(
       last.event.kind === "endorsement.award" &&
       last.event.actor === event.actor
     ) {
-      // Promote the existing single into a fresh group of two.
-      out[out.length - 1] = {
+      output[output.length - 1] = {
         type: "endorsementGroup",
         key: last.event.uri,
         actor: last.event.actor,
         actorProfile: last.event.actorProfile,
         createdAt: last.event.createdAt,
-        subjectDids: [last.event.subjectDid, event.subjectDid],
+        subjects: [last.event.subject, event.subject],
       }
       continue
     }
-    out.push({ type: "single", event })
+    output.push({ type: "single", event })
   }
-  return out
+  return output
 }

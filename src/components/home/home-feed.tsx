@@ -1,51 +1,39 @@
 "use client"
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, Inbox, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
-import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
+import {
+  useHomeFeed,
+  useLegacyHomeFeed,
+  type HomeFeedResult,
+} from "@/hooks/use-home-feed"
 import { groupConsecutiveEndorsements } from "@/lib/utils/group-feed"
 import { useFollowing } from "@/hooks/use-following"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import {
-  DEFAULT_HIDDEN_CERT_LABELS,
   DEFAULT_HIDDEN_ORG_LABELS,
-  HYPERLABEL_DISPLAY_LABELS,
-  HYPERLABEL_DISPLAY_ORDER,
-  HYPERLABEL_TIERS,
   ORGLABEL_TIERS,
-  type HyperlabelTier,
   type OrglabelTier,
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
+import {
+  parseHomeFeedSource,
+  type OrganizationQuality,
+} from "@/lib/atproto/certified-feed"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
 
-const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
-  HYPERLABEL_TIERS.filter(
-    (t) => !DEFAULT_HIDDEN_CERT_LABELS.includes(t),
-  ),
-)
-
-/** Sentinel for the "Not labeled yet" checkbox — separate from the
- *  Hyperlabel tier enum so the popover state can carry it without
- *  widening the tier type. Mirrors the explore-page convention. */
+const HOME_FEED_SOURCE = parseHomeFeedSource()
 const UNLABELED_SLUG = "unlabeled" as const
 type UnlabeledSlug = typeof UNLABELED_SLUG
-type QualityFilterValue = HyperlabelTier | UnlabeledSlug
 type OrgQualityValue = OrglabelTier | UnlabeledSlug
 
 /** Default org-quality set — everything except the labels in
@@ -101,147 +89,34 @@ const MAX_AUTO_LOADS = 25
  * the viewport.
  */
 export default function HomeFeed({ activeDid }: { activeDid: string }) {
-  // Home feed reads ONLY the Certified follow graph
-  // (`app.certified.graph.follow`). Viewers who want their Bluesky
-  // follows reflected here run the social-graph sync in Settings,
-  // which mirrors their Bluesky graph into the Certified collection
-  // once — after that, the Certified graph is the canonical source
-  // and the home feed reads from a single place instead of merging
-  // both live every page load.
-  const {
-    subjects: followedDids,
-    isLoading: followsLoading,
-    error: followsError,
-  } = useFollowing(activeDid)
-  // Default state has every visible Hyperlabel tier checked AND
-  // "Not labeled yet" checked — same default as the explore page so
-  // a viewer who hasn't touched the filter sees the same set of certs
-  // here and on /explore.
-  const [includedTiers, setIncludedTiers] = useState<Set<QualityFilterValue>>(
-    () => new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
-  )
-  // Trusted evaluators are sourced live from the curated list; the
-  // hardcoded set is the fallback used until it resolves.
-  const { evaluatorDids } = useTrustedEvaluators()
-  // Evaluator selection: `null` = default (every current list member
-  // checked), a Set once the viewer customizes. Derived rather than
-  // stored so it tracks the live list as it resolves and is edited —
-  // no state-sync effect needed.
-  const [customEvaluators, setCustomEvaluators] = useState<Set<string> | null>(
-    null,
-  )
+  const { evaluatorDids, isLoading: evaluatorsLoading } = useTrustedEvaluators()
+  const [customEvaluators, setCustomEvaluators] = useState<Set<string> | null>(null)
   const selectedEvaluators = useMemo(
     () => customEvaluators ?? new Set(evaluatorDids),
     [customEvaluators, evaluatorDids],
   )
-  const handleEvaluatorsChange = useCallback(
-    (next: Set<string>) => setCustomEvaluators(next),
-    [],
-  )
-  // Organization-quality filter (Orglabeler tiers) — applied to the
-  // event ACTOR rather than the record, by adjusting the author DID
-  // set handed to useHomeFeed (see effectiveFollows below).
   const [includedOrgTiers, setIncludedOrgTiers] = useState<Set<OrgQualityValue>>(
     () => new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
   )
-  // Inline filter panel under the "For you" tab (certs.social pattern:
-  // clicking the active tab toggles the disclosure).
   const [filterOpen, setFilterOpen] = useState(false)
   const filterWrapRef = useRef<HTMLDivElement>(null)
   useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
   useEffect(() => {
     if (!filterOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilterOpen(false)
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFilterOpen(false)
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [filterOpen])
-  // Two filter modes, mirroring the explore page (see the
-  // `certIncludeUnlabeled` comment block there for the full rationale):
-  //   - Unlabeled INCLUDED → use `excludeCertLabels` (drop specific
-  //     tiers; unlabeled records pass because they have nothing to
-  //     match the exclude list against). Default mode.
-  //   - Unlabeled EXCLUDED → use `includeCertLabels` (only records
-  //     carrying one of the checked tiers pass; unlabeled records
-  //     don't qualify).
-  // Only one is non-undefined at a time. The hydration query treats
-  // null on either side as "no filter on that axis".
-  const includeUnlabeled = includedTiers.has(UNLABELED_SLUG)
-  const excludeCertLabels = useMemo<readonly string[] | undefined>(
-    () =>
-      includeUnlabeled
-        ? HYPERLABEL_TIERS.filter((t) => !includedTiers.has(t))
-        : undefined,
-    [includedTiers, includeUnlabeled],
-  )
-  const includeCertLabels = useMemo<readonly string[] | undefined>(
-    () =>
-      includeUnlabeled
-        ? undefined
-        : HYPERLABEL_TIERS.filter((t) => includedTiers.has(t)),
-    [includedTiers, includeUnlabeled],
-  )
-  const { endorsedDids, isLoading: endorsementsLoading } =
-    useEvaluatorEndorsements(selectedEvaluators)
-  const orgFilter = useOrgQualityFilter(includedOrgTiers)
-  // Direct follows ∪ DIDs endorsed by any selected trusted evaluator,
-  // then narrowed by the organization-quality filter. The viewer's own
-  // DID is excluded so the feed doesn't show the viewer's own activity
-  // (matches the prior behaviour — direct follows never include self).
-  const effectiveFollows = useMemo(() => {
-    const out = new Set<string>(followedDids)
-    for (const did of endorsedDids) {
-      if (did !== activeDid) out.add(did)
-    }
-    if (orgFilter.dids) {
-      if (orgFilter.mode === "exclude") {
-        // Unlabeled INCLUDED: drop actors carrying an excluded tier.
-        for (const did of orgFilter.dids) out.delete(did)
-      } else if (orgFilter.mode === "include-only") {
-        // Unlabeled EXCLUDED: keep only actors carrying a checked tier.
-        for (const did of [...out]) {
-          if (!orgFilter.dids.has(did)) out.delete(did)
-        }
-      }
-    }
-    return out
-  }, [followedDids, endorsedDids, activeDid, orgFilter.mode, orgFilter.dids])
-  // Gate the feed fetch on every author source being resolved (follows,
-  // evaluator endorsements, org-label DID set) so the feed renders in a
-  // single frame instead of flashing direct-follows first and then a
-  // second pass with the narrowed union. All three fetches cache at
-  // module scope, so after the first /home visit `ready` flips
-  // effectively-synchronously — only the cold first paint waits.
-  const ready = !followsLoading && !endorsementsLoading && !orgFilter.isLoading
-  const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(effectiveFollows, {
-      excludeCertLabels,
-      includeCertLabels,
-      ready,
-    })
 
-  // "For you" flips to "Custom" once any filter diverges from the
-  // defaults — same affordance certs.social uses on its feed tabs.
   const isDefaultFilters =
-    isQualityDefault(includedTiers) &&
     isOrgQualityDefault(includedOrgTiers) &&
-    selectedEvaluators.size === evaluatorDids.length
-
-  const resetFilters = () => {
-    setIncludedTiers(
-      new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
-    )
-    setIncludedOrgTiers(
-      new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
-    )
-    setCustomEvaluators(null)
-  }
+    selectedEvaluators.size === evaluatorDids.length &&
+    evaluatorDids.every((did) => selectedEvaluators.has(did))
 
   return (
     <>
-      {/* certs.social-style tab strip. One tab for now ("For you");
-          clicking the active tab toggles the inline filter panel. */}
       <div ref={filterWrapRef}>
         <div className="feed-tabs" role="tablist" aria-label="Feed">
           <div className="feed-tabs__tab-wrapper">
@@ -252,7 +127,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
               aria-selected="true"
               aria-haspopup="dialog"
               aria-expanded={filterOpen}
-              onClick={() => setFilterOpen((v) => !v)}
+              onClick={() => setFilterOpen((value) => !value)}
             >
               {isDefaultFilters ? "For you" : "Custom"}
               <ChevronDown
@@ -267,77 +142,135 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
           <FeedFilterPanel
             evaluatorDids={evaluatorDids}
             selectedEvaluators={selectedEvaluators}
-            onEvaluatorsChange={handleEvaluatorsChange}
-            includedTiers={includedTiers}
-            onTiersChange={setIncludedTiers}
+            onEvaluatorsChange={setCustomEvaluators}
             includedOrgTiers={includedOrgTiers}
             onOrgTiersChange={setIncludedOrgTiers}
             isDefault={isDefaultFilters}
-            onReset={resetFilters}
+            onReset={() => {
+              setIncludedOrgTiers(
+                new Set<OrgQualityValue>([
+                  ...DEFAULT_INCLUDED_ORG_TIERS,
+                  UNLABELED_SLUG,
+                ]),
+              )
+              setCustomEvaluators(null)
+            }}
           />
         ) : null}
       </div>
-      <HomeFeedBody
-        followsLoading={followsLoading}
-        followsError={!!followsError}
-        followedCount={effectiveFollows.size}
-        isLoading={isLoading}
-        error={error}
-        events={events}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-        loadMore={loadMore}
-      />
+      {HOME_FEED_SOURCE === "service" ? (
+        <ServiceHomeFeed
+          activeDid={activeDid}
+          selectedEvaluators={selectedEvaluators}
+          evaluatorsLoading={evaluatorsLoading}
+          includedOrgTiers={includedOrgTiers}
+        />
+      ) : (
+        <LegacyHomeFeed
+          activeDid={activeDid}
+          selectedEvaluators={selectedEvaluators}
+          includedOrgTiers={includedOrgTiers}
+        />
+      )}
     </>
   )
 }
 
-// Memoized: filter state (panel open/close, evaluator + tier checkbox
-// ticks) lives in HomeFeed, so without memo every filter interaction
-// re-executes the full row map. Props are primitives plus a stable
-// events ref and a useCallback-stable loadMore, so the default shallow
-// compare bails correctly.
-const HomeFeedBody = memo(function HomeFeedBody({
-  followsLoading,
-  followsError,
-  followedCount,
-  isLoading,
-  error,
-  events,
-  hasMore,
-  isLoadingMore,
-  loadMore,
+function ServiceHomeFeed({
+  activeDid,
+  selectedEvaluators,
+  evaluatorsLoading,
+  includedOrgTiers,
 }: {
-  followsLoading: boolean
-  followsError: boolean
-  followedCount: number
-  isLoading: boolean
-  error: string | null
-  events: HomeFeedEvent[]
-  hasMore: boolean
-  isLoadingMore: boolean
-  loadMore: () => void
+  activeDid: string
+  selectedEvaluators: Set<string>
+  evaluatorsLoading: boolean
+  includedOrgTiers: Set<OrgQualityValue>
 }) {
-  // Hooks at the top, before any early return — rules-of-hooks
-  // requires identical hook ordering on every render. The branches
-  // below all bail before render but the hooks above run regardless.
-  const items = useMemo(
-    () => groupConsecutiveEndorsements(events),
-    [events],
+  const organizationQuality = useMemo(
+    () => ({
+      allowed: ORGLABEL_TIERS.filter((tier) => includedOrgTiers.has(tier)) as OrganizationQuality[],
+      includeUnrated: includedOrgTiers.has(UNLABELED_SLUG),
+    }),
+    [includedOrgTiers],
   )
+  const result = useHomeFeed(activeDid, {
+    trustedEvaluators: [...selectedEvaluators],
+    organizationQuality,
+    ready: !evaluatorsLoading,
+  })
+  return <HomeFeedBody {...result} />
+}
 
-  // Auto-load-more when grouping collapses a page into too few
-  // visible rows. The indexer pages by event count (PAGE_SIZE = 25
-  // in useHomeFeed); a burst of 50+ endorsements by one user
-  // becomes a single grouped row, leaving the screen feeling
-  // empty. Trigger a follow-up loadMore when the visible-item
-  // count is below MIN_VISIBLE_ITEMS, until that's no longer true
-  // OR we've made MAX_AUTO_LOADS consecutive auto-fetches (cap
-  // so a run of 1000+ same-actor endorsements doesn't fan out
-  // dozens of requests).
+function LegacyHomeFeed({
+  activeDid,
+  selectedEvaluators,
+  includedOrgTiers,
+}: {
+  activeDid: string
+  selectedEvaluators: Set<string>
+  includedOrgTiers: Set<OrgQualityValue>
+}) {
+  const {
+    subjects: followedDids,
+    isLoading: followsLoading,
+    error: followsError,
+  } = useFollowing(activeDid)
+  const { endorsedDids, isLoading: endorsementsLoading } =
+    useEvaluatorEndorsements(selectedEvaluators)
+  const orgFilter = useOrgQualityFilter(includedOrgTiers)
+  const effectiveFollows = useMemo(() => {
+    const next = new Set(followedDids)
+    for (const did of endorsedDids) if (did !== activeDid) next.add(did)
+    if (orgFilter.dids) {
+      if (orgFilter.mode === "exclude") {
+        for (const did of orgFilter.dids) next.delete(did)
+      } else if (orgFilter.mode === "include-only") {
+        for (const did of next) if (!orgFilter.dids.has(did)) next.delete(did)
+      }
+    }
+    return next
+  }, [followedDids, endorsedDids, activeDid, orgFilter.mode, orgFilter.dids])
+  const result = useLegacyHomeFeed(effectiveFollows, {
+    ready: !followsLoading && !endorsementsLoading && !orgFilter.isLoading,
+  })
+  return (
+    <HomeFeedBody
+      {...result}
+      scopeLoading={followsLoading}
+      scopeError={followsError !== null}
+      scopeEmpty={effectiveFollows.size === 0}
+    />
+  )
+}
+
+export const HomeFeedBody = memo(function HomeFeedBody({
+  events,
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  error,
+  continuationError,
+  retryAt,
+  canAutoLoad,
+  requestKey,
+  retryInitial,
+  loadMore,
+  scopeLoading = false,
+  scopeError = false,
+  scopeEmpty = false,
+}: HomeFeedResult & {
+  scopeLoading?: boolean
+  scopeError?: boolean
+  scopeEmpty?: boolean
+}) {
+  const items = useMemo(() => groupConsecutiveEndorsements(events), [events])
   const autoLoadAttemptsRef = useRef(0)
   useEffect(() => {
-    if (!hasMore || isLoading || isLoadingMore) return
+    autoLoadAttemptsRef.current = 0
+  }, [requestKey])
+  useEffect(() => {
+    if (!canAutoLoad || !hasMore || isLoading || isLoadingMore) return
     if (items.length >= MIN_VISIBLE_ITEMS) {
       autoLoadAttemptsRef.current = 0
       return
@@ -345,23 +278,28 @@ const HomeFeedBody = memo(function HomeFeedBody({
     if (autoLoadAttemptsRef.current >= MAX_AUTO_LOADS) return
     autoLoadAttemptsRef.current++
     loadMore()
-  }, [items.length, hasMore, isLoading, isLoadingMore, loadMore])
+  }, [items.length, canAutoLoad, hasMore, isLoading, isLoadingMore, loadMore])
 
-  if (followsLoading || isLoading) {
+  const [retryClock, setRetryClock] = useState(0)
+  useEffect(() => {
+    if (retryAt === null) return
+    const delay = Math.max(0, retryAt - Date.now())
+    const timer = window.setTimeout(() => setRetryClock(retryAt), delay)
+    return () => window.clearTimeout(timer)
+  }, [retryAt])
+  const retryBlocked = retryAt !== null && retryClock < retryAt
+
+  if (scopeLoading || isLoading) {
     return (
       <div className="home-feed__loading">
         <LoadingSpinner size="md" />
       </div>
     )
   }
-  if (followsError) {
-    return (
-      <Banner variant="warning">
-        Could not load your follow list. Please try again later.
-      </Banner>
-    )
+  if (scopeError) {
+    return <Banner variant="warning">Could not load your follow list. Try again later.</Banner>
   }
-  if (followedCount === 0) {
+  if (scopeEmpty) {
     return (
       <EmptyState
         icon={Users}
@@ -372,18 +310,57 @@ const HomeFeedBody = memo(function HomeFeedBody({
   }
   if (error) {
     return (
-      <Banner variant="warning">
-        Could not load activity: {error}
+      <Banner variant="warning" title="Could not load activity">
+        <p>{error}</p>
+        <Button
+          className="mt-3"
+          variant="secondary"
+          size="sm"
+          onClick={retryInitial}
+          disabled={retryBlocked}
+        >
+          {retryBlocked ? "Retry shortly" : "Try again"}
+        </Button>
+      </Banner>
+    )
+  }
+  if (continuationError && events.length === 0) {
+    return (
+      <Banner variant="warning" title="Could not continue the feed">
+        <p>{continuationError}</p>
+        <Button
+          className="mt-3"
+          variant="secondary"
+          size="sm"
+          onClick={loadMore}
+          disabled={retryBlocked}
+        >
+          {retryBlocked ? "Retry shortly" : "Try again"}
+        </Button>
       </Banner>
     )
   }
   if (events.length === 0) {
     return (
-      <EmptyState
-        icon={Inbox}
-        title="No activity yet"
-        description="People you follow haven't posted any activity yet."
-      />
+      <>
+        <EmptyState
+          icon={Inbox}
+          title="No activity yet"
+          description="There isn't any matching activity to show yet."
+        />
+        {hasMore || isLoadingMore ? (
+          <div className="home-feed__load-more">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadMore}
+              loading={isLoadingMore}
+            >
+              Load more
+            </Button>
+          </div>
+        ) : null}
+      </>
     )
   }
 
@@ -402,7 +379,20 @@ const HomeFeedBody = memo(function HomeFeedBody({
           ),
         )}
       </ol>
-      {hasMore || isLoadingMore ? (
+      {continuationError ? (
+        <Banner variant="warning" title="Could not load more activity" className="mt-4">
+          <p>{continuationError}</p>
+          <Button
+            className="mt-3"
+            variant="secondary"
+            size="sm"
+            onClick={loadMore}
+            disabled={retryBlocked || isLoadingMore}
+          >
+            {retryBlocked ? "Retry shortly" : "Try again"}
+          </Button>
+        </Banner>
+      ) : hasMore || isLoadingMore ? (
         <LoadMoreSentinel
           onLoadMore={loadMore}
           isLoading={isLoadingMore}
@@ -413,14 +403,6 @@ const HomeFeedBody = memo(function HomeFeedBody({
     </>
   )
 })
-
-function isQualityDefault(included: Set<QualityFilterValue>): boolean {
-  // Default = every tier in DEFAULT_INCLUDED_TIERS, plus unlabeled.
-  if (included.size !== DEFAULT_INCLUDED_TIERS.size + 1) return false
-  if (!included.has(UNLABELED_SLUG)) return false
-  for (const t of DEFAULT_INCLUDED_TIERS) if (!included.has(t)) return false
-  return true
-}
 
 function isOrgQualityDefault(included: Set<OrgQualityValue>): boolean {
   if (included.size !== DEFAULT_INCLUDED_ORG_TIERS.size + 1) return false
@@ -483,19 +465,11 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
   return { mode, dids: fresh ? state.dids : null, isLoading: !fresh }
 }
 
-/**
- * Inline filter panel under the "For you" tab — the certs.social
- * evaluator-panel pattern (`.feed-evaluator-panel` / `.feed-evaluators`
- * styles), extended with three sections: trusted evaluators, activity
- * quality (Hyperlabel tiers) and organization quality (Orglabeler
- * tiers), plus a reset row.
- */
+/** Ephemeral request filters supported by the hydrated service contract. */
 function FeedFilterPanel({
   evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
-  includedTiers,
-  onTiersChange,
   includedOrgTiers,
   onOrgTiersChange,
   isDefault,
@@ -504,8 +478,6 @@ function FeedFilterPanel({
   evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
-  includedTiers: Set<QualityFilterValue>
-  onTiersChange: (next: Set<QualityFilterValue>) => void
   includedOrgTiers: Set<OrgQualityValue>
   onOrgTiersChange: (next: Set<OrgQualityValue>) => void
   isDefault: boolean
@@ -538,23 +510,6 @@ function FeedFilterPanel({
             }
           />
         ))}
-      </div>
-      <div className="feed-evaluators__separator" aria-hidden="true" />
-      <p className="feed-evaluator-panel__heading">Activity quality</p>
-      <div className="feed-evaluators__list">
-        {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-          <FilterCheckRow
-            key={tier}
-            label={HYPERLABEL_DISPLAY_LABELS[tier]}
-            checked={includedTiers.has(tier)}
-            onToggle={() => onTiersChange(toggled(includedTiers, tier))}
-          />
-        ))}
-        <FilterCheckRow
-          label="Not labeled yet"
-          checked={includedTiers.has(UNLABELED_SLUG)}
-          onToggle={() => onTiersChange(toggled(includedTiers, UNLABELED_SLUG))}
-        />
       </div>
       <div className="feed-evaluators__separator" aria-hidden="true" />
       <p className="feed-evaluator-panel__heading">Organization quality</p>
