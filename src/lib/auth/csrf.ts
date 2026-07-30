@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PUBLIC_URL } from "@/lib/utils/config"
+import { ALLOWED_REQUEST_ORIGINS } from "@/lib/utils/config"
 
 /**
- * Validates the Origin header on POST requests to prevent CSRF.
- * Returns a 403 response if the origin does not match, or null if valid.
+ * Validates browser mutation requests against the app's configured origins.
+ * The source must be both trusted and identical to the request destination;
+ * configured Vercel branch and deployment hosts are not cross-origin peers.
  */
 export function checkCsrf(request: NextRequest): NextResponse | null {
   const origin = request.headers.get("origin")
@@ -17,58 +18,90 @@ export function checkCsrf(request: NextRequest): NextResponse | null {
     return NextResponse.json({ error: "Forbidden: null origin" }, { status: 403 })
   }
 
-  const rawOrigin = origin || (referer ? extractOrigin(referer) : null)
-
-  // Deliberate divergence from AGENTS §8 (which describes the older
-  // "absent Origin is allowed" behavior): we reject when BOTH Origin AND
-  // Referer are missing, rather than waving the request through. A
-  // browser-issued same-origin POST always carries at least one of these
-  // headers, so the only requests lacking both are non-browser / scripted
-  // clients, for which fail-closed is the safer default. Keep this stricter
-  // check — do NOT "fix" it back to Origin-only by deleting this guard.
-  if (!rawOrigin) {
+  // Deliberate divergence from the older "absent Origin is allowed"
+  // behavior: browser-issued same-origin mutations carry Origin or Referer,
+  // so fail closed when both are absent.
+  if (!origin && !referer) {
     return NextResponse.json({ error: "Forbidden: missing origin" }, { status: 403 })
   }
 
+  const incoming = origin
+    ? parseOriginHeader(origin)
+    : referer
+      ? parseReferer(referer)
+      : null
+
+  if (!incoming) {
+    return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+  }
+
+  const destination = request.nextUrl
+  const isSameDestination = incoming.origin === destination.origin
+
+  if (
+    isSameDestination &&
+    (ALLOWED_REQUEST_ORIGINS.has(incoming.origin) ||
+      isAllowedDevelopmentLoopback(incoming))
+  ) {
+    return null
+  }
+
+  return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+}
+
+/** Origin headers contain only a scheme/host/port tuple, never a URL path. */
+function parseOriginHeader(value: string): URL | null {
   try {
-    const expected = new URL(PUBLIC_URL)
-    const incoming = new URL(rawOrigin)
-
-    if (incoming.origin === expected.origin) return null
-
-    // Dev convenience: PUBLIC_URL pins to one loopback form (the project
-    // convention is 127.0.0.1 for OAuth + cookie reasons), but a browser
-    // tab opened at http://localhost:3000 sends Origin: localhost — and
-    // the strict match above 403s every same-origin POST. In
-    // development only, treat 127.0.0.1 and localhost as the same origin
-    // when protocol + port match. Production stays strict.
+    const url = new URL(value)
     if (
-      process.env.NODE_ENV !== "production" &&
-      incoming.protocol === expected.protocol &&
-      incoming.port === expected.port &&
-      isLoopbackHost(incoming.hostname) &&
-      isLoopbackHost(expected.hostname)
+      url.username ||
+      url.password ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
     ) {
       return null
     }
-
-    return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+    return url
   } catch {
-    return NextResponse.json({ error: "Forbidden: invalid origin" }, { status: 403 })
+    return null
   }
+}
+
+/** Referer is a full page URL, so only its authenticated origin is retained. */
+function parseReferer(value: string): URL | null {
+  try {
+    const url = new URL(value)
+    if (url.username || url.password) return null
+    return new URL(url.origin)
+  } catch {
+    return null
+  }
+}
+
+// Dev convenience: PUBLIC_URL commonly pins to 127.0.0.1 for OAuth while a
+// browser tab may use localhost. Accept the alternate loopback spelling only
+// when one configured loopback origin has the same protocol and port. The
+// caller already verified source === request destination.
+function isAllowedDevelopmentLoopback(incoming: URL): boolean {
+  if (process.env.NODE_ENV === "production" || !isLoopbackHost(incoming.hostname)) {
+    return false
+  }
+
+  for (const allowedOrigin of ALLOWED_REQUEST_ORIGINS) {
+    const allowed = new URL(allowedOrigin)
+    if (
+      allowed.protocol === incoming.protocol &&
+      allowed.port === incoming.port &&
+      isLoopbackHost(allowed.hostname)
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function isLoopbackHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
-}
-
-/** Safely extract the origin from a Referer header value. Returns null
- *  if the URL is malformed, preventing URL-constructor exceptions from
- *  leaking into the CSRF check. */
-function extractOrigin(referer: string): string | null {
-  try {
-    return new URL(referer).origin
-  } catch {
-    return null
-  }
 }

@@ -130,7 +130,9 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | Variable | Required | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_PDS_URL` | yes | PDS / handle resolver URL. Defaults to `https://certified.one`. |
-| `PUBLIC_URL` | production | Public URL of this app. Used to derive OAuth `client_id`, `redirect_uris`, and the CSRF Origin allowlist. Falls back to `http://localhost:3000` in dev. **For local atproto OAuth sign-in to actually complete, set this to `http://127.0.0.1:3000`** — see [§22 Common Pitfalls](#22-common-pitfalls) #3. |
+| `PUBLIC_URL` | recommended in production | Canonical app origin. Wins when deriving OAuth `client_id` and `redirect_uris`; exact same-origin CSRF requests from it are trusted. Falls back to `VERCEL_BRANCH_URL`, then `VERCEL_URL`, then `http://localhost:3000` outside production. **For local atproto OAuth sign-in to actually complete, set this to `http://127.0.0.1:3000`** — see [§22 Common Pitfalls](#22-common-pitfalls) #3. |
+| `VERCEL_BRANCH_URL` | Vercel-provided fallback | Hostname-only stable branch URL. Becomes the canonical OAuth origin when `PUBLIC_URL` is absent and is accepted for same-origin CSRF requests. Do not add a scheme or `NEXT_PUBLIC_` alias. |
+| `VERCEL_URL` | Vercel-provided fallback | Hostname-only commit deployment URL. Final canonical OAuth fallback and accepted for same-origin CSRF requests. Do not add a scheme or `NEXT_PUBLIC_` alias. |
 | `COOKIE_SECRET` | production | HMAC secret for the `certified_session` cookie. Generate with `openssl rand -hex 32`. In dev a fallback string is used. |
 | `UPSTASH_REDIS_REST_URL` | yes | Upstash REST URL. |
 | `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash REST token. |
@@ -141,7 +143,7 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | `NEXT_PUBLIC_GROUP_SERVICE_URL` | optional | Group service base URL. Defaults to `https://groups.certified.app`. |
 | `NEXT_PUBLIC_GROUP_SERVICE_DID` | optional | Group service DID (for `getServiceAuth` `aud`). Defaults to `did:web:groups.certified.app`. |
 
-`PUBLIC_URL` is the most consequential variable — it is checked against the `Origin` header on every CSRF-protected route, baked into the OAuth client metadata, and used to build the `redirect_uris` array. If it does not match the deployed domain, sign-in and every POST will fail.
+The canonical OAuth URL is resolved in this order: `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. It is baked into OAuth client metadata and `redirect_uris`, so a login started on another accepted deployment origin finishes on that canonical host and receives its session cookie there. CSRF accepts the exact configured public, branch, and deployment origins only when the source also equals the request destination. No wildcard Vercel host matching is allowed. The selected metadata endpoint—and JWKS endpoint for confidential clients—must be publicly reachable by the authorization server; Vercel Deployment Protection can otherwise block sign-in.
 
 ## 5. Architecture & Data Flow
 
@@ -254,14 +256,14 @@ Permanent redirects (in `next.config.ts`):
 
 ### Components
 
-- **OAuth client** — `src/lib/auth/oauth-client.ts` builds a `NodeOAuthClient` (singleton). It registers Redis-backed state and session stores, leaves `handleResolver` at the SDK default (`AtprotoHandleResolverNode`, which does DNS-TXT + HTTPS `.well-known/atproto-did` resolution and works for any atproto handle, not just Certified-rooted ones), and conditionally enables `private_key_jwt` when `ATPROTO_PRIVATE_KEY` is set. In **loopback dev mode** (`NODE_ENV !== "production"` AND `PUBLIC_URL` is missing or `http://`) it skips the normal `${PUBLIC_URL}/.well-known/oauth-client-metadata` `client_id` and uses `buildAtprotoLoopbackClientMetadata` instead, because the spec only allows `https://` or the literal `http://localhost` (no port) as a `client_id`.
+- **OAuth client** — `src/lib/auth/oauth-client.ts` builds a `NodeOAuthClient` (singleton). It registers Redis-backed state and session stores, leaves `handleResolver` at the SDK default (`AtprotoHandleResolverNode`, which does DNS-TXT + HTTPS `.well-known/atproto-did` resolution and works for any atproto handle, not just Certified-rooted ones), and conditionally enables `private_key_jwt` when `ATPROTO_PRIVATE_KEY` is set. The canonical origin resolves as `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. In **loopback dev mode** (`NODE_ENV !== "production"` and that resolved URL is `http://`) it skips the normal metadata `client_id` and uses `buildAtprotoLoopbackClientMetadata` instead, because the spec only allows `https://` or the literal `http://localhost` (no port) as a `client_id`.
 - **Stores** — `src/lib/auth/stores.ts` wraps Upstash Redis. `RedisStateStore` (10 min TTL) is for the short-lived OAuth flow. `RedisSessionStore` (30 day TTL) holds long-lived atproto sessions (tokens + DPoP key). Both key by `oauth:state:<key>` / `oauth:session:<key>`. **Dev fallback:** when Upstash creds are missing AND `NODE_ENV !== "production"`, the module switches to a process-local `InMemoryRedis` so a fresh clone can sign in locally without provisioning an Upstash database. State doesn't survive a server restart and isn't shared across workers — acceptable for dev only. A console warning fires on first use.
 - **App session** — `src/lib/auth/session.ts` issues the `certified_session` cookie:
   - Cookie value = `<32-byte hex sessionId>.<HMAC-SHA256 signature>`.
   - Cookie attributes: `httpOnly`, `secure` in production, `sameSite=lax`, `path=/`, `maxAge=30 days`.
   - Server side, the session id maps to a DID in Redis (`session:did:<sid>`).
   - HMAC verification uses `crypto.timingSafeEqual` to avoid timing attacks.
-- **CSRF** — `src/lib/auth/csrf.ts` checks `Origin` header against `new URL(PUBLIC_URL).origin`. If `Origin` is absent (some same-origin no-CORS posts) the request is allowed; if present it must match exactly. Wraps URL parsing in try/catch — any malformed origin returns 403.
+- **CSRF** — `src/lib/auth/csrf.ts` rejects requests missing both `Origin` and `Referer`, then requires the parsed source origin to be in the exact configured set (`PUBLIC_URL`, `VERCEL_BRANCH_URL`, `VERCEL_URL`) and equal the request destination origin. This supports Vercel aliases without making deployments cross-origin peers. `null`, malformed, wildcard, and lookalike origins return 403; localhost/127.0.0.1 equivalence exists only outside production.
 - **authFetch** — `src/lib/auth/fetch.ts` wraps `fetch` and calls a registered `onUnauthorized()` listener on 401. `AuthProvider` registers this listener to clear `isAuthenticated`/`did`/`pdsUrl` and surface "Your session has expired."
 
 ### Sign-in (email or handle)
@@ -641,7 +643,7 @@ These rules are mandatory. Treat any deviation as a regression.
 
 ### Server-side
 
-1. **CSRF on every POST/PUT/DELETE** — call `checkCsrf(request)` at the top of any state-changing route handler. The check compares the `Origin` header against `PUBLIC_URL`. URL parsing is wrapped in try/catch; malformed origins return 403.
+1. **CSRF on every POST/PUT/DELETE** — call `checkCsrf(request)` at the top of any state-changing route handler. The source must be an exact configured origin (`PUBLIC_URL`, `VERCEL_BRANCH_URL`, or `VERCEL_URL`) and equal the request destination. Missing, `null`, malformed, wildcard, and cross-deployment origins return 403.
 2. **Cookie verification uses `timingSafeEqual`** (`src/lib/auth/session.ts`). Don't replace it with `===`.
 3. **HMAC every session id.** The cookie value is `<sessionId>.<HMAC>`. Truncating to "just sessionId" would let attackers forge any session.
 4. **Invalidate the existing session before creating a new one** in `callback-handler/route.ts`. This prevents session fixation if the user reuses a tab where another session was active.
@@ -694,7 +696,7 @@ When adding a new public page: set `metadata.title`, `description`, `alternates.
   - `staging` → preview (`staging.certified.app`)
 - **Workflow:** push to `staging`, open a PR to `main`. Vercel deploys both branches automatically.
 - **Quality gate:** `npm run build` must succeed before pushing. There is no test suite to run; `tsc --noEmit` is implicit in `next build`.
-- **`PUBLIC_URL`** must match the deployed domain on each environment, since `client_id`, `redirect_uris`, and the CSRF allowlist all derive from it.
+- **OAuth URL precedence:** `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. Prefer an explicit `PUBLIC_URL` for stable production/staging callbacks. Generated Vercel origins are also accepted for same-origin CSRF requests. The selected metadata/JWKS endpoints must be public, and deployments that initiate and complete one OAuth flow must share compatible Redis state/session configuration. Distinct canonical OAuth origins should use separate Redis databases because saved OAuth session keys are DID-based and are not namespaced by `client_id`.
 - Don't commit secrets (`.env.local` is gitignored). `COOKIE_SECRET`, `UPSTASH_*`, `ATPROTO_PRIVATE_KEY`, `RESEND_API_KEY` live in Vercel envs.
 
 ## 20. File Map
@@ -857,7 +859,7 @@ certified-app/
     └── lib/
         ├── auth/
         │   ├── auth-context.tsx           # AuthProvider, useAuth, sign-in modal, postMessage listeners
-        │   ├── csrf.ts                    # checkCsrf — Origin === PUBLIC_URL check
+        │   ├── csrf.ts                    # checkCsrf — configured exact origin + same destination
         │   ├── fetch.ts                   # authFetch — 401 interceptor
         │   ├── oauth-client.ts            # NodeOAuthClient singleton, PDS_URL constant
         │   ├── session.ts                 # createSession/getSessionDid/deleteSession (HMAC + Redis)
@@ -885,7 +887,7 @@ certified-app/
         │   └── api.ts                     # Shared response types (SessionResponse, ListRecordsResponse, PutRecordResponse)
         ├── utils/
         │   ├── api.ts                     # extractError(res, fallback)
-        │   ├── config.ts                  # PUBLIC_URL + PUBLIC_URL_STRICT
+        │   ├── config.ts                  # OAuth URL precedence + allowed request origins
         │   ├── constants.ts               # LIMIT_MIN/MAX/DEFAULT, debounce timings
         │   ├── initials.ts                # getInitials()
         │   └── sanitize.ts                # stripInvisible/sanitizeEmail/sanitizeHandle
@@ -910,9 +912,9 @@ certified-app/
 
 1. **`useAttestationSigning` outside `/settings/wallet`** — it depends on `WagmiProvider` which is mounted only in `src/app/settings/wallet/layout.tsx`. Calling it elsewhere will throw "useConfig must be used within WagmiConfig".
 2. **Using `fetch` instead of `authFetch`** — the 401 interceptor is the only thing surfacing session expiry to the user. Raw `fetch` will silently fail.
-3. **Origin check failures in dev** — if you set `PUBLIC_URL=https://certified.app` in `.env.local` and run `npm run dev` on localhost, every POST will 403. Match `PUBLIC_URL` to whatever host your browser actually hits (use `http://127.0.0.1:3000` if you want sign-in to work — see next pitfall).
+3. **Origin check failures** — CSRF requires the source to be one of the exact configured origins and to equal the request destination. Locally, match `PUBLIC_URL` to the browser host (use `http://127.0.0.1:3000` for sign-in). On Vercel, ensure the server runtime exposes `VERCEL_BRANCH_URL` / `VERCEL_URL`; no `NEXT_PUBLIC_` aliases are used. Generated preview login can still fail when Deployment Protection prevents the authorization server from fetching metadata/JWKS.
 
-3a. **atproto OAuth in dev requires the loopback metadata helper, not just `PUBLIC_URL`.** The spec only accepts a `client_id` that is either a real `https://` URL or the literal `http://localhost` origin (no port, no path). Pointing `client_id` at `http://localhost:3000/...` or `http://127.0.0.1:3000/...` makes `NodeOAuthClient` throw `URL must use the "https:" protocol` (Zod). The fix — already wired into `src/lib/auth/oauth-client.ts` — is to detect dev mode (`NODE_ENV !== "production"` AND `PUBLIC_URL` missing or `http://`) and swap to `buildAtprotoLoopbackClientMetadata({ scope, redirect_uris: ["http://127.0.0.1:<port>/oauth/callback"] })`. Notes:
+3a. **atproto OAuth in dev requires the loopback metadata helper, not just `PUBLIC_URL`.** The spec only accepts a `client_id` that is either a real `https://` URL or the literal `http://localhost` origin (no port, no path). Pointing `client_id` at `http://localhost:3000/...` or `http://127.0.0.1:3000/...` makes `NodeOAuthClient` throw `URL must use the "https:" protocol` (Zod). The fix — already wired into `src/lib/auth/oauth-client.ts` — is to resolve `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`, then use `buildAtprotoLoopbackClientMetadata({ scope, redirect_uris: ["http://127.0.0.1:<port>/oauth/callback"] })` only when that canonical URL is `http://` outside production. Notes:
    - The `client_id` becomes a virtual `http://localhost?redirect_uri=...&scope=...`, which is what the AS expects for loopback dev.
    - The `redirect_uri` host must be `127.0.0.1` (or `[::1]`); `localhost` is NOT allowed there even though it IS the only allowed `client_id` host. Yes, this is inverted from intuition; it's the spec.
    - Cookies don't cross `localhost` ↔ `127.0.0.1`. Pick one host for the whole flow. Since the redirect comes back on `127.0.0.1`, navigate to `http://127.0.0.1:3000/welcome`.
