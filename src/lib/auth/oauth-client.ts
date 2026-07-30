@@ -12,35 +12,77 @@ export const PDS_URL = process.env.PDS_URL || DEFAULT_PDS_URL
 
 let clientPromise: Promise<NodeOAuthClient> | null = null
 
-// Loopback dev: no real https:// PUBLIC_URL, so we can't register a
-// client_id with the AS. The atproto spec only accepts client_ids that
-// are real `https://` URLs or the literal `http://localhost` origin
-// (no port, no path). IP hosts are rejected. Detect dev and swap to
-// the virtual loopback metadata helper.
-function isLoopbackDev(): boolean {
-  if (process.env.NODE_ENV === "production") return false
-  const url = process.env.PUBLIC_URL
-  return !url || url.startsWith("http://")
+const SCOPE = "atproto transition:generic identity:handle account:email"
+
+/** Whether the resolved canonical URL requires atproto's loopback client. */
+export function isLoopbackOAuthMode(
+  publicUrl: string | undefined,
+  nodeEnv: string | undefined,
+): boolean {
+  if (nodeEnv === "production") return false
+  return publicUrl?.startsWith("http://") ?? true
 }
 
-// redirect_uri host must be `127.0.0.1` (or `[::1]`) in loopback mode —
-// `localhost` is NOT allowed here even though it IS the only allowed
-// client_id host. Port comes from PUBLIC_URL, default 3000.
-function loopbackRedirectUri(): OAuthLoopbackRedirectURI {
+/**
+ * Builds the spec-required loopback callback. The client_id host is localhost,
+ * but redirect_uri must use a loopback IP; preserve the configured dev port.
+ */
+export function buildLoopbackRedirectUri(
+  publicUrl: string | undefined,
+): OAuthLoopbackRedirectURI {
   let port = "3000"
-  const url = process.env.PUBLIC_URL
-  if (url) {
-    try {
-      const parsed = new URL(url)
-      if (parsed.port) port = parsed.port
-    } catch {
-      /* keep default */
-    }
+  if (publicUrl) {
+    const parsed = new URL(publicUrl)
+    if (parsed.port) port = parsed.port
   }
   return `http://127.0.0.1:${port}/oauth/callback` as OAuthLoopbackRedirectURI
 }
 
-const SCOPE = "atproto transition:generic identity:handle account:email"
+/** Returns a production-safe canonical URL or throws an actionable error. */
+export function requireOAuthPublicUrl(
+  publicUrl: string | undefined,
+  nodeEnv: string | undefined,
+): string {
+  if (!publicUrl) {
+    throw new Error(
+      "OAuth public URL is not configured. Set PUBLIC_URL, or expose VERCEL_BRANCH_URL or VERCEL_URL in the production runtime.",
+    )
+  }
+  if (nodeEnv === "production" && !publicUrl.startsWith("https://")) {
+    throw new Error(
+      "OAuth public URL must use HTTPS in production. Use npm run dev for HTTP loopback OAuth, or configure an HTTPS PUBLIC_URL, VERCEL_BRANCH_URL, or VERCEL_URL.",
+    )
+  }
+  return publicUrl
+}
+
+/** Builds the non-loopback OAuth metadata published by the well-known route. */
+export function buildWebOAuthClientMetadata(
+  publicUrl: string,
+  isConfidential: boolean,
+): OAuthClientMetadataInput {
+  return {
+    client_id: `${publicUrl}/.well-known/oauth-client-metadata`,
+    client_name: "Certified",
+    client_uri: publicUrl,
+    logo_uri: `${publicUrl}/brand/brandmark/certified_brandmark_black_512.png`,
+    redirect_uris: [`${publicUrl}/oauth/callback`],
+    response_types: ["code"],
+    grant_types: ["authorization_code", "refresh_token"],
+    scope: SCOPE,
+    dpop_bound_access_tokens: true,
+    application_type: "web",
+    ...(isConfidential
+      ? {
+          token_endpoint_auth_method: "private_key_jwt",
+          token_endpoint_auth_signing_alg: "ES256",
+          jwks_uri: `${publicUrl}/.well-known/jwks.json`,
+        }
+      : {
+          token_endpoint_auth_method: "none",
+        }),
+  }
+}
 
 export function getOAuthClient(): Promise<NodeOAuthClient> {
   if (!clientPromise) {
@@ -48,43 +90,22 @@ export function getOAuthClient(): Promise<NodeOAuthClient> {
       let clientMetadata: OAuthClientMetadataInput
       let keyset: Awaited<ReturnType<typeof JoseKey.fromImportable>>[] | undefined
 
-      if (isLoopbackDev()) {
+      if (isLoopbackOAuthMode(PUBLIC_URL_STRICT, process.env.NODE_ENV)) {
         // ATPROTO_PRIVATE_KEY is ignored here — the helper hard-codes
         // token_endpoint_auth_method: "none".
         clientMetadata = buildAtprotoLoopbackClientMetadata({
           scope: SCOPE,
-          redirect_uris: [loopbackRedirectUri()],
+          redirect_uris: [buildLoopbackRedirectUri(PUBLIC_URL_STRICT)],
         })
         keyset = undefined
       } else {
-        const publicUrl = PUBLIC_URL_STRICT
-        if (!publicUrl) {
-          throw new Error("PUBLIC_URL environment variable is required in production")
-        }
-
+        const publicUrl = requireOAuthPublicUrl(
+          PUBLIC_URL_STRICT,
+          process.env.NODE_ENV,
+        )
         const isConfidential = Boolean(process.env.ATPROTO_PRIVATE_KEY)
 
-        clientMetadata = {
-          client_id: `${publicUrl}/.well-known/oauth-client-metadata`,
-          client_name: "Certified",
-          client_uri: publicUrl,
-          logo_uri: `${publicUrl}/brand/brandmark/certified_brandmark_black_512.png`,
-          redirect_uris: [`${publicUrl}/oauth/callback`],
-          response_types: ["code"],
-          grant_types: ["authorization_code", "refresh_token"],
-          scope: SCOPE,
-          dpop_bound_access_tokens: true,
-          application_type: "web",
-          ...(isConfidential
-            ? {
-                token_endpoint_auth_method: "private_key_jwt",
-                token_endpoint_auth_signing_alg: "ES256",
-                jwks_uri: `${publicUrl}/.well-known/jwks.json`,
-              }
-            : {
-                token_endpoint_auth_method: "none",
-              }),
-        }
+        clientMetadata = buildWebOAuthClientMetadata(publicUrl, isConfidential)
 
         keyset = isConfidential
           ? [await JoseKey.fromImportable(process.env.ATPROTO_PRIVATE_KEY!, "key-1")]

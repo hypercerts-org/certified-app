@@ -60,12 +60,16 @@ Edit `.env.local` with your values:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_PDS_URL` | Yes | PDS / handle resolver URL (default: `https://certified.one`) |
-| `PUBLIC_URL` | Production | Public URL of the app (used for OAuth client_id and redirect URIs) |
+| `PUBLIC_URL` | Recommended in production | Canonical app origin used for OAuth metadata and callbacks |
+| `VERCEL_BRANCH_URL` | Vercel-provided fallback | Stable branch hostname used when `PUBLIC_URL` is absent |
+| `VERCEL_URL` | Vercel-provided fallback | Commit deployment hostname used when the first two values are absent |
 | `COOKIE_SECRET` | Production | Secret for signing session cookies (`openssl rand -hex 32`) |
 | `UPSTASH_REDIS_REST_URL` | Yes | Upstash Redis REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Yes | Upstash Redis REST token |
 | `ATPROTO_PRIVATE_KEY` | No | EC private key for confidential client auth |
 | `RESEND_API_KEY` | No | Resend API key for feedback emails |
+
+OAuth URL precedence is `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. The Vercel variables are server-side hostname-only system values and do not need `NEXT_PUBLIC_` aliases. The selected metadata endpoint—and JWKS endpoint when confidential auth is enabled—must be publicly reachable by the authorization server, so Vercel Deployment Protection can prevent preview login. Deployments participating in one callback flow must share compatible Redis configuration; distinct canonical OAuth origins should use separate Redis databases because saved OAuth sessions are not namespaced by `client_id`.
 
 ### Development
 
