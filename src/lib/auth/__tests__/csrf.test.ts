@@ -11,7 +11,8 @@ const allowedOrigins = vi.hoisted(
     ]),
 )
 
-vi.mock("@/lib/utils/config", () => ({
+vi.mock("@/lib/utils/config", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/utils/config")>()),
   ALLOWED_REQUEST_ORIGINS: allowedOrigins,
 }))
 

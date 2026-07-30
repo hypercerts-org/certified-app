@@ -107,7 +107,8 @@ function optionalValue(value: string | undefined): string | undefined {
   return trimmed || undefined
 }
 
-function isLoopbackHost(hostname: string): boolean {
+/** Returns whether a URL hostname identifies a supported loopback address. */
+export function isLoopbackHost(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
 }
 

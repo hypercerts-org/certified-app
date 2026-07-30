@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { ALLOWED_REQUEST_ORIGINS } from "@/lib/utils/config"
+import { ALLOWED_REQUEST_ORIGINS, isLoopbackHost } from "@/lib/utils/config"
 
 /**
  * Validates browser mutation requests against the app's configured origins.
@@ -100,8 +100,4 @@ function isAllowedDevelopmentLoopback(incoming: URL): boolean {
   }
 
   return false
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]"
 }
