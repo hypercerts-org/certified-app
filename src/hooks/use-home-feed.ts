@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   certifiedFeedImageUrl,
   CertifiedFeedError,
@@ -170,9 +177,11 @@ export function useHomeFeed(
   )
   const [retryNonce, setRetryNonce] = useState(0)
   const stateRef = useRef(state)
-  stateRef.current = state
   const currentRequestKeyRef = useRef(requestKey)
-  currentRequestKeyRef.current = requestKey
+  useLayoutEffect(() => {
+    stateRef.current = state
+    currentRequestKeyRef.current = requestKey
+  }, [state, requestKey])
   const generationRef = useRef(0)
   const headControllerRef = useRef<AbortController | null>(null)
   const continuationRef = useRef<{
@@ -470,9 +479,11 @@ export function useLegacyHomeFeed(
   const [state, setState] = useState<State>(EMPTY_STATE)
   const [retryNonce, setRetryNonce] = useState(0)
   const followedRef = useRef(followedDids)
-  followedRef.current = followedDids
   const stateRef = useRef(state)
-  stateRef.current = state
+  useLayoutEffect(() => {
+    followedRef.current = followedDids
+    stateRef.current = state
+  }, [followedDids, state])
   const generationRef = useRef(0)
   const continuationControllerRef = useRef<AbortController | null>(null)
 

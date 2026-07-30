@@ -163,6 +163,8 @@ const RFC3339_RE =
 const HTTP_DATE_RE =
   /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/
 const MAX_ERROR_BODY = 64 * 1024
+const MAX_SUCCESS_BODY = MAX_ERROR_BODY * 8
+const CERTIFIED_FEED_TIMEOUT_MS = 15_000
 const MAX_BROWSER_TIMER_DELAY_MS = 2_147_483_647
 const MAX_DATE_MS = 8_640_000_000_000_000
 
@@ -230,46 +232,132 @@ export function certifiedFeedImageUrl(
 
 export async function fetchCertifiedFeed(
   input: GetCertifiedFeedInput,
-  options: { signal?: AbortSignal; origin?: string } = {},
+  options: {
+    signal?: AbortSignal
+    origin?: string
+    timeoutMs?: number
+  } = {},
 ): Promise<CertifiedFeedPage> {
   const origin = options.origin ?? parseCertifiedFeedServiceOrigin()
-  const response = await fetch(`${origin}${CERTIFIED_FEED_PATH}`, {
-    method: "POST",
-    credentials: "omit",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-    signal: options.signal,
-  })
-  const text = await response.text()
-  if (!response.ok) {
-    const parsed = safeErrorBody(text)
-    const code = parsed && KNOWN_ERROR_CODES.has(parsed.error) ? parsed.error : null
-    const message =
-      response.status < 500 && code && parsed && parsed.message.length <= 500
-        ? parsed.message
-        : response.status === 429
-          ? "The feed service is rate limiting requests. Wait before trying again."
-          : "The feed service request failed. Try again; if it keeps failing, contact support."
-    throw new CertifiedFeedError(
-      message,
-      response.status,
-      code,
-      response.status === 429
-        ? parseRetryAt(response.headers.get("Retry-After"))
-        : null,
-    )
-  }
-  if (text.length > MAX_ERROR_BODY * 8) {
-    throw contractError("response body is unexpectedly large")
-  }
-  let json: unknown
+  const deadline = createRequestDeadline(
+    options.signal,
+    options.timeoutMs ?? CERTIFIED_FEED_TIMEOUT_MS,
+  )
   try {
-    json = JSON.parse(text)
-  } catch {
-    throw contractError("response is not valid JSON")
+    const response = await fetch(`${origin}${CERTIFIED_FEED_PATH}`, {
+      method: "POST",
+      credentials: "omit",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: deadline.signal,
+    })
+    const body = await readBoundedText(
+      response,
+      response.ok ? MAX_SUCCESS_BODY : MAX_ERROR_BODY,
+    )
+    if (!response.ok) {
+      const parsed = body.exceeded ? null : safeErrorBody(body.text)
+      const code = parsed && KNOWN_ERROR_CODES.has(parsed.error) ? parsed.error : null
+      const message =
+        response.status < 500 && code && parsed && parsed.message.length <= 500
+          ? parsed.message
+          : response.status === 429
+            ? "The feed service is rate limiting requests. Wait before trying again."
+            : "The feed service request failed. Try again; if it keeps failing, contact support."
+      throw new CertifiedFeedError(
+        message,
+        response.status,
+        code,
+        response.status === 429
+          ? parseRetryAt(response.headers.get("Retry-After"))
+          : null,
+      )
+    }
+    if (body.exceeded) {
+      throw contractError("response body is unexpectedly large")
+    }
+    let json: unknown
+    try {
+      json = JSON.parse(body.text)
+    } catch {
+      throw contractError("response is not valid JSON")
+    }
+    return parseCertifiedFeedResponse(json)
+  } catch (error) {
+    if (deadline.abortSource() === "timeout") {
+      throw new CertifiedFeedError(
+        "The feed service request timed out. Try again.",
+        504,
+        null,
+      )
+    }
+    throw error
+  } finally {
+    deadline.cleanup()
   }
-  return parseCertifiedFeedResponse(json)
+}
+
+function createRequestDeadline(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): {
+  signal: AbortSignal
+  abortSource: () => "caller" | "timeout" | null
+  cleanup: () => void
+} {
+  const controller = new AbortController()
+  let source: "caller" | "timeout" | null = null
+  const abortFromCaller = () => {
+    if (source !== null) return
+    source = "caller"
+    controller.abort(callerSignal?.reason)
+  }
+  if (callerSignal?.aborted) abortFromCaller()
+  else callerSignal?.addEventListener("abort", abortFromCaller, { once: true })
+  const timeoutId = setTimeout(() => {
+    if (source !== null) return
+    source = "timeout"
+    controller.abort()
+  }, timeoutMs)
+  return {
+    signal: controller.signal,
+    abortSource: () => source,
+    cleanup: () => {
+      clearTimeout(timeoutId)
+      callerSignal?.removeEventListener("abort", abortFromCaller)
+    },
+  }
+}
+
+async function readBoundedText(
+  response: Response,
+  maxBytes: number,
+): Promise<{ text: string; exceeded: boolean }> {
+  if (!response.body) return { text: "", exceeded: false }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let byteLength = 0
+  let text = ""
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        text += decoder.decode()
+        return { text, exceeded: false }
+      }
+      byteLength += value.byteLength
+      if (byteLength > maxBytes) {
+        // Cancellation is best-effort: an underlying stream may never settle
+        // its cleanup promise, but the size-limit result must return promptly.
+        void reader.cancel().catch(() => {})
+        return { text: "", exceeded: true }
+      }
+      text += decoder.decode(value, { stream: true })
+    }
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 export function parseCertifiedFeedResponse(value: unknown): CertifiedFeedPage {

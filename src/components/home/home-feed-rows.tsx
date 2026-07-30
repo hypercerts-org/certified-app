@@ -54,19 +54,19 @@ function FeedCardHead(props: FeedCardHeadProps) {
   )
 }
 
+function useResolvedLegacyActor(actor: HomeFeedActor): HomeFeedActor {
+  const { info } = useAuthorInfo(actor.did)
+  return {
+    ...actor,
+    handle: info?.handle || actor.handle || null,
+    displayName: info?.displayName || actor.displayName || null,
+    avatarUrl: info?.avatarUrl || actor.avatarUrl || null,
+  }
+}
+
 function LegacyFeedCardHead(props: FeedCardHeadProps) {
-  const { info } = useAuthorInfo(props.actor)
-  return (
-    <FeedCardHeadView
-      {...props}
-      actorProfile={{
-        ...props.actorProfile,
-        handle: info?.handle || props.actorProfile.handle || null,
-        displayName: info?.displayName || props.actorProfile.displayName || null,
-        avatarUrl: info?.avatarUrl || props.actorProfile.avatarUrl || null,
-      }}
-    />
-  )
+  const actorProfile = useResolvedLegacyActor(props.actorProfile)
+  return <FeedCardHeadView {...props} actorProfile={actorProfile} />
 }
 
 function FeedCardHeadView({
@@ -182,12 +182,10 @@ export const EndorsementGroupRow = memo(
           pressed={expanded}
           aria-expanded={expanded}
           className="home-feed__group-toggle"
-          onClick={() =>
-            setExpanded((current) => {
-              if (current) setVisibleCount(GROUP_EXPAND_PAGE)
-              return !current
-            })
-          }
+          onClick={() => {
+            setVisibleCount(GROUP_EXPAND_PAGE)
+            setExpanded((current) => !current)
+          }}
         >
           {expanded ? "Show fewer" : "Show all"}
         </Button>
@@ -259,15 +257,10 @@ function LegacyEndorsementGroupSummary({
   first: HomeFeedActor
   othersCount: number
 }) {
-  const { info } = useAuthorInfo(first.did)
+  const resolvedFirst = useResolvedLegacyActor(first)
   return (
     <EndorsementGroupSummaryView
-      first={{
-        ...first,
-        handle: info?.handle || first.handle || null,
-        displayName: info?.displayName || first.displayName || null,
-        avatarUrl: info?.avatarUrl || first.avatarUrl || null,
-      }}
+      first={resolvedFirst}
       othersCount={othersCount}
     />
   )
@@ -305,17 +298,8 @@ function EndorsedAccountLink({ subject }: { subject: HomeFeedActor }) {
 }
 
 function LegacyEndorsedAccountLink({ subject }: { subject: HomeFeedActor }) {
-  const { info } = useAuthorInfo(subject.did)
-  return (
-    <EndorsedAccountLinkView
-      subject={{
-        ...subject,
-        handle: info?.handle || subject.handle || null,
-        displayName: info?.displayName || subject.displayName || null,
-        avatarUrl: info?.avatarUrl || subject.avatarUrl || null,
-      }}
-    />
-  )
+  const resolvedSubject = useResolvedLegacyActor(subject)
+  return <EndorsedAccountLinkView subject={resolvedSubject} />
 }
 
 function EndorsedAccountLinkView({ subject }: { subject: HomeFeedActor }) {
@@ -533,17 +517,8 @@ function EndorsementSentence({ subject }: { subject: HomeFeedActor }) {
 }
 
 function LegacyEndorsementSentence({ subject }: { subject: HomeFeedActor }) {
-  const { info } = useAuthorInfo(subject.did)
-  return (
-    <EndorsementSentenceView
-      subject={{
-        ...subject,
-        handle: info?.handle || subject.handle || null,
-        displayName: info?.displayName || subject.displayName || null,
-        avatarUrl: info?.avatarUrl || subject.avatarUrl || null,
-      }}
-    />
-  )
+  const resolvedSubject = useResolvedLegacyActor(subject)
+  return <EndorsementSentenceView subject={resolvedSubject} />
 }
 
 function EndorsementSentenceView({ subject }: { subject: HomeFeedActor }) {

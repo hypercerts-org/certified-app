@@ -302,6 +302,7 @@ describe("fetchCertifiedFeed", () => {
   })
   afterEach(() => {
     globalThis.fetch = originalFetch
+    vi.useRealTimers()
   })
 
   async function fetchRateLimitError(retryAfter: string): Promise<CertifiedFeedError> {
@@ -347,6 +348,195 @@ describe("fetchCertifiedFeed", () => {
       viewerDid: did,
       trustedEvaluators: [subjectDid],
     })
+  })
+
+  it("times out a feed request that never receives a response", async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+    mockFetch.mockImplementationOnce((_url, init?: RequestInit) => {
+      requestSignal = init?.signal as AbortSignal | undefined
+      return new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener(
+          "abort",
+          () => reject(requestSignal?.reason),
+          { once: true },
+        )
+      })
+    })
+
+    const pending = fetchCertifiedFeed(
+      { viewerDid: did },
+      { origin: "https://feed.example", timeoutMs: 25 },
+    )
+    expect(requestSignal).toBeDefined()
+
+    const rejection = expect(pending).rejects.toMatchObject({
+      message: "The feed service request timed out. Try again.",
+      status: 504,
+      code: null,
+      retryAt: null,
+    })
+    await vi.advanceTimersByTimeAsync(25)
+    await rejection
+  })
+
+  it("keeps the deadline active while reading the response body", async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+    mockFetch.mockImplementationOnce((_url, init?: RequestInit) => {
+      requestSignal = init?.signal as AbortSignal | undefined
+      return Promise.resolve(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              requestSignal?.addEventListener(
+                "abort",
+                () => controller.error(requestSignal?.reason),
+                { once: true },
+              )
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+    })
+
+    const pending = fetchCertifiedFeed(
+      { viewerDid: did },
+      { origin: "https://feed.example", timeoutMs: 25 },
+    )
+    expect(requestSignal).toBeDefined()
+
+    const rejection = expect(pending).rejects.toMatchObject({
+      message: "The feed service request timed out. Try again.",
+      status: 504,
+      code: null,
+    })
+    await vi.advanceTimersByTimeAsync(25)
+    await rejection
+  })
+
+  it("preserves caller cancellation instead of reporting a timeout", async () => {
+    const caller = new AbortController()
+    const reason = new DOMException("Route changed", "AbortError")
+    mockFetch.mockImplementationOnce((_url, init?: RequestInit) => {
+      const signal = init?.signal as AbortSignal
+      return new Promise<Response>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        })
+      })
+    })
+
+    const pending = fetchCertifiedFeed(
+      { viewerDid: did },
+      {
+        origin: "https://feed.example",
+        signal: caller.signal,
+        timeoutMs: 25,
+      },
+    )
+    caller.abort(reason)
+
+    await expect(pending).rejects.toBe(reason)
+  })
+
+  it("stops reading an oversized error body before buffering all of it", async () => {
+    const cancel = vi.fn()
+    let pulls = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++
+        if (pulls <= 2) {
+          controller.enqueue(new Uint8Array(40 * 1024).fill(97))
+          return
+        }
+        return new Promise<void>(() => {})
+      },
+      cancel,
+    })
+    mockFetch.mockResolvedValueOnce(new Response(body, { status: 400 }))
+
+    await expect(
+      fetchCertifiedFeed({ viewerDid: did }, { origin: "https://feed.example" }),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: null,
+      message:
+        "The feed service request failed. Try again; if it keeps failing, contact support.",
+    })
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it("does not wait for stream cancellation to settle after the size limit", async () => {
+    let pulls = 0
+    let releaseCancellation = () => {}
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++
+        if (pulls <= 2) {
+          controller.enqueue(new Uint8Array(40 * 1024).fill(97))
+          return
+        }
+        return new Promise<void>(() => {})
+      },
+      cancel() {
+        return new Promise<void>((resolve) => {
+          releaseCancellation = resolve
+        })
+      },
+    })
+    mockFetch.mockResolvedValueOnce(new Response(body, { status: 400 }))
+
+    const outcome = fetchCertifiedFeed(
+      { viewerDid: did },
+      { origin: "https://feed.example" },
+    ).then(
+      () => ({ error: null }),
+      (error: unknown) => ({ error }),
+    )
+    const stalled = Symbol("stream cancellation remained pending")
+    try {
+      const result = await Promise.race([
+        outcome,
+        new Promise<typeof stalled>((resolve) =>
+          setTimeout(() => resolve(stalled), 0),
+        ),
+      ])
+      expect(result).not.toBe(stalled)
+      if (result !== stalled) {
+        expect(result.error).toMatchObject({ status: 400, code: null })
+      }
+    } finally {
+      releaseCancellation()
+      await outcome
+    }
+  })
+
+  it("stops reading an oversized successful response at its contract limit", async () => {
+    const cancel = vi.fn()
+    let pulls = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++
+        if (pulls <= 2) {
+          controller.enqueue(new Uint8Array(300 * 1024).fill(97))
+          return
+        }
+        return new Promise<void>(() => {})
+      },
+      cancel,
+    })
+    mockFetch.mockResolvedValueOnce(new Response(body, { status: 200 }))
+
+    await expect(
+      fetchCertifiedFeed({ viewerDid: did }, { origin: "https://feed.example" }),
+    ).rejects.toMatchObject({
+      status: 502,
+      code: "InvalidResponse",
+      message: expect.stringContaining("unexpectedly large"),
+    })
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it("preserves recognized safe errors and parses visible Retry-After", async () => {

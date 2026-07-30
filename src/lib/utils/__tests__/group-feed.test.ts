@@ -57,7 +57,8 @@ describe("groupConsecutiveEndorsements", () => {
   it("groups consecutive endorsements and preserves hydrated subject summaries", () => {
     const first = endorsement("at://1", "did:plc:alice", "did:plc:bob", true)
     const second = endorsement("at://2", "did:plc:alice", "did:plc:carol", true)
-    const result = groupConsecutiveEndorsements([first, second])
+    const third = endorsement("at://3", "did:plc:alice", "did:plc:dana", true)
+    const result = groupConsecutiveEndorsements([first, second, third])
 
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({
@@ -67,6 +68,7 @@ describe("groupConsecutiveEndorsements", () => {
       subjects: [
         { did: "did:plc:bob", complete: true },
         { did: "did:plc:carol", complete: true },
+        { did: "did:plc:dana", complete: true },
       ],
     })
   })

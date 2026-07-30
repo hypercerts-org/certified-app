@@ -99,7 +99,26 @@ function uriFor(spec: FeedSpec, index: number): string {
   return `at://${spec.authorDid}/${collection}/preview${index}`
 }
 
-function feedActorBlock(actor: MockActor) {
+function serviceFeedActorBlock(actor: MockActor) {
+  return {
+    did: actor.did,
+    handle: actor.handle,
+    displayName: actor.displayName,
+    avatar: actor.avatarCid
+      ? {
+          $type: "org.hypercerts.defs#smallImage",
+          image: {
+            $type: "blob",
+            ref: { $link: actor.avatarCid },
+            mimeType: "image/png",
+            size: 1,
+          },
+        }
+      : null,
+  }
+}
+
+function legacyFeedActorBlock(actor: MockActor) {
   return {
     did: actor.did,
     handle: actor.handle,
@@ -120,7 +139,7 @@ export function certifiedFeedPage(): { items: Record<string, unknown>[] } {
         kind: spec.kind,
         subject: { uri, cid: CERTIFIED_FEED_FIXTURE_CID },
         feedTimestamp: createdAt,
-        actor: feedActorBlock(sourceActor),
+        actor: serviceFeedActorBlock(sourceActor),
       }
       if (spec.kind === "cert.create") {
         return {
@@ -152,7 +171,7 @@ export function certifiedFeedPage(): { items: Record<string, unknown>[] } {
         ...base,
         view: {
           $type: "app.certified.feed.beta.defs#endorsementView",
-          subject: feedActorBlock(subject),
+          subject: serviceFeedActorBlock(subject),
           createdAt,
         },
       }
@@ -169,7 +188,7 @@ export function followerEventsConnection(): {
       kind: string
       subjectUri: string
       sortAt: string
-      actor: ReturnType<typeof feedActorBlock>
+      actor: ReturnType<typeof legacyFeedActorBlock>
     }
   }[]
   pageInfo: { hasNextPage: boolean; endCursor: string | null }
@@ -184,7 +203,7 @@ export function followerEventsConnection(): {
         kind: spec.kind,
         subjectUri: uri,
         sortAt: sortAtFor(index),
-        actor: feedActorBlock(actor),
+        actor: legacyFeedActorBlock(actor),
       },
     }
   })

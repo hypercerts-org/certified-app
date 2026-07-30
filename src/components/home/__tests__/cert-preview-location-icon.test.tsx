@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest"
 import { render, screen, cleanup, within } from "@testing-library/react"
 
 import { CertPreview } from "../home-feed-rows"
+import type { ActivityHomeFeedView } from "@/hooks/use-home-feed"
 
 // bug-010: the feed PreviewCard's MapPin was gated on
 // `i === 0 && withLocationIcon && i === meta.length - 1`, which is only
@@ -26,7 +27,7 @@ describe("CertPreview location MapPin", () => {
       startDate: "2025-01-15T00:00:00.000Z",
       endDate: "2025-03-20T00:00:00.000Z",
       locationCount: 3,
-    }
+    } satisfies ActivityHomeFeedView
 
     render(<CertPreview view={view} uri={URI} />)
 

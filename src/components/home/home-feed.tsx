@@ -25,10 +25,7 @@ import {
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
-import {
-  parseHomeFeedSource,
-  type OrganizationQuality,
-} from "@/lib/atproto/certified-feed"
+import { parseHomeFeedSource } from "@/lib/atproto/certified-feed"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
 
 const HOME_FEED_SOURCE = parseHomeFeedSource()
@@ -101,14 +98,6 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   const [filterOpen, setFilterOpen] = useState(false)
   const filterWrapRef = useRef<HTMLDivElement>(null)
   useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
-  useEffect(() => {
-    if (!filterOpen) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setFilterOpen(false)
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [filterOpen])
 
   const isDefaultFilters =
     isOrgQualityDefault(includedOrgTiers) &&
@@ -189,7 +178,7 @@ function ServiceHomeFeed({
 }) {
   const organizationQuality = useMemo(
     () => ({
-      allowed: ORGLABEL_TIERS.filter((tier) => includedOrgTiers.has(tier)) as OrganizationQuality[],
+      allowed: ORGLABEL_TIERS.filter((tier) => includedOrgTiers.has(tier)),
       includeUnrated: includedOrgTiers.has(UNLABELED_SLUG),
     }),
     [includedOrgTiers],
