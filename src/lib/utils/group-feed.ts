@@ -6,7 +6,7 @@ export interface EndorsementGroupItem {
   key: string
   actor: string
   actorProfile: HomeFeedActor
-  createdAt: string
+  createdAt: string | null
   /** Most-recent first, preserving hydrated service summaries. */
   subjects: HomeFeedActor[]
 }

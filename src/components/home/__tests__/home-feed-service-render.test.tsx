@@ -81,24 +81,21 @@ const serviceSubject = {
   displayName: subject.displayName,
   avatar: null,
 }
-const serviceCid =
-  "bafyreia3tbsfxe3cc75xrxyyn6qc42oupi73fxiox76prlyi5bpx7hr72u"
-const serviceTimestamp = "2026-07-21T10:00:00.000Z"
-
 function serviceItem(
   kind: string,
   rkey: string,
-  view: CertifiedFeedView,
+  content: CertifiedFeedView,
   collection = "org.hypercerts.claim.activity",
 ): CertifiedFeedItem {
   const uri = `at://${issuer.did}/${collection}/${rkey}`
   return {
-    id: uri,
-    kind,
-    subject: { uri, cid: serviceCid },
-    feedTimestamp: serviceTimestamp,
-    actor: serviceActor,
-    view,
+    subject: uri,
+    view: {
+      $type: "app.certified.feed.beta.defs#certifiedFeedView",
+      kind,
+      actor: serviceActor,
+      content,
+    },
   }
 }
 

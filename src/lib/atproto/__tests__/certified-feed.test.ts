@@ -18,14 +18,15 @@ function actor(actorDid = did) {
   return { did: actorDid, handle: "actor.example", displayName: "Actor" }
 }
 
-function item(kind: string, view: Record<string, unknown>) {
+function item(kind: string, content: Record<string, unknown>) {
   return {
-    id: uri,
-    kind,
-    subject: { uri, cid },
-    feedTimestamp: timestamp,
-    actor: actor(),
-    view,
+    subject: uri,
+    view: {
+      $type: "app.certified.feed.beta.defs#certifiedFeedView",
+      kind,
+      actor: actor(),
+      content,
+    },
   }
 }
 
@@ -120,29 +121,32 @@ describe("feed configuration", () => {
 })
 
 describe("parseCertifiedFeedResponse", () => {
-  it.each(knownViews)("parses %s", (kind, view) => {
-    const page = parseCertifiedFeedResponse({ items: [item(kind, view)], cursor: "next" })
-    expect(page.items[0]).toMatchObject({ kind, view: { $type: view.$type } })
+  it.each(knownViews)("parses %s", (kind, content) => {
+    const page = parseCertifiedFeedResponse({ feed: [item(kind, content)], cursor: "next" })
+    expect(page.items[0]).toMatchObject({
+      subject: uri,
+      view: { kind, content: { $type: content.$type } },
+    })
     expect(page.cursor).toBe("next")
   })
 
   it("derives a missing event actor DID from the source AT URI", () => {
     const value = item("cert.create", knownViews[0][1])
-    value.actor = { handle: "actor.example", displayName: "Actor" } as ReturnType<typeof actor>
-    expect(parseCertifiedFeedResponse({ items: [value] }).items[0].actor.did).toBe(did)
+    value.view.actor = { handle: "actor.example", displayName: "Actor" }
+    expect(parseCertifiedFeedResponse({ feed: [value] }).items[0].view.actor.did).toBe(did)
   })
 
   it("rejects an explicit event actor DID that disagrees with source ownership", () => {
     const value = item("cert.create", knownViews[0][1])
-    value.actor = actor(subjectDid)
-    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
+    value.view.actor = actor(subjectDid)
+    expect(() => parseCertifiedFeedResponse({ feed: [value] })).toThrow(
       /must match the source AT-URI authority/,
     )
   })
 
   it("uses the validated event actor DID as actor-avatar blob owner", () => {
     const value = item("cert.create", knownViews[0][1])
-    value.actor = {
+    value.view.actor = {
       ...actor(),
       avatar: {
         $type: "org.hypercerts.defs#smallImage",
@@ -153,30 +157,30 @@ describe("parseCertifiedFeedResponse", () => {
           size: 123,
         },
       },
-    } as ReturnType<typeof actor>
-    const parsed = parseCertifiedFeedResponse({ items: [value] }).items[0]
-    expect(certifiedFeedImageUrl(parsed.actor.avatar, parsed.actor.did)).toBe(
+    }
+    const parsed = parseCertifiedFeedResponse({ feed: [value] }).items[0]
+    expect(certifiedFeedImageUrl(parsed.view.actor.avatar, parsed.view.actor.did)).toBe(
       `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`,
     )
   })
 
-  it("keeps unknown views as an open-union fallback", () => {
+  it("keeps unknown content as an open-union fallback", () => {
     const page = parseCertifiedFeedResponse({
-      items: [item("future.create", { $type: "app.certified.feed.beta.defs#futureView" })],
+      feed: [item("future.create", { $type: "app.certified.feed.beta.defs#futureView" })],
     })
-    expect(page.items[0].view).toEqual({
+    expect(page.items[0].view.content).toEqual({
       $type: "app.certified.feed.beta.defs#futureView",
       unknown: true,
     })
   })
 
-  it("rejects known kind/view mismatches and malformed known views", () => {
+  it("rejects known kind/content mismatches and malformed known content", () => {
     expect(() =>
-      parseCertifiedFeedResponse({ items: [item("cert.create", knownViews[1][1])] }),
-    ).toThrow(/requires view/)
+      parseCertifiedFeedResponse({ feed: [item("cert.create", knownViews[1][1])] }),
+    ).toThrow(/requires content/)
     expect(() =>
       parseCertifiedFeedResponse({
-        items: [
+        feed: [
           item("cert.create", {
             $type: "app.certified.feed.beta.defs#activityView",
             title: "Missing count",
@@ -186,12 +190,12 @@ describe("parseCertifiedFeedResponse", () => {
     ).toThrow(/locationCount/)
   })
 
-  it("uses contextual blob variants and rejects a known variant in the wrong view", () => {
-    const parsed = parseCertifiedFeedResponse({ items: [item("update.create", knownViews[7][1])] })
-    expect(parsed.items[0].view).toMatchObject({ image: { kind: "blob", cid } })
+  it("uses contextual blob variants and rejects a known variant in the wrong content", () => {
+    const parsed = parseCertifiedFeedResponse({ feed: [item("update.create", knownViews[7][1])] })
+    expect(parsed.items[0].view.content).toMatchObject({ image: { kind: "blob", cid } })
     expect(() =>
       parseCertifiedFeedResponse({
-        items: [
+        feed: [
           item("cert.create", {
             $type: "app.certified.feed.beta.defs#activityView",
             title: "Bad image",
@@ -204,15 +208,17 @@ describe("parseCertifiedFeedResponse", () => {
   })
 
   it.each(["", "x".repeat(4097)])("rejects invalid cursors", (cursor) => {
-    expect(() => parseCertifiedFeedResponse({ items: [], cursor })).toThrow(/cursor/)
+    expect(() => parseCertifiedFeedResponse({ feed: [], cursor })).toThrow(/cursor/)
   })
 
-  it("accepts calendar-valid fractional RFC3339 with an offset", () => {
-    const value = item("cert.create", knownViews[0][1])
-    value.feedTimestamp = "2024-02-29T23:59:59.123456789+05:30"
-    expect(parseCertifiedFeedResponse({ items: [value] }).items[0].feedTimestamp).toBe(
-      value.feedTimestamp,
-    )
+  it("accepts calendar-valid fractional content dates with an offset", () => {
+    const value = item("cert.create", {
+      ...knownViews[0][1],
+      createdAt: "2024-02-29T23:59:59.123456789+05:30",
+    })
+    expect(parseCertifiedFeedResponse({ feed: [value] }).items[0].view.content).toMatchObject({
+      createdAt: "2024-02-29T23:59:59.123456789+05:30",
+    })
   })
 
   it.each([
@@ -224,12 +230,9 @@ describe("parseCertifiedFeedResponse", () => {
     "2026-07-21T24:00:00Z",
     "2026-07-21T10:60:00Z",
     "2026-07-21T10:00:00+24:00",
-  ])("rejects non-RFC3339 feed datetimes: %s", (feedTimestamp) => {
-    const value = item("cert.create", knownViews[0][1])
-    value.feedTimestamp = feedTimestamp
-    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
-      /RFC3339/,
-    )
+  ])("rejects non-RFC3339 content dates: %s", (createdAt) => {
+    const value = item("cert.create", { ...knownViews[0][1], createdAt })
+    expect(() => parseCertifiedFeedResponse({ feed: [value] })).toThrow(/RFC3339/)
   })
 
   it.each([
@@ -238,8 +241,8 @@ describe("parseCertifiedFeedResponse", () => {
     ["handle", "bad_.example"],
   ])("rejects malformed actor %s %s", (_field, handle) => {
     const value = item("cert.create", knownViews[0][1])
-    value.actor = { ...actor(), handle }
-    expect(() => parseCertifiedFeedResponse({ items: [value] })).toThrow(
+    value.view.actor = { ...actor(), handle }
+    expect(() => parseCertifiedFeedResponse({ feed: [value] })).toThrow(
       /valid AT Protocol handle/,
     )
   })
@@ -247,7 +250,7 @@ describe("parseCertifiedFeedResponse", () => {
   it("rejects malformed generic image URIs", () => {
     expect(() =>
       parseCertifiedFeedResponse({
-        items: [
+        feed: [
           item("cert.create", {
             $type: "app.certified.feed.beta.defs#activityView",
             title: "Bad URI",
@@ -264,14 +267,14 @@ describe("parseCertifiedFeedResponse", () => {
 
   it("rejects malformed source, target, and blob CIDs", () => {
     const badSource = item("cert.create", knownViews[0][1])
-    badSource.subject.cid = "not-a-cid"
-    expect(() => parseCertifiedFeedResponse({ items: [badSource] })).toThrow(
-      /valid CID/,
+    badSource.subject = "not-an-at-uri"
+    expect(() => parseCertifiedFeedResponse({ feed: [badSource] })).toThrow(
+      /at:\/\/ URI/,
     )
 
     expect(() =>
       parseCertifiedFeedResponse({
-        items: [
+        feed: [
           item("evaluation.create", {
             $type: "app.certified.feed.beta.defs#evaluationView",
             target: { uri, cid: "bad-target" },
@@ -286,7 +289,7 @@ describe("parseCertifiedFeedResponse", () => {
     ).$link = "bad-blob"
     expect(() =>
       parseCertifiedFeedResponse({
-        items: [item("update.create", badBlob)],
+        feed: [item("update.create", badBlob)],
       }),
     ).toThrow(/valid CID/)
   })
@@ -326,7 +329,7 @@ describe("fetchCertifiedFeed", () => {
 
   it("sends one credentialless no-store XRPC POST", async () => {
     mockFetch.mockResolvedValue(
-      new Response(JSON.stringify({ items: [item("cert.create", knownViews[0][1])] }), {
+      new Response(JSON.stringify({ feed: [item("cert.create", knownViews[0][1])] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -344,9 +347,14 @@ describe("fetchCertifiedFeed", () => {
       credentials: "omit",
       cache: "no-store",
     })
-    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({
-      viewerDid: did,
-      trustedEvaluators: [subjectDid],
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({
+      feedId: "app.certified.feed.beta.defs#certifiedFeed",
+      params: {
+        $type: "app.certified.feed.beta.defs#certifiedFeedParams",
+        viewerDid: did,
+        trustedEvaluators: [subjectDid],
+      },
+      limit: 50,
     })
   })
 

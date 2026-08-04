@@ -33,6 +33,10 @@ export interface CertifiedFeedActor {
   avatar: CertifiedFeedImage | null
 }
 
+const CERTIFIED_FEED_ID = "app.certified.feed.beta.defs#certifiedFeed"
+const CERTIFIED_FEED_PARAMS_TYPE = "app.certified.feed.beta.defs#certifiedFeedParams"
+const CERTIFIED_FEED_VIEW_TYPE = "app.certified.feed.beta.defs#certifiedFeedView"
+
 interface ViewBase {
   $type: string
 }
@@ -111,13 +115,15 @@ export interface CertifiedFeedStrongRef {
   cid: string
 }
 
-export interface CertifiedFeedItem {
-  id: string
+export interface CertifiedFeedEnvelope extends ViewBase {
   kind: string
-  subject: CertifiedFeedStrongRef
-  feedTimestamp: string
   actor: CertifiedFeedActor
-  view: CertifiedFeedView
+  content: CertifiedFeedView
+}
+
+export interface CertifiedFeedItem {
+  subject: string
+  view: CertifiedFeedEnvelope
 }
 
 export interface CertifiedFeedPage {
@@ -127,8 +133,7 @@ export interface CertifiedFeedPage {
 
 const KNOWN_ERROR_CODES = new Set([
   "InvalidRequest",
-  "TrustedEvaluatorsTooLarge",
-  "InvalidKind",
+  "UnsupportedFeed",
   "InvalidCursor",
   "InternalError",
 ])
@@ -230,6 +235,27 @@ export function certifiedFeedImageUrl(
   return `/api/xrpc/com/atproto/sync/getBlob?did=${encodeURIComponent(ownerDid)}&cid=${encodeURIComponent(image.cid)}`
 }
 
+function buildCertifiedFeedRequest(input: GetCertifiedFeedInput): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    $type: CERTIFIED_FEED_PARAMS_TYPE,
+    viewerDid: input.viewerDid,
+  }
+  if (input.trustedEvaluators !== undefined) {
+    params.trustedEvaluators = input.trustedEvaluators
+  }
+  if (input.organizationQuality !== undefined) {
+    params.organizationQuality = input.organizationQuality
+  }
+  if (input.kinds !== undefined) params.kinds = input.kinds
+
+  return {
+    feedId: CERTIFIED_FEED_ID,
+    params,
+    ...(input.limit === undefined ? {} : { limit: input.limit }),
+    ...(input.cursor === undefined ? {} : { cursor: input.cursor }),
+  }
+}
+
 export async function fetchCertifiedFeed(
   input: GetCertifiedFeedInput,
   options: {
@@ -249,7 +275,7 @@ export async function fetchCertifiedFeed(
       credentials: "omit",
       cache: "no-store",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify(buildCertifiedFeedRequest(input)),
       signal: deadline.signal,
     })
     const body = await readBoundedText(
@@ -362,41 +388,78 @@ async function readBoundedText(
 
 export function parseCertifiedFeedResponse(value: unknown): CertifiedFeedPage {
   const root = requireObject(value, "response")
-  if (!Array.isArray(root.items)) throw contractError("response.items must be an array")
+  if (!Array.isArray(root.feed)) throw contractError("response.feed must be an array")
   const cursor = optionalString(root.cursor, "response.cursor", 4096)
   if (cursor === "") throw contractError("response.cursor must not be empty")
   return {
-    items: root.items.map((item, index) => parseItem(item, index)),
+    items: root.feed.map((item, index) => parseItem(item, index)),
     cursor: cursor ?? null,
   }
 }
 
 function parseItem(value: unknown, index: number): CertifiedFeedItem {
-  const path = `response.items[${index}]`
+  const path = `response.feed[${index}]`
   const item = requireObject(value, path)
-  const id = requiredString(item.id, `${path}.id`, 4096)
-  const subject = parseStrongRef(item.subject, `${path}.subject`)
-  const parsedSource = parseAtUri(subject.uri)
+  const subject = requiredString(item.subject, `${path}.subject`, 4096)
+  const parsedSource = parseAtUri(subject)
   if (!parsedSource || !isDid(parsedSource.did)) {
-    throw contractError(`${path}.subject.uri must be an at:// URI with a DID authority`)
+    throw contractError(`${path}.subject must be an at:// URI with a DID authority`)
   }
-  if (id !== subject.uri) throw contractError(`${path}.id must equal ${path}.subject.uri`)
-  const kind = requiredString(item.kind, `${path}.kind`, 64)
-  const feedTimestamp = requiredDate(item.feedTimestamp, `${path}.feedTimestamp`)
-  const actor = parseActor(item.actor, `${path}.actor`, parsedSource.did, true)
-  const viewObject = requireObject(item.view, `${path}.view`)
-  const viewType = requiredString(viewObject.$type, `${path}.view.$type`, 128)
-  const expected = EXPECTED_VIEW_BY_KIND[kind]
-  let view: CertifiedFeedView
-  if (!expected || !KNOWN_VIEW_TYPES.has(viewType)) {
-    view = { $type: viewType, unknown: true }
-  } else {
-    if (viewType !== expected) {
-      throw contractError(`${path} kind ${JSON.stringify(kind)} requires view ${JSON.stringify(expected)}, not ${JSON.stringify(viewType)}`)
+  return {
+    subject,
+    view: parseFeedEnvelope(item.view, `${path}.view`, parsedSource.did),
+  }
+}
+
+function parseFeedEnvelope(
+  value: unknown,
+  path: string,
+  sourceDid: string,
+): CertifiedFeedEnvelope {
+  const view = requireObject(value, path)
+  const viewType = requiredString(view.$type, `${path}.$type`, 128)
+
+  if (viewType !== CERTIFIED_FEED_VIEW_TYPE) {
+    const actor =
+      view.actor === undefined
+        ? fallbackActor(sourceDid)
+        : parseActor(view.actor, `${path}.actor`, sourceDid, true)
+    return {
+      $type: viewType,
+      kind: optionalString(view.kind, `${path}.kind`, 64) ?? "unknown",
+      actor,
+      content: { $type: viewType, unknown: true },
     }
-    view = parseKnownView(viewObject, viewType, `${path}.view`)
   }
-  return { id, kind, subject, feedTimestamp, actor, view }
+
+  const kind = requiredString(view.kind, `${path}.kind`, 64)
+  const actor = parseActor(view.actor, `${path}.actor`, sourceDid, true)
+  const content = requireObject(view.content, `${path}.content`)
+  const contentType = requiredString(content.$type, `${path}.content.$type`, 128)
+  const expected = EXPECTED_VIEW_BY_KIND[kind]
+  if (!expected || !KNOWN_VIEW_TYPES.has(contentType)) {
+    return {
+      $type: viewType,
+      kind,
+      actor,
+      content: { $type: contentType, unknown: true },
+    }
+  }
+  if (contentType !== expected) {
+    throw contractError(
+      `${path}.kind ${JSON.stringify(kind)} requires content ${JSON.stringify(expected)}, not ${JSON.stringify(contentType)}`,
+    )
+  }
+  return {
+    $type: viewType,
+    kind,
+    actor,
+    content: parseKnownView(content, contentType, `${path}.content`),
+  }
+}
+
+function fallbackActor(did: string): CertifiedFeedActor {
+  return { did, handle: null, displayName: null, avatar: null }
 }
 
 function parseKnownView(

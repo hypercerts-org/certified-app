@@ -67,7 +67,7 @@ export interface HomeFeedEventBase {
   uri: string
   actor: string
   actorProfile: HomeFeedActor
-  createdAt: string
+  createdAt: string | null
 }
 
 export type HomeFeedEvent =
@@ -606,69 +606,68 @@ function serviceActor(actor: CertifiedFeedActor): HomeFeedActor {
 }
 
 function serviceItemToHomeFeedEvent(item: CertifiedFeedItem): HomeFeedEvent {
-  const actorProfile = serviceActor(item.actor)
-  const sourceDid = parseSourceDid(item.subject.uri) ?? item.actor.did
-  const createdAt = "createdAt" in item.view && item.view.createdAt
-    ? item.view.createdAt
-    : item.feedTimestamp
+  const actorProfile = serviceActor(item.view.actor)
+  const sourceDid = parseSourceDid(item.subject) ?? item.view.actor.did
+  const content = item.view.content
+  const createdAt = "createdAt" in content ? content.createdAt : null
   const base: HomeFeedEventBase = {
-    uri: item.id,
-    actor: item.actor.did,
+    uri: item.subject,
+    actor: item.view.actor.did,
     actorProfile,
     createdAt,
   }
-  if ("unknown" in item.view) {
+  if ("unknown" in content) {
     return {
       ...base,
       kind: "unknown",
-      rawKind: item.kind,
-      subjectUri: item.subject.uri,
+      rawKind: item.view.kind,
+      subjectUri: item.subject,
     }
   }
-  switch (item.view.$type) {
+  switch (content.$type) {
     case "app.certified.feed.beta.defs#activityView":
       return {
         ...base,
         kind: "cert.create",
         view: {
-          title: item.view.title,
-          shortDescription: item.view.shortDescription,
-          imageUrl: certifiedFeedImageUrl(item.view.image, sourceDid),
-          startDate: item.view.startDate,
-          endDate: item.view.endDate,
-          locationCount: item.view.locationCount,
+          title: content.title,
+          shortDescription: content.shortDescription,
+          imageUrl: certifiedFeedImageUrl(content.image, sourceDid),
+          startDate: content.startDate,
+          endDate: content.endDate,
+          locationCount: content.locationCount,
         },
       }
     case "app.certified.feed.beta.defs#collectionView":
       return {
         ...base,
-        kind: item.kind === "project.created_with_cert" ? item.kind : "collection.create",
+        kind: item.view.kind === "project.created_with_cert" ? item.view.kind : "collection.create",
         view: {
-          collectionType: item.view.collectionType,
-          title: item.view.title,
-          shortDescription: item.view.shortDescription,
-          imageUrl: certifiedFeedImageUrl(item.view.image, sourceDid),
-          itemCount: item.view.itemCount,
+          collectionType: content.collectionType,
+          title: content.title,
+          shortDescription: content.shortDescription,
+          imageUrl: certifiedFeedImageUrl(content.image, sourceDid),
+          itemCount: content.itemCount,
         },
       }
     case "app.certified.feed.beta.defs#endorsementView":
       return {
         ...base,
         kind: "endorsement.award",
-        subject: serviceActor(item.view.subject),
+        subject: serviceActor(content.subject),
         note: null,
       }
     case "app.certified.feed.beta.defs#evaluationView":
       return {
         ...base,
         kind: "evaluation.create",
-        view: simpleView(item.view.summary, null, null, item.view.target?.uri ?? null),
+        view: simpleView(content.summary, null, null, content.target?.uri ?? null),
       }
     case "app.certified.feed.beta.defs#measurementView":
       return {
         ...base,
         kind: "measurement.create",
-        view: simpleView(item.view.metric, null, null, item.view.target?.uri ?? null),
+        view: simpleView(content.metric, null, null, content.target?.uri ?? null),
       }
     case "app.certified.feed.beta.defs#hyperboardView":
       return { ...base, kind: "hyperboard.create", view: simpleView(null, null, null, null) }
@@ -677,14 +676,14 @@ function serviceItemToHomeFeedEvent(item: CertifiedFeedItem): HomeFeedEvent {
         ...base,
         kind: "update.create",
         view: simpleView(
-          item.view.title,
-          item.view.shortDescription,
-          certifiedFeedImageUrl(item.view.image, sourceDid),
-          item.view.target?.uri ?? null,
+          content.title,
+          content.shortDescription,
+          certifiedFeedImageUrl(content.image, sourceDid),
+          content.target?.uri ?? null,
         ),
       }
     default:
-      return { ...base, kind: "unknown", rawKind: item.kind, subjectUri: item.subject.uri }
+      return { ...base, kind: "unknown", rawKind: item.view.kind, subjectUri: item.subject }
   }
 }
 

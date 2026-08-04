@@ -43,7 +43,7 @@ interface FeedCardHeadProps {
   actor: string
   actorProfile: HomeFeedActor
   action: ReactNode
-  createdAt: string
+  createdAt: string | null
 }
 
 function FeedCardHead(props: FeedCardHeadProps) {
@@ -98,9 +98,11 @@ function FeedCardHeadView({
           <Link href={profileHref} className="home-feed__actor">
             {actorName}
           </Link>
-          <time className="home-feed__time" dateTime={createdAt} title={createdAt}>
-            {formatRelativeTime(createdAt)}
-          </time>
+          {createdAt ? (
+            <time className="home-feed__time" dateTime={createdAt} title={createdAt}>
+              {formatRelativeTime(createdAt)}
+            </time>
+          ) : null}
         </p>
         {actorProfile.handle ? (
           <p className="home-feed__handle">@{actorProfile.handle}</p>
