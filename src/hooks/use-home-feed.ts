@@ -1,6 +1,22 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import {
+  certifiedFeedImageUrl,
+  CertifiedFeedError,
+  fetchCertifiedFeed,
+  type CertifiedFeedActor,
+  type CertifiedFeedItem,
+  type GetCertifiedFeedInput,
+  type OrganizationQuality,
+} from "@/lib/atproto/certified-feed"
 import {
   fetchFollowerEvents,
   FollowerEventsError,
@@ -9,95 +25,61 @@ import {
   type HydratedFeedEvent,
 } from "@/lib/atproto/follower-events"
 import { DEFAULT_HIDDEN_CERT_LABELS } from "@/lib/atproto/labels"
-import type { ActivityRecord } from "@/lib/atproto/activity-types"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 
-export interface UseHomeFeedOptions {
-  /**
-   * Cert quality labels to exclude at the hydration round-trip.
-   * Defaults to `DEFAULT_HIDDEN_CERT_LABELS` (draft + likely-test) so
-   * the feed hides low-quality records out of the box. Caller can
-   * pass any subset of the Hyperlabel tiers — the UI surfaces this
-   * via the filter popover above the feed.
-   */
-  excludeCertLabels?: readonly string[]
-  /**
-   * When set, narrow the hydration to records carrying one of these
-   * labels. The home-feed quality popover uses this when the
-   * "Not labeled yet" checkbox is UNCHECKED — only labelled certs
-   * pass. Mutually exclusive with `excludeCertLabels`: the parent
-   * picks one mode based on whether unlabeled is included.
-   */
-  includeCertLabels?: readonly string[]
-  /**
-   * Gates the initial fetch. The home page resolves direct follows
-   * and trusted-evaluator-endorsed DIDs in parallel — both feed into
-   * the effective author set. Setting `ready: false` while either
-   * is still loading defers the fetch so the feed lands in one
-   * frame instead of flashing direct-follow content first and then
-   * re-rendering with the union. Default true — callers that don't
-   * union multiple author sources can ignore this flag.
-   */
-  ready?: boolean
+const PAGE_SIZE = 50
+
+export interface HomeFeedActor {
+  did: string
+  handle: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  /** Complete service summaries must never trigger a fallback identity read. */
+  complete: boolean
 }
 
-/**
- * Discriminated union of the timeline event kinds the home feed
- * renders. Driven by magic-indexer's `followerEvents` field (issue
- * #89), which returns one paginated stream of CREATE events
- * authored by the viewer's follow set.
- *
- * The wire `FeedEvent.kind` is a string-typed open union (a new
- * server-side kind may ship before the client updates). At this
- * layer we narrow to a closed set: known kinds become specific
- * variants below; unrecognised kinds become a `"unknown"` variant
- * that the renderer can fall back to a generic "actor + subjectUri"
- * card without dropping the event.
- *
- * Every variant carries:
- *   - `uri`: the source record's at:// URI (= `id` on the wire).
- *   - `actor`: DID convenience accessor (same as `actorProfile.did`).
- *   - `actorProfile`: denormalised actor profile (handle, display
- *     name, avatar CID) from the indexer. Renderers can use this
- *     directly instead of firing a per-row `useAuthorInfo` lookup.
- *   - `createdAt`: RFC3339 timestamp from the event's `sortAt`.
- */
+export interface ActivityHomeFeedView {
+  title: string
+  shortDescription: string | null
+  imageUrl: string | null
+  startDate: string | null
+  endDate: string | null
+  locationCount: number
+}
+
+export interface CollectionHomeFeedView {
+  collectionType: string | null
+  title: string
+  shortDescription: string | null
+  imageUrl: string | null
+  itemCount: number
+}
+
+export interface SimpleHomeFeedView {
+  title: string | null
+  shortDescription: string | null
+  imageUrl: string | null
+  targetUri: string | null
+}
+
 export interface HomeFeedEventBase {
   uri: string
   actor: string
-  actorProfile: FeedActor
-  createdAt: string
+  actorProfile: HomeFeedActor
+  createdAt: string | null
 }
 
 export type HomeFeedEvent =
+  | (HomeFeedEventBase & { kind: "cert.create"; view: ActivityHomeFeedView })
   | (HomeFeedEventBase & {
-      kind: "cert.create"
-      record: ActivityRecord
-      /** Hyperlabel tier labels currently active on the cert. */
-      labels: string[]
+      kind: "collection.create" | "project.created_with_cert"
+      view: CollectionHomeFeedView
     })
   | (HomeFeedEventBase & {
-      kind: "collection.create"
-      record: CollectionRecord
-    })
-  | (HomeFeedEventBase & {
-      /**
-       * Folded-pair event from magic-indexer (project + cert created
-       * in the same batch). Renders as a single project card with a
-       * "created a project with a cert" sentence — the cert URI(s)
-       * are inside `record.value.items[]` for follow-up dispatch.
-       */
-      kind: "project.created_with_cert"
-      record: CollectionRecord
-    })
-  | (HomeFeedEventBase & {
-      kind: "endorsement.award"
-      subjectDid: string
+      kind: "endorsement.award" | "legacy.endorsement"
+      subject: HomeFeedActor
       note: string | null
-    })
-  | (HomeFeedEventBase & {
-      kind: "legacy.endorsement"
-      subjectDid: string
     })
   | (HomeFeedEventBase & {
       kind:
@@ -105,46 +87,13 @@ export type HomeFeedEvent =
         | "measurement.create"
         | "hyperboard.create"
         | "update.create"
-      title: string | null
-      subjectUri: string
-      /**
-       * For evaluation + measurement + update: the at:// URI of the
-       * cert/project the event references (the thing being evaluated,
-       * measured, or attached to). Null for hyperboard events whose
-       * lexicon doesn't carry a target reference. The renderer uses
-       * this to make the "X added a measurement to <cert>" /
-       * "X posted an update to <Y>" tail link clickable.
-       */
-      targetUri: string | null
-      /**
-       * Kind-specific preview snippet. Today only update.create
-       * populates it (from the attachment record's `shortDescription`
-       * lexicon field); other kinds stay null and render with just
-       * the actor + verb sentence.
-       */
-      shortDescription: string | null
-      /**
-       * Kind-specific preview thumbnail URL. update.create resolves
-       * this from the first `content[]` item that's an image blob
-       * on the attachment record. Null when the attachment has no
-       * image content (PDF-only) or for non-update kinds. Threaded
-       * through so the renderer can give update previews the same
-       * project-style card layout (image + title + description).
-       */
-      imageUrl: string | null
+      view: SimpleHomeFeedView
     })
   | (HomeFeedEventBase & {
       kind: "unknown"
       rawKind: string
       subjectUri: string
     })
-
-/** Page size for the FollowerEvents indexer query — sized to the
- *  indexer's hard cap (`MAX_FEED_PAGE_SIZE = 50` in the proxy /
- *  follower-events lib). Larger pages reduce the number of round-
- *  trips when the renderer's grouping logic collapses a burst of
- *  same-actor endorsements into a single visible row. */
-const PAGE_SIZE = 50
 
 interface State {
   events: HomeFeedEvent[]
@@ -153,6 +102,9 @@ interface State {
   hasMore: boolean
   cursor: string | null
   error: string | null
+  continuationError: string | null
+  retryAt: number | null
+  canAutoLoad: boolean
 }
 
 const EMPTY_STATE: State = {
@@ -162,116 +114,383 @@ const EMPTY_STATE: State = {
   hasMore: false,
   cursor: null,
   error: null,
+  continuationError: null,
+  retryAt: null,
+  canAutoLoad: true,
 }
 
-/**
- * Aggregator hook that powers the home page's activity feed.
- *
- * Each page is two round-trips:
- *   - `followerEvents` returns the next page of CREATE events
- *     across the follow set, sorted server-side by `createdAt`
- *     (magic-indexer#136 — matches the rendered "X ago" order).
- *   - `HydrateFeedPage` fetches the headline payload (title,
- *     image, banner, labels, subject DID, etc.) for each event
- *     whose kind needs more than the actor + verb.
- *
- * Returns `loadMore` for IntersectionObserver-driven pagination
- * and refetches from the head when the follow set or the cert-
- * label exclude filter changes. On `INVALID_CURSOR` from a stale
- * cursor (e.g. a sort-mode swap), the hook drops the cursor and
- * reloads page 1.
- */
+interface ServiceState extends State {
+  ownerKey: string
+  retryFromHead: boolean
+}
+
+function emptyServiceState(ownerKey: string): ServiceState {
+  return { ...EMPTY_STATE, ownerKey, retryFromHead: false }
+}
+
+export interface HomeFeedResult extends State {
+  requestKey: string
+  retryInitial: () => void
+  loadMore: () => void
+}
+
+export interface UseHomeFeedOptions {
+  trustedEvaluators: readonly string[]
+  organizationQuality: {
+    allowed: readonly OrganizationQuality[]
+    includeUnrated: boolean
+  }
+  ready?: boolean
+}
+
+/** Hydrated Certified Feed Service hook. The service owns all graph expansion. */
 export function useHomeFeed(
-  followedDids: Set<string>,
-  options: UseHomeFeedOptions = {},
-) {
-  const [state, setState] = useState<State>(EMPTY_STATE)
-  const { includeCertLabels, ready = true } = options
-  // DEFAULT_HIDDEN_CERT_LABELS only kicks in when the caller has not
-  // configured EITHER filter explicitly — i.e. "no filter at all"
-  // reads as "use the sensible default (draft + likely-test hidden)".
-  // As soon as the caller passes an include OR exclude list they're
-  // in explicit control and the default stays out of the way. Without
-  // this gate a viewer in include-only mode (Hyperlabel popover's
-  // "Not labeled yet" unchecked) would have the default exclude
-  // applied on top, dropping any tier listed in
-  // DEFAULT_HIDDEN_CERT_LABELS even when they're explicitly ticked
-  // in the include list.
-  const excludeCertLabels: readonly string[] | undefined =
-    options.excludeCertLabels !== undefined
-      ? options.excludeCertLabels
-      : includeCertLabels === undefined
-        ? DEFAULT_HIDDEN_CERT_LABELS
-        : undefined
+  viewerDid: string,
+  options: UseHomeFeedOptions,
+): HomeFeedResult {
+  const { ready = true } = options
+  const trustedKey = useMemo(
+    () => [...new Set(options.trustedEvaluators)].sort().join(","),
+    [options.trustedEvaluators],
+  )
+  const qualityKey = useMemo(
+    () => [...new Set(options.organizationQuality.allowed)].sort().join(","),
+    [options.organizationQuality.allowed],
+  )
+  const includeUnrated = options.organizationQuality.includeUnrated
+  const requestKey = `${viewerDid}|${trustedKey}|${qualityKey}|${includeUnrated}`
+  const input = useMemo<GetCertifiedFeedInput>(
+    () => ({
+      viewerDid,
+      trustedEvaluators: trustedKey ? trustedKey.split(",") : [],
+      organizationQuality: {
+        allowed: qualityKey ? (qualityKey.split(",") as OrganizationQuality[]) : [],
+        includeUnrated,
+      },
+      limit: PAGE_SIZE,
+    }),
+    [viewerDid, trustedKey, qualityKey, includeUnrated],
+  )
 
-  // Stable string key — parent useMemo of `followedDids` recomputes
-  // a new Set instance whenever the union recomputes; we don't want
-  // that to refire the fetch.
-  const followedKey = useMemo(() => {
-    if (followedDids.size === 0) return "[]"
-    return Array.from(followedDids).sort().join(",")
-  }, [followedDids])
-
-  // Stable key for the label filters — drives the refetch effect
-  // below so toggling either include OR exclude lists re-runs the
-  // page-1 load. Keyed `exc=...|inc=...` so include vs exclude
-  // changes don't collide (toggling unlabeled flips between the two).
-  const excludeKey = useMemo(() => {
-    const exc = excludeCertLabels ? [...excludeCertLabels].sort().join(",") : ""
-    const inc = includeCertLabels ? [...includeCertLabels].sort().join(",") : ""
-    return `exc=${exc}|inc=${inc}`
-  }, [excludeCertLabels, includeCertLabels])
-
-  // Carry the latest set into the effect closure without re-running.
-  const followedRef = useRef(followedDids)
-  followedRef.current = followedDids
-
-  // Snapshot of the latest state so callbacks (loadMore) see the
-  // current cursor/loading flags without re-binding on every render.
+  const [state, setState] = useState<ServiceState>(() =>
+    emptyServiceState(requestKey),
+  )
+  const [retryNonce, setRetryNonce] = useState(0)
   const stateRef = useRef(state)
-  stateRef.current = state
+  const currentRequestKeyRef = useRef(requestKey)
+  useLayoutEffect(() => {
+    stateRef.current = state
+    currentRequestKeyRef.current = requestKey
+  }, [state, requestKey])
+  const generationRef = useRef(0)
+  const headControllerRef = useRef<AbortController | null>(null)
+  const continuationRef = useRef<{
+    controller: AbortController
+    ownerKey: string
+  } | null>(null)
+  const seenCursorsRef = useRef(new Set<string>())
 
-  // Holds the AbortController for the INVALID_CURSOR recovery load that
-  // loadMore kicks off. Tracked here (rather than as a local in the
-  // catch branch) so the effect cleanup can abort it on unmount —
-  // otherwise an unmount mid-recovery leaves the load() uncancelled and
-  // it setState()s after unmount.
-  const recoveryControllerRef = useRef<AbortController | null>(null)
-
-  // Holds the AbortController for the in-flight normal loadMore. Tracked
-  // in a ref so the effect cleanup can abort it when the filter or follow
-  // set changes mid-pagination — otherwise the superseded loadMore
-  // resolves and appends stale, filter-violating events into the freshly
-  // reloaded list (and setState()s after unmount on navigation away).
-  const loadMoreControllerRef = useRef<AbortController | null>(null)
-
-  // Snapshot the filter so the existing load() / loadMore() callbacks
-  // (which deliberately have empty deps for stability) can read the
-  // latest value without re-binding.
-  const excludeCertLabelsRef = useRef<readonly string[] | undefined>(
-    excludeCertLabels,
+  const loadHead = useCallback(
+    async ({
+      signal,
+      generation,
+      ownerKey,
+      request,
+      preserveEvents,
+    }: {
+      signal: AbortSignal
+      generation: number
+      ownerKey: string
+      request: GetCertifiedFeedInput
+      preserveEvents: boolean
+    }) => {
+      setState((previous) => {
+        const base =
+          preserveEvents && previous.ownerKey === ownerKey
+            ? previous
+            : emptyServiceState(ownerKey)
+        return {
+          ...base,
+          ownerKey,
+          isLoading: !preserveEvents,
+          isLoadingMore: preserveEvents,
+          error: null,
+          continuationError: null,
+          retryAt: null,
+          canAutoLoad: true,
+        }
+      })
+      try {
+        const page = await fetchCertifiedFeed(request, { signal })
+        if (
+          signal.aborted ||
+          generation !== generationRef.current ||
+          ownerKey !== currentRequestKeyRef.current
+        ) {
+          return
+        }
+        seenCursorsRef.current = new Set(page.cursor ? [page.cursor] : [])
+        setState({
+          ...emptyServiceState(ownerKey),
+          events: page.items.map(serviceItemToHomeFeedEvent),
+          isLoading: false,
+          hasMore: page.cursor !== null,
+          cursor: page.cursor,
+        })
+      } catch (error) {
+        if (
+          signal.aborted ||
+          generation !== generationRef.current ||
+          ownerKey !== currentRequestKeyRef.current
+        ) {
+          return
+        }
+        const message = errorMessage(error)
+        if (preserveEvents) {
+          setState((previous) =>
+            previous.ownerKey !== ownerKey
+              ? previous
+              : {
+                  ...previous,
+                  isLoading: false,
+                  isLoadingMore: false,
+                  cursor: null,
+                  continuationError: message,
+                  retryAt:
+                    error instanceof CertifiedFeedError ? error.retryAt : null,
+                  canAutoLoad: false,
+                  retryFromHead: true,
+                },
+          )
+        } else {
+          setState({
+            ...emptyServiceState(ownerKey),
+            isLoading: false,
+            error: message,
+            retryAt:
+              error instanceof CertifiedFeedError ? error.retryAt : null,
+            canAutoLoad: false,
+          })
+        }
+      }
+    },
+    [],
   )
-  excludeCertLabelsRef.current = excludeCertLabels
-  const includeCertLabelsRef = useRef<readonly string[] | undefined>(
-    includeCertLabels,
-  )
-  includeCertLabelsRef.current = includeCertLabels
 
-  const load = useCallback(async (signal: AbortSignal) => {
-    setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))
-    const authors = Array.from(followedRef.current)
-    if (authors.length === 0) {
-      setState({ ...EMPTY_STATE, isLoading: false })
+  const retryInitial = useCallback(() => {
+    const snapshot = stateRef.current
+    if (
+      snapshot.ownerKey !== currentRequestKeyRef.current ||
+      (snapshot.retryAt !== null && Date.now() < snapshot.retryAt)
+    ) {
       return
     }
-    // Explicit-empty include filter — the user deselected every tier
-    // in the quality popover. The indexer's HTTP proxy normalises
-    // empty arrays to "no filter", so without this short-circuit we'd
-    // silently show every cert (i.e. the opposite of what the user
-    // asked for). Render an empty feed; re-selecting at least one
-    // tier re-enables the fetch.
-    const inc = includeCertLabelsRef.current
-    if (Array.isArray(inc) && inc.length === 0) {
+    setRetryNonce((value) => value + 1)
+  }, [])
+
+  const loadMore = useCallback(() => {
+    const snapshot = stateRef.current
+    if (
+      snapshot.ownerKey !== requestKey ||
+      currentRequestKeyRef.current !== requestKey ||
+      continuationRef.current !== null ||
+      snapshot.isLoading ||
+      snapshot.isLoadingMore ||
+      (snapshot.retryAt !== null && Date.now() < snapshot.retryAt)
+    ) {
+      return
+    }
+    const retryFromHead = snapshot.retryFromHead
+    if (!retryFromHead && (!snapshot.hasMore || !snapshot.cursor)) return
+
+    const controller = new AbortController()
+    continuationRef.current = { controller, ownerKey: requestKey }
+    const generation = generationRef.current
+    const requestedCursor = snapshot.cursor
+    setState((previous) =>
+      previous.ownerKey !== requestKey
+        ? previous
+        : {
+            ...previous,
+            isLoadingMore: true,
+            continuationError: null,
+            retryAt: null,
+          },
+    )
+
+    const clearAdmission = () => {
+      if (continuationRef.current?.controller === controller) {
+        continuationRef.current = null
+      }
+    }
+
+    if (retryFromHead) {
+      void loadHead({
+        signal: controller.signal,
+        generation,
+        ownerKey: requestKey,
+        request: input,
+        preserveEvents: true,
+      }).finally(clearAdmission)
+      return
+    }
+
+    void (async () => {
+      try {
+        const page = await fetchCertifiedFeed(
+          { ...input, cursor: requestedCursor ?? undefined },
+          { signal: controller.signal },
+        )
+        if (
+          controller.signal.aborted ||
+          generation !== generationRef.current ||
+          requestKey !== currentRequestKeyRef.current
+        ) {
+          return
+        }
+        if (page.cursor && seenCursorsRef.current.has(page.cursor)) {
+          throw new CertifiedFeedError(
+            "The feed service repeated an earlier cursor, so pagination stopped to prevent a request loop. Refresh the feed and try again.",
+            502,
+            "CursorCycle",
+          )
+        }
+        if (page.cursor) seenCursorsRef.current.add(page.cursor)
+        const fresh = page.items.map(serviceItemToHomeFeedEvent)
+        setState((previous) => {
+          if (previous.ownerKey !== requestKey) return previous
+          const seen = new Set(previous.events.map((event) => event.uri))
+          return {
+            ...previous,
+            events: [
+              ...previous.events,
+              ...fresh.filter((event) => !seen.has(event.uri)),
+            ],
+            isLoadingMore: false,
+            hasMore: page.cursor !== null,
+            cursor: page.cursor,
+            continuationError: null,
+            retryAt: null,
+            canAutoLoad: true,
+            retryFromHead: false,
+          }
+        })
+      } catch (error) {
+        if (
+          controller.signal.aborted ||
+          generation !== generationRef.current ||
+          requestKey !== currentRequestKeyRef.current
+        ) {
+          return
+        }
+        if (
+          error instanceof CertifiedFeedError &&
+          error.code === "InvalidCursor"
+        ) {
+          // Relinquish the rejected cursor before page-one recovery. If
+          // recovery fails, retryFromHead keeps the manual action on page one.
+          seenCursorsRef.current.clear()
+          setState((previous) =>
+            previous.ownerKey !== requestKey
+              ? previous
+              : {
+                  ...previous,
+                  cursor: null,
+                  hasMore: true,
+                  retryFromHead: true,
+                },
+          )
+          await loadHead({
+            signal: controller.signal,
+            generation,
+            ownerKey: requestKey,
+            request: input,
+            preserveEvents: true,
+          })
+          return
+        }
+        setState((previous) =>
+          previous.ownerKey !== requestKey
+            ? previous
+            : {
+                ...previous,
+                isLoadingMore: false,
+                continuationError: errorMessage(error),
+                retryAt:
+                  error instanceof CertifiedFeedError ? error.retryAt : null,
+                canAutoLoad: false,
+                retryFromHead: false,
+              },
+        )
+      } finally {
+        clearAdmission()
+      }
+    })()
+  }, [input, loadHead, requestKey])
+
+  useEffect(() => {
+    const generation = ++generationRef.current
+    headControllerRef.current?.abort()
+    continuationRef.current?.controller.abort()
+    continuationRef.current = null
+    seenCursorsRef.current.clear()
+
+    if (!ready) {
+      setState(emptyServiceState(requestKey))
+      return
+    }
+
+    const controller = new AbortController()
+    headControllerRef.current = controller
+    void loadHead({
+      signal: controller.signal,
+      generation,
+      ownerKey: requestKey,
+      request: input,
+      preserveEvents: false,
+    })
+    return () => {
+      controller.abort()
+      if (headControllerRef.current === controller) {
+        headControllerRef.current = null
+      }
+      continuationRef.current?.controller.abort()
+      continuationRef.current = null
+    }
+  }, [requestKey, ready, retryNonce, input, loadHead])
+
+  const visibleState =
+    state.ownerKey === requestKey ? state : emptyServiceState(requestKey)
+  const { ownerKey: _ownerKey, retryFromHead: _retryFromHead, ...result } =
+    visibleState
+  return { ...result, requestKey, retryInitial, loadMore }
+}
+
+/** Rollback hook retaining the previous browser/indexer pipeline. */
+export function useLegacyHomeFeed(
+  followedDids: Set<string>,
+  options: { ready?: boolean } = {},
+): HomeFeedResult {
+  const { ready = true } = options
+  const followedKey = useMemo(
+    () => (followedDids.size ? [...followedDids].sort().join(",") : "[]"),
+    [followedDids],
+  )
+  const [state, setState] = useState<State>(EMPTY_STATE)
+  const [retryNonce, setRetryNonce] = useState(0)
+  const followedRef = useRef(followedDids)
+  const stateRef = useRef(state)
+  useLayoutEffect(() => {
+    followedRef.current = followedDids
+    stateRef.current = state
+  }, [followedDids, state])
+  const generationRef = useRef(0)
+  const continuationControllerRef = useRef<AbortController | null>(null)
+
+  const loadHead = useCallback(async (signal: AbortSignal, generation: number) => {
+    setState(EMPTY_STATE)
+    const authors = [...followedRef.current]
+    if (authors.length === 0) {
       setState({ ...EMPTY_STATE, isLoading: false })
       return
     }
@@ -282,211 +501,262 @@ export function useHomeFeed(
         sortBy: "CREATED_AT",
         signal,
       })
-      if (signal.aborted) return
-
       const hydrated = await hydrateFeedEvents(page.events, {
         signal,
-        excludeCertLabels: excludeCertLabelsRef.current,
-        includeCertLabels: includeCertLabelsRef.current,
+        excludeCertLabels: DEFAULT_HIDDEN_CERT_LABELS,
       })
-      if (signal.aborted) return
-
-      const events = hydrated
-        .map(hydratedToHomeFeedEvent)
-        .filter(passesLabelFilter)
-
+      if (signal.aborted || generation !== generationRef.current) return
       setState({
-        events,
+        events: hydrated.map(legacyItemToHomeFeedEvent).filter(passesLegacyFilter),
         isLoading: false,
         isLoadingMore: false,
         hasMore: page.hasNextPage,
         cursor: page.endCursor,
         error: null,
+        continuationError: null,
+        retryAt: null,
+        canAutoLoad: true,
       })
-    } catch (err) {
-      if (signal.aborted) return
-      console.error("[home-feed] follower-events fetch failed:", err)
-      setState({
-        ...EMPTY_STATE,
-        isLoading: false,
-        error: err instanceof Error ? err.message : "Failed to load feed",
-      })
+    } catch (error) {
+      if (signal.aborted || generation !== generationRef.current) return
+      setState({ ...EMPTY_STATE, isLoading: false, error: errorMessage(error) })
     }
   }, [])
 
+  const retryInitial = useCallback(() => setRetryNonce((value) => value + 1), [])
   const loadMore = useCallback(() => {
-    const snap = stateRef.current
-    if (snap.isLoading || snap.isLoadingMore || !snap.hasMore || !snap.cursor) {
-      return
-    }
-    const authors = Array.from(followedRef.current)
-    if (authors.length === 0) return
-    // Same explicit-empty guard the initial loader uses — if the user
-    // deselected every quality tier mid-scroll, don't keep paginating.
-    const inc = includeCertLabelsRef.current
-    if (Array.isArray(inc) && inc.length === 0) return
-
-    // Own AbortController so a filter toggle / follow-set change mid-
-    // pagination (which re-runs the effect and aborts this via cleanup)
-    // can't append stale, filter-violating events after the fresh page
-    // lands. Mirrors the signal handling in the initial load().
-    loadMoreControllerRef.current?.abort()
+    const snapshot = stateRef.current
+    if (snapshot.isLoading || snapshot.isLoadingMore || !snapshot.hasMore || !snapshot.cursor) return
+    const authors = [...followedRef.current]
+    if (!authors.length) return
+    continuationControllerRef.current?.abort()
     const controller = new AbortController()
-    loadMoreControllerRef.current = controller
-    const signal = controller.signal
-
-    setState((prev) => ({ ...prev, isLoadingMore: true }))
-    ;(async () => {
+    continuationControllerRef.current = controller
+    const generation = generationRef.current
+    setState((previous) => ({ ...previous, isLoadingMore: true, continuationError: null }))
+    void (async () => {
       try {
         const page = await fetchFollowerEvents({
           authors,
           first: PAGE_SIZE,
-          after: snap.cursor ?? undefined,
+          after: snapshot.cursor ?? undefined,
           sortBy: "CREATED_AT",
-          signal,
+          signal: controller.signal,
         })
         const hydrated = await hydrateFeedEvents(page.events, {
-          signal,
-          excludeCertLabels: excludeCertLabelsRef.current,
-          includeCertLabels: includeCertLabelsRef.current,
+          signal: controller.signal,
+          excludeCertLabels: DEFAULT_HIDDEN_CERT_LABELS,
         })
-        if (signal.aborted) return
-        const fresh = hydrated
-          .map(hydratedToHomeFeedEvent)
-          .filter(passesLabelFilter)
-        setState((prev) => {
-          // Dedupe by URI in case the server returns overlapping
-          // edges across a cursor boundary.
-          const seen = new Set(prev.events.map((e) => e.uri))
-          const append = fresh.filter((e) => !seen.has(e.uri))
+        if (controller.signal.aborted || generation !== generationRef.current) return
+        const fresh = hydrated.map(legacyItemToHomeFeedEvent).filter(passesLegacyFilter)
+        setState((previous) => {
+          const seen = new Set(previous.events.map((event) => event.uri))
           return {
-            ...prev,
-            events: [...prev.events, ...append],
+            ...previous,
+            events: [...previous.events, ...fresh.filter((event) => !seen.has(event.uri))],
             isLoadingMore: false,
             hasMore: page.hasNextPage,
             cursor: page.endCursor,
+            continuationError: null,
+            canAutoLoad: true,
           }
         })
-      } catch (err) {
-        // Aborted by a superseding load (filter/follow-set change) or an
-        // unmount — the fresh load() owns the state now, so drop silently.
-        if (signal.aborted) return
-        // INVALID_CURSOR: stream's sort mode changed (or the cursor
-        // is otherwise stale). Drop the cursor and refetch from the
-        // head — per the magic-indexer #136 / #137 contract. Keep
-        // the existing list visible so the user doesn't see a flash
-        // of empty state; the next page will replace it once load()
-        // completes.
-        if (err instanceof FollowerEventsError && err.code === "INVALID_CURSOR") {
-          console.warn("[home-feed] cursor invalidated; refetching from head")
-          setState((prev) => ({ ...prev, isLoadingMore: false, cursor: null }))
-          // Abort any prior recovery still in flight, then track this
-          // one in the ref so the effect cleanup can cancel it on
-          // unmount (preventing a setState-after-unmount).
-          recoveryControllerRef.current?.abort()
-          const controller = new AbortController()
-          recoveryControllerRef.current = controller
-          void load(controller.signal)
+      } catch (error) {
+        if (controller.signal.aborted || generation !== generationRef.current) return
+        if (error instanceof FollowerEventsError && error.code === "INVALID_CURSOR") {
+          void loadHead(controller.signal, generation)
           return
         }
-        console.warn("[home-feed] loadMore failed:", err)
-        // Stop offering pagination on other errors — keep the visible list.
-        setState((prev) => ({ ...prev, isLoadingMore: false, hasMore: false }))
+        setState((previous) => ({
+          ...previous,
+          isLoadingMore: false,
+          continuationError: errorMessage(error),
+          canAutoLoad: false,
+        }))
       }
     })()
-  }, [load])
+  }, [loadHead])
 
   useEffect(() => {
-    // Wait for the caller's upstream resolutions (direct follows
-    // AND any unioned author sources like trusted-evaluator
-    // endorsements). Without this gate the effect fires once on
-    // direct-follows-only, paints, then fires again when the
-    // evaluator-endorsed-DID set lands — producing the two-phase
-    // flash the user reported. Keep `isLoading: true` while we
-    // wait so the body keeps showing the skeleton/spinner.
+    const generation = ++generationRef.current
+    continuationControllerRef.current?.abort()
     if (!ready) {
-      setState((prev) =>
-        prev.isLoading ? prev : { ...prev, isLoading: true },
-      )
+      setState((previous) => ({ ...previous, isLoading: true }))
       return
     }
     const controller = new AbortController()
-    load(controller.signal)
+    void loadHead(controller.signal, generation)
     return () => {
       controller.abort()
-      // Cancel any loadMore-triggered INVALID_CURSOR recovery still in
-      // flight so it can't setState after unmount (or after a fresh
-      // effect-driven reload supersedes it).
-      recoveryControllerRef.current?.abort()
-      recoveryControllerRef.current = null
-      // Same for a normal loadMore still paginating — abort it so its
-      // stale, old-filter page can't append into the fresh reload.
-      loadMoreControllerRef.current?.abort()
-      loadMoreControllerRef.current = null
+      continuationControllerRef.current?.abort()
     }
-    // followedKey covers follow-set changes; excludeKey covers filter
-    // toggles — both should retrigger a from-the-head fetch. load is
-    // stable (useCallback with []).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [followedKey, excludeKey, ready])
+  }, [followedKey, ready, retryNonce, loadHead])
 
-  return { ...state, loadMore }
+  return { ...state, requestKey: followedKey, retryInitial, loadMore }
 }
 
-/**
- * Drop events that came back as the `unknown` variant because their
- * cert was filtered out by the hydration round-trip's
- * `excludeLabels`. Without this, low-quality certs would still
- * render as a generic "X created a cert" row even though hydration
- * deliberately skipped them. Other reasons for the unknown variant
- * (404, genuinely unrecognised wire kind) still render — only the
- * specific cert.create-without-payload combination is excised.
- */
-function passesLabelFilter(event: HomeFeedEvent): boolean {
-  if (event.kind !== "unknown") return true
-  return event.rawKind !== "cert.create"
+function serviceActor(actor: CertifiedFeedActor): HomeFeedActor {
+  return {
+    did: actor.did,
+    handle: actor.handle,
+    displayName: actor.displayName,
+    avatarUrl: certifiedFeedImageUrl(actor.avatar, actor.did),
+    complete: true,
+  }
 }
 
-/**
- * Maps a hydrated FeedEvent into the discriminated `HomeFeedEvent`
- * the renderer expects. Unknown kinds and known-kind 404s land in
- * the `"unknown"` variant so the renderer can show a generic card.
- */
-function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
-  // Prefer the underlying record's `createdAt` (when the record's
-  // really from). `event.sortAt` is the indexer's clock-skew-clamped
-  // ordering key — fine for stable pagination, wrong for the user-
-  // facing "X did Y 3h ago" timestamp because the indexer's clock
-  // can lag actual publish time, making everything bunch up to
-  // "indexed-at" rather than "happened-at". Fall back to sortAt only
-  // when hydration didn't surface a record createdAt.
-  const createdAt = recordCreatedAt(h) ?? h.event.sortAt
+function serviceItemToHomeFeedEvent(item: CertifiedFeedItem): HomeFeedEvent {
+  const actorProfile = serviceActor(item.view.actor)
+  const sourceDid = parseSourceDid(item.subject) ?? item.view.actor.did
+  const content = item.view.content
+  const createdAt = "createdAt" in content ? content.createdAt : null
   const base: HomeFeedEventBase = {
-    uri: h.event.id,
-    actor: h.event.actor.did,
-    actorProfile: h.event.actor,
+    uri: item.subject,
+    actor: item.view.actor.did,
+    actorProfile,
     createdAt,
   }
+  if ("unknown" in content) {
+    return {
+      ...base,
+      kind: "unknown",
+      rawKind: item.view.kind,
+      subjectUri: item.subject,
+    }
+  }
+  switch (content.$type) {
+    case "app.certified.feed.beta.defs#activityView":
+      return {
+        ...base,
+        kind: "cert.create",
+        view: {
+          title: content.title,
+          shortDescription: content.shortDescription,
+          imageUrl: certifiedFeedImageUrl(content.image, sourceDid),
+          startDate: content.startDate,
+          endDate: content.endDate,
+          locationCount: content.locationCount,
+        },
+      }
+    case "app.certified.feed.beta.defs#collectionView":
+      return {
+        ...base,
+        kind: item.view.kind === "project.created_with_cert" ? item.view.kind : "collection.create",
+        view: {
+          collectionType: content.collectionType,
+          title: content.title,
+          shortDescription: content.shortDescription,
+          imageUrl: certifiedFeedImageUrl(content.image, sourceDid),
+          itemCount: content.itemCount,
+        },
+      }
+    case "app.certified.feed.beta.defs#endorsementView":
+      return {
+        ...base,
+        kind: "endorsement.award",
+        subject: serviceActor(content.subject),
+        note: null,
+      }
+    case "app.certified.feed.beta.defs#evaluationView":
+      return {
+        ...base,
+        kind: "evaluation.create",
+        view: simpleView(content.summary, null, null, content.target?.uri ?? null),
+      }
+    case "app.certified.feed.beta.defs#measurementView":
+      return {
+        ...base,
+        kind: "measurement.create",
+        view: simpleView(content.metric, null, null, content.target?.uri ?? null),
+      }
+    case "app.certified.feed.beta.defs#hyperboardView":
+      return { ...base, kind: "hyperboard.create", view: simpleView(null, null, null, null) }
+    case "app.certified.feed.beta.defs#updateView":
+      return {
+        ...base,
+        kind: "update.create",
+        view: simpleView(
+          content.title,
+          content.shortDescription,
+          certifiedFeedImageUrl(content.image, sourceDid),
+          content.target?.uri ?? null,
+        ),
+      }
+    default:
+      return { ...base, kind: "unknown", rawKind: item.view.kind, subjectUri: item.subject }
+  }
+}
 
-  const payload = h.payload
+function legacyActor(actor: FeedActor): HomeFeedActor {
+  return {
+    did: actor.did,
+    handle: actor.handle,
+    displayName: actor.displayName,
+    avatarUrl: buildAvatarUrlFromCid(actor.did, actor.avatarCid),
+    complete: false,
+  }
+}
+
+function incompleteActor(did: string): HomeFeedActor {
+  return { did, handle: null, displayName: null, avatarUrl: null, complete: false }
+}
+
+function legacyItemToHomeFeedEvent(item: HydratedFeedEvent): HomeFeedEvent {
+  const payload = item.payload
+  const sourceDid = parseSourceDid(item.event.subjectUri) ?? item.event.actor.did
+  const createdAt = legacyRecordCreatedAt(item) ?? item.event.sortAt
+  const base: HomeFeedEventBase = {
+    uri: item.event.id,
+    actor: item.event.actor.did,
+    actorProfile: legacyActor(item.event.actor),
+    createdAt,
+  }
   if (payload?.kind === "cert.create") {
-    return { ...base, kind: "cert.create", record: payload.record, labels: payload.labels }
+    const value = payload.record.value
+    return {
+      ...base,
+      kind: "cert.create",
+      view: {
+        title: value.title || "Untitled activity",
+        shortDescription: value.shortDescription || null,
+        imageUrl: resolveActivityImageUrl(value.image, sourceDid),
+        startDate: value.startDate ?? null,
+        endDate: value.endDate ?? null,
+        locationCount: value.locations?.length ?? 0,
+      },
+    }
   }
   if (payload?.kind === "collection.create") {
-    // Same collection payload backs both kinds — discriminator carries
-    // through from the wire `event.kind` so the renderer can pick the
-    // right sentence ("created a project" vs. "created a project with
-    // a cert"). Unknown wire kinds fall through to the generic branch.
-    if (h.event.kind === "project.created_with_cert") {
-      return { ...base, kind: "project.created_with_cert", record: payload.record }
+    const value = payload.record.value
+    const rawImage = value.avatar ?? value.image ?? value.banner
+    return {
+      ...base,
+      kind: item.event.kind === "project.created_with_cert" ? "project.created_with_cert" : "collection.create",
+      view: {
+        collectionType: typeof value.type === "string" ? value.type : null,
+        title:
+          (typeof value.title === "string" && value.title) ||
+          (typeof value.name === "string" && value.name) ||
+          "Untitled project",
+        shortDescription:
+          typeof value.shortDescription === "string" && value.shortDescription
+            ? value.shortDescription
+            : null,
+        imageUrl: rawImage
+          ? resolveActivityImageUrl(
+              rawImage as Parameters<typeof resolveActivityImageUrl>[0],
+              sourceDid,
+            )
+          : null,
+        itemCount: Array.isArray(value.items) ? value.items.length : 0,
+      },
     }
-    return { ...base, kind: "collection.create", record: payload.record }
   }
   if (payload?.kind === "endorsement.award") {
     return {
       ...base,
       kind: "endorsement.award",
-      subjectDid: payload.subjectDid,
+      subject: incompleteActor(payload.subjectDid),
       note: payload.note,
     }
   }
@@ -494,7 +764,8 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
     return {
       ...base,
       kind: "legacy.endorsement",
-      subjectDid: payload.subjectDid,
+      subject: incompleteActor(payload.subjectDid),
+      note: null,
     }
   }
   if (
@@ -506,40 +777,50 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
     return {
       ...base,
       kind: payload.kind,
-      title: payload.title,
-      subjectUri: h.event.subjectUri,
-      targetUri: payload.targetUri,
-      shortDescription: payload.shortDescription,
-      imageUrl: payload.imageUrl,
+      view: simpleView(
+        payload.title,
+        payload.shortDescription,
+        payload.imageUrl,
+        payload.targetUri,
+      ),
     }
   }
-
-  // Either payload was null (404 hydration) or the wire `kind` was
-  // outside our known set entirely. The renderer falls through to a
-  // generic actor + subjectUri card.
   return {
     ...base,
     kind: "unknown",
-    rawKind: h.event.kind,
-    subjectUri: h.event.subjectUri,
+    rawKind: item.event.kind,
+    subjectUri: item.event.subjectUri,
   }
 }
 
-/**
- * Extract the source-record `createdAt` from a hydrated event.
- * Returns null when hydration produced no payload or when the
- * payload lexicon doesn't carry a createdAt (rare; we still fall
- * back to sortAt at the call site).
- */
-function recordCreatedAt(h: HydratedFeedEvent): string | null {
-  const p = h.payload
-  if (!p) return null
-  if (p.kind === "cert.create" || p.kind === "collection.create") {
-    const t = p.record.value.createdAt
-    return typeof t === "string" && t.length > 0 ? t : null
+function simpleView(
+  title: string | null,
+  shortDescription: string | null,
+  imageUrl: string | null,
+  targetUri: string | null,
+): SimpleHomeFeedView {
+  return { title, shortDescription, imageUrl, targetUri }
+}
+
+function passesLegacyFilter(event: HomeFeedEvent): boolean {
+  return event.kind !== "unknown" || event.rawKind !== "cert.create"
+}
+
+function legacyRecordCreatedAt(item: HydratedFeedEvent): string | null {
+  const payload = item.payload
+  if (!payload) return null
+  if (payload.kind === "cert.create" || payload.kind === "collection.create") {
+    const createdAt = payload.record.value.createdAt
+    return typeof createdAt === "string" && createdAt ? createdAt : null
   }
-  // endorsement.award / legacy.endorsement / evaluation / measurement
-  // / hyperboard / update — `createdAt` is directly on the payload
-  // (populated from the indexer's per-record createdAt field).
-  return p.createdAt
+  return payload.createdAt
+}
+
+function parseSourceDid(uri: string): string | null {
+  if (!uri.startsWith("at://")) return null
+  return uri.slice(5).split("/")[0] || null
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "The feed could not be loaded. Try again."
 }

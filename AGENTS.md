@@ -130,6 +130,8 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | Variable | Required | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_PDS_URL` | yes | PDS / handle resolver URL. Defaults to `https://certified.one`. |
+| `NEXT_PUBLIC_HOME_FEED_SOURCE` | optional | Home-feed transport: `indexer` (default and rollback path) or `service` (direct hydrated XRPC). Invalid values fail with an actionable configuration error. |
+| `NEXT_PUBLIC_CERTIFIED_FEED_SERVICE_URL` | service mode | Exact Certified Feed Service origin. Production/staging require HTTPS; non-production permits HTTP only for localhost/loopback. Do not include a path, query, fragment, or credentials. |
 | `PUBLIC_URL` | recommended in production | Canonical app origin. Wins when deriving OAuth `client_id` and `redirect_uris`; exact same-origin CSRF requests from it are trusted. Falls back to `VERCEL_BRANCH_URL`, then `VERCEL_URL`, then `http://localhost:3000` outside production. **For local atproto OAuth sign-in to actually complete, set this to `http://127.0.0.1:3000`** — see [§22 Common Pitfalls](#22-common-pitfalls) #3. |
 | `VERCEL_BRANCH_URL` | Vercel-provided fallback | Hostname-only stable branch URL. Becomes the canonical OAuth origin when `PUBLIC_URL` is absent and is accepted for same-origin CSRF requests. Do not add a scheme or `NEXT_PUBLIC_` alias. |
 | `VERCEL_URL` | Vercel-provided fallback | Hostname-only commit deployment URL. Final canonical OAuth fallback and accepted for same-origin CSRF requests. Do not add a scheme or `NEXT_PUBLIC_` alias. |
@@ -176,6 +178,7 @@ Key principles:
 2. **All XRPC calls go through `/api/xrpc/[...method]`.** Never call the PDS from the browser directly with credentials — there are none. Use `authFetch()` from `src/lib/auth/fetch.ts`. It detects 401 and triggers the global `onUnauthorized` handler registered by `AuthProvider`, which clears auth state and asks the user to sign in again.
 3. **Group operations** use a parallel set of routes under `/api/groups/**` because they require the AtpAgent's `withProxy("certified_group", groupDid)` pattern + custom NSID lexicons (`app.certified.group.*`). They do not share the `/api/xrpc/[...method]` handler.
 4. **DID resolution is direct.** `resolvePdsUrl` and `resolveHandle` (in `src/lib/atproto/did.ts`) hit `plc.directory` or the `did:web` host with a 5s timeout; results are not cached server-side.
+5. **The home-feed service path is the sole credentialless direct XRPC exception.** When `NEXT_PUBLIC_HOME_FEED_SOURCE=service`, `src/lib/atproto/certified-feed.ts` calls the public read-only Certified Feed Service with `credentials: "omit"` and `cache: "no-store"`. It never sends the app session or uses `authFetch`. The build-time `indexer` source retains the old browser/indexer path for rollback until the observation-window cleanup is separately approved.
 
 ## 6. Provider Tree & Layout System
 
@@ -1055,15 +1058,18 @@ stop when the next pass would be nit-picking.
 
 ### Branching (project-specific override)
 
-Work happens **directly on `staging`**, not on per-feature
-branches. When `staging` is in good shape, open a Draft PR
-from `staging` into `main`. The operator merges; agents never
-merge.
+Work happens on **task-specific feature branches**, not
+directly on `staging`. Continue an existing task on its current
+feature branch; create one before editing when the current
+branch is `main`, `staging`, or another default/integration
+branch. Keep planning, implementation, review, and commits on
+the feature branch.
 
-This overrides the global "feature-branch into staging"
-default in `~/.claude/CLAUDE.md`. This repo's review cadence
-is dense enough that `staging` is the natural integration
-point.
+After the feature branch passes review and verification, merge
+it into `staging` with operator approval. When `staging` is in
+good shape, open a Draft PR from `staging` into `main`. The
+operator merges the `staging` → `main` PR; agents never merge
+that PR.
 
 ### Order of operations
 
@@ -1098,9 +1104,10 @@ point.
    item. Update the plan in place. Run further rounds only if
    the previous round surfaced substantive items.
 
-4. **Implement.** Commit directly to `staging`. Atomic commits
-   with a clear scope tag. Match the existing commit-message
-   convention (`Co-Authored-By:` trailer per Safety Rule 6).
+4. **Implement.** Commit on the task's feature branch. Use
+   atomic commits with a clear scope tag. Match the existing
+   commit-message convention (`Co-Authored-By:` trailer per
+   Safety Rule 6).
 
 5. **Local verification.** Run all four quality gates plus
    anything that exercises the new surface:
@@ -1119,20 +1126,26 @@ point.
    follow-up round only if round 1 surfaced enough
    substantive items to justify one.
 
-7. **Draft PR `staging → main`.** Body must link to the plan
+7. **Integrate into `staging`.** After operator approval, merge
+   the verified feature branch into `staging`. Push only with
+   explicit approval.
+
+8. **Draft PR `staging → main`.** Body must link to the plan
    and review-decision docs, list breaking changes, state
    out-of-scope items, and include a test plan checklist.
 
-8. **Make CI green.** Fix root causes. Never `--no-verify`.
+9. **Make CI green.** Fix root causes. Never `--no-verify`.
    Never skip hooks. Loop until all checks pass.
 
-9. **Stop.** The operator merges. Notify with the PR URL and
-   a short summary of what shipped.
+10. **Stop.** The operator merges the `staging` → `main` PR.
+    Notify with the PR URL and a short summary of what shipped.
 
 ### Hard rules
 
-- **Never merge.** Stopping at "PR Draft, CI green" is the
-  contract.
+- **Never merge `staging` into `main` or merge the corresponding
+  PR.** Feature-branch integration into `staging` requires
+  operator approval. Stopping at "PR Draft, CI green" is the
+  release contract.
 - **Never `--force` push to `main`.** Avoid history rewrites
   on `staging` once you've pushed; it's the shared working
   branch.
