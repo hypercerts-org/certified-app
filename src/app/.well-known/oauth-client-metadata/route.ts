@@ -34,6 +34,11 @@ export async function GET() {
     policy_uri: `${origin}/privacy`,
     email_template_uri: `${origin}/assets/otp-email-template.html`,
     email_subject_template: "{{code}} — Your Certified sign-in code",
+    // ePDS extension: skip the "Authorize your account" consent screen on a
+    // user's first-time sign-up so new accounts land straight in the app.
+    // Only honoured when the PDS runs with PDS_SIGNUP_ALLOW_CONSENT_SKIP=true
+    // and this client_id is on its PDS_OAUTH_TRUSTED_CLIENTS allowlist.
+    epds_skip_consent_on_signup: true,
     // Opt in to ePDS's "Or sign in with ATProto/Bluesky" button. ePDS
     // redirects to this URL with ?handle=<value>; the GET handler in
     // src/app/api/auth/login/route.ts resolves the handle to its PDS
