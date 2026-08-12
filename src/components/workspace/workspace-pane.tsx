@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { profileUrl } from "@/lib/urls"
+import { truncateDid } from "@/lib/utils/did"
 import { ArrowRight, Globe } from "lucide-react"
 import {
   WORKSPACE_LEXICON_LABEL,
@@ -124,10 +125,6 @@ export default function WorkspacePane({
       </Link>
     </div>
   )
-}
-
-function truncateDid(did: string): string {
-  return did.length > 24 ? `${did.slice(0, 16)}…${did.slice(-6)}` : did
 }
 
 function hrefForLexicon(did: string, lex: WorkspaceLexicon): string {

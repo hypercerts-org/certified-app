@@ -1,41 +1,23 @@
 /**
- * localStorage-backed drafts for inline-edit surfaces that hit a
- * same-field conflict during a swapRecord save (issue #71). When
- * the silent-rebase path can't auto-merge because the user's draft
- * touches a field that ALSO changed on the server, the save
- * handler:
+ * Helpers for the swapRecord save flow (issue #71): the stateless
+ * dirty-field diffing `saveWithSwap` runs at save time, plus the
+ * logout purge for legacy conflict drafts.
  *
- *   1. Persists `drafts` here keyed by `(viewerDid, collection, rkey)`.
- *   2. Surfaces a banner asking the user to refresh.
- *   3. After refresh, the edit form mounts in view mode; a "Restore
- *      draft" affordance offers to repopulate the form from the
- *      stored draft.
+ * The draft save/restore half of the original design (persist the
+ * user's edits to localStorage on a same-field conflict, offer a
+ * "Restore draft" after refresh) was removed — the restore affordance
+ * was never built, so the writes were dead weight. Older builds did
+ * write those keys, so `clearAllDraftsForViewer` keeps purging them
+ * on logout.
  *
- * Key shape: `swap-draft:${viewerDid}:${collection}:${rkey}`.
+ * Legacy key shape: `swap-draft:${viewerDid}:${collection}:${rkey}`.
  * - Includes `viewerDid` to prevent cross-account leakage on shared
  *   browsers (per round-1 security review H10).
  * - Includes `collection` so two different record types under the
  *   same rkey don't collide.
- *
- * Storage cadence: write on conflict only (NOT on every keystroke
- * — see round-1 atproto review N7). Cleared on successful save and
- * on logout (`clearAllDraftsForViewer`).
- *
- * Quota: localStorage is ~5 MB per origin. A single draft (title +
- * shortDescription + a linearDocument description) is typically a
- * few KB. Multi-draft accumulation across many records is theoretical
- * — we only write on conflict, which is rare, and clear on success.
  */
 
 const KEY_PREFIX = "swap-draft:"
-
-function buildKey(
-  viewerDid: string,
-  collection: string,
-  rkey: string,
-): string {
-  return `${KEY_PREFIX}${viewerDid}:${collection}:${rkey}`
-}
 
 function safeLocalStorage(): Storage | null {
   if (typeof window === "undefined") return null
@@ -47,65 +29,11 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
-export function saveDraft<T>(
-  viewerDid: string,
-  collection: string,
-  rkey: string,
-  drafts: T,
-): void {
-  const storage = safeLocalStorage()
-  if (!storage) return
-  try {
-    storage.setItem(
-      buildKey(viewerDid, collection, rkey),
-      JSON.stringify({ savedAt: Date.now(), drafts }),
-    )
-  } catch (err) {
-    // Quota exceeded, etc. Silently swallow — the conflict banner
-    // will still tell the user their work is lost.
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[swap-drafts] saveDraft failed", err)
-    }
-  }
-}
-
-export function loadDraft<T>(
-  viewerDid: string,
-  collection: string,
-  rkey: string,
-): { savedAt: number; drafts: T } | null {
-  const storage = safeLocalStorage()
-  if (!storage) return null
-  try {
-    const raw = storage.getItem(buildKey(viewerDid, collection, rkey))
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { savedAt?: unknown; drafts?: T }
-    if (typeof parsed.savedAt !== "number") return null
-    return { savedAt: parsed.savedAt, drafts: parsed.drafts as T }
-  } catch {
-    return null
-  }
-}
-
-export function clearDraft(
-  viewerDid: string,
-  collection: string,
-  rkey: string,
-): void {
-  const storage = safeLocalStorage()
-  if (!storage) return
-  try {
-    storage.removeItem(buildKey(viewerDid, collection, rkey))
-  } catch {
-    // Ignore — non-fatal.
-  }
-}
-
 /**
  * Purge every draft scoped to a given viewer DID. Called from the
- * auth-context logout path so a session change doesn't leave the
- * previous viewer's pending drafts accessible to whoever signs in
- * next on the same browser.
+ * auth-context logout path so a session change doesn't leave a
+ * previous viewer's drafts (written by older builds) accessible to
+ * whoever signs in next on the same browser.
  */
 export function clearAllDraftsForViewer(viewerDid: string): void {
   const storage = safeLocalStorage()

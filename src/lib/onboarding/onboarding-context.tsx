@@ -96,15 +96,23 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   // open state.
   const [autoPoppedDid, setAutoPoppedDid] = useState<string | null>(null)
 
-  // Re-fetch gate state whenever the active personal DID changes.
-  // Personal DID only — org sessions are out of scope (separate flow).
-  useEffect(() => {
+  // Adjust state during render for the signed-out branch — resetting to
+  // the initializer values must not wait for an effect pass.
+  const authKey = `${isAuthenticated}|${did}`
+  const [prevAuthKey, setPrevAuthKey] = useState(authKey)
+  if (prevAuthKey !== authKey) {
+    setPrevAuthKey(authKey)
     if (!isAuthenticated || !did) {
       setState(EMPTY_STATE)
       setIsOpen(false)
       setAutoPoppedDid(null)
-      return
     }
+  }
+
+  // Re-fetch gate state whenever the active personal DID changes.
+  // Personal DID only — org sessions are out of scope (separate flow).
+  useEffect(() => {
+    if (!isAuthenticated || !did) return
     let cancelled = false
     void (async () => {
       try {
@@ -144,6 +152,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (!state.hasBlueskyProfile) return
     if (isOnboardingDismissed(did)) return
     if (autoPoppedDid === did) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- once-per-DID auto-popup decision fired when the async resolve-did gate data settles; the autoPoppedDid latch prevents re-fire and no user event exists to host this
     setAutoPoppedDid(did)
     setIsOpen(true)
   }, [

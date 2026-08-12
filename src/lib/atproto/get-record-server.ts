@@ -23,7 +23,7 @@ export async function getRecordServer<T = Record<string, unknown>>(
     const params = new URLSearchParams({ repo: did, collection, rkey })
     const res = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-      { signal: AbortSignal.timeout(8_000) },
+      { redirect: "error", signal: AbortSignal.timeout(8_000) },
     )
     if (!res.ok) return null
 

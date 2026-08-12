@@ -776,10 +776,6 @@
   }
 }
 
-/* "more" link below the short description — styling now lives in
-   `.more-link-row` / `.more-link` in `components.css` so the
-   project detail and cert detail share the same affordance shape. */
-
 /* ---------- Headline byline ----------
 
    Sits directly under the title:
@@ -2016,7 +2012,7 @@
 
 .create-cert__contrib-id-input--invalid:focus {
   border-color: var(--color-error);
-  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+  box-shadow: 0 0 0 2px var(--color-error-ring);
 }
 
 /* Per-row identity error — slots into the contributor grid by
@@ -2051,7 +2047,7 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 60;
+  z-index: var(--z-popover);
   max-height: 220px;
   overflow-y: auto;
   background: var(--bg-elevated);
@@ -2501,7 +2497,10 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 500;
+  /* The sibling .certs-map is an isolated stacking context, so any
+     positive z paints this button above the whole map — no need to
+     outbid Leaflet's internal 200-700 pane values. */
+  z-index: var(--z-local-raise);
   width: 30px;
   height: 30px;
   display: inline-flex;

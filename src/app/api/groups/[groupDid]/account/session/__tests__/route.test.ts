@@ -185,6 +185,51 @@ describe("POST /session (unlock)", () => {
     expect(establish).not.toHaveBeenCalled()
   })
 
+  it("denies when the per-TARGET bucket is exhausted, even across different caller DIDs", async () => {
+    // Two buckets are checked: the per-caller limiter (keyed on the session
+    // DID) and the per-target limiter (keyed on the group DID). Simulate the
+    // target bucket being full while every caller bucket still has budget — an
+    // attacker rotating caller DIDs must NOT get fresh guesses against the same
+    // victim group account.
+    vi.mocked(checkHttpRateLimit).mockImplementation(
+      async (_limit, identifier) => ({
+        allowed: identifier !== GROUP_DID,
+        remaining: identifier === GROUP_DID ? 0 : 9,
+        resetAt: 0,
+      }),
+    )
+
+    vi.mocked(getSessionDid).mockResolvedValue("did:plc:attacker-one")
+    const first = await post({ password: "guess1" })
+    expect(first.status).toBe(429)
+
+    vi.mocked(getSessionDid).mockResolvedValue("did:plc:attacker-two")
+    const second = await post({ password: "guess2" })
+    expect(second.status).toBe(429)
+
+    // The per-target bucket was consulted (keyed on the group DID) on each
+    // attempt, and no unlock was ever attempted.
+    expect(checkHttpRateLimit).toHaveBeenCalledWith(expect.anything(), GROUP_DID)
+    expect(establish).not.toHaveBeenCalled()
+  })
+
+  it("allows the unlock only when BOTH the caller and target buckets have budget", async () => {
+    vi.mocked(checkHttpRateLimit).mockResolvedValue({
+      allowed: true,
+      remaining: 5,
+      resetAt: 0,
+    })
+    vi.mocked(establish).mockResolvedValueOnce({ status: "ok" })
+    const res = await post({ password: "hunter2" })
+    expect(res.status).toBe(200)
+    // Consulted both buckets: the caller DID and the target group DID.
+    expect(checkHttpRateLimit).toHaveBeenCalledWith(
+      expect.anything(),
+      "did:plc:alice",
+    )
+    expect(checkHttpRateLimit).toHaveBeenCalledWith(expect.anything(), GROUP_DID)
+  })
+
   it("returns the CSRF response when the origin check fails", async () => {
     vi.mocked(checkCsrf).mockReturnValueOnce(
       new Response(JSON.stringify({ error: "csrf" }), { status: 403 }) as never,

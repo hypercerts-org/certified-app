@@ -12,6 +12,7 @@
  * Routing:
  *   - `/api/auth/session`              → fixture session `{ did }`
  *   - `/api/indexer` (POST)            → dispatched by `operationName`
+ *   - `/api/indexer?op=…` (GET)        → same dispatch, op from the query string
  *   - `/api/resolve-did`  (GET)        → single resolved profile
  *   - `/api/resolve-dids` (POST)       → batched resolved profiles
  *   - `/api/xrpc/...`                  → getSession / getRecord / listRecords
@@ -380,6 +381,14 @@ function installMockFetch(
         return json({ ok: true })
       }
       if (path === "/api/indexer") {
+        // GET variant (`/api/indexer?op=<name>` — the edge-cacheable
+        // counts): the operation rides in the query string and there
+        // is no body. Dispatch it through the same op switch as POST;
+        // the response body is identical by contract.
+        const opParam = url.searchParams.get("op")
+        if (opParam) {
+          return indexerResponse({ operationName: opParam }, { empty, managed })
+        }
         let parsed: IndexerBody = {}
         try {
           const text =

@@ -1447,7 +1447,7 @@
  *  - modalFadeIn / modalSlideUp back AppDialog's animate-[modalSlideUp]
  *    and the feedback modal animations.
  *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
- *  - .app-page / .app-card back /about, /terms, /privacy, /dsa,
+ *  - .app-page backs /about, /terms, /privacy, /dsa,
  *    /imprint, /help.
  *  - .welcome-footer wraps SiteFooter on /welcome (welcome/layout.tsx).
  * ========================================================================== */
@@ -1529,7 +1529,7 @@
   overflow-y: auto;
   background: var(--color-off-white);
   border-radius: var(--radius);
-  box-shadow: 0 24px 64px var(--navy-overlay-30);
+  box-shadow: var(--shadow-modal);
   border: 1px solid var(--border-default);
   animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1695,15 +1695,6 @@
   border-color: var(--color-mid-gray);
 }
 
-/* Mobile bottom sheet for feedback (reuses .bottom-sheet base classes) */
-.feedback-bottom-sheet__backdrop {
-  display: none;
-}
-
-.feedback-bottom-sheet {
-  display: none;
-}
-
 @media (max-width: 799px) {
   .feedback-trigger {
     bottom: 16px;
@@ -1715,34 +1706,6 @@
 
   .feedback-modal__backdrop--desktop {
     display: none;
-  }
-
-  .feedback-bottom-sheet__backdrop {
-    display: block;
-    z-index: var(--z-feedback);
-  }
-
-  .feedback-bottom-sheet {
-    display: flex;
-    z-index: var(--z-feedback-above);
-  }
-
-  .feedback-bottom-sheet .feedback-modal__textarea {
-    resize: none;
-    min-height: 80px;
-    font-size: 16px;
-  }
-
-  .feedback-bottom-sheet.bottom-sheet--expanded .feedback-modal__textarea {
-    min-height: 120px;
-  }
-
-  .feedback-bottom-sheet .feedback-modal__input {
-    font-size: 16px;
-  }
-
-  .feedback-bottom-sheet .feedback-modal__body {
-    padding: 16px 20px;
   }
 
   .feedback-modal__expand {
@@ -1771,27 +1734,6 @@
     padding-left: 0;
     padding-right: 0;
   }
-}
-
-/* ========== Cards (app pages) ========== */
-.app-card {
-  background: var(--color-off-white);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 24px;
-  transition: border-color var(--transition-fast);
-}
-
-.app-card:hover {
-  border-color: var(--border-hover-soft);
-}
-
-.app-card__label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--color-mid-gray);
-  margin-bottom: 8px;
 }
 
 /* /welcome footer wrapper — the app shell skips SiteFooter on this

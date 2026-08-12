@@ -81,15 +81,6 @@
   margin-bottom: 56px;
 }
 
-/* Tighten BannerUpload's profile-card__banner reuse so the hero is
-   compact (the edit page isn't trying to show off the banner — it's
-   showing you can edit it). */
-.pe .profile-card__banner {
-  height: 140px;
-  margin: 0;
-  border-radius: var(--radius);
-}
-
 .pe__avatar-slot {
   position: absolute;
   left: 16px;
@@ -295,10 +286,10 @@
 .pe__footer {
   position: sticky;
   /* Pin the bar ABOVE the fixed mobile bottom nav rather than flush to the
-     viewport bottom — otherwise it sticks under the bar (z-index 50 > 5) and
-     the Save/Cancel row is half-hidden. `--bottom-nav-height` is 0px at
-     ≥800px, so on desktop this resolves to the original `bottom: 0`
-     (+ safe-area, which is also 0px there). */
+     viewport bottom — otherwise it sticks under the bar (--z-bottom-nav (50)
+     > --z-rail-sticky (10)) and the Save/Cancel row is half-hidden.
+     `--bottom-nav-height` is 0px at ≥800px, so on desktop this resolves to
+     the original `bottom: 0` (+ safe-area, which is also 0px there). */
   bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   /* Negative side margins so the footer reaches the column's full width
      even though the form content sits inside the 32px column padding.
@@ -312,7 +303,7 @@
      hard-cut. Falls back to the solid bg when backdrop-filter is unsupported. */
   backdrop-filter: saturate(180%) blur(8px);
   -webkit-backdrop-filter: saturate(180%) blur(8px);
-  z-index: 5;
+  z-index: var(--z-rail-sticky);
 }
 
 .pe__footer-inner {

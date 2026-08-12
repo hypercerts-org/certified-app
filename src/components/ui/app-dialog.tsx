@@ -213,14 +213,18 @@ export default function AppDialog({
   // would re-call `showModal()` on an already-open dialog and throw
   // `InvalidStateError`, unmounting the modal mid-task).
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
   // Stash the auto-focus props in refs so the mount-once effect below
   // reads their latest values without taking them as deps (which would
   // re-run the effect and re-call `showModal()` → InvalidStateError).
   const autoFocusFirstRef = useRef(autoFocusFirst)
-  autoFocusFirstRef.current = autoFocusFirst
   const initialFocusRef_ = useRef(initialFocusRef)
-  initialFocusRef_.current = initialFocusRef
+  // Latest-ref sync: in an effect (not render) per react-hooks/refs.
+  // Declared before the mount effect so it runs first in each commit.
+  useEffect(() => {
+    onCloseRef.current = onClose
+    autoFocusFirstRef.current = autoFocusFirst
+    initialFocusRef_.current = initialFocusRef
+  })
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -328,7 +332,6 @@ export default function AppDialog({
     }
     // Mount-once: no dep on `onClose`. The listener reads the latest
     // value via the ref above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleBackdropClick = useCallback(
@@ -373,7 +376,7 @@ export default function AppDialog({
   // UA's top-layer placement: centered in the VIEWPORT, wherever the
   // page is scrolled.
   const baseChrome =
-    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[0_24px_64px_var(--navy-overlay-30)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[shadow:var(--shadow-modal)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`

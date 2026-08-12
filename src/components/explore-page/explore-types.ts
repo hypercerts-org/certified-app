@@ -8,6 +8,15 @@ export type ExploreView = ExploreKind | "all"
 
 export type SortOrder = "newest" | "oldest" | "alphabetical"
 
+export type ListGalleryView = "list" | "gallery"
+
+/** Endorsement-graph ring — 1st / 2nd / 3rd degree. */
+export type Degree = 1 | 2 | 3
+
+/** Shared empty set for the funding "Confirmed by" third-party axis when
+ *  none are selected (avoids re-allocating on every receipt filter pass). */
+export const EMPTY_DID_SET: ReadonlySet<string> = new Set<string>()
+
 export interface FilterOption {
   key: string
   label: string
@@ -87,7 +96,7 @@ export function filtersForView(view: ExploreView): FilterOption[] {
   return filtersForKind(view)
 }
 
-export function defaultFilterForKind(kind: ExploreKind): string {
+function defaultFilterForKind(kind: ExploreKind): string {
   // Funding has no curated Ma Earth front door — its only filter is the
   // plain "all" listing, so default there.
   if (kind === "funding") return "all"

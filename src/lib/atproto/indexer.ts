@@ -1,7 +1,5 @@
 import type { ActivityRecord } from "./activity-types"
 import type { LabelValue } from "./labeller"
-import type { CollectionRecord, CollectionValue } from "./collection"
-import { getBlobRefLink } from "./types"
 
 /**
  * Same-origin proxy in front of the Magic Indexer GraphQL endpoint.
@@ -29,8 +27,24 @@ import { getBlobRefLink } from "./types"
  * `hyperindex` project) serves labels inline on every record and
  * accepts `labels` / `excludeLabels` filter args on the records
  * query, so this hook makes a single GraphQL call per page.
+ *
+ * Module layout: the shared plumbing (proxy URL, {@link postIndexer},
+ * `chunkArray`) lives in the leaf module `indexer-client`; this file
+ * holds the activity-connection core; the other indexer domains live
+ * in sibling modules — `indexer-funding`, `indexer-closure`,
+ * `indexer-counts`, `indexer-collections`. Everything is re-exported
+ * from here so every existing `@/lib/atproto/indexer` import keeps
+ * resolving unchanged.
  */
-export const INDEXER_PROXY_URL = "/api/indexer"
+
+import { chunkArray, postIndexer } from "./indexer-client"
+
+export {
+  INDEXER_PROXY_URL,
+  postIndexer,
+  chunkArray,
+  type IndexerPostResult,
+} from "./indexer-client"
 
 export interface ActivityGraphQLNode {
   uri: string
@@ -49,15 +63,13 @@ export interface ActivityGraphQLNode {
   workScope: { scope?: string | null; expression?: string | null } | null
 }
 
-interface GraphQLResponse {
-  data?: {
-    orgHypercertsClaimActivity?: {
-      totalCount: number | null
-      edges: { cursor: string; node: ActivityGraphQLNode | null }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
+/** GraphQL `data` payload shared by every activity-connection op. */
+interface ActivitiesData {
+  orgHypercertsClaimActivity?: {
+    totalCount: number | null
+    edges: { cursor: string; node: ActivityGraphQLNode | null }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
   } | null
-  errors?: { message: string }[]
 }
 
 /**
@@ -167,16 +179,13 @@ export interface FetchIndexerOptions {
   signal?: AbortSignal
 }
 
-/**
- * Fetch activity claims from the Magic Indexer.
- *
- * Records are returned in the indexer's keyset-pagination order
- * (newest indexed first), which is approximately newest by
- * createdAt for the steady-state ingestion case. The previous
- * `sortBy: createdAt, sortDirection: DESC` arguments from the
- * upstream Hyperindex schema are not supported by Magic Indexer
- * and have been dropped from the query.
- */
+/** Per-request URI cap for `ActivitiesByUris`. The upstream indexer
+ *  rejects `where: { uri: { in: [...] } }` filters with more than 50
+ *  values ("in list must contain 1 to 50 values"); the proxy validator
+ *  mirrors that cap. Larger input sets get chunked into this many URIs
+ *  per request and the results are merged client-side. */
+const ACTIVITIES_BY_URIS_CHUNK = 50
+
 /**
  * Fetch a specific set of activity URIs through the indexer (rather
  * than the PDS-direct `fetchActivitiesByUris`), applying optional
@@ -190,22 +199,6 @@ export interface FetchIndexerOptions {
  * ingested yet) are silently dropped — the surface's empty / partial
  * result behaviour matches the rest of the explore page.
  */
-/** Per-request URI cap for `ActivitiesByUris`. The upstream indexer
- *  rejects `where: { uri: { in: [...] } }` filters with more than 50
- *  values ("in list must contain 1 to 50 values"); the proxy validator
- *  mirrors that cap. Larger input sets get chunked into this many URIs
- *  per request and the results are merged client-side. */
-const ACTIVITIES_BY_URIS_CHUNK = 50
-
-function chunkArray<T>(arr: readonly T[], size: number): T[][] {
-  if (size <= 0) return [arr.slice()]
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
-  }
-  return chunks
-}
-
 export async function fetchIndexerActivitiesByUris(
   uris: readonly string[],
   opts: {
@@ -246,22 +239,27 @@ export async function fetchIndexerActivitiesByUris(
             ? [...opts.excludeAuthorLabels]
             : null,
       }
-      const res = await fetch(INDEXER_PROXY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operationName: "ActivitiesByUris", variables }),
+      const res = await postIndexer<ActivitiesData>("ActivitiesByUris", variables, {
         signal: opts.signal,
       })
-      const json = (await res.json()) as GraphQLResponse
-      if (!json.data?.orgHypercertsClaimActivity) {
-        if (json.errors?.length) {
-          console.warn("[Indexer] ActivitiesByUris error:", json.errors[0].message)
-        } else if (!res.ok) {
-          throw new Error(`Indexer request failed: ${res.status}`)
+      // HTTP-level failure → throw, even when the body carries a
+      // GraphQL errors array (a 400/500 with errors is a request
+      // failure, not a partial result). Callers surface their retry /
+      // error paths on rejection.
+      if (!res.ok) {
+        const detail = res.errors.length > 0 ? `: ${res.errors[0].message}` : ""
+        throw new Error(`Indexer request failed: ${res.status}${detail}`)
+      }
+      const connection = res.data?.orgHypercertsClaimActivity
+      if (!connection) {
+        // 200 with GraphQL errors = partial data (non-nullable nulls
+        // propagate up and null the connection). Warn and fail soft.
+        if (res.errors.length > 0) {
+          console.warn("[Indexer] ActivitiesByUris error:", res.errors[0].message)
         }
         return null
       }
-      return json.data.orgHypercertsClaimActivity
+      return connection
     }),
   )
 
@@ -294,6 +292,16 @@ export async function fetchIndexerActivitiesByUris(
   }
 }
 
+/**
+ * Fetch activity claims from the Magic Indexer.
+ *
+ * Records are returned in the indexer's keyset-pagination order
+ * (newest indexed first), which is approximately newest by
+ * createdAt for the steady-state ingestion case. The previous
+ * `sortBy: createdAt, sortDirection: DESC` arguments from the
+ * upstream Hyperindex schema are not supported by Magic Indexer
+ * and have been dropped from the query.
+ */
 export async function fetchIndexerActivities(
   options: FetchIndexerOptions = {},
 ): Promise<IndexerActivitiesResult> {
@@ -326,32 +334,34 @@ export async function fetchIndexerActivities(
         : null,
   }
 
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ operationName: "Activities", variables }),
-    signal,
-  })
+  const res = await postIndexer<ActivitiesData>("Activities", variables, { signal })
 
-  const json = (await res.json()) as GraphQLResponse
+  // HTTP-level failure → throw, even when the body carries a GraphQL
+  // errors array (per graphql-over-http a request error is returned
+  // as a 400/500 WITH an errors body, and the proxy forwards the
+  // upstream status verbatim). Treating that as an empty feed would
+  // mask real defects as "no results"; callers already handle
+  // rejections with their retry / error paths.
+  if (!res.ok) {
+    const detail = res.errors.length > 0 ? `: ${res.errors[0].message}` : ""
+    throw new Error(`Indexer request failed: ${res.status}${detail}`)
+  }
 
   const emptyResult: IndexerActivitiesResult = {
     records: [], dids: new Map(), labels: new Map(), hasMore: false, endCursor: null, totalCount: null,
   }
 
-  // GraphQL can return partial data alongside errors (e.g. non-nullable
-  // field nulls propagate up and null the connection). When the
-  // connection is missing, log any errors and return empty rather than
-  // crashing the feed.
-  if (!json.data?.orgHypercertsClaimActivity) {
-    if (json.errors?.length) {
-      console.warn("[Indexer] GraphQL error, returning empty page:", json.errors[0].message)
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
+  // GraphQL can return partial data alongside errors on a 200 (e.g.
+  // non-nullable field nulls propagate up and null the connection).
+  // When the connection is missing on an OK response, log any errors
+  // and return empty rather than crashing the feed.
+  const connection = res.data?.orgHypercertsClaimActivity
+  if (!connection) {
+    if (res.errors.length > 0) {
+      console.warn("[Indexer] GraphQL error, returning empty page:", res.errors[0].message)
     }
     return emptyResult
   }
-  const connection = json.data.orgHypercertsClaimActivity
 
   const records: ActivityRecord[] = []
   const dids = new Map<string, string>()
@@ -372,324 +382,6 @@ export async function fetchIndexerActivities(
     endCursor: connection.pageInfo.endCursor,
     totalCount: connection.totalCount,
   }
-}
-
-// ---------------------------------------------------------------------------
-// Funding receipts (org.hypercerts.funding.receipt)
-// ---------------------------------------------------------------------------
-
-/**
- * One side of a funding receipt's `from` / `to`. The indexer projects a
- * union that is either an AT Protocol account (`AppCertifiedDefsDid`,
- * carrying a `did`) or a free-text label
- * (`OrgHypercertsFundingReceiptText`, carrying a `value`). Discriminated
- * by `__typename`.
- */
-export type FundingParty =
-  | { kind: "account"; did: string }
-  | { kind: "text"; value: string }
-  | null
-
-/**
- * One attestation of a funding payment, computed by the indexer. A
- * payment collapses every receipt that references the others via
- * `matchingReceipt` (with matching amount/currency/from/to/for) into a
- * single node; each receipt in that cluster contributes one
- * attestation. `role` is the receipt author's relationship to the
- * payment's `from`/`to`; `did` is the author. The display chips
- * (self-reported / mutually-confirmed / third-party) are derived from
- * the full set — see `funding-provenance.ts`. The provenance is
- * deliberately *not* a single ranked enum: a trustworthy third party
- * can be more credible than a self-report, and a payment can be both
- * self-reported and third-party-confirmed at once.
- */
-export interface FundingAttestation {
-  role: "recipient" | "sender" | "third-party"
-  did: string
-}
-
-/**
- * A single `org.hypercerts.funding.receipt` record, with both sides of
- * the transfer normalised into {@link FundingParty}. `forUri` points at
- * an `org.hypercerts.claim.activity` when present.
- */
-export interface FundingReceipt {
-  uri: string
-  cid: string
-  did: string
-  createdAt: string | null
-  occurredAt: string | null
-  /** Funding amount + currency as recorded (e.g. "0.1" / "USDC"). Either
-   *  may be null when the receipt didn't record it. */
-  amount: string | null
-  currency: string | null
-  from: FundingParty
-  to: FundingParty
-  forUri: string | null
-  /** CID of the funded record's `for` strongRef. Carried for forthcoming
-   *  receipt-to-activity verification (the same strongRef-integrity work as
-   *  `attestations`, magic-indexer #214); not yet read by the UI. */
-  forCid: string | null
-  /** Optional payment-method metadata, as recorded on the receipt. The
-   *  lexicon names are singular `paymentRail` (e.g. "x402-usdc-base") and
-   *  `transactionId` (the on-chain / processor reference). Any may be
-   *  null. */
-  paymentRail: string | null
-  paymentNetwork: string | null
-  transactionId: string | null
-  /** Free-text note attached to the receipt. */
-  notes: string | null
-  /** Strong reference to another receipt for the SAME payment that this one
-   *  confirms (set on confirmation receipts; `null` on originals). Served by
-   *  the indexer and also carried on the viewer's own optimistic confirmation.
-   *  Used to collapse a confirmation onto its counterpart into one payment
-   *  row before the indexer's cluster view catches up (issue #186). */
-  matchingReceipt: { uri: string; cid: string } | null
-  /** Attestations for the payment this node represents (indexer-computed
-   *  from the `matchingReceipt`-linked cluster). Empty until the indexer
-   *  ships the field (magic-indexer #214); the UI renders no chips then. */
-  attestations: FundingAttestation[]
-  /** The individual receipts collapsed into this payment node, set by the
-   *  client-side {@link mergeMatchingReceipts}. Absent for a node straight
-   *  from the indexer (only the canonical receipt is known then). Lets the
-   *  detail view show one "Record" section per author. */
-  members?: FundingReceipt[]
-}
-
-interface FundingPartyNode {
-  __typename?: string
-  did?: string | null
-  value?: string | null
-}
-
-interface FundingAttestationNode {
-  role?: string | null
-  did?: string | null
-}
-
-interface FundingReceiptNode {
-  uri: string
-  cid: string
-  did: string
-  createdAt: string | null
-  occurredAt: string | null
-  amount: string | null
-  currency: string | null
-  from: FundingPartyNode | null
-  to: FundingPartyNode | null
-  for: { uri: string | null; cid: string | null } | null
-  paymentRail: string | null
-  paymentNetwork: string | null
-  transactionId: string | null
-  notes: string | null
-  matchingReceipt?: { uri: string | null; cid: string | null } | null
-  attestations?: FundingAttestationNode[] | null
-}
-
-interface FundingReceiptsGraphQLResponse {
-  data?: {
-    orgHypercertsFundingReceipt?: {
-      totalCount: number | null
-      edges: { cursor: string; node: FundingReceiptNode | null }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
-  } | null
-  errors?: { message: string }[]
-}
-
-function mapFundingParty(node: FundingPartyNode | null): FundingParty {
-  if (!node) return null
-  if (node.__typename === "AppCertifiedDefsDid" && typeof node.did === "string") {
-    return { kind: "account", did: node.did }
-  }
-  if (
-    node.__typename === "OrgHypercertsFundingReceiptText" &&
-    typeof node.value === "string"
-  ) {
-    return { kind: "text", value: node.value }
-  }
-  // Fall back on the populated field even when __typename is absent, so a
-  // schema that drops the discriminator still resolves the party.
-  if (typeof node.did === "string") return { kind: "account", did: node.did }
-  if (typeof node.value === "string") return { kind: "text", value: node.value }
-  return null
-}
-
-/** Normalise the indexer's attestation list, dropping entries with an
- *  unknown role or a missing DID so a schema drift can't surface a
- *  malformed chip. Returns [] when the field is absent (pre-#214). */
-function mapFundingAttestations(
-  nodes: FundingAttestationNode[] | null | undefined,
-): FundingAttestation[] {
-  if (!Array.isArray(nodes)) return []
-  const out: FundingAttestation[] = []
-  for (const node of nodes) {
-    const did = node?.did
-    const role = node?.role
-    if (typeof did !== "string" || !did) continue
-    if (role === "recipient" || role === "sender" || role === "third-party") {
-      out.push({ role, did })
-    }
-  }
-  return out
-}
-
-/** Normalise a raw funding-receipt node into a {@link FundingReceipt}.
- *  Shared by both the network-wide and per-activity fetchers so the field
- *  set stays in sync. */
-function mapFundingReceiptNode(node: FundingReceiptNode): FundingReceipt {
-  return {
-    uri: node.uri,
-    cid: node.cid,
-    did: node.did,
-    createdAt: node.createdAt ?? null,
-    occurredAt: node.occurredAt ?? null,
-    amount: node.amount ?? null,
-    currency: node.currency ?? null,
-    from: mapFundingParty(node.from),
-    to: mapFundingParty(node.to),
-    forUri: node.for?.uri ?? null,
-    forCid: node.for?.cid ?? null,
-    paymentRail: node.paymentRail ?? null,
-    paymentNetwork: node.paymentNetwork ?? null,
-    transactionId: node.transactionId ?? null,
-    notes: node.notes ?? null,
-    matchingReceipt:
-      node.matchingReceipt?.uri && node.matchingReceipt?.cid
-        ? { uri: node.matchingReceipt.uri, cid: node.matchingReceipt.cid }
-        : null,
-    attestations: mapFundingAttestations(node.attestations),
-  }
-}
-
-export interface FundingReceiptsResult {
-  records: FundingReceipt[]
-  hasMore: boolean
-  endCursor: string | null
-  totalCount: number | null
-}
-
-/**
- * Parse a FundingReceipts GraphQL envelope into a {@link FundingReceiptsResult}.
- * Shared by the network-wide and per-activity fetchers so they stay in sync:
- * a missing connection logs the GraphQL error (or throws on a non-ok HTTP
- * status) and returns an empty page — the fail-soft contract both callers
- * rely on. `opName` only labels the warning so the two operations are
- * distinguishable in logs.
- */
-function parseFundingReceiptsResponse(
-  json: FundingReceiptsGraphQLResponse,
-  res: Response,
-  opName: string,
-): FundingReceiptsResult {
-  const empty: FundingReceiptsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
-  if (!json.data?.orgHypercertsFundingReceipt) {
-    if (json.errors?.length) {
-      console.warn(`[Indexer] ${opName} GraphQL error:`, json.errors[0].message)
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return empty
-  }
-
-  const connection = json.data.orgHypercertsFundingReceipt
-  const records: FundingReceipt[] = []
-  for (const edge of connection.edges) {
-    const node = edge.node
-    if (!node) continue
-    records.push(mapFundingReceiptNode(node))
-  }
-
-  return {
-    records,
-    hasMore: connection.pageInfo.hasNextPage,
-    endCursor: connection.pageInfo.endCursor,
-    totalCount: connection.totalCount,
-  }
-}
-
-/**
- * Fetch a page of `org.hypercerts.funding.receipt` records. Both sides
- * are normalised into {@link FundingParty}; the explore loader applies
- * the "from OR to is an account" gate client-side (the indexer can't
- * filter by union variant). Mirrors {@link fetchProjects}: failures or
- * a missing connection return an empty page rather than throwing the
- * tab into an error state.
- */
-export async function fetchFundingReceipts(
-  options: {
-    first?: number
-    after?: string
-    /** Account-quality (orglabeler) tiers the receipt creator must carry. */
-    authorLabels?: readonly string[]
-    /** Account-quality tiers that exclude a receipt by its creator. */
-    excludeAuthorLabels?: readonly string[]
-    /** Restrict to payments confirmed by a specific third-party attestor
-     *  DID (magic-indexer #214). Omit for no filter; ignored upstream
-     *  until the indexer ships it. */
-    confirmedBy?: string
-    signal?: AbortSignal
-  } = {},
-): Promise<FundingReceiptsResult> {
-  const { first = 50, after, authorLabels, excludeAuthorLabels, confirmedBy, signal } =
-    options
-
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "FundingReceipts",
-      variables: {
-        first,
-        after: after ?? null,
-        authorLabels: authorLabels && authorLabels.length > 0 ? [...authorLabels] : null,
-        excludeAuthorLabels:
-          excludeAuthorLabels && excludeAuthorLabels.length > 0
-            ? [...excludeAuthorLabels]
-            : null,
-        confirmedBy: confirmedBy ?? null,
-      },
-    }),
-    signal,
-  })
-
-  const json = (await res.json()) as FundingReceiptsGraphQLResponse
-  return parseFundingReceiptsResponse(json, res, "FundingReceipts")
-}
-
-/**
- * Fetch a page of `org.hypercerts.funding.receipt` records whose `for`
- * strongRef points at a single activity (`forUri`). Returns the same
- * {@link FundingReceiptsResult} shape as {@link fetchFundingReceipts};
- * the only difference is the server-side `where: { for: { eq } }`
- * filter. Used by the activity detail page's Funding tab + overview
- * preview. Failures or a missing connection return an empty page
- * rather than throwing the surface into an error state.
- */
-export async function fetchFundingReceiptsForActivity(
-  forUri: string,
-  options: { first?: number; after?: string; signal?: AbortSignal } = {},
-): Promise<FundingReceiptsResult> {
-  const { first = 50, after, signal } = options
-
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "FundingReceiptsForActivity",
-      variables: { forUri, first, after: after ?? null },
-    }),
-    signal,
-  })
-
-  const json = (await res.json()) as FundingReceiptsGraphQLResponse
-  return parseFundingReceiptsResponse(json, res, "FundingReceiptsForActivity")
 }
 
 // ---------------------------------------------------------------------------
@@ -761,28 +453,21 @@ export async function fetchUserIndexerActivities(
   const operationName =
     mode === "contributed" ? "ContributedActivities" : "AuthoredActivities"
 
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ operationName, variables }),
-    signal,
-  })
-
-  const json = (await res.json()) as GraphQLResponse
+  const res = await postIndexer<ActivitiesData>(operationName, variables, { signal })
 
   const emptyResult: IndexerActivitiesResult = {
     records: [], dids: new Map(), labels: new Map(), hasMore: false, endCursor: null, totalCount: null,
   }
 
-  if (!json.data?.orgHypercertsClaimActivity) {
-    if (json.errors?.length) {
-      console.warn("[Indexer] GraphQL error, returning empty page:", json.errors[0].message)
+  const connection = res.data?.orgHypercertsClaimActivity
+  if (!connection) {
+    if (res.errors.length > 0) {
+      console.warn("[Indexer] GraphQL error, returning empty page:", res.errors[0].message)
     } else if (!res.ok) {
       throw new Error(`Indexer request failed: ${res.status}`)
     }
     return emptyResult
   }
-  const connection = json.data.orgHypercertsClaimActivity
 
   const records: ActivityRecord[] = []
   const dids = new Map<string, string>()
@@ -805,581 +490,15 @@ export async function fetchUserIndexerActivities(
   }
 }
 
-// ----------------------------- Endorsement closure (BFS) ---------------------
-//
-// Viewer-centric endorsement-graph closure (magic-indexer issue #117).
-// Powers the "Endorsed users" filter on /explore by returning every
-// DID reachable within `degree` hops of `viewer` through active
-// (non-rejected, endorsement-typed) badge awards, plus per-DID
-// provenance.
+// ---------------------------------------------------------------------------
+// Domain modules — re-exported so the 30+ existing
+// `from "@/lib/atproto/indexer"` import sites keep compiling unchanged.
+// The sibling modules import the shared plumbing from the leaf module
+// `indexer-client`, never from this barrel or each other, so the module
+// graph is acyclic.
+// ---------------------------------------------------------------------------
 
-interface EndorsementClosureIssuer {
-  did: string
-  handle: string | null
-  displayName: string | null
-  description: string | null
-  /** Content-addressed CID of the actor's avatar blob. Client builds
-   *  the avatar URL via /api/xrpc/com/atproto/sync/getBlob. */
-  avatarCid: string | null
-  pds: string | null
-}
-
-export interface EndorsementClosureAccount {
-  did: string
-  degree: 1 | 2 | 3
-  /**
-   * Degree-(degree − 1) predecessors that endorsed this account, deduped
-   * and sorted. Empty array for degree=1 — the viewer is the predecessor
-   * but is excluded from the result per spec. The indexer returns these
-   * as `via: [String!]!`; we narrow the type here.
-   */
-  via: string[]
-  /**
-   * Denormalised actor profile populated server-side via a single bulk
-   * lookup on actor(did) (magic-indexer #117 perf follow-up). Always
-   * present in responses from the new indexer; legacy / fallback paths
-   * (PDS BFS) leave this as `{did}` only.
-   */
-  issuer: EndorsementClosureIssuer
-}
-
-export interface EndorsementClosure {
-  accounts: EndorsementClosureAccount[]
-  /**
-   * True when the closure exceeded the indexer-side cap (default 3000).
-   * The in-flight ring is trimmed degrees-furthest-first; lower rings
-   * are intact. UI shows a "showing a subset of your trust graph" notice.
-   */
-  truncated: boolean
-}
-
-interface EndorsementClosureGraphQLResponse {
-  data?: {
-    endorsementClosure?: {
-      accounts: {
-        did: string
-        degree: number
-        via: string[]
-        issuer?: {
-          did: string
-          handle: string | null
-          displayName: string | null
-          description: string | null
-          avatarCid: string | null
-          pds: string | null
-        } | null
-      }[]
-      truncated: boolean
-    }
-  }
-  errors?: { message: string; extensions?: { code?: string } }[]
-}
-
-/**
- * Server-side endorsement-graph closure error surface. The indexer
- * returns structured `extensions.code` SCREAMING_SNAKE_CASE codes so
- * the UI can branch deterministically (warming vs. invalid input vs.
- * disabled feature). Plain `Error` fallback when no code is present
- * (network failure / non-GraphQL error).
- */
-export class EndorsementClosureError extends Error {
-  /** SCREAMING_SNAKE_CASE per magic-indexer convention. */
-  readonly code: string | null
-  constructor(message: string, code: string | null) {
-    super(message)
-    this.name = "EndorsementClosureError"
-    this.code = code
-  }
-}
-
-/**
- * Fetches the viewer's endorsement-graph closure at the given depth.
- *
- *   - `viewer`: viewer DID (excluded from the result).
- *   - `degree`: ∈ {1, 2, 3}. Cumulative: degree=2 returns 1st ∪ 2nd.
- *   - `signal`: optional AbortSignal threaded through to fetch.
- *
- * Throws `EndorsementClosureError` with a structured code on a 4xx-
- * style failure (`INVALID_VIEWER_DID`, `INVALID_DEGREE`,
- * `ENDORSEMENT_GRAPH_WARMING`, `ENDORSEMENT_GRAPH_DISABLED`). Callers
- * (e.g. use-explore) typically downgrade `ENDORSEMENT_GRAPH_WARMING`
- * to a loading state and surface the others to the user.
- */
-export async function fetchEndorsementClosure(
-  viewer: string,
-  degree: 1 | 2 | 3,
-  signal?: AbortSignal,
-): Promise<EndorsementClosure> {
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "EndorsementClosure",
-      variables: { viewer, degree },
-    }),
-    signal,
-  })
-  if (!res.ok) {
-    throw new EndorsementClosureError(
-      `Indexer proxy returned ${res.status}`,
-      null,
-    )
-  }
-  const json = (await res.json()) as EndorsementClosureGraphQLResponse
-  if (json.errors?.length) {
-    const first = json.errors[0]
-    throw new EndorsementClosureError(
-      first.message,
-      first.extensions?.code ?? null,
-    )
-  }
-  if (!json.data?.endorsementClosure) {
-    throw new EndorsementClosureError(
-      "Indexer returned no closure payload",
-      null,
-    )
-  }
-  const c = json.data.endorsementClosure
-  return {
-    truncated: c.truncated,
-    // Narrow degree to 1 | 2 | 3. The indexer never returns anything
-    // outside that range (it's gated at the resolver), but cast
-    // defensively so a future degree-4 doesn't silently slip into
-    // consumers that switch on the literal type.
-    accounts: c.accounts.map((a) => ({
-      did: a.did,
-      degree: clampClosureDegree(a.degree),
-      via: a.via,
-      issuer: a.issuer ?? { did: a.did, handle: null, displayName: null, description: null, avatarCid: null, pds: null },
-    })),
-  }
-}
-
-function clampClosureDegree(d: number): 1 | 2 | 3 {
-  if (d === 1) return 1
-  if (d === 2) return 2
-  return 3
-}
-
-// ============================================================================
-// Network counts (for the /welcome landing-page stats strip)
-// ============================================================================
-
-export interface NetworkCounts {
-  /** `app.certified.actor.profile` total — "Users". */
-  users: number | null
-  /** `app.certified.actor.organization` total — "Organizations". */
-  organizations: number | null
-  /** `org.hypercerts.claim.activity` total — labelled "Achievements"
-   *  on the public landing page to avoid in-app jargon. */
-  achievements: number | null
-  /** `org.hypercerts.collection` records with `type == "project"`. */
-  projects: number | null
-  /** `app.certified.badge.award` total — "Endorsements".
-   *  Includes both default endorsements and list-typed ones. */
-  endorsements: number | null
-}
-
-const COUNT_OPERATIONS = [
-  { key: "users", op: "ProfileCount", root: "appCertifiedActorProfile" },
-  {
-    key: "organizations",
-    op: "OrganizationCount",
-    root: "appCertifiedActorOrganization",
-  },
-  {
-    key: "achievements",
-    op: "ActivityCount",
-    root: "orgHypercertsClaimActivity",
-  },
-  { key: "projects", op: "ProjectCount", root: "orgHypercertsCollection" },
-  { key: "endorsements", op: "AwardCount", root: "appCertifiedBadgeAward" },
-] as const
-
-/**
- * Exact deduped count of the activities a profile CREATED or
- * CONTRIBUTED to (the union, via the indexer's `_or` filter — see the
- * `UserActivityCount` op). One cheap `first: 1` query that reads only
- * `totalCount`. Returns null on any failure so callers fall back
- * gracefully instead of rendering a wrong number.
- */
-export async function fetchUserActivityCount(
-  did: string,
-): Promise<number | null> {
-  if (!did) return null
-  try {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "UserActivityCount",
-        variables: { did },
-      }),
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as {
-      data?: {
-        orgHypercertsClaimActivity?: { totalCount?: number | null } | null
-      }
-      errors?: { message?: string }[]
-    }
-    if (json.errors && json.errors.length > 0) return null
-    const total = json.data?.orgHypercertsClaimActivity?.totalCount
-    return typeof total === "number" ? total : null
-  } catch {
-    return null
-  }
-}
-
-async function fetchCount(op: string, root: string): Promise<number | null> {
-  try {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ operationName: op, variables: {} }),
-    })
-    if (!res.ok) {
-      if (process.env.NODE_ENV !== "production") {
-        const body = await res.text().catch(() => "")
-        console.warn(
-          `[network-counts] ${op} -> HTTP ${res.status}`,
-          body.slice(0, 200),
-        )
-      }
-      return null
-    }
-    const json = (await res.json()) as {
-      data?: Record<string, { totalCount?: number | null } | null>
-      errors?: { message?: string }[]
-    }
-    if (json.errors && json.errors.length > 0) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[network-counts] ${op} -> GraphQL errors`,
-          json.errors.map((e) => e.message).join(" | "),
-        )
-      }
-      return null
-    }
-    const node = json.data?.[root]
-    const total = node?.totalCount
-    if (typeof total !== "number") {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[network-counts] ${op} -> unexpected response shape`,
-          { root, node },
-        )
-      }
-      return null
-    }
-    return total
-  } catch (err) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(`[network-counts] ${op} -> exception`, err)
-    }
-    return null
-  }
-}
-
-/**
- * Fetch every network-wide count in parallel. Each pair is
- * independent — a transient failure on one (e.g. the
- * `app.certified.actor.organization` collection not yet indexed)
- * yields `null` for that field; the rest still resolve. Render
- * sites should treat `null` as "-" (data unavailable) rather than
- * "0".
- */
-export async function fetchNetworkCounts(): Promise<NetworkCounts> {
-  const entries = await Promise.all(
-    COUNT_OPERATIONS.map(({ key, op, root }) =>
-      fetchCount(op, root).then((count) => [key, count] as const),
-    ),
-  )
-  const out: NetworkCounts = {
-    users: null,
-    organizations: null,
-    achievements: null,
-    projects: null,
-    endorsements: null,
-  }
-  for (const [key, count] of entries) {
-    out[key] = count
-  }
-  return out
-}
-
-// ============================================================================
-// User projects — org.hypercerts.collection records authored by one DID
-// whose type discriminator is "project" (case-insensitive via eqi).
-// ============================================================================
-
-export interface CollectionGraphQLNode {
-  uri: string
-  cid: string
-  did: string
-  createdAt: string | null
-  title: string | null
-  shortDescription: string | null
-  items: { itemIdentifier: { uri?: string; cid?: string } | null }[] | null
-  /**
-   * The collection's avatar — distinct from the banner. Optional in
-   * the GraphQL query; the legacy fetchers (`fetchUserProjects`,
-   * `fetchProjects`) don't select it so node.avatar is undefined for
-   * those code paths. `HydrateFeedPage` does select it.
-   *
-   * Note: the schema union is `OrgHypercertsDefsSmallImage`, not the
-   * `LargeImage` variant the banner uses.
-   */
-  avatar?:
-    | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
-    | {
-        __typename: "OrgHypercertsDefsSmallImage"
-        image?: { ref?: string | null; mimeType?: string | null } | null
-      }
-    | null
-  banner:
-    | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
-    | {
-        __typename: "OrgHypercertsDefsLargeImage"
-        image?: { ref?: string | null; mimeType?: string | null } | null
-      }
-    | null
-}
-
-interface UserProjectsGraphQLResponse {
-  data?: {
-    orgHypercertsCollection?: {
-      totalCount: number | null
-      edges: { cursor: string; node: CollectionGraphQLNode | null }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
-  } | null
-  errors?: { message: string }[]
-}
-
-export function nodeToCollectionRecord(node: CollectionGraphQLNode): CollectionRecord {
-  // Re-shape the indexer's typed banner union back into the loose
-  // `{ uri }` / `{ image: { ref, mimeType } }` blob that
-  // resolveActivityImageUrl already understands. The blob ref comes
-  // back wrapped as `map[$link:<cid>]` (magic-indexer#110) — strip it
-  // here so callers don't have to know about that quirk.
-  let banner: Record<string, unknown> | undefined
-  if (node.banner) {
-    if (node.banner.__typename === "OrgHypercertsDefsUri" && node.banner.uri) {
-      banner = { uri: node.banner.uri }
-    } else if (
-      node.banner.__typename === "OrgHypercertsDefsLargeImage" &&
-      node.banner.image?.ref
-    ) {
-      banner = {
-        image: {
-          ref: getBlobRefLink(node.banner.image.ref),
-          ...(node.banner.image.mimeType
-            ? { mimeType: node.banner.image.mimeType }
-            : {}),
-        },
-      }
-    }
-  }
-
-  // Avatar — same normalised shape as banner so renderers can apply
-  // resolveActivityImageUrl uniformly. SmallImage instead of LargeImage
-  // is the schema-side distinction; on the value side they collapse.
-  let avatar: Record<string, unknown> | undefined
-  if (node.avatar) {
-    if (node.avatar.__typename === "OrgHypercertsDefsUri" && node.avatar.uri) {
-      avatar = { uri: node.avatar.uri }
-    } else if (
-      node.avatar.__typename === "OrgHypercertsDefsSmallImage" &&
-      node.avatar.image?.ref
-    ) {
-      avatar = {
-        image: {
-          ref: getBlobRefLink(node.avatar.image.ref),
-          ...(node.avatar.image.mimeType
-            ? { mimeType: node.avatar.image.mimeType }
-            : {}),
-        },
-      }
-    }
-  }
-
-  const items =
-    node.items
-      ?.map((it) => it?.itemIdentifier)
-      .filter((id): id is { uri: string; cid: string } =>
-        !!id && typeof id.uri === "string" && typeof id.cid === "string",
-      )
-      .map((id) => ({ itemIdentifier: { uri: id.uri, cid: id.cid } })) ?? []
-
-  const value: CollectionValue = {
-    type: "project",
-    ...(node.title ? { title: node.title } : {}),
-    ...(node.shortDescription
-      ? { shortDescription: node.shortDescription }
-      : {}),
-    ...(node.createdAt ? { createdAt: node.createdAt } : {}),
-    ...(avatar ? { avatar } : {}),
-    ...(banner ? { banner } : {}),
-    items,
-  }
-
-  return { uri: node.uri, cid: node.cid, value }
-}
-
-export interface UserProjectsResult {
-  records: CollectionRecord[]
-  hasMore: boolean
-  endCursor: string | null
-  totalCount: number | null
-}
-
-/**
- * Generic project listing — same node shape as fetchUserProjects but
- * not scoped to a single DID. `authors === undefined` means "no
- * scope" (network-wide); `authors: []` means "match nothing";
- * `authors: [DID...]` filters to those authors.
- */
-export async function fetchProjects(
-  options: {
-    first?: number
-    after?: string
-    authors?: string[]
-    authorLabels?: readonly string[]
-    excludeAuthorLabels?: readonly string[]
-    search?: string
-    signal?: AbortSignal
-  } = {},
-): Promise<UserProjectsResult> {
-  const {
-    first = 24,
-    after,
-    authors,
-    authorLabels,
-    excludeAuthorLabels,
-    search,
-    signal,
-  } = options
-
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "Projects",
-      variables: {
-        first,
-        after: after ?? null,
-        authors:
-          authors === undefined ? null : authors.length > 0 ? authors : [],
-        authorLabels:
-          authorLabels && authorLabels.length > 0 ? [...authorLabels] : null,
-        excludeAuthorLabels:
-          excludeAuthorLabels && excludeAuthorLabels.length > 0
-            ? [...excludeAuthorLabels]
-            : null,
-        search: search || null,
-      },
-    }),
-    signal,
-  })
-
-  const json = (await res.json()) as UserProjectsGraphQLResponse
-  const empty: UserProjectsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
-  if (!json.data?.orgHypercertsCollection) {
-    if (json.errors?.length) {
-      console.warn(
-        "[Indexer] Projects GraphQL error:",
-        json.errors[0].message,
-      )
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return empty
-  }
-
-  const connection = json.data.orgHypercertsCollection
-  const records: CollectionRecord[] = []
-  for (const edge of connection.edges) {
-    if (!edge.node) continue
-    records.push(nodeToCollectionRecord(edge.node))
-  }
-  return {
-    records,
-    hasMore: connection.pageInfo.hasNextPage,
-    endCursor: connection.pageInfo.endCursor,
-    totalCount: connection.totalCount,
-  }
-}
-
-/**
- * Fetch `org.hypercerts.collection` records authored by `did` whose
- * `type === "project"` (case-insensitive). Replaces the per-DID PDS
- * listRecords scan with a single indexer call.
- *
- * Records that store the legacy `value.name` (title fallback) or
- * `value.image` (banner fallback) fields will land here with neither
- * surfaced — see the UserProjects op comment in route.ts for why. The
- * Projects tab renders "Untitled project" / no banner for those so
- * authors notice and republish on the canonical shape.
- */
-export async function fetchUserProjects(
-  did: string,
-  options: { first?: number; after?: string; signal?: AbortSignal } = {},
-): Promise<UserProjectsResult> {
-  const { first = 50, after, signal } = options
-
-  if (!did.startsWith("did:")) {
-    throw new Error(`fetchUserProjects: 'did' must be a DID (got "${did}")`)
-  }
-
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "UserProjects",
-      variables: { did, first, after: after ?? null },
-    }),
-    signal,
-  })
-
-  const json = (await res.json()) as UserProjectsGraphQLResponse
-
-  const empty: UserProjectsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
-  if (!json.data?.orgHypercertsCollection) {
-    if (json.errors?.length) {
-      console.warn(
-        "[Indexer] UserProjects GraphQL error:",
-        json.errors[0].message,
-      )
-    } else if (!res.ok) {
-      throw new Error(`Indexer request failed: ${res.status}`)
-    }
-    return empty
-  }
-
-  const connection = json.data.orgHypercertsCollection
-  const records: CollectionRecord[] = []
-  for (const edge of connection.edges) {
-    if (!edge.node) continue
-    records.push(nodeToCollectionRecord(edge.node))
-  }
-
-  return {
-    records,
-    hasMore: connection.pageInfo.hasNextPage,
-    endCursor: connection.pageInfo.endCursor,
-    totalCount: connection.totalCount,
-  }
-}
+export * from "./indexer-funding"
+export * from "./indexer-closure"
+export * from "./indexer-counts"
+export * from "./indexer-collections"

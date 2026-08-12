@@ -45,6 +45,15 @@ const SSR_DEFAULT: LayoutBreakpoints = {
   isStandalone: false,
 };
 
+function sameBreakpoints(a: LayoutBreakpoints, b: LayoutBreakpoints): boolean {
+  return (
+    a.isDesktop === b.isDesktop &&
+    a.hasRightRail === b.hasRightRail &&
+    a.isFullDesktop === b.isFullDesktop &&
+    a.isStandalone === b.isStandalone
+  );
+}
+
 export function useLayoutBreakpoints(): LayoutBreakpoints {
   const [bp, setBp] = useState<LayoutBreakpoints>(SSR_DEFAULT);
 
@@ -63,14 +72,20 @@ export function useLayoutBreakpoints(): LayoutBreakpoints {
         isStandalone: getIsStandalone(),
       };
     };
-    setBp(compute());
-    const onResize = () => setBp(compute());
-    window.addEventListener("resize", onResize);
+    // Only commit a new object when a breakpoint boolean actually flips.
+    // resize fires dozens of times/sec during a drag but most ticks keep
+    // every breakpoint identical, so bail to avoid re-rendering consumers.
+    const apply = () => {
+      const next = compute();
+      setBp((prev) => (sameBreakpoints(prev, next) ? prev : next));
+    };
+    apply();
+    window.addEventListener("resize", apply);
     // Re-evaluate if the user installs the app mid-session.
-    standaloneQuery.addEventListener("change", onResize);
+    standaloneQuery.addEventListener("change", apply);
     return () => {
-      window.removeEventListener("resize", onResize);
-      standaloneQuery.removeEventListener("change", onResize);
+      window.removeEventListener("resize", apply);
+      standaloneQuery.removeEventListener("change", apply);
     };
   }, []);
 

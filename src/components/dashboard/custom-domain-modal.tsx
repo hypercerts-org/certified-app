@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Globe, Copy, Check, AlertCircle, CheckCircle2 } from "lucide-react";
 import { authFetch } from "@/lib/auth/fetch";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { clearSessionCache } from "@/hooks/use-session";
 import Button from "@/components/ui/button";
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
@@ -30,7 +31,10 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
 
   const [step, setStep] = useState<Step>("enter-domain");
   const [domain, setDomain] = useState("");
-  const [copied, setCopied] = useState<"host" | "value" | null>(null);
+  // One shared-hook instance per copy target so each DNS field shows its
+  // own check mark; the hook auto-resets after 2000ms.
+  const { copied: hostCopied, copy: copyHost } = useCopyToClipboard(2000);
+  const { copied: valueCopied, copy: copyValue } = useCopyToClipboard(2000);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -42,7 +46,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
     if (isOpen) {
       setStep("enter-domain");
       setDomain("");
-      setCopied(null);
       setIsVerifying(false);
       setVerifyError(null);
       setIsSuccess(false);
@@ -64,16 +67,6 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
     if (!cleaned) return;
     setDomain(cleaned);
     setStep("dns-setup");
-  };
-
-  const handleCopy = async (text: string, which: "host" | "value") => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(which);
-      setTimeout(() => setCopied(null), 2000);
-    } catch {
-      // Fallback: select text
-    }
   };
 
   const handleVerify = async () => {
@@ -220,11 +213,11 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                     <Tooltip label="Copy host">
                       <button
                         className="domain-modal__copy-btn"
-                        onClick={() => handleCopy(dnsHost, "host")}
+                        onClick={() => void copyHost(dnsHost)}
                         aria-label="Copy host"
                         type="button"
                       >
-                        {copied === "host" ? <Check size={14} /> : <Copy size={14} />}
+                        {hostCopied ? <Check size={14} /> : <Copy size={14} />}
                       </button>
                     </Tooltip>
                   </div>
@@ -236,11 +229,11 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                     <Tooltip label="Copy value">
                       <button
                         className="domain-modal__copy-btn"
-                        onClick={() => handleCopy(dnsValue, "value")}
+                        onClick={() => void copyValue(dnsValue)}
                         aria-label="Copy value"
                         type="button"
                       >
-                        {copied === "value" ? <Check size={14} /> : <Copy size={14} />}
+                        {valueCopied ? <Check size={14} /> : <Copy size={14} />}
                       </button>
                     </Tooltip>
                   </div>

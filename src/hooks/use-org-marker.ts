@@ -156,12 +156,21 @@ export function useOrgMarker(did: string | null): {
   )
   const [refreshTick, setRefreshTick] = useState(0)
 
+  // Adjust state during render when the DID or refresh tick changes,
+  // re-running the cache-aware initializer expressions. The cache itself
+  // is only mutated in the effect (module-map mutation must not happen
+  // during render), so on a refresh the stale entry is still readable
+  // here — result keeps the pre-refresh value while isLoading flips true.
+  const markerKey = `${did}|${refreshTick}`
+  const [prevMarkerKey, setPrevMarkerKey] = useState(markerKey)
+  if (prevMarkerKey !== markerKey) {
+    setPrevMarkerKey(markerKey)
+    setResult(did ? cache.get(did) ?? initial() : initial())
+    setIsLoading(did ? refreshTick > 0 || !cache.has(did) : false)
+  }
+
   useEffect(() => {
-    if (!did) {
-      setResult(initial())
-      setIsLoading(false)
-      return
-    }
+    if (!did) return
     // When the refresh tick changes, evict the cache so fetchOrgMarker
     // hits the network instead of returning the stale entry. Also drop any
     // in-flight promise for this DID: a concurrent mount's pending fetch
@@ -171,14 +180,8 @@ export function useOrgMarker(did: string | null): {
       cache.delete(did)
       inFlight.delete(did)
     }
-    const cached = cache.get(did)
-    if (cached && refreshTick === 0) {
-      setResult(cached)
-      setIsLoading(false)
-      return
-    }
+    if (cache.has(did) && refreshTick === 0) return
     let cancelled = false
-    setIsLoading(true)
     fetchOrgMarker(did)
       .then((res) => {
         if (cancelled) return

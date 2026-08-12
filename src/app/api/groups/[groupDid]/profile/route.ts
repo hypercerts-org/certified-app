@@ -12,6 +12,19 @@ import { logSafe } from "@/lib/utils/log-safe"
 const PROFILE_FIELDS = ["displayName", "description", "pronouns", "website", "avatar", "banner", "createdAt"] as const
 
 /**
+ * Short Cache-Control for the public GET reads below — same tradeoff
+ * as the xrpc proxy's FOREIGN_READ_CACHE_HEADERS: org rows re-fetch
+ * the same PDS record on every mount, and a 30s window collapses
+ * that. `private` (not s-maxage) on purpose: the org-settings PUT
+ * targets the same URL, and a browser cache invalidates it on the
+ * successful PUT (RFC 9111 4.4) — a shared edge cache would not,
+ * breaking the save-then-refetch flow. Error paths stay uncached.
+ */
+const GROUP_READ_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30",
+} as const
+
+/**
  * GET /api/groups/[groupDid]/profile
  * Read the org's app.certified.actor.profile record.
  * Reads go directly to the group's own PDS (resolved from the DID document).
@@ -38,7 +51,12 @@ export async function GET(
     // "broken" stay distinguishable.
     const pdsUrl = await resolvePdsUrl(groupDid)
     if (!pdsUrl) {
-      return NextResponse.json(null, { status: 200 })
+      // Cache the absent case too — it's the hot expected path for
+      // gone-group rows (see the comment above).
+      return NextResponse.json(null, {
+        status: 200,
+        headers: GROUP_READ_CACHE_HEADERS,
+      })
     }
 
     // Fetch directly from the group's PDS (unauthenticated — reads are public)
@@ -52,13 +70,16 @@ export async function GET(
       // doesn't exist (RecordNotFound) — the expected absent case, same
       // as an unresolvable PDS above. 200 + null, not 404.
       if (res.status === 400 || res.status === 404) {
-        return NextResponse.json(null, { status: 200 })
+        return NextResponse.json(null, {
+          status: 200,
+          headers: GROUP_READ_CACHE_HEADERS,
+        })
       }
       throw new Error(`PDS returned ${res.status}`)
     }
 
     const data = await res.json()
-    return NextResponse.json(data.value)
+    return NextResponse.json(data.value, { headers: GROUP_READ_CACHE_HEADERS })
   } catch (err: unknown) {
     logSafe("[groups/profile] GET error", err)
     const { status, message } = extractRouteError(err)

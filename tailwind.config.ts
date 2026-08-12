@@ -23,10 +23,11 @@ export default {
     extend: {
       colors: {
         /* Semantic status colors — used sparingly via Tailwind utilities.
-           All other colors live in CSS custom properties (globals.css). */
-        success: "#2ECC71",
-        warning: "#F5A623",
-        error: "#E74C3C",
+           Pointed at the theme-aware tokens in tokens.css so `text-error`
+           etc. match CSS-styled status text and flip in dark mode. */
+        success: "var(--color-success)",
+        warning: "var(--color-warning)",
+        error: "var(--color-error)",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],

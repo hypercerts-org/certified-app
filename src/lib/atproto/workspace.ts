@@ -1,6 +1,5 @@
 import { getBlobRefLink } from "@/lib/atproto/types"
-
-const INDEXER_PROXY_URL = "/api/indexer"
+import { postIndexer } from "@/lib/atproto/indexer"
 
 // --------------------------- Actors -----------------------------------
 
@@ -17,30 +16,28 @@ export interface NetworkActor {
   createdAt: string | null
 }
 
-interface NetworkActorsGraphQLResponse {
-  data?: {
-    appCertifiedActorProfile?: {
-      totalCount: number | null
-      edges: {
-        cursor: string
-        node: {
-          did: string
-          displayName: string | null
-          description: string | null
-          createdAt: string | null
-          avatar:
-            | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
-            | {
-                __typename: "OrgHypercertsDefsSmallImage"
-                image?: { ref?: string | null; mimeType?: string | null } | null
-              }
-            | null
-        } | null
-      }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
+/** GraphQL `data` payload shared by the actor-profile ops. */
+interface NetworkActorsData {
+  appCertifiedActorProfile?: {
+    totalCount: number | null
+    edges: {
+      cursor: string
+      node: {
+        did: string
+        displayName: string | null
+        description: string | null
+        createdAt: string | null
+        avatar:
+          | { __typename: "OrgHypercertsDefsUri"; uri?: string | null }
+          | {
+              __typename: "OrgHypercertsDefsSmallImage"
+              image?: { ref?: string | null; mimeType?: string | null } | null
+            }
+          | null
+      } | null
+    }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
   } | null
-  errors?: { message: string }[]
 }
 
 function avatarUrlFromUnion(
@@ -132,32 +129,30 @@ export async function fetchNetworkActors(
   // we have to omit the `where` arg entirely for the "all kinds"
   // case — separate query strings is the simplest way to do that.
   const useKindFilter = typeof isOrganization === "boolean"
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
-      variables: useKindFilter
-        ? {
-            first,
-            after,
-            isOrganization,
-            search: searchVar,
-            authorLabels: authorLabelsVar,
-            excludeAuthorLabels: excludeAuthorLabelsVar,
-          }
-        : {
-            first,
-            after,
-            search: searchVar,
-            authorLabels: authorLabelsVar,
-            excludeAuthorLabels: excludeAuthorLabelsVar,
-          },
-    }),
-    signal,
-  })
-  const json = (await res.json()) as NetworkActorsGraphQLResponse
-  const connection = json.data?.appCertifiedActorProfile
+  const res = await postIndexer<NetworkActorsData>(
+    useKindFilter ? "NetworkActorsByKind" : "NetworkActors",
+    useKindFilter
+      ? {
+          first,
+          after,
+          isOrganization,
+          search: searchVar,
+          authorLabels: authorLabelsVar,
+          excludeAuthorLabels: excludeAuthorLabelsVar,
+        }
+      : {
+          first,
+          after,
+          search: searchVar,
+          authorLabels: authorLabelsVar,
+          excludeAuthorLabels: excludeAuthorLabelsVar,
+        },
+    { signal },
+  )
+  // Deliberate fail-soft: HTTP failures and GraphQL errors render as
+  // an empty actor page (pre-existing behaviour, preserved verbatim
+  // through the postIndexer migration).
+  const connection = res.data?.appCertifiedActorProfile
   const edges = connection?.edges ?? []
   const actors: NetworkActor[] = []
   for (const edge of edges) {
@@ -282,22 +277,14 @@ async function fetchOrgDidsByLabelUncached(opts: {
       excludeLabels:
         excludeLabels && excludeLabels.length > 0 ? [...excludeLabels] : null,
     }
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ operationName: "OrganizationDidsByLabel", variables }),
-      signal,
-    })
+    const res = await postIndexer<{
+      appCertifiedActorOrganization?: {
+        edges: { node: { did: string } | null }[]
+        pageInfo: { hasNextPage: boolean; endCursor: string | null }
+      } | null
+    }>("OrganizationDidsByLabel", variables, { signal })
     if (!res.ok) break
-    const json = (await res.json()) as {
-      data?: {
-        appCertifiedActorOrganization?: {
-          edges: { node: { did: string } | null }[]
-          pageInfo: { hasNextPage: boolean; endCursor: string | null }
-        } | null
-      }
-    }
-    const conn = json.data?.appCertifiedActorOrganization
+    const conn = res.data?.appCertifiedActorOrganization
     if (!conn) break
     for (const edge of conn.edges) {
       if (edge.node?.did) out.add(edge.node.did)
@@ -336,26 +323,15 @@ export async function fetchDidsByKindInSet(
   const CHUNK = 100
   for (let i = 0; i < dids.length; i += CHUNK) {
     const chunk = dids.slice(i, i + CHUNK)
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "DidsByKindInSet",
-        variables: { dids: [...chunk], isOrganization },
-      }),
-      signal,
-    })
+    const res = await postIndexer<{
+      appCertifiedActorProfile?: {
+        edges: { node: { did: string } | null }[]
+      } | null
+    }>("DidsByKindInSet", { dids: [...chunk], isOrganization }, { signal })
     if (!res.ok) {
       throw new Error(`DidsByKindInSet failed: ${res.status}`)
     }
-    const json = (await res.json()) as {
-      data?: {
-        appCertifiedActorProfile?: {
-          edges: { node: { did: string } | null }[]
-        } | null
-      } | null
-    }
-    for (const edge of json.data?.appCertifiedActorProfile?.edges ?? []) {
+    for (const edge of res.data?.appCertifiedActorProfile?.edges ?? []) {
       if (edge.node?.did) result.add(edge.node.did)
     }
   }
@@ -373,18 +349,13 @@ export async function fetchNetworkActorsByDids(
   signal?: AbortSignal,
 ): Promise<NetworkActor[]> {
   if (dids.length === 0) return []
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "NetworkActorsByDids",
-      variables: { dids: [...dids] },
-    }),
-    signal,
-  })
+  const res = await postIndexer<NetworkActorsData>(
+    "NetworkActorsByDids",
+    { dids: [...dids] },
+    { signal },
+  )
   if (!res.ok) return []
-  const json = (await res.json()) as NetworkActorsGraphQLResponse
-  const edges = json.data?.appCertifiedActorProfile?.edges ?? []
+  const edges = res.data?.appCertifiedActorProfile?.edges ?? []
   const actors: NetworkActor[] = []
   for (const edge of edges) {
     if (!edge.node) continue
@@ -427,32 +398,26 @@ const EMPTY_COUNTS: WorkspaceCounts = {
   followers: null,
 }
 
-interface CountsGraphQLResponse {
-  data?: Partial<
-    Record<WorkspaceLexicon, { totalCount: number | null } | null>
-  > | null
-  errors?: { message: string }[]
-}
+type WorkspaceCountsData = Partial<
+  Record<WorkspaceLexicon, { totalCount: number | null } | null>
+>
 
 export async function fetchActorWorkspaceCounts(
   did: string,
   signal?: AbortSignal,
 ): Promise<WorkspaceCounts> {
-  const res = await fetch(INDEXER_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      operationName: "ActorWorkspaceCounts",
-      variables: { did },
-    }),
-    signal,
-  })
-  const json = (await res.json()) as CountsGraphQLResponse
-  if (!json.data) return EMPTY_COUNTS
+  const res = await postIndexer<WorkspaceCountsData>(
+    "ActorWorkspaceCounts",
+    { did },
+    { signal },
+  )
+  // Deliberate fail-soft: any failure (HTTP, GraphQL, missing data)
+  // renders as all-null counts (pre-existing behaviour, preserved).
+  if (!res.data) return EMPTY_COUNTS
 
   const out: WorkspaceCounts = { ...EMPTY_COUNTS }
   for (const key of Object.keys(out) as WorkspaceLexicon[]) {
-    const node = json.data[key]
+    const node = res.data[key]
     out[key] = typeof node?.totalCount === "number" ? node.totalCount : null
   }
   return out

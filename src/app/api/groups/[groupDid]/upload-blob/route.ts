@@ -6,8 +6,19 @@ import {
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError } from "@/lib/utils/api"
+import {
+  ALLOWED_DOCUMENT_CONTENT_TYPES,
+  isAttachmentUpload,
+} from "@/lib/atproto/blob-types"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+// Attachment surfaces (update `content[]` blobs, flagged with
+// `?purpose=attachment`) additionally accept documents. Everything else
+// stays image-only, so a PDF can never land as a group avatar or banner.
+const ALLOWED_ATTACHMENT_TYPES = [
+  ...ALLOWED_TYPES,
+  ...ALLOWED_DOCUMENT_CONTENT_TYPES,
+]
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 /**
@@ -33,7 +44,13 @@ export async function POST(
     const contentType = request.headers.get("content-type") || "application/octet-stream"
     const mimeType = contentType.split(";")[0].trim()
 
-    if (!ALLOWED_TYPES.includes(mimeType)) {
+    // Mirrors the XRPC proxy: `?purpose=attachment` widens the set to
+    // documents for update `content[]` blobs; the default stays
+    // image-only for avatars and banners.
+    const allowedTypes = isAttachmentUpload(request)
+      ? ALLOWED_ATTACHMENT_TYPES
+      : ALLOWED_TYPES
+    if (!allowedTypes.includes(mimeType)) {
       return NextResponse.json({ error: "Unsupported media type" }, { status: 415 })
     }
 

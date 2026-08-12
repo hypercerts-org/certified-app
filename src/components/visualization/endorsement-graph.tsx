@@ -270,6 +270,11 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   // Background is read during render (a prop), so it lives in state rather
   // than the colours ref; updated alongside the ref on theme changes.
   const [bgColor, setBgColor] = useState<string | undefined>(undefined)
+  // Bumped when a repaint is needed for reasons React can't see: an avatar
+  // image finishing loading, or a theme flip updating colorsRef. Carried in
+  // the painter callbacks' deps — force-graph repaints once per new painter
+  // identity, so the canvas stays paused when idle (autoPauseRedraw).
+  const [repaintEpoch, setRepaintEpoch] = useState(0)
   const [onlyMutual, setOnlyMutual] = useState(false)
   // Badge-kind checkboxes. Both on by default; the UI disables the last
   // checked one so at least one kind is always shown.
@@ -298,6 +303,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       const c = readThemeColors()
       colorsRef.current = c
       setBgColor(c.bg)
+      // The painters read colorsRef (a ref), so a theme flip needs an
+      // explicit repaint or nodes/links keep the stale theme's colours.
+      setRepaintEpoch((e) => e + 1)
     }
     apply()
     const obs = new MutationObserver(apply)
@@ -321,21 +329,45 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   }, [])
 
   // --- preload avatars ---------------------------------------------------
-  // The canvas runs with autoPauseRedraw disabled (see the ForceGraph2D
-  // props below), so it keeps repainting every frame and avatars appear as
-  // their images finish loading — no manual repaint needed. We still
-  // preload into a stable map so the paint loop never mints a new Image per
-  // frame.
+  // Coalesce repaint bumps to one per animation frame: image load events
+  // fire as separate tasks (React can't batch them), so a graph with
+  // hundreds of avatar nodes would otherwise re-render this component
+  // once per image in a burst after mount. The pending rAF is cancelled
+  // on unmount so a mid-burst unmount can't fire a stray callback.
+  const repaintRafRef = useRef<number | null>(null)
+  const scheduleRepaint = useCallback(() => {
+    if (repaintRafRef.current !== null) return
+    repaintRafRef.current = requestAnimationFrame(() => {
+      repaintRafRef.current = null
+      setRepaintEpoch((e) => e + 1)
+    })
+  }, [])
+  useEffect(
+    () => () => {
+      if (repaintRafRef.current !== null) {
+        cancelAnimationFrame(repaintRafRef.current)
+      }
+    },
+    [],
+  )
+
+  // Preload into a stable map so the paint loop never mints a new Image per
+  // frame. Each image that finishes (or fails) schedules a coalesced
+  // repaintEpoch bump so the paused canvas repaints and the avatar appears
+  // — the ref has no public refresh(), and load events fire asynchronously
+  // even for cached images, so hooking them here misses nothing.
   useEffect(() => {
     const map = imagesRef.current
     for (const n of nodes) {
       if (!n.avatarUrl || map.has(n.id)) continue
       const img = new Image()
       img.decoding = "async"
+      img.onload = scheduleRepaint
+      img.onerror = scheduleRepaint
       img.src = n.avatarUrl
       map.set(n.id, img)
     }
-  }, [nodes])
+  }, [nodes, scheduleRepaint])
 
   // --- filtered working data (kind checkboxes + scope + mutual) ----------
   const data = useMemo(() => {
@@ -445,12 +477,14 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   // Configure the simulation per layout mode. Re-runs when the mode or the
   // working data changes (react-force-graph rebuilds its default charge/link/
   // center forces on a graphData swap, so we re-apply our additions after) and
-  // once `size.w` flips positive — that's the render where the graph mounts
-  // and `fgRef.current` becomes available. Collision is on in every mode so
-  // avatars don't overlap.
+  // once `graphMounted` flips true — that's the render where the graph mounts
+  // and `fgRef.current` becomes available. A boolean dep (not `size.w`) so
+  // later container resizes never re-apply forces or reheat the simulation.
+  // Collision is on in every mode so avatars don't overlap.
+  const graphMounted = size.w > 0
   useEffect(() => {
     const fg = fgRef.current
-    if (!fg || size.w === 0) return
+    if (!fg || !graphMounted) return
     const charge = fg.d3Force("charge")
     const link = fg.d3Force("link")
     const count = data.nodes.length
@@ -487,7 +521,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       fg.d3Force("gravity", makeGravityForce(0.09))
     }
     fg.d3ReheatSimulation?.()
-  }, [layout, data, size.w])
+  }, [layout, data, graphMounted])
 
   // --- adjacency for hover/selection highlight ---------------------------
   // Built from the FILTERED links so hover dimming, focus zoom and the
@@ -638,7 +672,8 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       }
       ctx.restore()
     },
-    [activeId, highlightNodes],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- repaintEpoch forces one repaint when refs the painter reads change (avatar loads, theme flip)
+    [activeId, highlightNodes, repaintEpoch],
   )
 
   const paintPointerArea = useCallback(
@@ -665,7 +700,8 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       if (link.kind === "award") return c.award
       return link.mutual ? c.accent : c.link
     },
-    [highlightNodes],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- repaintEpoch forces one repaint when colorsRef changes on a theme flip
+    [highlightNodes, repaintEpoch],
   )
 
   const selectedNode = selectedId ? nodeById.get(selectedId) ?? null : null
@@ -755,16 +791,13 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
 
   return (
     <div ref={hostRef} className="viz__canvas-host">
-      {size.w > 0 && (
+      {graphMounted && (
         <ForceGraph2D
           ref={fgRef}
           width={size.w}
           height={size.h}
           graphData={data}
           backgroundColor={bgColor}
-          // Keep repainting when idle so avatars appear as their images
-          // finish loading (the ref has no public refresh()).
-          autoPauseRedraw={false}
           nodeRelSize={4}
           nodeLabel={() => ""}
           cooldownTicks={120}

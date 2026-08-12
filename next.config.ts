@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@atproto/oauth-client-node"],
+  // Client router cache: dynamic segments (/explore, /groups, profile
+  // and record-detail routes) default to staleTime 0 in Next 15/16,
+  // so every repeat Link/bottom-nav navigation refetches an RSC shell
+  // whose real data comes from client hooks with their own caches.
+  // 30s lets a just-visited shell be reused. Sign-in goes through a
+  // full reload (oauth/callback), but signOut is client-side — the
+  // cached / redirect can replay to /home within 30s, where the
+  // session re-check bounces anonymous viewers back out.
+  experimental: {
+    staleTimes: { dynamic: 30 },
+  },
   // Next 16 dev blocks /_next/* requests (including the HMR WebSocket)
   // when the request Origin doesn't match the canonical localhost form.
   // Our PUBLIC_URL convention is 127.0.0.1 (for OAuth + cookie reasons),
@@ -18,48 +29,78 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
+
+    // `frame-src` allowlists the iframe sources we explicitly support:
+    // Vercel's preview comments overlay, the leaflet linearDocument embed
+    // providers (YouTube + Vimeo). Without these origins listed here, the
+    // rendered iframes show YouTube's "This content is blocked. Contact the
+    // site owner to fix the issue." in-frame message — which is YouTube
+    // itself reacting to being framed from a page whose CSP forbids it.
+    //
+    // Dev addendum: Next.js + React in dev mode use `eval()` for HMR /
+    // source-map / debug callstacks, and the Next dev server's HMR
+    // WebSocket runs on `ws://`. Without `'unsafe-eval'` and `ws:` in dev,
+    // client-side React never hydrates — every page renders SSR-only and
+    // useEffect-based data fetches (e.g. the /welcome network-stats tiles)
+    // stall on their loading placeholders. Production keeps the strict policy.
+    //
+    // `frame-ancestors` differs by route: everything defaults to `'none'`
+    // (no framing), but the public `/embed/*` routes are designed to be
+    // embedded on third-party sites (the contributor-board share-embed
+    // iframe), so they open it to `*`.
+    const scriptSrc = isProd
+      ? "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live";
+    const connectSrc = isProd
+      ? "connect-src 'self' https:"
+      : "connect-src 'self' https: ws: wss:";
+    const contentSecurityPolicy = (frameAncestors: string) =>
+      `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; ${connectSrc}; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors ${frameAncestors}; base-uri 'self'; form-action 'self'`;
+
+    const commonHeaders = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+      },
+      {
+        key: "X-DNS-Prefetch-Control",
+        value: "on",
+      },
+      {
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+    ];
+
     return [
       {
-        source: "/(.*)",
+        // Every route EXCEPT `/embed/*`: lock framing down entirely with
+        // both X-Frame-Options: DENY and CSP frame-ancestors 'none'.
+        source: "/((?!embed/).*)",
         headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          ...commonHeaders,
           { key: "X-Frame-Options", value: "DENY" },
           {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy("'none'"),
           },
-          {
-            key: "X-DNS-Prefetch-Control",
-            value: "on",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
+        ],
+      },
+      {
+        // `/embed/*` is the public, framable embed surface (the
+        // contributor-board iframe creators paste onto their own sites).
+        // Omit X-Frame-Options entirely — it has no allowlist form, so any
+        // value would break cross-origin framing — and open CSP
+        // frame-ancestors so partner pages can embed it.
+        source: "/embed/:path*",
+        headers: [
+          ...commonHeaders,
           {
             key: "Content-Security-Policy",
-            // `frame-src` allowlists the iframe sources we explicitly
-            // support: Vercel's preview comments overlay, the leaflet
-            // linearDocument embed providers (YouTube + Vimeo). Without
-            // these origins listed here, the rendered iframes show
-            // YouTube's "This content is blocked. Contact the site
-            // owner to fix the issue." in-frame message — which is
-            // YouTube itself reacting to being framed from a page
-            // whose CSP forbids it.
-            //
-            // Dev addendum: Next.js + React in dev mode use `eval()` for
-            // HMR / source-map / debug callstacks, and the Next dev
-            // server's HMR WebSocket runs on `ws://`. Without
-            // `'unsafe-eval'` and `ws:` in dev, client-side React never
-            // hydrates — every page renders SSR-only and useEffect-based
-            // data fetches (e.g. the /welcome network-stats tiles) stall
-            // on their loading placeholders. Production keeps the strict
-            // policy.
-            value:
-              process.env.NODE_ENV === "production"
-                ? "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-                : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: contentSecurityPolicy("*"),
           },
         ],
       },

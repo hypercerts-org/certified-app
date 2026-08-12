@@ -1,4 +1,6 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { rkeyFromUri } from "@/lib/urls"
+import type { HypercertsUri, HypercertsSmallImage } from "./types"
 
 const COLLECTION = "org.hypercerts.collection"
 
@@ -85,6 +87,64 @@ export interface ListCollectionsResponse {
   records: CollectionRecord[]
 }
 
+// ---------------------------------------------------------------------------
+// Presentation helpers — the single source of truth for how a project
+// (`type === "project"` collection record) turns into a title + image.
+// Previously copy-pasted per surface, which let the image precedence
+// drift (banner-first thumbs on some surfaces, avatar-first on others).
+// ---------------------------------------------------------------------------
+
+/** Non-empty-string narrowing shared by the collection read surfaces. */
+export function asString(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null
+}
+
+/**
+ * Display title for a collection record: `title` (canonical) →
+ * `name` (legacy field on older records) → fallback. Callers with a
+ * type-specific fallback ("Untitled list" / "Untitled portfolio")
+ * pass it explicitly.
+ */
+export function projectTitle(
+  value: CollectionValue,
+  fallback = "Untitled project",
+): string {
+  return asString(value.title) || asString(value.name) || fallback
+}
+
+/**
+ * The raw image value feeding `resolveActivityImageUrl` (same union
+ * that function accepts; `HypercertsLargeImage` banners resolve
+ * structurally through the smallImage arm).
+ */
+export type ProjectImageSource = HypercertsUri | HypercertsSmallImage | string
+
+/**
+ * Which layout slot the image fills:
+ *
+ *   - `"thumb"`  — compact identity image (feed cards, list rows,
+ *     home rail). Precedence: `avatar` (the project's primary
+ *     identity image) → `image` (legacy field) → `banner`
+ *     (decorative hero, last resort).
+ *   - `"banner"` — wide hero slot (project detail hero, profile
+ *     ProjectBox, explore gallery card). Precedence: `banner` →
+ *     `image`. An avatar is a small square — never stretched into a
+ *     hero slot.
+ */
+export type ProjectImageSlot = "thumb" | "banner"
+
+/** Slot-aware image pick for a collection record. Null when the slot
+ *  has nothing to show. */
+export function projectImage(
+  value: CollectionValue,
+  slot: ProjectImageSlot,
+): ProjectImageSource | null {
+  const v = value as Record<string, unknown>
+  const raw =
+    slot === "thumb" ? (v.avatar ?? v.image ?? v.banner) : (v.banner ?? v.image)
+  return raw == null ? null : (raw as ProjectImageSource)
+}
+
 /**
  * List `org.hypercerts.collection` records on a DID's PDS with
  * cursor-based pagination. Returns an empty list (not an error) when
@@ -128,11 +188,6 @@ export async function fetchCollections(
 // Endorsement-list collections — the curation overlay that replaced the
 // per-list `app.certified.badge.definition` model.
 // ---------------------------------------------------------------------------
-
-function extractRkey(uri: string): string {
-  const idx = uri.lastIndexOf("/")
-  return idx >= 0 ? uri.slice(idx + 1) : uri
-}
 
 /**
  * Type-narrow a `CollectionValue` to `EndorsementListCollectionValue`.
@@ -181,7 +236,7 @@ export async function listEndorsementListCollections(
       out.push({
         uri: r.uri,
         cid: r.cid,
-        rkey: extractRkey(r.uri),
+        rkey: rkeyFromUri(r.uri),
         value: narrow,
       })
     }

@@ -758,6 +758,7 @@ function LocationPickerColumn({
   useEffect(() => {
     if (lastSourceRef.current === "map") {
       lastSourceRef.current = null
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced geocode keyed on the typed name: the map-originated skip branch and the below-2-chars branch clear now-stale suggestions; both bail out when suggestions are already empty
       setSuggestions([])
       return
     }

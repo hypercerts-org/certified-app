@@ -82,14 +82,18 @@ export function useContributorInformationRecord(uri: string | null | undefined):
   )
   const [isLoading, setIsLoading] = useState(enabled)
 
+  // Adjust state during render when the target URI changes, so the effect
+  // holds only the fetch lifecycle.
+  const [prevUri, setPrevUri] = useState(uri)
+  if (prevUri !== uri) {
+    setPrevUri(uri)
+    setRecord(null)
+    setIsLoading(enabled)
+  }
+
   useEffect(() => {
-    if (!enabled || !uri) {
-      setRecord(null)
-      setIsLoading(false)
-      return
-    }
+    if (!enabled || !uri) return
     let cancelled = false
-    setIsLoading(true)
     fetchByUri(uri).then((r) => {
       if (cancelled) return
       setRecord(r)

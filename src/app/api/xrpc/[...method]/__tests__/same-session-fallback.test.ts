@@ -36,7 +36,14 @@ vi.mock("@/lib/atproto/did", () => ({
 vi.mock("@/lib/auth/rate-limit", () => ({
   checkAndIncrementWriteRate: vi.fn(),
   RATE_LIMITED_WRITE_COLLECTIONS: {},
+  makeLimiter: (name: string, max: number, windowSec: number) => ({
+    name,
+    max,
+    windowSec,
+  }),
+  enforceRateLimit: vi.fn(async () => null),
 }))
+vi.mock("@/lib/utils/ip", () => ({ clientIp: () => "test-ip" }))
 vi.mock("@atproto/api", () => ({
   Agent: class {
     com = {

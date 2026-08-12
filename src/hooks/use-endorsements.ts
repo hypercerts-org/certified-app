@@ -41,6 +41,56 @@ export interface GivenEndorsement {
   listTitle?: string
 }
 
+// In-flight coalescing only — deliberately NO TTL cache. The hook's
+// contract is fresh-on-every-mount (see the docstring below); this map
+// merely collapses simultaneous mounts for the same DID (e.g. the
+// Given panel and its manage modal) into one two-call PDS load.
+const inflightByDid = new Map<string, Promise<GivenEndorsement[]>>()
+
+// Runs inside the shared (singleflight) promise, so it takes no
+// AbortSignal — one consumer unmounting must not fail its siblings —
+// and does the full mapping so every waiter gets the deduped list.
+async function fetchGivenEndorsements(
+  did: string,
+  opts?: { noCache: boolean },
+): Promise<GivenEndorsement[]> {
+  const [defs, awards] = await Promise.all([
+    listDefinitions(did, undefined, opts),
+    listAwards(did, undefined, opts),
+  ])
+
+  // Build the set of endorsement-typed definition URIs the awards
+  // reference — used to filter awards to "actually endorsements"
+  // (vs. some other badgeType). This spans BOTH the user's own
+  // definitions AND any centrally-defined badge owned by another
+  // account (e.g. a Trusted Evaluator endorsing on behalf of an
+  // organisation with Ma Earth's "Organization Endorsement" badge),
+  // which earlier own-repo-only filtering dropped.
+  const endorsementDefUris = await endorsementDefUriSet(
+    awards,
+    defs,
+    undefined,
+    opts,
+  )
+
+  const mapped = awards
+    .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
+    .map(toGiven)
+    .filter((e): e is GivenEndorsement => e !== null)
+
+  // Newest first by createdAt — matches the Received view and
+  // shields against PDS ordering quirks (listAwards passes
+  // `reverse: true`, which surfaces records in ascending TID
+  // order on most implementations).
+  mapped.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+
+  // Collapse repeat endorsements of the same account into one
+  // entry (sorted newest-first, so the first seen is the
+  // representative). The count then reflects UNIQUE recipients,
+  // matching the /endorsement-graph graph.
+  return dedupeBySubject(mapped)
+}
+
 /**
  * Fetch and track the endorsement awards **given** by a user — read
  * from their own PDS via two listRecords calls:
@@ -52,7 +102,9 @@ export interface GivenEndorsement {
  * We then keep only awards whose `badge.uri` resolves to a definition
  * with `badgeType === "endorsement"`. This sidesteps the indexer
  * entirely for the Given view — fresh on every reload, no caching
- * concerns, and works for unauthenticated visitors.
+ * concerns, and works for unauthenticated visitors. Concurrent mounts
+ * for the same DID share one in-flight load (no TTL cache — the
+ * fresh-on-mount contract stands).
  *
  * Re-fetches when `did` changes; exposes `refetch` for create/delete
  * paths to refresh the list.
@@ -79,46 +131,35 @@ export function useGivenEndorsements(did: string | null): {
       setError(null)
       try {
         // `force` (set by refetch after a write) bypasses the proxy's
-        // 5s same-session listRecords cache so the just-deleted /
-        // just-created record is reflected immediately.
-        const opts = force ? { noCache: true } : undefined
-        const [defs, awards] = await Promise.all([
-          listDefinitions(did, signal, opts),
-          listAwards(did, signal, opts),
-        ])
+        // 5s same-session listRecords cache AND any in-flight shared
+        // load — the just-deleted / just-created record must be
+        // reflected immediately, not served from a pre-write fetch.
+        // The forced promise takes over the map slot so later joiners
+        // share the fresh load.
+        let promise = force ? undefined : inflightByDid.get(did)
+        if (!promise) {
+          promise = fetchGivenEndorsements(
+            did,
+            force ? { noCache: true } : undefined,
+          )
+          inflightByDid.set(did, promise)
+          const created = promise
+          created
+            .catch(() => {
+              // Swallowed here only — each awaiting instance surfaces
+              // its own error from its `await`.
+            })
+            .finally(() => {
+              // Only clear if still ours (a forced refetch may have
+              // taken the slot during the await window).
+              if (inflightByDid.get(did) === created) {
+                inflightByDid.delete(did)
+              }
+            })
+        }
+        const data = await promise
         if (signal?.aborted) return
-
-        // Build the set of endorsement-typed definition URIs the awards
-        // reference — used to filter awards to "actually endorsements"
-        // (vs. some other badgeType). This spans BOTH the user's own
-        // definitions AND any centrally-defined badge owned by another
-        // account (e.g. a Trusted Evaluator endorsing on behalf of an
-        // organisation with Ma Earth's "Organization Endorsement" badge),
-        // which earlier own-repo-only filtering dropped.
-        const endorsementDefUris = await endorsementDefUriSet(
-          awards,
-          defs,
-          signal,
-          opts,
-        )
-        if (signal?.aborted) return
-
-        const mapped = awards
-          .filter((a) => endorsementDefUris.has(a.value.badge?.uri ?? ""))
-          .map(toGiven)
-          .filter((e): e is GivenEndorsement => e !== null)
-
-        // Newest first by createdAt — matches the Received view and
-        // shields against PDS ordering quirks (listAwards passes
-        // `reverse: true`, which surfaces records in ascending TID
-        // order on most implementations).
-        mapped.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
-
-        // Collapse repeat endorsements of the same account into one
-        // entry (sorted newest-first, so the first seen is the
-        // representative). The count then reflects UNIQUE recipients,
-        // matching the /endorsement-graph graph.
-        setEndorsements(dedupeBySubject(mapped))
+        setEndorsements(data)
       } catch (err) {
         if (signal?.aborted) return
         setError(

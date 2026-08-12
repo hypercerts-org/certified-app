@@ -266,7 +266,7 @@ async function getCertsProfile(did: string): Promise<{
     })
     const res = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-      { signal: AbortSignal.timeout(8_000) }
+      { redirect: "error", signal: AbortSignal.timeout(8_000) }
     )
     if (!res.ok) return null
     const data = (await res.json()) as { value?: CertsProfileValue }

@@ -57,19 +57,23 @@ async function loadCounts(force = false): Promise<NetworkCounts> {
  * that if the underlying GraphQL op failed (e.g. indexer down for
  * one collection but not the others). Render sites should treat
  * `null` as "-".
+ *
+ * `enabled: false` skips the fetch entirely — the landing page
+ * passes server-resolved counts down and only enables this hook as
+ * a fallback when a server value is missing.
  */
-export function useNetworkCounts(): {
+export function useNetworkCounts(enabled = true): {
   counts: NetworkCounts
   isLoading: boolean
 } {
   const [counts, setCounts] = useState<NetworkCounts>(
     () => cache?.counts ?? EMPTY,
   )
-  const [isLoading, setIsLoading] = useState(!cache)
+  const [isLoading, setIsLoading] = useState(enabled && !cache)
 
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
-    setIsLoading(true)
     loadCounts()
       .then((next) => {
         if (cancelled) return
@@ -86,7 +90,7 @@ export function useNetworkCounts(): {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [enabled])
 
   return { counts, isLoading }
 }

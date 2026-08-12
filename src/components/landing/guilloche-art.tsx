@@ -231,45 +231,6 @@ export function GuillocheQuiet() {
   );
 }
 
-/**
- * The exploration's Mesh plate (as preserved in the guilloche lab):
- * three counter-rotating fields of offset rings and ellipses weaving
- * a moire annulus around a hollow center, with eight wanderers. Used
- * in the closing section's corner.
- */
-export function GuillocheMeshQuiet() {
-  return (
-    <div className="lp-guilloche" aria-hidden="true">
-      <svg viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <circle id="lpg-mesh-a" cx={CX} cy={CY - 230} r={135} pathLength={100} />
-          <circle id="lpg-mesh-b" cx={CX} cy={CY - 245} r={110} pathLength={100} />
-          <ellipse id="lpg-mesh-e" cx={CX} cy={CY - 210} rx={180} ry={115} pathLength={100} />
-        </defs>
-        <circle cx={CX} cy={CY} r={372} stroke="currentColor" strokeWidth={0.75} opacity={0.16} vectorEffect="non-scaling-stroke" />
-        <circle cx={CX} cy={CY} r={380} stroke="currentColor" strokeWidth={0.75} opacity={0.1} vectorEffect="non-scaling-stroke" />
-        <Layer dur={210}>
-          {stamps("#lpg-mesh-a", 36, 360, (i) => (i % 2 === 0 ? 0.16 : 0.11))}
-          <Wanderer href="#lpg-mesh-a" rotate={10} dur={28} delay={-6} />
-          <Wanderer href="#lpg-mesh-a" rotate={130} dur={34} delay={-18} />
-          <Wanderer href="#lpg-mesh-a" rotate={250} dur={31} delay={-23} reverse />
-        </Layer>
-        <Layer dur={140} reverse>
-          {stamps("#lpg-mesh-b", 28, 360, () => 0.13)}
-          <Wanderer href="#lpg-mesh-b" rotate={51.4} dur={26} delay={-12} reverse />
-          <Wanderer href="#lpg-mesh-b" rotate={141.4} dur={30} delay={-20} />
-          <Wanderer href="#lpg-mesh-b" rotate={231.4} dur={38} delay={-2} reverse />
-        </Layer>
-        <Layer dur={260}>
-          {stamps("#lpg-mesh-e", 18, 360, () => 0.1)}
-          <Wanderer href="#lpg-mesh-e" rotate={40} dur={44} delay={-25} dash={6} />
-          <Wanderer href="#lpg-mesh-e" rotate={220} dur={36} delay={-9} dash={6} reverse />
-        </Layer>
-      </svg>
-    </div>
-  );
-}
-
 const OUTER_SHAPES = [
   offsetRingPath(135, -230, 200),
   twistedLoopPath(335, 62, 0.58, 200),

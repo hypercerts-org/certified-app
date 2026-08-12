@@ -79,6 +79,13 @@ export async function POST(req: NextRequest) {
       identityLines.push("  (anonymous — not signed in, no email provided)");
     }
 
+    // Internal notification to the team ONLY. We deliberately do NOT send a
+    // user-facing confirmation/auto-reply: `email` and `message` are both
+    // attacker-controllable and not tied to the authenticated account, so
+    // echoing the message body to an arbitrary recipient would turn this into
+    // a reflected-content phishing mailer. The support address is a fixed
+    // constant; the caller-supplied email only rides along as an internal
+    // identity line + Reply-To header, never as a `to:` recipient.
     await resend.emails.send({
       from: FROM_EMAIL,
       to: SUPPORT_EMAIL,
@@ -93,33 +100,6 @@ export async function POST(req: NextRequest) {
       ].join("\n"),
       ...(email ? { replyTo: email } : {}),
     });
-
-    // ---- Thank-you email to the user ----------------------------------
-    // Only sent if they provided an email address. Greet by handle
-    // when we have one so it feels like a reply rather than a form
-    // letter.
-    if (email) {
-      const greeting = handle ? `Hi @${handle},` : "Hi there,";
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: email,
-        subject: "Thank you for your feedback to Certified",
-        text: [
-          greeting,
-          "",
-          "Thank you for sharing your feedback with us!",
-          "",
-          "We've received the following message:",
-          "",
-          `"${message}"`,
-          "",
-          "We appreciate your input and will review it carefully.",
-          "",
-          "Best regards,",
-          "The Certified Team",
-        ].join("\n"),
-      });
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

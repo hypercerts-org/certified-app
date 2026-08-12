@@ -7,7 +7,7 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
 import { createEndorsementAward } from "@/lib/atproto/badges"
 
 interface NewEndorsementPanelProps {
@@ -265,9 +265,12 @@ interface RecipientRowProps {
  *  badge on the right, with an X to remove if not yet submitted. */
 function RecipientRow({ did, handle, status, canRemove, onRemove }: RecipientRowProps) {
   const { info } = useAuthorInfo(did)
-  const displayName = info?.displayName || info?.handle || handle || did
-  const resolvedHandle = info?.handle && info.handle !== info.did ? info.handle : handle
-  const initials = getInitials(info?.displayName, did)
+  // The caller-supplied `handle` (typed into the recipient picker)
+  // backfills the chain while the resolver hasn't caught up yet.
+  const identity = deriveIdentity(info, did, { fallbackLabel: handle })
+  const displayName = identity.displayName
+  const resolvedHandle = identity.handle ?? handle
+  const initials = identity.initials
 
   return (
     <li className="endorsement-multi-row">

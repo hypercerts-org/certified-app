@@ -77,7 +77,7 @@ function extractLocationString(location: unknown): string | null {
 
 /** Try to parse common coordinate formats into a `{lat, lng}` pair.
  *  Returns null if the format isn't supported or the value is malformed. */
-export function parseLocationCoords(
+function parseLocationCoords(
   locationType: string | undefined,
   location: unknown
 ): LatLng | null {

@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Visualization from "@/components/visualization/visualization"
 
 export const metadata: Metadata = {
-  title: "Endorsement network — Certified",
+  title: "Endorsement network",
   description:
     "An interactive graph of the connections created through endorsements across the Certified network.",
 }

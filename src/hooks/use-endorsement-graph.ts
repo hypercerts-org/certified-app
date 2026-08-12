@@ -154,15 +154,15 @@ async function fetchAllAwards(
   let cursor: string | null = null
   let truncated = false
   while (out.length < SAFETY_CAP) {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "AllEndorsements",
-        variables: { badgeType, first: PAGE_SIZE, after: cursor },
-      }),
-      signal,
+    // GET contract: same response body as the POST form, with the
+    // operation variables carried as query params.
+    const params = new URLSearchParams({
+      op: "AllEndorsements",
+      badgeType,
+      first: String(PAGE_SIZE),
     })
+    if (cursor) params.set("after", cursor)
+    const res = await fetch(`${INDEXER_PROXY_URL}?${params.toString()}`, { signal })
     if (!res.ok) {
       let detail = ""
       try {
@@ -267,11 +267,18 @@ async function buildGraph(signal?: AbortSignal): Promise<EndorsementGraph> {
     allDids.add(e.target)
   }
   const allDidList = [...allDids]
+  const chunks: string[][] = []
   for (let i = 0; i < allDidList.length; i += PROFILE_CHUNK) {
-    if (signal?.aborted) throw new DOMException("aborted", "AbortError")
-    const chunk = allDidList.slice(i, i + PROFILE_CHUNK)
-    const resolved = await fetchNetworkActorsByDids(chunk, signal)
-    for (const actor of resolved) {
+    chunks.push(allDidList.slice(i, i + PROFILE_CHUNK))
+  }
+  // Chunks are independent indexer calls — run them in parallel. Merge
+  // order is irrelevant: entries are keyed by DID and chunks are disjoint.
+  const chunkResults = await Promise.all(
+    chunks.map((chunk) => fetchNetworkActorsByDids(chunk, signal)),
+  )
+  if (signal?.aborted) throw new DOMException("aborted", "AbortError")
+  for (const actors of chunkResults) {
+    for (const actor of actors) {
       profiles.set(actor.did, {
         handle: handleByDid.get(actor.did) ?? null,
         displayName: actor.displayName,

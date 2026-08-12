@@ -20,6 +20,7 @@
  */
 
 import { authFetch } from "@/lib/auth/fetch"
+import { rkeyFromUri } from "@/lib/urls"
 import { extractError } from "@/lib/utils/api"
 import { writeToRepo } from "@/lib/atproto/repo-write"
 
@@ -42,11 +43,6 @@ export interface FollowRecord {
 interface ListRecordsResponse<T> {
   cursor?: string
   records: { uri: string; cid: string; value: T }[]
-}
-
-function extractRkey(uri: string): string {
-  const idx = uri.lastIndexOf("/")
-  return idx >= 0 ? uri.slice(idx + 1) : uri
 }
 
 /**
@@ -240,7 +236,7 @@ export async function listFollowing(
       out.push({
         uri: r.uri,
         cid: r.cid,
-        rkey: extractRkey(r.uri),
+        rkey: rkeyFromUri(r.uri),
         value: r.value,
       })
     }

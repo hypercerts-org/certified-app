@@ -1,11 +1,12 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
-import { profileUrl } from "@/lib/urls"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { getInitials } from "@/lib/utils/initials"
+import { deriveIdentity } from "@/lib/utils/identity"
+import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 
 /**
@@ -25,24 +26,22 @@ import type { NetworkActor } from "@/lib/atproto/workspace"
  * (the `NetworkActor` carries only the DID + a display name from the
  * Certified actor record, which is sparse).
  */
-export default function ExploreUserCard({
+function ExploreUserCard({
   actor,
 }: {
   actor: NetworkActor
 }) {
   const { info } = useAuthorInfo(actor.did)
-  // Prefer the Certified-record display name, fall back to the
-  // Bluesky profile name, fall back to the handle, fall back to a
-  // truncated DID.
-  const displayName =
-    actor.displayName || info?.displayName || info?.handle || truncateDid(actor.did)
-  const handle = info?.handle ?? null
-  const avatarUrl = actor.avatarUrl || info?.avatarUrl || null
+  // Record-level name/avatar (from the Certified actor record) outrank
+  // the resolved Bluesky profile; unresolved DIDs fall back to the
+  // truncated form. The profile href prefers the handle so the URL is
+  // readable.
+  const { displayName, handle, initials, profileHref, avatarUrl } =
+    deriveIdentity(info, actor.did, {
+      preferredName: actor.displayName,
+      preferredAvatarUrl: actor.avatarUrl,
+    })
   const description = actor.description ?? null
-  const initials = getInitials(displayName, handle)
-  // Profile route accepts either a handle or a DID in the [handle]
-  // slot — prefer the handle so the URL is readable.
-  const profileHref = profileUrl(handle || actor.did)
 
   return (
     <Link href={profileHref} className="explore-user-card">
@@ -73,6 +72,4 @@ export default function ExploreUserCard({
   )
 }
 
-function truncateDid(did: string): string {
-  return did.length > 24 ? `${did.slice(0, 16)}…${did.slice(-6)}` : did
-}
+export default memo(ExploreUserCard)

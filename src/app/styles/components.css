@@ -16,39 +16,6 @@
   align-items: center;
 }
 
-/* ========== "More" link ==========
-
-   Shared affordance used wherever a truncated / summarised piece
-   of content links to its full view (project / cert short
-   description → long description tab, etc.). Right-aligned to the
-   content edge so it sits at the predictable "continue reading"
-   spot. Quiet underlined text — never a button. */
-.more-link-row {
-  /* Sits flush against the preceding paragraph (no top margin) so
-     "more" is the immediate next line under the truncated content.
-     Bottom margin creates the breathing room before whatever
-     section follows. */
-  margin: 0 0 16px;
-  font-size: 0.875rem;
-  text-align: right;
-}
-
-.more-link {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.more-link:hover {
-  text-decoration-thickness: 2px;
-}
-
-.more-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
 /* ========== Micro-interactions ========== */
 
 /* Press feedback — applied to interactive cards and buttons via utility class */
@@ -76,7 +43,7 @@
 }
 
 .delete-record-dialog__warning strong {
-  color: var(--color-error, #b91c1c);
+  color: var(--color-error);
 }
 
 .delete-record-dialog__field {
@@ -123,14 +90,14 @@
 
 .delete-record-dialog__input:focus {
   outline: none;
-  border-color: var(--color-error, #b91c1c);
-  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px var(--color-error-ring);
 }
 
 .delete-record-dialog__error {
   margin: 0 0 12px 0;
   font-size: 0.8125rem;
-  color: var(--color-error, #b91c1c);
+  color: var(--color-error);
 }
 
 .delete-record-dialog__actions {
@@ -176,7 +143,7 @@
   overflow-y: auto;
   background: var(--bg-elevated);
   border-radius: var(--radius);
-  box-shadow: 0 24px 64px var(--navy-overlay-30);
+  box-shadow: var(--shadow-modal);
   border: 1px solid var(--border-default);
   animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -396,46 +363,9 @@
   border-color: var(--fg-muted);
 }
 
-/* Mobile bottom sheet for feedback (reuses .bottom-sheet base classes) */
-.feedback-bottom-sheet__backdrop {
-  display: none;
-}
-
-.feedback-bottom-sheet {
-  display: none;
-}
-
 @media (max-width: 799px) {
   .feedback-modal__backdrop--desktop {
     display: none;
-  }
-
-  .feedback-bottom-sheet__backdrop {
-    display: block;
-    z-index: var(--z-feedback);
-  }
-
-  .feedback-bottom-sheet {
-    display: flex;
-    z-index: var(--z-feedback-above);
-  }
-
-  .feedback-bottom-sheet .feedback-modal__textarea {
-    resize: none;
-    min-height: 80px;
-    font-size: 16px;
-  }
-
-  .feedback-bottom-sheet.bottom-sheet--expanded .feedback-modal__textarea {
-    min-height: 120px;
-  }
-
-  .feedback-bottom-sheet .feedback-modal__input {
-    font-size: 16px;
-  }
-
-  .feedback-bottom-sheet .feedback-modal__body {
-    padding: 16px 20px;
   }
 
   .feedback-modal__expand {
@@ -505,30 +435,6 @@
   gap: 8px;
 }
 
-.handle-edit__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-}
-
-.handle-edit__row > div:first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.handle-edit__suffix {
-  font-size: 0.875rem;
-  font-family: monospace;
-  color: var(--fg-muted);
-  padding: 0 0 0 2px;
-  white-space: nowrap;
-  /* Align with the input field: label height (~20px + 6px margin) + input padding */
-  margin-top: 26px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-}
-
 .username-card__switch-btns {
   display: flex;
   flex-wrap: wrap;
@@ -558,7 +464,7 @@
 }
 
 .username-card__domain-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--overlay-weak);
   border-color: var(--color-accent);
 }
 
@@ -703,11 +609,6 @@
   margin-bottom: 8px;
 }
 
-.email-section--form {
-  display: flex;
-  flex-direction: column;
-}
-
 .email-section__status--success {
   color: var(--color-success-text);
   margin-top: 4px;
@@ -719,11 +620,6 @@
   color: var(--fg-muted);
   margin-top: 4px;
   margin-bottom: 0;
-}
-
-.email-section--form .email-section__hint {
-  margin-top: 0;
-  margin-bottom: 12px;
 }
 
 .email-section__fields {
@@ -745,18 +641,6 @@
 }
 
 /* ========== Custom Domain Modal ========== */
-.domain-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--navy-overlay-70);
-  backdrop-filter: blur(8px);
-  animation: modalFadeIn 200ms ease-out;
-}
-
 .domain-modal {
   width: 90vw;
   max-width: 480px;
@@ -765,7 +649,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px var(--navy-overlay-30);
+  box-shadow: var(--shadow-modal);
   border: 1px solid var(--border-default);
   animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -999,7 +883,7 @@
 
 .domain-modal__copy-btn:hover {
   color: var(--color-accent);
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--overlay-medium);
 }
 
 /* Info box */
@@ -1031,8 +915,8 @@
   display: flex;
   gap: 10px;
   padding: 12px 14px;
-  background: rgba(220, 53, 69, 0.06);
-  border: 1px solid rgba(220, 53, 69, 0.2);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: var(--radius);
   margin-bottom: 20px;
   align-items: flex-start;
@@ -1147,7 +1031,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .domain-modal__backdrop { animation: none; }
   .domain-modal { animation: none; }
   .domain-modal__spinner { animation: none; }
 }
@@ -1304,7 +1187,7 @@
 }
 
 .settings__2fa-badge--on {
-  background: rgba(46, 204, 113, 0.1);
+  background: var(--color-success-bg);
   color: var(--color-success);
 }
 
@@ -1319,103 +1202,6 @@
   line-height: 1.6;
   color: var(--color-error);
 }
-
-/* ========== Connected Apps (/apps directory) ========== */
-.connected-apps__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.connected-apps__count {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  background: var(--bg-sunken);
-  padding: 4px 10px;
-  border-radius: var(--radius);
-}
-
-.connected-apps__list {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.connected-apps__item-wrap {
-  display: contents;
-}
-
-.connected-apps__item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  text-decoration: none;
-  color: inherit;
-  border-radius: var(--radius);
-  transition: background var(--transition-fast);
-}
-
-.connected-apps__item + .connected-apps__item {
-  border-top: 1px solid var(--border-subtle);
-}
-
-.connected-apps__item--link:hover {
-  background: var(--overlay-weak);
-}
-
-.connected-apps__item:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-}
-
-.connected-apps__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.connected-apps__logo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.connected-apps__info {
-  flex: 1;
-  min-width: 0;
-}
-
-.connected-apps__name {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0;
-}
-
-.connected-apps__desc {
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--fg-muted);
-  margin: 2px 0 0;
-}
-
-/* Tighter rows on small screens. Drop the description to keep each
-   row compact — the user can tap through for more. */
-/* (Removed a non-canonical `@media (max-width: 520px)` block that tightened
-   `.connected-apps__item` and hid `.connected-apps__desc`; the ≤799px block
-   below already does both across the whole mobile range, so it was redundant.) */
 
 /* ========== Responsive: Dashboard & Pages (≤799px / mobile) ========== */
 @media (max-width: 799px) {
@@ -1464,65 +1250,6 @@
     font-size: 1.375rem;
   }
 
-  /* Personal info: single column */
-  .personal-info__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .personal-info__field {
-    padding: 10px 0;
-    font-size: 0.8125rem;
-  }
-
-  .personal-info__field--mono {
-    font-size: 0.75rem;
-  }
-
-  /* Connected apps items: hide status text on very small screens */
-  .connected-apps__item {
-    gap: 10px;
-    padding: 12px 0;
-  }
-
-  .connected-apps__desc {
-    display: none;
-  }
-
-  /* App detail cards (connected apps page): stack */
-  .app-detail {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .app-detail__icon {
-    width: 48px;
-    height: 48px;
-  }
-
-  .app-detail__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  /* My data records: stack meta below main */
-  .my-data__record {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .my-data__record-meta {
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .my-data__did-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
   /* Edit profile: actions stack full-width on mobile (covers both <button>
      Save and <a> Cancel). Consolidated here from a separate, mostly-overridden
      520px block. */
@@ -1555,66 +1282,6 @@
   }
 
   /* Preview button: smaller on mobile */
-}
-
-/* ========== Membership Sync ========== */
-.org-sync__list {
-  display: flex;
-  flex-direction: column;
-}
-
-.org-sync__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.org-sync__item:last-child {
-  border-bottom: none;
-}
-
-.org-sync__item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.org-sync__item-handle {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-}
-
-.org-sync__item-did {
-  font-size: 0.6875rem;
-  font-family: monospace;
-  color: var(--fg-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 2px;
-}
-
-.org-sync__badge {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  padding: 4px 10px;
-  border-radius: var(--radius);
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.org-sync__badge--removed {
-  color: var(--color-error);
-  background: rgba(186, 26, 26, 0.08);
-}
-
-.org-sync__badge--changed {
-  color: var(--color-accent);
-  background: var(--bg-canvas);
 }
 
 /* ========== Pagination ========== */
@@ -1660,14 +1327,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .image-edit-overlay__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(17, 17, 17, 0.78);
+  background: var(--scrim-pill);
   color: var(--color-white);
   border: none;
   border-radius: 999px;
@@ -1681,7 +1348,7 @@
 }
 
 .image-edit-overlay__btn:hover {
-  background: rgba(17, 17, 17, 0.92);
+  background: var(--scrim-pill-hover);
 }
 
 .image-edit-overlay__btn:disabled {
@@ -1712,7 +1379,7 @@
      text must be a fixed dark too: --color-primary is invariant. Using
      --fg-primary here made it white-on-white in dark mode, where
      --fg-primary flips to near-white. */
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--scrim-pill-ghost);
   color: var(--color-primary);
 }
 
@@ -2263,7 +1930,7 @@
 
 .onboarding-step__progress--done {
   border-color: var(--color-success);
-  background: rgba(46, 204, 113, 0.05);
+  background: color-mix(in srgb, var(--color-success) 5%, transparent);
 }
 
 .onboarding-step__progress strong {
@@ -2453,7 +2120,7 @@
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-sunken);
-  box-shadow: 0 0 0 3px var(--bg-elevated), 0 6px 18px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 3px var(--bg-elevated), var(--shadow-md);
   margin-bottom: 20px;
 }
 

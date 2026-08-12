@@ -7,7 +7,6 @@
 import {
   parseAtUri as parseAtUriImpl,
   recordUrl,
-  typeForCollection,
   type ParsedAtUri,
 } from "@/lib/urls"
 
@@ -28,12 +27,4 @@ export function parseActivityUri(uri: string): ParsedActivityUri | null {
  */
 export function activityDetailHref(did: string, rkey: string): string {
   return recordUrl(did, "activity", rkey)
-}
-
-/** Convenience: go from an at:// URI straight to the detail URL. */
-export function activityDetailHrefFromUri(uri: string): string | null {
-  const parsed = parseAtUriImpl(uri)
-  if (!parsed) return null
-  if (typeForCollection(parsed.collection) !== "activity") return null
-  return activityDetailHref(parsed.did, parsed.rkey)
 }

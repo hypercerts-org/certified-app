@@ -389,6 +389,12 @@
 
 .home-feed__item {
   border-bottom: 1px solid var(--border-subtle);
+  /* Skip layout/paint for offscreen rows — the feed's auto-loop can
+     accumulate hundreds of items. The intrinsic estimate is a mixed
+     average (compact endorsement rows dominate; image cards are
+     re-measured once rendered via the `auto` keyword). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
 }
 
 .home-feed__item:last-child {

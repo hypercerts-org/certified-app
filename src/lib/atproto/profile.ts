@@ -9,6 +9,11 @@ import {
 import { authFetch } from "@/lib/auth/fetch";
 import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
 import { writeToRepo } from "@/lib/atproto/repo-write";
+import {
+  ALLOWED_DOCUMENT_CONTENT_TYPES,
+  BLOB_PURPOSE_ATTACHMENT,
+  BLOB_PURPOSE_PARAM,
+} from "@/lib/atproto/blob-types";
 
 const COLLECTION = "app.certified.actor.profile";
 const BSKY_COLLECTION = "app.bsky.actor.profile";
@@ -158,20 +163,26 @@ export interface UploadedBlob {
  *
  * @param file - The file to upload
  * @param options.targetDid - Optional group DID to upload on behalf of
+ * @param options.attachment - Upload as a document attachment rather than
+ *   an image (widens the accepted MIME set on both client and server)
  * @returns The blob reference, typed as UploadedBlob
  */
 export async function uploadBlob(
   file: File,
-  options?: { targetDid?: string; allowAnyType?: boolean }
+  options?: { targetDid?: string; attachment?: boolean }
 ): Promise<UploadedBlob> {
   // Validate file type. Image-only by default (avatars, banners, hero
-  // images, rich-text embeds); `allowAnyType` opts out for surfaces that
-  // accept arbitrary file attachments (e.g. update `content[]` blobs).
-  // The upload itself is type-agnostic — it streams the raw bytes — so
-  // skipping the check is safe; the PDS enforces its own size limits.
-  if (!options?.allowAnyType && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  // images, rich-text embeds); `attachment` selects the wider document
+  // set for surfaces that take file attachments (update `content[]`
+  // blobs). This check mirrors the server's — BOTH upload routes enforce
+  // their own MIME allowlist and 415 on a mismatch, so the client cannot
+  // opt out of validation, only choose which set applies.
+  const allowedTypes = options?.attachment
+    ? [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_CONTENT_TYPES]
+    : ALLOWED_IMAGE_TYPES;
+  if (!allowedTypes.includes(file.type)) {
     throw new Error(
-      `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_IMAGE_TYPES.join(", ")}`
+      `Invalid file type: ${file.type}. Allowed types: ${allowedTypes.join(", ")}`
     );
   }
 
@@ -179,9 +190,15 @@ export async function uploadBlob(
   // Group upload path: hits the BFF route that calls
   // app.certified.group.repo.uploadBlob via the proxied agent. The
   // response shape is { blob: UploadedBlob } — same as the XRPC route.
-  const url = options?.targetDid
+  const base = options?.targetDid
     ? `/api/groups/${encodeURIComponent(options.targetDid)}/upload-blob`
     : "/api/xrpc/com/atproto/repo/uploadBlob";
+  // uploadBlob's body is raw bytes and its Content-Type header carries
+  // the file's own MIME, so the image-vs-attachment selector rides on
+  // the querystring. Both routes read it.
+  const url = options?.attachment
+    ? `${base}?${BLOB_PURPOSE_PARAM}=${BLOB_PURPOSE_ATTACHMENT}`
+    : base;
   const res = await authFetch(url, {
     method: "POST",
     headers: { "Content-Type": file.type },

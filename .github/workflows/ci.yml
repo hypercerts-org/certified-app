@@ -33,3 +33,6 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Build
+        run: COOKIE_SECRET="$(openssl rand -hex 32)" npm run build

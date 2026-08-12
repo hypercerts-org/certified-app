@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import Explore from "@/components/explore-page/explore"
 
 export const metadata: Metadata = {
-  title: "Explore — Certified",
+  title: "Explore",
   description:
     "Browse users, projects, and activities across the Certified network.",
   openGraph: {

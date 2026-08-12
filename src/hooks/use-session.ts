@@ -36,7 +36,15 @@ export function updateCachedSessionEmail(email: string): void {
 function fetchSession(): Promise<SessionData> {
   if (cachedPromise) return cachedPromise;
   cachedPromise = authFetch("/api/xrpc/com/atproto/server/getSession")
-    .then((res) => (res.ok ? res.json() : null))
+    .then((res) => {
+      // Treat a non-OK status (500/503/401/…) like a network error: throw
+      // so the .catch below resets cachedPromise (and does NOT cache the
+      // null result), letting the next mount retry once the endpoint
+      // recovers. Returning null here would pin cachedResult to
+      // {null,null} for the life of the page.
+      if (!res.ok) throw new Error(`getSession failed: ${res.status}`);
+      return res.json();
+    })
     .then((data: { handle?: string; email?: string } | null) => {
       const result: SessionData = {
         handle: data?.handle ?? null,
@@ -85,31 +93,34 @@ export function useSession(): {
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Adjust state during render when the auth state flips, re-running the
+  // initializer expressions. Without this, long-lived components that
+  // mounted while signed in keep returning the previous user's
+  // handle/email after sign-out — the initial-state expressions only run
+  // on FRESH mounts. Also covers the cached-result fast path on sign-in.
+  const [prevIsAuthenticated, setPrevIsAuthenticated] =
+    useState(isAuthenticated);
+  if (prevIsAuthenticated !== isAuthenticated) {
+    setPrevIsAuthenticated(isAuthenticated);
+    setHandle(isAuthenticated ? (cachedResult?.handle ?? null) : null);
+    setEmail(isAuthenticated ? (cachedResult?.email ?? null) : null);
+    setError(null);
+    setIsLoading(isAuthenticated && cachedResult === null);
+  }
+
   useEffect(() => {
     if (!isAuthenticated) {
+      // The module-cache clears must stay in the effect — mutating
+      // module state during render is impure. The state resets live in
+      // the render adjust above.
       cachedPromise = null;
       cachedResult = null;
-      // Without these, long-lived components that mounted while
-      // signed in keep returning the previous user's handle/email
-      // after sign-out — the initial-state expressions at the top
-      // of the hook only gate on `isAuthenticated` for FRESH mounts,
-      // not existing ones.
-      setHandle(null);
-      setEmail(null);
-      setError(null);
-      setIsLoading(false);
       return;
     }
 
-    // Already have a cached result — use it immediately
-    if (cachedResult) {
-      setHandle(cachedResult.handle);
-      setEmail(cachedResult.email);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
+    // On a cache hit fetchSession() returns the already-resolved shared
+    // promise, so this also covers a fill that races mount-to-effect;
+    // the async sets bail out when nothing changed.
     fetchSession()
       .then((data) => {
         setHandle(data.handle);

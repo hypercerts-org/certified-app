@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { MapPin, Plus, X, FolderGit2 } from "lucide-react"
@@ -12,7 +12,7 @@ import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
@@ -54,8 +54,6 @@ import LocationPickerDialog, {
  *                          detail page's own location editor)
  *     - avatar            (deferred; banner covers the hero slot)
  */
-
-const AT_URI_RE = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/
 
 interface SelectedCert {
   uri: string
@@ -280,11 +278,10 @@ export default function CreateProjectPage() {
       }
 
       const uri: unknown = data?.uri
-      const match = typeof uri === "string" ? AT_URI_RE.exec(uri) : null
-      if (match) {
-        const [, ownerDid, , rkey] = match
+      const parsed = typeof uri === "string" ? parseAtUri(uri) : null
+      if (parsed) {
         router.push(
-          recordUrl(ownerDid, "project", rkey),
+          recordUrl(parsed.did, "project", parsed.rkey),
         )
       } else {
         router.push("/")

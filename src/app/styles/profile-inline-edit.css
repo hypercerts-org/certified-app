@@ -24,7 +24,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(17, 17, 17, 0.78);
+  background: var(--scrim-pill);
   color: var(--color-white);
   border: none;
   border-radius: 999px;
@@ -35,11 +35,11 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background var(--transition-fast);
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .profile-sidebar__avatar-edit-btn:hover {
-  background: rgba(17, 17, 17, 0.92);
+  background: var(--scrim-pill-hover);
 }
 
 .profile-sidebar__avatar-edit-btn:focus-visible {
@@ -190,14 +190,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .profile-banner-upload__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(17, 17, 17, 0.78);
+  background: var(--scrim-pill);
   color: var(--color-white);
   border: none;
   border-radius: 999px;
@@ -211,7 +211,7 @@
 }
 
 .profile-banner-upload__btn:hover {
-  background: rgba(17, 17, 17, 0.92);
+  background: var(--scrim-pill-hover);
 }
 
 /* Quiet variant for the Remove action — same shape, lower-contrast
@@ -221,7 +221,7 @@
   /* Fixed near-white surface (sits over the banner image) → text must be
      a fixed dark. --color-primary is invariant; --fg-primary flipped to
      near-white in dark mode, giving white-on-white. */
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--scrim-pill-ghost);
   color: var(--color-primary);
 }
 

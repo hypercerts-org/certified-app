@@ -90,7 +90,7 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[71] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_0.3s_ease-out] max-[799px]:transition-[max-height] max-[799px]:duration-300 max-[799px]:ease-out"
+    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_0.3s_ease-out] max-[799px]:transition-[max-height] max-[799px]:duration-300 max-[799px]:ease-out"
   // `.bottom-sheet--expanded` raises the cap to 92vh.
   const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
   const sheetClassName = `${sheetBase}${sheetExpandedClass}${
@@ -120,7 +120,9 @@ export default function BottomSheet({
   return createPortal(
     <>
       <div
-        className="bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--navy-overlay-30)] max-[799px]:z-[70] max-[799px]:animate-[bottomSheetFadeIn_0.2s_ease-out]"
+        // Backdrop ties with the sheet at --z-portal-sheet; it renders first
+        // in this portal fragment, so DOM order keeps it underneath.
+        className="bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--navy-overlay-30)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:animate-[bottomSheetFadeIn_0.2s_ease-out]"
         onClick={onClose}
         aria-hidden="true"
       />

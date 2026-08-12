@@ -112,28 +112,46 @@ export function useHyperboard(
         }
 
         const resolved = new Map<string, ResolvedContributorProfile>()
+        const displayProfiles = new Map<string, DisplayProfileRecord>()
+
+        // Per-DID displayProfile fetch, deduped within this run so two
+        // identities resolving to the same DID share one request.
+        const displayProfileLoads = new Map<string, Promise<void>>()
+        const loadDisplayProfile = (did: string): Promise<void> => {
+          let p = displayProfileLoads.get(did)
+          if (!p) {
+            p = fetchDisplayProfile(did).then((dp) => {
+              if (dp) displayProfiles.set(did, dp)
+            })
+            displayProfileLoads.set(did, p)
+          }
+          return p
+        }
+
+        // Pipeline per identity instead of two global barriers: a
+        // bare-DID identity needs no resolution, so its displayProfile
+        // fetch starts immediately (concurrent with its actor-profile
+        // resolution) rather than waiting behind the slowest handle
+        // resolution + the resolve-dids batch window. Handle
+        // identities chain their displayProfile fetch off the resolve
+        // result. First load drops from max(resolve)+max(display) to
+        // the max over per-identity pipelines.
         await Promise.all(
           [...idStrings].map(async (s) => {
-            const r = await loadResolvedProfile(s)
-            if (r) {
-              resolved.set(s, {
-                did: r.did,
-                displayName: r.displayName ?? null,
-                avatarUrl: r.avatar ?? null,
-              })
-            }
-          }),
-        )
-
-        // Fetch each resolved contributor's own displayProfile.
-        const dids = new Set<string>()
-        for (const r of resolved.values()) dids.add(r.did)
-        for (const s of idStrings) if (isDid(s)) dids.add(s)
-        const displayProfiles = new Map<string, DisplayProfileRecord>()
-        await Promise.all(
-          [...dids].map(async (did) => {
-            const dp = await fetchDisplayProfile(did)
-            if (dp) displayProfiles.set(did, dp)
+            const tasks: Promise<void>[] = []
+            if (isDid(s)) tasks.push(loadDisplayProfile(s))
+            tasks.push(
+              loadResolvedProfile(s).then(async (r) => {
+                if (!r) return
+                resolved.set(s, {
+                  did: r.did,
+                  displayName: r.displayName ?? null,
+                  avatarUrl: r.avatar ?? null,
+                })
+                await loadDisplayProfile(r.did)
+              }),
+            )
+            await Promise.all(tasks)
           }),
         )
 

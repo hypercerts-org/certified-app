@@ -30,3 +30,26 @@ export function formatMonthYear(iso: string): string | null {
   const m = String(date.getUTCMonth() + 1).padStart(2, "0")
   return `${y}-${m}`
 }
+
+/**
+ * Render a record's start/end date pair as a single time-period label
+ * (the shared rule used by cert rows, project cards, and the project
+ * detail page):
+ *
+ *   - both set    → "2026-01-01 – 2026-03-15"   (en dash)
+ *   - only start  → "2026-01-01 (ongoing)"
+ *   - only end    → "Until 2026-03-15"
+ *   - neither     → null (caller skips the row)
+ */
+export function formatTimePeriod(
+  start: string | null,
+  end: string | null,
+): string | null {
+  if (!start && !end) return null
+  const s = start ? formatShortDate(start) : null
+  const e = end ? formatShortDate(end) : null
+  if (s && e) return `${s} – ${e}`
+  if (s) return `${s} (ongoing)`
+  if (e) return `Until ${e}`
+  return null
+}

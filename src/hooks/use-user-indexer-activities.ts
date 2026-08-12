@@ -217,8 +217,14 @@ function mergeBucket(
 ): BucketState {
   const nextDids = new Map(prev.dids)
   data.dids.forEach((d, uri) => nextDids.set(uri, d))
+  // Drop records already present from a prior page (the indexer can
+  // return an overlapping edge across a cursor boundary), preventing
+  // duplicate rows and duplicate React keys. Matches the sibling
+  // pagination hooks (use-home-feed, use-explore).
+  const seen = new Set(prev.records.map((r) => r.uri))
+  const append = data.records.filter((r) => !seen.has(r.uri))
   return {
-    records: [...prev.records, ...data.records],
+    records: [...prev.records, ...append],
     dids: nextDids,
     cursor: data.endCursor,
     hasMore: data.hasMore,

@@ -74,6 +74,7 @@ export async function establish(
 
   const res = await fetch(`${pdsUrl}/xrpc/com.atproto.server.createSession`, {
     method: "POST",
+    redirect: "error",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       identifier: groupDid,
@@ -157,6 +158,7 @@ export async function end(callerDid: string, groupDid: string): Promise<void> {
     try {
       await fetch(`${session.pdsUrl}/xrpc/com.atproto.server.deleteSession`, {
         method: "POST",
+        redirect: "error",
         headers: { Authorization: `Bearer ${session.refreshJwt}` },
       })
     } catch (err) {
@@ -191,6 +193,7 @@ export async function callPds(
 
   const response = await fetch(`${session.pdsUrl}/xrpc/${nsid}`, {
     method: init?.method ?? "GET",
+    redirect: "error",
     headers,
     ...(init?.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
   })

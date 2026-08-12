@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import Workspace from "@/components/workspace/workspace"
 
 export const metadata: Metadata = {
-  title: "Workspace — Certified",
+  title: "Workspace",
   description:
     "Compare navigation structures for stepping between the network, actors, and per-lexicon listings.",
 }

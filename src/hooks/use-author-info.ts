@@ -40,17 +40,21 @@ export function useAuthorInfo(did: string | null): {
   const [isLoading, setIsLoading] = useState(!!did)
   const [error, setError] = useState<string | null>(null)
 
+  // Reset to the initializer state during render when the DID changes
+  // (React's adjust-state-during-render pattern), so the effect only
+  // contains the fetch lifecycle.
+  const [prevDid, setPrevDid] = useState(did)
+  if (prevDid !== did) {
+    setPrevDid(did)
+    setInfo(null)
+    setIsLoading(!!did)
+    setError(null)
+  }
+
   useEffect(() => {
-    if (!did) {
-      setInfo(null)
-      setIsLoading(false)
-      setError(null)
-      return
-    }
+    if (!did) return
 
     let cancelled = false
-    setIsLoading(true)
-    setError(null)
 
     fetchAuthor(did)
       .then((data) => {

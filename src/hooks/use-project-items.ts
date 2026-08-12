@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import type { ActivityRecord, ClaimActivity } from "@/lib/atproto/activity-types"
+import { fetchIndexerActivitiesByUris } from "@/lib/atproto/indexer"
+import { coerceClaimActivityValue } from "@/lib/atproto/coerce-claim-activity"
+import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
 
@@ -32,14 +34,17 @@ export interface ProjectItemResolution {
 
 /**
  * Resolve a project's `items[]` strong-refs to their underlying
- * activity records via `com.atproto.repo.getRecord`. Items that point
- * at non-activity collections (e.g. nested sub-collections) are
- * skipped so callers only get cert cards.
+ * activity records. Items that point at non-activity collections (e.g.
+ * nested sub-collections) are skipped so callers only get cert cards.
  *
- * Each item is fetched independently and surfaced as it lands; a
- * single failed item doesn't block the rest. Returns an ordered list
- * matching the input order so the project's curated ordering is
- * preserved on screen.
+ * The URIs are resolved in a single batched pass through the indexer
+ * (`fetchIndexerActivitiesByUris`, chunks of 50) rather than one PDS
+ * `getRecord` per item. Only the URIs the indexer doesn't return —
+ * not-yet-indexed records, or records on a PDS the indexer hasn't
+ * ingested — fall back to the per-URI `getRecord` proxy, preserving the
+ * cross-PDS resolution the previous fan-out relied on. Returns an
+ * ordered list matching the input order so the project's curated
+ * ordering is preserved on screen.
  */
 export function useProjectItems(items: unknown): {
   resolutions: ProjectItemResolution[]
@@ -90,56 +95,88 @@ export function useProjectItems(items: unknown): {
     setResolutions(initial)
     setIsLoading(true)
 
+    const next = [...initial]
+    const indexByUri = new Map<string, number>()
+    uriList.forEach((uri, idx) => indexByUri.set(uri, idx))
+
+    async function resolveOne(uri: string, idx: number) {
+      const parsed = parseAtUri(uri)
+      if (!parsed) {
+        next[idx] = { ...next[idx], error: "Malformed item URI" }
+        return
+      }
+      try {
+        const params = new URLSearchParams({
+          repo: parsed.did,
+          collection: parsed.collection,
+          rkey: parsed.rkey,
+        })
+        const res = await authFetch(
+          `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
+          { signal },
+        )
+        if (signal.aborted) return
+        if (!res.ok) {
+          throw new Error(
+            res.status === 404
+              ? "Activity not found"
+              : `Failed to load activity (${res.status})`,
+          )
+        }
+        const data = (await res.json()) as {
+          uri: string
+          cid: string
+          value: unknown
+        }
+        // A foreign PDS record can carry any shape — coerce the
+        // string-declared render fields before anything renders them.
+        next[idx] = {
+          ...next[idx],
+          record: {
+            uri: data.uri,
+            cid: data.cid,
+            value: coerceClaimActivityValue(data.value),
+          },
+        }
+      } catch (err) {
+        if (signal.aborted) return
+        next[idx] = {
+          ...next[idx],
+          error:
+            err instanceof Error ? err.message : "Failed to load activity",
+        }
+      }
+    }
+
     async function run() {
-      const next = [...initial]
-      await Promise.all(
-        uriList.map(async (uri, idx) => {
-          const parsed = parseAtUri(uri)
-          if (!parsed) {
-            next[idx] = { ...next[idx], error: "Malformed item URI" }
-            return
-          }
-          try {
-            const params = new URLSearchParams({
-              repo: parsed.did,
-              collection: parsed.collection,
-              rkey: parsed.rkey,
-            })
-            const res = await authFetch(
-              `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
-              { signal },
-            )
-            if (signal.aborted) return
-            if (!res.ok) {
-              throw new Error(
-                res.status === 404
-                  ? "Activity not found"
-                  : `Failed to load activity (${res.status})`,
-              )
-            }
-            const data = (await res.json()) as {
-              uri: string
-              cid: string
-              value: ClaimActivity
-            }
-            next[idx] = {
-              ...next[idx],
-              record: {
-                uri: data.uri,
-                cid: data.cid,
-                value: data.value,
-              },
-            }
-          } catch (err) {
-            if (signal.aborted) return
-            next[idx] = {
-              ...next[idx],
-              error:
-                err instanceof Error ? err.message : "Failed to load activity",
-            }
-          }
-        }),
-      )
+      // Batched pass: resolve as many URIs as the indexer knows about in
+      // ceil(N/50) requests. A wholesale indexer failure (thrown) leaves
+      // every URI to the per-URI fallback below, matching the old path.
+      let missing = uriList
+      try {
+        const { records } = await fetchIndexerActivitiesByUris(uriList, {
+          signal,
+        })
+        if (signal.aborted) return
+        const resolved = new Set<string>()
+        for (const record of records) {
+          const idx = indexByUri.get(record.uri)
+          if (idx === undefined) continue
+          next[idx] = { ...next[idx], record }
+          resolved.add(record.uri)
+        }
+        missing = uriList.filter((uri) => !resolved.has(uri))
+      } catch {
+        if (signal.aborted) return
+      }
+
+      // Fall back to a per-URI PDS getRecord only for the URIs the indexer
+      // didn't return (not-yet-indexed / cross-PDS records).
+      if (missing.length > 0) {
+        await Promise.all(
+          missing.map((uri) => resolveOne(uri, indexByUri.get(uri)!)),
+        )
+      }
       if (signal.aborted) return
       setResolutions(next)
       setIsLoading(false)

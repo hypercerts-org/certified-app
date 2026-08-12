@@ -120,6 +120,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 onClick={onClose}
                 aria-label="Certified home"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG wordmark; no optimization benefit from next/image */}
                 <img
                   src="/brand/wordmark/certified_wordmark_black.svg"
                   alt="Certified"

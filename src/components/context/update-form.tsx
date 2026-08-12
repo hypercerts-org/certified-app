@@ -3,13 +3,18 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Paperclip, X } from "lucide-react"
-import LeafletEditor from "@/components/leaflet/leaflet-editor"
+import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
 import Tooltip from "@/components/ui/tooltip"
 import { uploadBlob, buildAvatarUrlFromCid } from "@/lib/atproto/profile"
+import {
+  ATTACHMENT_ACCEPT,
+  MAX_ATTACHMENT_BYTES,
+} from "@/lib/atproto/blob-types"
+import { invalidateContextUpdates } from "@/hooks/use-context-updates"
 import {
   writeContextUpdate,
   resolveAttachment,
@@ -21,8 +26,10 @@ import {
 } from "@/lib/atproto/context-attachment"
 import type { LinearDocument } from "@/lib/leaflet/types"
 
-// Client-side cap; the PDS enforces its own hard blob limit.
-const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024
+// Client-side cap. Matches the real server ceiling — Vercel rejects
+// serverless request bodies over ~4.5MB before either upload route runs,
+// so a larger cap here would only buy a failed round-trip.
+const MAX_ATTACHMENT_SIZE = MAX_ATTACHMENT_BYTES
 // Character limit for the short summary — matches the lexicon's 300-char
 // cap (kept in sync with the count UI and the textarea maxLength).
 const SHORT_DESCRIPTION_MAX = 300
@@ -115,7 +122,7 @@ export default function UpdateForm({
     try {
       const blob = await uploadBlob(file, {
         ...(isGroupWrite ? { targetDid } : {}),
-        allowAnyType: true,
+        attachment: true,
       })
       setContent((prev) => [
         ...prev,
@@ -161,6 +168,17 @@ export default function UpdateForm({
         rkey: mode === "edit" ? rkey : undefined,
         swapRecord: mode === "edit" ? initialCid : undefined,
       })
+      // The detail pages read updates through a shared module cache
+      // (use-context-updates). This form lives on its own route, so no
+      // hook instance is mounted to refetch — mark every targeted
+      // subject stale so the page we navigate back to re-fetches
+      // instead of serving the pre-save list.
+      invalidateContextUpdates(subjectUri)
+      for (const s of subjects) {
+        if (typeof s.uri === "string" && s.uri !== subjectUri) {
+          invalidateContextUpdates(s.uri)
+        }
+      }
       router.push(backHref)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save update")
@@ -269,6 +287,7 @@ export default function UpdateForm({
         <input
           ref={fileRef}
           type="file"
+          accept={ATTACHMENT_ACCEPT}
           className="hidden"
           onChange={handleFile}
         />

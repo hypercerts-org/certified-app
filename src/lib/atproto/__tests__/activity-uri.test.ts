@@ -3,7 +3,6 @@ import {
   parseAtUri,
   parseActivityUri,
   activityDetailHref,
-  activityDetailHrefFromUri,
 } from "../activity-uri"
 
 describe("parseAtUri", () => {
@@ -76,8 +75,8 @@ describe("parseActivityUri", () => {
   })
 
   it("does NOT enforce that the collection matches activity NSID", () => {
-    // parseActivityUri is structurally identical to parseAtUri — the
-    // collection guard lives in activityDetailHrefFromUri instead.
+    // parseActivityUri is structurally identical to parseAtUri — callers
+    // that need an activity-only guard check the collection themselves.
     expect(
       parseActivityUri("at://did:plc:abc/some.other.collection/rkey1"),
     ).toEqual({
@@ -93,27 +92,5 @@ describe("activityDetailHref", () => {
     expect(activityDetailHref("did:plc:abc", "rkey1")).toBe(
       "/did:plc:abc/activity/rkey1",
     )
-  })
-})
-
-describe("activityDetailHrefFromUri", () => {
-  it("returns the detail href for a valid activity URI", () => {
-    expect(
-      activityDetailHrefFromUri(
-        "at://did:plc:abc/org.hypercerts.claim.activity/rkey1",
-      ),
-    ).toBe("/did:plc:abc/activity/rkey1")
-  })
-
-  it("returns null when the collection is not the activity NSID", () => {
-    expect(
-      activityDetailHrefFromUri(
-        "at://did:plc:abc/org.hypercerts.collection/rkey1",
-      ),
-    ).toBeNull()
-  })
-
-  it("returns null when the URI is malformed", () => {
-    expect(activityDetailHrefFromUri("not-an-at-uri")).toBeNull()
   })
 })

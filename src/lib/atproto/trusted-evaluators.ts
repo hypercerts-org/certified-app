@@ -16,7 +16,7 @@
  * list: an unreadable list yields an empty set (no expansion) rather
  * than a stale baked-in one.
  */
-import { INDEXER_PROXY_URL } from "./indexer"
+import { postIndexer } from "./indexer"
 import { authFetch } from "@/lib/auth/fetch"
 
 /**
@@ -136,20 +136,18 @@ function writePersistedCache(key: string, dids: Set<string>): void {
   }
 }
 
-interface RawResponse {
-  data?: {
-    appCertifiedBadgeAward?: {
-      edges: {
-        cursor: string
-        node: {
-          did: string
-          subject: { __typename: string; did?: string } | null
-        } | null
-      }[]
-      pageInfo: { hasNextPage: boolean; endCursor: string | null }
-    } | null
+/** GraphQL `data` payload of the EvaluatorEndorsements op. */
+interface EvaluatorEndorsementsData {
+  appCertifiedBadgeAward?: {
+    edges: {
+      cursor: string
+      node: {
+        did: string
+        subject: { __typename: string; did?: string } | null
+      } | null
+    }[]
+    pageInfo: { hasNextPage: boolean; endCursor: string | null }
   } | null
-  errors?: { message: string }[]
 }
 
 /**
@@ -244,26 +242,22 @@ async function paginateEndorsedDids(
 
   let cursor: string | null = null
   for (let page = 0; page < MAX_PAGES; page++) {
-    const res = await fetch(INDEXER_PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        operationName: "EvaluatorEndorsements",
-        variables: {
-          evaluators: [...evaluators],
-          first: PAGE_SIZE,
-          after: cursor,
-        },
-      }),
-    })
+    const variables: Record<string, unknown> = {
+      evaluators: [...evaluators],
+      first: PAGE_SIZE,
+      after: cursor,
+    }
+    const res = await postIndexer<EvaluatorEndorsementsData>(
+      "EvaluatorEndorsements",
+      variables,
+    )
     if (!res.ok) {
       throw new Error(`EvaluatorEndorsements proxy returned ${res.status}`)
     }
-    const json = (await res.json()) as RawResponse
-    if (json.errors?.length) {
-      throw new Error(`EvaluatorEndorsements: ${json.errors[0].message}`)
+    if (res.errors.length > 0) {
+      throw new Error(`EvaluatorEndorsements: ${res.errors[0].message}`)
     }
-    const conn = json.data?.appCertifiedBadgeAward
+    const conn = res.data?.appCertifiedBadgeAward
     if (!conn) break
     for (const edge of conn.edges) {
       const did = edge.node?.subject?.did

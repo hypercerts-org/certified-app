@@ -36,7 +36,14 @@ vi.mock("@/lib/atproto/did", () => ({
 vi.mock("@/lib/auth/rate-limit", () => ({
   checkAndIncrementWriteRate: vi.fn(),
   RATE_LIMITED_WRITE_COLLECTIONS: {},
+  makeLimiter: (name: string, max: number, windowSec: number) => ({
+    name,
+    max,
+    windowSec,
+  }),
+  enforceRateLimit: vi.fn(async () => null),
 }))
+vi.mock("@/lib/utils/ip", () => ({ clientIp: () => "test-ip" }))
 vi.mock("@atproto/api", () => ({ Agent: class {} }))
 
 const FOREIGN_DID = "did:plc:foreigner000000000000000"
@@ -108,7 +115,7 @@ describe("foreign-DID getBlob — Content-Length cap + fixed Cache-Control", () 
 
     expect(res.status).toBe(200)
     expect(res.headers.get("cache-control")).toBe(
-      "public, max-age=3600, immutable",
+      "public, max-age=3600, s-maxage=86400, immutable",
     )
     expect(res.headers.get("cache-control")).not.toContain("no-store")
     fetchSpy.mockRestore()

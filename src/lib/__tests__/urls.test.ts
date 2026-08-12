@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest"
 import {
   profileUrl,
   recordUrl,
-  activityUrl,
-  projectUrl,
   parseActor,
   isDid,
   isRecordType,
@@ -13,8 +11,7 @@ import {
   buildAtUri,
   parsePastedAtUri,
   recordUrlFromAtUri,
-  shareRecordUrl,
-  shareProfileUrl,
+  rkeyFromUri,
   RESERVED_ROUTES,
 } from "@/lib/urls"
 
@@ -31,17 +28,6 @@ describe("builders", () => {
     expect(recordUrl("did:plc:abc", "project", "rk")).toBe(
       "/did:plc:abc/project/rk",
     )
-    expect(activityUrl("alice.eco", "r")).toBe("/alice.eco/activity/r")
-    expect(projectUrl("alice.eco", "r")).toBe("/alice.eco/project/r")
-  })
-
-  it("share* builders force the DID form with an absolute origin", () => {
-    expect(shareProfileUrl("did:plc:abc", "https://certified.app")).toBe(
-      "https://certified.app/did:plc:abc",
-    )
-    expect(
-      shareRecordUrl("did:plc:abc", "activity", "rk", "https://certified.app"),
-    ).toBe("https://certified.app/did:plc:abc/activity/rk")
   })
 })
 
@@ -143,5 +129,26 @@ describe("at-uri parsing", () => {
 
   it("returns null when the pasted at-uri lacks a DID authority", () => {
     expect(parsePastedAtUri("/at/alice.eco/coll/rk")).toBeNull()
+  })
+})
+
+describe("rkeyFromUri", () => {
+  it("returns the trailing rkey segment of a canonical at:// URI", () => {
+    expect(
+      rkeyFromUri("at://did:plc:abc/org.hypercerts.collection/3kabc123"),
+    ).toBe("3kabc123")
+  })
+
+  it("agrees with parseAtUri on well-formed URIs", () => {
+    const uri = "at://did:plc:abc/app.certified.badge.award/rk9"
+    expect(rkeyFromUri(uri)).toBe(parseAtUri(uri)?.rkey)
+  })
+
+  it("returns the empty string for a trailing slash (falsy for || fallbacks)", () => {
+    expect(rkeyFromUri("at://did:plc:abc/coll/")).toBe("")
+  })
+
+  it("returns the input itself when there is no slash", () => {
+    expect(rkeyFromUri("bare-rkey")).toBe("bare-rkey")
   })
 })

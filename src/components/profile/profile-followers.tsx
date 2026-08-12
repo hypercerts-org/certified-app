@@ -15,6 +15,7 @@ import { useFollowers, type FollowerEntry } from "@/hooks/use-followers"
 import { useFollowing } from "@/hooks/use-following"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
+import { deriveIdentity } from "@/lib/utils/identity"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -474,7 +475,7 @@ function FollowingCard({
             rkey={record.rkey}
             targetDid={targetDid}
             subjectDisplay={
-              info?.displayName || info?.handle || record.value.subject
+              deriveIdentity(info, record.value.subject).displayName
             }
             onAfterUnfollow={onAfterUnfollow}
           />

@@ -8,6 +8,7 @@ import React, {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/hooks/use-mounted";
@@ -63,22 +64,26 @@ interface Coords {
 const GAP = 8;
 const PADDING = 8;
 
+const HOVER_QUERY = "(hover: hover) and (pointer: fine)";
+
+function subscribeHoverCapable(onChange: () => void): () => void {
+  const mq = globalThis.matchMedia?.(HOVER_QUERY);
+  if (!mq) return () => {};
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
 /**
  * True once we know the primary pointer can actually hover (mouse /
- * trackpad). Starts false — matching the SSR markup — and flips in an
- * effect, so touch devices never mount the hover listeners at all.
+ * trackpad). The server snapshot is false — matching the SSR markup —
+ * so touch devices never mount the hover listeners at all.
  */
 function useHoverCapable(): boolean {
-  const [capable, setCapable] = useState(false);
-  useEffect(() => {
-    const mq = globalThis.matchMedia?.("(hover: hover) and (pointer: fine)");
-    if (!mq) return;
-    setCapable(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setCapable(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return capable;
+  return useSyncExternalStore(
+    subscribeHoverCapable,
+    () => globalThis.matchMedia?.(HOVER_QUERY)?.matches ?? false,
+    () => false,
+  );
 }
 
 function computeCoords(
@@ -137,9 +142,12 @@ export default function Tooltip({
   }, []);
 
   const show = useCallback(() => setOpen(true), []);
+  // hide() is the only path that sets open=false, so clearing the stale
+  // coords here keeps the bubble hidden-until-measured on the next open.
   const hide = useCallback(() => {
     clearTimer();
     setOpen(false);
+    setCoords(null);
   }, [clearTimer]);
 
   const onPointerEnter = useCallback(() => {
@@ -151,10 +159,7 @@ export default function Tooltip({
 
   // Position when open; reposition on scroll/resize; hide on Esc.
   useLayoutEffect(() => {
-    if (!open) {
-      setCoords(null);
-      return;
-    }
+    if (!open) return;
     const reposition = () => {
       const trigger = wrapRef.current;
       const bubble = bubbleRef.current;

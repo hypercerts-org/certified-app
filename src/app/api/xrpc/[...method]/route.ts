@@ -21,7 +21,14 @@ import { parseJsonBody } from "@/lib/utils/api"
 import {
   checkAndIncrementWriteRate,
   RATE_LIMITED_WRITE_COLLECTIONS,
+  makeLimiter,
+  enforceRateLimit,
 } from "@/lib/auth/rate-limit"
+import { clientIp } from "@/lib/utils/ip"
+import {
+  ALLOWED_DOCUMENT_CONTENT_TYPES,
+  isAttachmentUpload,
+} from "@/lib/atproto/blob-types"
 
 // INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
 // (certified-app invariant) — writing it clobbers the user's Bluesky profile.
@@ -68,6 +75,13 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "org.hyperboards.board",
   "org.hyperboards.displayProfile",
   "org.hypercerts.claim.contributorInformation",
+  // Activity/project updates. An "update" is a context attachment with
+  // `contentType: "update"` — there is no separate update lexicon. Written
+  // own-repo from the update form (create / edit / delete all route through
+  // the three REPO_METHODS below); group-owned updates instead go through
+  // the BFF route at `/api/groups/[groupDid]/update`, which allowlists this
+  // same NSID itself.
+  "org.hypercerts.context.attachment",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
@@ -77,27 +91,86 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
   "image/gif",
 ]
 
+// Attachment surfaces (update `content[]` blobs, flagged with
+// `?purpose=attachment`) additionally accept documents. Everything else
+// stays image-only, so a PDF can never land as an avatar or banner.
+const ALLOWED_ATTACHMENT_BLOB_CONTENT_TYPES = [
+  ...ALLOWED_BLOB_CONTENT_TYPES,
+  ...ALLOWED_DOCUMENT_CONTENT_TYPES,
+]
+
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
 
 // Ceiling for foreign-DID blob reads. An allowlisted-but-hostile PDS
 // could otherwise stream an arbitrarily large body for an attacker-
-// chosen DID's CID through our proxy. We only short-circuit on a
-// declared Content-Length over this cap; a missing/lying length is
-// out of scope (we don't wrap the stream to count bytes).
+// chosen DID's CID through our proxy. We short-circuit on a declared
+// Content-Length over this cap AND wrap the response stream in a byte
+// counter that aborts once the cap is passed, so a missing/lying length
+// can't stream unbounded.
 const MAX_FOREIGN_BLOB_SIZE = 10 * 1024 * 1024 // 10MB
+
+// IP-scoped limiter for the unauthenticated GET proxy. This handler
+// resolves an arbitrary client-supplied repo/did to a PDS and issues an
+// upstream fetch (getRecord / listRecords / sync.getBlob) for signed-out
+// callers, so it needs its own ceiling — every other outbound-fetching
+// proxy route (resolve-did, indexer, geocode, …) has one. Sized
+// generously (300/60s) for feed/profile fan-out from a single client.
+const GET_LIMITER = makeLimiter("xrpc-get-ip", 300, 60)
 
 /**
  * Fixed Cache-Control for foreign-DID blob reads. CIDs are content-
  * addressed and immutable, so we own the directive rather than
  * forwarding the upstream PDS's (which an attacker-chosen, hostile
  * PDS controls). Mirrors the FOREIGN_READ_CACHE_HEADERS pattern.
+ * `s-maxage` lets the Vercel edge serve repeat visitors without a
+ * function invocation (max-age alone is browser-only there); 24h
+ * bounds takedown latency for deleted blobs, so no longer-lived
+ * CDN directive.
  */
 const FOREIGN_BLOB_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=3600, immutable",
+  "Cache-Control": "public, max-age=3600, s-maxage=86400, immutable",
+} as const
+
+/**
+ * Same-session blob reads went through the bound OAuth agent, so keep
+ * them out of shared caches — but the cid in the URL still makes the
+ * bytes immutable, so let the browser keep the user's own avatar /
+ * banner instead of re-streaming it through a full agent restore on
+ * every mount.
+ */
+const SAME_SESSION_BLOB_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=3600, immutable",
 } as const
 
 function asString(v: unknown): string | undefined {
   return typeof v === "string" ? v : undefined
+}
+
+/**
+ * Wrap a response body stream in a byte counter that errors the stream
+ * once `maxBytes` have passed through, independent of any declared
+ * Content-Length. A hostile-but-allowlisted PDS can omit or understate
+ * the header and stream an unbounded body for an attacker-chosen CID;
+ * this caps the bytes we proxy regardless. Returns null unchanged when
+ * the upstream has no body.
+ */
+function capStream(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): ReadableStream<Uint8Array> | null {
+  if (!body) return null
+  let total = 0
+  const counter = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      total += chunk.byteLength
+      if (total > maxBytes) {
+        controller.error(new Error("Foreign blob exceeded size cap"))
+        return
+      }
+      controller.enqueue(chunk)
+    },
+  })
+  return body.pipeThrough(counter)
 }
 
 /**
@@ -218,7 +291,7 @@ async function proxyPublicGetRecord(
   try {
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
-      { signal: AbortSignal.timeout(10_000) }
+      { redirect: "error", signal: AbortSignal.timeout(10_000) }
     )
     if (!upstream.ok) {
       return NextResponse.json(
@@ -267,6 +340,7 @@ async function proxyPublicListRecords(
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
       {
+        redirect: "error",
         headers: { "Content-Type": "application/json" },
         // Abort after 10s so a slow PDS doesn't block our handler.
         signal: AbortSignal.timeout(10_000),
@@ -308,7 +382,7 @@ async function proxyPublicGetBlob(
     const params = new URLSearchParams({ did: blobDid, cid })
     const upstream = await fetch(
       `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
-      { signal: AbortSignal.timeout(15_000) }
+      { redirect: "error", signal: AbortSignal.timeout(15_000) }
     )
     if (!upstream.ok) {
       return NextResponse.json(
@@ -316,14 +390,13 @@ async function proxyPublicGetBlob(
         { status: upstream.status }
       )
     }
-    // Trust posture: short-circuit a *declared* oversize before streaming.
-    // A missing/lying Content-Length is out of scope (we don't wrap the
-    // stream to enforce the cap byte-by-byte).
+    // Short-circuit a *declared* oversize before streaming — cheap fast
+    // path when the PDS is honest about a large body.
     const upstreamLength = upstream.headers.get("content-length")
     if (upstreamLength && Number(upstreamLength) > MAX_FOREIGN_BLOB_SIZE) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 })
     }
-    return new NextResponse(upstream.body, {
+    return new NextResponse(capStream(upstream.body, MAX_FOREIGN_BLOB_SIZE), {
       status: 200,
       headers: {
         "Content-Type":
@@ -345,33 +418,46 @@ export async function GET(
   { params }: { params: Promise<{ method: string[] }> }
 ) {
   try {
+    // Rate-limit first: this handler is reachable unauthenticated and
+    // resolves a client-supplied repo/did to a PDS it then fetches, so
+    // block floods (SSRF / amplification fan-out) before any upstream
+    // work. IP-scoped; fail-open on a limiter backend error (handled
+    // inside enforceRateLimit). Run the session lookup concurrently —
+    // both are independent Upstash round-trips, and the limiter INCRs
+    // regardless, so discarding the session result on the (rare)
+    // denied path changes no semantics.
+    const [rateDenied, did] = await Promise.all([
+      enforceRateLimit(GET_LIMITER, clientIp(request)),
+      getSessionDid(),
+    ])
+    if (rateDenied) return rateDenied
+
     const { method } = await params
     const methodName = method.join(".")
 
-    const did = await getSessionDid()
+    if (!did && !PUBLIC_READ_METHODS.has(methodName)) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
 
-    // Try to build a bound agent if we have a session — it's nice to
-    // have for methods that target the user's own repo (avoids a
-    // roundtrip through resolvePdsUrl). Not having one is fine for the
-    // public read methods below, which will always federate via plain
-    // fetch against the target PDS.
-    let agent: Agent | null = null
-    if (did) {
+    // Lazily build the bound agent — restoring the OAuth session costs
+    // at least one Upstash round-trip plus DPoP deserialization and can
+    // trigger a token refresh, and the foreign-repo/blob branches below
+    // never touch the agent (feeds fan out dozens of those per page).
+    // Only the same-session branches and the auth-required methods pay
+    // for it. Restore failure keeps its semantics: log, drop the stale
+    // session cookie, and return null — same-session reads then fall
+    // back to the public proxy, auth-required methods 401.
+    const getAgent = async (): Promise<Agent | null> => {
+      if (!did) return null
       try {
         const client = await getOAuthClient()
         const oauthSession = await client.restore(did)
-        agent = new Agent(oauthSession)
+        return new Agent(oauthSession)
       } catch (err) {
         logSafe("[xrpc] oauth restore failed", err, { method: methodName })
         await deleteSession()
-        // If it's a public read method, we can still proceed unauth;
-        // otherwise fall through to the 401 below.
-        if (!PUBLIC_READ_METHODS.has(methodName)) {
-          return NextResponse.json({ error: "Session expired" }, { status: 401 })
-        }
+        return null
       }
-    } else if (!PUBLIC_READ_METHODS.has(methodName)) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
     // Query params come as Record<string, string> from URLSearchParams.
@@ -397,6 +483,7 @@ export async function GET(
         // no-store). If it throws (expired/unrefreshable OAuth session or
         // a transient PDS-auth error) fall back to the public read so a
         // degraded session doesn't 500 a read of the user's own record.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
@@ -430,6 +517,7 @@ export async function GET(
         // OAuth session or a transient PDS-auth error) fall back to the
         // public read so a degraded session doesn't 500 the user's own
         // Lists/Activities tabs — listRecords is a public XRPC.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.repo.listRecords({
@@ -449,15 +537,19 @@ export async function GET(
         return proxyPublicListRecords(methodName, repo, collection, queryParams)
       }
       case "com.atproto.server.getSession": {
+        // Auth-required: a cookie whose session no longer restores must
+        // still 401 (getAgent already dropped the stale cookie).
+        const agent = await getAgent()
         if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+          return NextResponse.json({ error: "Session expired" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.getSession()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
       case "com.atproto.server.listAppPasswords": {
+        const agent = await getAgent()
         if (!agent) {
-          return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+          return NextResponse.json({ error: "Session expired" }, { status: 401 })
         }
         const result = await agent.com.atproto.server.listAppPasswords()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
@@ -477,6 +569,7 @@ export async function GET(
 
         // Same-session blob → prefer the bound agent, fall back to the
         // public read if a degraded session makes it throw.
+        const agent = await getAgent()
         if (agent) {
           try {
             const result = await agent.com.atproto.sync.getBlob({ did: blobDid, cid })
@@ -485,6 +578,7 @@ export async function GET(
               headers: {
                 "Content-Type":
                   result.headers["content-type"] || "application/octet-stream",
+                ...SAME_SESSION_BLOB_CACHE_HEADERS,
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
               },
@@ -624,9 +718,14 @@ export async function POST(
       case "com.atproto.repo.uploadBlob": {
         const contentType =
           request.headers.get("content-type") || "application/octet-stream"
-        // Check content type
+        // Check content type. `?purpose=attachment` widens the set to
+        // documents; the default stays image-only. Neither set contains
+        // html/svg — see blob-types for why.
         const mimeType = contentType.split(";")[0].trim()
-        if (!ALLOWED_BLOB_CONTENT_TYPES.includes(mimeType)) {
+        const allowedTypes = isAttachmentUpload(request)
+          ? ALLOWED_ATTACHMENT_BLOB_CONTENT_TYPES
+          : ALLOWED_BLOB_CONTENT_TYPES
+        if (!allowedTypes.includes(mimeType)) {
           return NextResponse.json(
             { error: "Unsupported media type" },
             { status: 415 }

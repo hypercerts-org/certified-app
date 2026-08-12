@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarContext } from "@/lib/navbar-context";
+import { useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
@@ -49,7 +49,7 @@ const ROOT_PATHS = new Set<string>([
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
   const { pageTitle, breadcrumb, recordMenu, profileOverlay } =
-    useNavbarContext();
+    useNavbarValues();
   const { profile, avatarUrl } = useProfile();
   const { handle } = useSession();
   const pathname = usePathname();
@@ -77,6 +77,7 @@ const Navbar: React.FC = () => {
 
   // Close dropdowns on navigation
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- close dropdown/switcher on route change (external router input); both setStates bail out when already false
     setDropdownOpen(false);
     setSwitcherOpen(false);
   }, [pathname]);
@@ -85,6 +86,7 @@ const Navbar: React.FC = () => {
   // (the hamburger button and mobile sidebar unmount at ≥800px; leftover
   // `dropdownOpen` would re-open the drawer on resize back down).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear sheet/sidebar state when crossing the 800px boundary (external matchMedia input); bails out when already false
     setDropdownOpen(false);
     setSwitcherOpen(false);
   }, [isDesktop]);
@@ -335,7 +337,7 @@ const Navbar: React.FC = () => {
               </Tooltip>
             )}
           </div>
-          <div className="navbar__title">
+          <h1 className="navbar__title">
             {breadcrumb ? (
               <>
                 <Link href={breadcrumb.left.href} className="navbar__title-part">
@@ -353,7 +355,7 @@ const Navbar: React.FC = () => {
             ) : (
               pageTitle
             )}
-          </div>
+          </h1>
           <div className="navbar__right">
             {isRootLevel ? (
               rightCluster

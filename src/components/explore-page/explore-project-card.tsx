@@ -1,13 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { memo, useState } from "react"
 import { recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { FolderGit2 } from "lucide-react"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatShortDate } from "@/lib/utils/format-date"
-import type { CollectionRecord } from "@/lib/atproto/collection"
+import {
+  asString,
+  projectImage,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
 
 /**
  * Compact project card for the /explore Projects grid. Light-weight
@@ -15,7 +20,7 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * doesn't resolve items (the grid renders many cards; N-times-K item
  * resolution would be wasteful).
  */
-export default function ExploreProjectCard({
+function ExploreProjectCard({
   project,
 }: {
   project: CollectionRecord
@@ -27,20 +32,16 @@ export default function ExploreProjectCard({
     ? recordUrl(parsed.did, "project", parsed.rkey)
     : "#"
 
-  const title =
-    asString(value.title) || asString(value.name) || "Untitled project"
+  const title = projectTitle(value)
   const shortDesc = asString(value.shortDescription)
   const createdAt = asString(value.createdAt)
   const createdLabel = createdAt ? formatShortDate(createdAt) : null
 
-  const rawImage = (value as Record<string, unknown>).banner ?? value.image
+  // Wide gallery card — the image-wrap is a hero slot, so this stays
+  // banner-first (an avatar is a small square, never a hero image).
+  const rawImage = projectImage(value, "banner")
   const imageUrl =
-    rawImage && projectDid
-      ? resolveActivityImageUrl(
-          rawImage as Parameters<typeof resolveActivityImageUrl>[0],
-          projectDid,
-        )
-      : null
+    rawImage && projectDid ? resolveActivityImageUrl(rawImage, projectDid) : null
   const [imageFailed, setImageFailed] = useState(false)
   const showImage = !!imageUrl && !imageFailed
 
@@ -82,9 +83,7 @@ export default function ExploreProjectCard({
   )
 }
 
-function asString(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null
-}
+export default memo(ExploreProjectCard)
 
 function countItems(items: unknown): number {
   return Array.isArray(items) ? items.length : 0

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { formatShortDate, formatMonthYear } from "../format-date"
+import {
+  formatShortDate,
+  formatMonthYear,
+  formatTimePeriod,
+} from "../format-date"
 
 describe("formatShortDate", () => {
   it("formats a full ISO timestamp as YYYY-MM-DD in UTC", () => {
@@ -42,5 +46,25 @@ describe("formatMonthYear", () => {
   it("returns null for unparseable input", () => {
     expect(formatMonthYear("not-a-date")).toBeNull()
     expect(formatMonthYear("")).toBeNull()
+  })
+})
+
+describe("formatTimePeriod", () => {
+  it("joins both dates with an en dash", () => {
+    expect(formatTimePeriod("2026-01-01", "2026-03-15")).toBe(
+      "2026-01-01 – 2026-03-15",
+    )
+  })
+
+  it("marks a start-only period as ongoing", () => {
+    expect(formatTimePeriod("2026-01-01", null)).toBe("2026-01-01 (ongoing)")
+  })
+
+  it("renders an end-only period as Until", () => {
+    expect(formatTimePeriod(null, "2026-03-15")).toBe("Until 2026-03-15")
+  })
+
+  it("returns null when neither bound is set", () => {
+    expect(formatTimePeriod(null, null)).toBeNull()
   })
 })

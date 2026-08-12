@@ -15,12 +15,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      url: "https://certified.app/about",
-      lastModified: new Date("2026-04-07"),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
       url: "https://certified.app/help",
       lastModified: new Date("2026-06-08"),
       changeFrequency: "monthly",

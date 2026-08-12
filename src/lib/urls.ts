@@ -127,14 +127,6 @@ export function recordUrl(actor: string, type: RecordType, rkey: string): string
   return `/${actor}/${type}/${rkey}`
 }
 
-/** Convenience builders for the two concrete record types. */
-export function activityUrl(actor: string, rkey: string): string {
-  return recordUrl(actor, "activity", rkey)
-}
-export function projectUrl(actor: string, rkey: string): string {
-  return recordUrl(actor, "project", rkey)
-}
-
 /**
  * In-app link to a single typed list on the owner's profile. Typed
  * lists (`list:projects` / `list:accounts` / `list:certs`) don't get
@@ -160,23 +152,6 @@ export function recordUrlFromAtUri(uri: string, actor?: string): string | null {
   return recordUrl(actor ?? parsed.did, type, parsed.rkey)
 }
 
-// --- Durable (share) variants — always the DID form ------------------------
-
-/** Absolute, DID-based profile URL for sharing. */
-export function shareProfileUrl(did: string, origin: string): string {
-  return `${origin}${profileUrl(did)}`
-}
-
-/** Absolute, DID-based record URL for sharing. */
-export function shareRecordUrl(
-  did: string,
-  type: RecordType,
-  rkey: string,
-  origin: string,
-): string {
-  return `${origin}${recordUrl(did, type, rkey)}`
-}
-
 // ---------------------------------------------------------------------------
 // AT-URI parsing (absorbs the old src/lib/atproto/activity-uri.ts helpers)
 // ---------------------------------------------------------------------------
@@ -200,6 +175,17 @@ export function parseAtUri(uri: string): ParsedAtUri | null {
 /** Build a canonical at:// URI from parts. */
 export function buildAtUri(did: string, collection: string, rkey: string): string {
   return `at://${did}/${collection}/${rkey}`
+}
+
+/**
+ * Return the `rkey` slice of `at://<did>/<collection>/<rkey>` — the
+ * trailing path segment. `""` for a malformed URI with a trailing
+ * slash, the input itself when there is no slash at all. Lighter than
+ * `parseAtUri` for callers that only need the rkey and already trust
+ * the URI's shape.
+ */
+export function rkeyFromUri(uri: string): string {
+  return uri.split("/").pop() ?? ""
 }
 
 /**
