@@ -25,6 +25,10 @@ import {
   enforceRateLimit,
 } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
+import {
+  ALLOWED_DOCUMENT_CONTENT_TYPES,
+  isAttachmentUpload,
+} from "@/lib/atproto/blob-types"
 
 // INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
 // (certified-app invariant) — writing it clobbers the user's Bluesky profile.
@@ -71,6 +75,13 @@ const ALLOWED_WRITE_COLLECTIONS = [
   "org.hyperboards.board",
   "org.hyperboards.displayProfile",
   "org.hypercerts.claim.contributorInformation",
+  // Activity/project updates. An "update" is a context attachment with
+  // `contentType: "update"` — there is no separate update lexicon. Written
+  // own-repo from the update form (create / edit / delete all route through
+  // the three REPO_METHODS below); group-owned updates instead go through
+  // the BFF route at `/api/groups/[groupDid]/update`, which allowlists this
+  // same NSID itself.
+  "org.hypercerts.context.attachment",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [
@@ -78,6 +89,14 @@ const ALLOWED_BLOB_CONTENT_TYPES = [
   "image/png",
   "image/webp",
   "image/gif",
+]
+
+// Attachment surfaces (update `content[]` blobs, flagged with
+// `?purpose=attachment`) additionally accept documents. Everything else
+// stays image-only, so a PDF can never land as an avatar or banner.
+const ALLOWED_ATTACHMENT_BLOB_CONTENT_TYPES = [
+  ...ALLOWED_BLOB_CONTENT_TYPES,
+  ...ALLOWED_DOCUMENT_CONTENT_TYPES,
 ]
 
 const MAX_BLOB_SIZE = 4 * 1024 * 1024 // 4MB — Vercel serverless functions have a ~4.5MB request body limit
@@ -699,9 +718,14 @@ export async function POST(
       case "com.atproto.repo.uploadBlob": {
         const contentType =
           request.headers.get("content-type") || "application/octet-stream"
-        // Check content type
+        // Check content type. `?purpose=attachment` widens the set to
+        // documents; the default stays image-only. Neither set contains
+        // html/svg — see blob-types for why.
         const mimeType = contentType.split(";")[0].trim()
-        if (!ALLOWED_BLOB_CONTENT_TYPES.includes(mimeType)) {
+        const allowedTypes = isAttachmentUpload(request)
+          ? ALLOWED_ATTACHMENT_BLOB_CONTENT_TYPES
+          : ALLOWED_BLOB_CONTENT_TYPES
+        if (!allowedTypes.includes(mimeType)) {
           return NextResponse.json(
             { error: "Unsupported media type" },
             { status: 415 }

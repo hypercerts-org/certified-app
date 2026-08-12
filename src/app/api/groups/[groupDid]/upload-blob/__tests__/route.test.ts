@@ -42,14 +42,16 @@ function makeContext(groupDid = GROUP_DID) {
 }
 
 /**
- * Minimal NextRequest-shaped stub: the handler only touches `headers.get` and
- * `arrayBuffer()`. Content-Length is set independently of the real body so the
+ * Minimal NextRequest-shaped stub: the handler touches `headers.get`,
+ * `arrayBuffer()`, and `nextUrl.searchParams` (the `?purpose=attachment`
+ * selector). Content-Length is set independently of the real body so the
  * byte-length guard can be exercised without a matching declared length.
  */
 function makeRequest(opts: {
   contentType?: string
   contentLength?: string
   body?: Uint8Array
+  purpose?: string
 }) {
   const headers = new Headers()
   if (opts.contentType !== undefined)
@@ -60,7 +62,12 @@ function makeRequest(opts: {
     const b = opts.body ?? new Uint8Array()
     return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
   })
-  return { headers, arrayBuffer }
+  const nextUrl = new URL(
+    `https://app.example/api/groups/${GROUP_DID}/upload-blob${
+      opts.purpose ? `?purpose=${opts.purpose}` : ""
+    }`,
+  )
+  return { headers, arrayBuffer, nextUrl }
 }
 
 async function post(
@@ -218,6 +225,59 @@ describe("upload-blob — gate", () => {
     })
     const res = await post(req, "nope")
     expect(res.status).toBe(400)
+    expect(callMock).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * `?purpose=attachment` widens the allowlist to documents for group-owned
+ * update `content[]` blobs, mirroring the XRPC proxy. Without it the route
+ * stays image-only, so a PDF can never land as a group avatar or banner.
+ */
+describe("upload-blob — attachment purpose", () => {
+  it("accepts a PDF with ?purpose=attachment", async () => {
+    const req = makeRequest({
+      contentType: "application/pdf",
+      body: new Uint8Array([1]),
+      purpose: "attachment",
+    })
+    const res = await post(req)
+    expect(res.status).toBe(200)
+    expect(callMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("still rejects a PDF without the purpose flag", async () => {
+    const req = makeRequest({
+      contentType: "application/pdf",
+      body: new Uint8Array([1]),
+    })
+    const res = await post(req)
+    expect(res.status).toBe(415)
+    expect(callMock).not.toHaveBeenCalled()
+  })
+
+  it("still rejects text/html and svg on the attachment path", async () => {
+    for (const mime of ["text/html", "image/svg+xml"]) {
+      callMock.mockClear()
+      const req = makeRequest({
+        contentType: mime,
+        body: new Uint8Array([1]),
+        purpose: "attachment",
+      })
+      const res = await post(req)
+      expect(res.status).toBe(415)
+      expect(callMock).not.toHaveBeenCalled()
+    }
+  })
+
+  it("keeps the 5MB cap on the attachment path", async () => {
+    const req = makeRequest({
+      contentType: "application/pdf",
+      contentLength: String(5 * 1024 * 1024 + 1),
+      purpose: "attachment",
+    })
+    const res = await post(req)
+    expect(res.status).toBe(413)
     expect(callMock).not.toHaveBeenCalled()
   })
 })
