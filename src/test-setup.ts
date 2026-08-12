@@ -1,3 +1,19 @@
+import { afterEach } from "vitest"
+import { cleanup } from "@testing-library/react"
+// Registers the jest-dom matchers (`toBeInTheDocument`, `toHaveAttribute`,
+// `toBeDisabled`, …). The package was already a devDependency but was never
+// imported, which is why older suites assert via
+// `expect(container.querySelector(...)).toBeNull()` instead. Both styles
+// work; prefer the matchers (and role-based queries) in new tests.
+import "@testing-library/jest-dom/vitest"
+
+// Unmount anything rendered by @testing-library/react between tests. Suites
+// that already call `cleanup()` themselves keep working — it's idempotent.
+// `globals: false` in vitest.config.ts, so `afterEach` is imported, not global.
+afterEach(() => {
+  cleanup()
+})
+
 // jsdom does not implement window.matchMedia. Stub it so hooks that
 // call matchMedia in effects (e.g. useLayoutBreakpoints) don't throw.
 Object.defineProperty(window, "matchMedia", {

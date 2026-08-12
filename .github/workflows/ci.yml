@@ -36,3 +36,45 @@ jobs:
 
       - name: Build
         run: COOKIE_SECRET="$(openssl rand -hex 32)" npm run build
+
+  # Browser tests. Split from `verify` so a flaky browser run is
+  # distinguishable at a glance from a broken build, and so the two run
+  # concurrently rather than adding to the critical path.
+  #
+  # Credential-free by design: the specs drive `/dev/preview/*`, which
+  # serves the real components against fixtures via MockFetchProvider, so
+  # no ePDS, Redis, or indexer access is needed. The authenticated tier
+  # (e2e/auth/*) skips itself unless E2E_TEST_DID is present.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        # playwright.config.ts starts `next dev` itself on 127.0.0.1:3000.
+        # COOKIE_SECRET is required at import time by src/lib/auth/session.ts.
+        run: npm run test:e2e
+        env:
+          COOKIE_SECRET: ci-e2e-secret-not-used-for-real-sessions
+          PUBLIC_URL: http://127.0.0.1:3000
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

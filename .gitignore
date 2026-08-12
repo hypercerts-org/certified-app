@@ -13,6 +13,14 @@
 # testing
 /coverage
 
+# playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+# Seeded session state for tier-3 E2E — contains a live session cookie.
+/e2e/.auth
+
 # next.js
 /.next/
 /out/
