@@ -105,7 +105,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
 | Fonts | Inter (sans), Noto Serif (headline), Instrument Serif (alt) — via `next/font/google` |
 | Hosting | Vercel |
 | Lint | ESLint flat config extending `next/core-web-vitals` and `next/typescript` |
-| Test runner | **None.** The "quality gate" is `next build` + `tsc --noEmit`. A behavioral plan lives at `tests/groups.test-plan.md`. |
+| Test runner | **Vitest** (jsdom), ~1235 tests in `src/**/__tests__/`. Playwright for E2E in `e2e/`. See §27. |
 
 > Note: Next.js 16 renamed `middleware.ts` to `proxy.ts`. This app ships **no** edge proxy/middleware — the `/` redirect is client-side (`HomeClient`).
 
@@ -695,7 +695,7 @@ When adding a new public page: set `metadata.title`, `description`, `alternates.
   - `main` → production (`certified.app`)
   - `staging` → preview (`staging.certified.app`)
 - **Workflow:** push to `staging`, open a PR to `main`. Vercel deploys both branches automatically.
-- **Quality gate:** `npm run build` must succeed before pushing. There is no test suite to run; `tsc --noEmit` is implicit in `next build`.
+- **Quality gate:** `npm run lint && npx tsc --noEmit && npm test && npm run build` must all pass before pushing — CI runs exactly that on every PR (`.github/workflows/ci.yml`). See §27 for the test layout.
 - **OAuth URL precedence:** `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. Prefer an explicit `PUBLIC_URL` for stable production/staging callbacks. Generated Vercel origins are also accepted for same-origin CSRF requests. The selected metadata/JWKS endpoints must be public, and deployments that initiate and complete one OAuth flow must share compatible Redis state/session configuration. Distinct canonical OAuth origins should use separate Redis databases because saved OAuth session keys are DID-based and are not namespaced by `client_id`.
 - Don't commit secrets (`.env.local` is gitignored). `COOKIE_SECRET`, `UPSTASH_*`, `ATPROTO_PRIVATE_KEY`, `RESEND_API_KEY` live in Vercel envs.
 
@@ -711,8 +711,11 @@ certified-app/
 ├── eslint.config.mjs                   # next/core-web-vitals + next/typescript
 ├── postcss.config.mjs                  # tailwindcss only — autoprefixer intentionally omitted (no browserslist); vendor prefixes are hand-maintained
 ├── .env.local.example                  # Env var template
-├── tests/
-│   └── groups.test-plan.md             # Manual behavioral test plan (no automated tests)
+├── e2e/                                # Playwright specs — see §27
+│   ├── smoke.spec.ts                   # /dev/preview surfaces, no credentials
+│   ├── public-routes.spec.ts           # signed-out route walk
+│   └── auth/                           # authenticated flows, skipped without E2E_TEST_DID
+├── playwright.config.ts                # baseURL pinned to PUBLIC_URL's exact origin + port
 ├── public/
 │   ├── llms.txt                        # AI crawler description
 │   ├── assets/
@@ -898,7 +901,7 @@ certified-app/
 
 ## 21. Known Limitations
 
-- **No automated tests.** `tests/groups.test-plan.md` is a manual behavioral plan, not runnable. The quality gates are `npm run build` and `npx tsc --noEmit`.
+- **Thin coverage above the utility layer.** The vitest suite is dense on `src/lib/utils` (~85% of modules) but thin on components (~10% rendered) and pages (~12%). Most tests are single-layer: the client/server seam is always cut with `vi.mock` or a stubbed `fetch`, so a mismatch between what the client sends and what a route accepts is invisible to them — that is how the `org.hypercerts.context.attachment` allowlist gap shipped. Contract tests (§27) exist to close that specific class.
 - **2FA / TOTP** — not implemented on the ePDS. The `/settings` page shows a "This will be available soon" placeholder.
 - **App passwords** — same status: placeholder card on `/settings`.
 - **ERC-1271 / ERC-6492 verification** — `useIdentityLinks` returns `verified: false` for smart-contract-wallet signatures with `verificationError: "On-chain verification not yet supported"`. The signing path can produce these (the `signatureType` field exists), but the verifier doesn't make on-chain `isValidSignature` calls yet.
@@ -1153,3 +1156,78 @@ npx next build
 
 Plus a smoke test of the changed surface in `next dev` when
 the change is user-facing.
+
+---
+
+## 27. Testing
+
+### Layout
+
+| Kind | Location | Runner | Needs credentials? |
+|---|---|---|---|
+| Unit / route-handler / component | `src/**/__tests__/*.{test,spec}.{ts,tsx}` | Vitest (jsdom) | no |
+| Contract ("tier 1") | same, colocated with the allowlist they guard | Vitest | no |
+| Smoke E2E ("tier 2") | `e2e/*.spec.ts` | Playwright | no |
+| Authenticated E2E ("tier 3") | `e2e/auth/*.spec.ts` | Playwright | yes — skipped without `E2E_TEST_DID` |
+
+```bash
+npm test              # vitest run
+npm run test:watch    # vitest
+npm run test:coverage # vitest run --coverage (no thresholds set yet)
+npm run typecheck:test # tsc against tsconfig.test.json
+npx playwright test   # tiers 2 + 3
+```
+
+`src/test-setup.ts` is the only `setupFiles` entry. It registers the jest-dom
+matchers, runs `cleanup()` after every test, stubs `window.matchMedia`, and
+forces an in-memory `Storage` onto both `window` and `globalThis` (Node 21+
+ships a native `localStorage` global with no backing store that otherwise
+shadows jsdom's working one).
+
+### Contract tests — the class of bug that hurts here
+
+Most of this app's surfaces talk to themselves through an allowlist: the XRPC
+proxy's `ALLOWED_WRITE_COLLECTIONS`, its `PUBLIC_READ_METHODS`, the indexer's
+operation map, the group BFF's op list. **A client that sends something absent
+from the matching allowlist gets a silent 403, and no single-layer test can
+see it** — the client is correct, the server is correct, only the pair is
+wrong. That is precisely how own-repo activity updates shipped broken.
+
+The fix is a test that asserts one side's set against the other's.
+`src/app/api/xrpc/[...method]/__tests__/allowed-collections.test.ts` is the
+template: it enumerates every collection client code writes and drives each
+through the real route handler. **When you add a write surface, add its NSID
+there** — the test fails until the allowlist agrees.
+
+### E2E without credentials
+
+`/dev/preview/{surface}` mounts the **real** production components against
+fixture data, wrapped in `MockFetchProvider`, which intercepts every network
+egress (same-origin API routes plus `plc.directory` and `public.api.bsky.app`).
+Surfaces: `profile`, `profile-org`, `feed`, `settings`, `workspace`, `create`,
+`profile-edit`, `activity-edit`; `?fixture=empty` and `?managed=1` switch
+scenarios. This is how the smoke suite covers auth-gated screens with no
+account at all.
+
+These routes `notFound()` when `NODE_ENV === "production"`, so they work under
+`npm run dev` only — never against a deployed environment.
+
+### Authenticated E2E
+
+There is no password grant. Sign-in is atproto OAuth against the ePDS with an
+emailed OTP, so it cannot be driven headlessly. Instead the OAuth session is
+stored in Redis keyed by DID for 30 days, and the `certified_session` cookie is
+just `${sessionId}.${hmac(sessionId, COOKIE_SECRET)}` over a Redis DID lookup.
+So: sign a dedicated test account in **once**, then `e2e/auth/global-setup.ts`
+mints fresh cookies for that DID for the next 30 days.
+
+Tier 3 writes real, federated records. Use a throwaway account, and clean up
+what you create.
+
+### Origin discipline
+
+`checkCsrf` requires the request origin to equal the destination origin **and**
+be allowlisted; the loopback exemption matches on protocol *and* port. A dev
+server that falls back to `:3001`, or mixing `localhost` with `127.0.0.1`
+(cookies don't cross the two), produces 403s that look like auth bugs. Pin the
+port and use one spelling everywhere — `playwright.config.ts` does this.
