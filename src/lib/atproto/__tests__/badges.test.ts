@@ -232,6 +232,21 @@ describe("resolveCanonicalEndorsementDef", () => {
     expect(result?.canonical.rkey).toBe("end")
     expect(result?.duplicates).toEqual([])
   })
+
+  // `listDefinitions` casts the listRecords response with no runtime
+  // validation, so a foreign client can put any shape in a field. A
+  // malformed def must be inert, not fatal: the fingerprint is reached
+  // from `createEndorsementAward`, so a throw here fails the endorse
+  // itself and keeps failing on every retry.
+  it("survives a malformed def rather than failing the whole endorse", () => {
+    const good = makeDef("good", "2024-01-01T00:00:00.000Z")
+    const bad = makeDef("bad", "2025-01-01T00:00:00.000Z")
+    ;(bad.value as { allowedIssuers?: unknown }).allowedIssuers = 5
+    const result = resolveCanonicalEndorsementDef([good, bad])
+    expect(result?.canonical.rkey).toBe("good")
+    // Distinct content, so nothing is scheduled for deletion.
+    expect(result?.duplicates).toEqual([])
+  })
 })
 
 describe("definitionContentKey", () => {
@@ -277,5 +292,45 @@ describe("definitionContentKey", () => {
     }).value
     const without = makeDef("b", "2024-01-01T00:00:00.000Z").value
     expect(definitionContentKey(withUndef)).toBe(definitionContentKey(without))
+  })
+
+  it("treats an absent allowedIssuers as equal to an explicit empty array", () => {
+    // Guards the obvious-looking `?? null` normalisation, which would
+    // fingerprint these two differently and stop genuine twins deduping.
+    const absent = makeDef("a", "2024-01-01T00:00:00.000Z").value
+    const empty = makeDef("b", "2024-01-01T00:00:00.000Z", {
+      allowedIssuers: [],
+    }).value
+    expect(definitionContentKey(absent)).toBe(definitionContentKey(empty))
+  })
+
+  it.each([
+    ["an object", { did: "did:plc:one" }],
+    ["a number", 5],
+    ["a boolean", true],
+    ["a string", "did:plc:one"],
+  ])("does not throw when allowedIssuers is %s", (_label, bad) => {
+    const value = {
+      ...makeDef("bad", "2024-01-01T00:00:00.000Z").value,
+      allowedIssuers: bad as unknown as string[],
+    }
+    expect(() => definitionContentKey(value)).not.toThrow()
+  })
+
+  it("keeps a malformed allowedIssuers distinct from a well-formed def", () => {
+    const ok = makeDef("ok", "2024-01-01T00:00:00.000Z").value
+    const objectForm = {
+      ...ok,
+      allowedIssuers: { did: "did:plc:one" } as unknown as string[],
+    }
+    // Distinct, so a malformed def is never a deletion-eligible twin of
+    // the app's default one.
+    expect(definitionContentKey(objectForm)).not.toBe(definitionContentKey(ok))
+    // And a string is not silently spread into its characters.
+    const asString = { ...ok, allowedIssuers: "ab" as unknown as string[] }
+    const asChars = { ...ok, allowedIssuers: ["a", "b"] }
+    expect(definitionContentKey(asString)).not.toBe(
+      definitionContentKey(asChars),
+    )
   })
 })

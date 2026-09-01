@@ -429,7 +429,17 @@ export function definitionContentKey(value: BadgeDefinitionValue): string {
     title: value.title,
     description: value.description ?? null,
     icon: value.icon ?? null,
-    allowedIssuers: [...(value.allowedIssuers ?? [])].sort(),
+    // Typed `string[] | undefined`, but it arrives via `listDefinitions`,
+    // which casts the listRecords response with no runtime validation —
+    // a foreign client can put any shape in this field. Spreading it
+    // unguarded threw on a non-iterable and failed the whole endorse.
+    // Absent / null still normalises to `[]` so genuine twins keep
+    // matching; anything else passes through as itself, so a malformed
+    // def stays DISTINCT from a well-formed one rather than becoming
+    // its deletion-eligible twin.
+    allowedIssuers: Array.isArray(value.allowedIssuers)
+      ? [...value.allowedIssuers].sort()
+      : (value.allowedIssuers ?? []),
   })
 }
 
@@ -458,25 +468,23 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * Fire-and-forget delete of duplicate badge definitions. Errors are
- * suppressed (cleanup is best-effort) but logged in dev so a
- * persistent problem is debuggable. Uses
- * `suppressUnauthorizedHandler` so a transient 401 here doesn't
- * trigger the auth-context auto-logout — a sign-in race shouldn't
- * sign the user out the moment they succeed.
- */
-/**
  * Delete exact-content duplicate definitions, but only those no award
  * still points at. Identical content does NOT imply identical URI, so
  * a redundant copy can still be the `badge` ref of existing awards —
  * deleting it would leave them dangling and drop them out of the
  * Given/Received views.
  *
- * Fails safe: if the award read throws we can't prove a duplicate is
- * unreferenced, so nothing is deleted. Only the acting user's own
- * awards are visible here; a foreign award referencing this repo's
- * definition can't be checked cheaply, which is the residual reason
- * the content-equality rule above must stay strict.
+ * A narrowing, not a proof. An award read that THROWS skips the prune,
+ * but an empty result is not evidence of absence: the XRPC proxy fails
+ * OPEN for listRecords — an unresolvable DID or an upstream 400/404
+ * both come back as an empty list rather than an error (see
+ * `proxyPublicListRecords`, and `listAllRecords`' own first-page
+ * 400/404 break above) — so an unreadable collection is
+ * indistinguishable from an empty one. Only the acting user's own
+ * awards are visible here either; a foreign award referencing this
+ * repo's definition can't be checked cheaply. Both are why the
+ * content-equality rule above must stay strict: it, not this gate, is
+ * what keeps a distinct definition out of `duplicates` at all.
  */
 function backgroundPruneDuplicates(
   ownDid: string,
@@ -504,6 +512,17 @@ function backgroundPruneDuplicates(
   })()
 }
 
+/**
+ * Fire-and-forget delete of duplicate badge definitions. Errors are
+ * suppressed (cleanup is best-effort) but logged in dev so a
+ * persistent problem is debuggable. Uses
+ * `suppressUnauthorizedHandler` so a transient 401 here doesn't
+ * trigger the auth-context auto-logout — a sign-in race shouldn't
+ * sign the user out the moment they succeed.
+ *
+ * Every URI handed here must already have been screened by
+ * `backgroundPruneDuplicates`; this function checks nothing itself.
+ */
 function backgroundDeleteDuplicates(
   duplicates: BadgeDefinitionRecord[],
 ): void {
@@ -638,7 +657,7 @@ async function ensureGroupEndorsementDefinitionInner(
 /**
  * Re-read with `noCache` before minting. The group's definitions are a
  * FOREIGN repo read, served with `Cache-Control: private, max-age=30`
- * (see the xrpc proxy's `proxyPublicListRecords`) — five times the
+ * (see the xrpc proxy's `proxyPublicListRecords`) — six times the
  * same-session window. Without busting it, the second endorsement in a
  * bulk pass reads a pre-create snapshot, finds nothing, and mints a
  * second definition; N sequential group endorsements minted N defs.

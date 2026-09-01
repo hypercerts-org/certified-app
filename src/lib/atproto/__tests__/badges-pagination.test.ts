@@ -7,6 +7,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
  * endorsement awards showed only the 97 that landed in the first page
  * (the rest were affiliation awards). These tests pin that the cursor
  * loop follows every page and forwards `reverse`/`cursor` correctly.
+ *
+ * The `ensureGroupEndorsementDefinition` block at the bottom shares this
+ * file's `authFetch` mock: it pins the `noCache` re-read that stops a
+ * bulk group endorse minting one definition per person.
  */
 
 const authFetch = vi.fn()
@@ -82,5 +86,67 @@ describe("listAwards pagination", () => {
 
     // First page survives; the 404 second page just ends the loop.
     expect(out).toHaveLength(1)
+  })
+})
+
+describe("ensureGroupEndorsementDefinition", () => {
+  const GROUP_DID = "did:plc:group"
+
+  function defPage(uris: string[]) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        records: uris.map((uri) => ({
+          uri,
+          cid: `cid-${uri}`,
+          value: {
+            badgeType: "endorsement",
+            title: "Endorsement",
+            createdAt: "2024-01-01T00:00:00.000Z",
+          },
+        })),
+      }),
+    }
+  }
+
+  it("busts the foreign-repo cache on the re-read before minting", async () => {
+    const { ensureGroupEndorsementDefinition } = await import("../badges")
+    authFetch
+      .mockResolvedValueOnce(defPage([]))
+      .mockResolvedValueOnce(defPage([]))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ uri: "at://group/def/new", cid: "cid-new" }),
+      })
+
+    const ref = await ensureGroupEndorsementDefinition(GROUP_DID)
+
+    expect(ref).toEqual({ uri: "at://group/def/new", cid: "cid-new" })
+    expect(authFetch).toHaveBeenCalledTimes(3)
+    // A group's definitions are a FOREIGN repo read, served by the proxy
+    // with `Cache-Control: private, max-age=30`. The first read may be
+    // served from that cache; the re-read inside the critical section
+    // must NOT be, or the second endorsement of a bulk pass reads a
+    // pre-create snapshot and mints a second definition.
+    expect(authFetch.mock.calls[0][1]?.cache).toBeUndefined()
+    expect(authFetch.mock.calls[1][1]?.cache).toBe("no-store")
+    expect(String(authFetch.mock.calls[2][0])).toContain(
+      "/endorsement-definition",
+    )
+  })
+
+  it("returns the def the re-read finds instead of minting a second", async () => {
+    const { ensureGroupEndorsementDefinition } = await import("../badges")
+    authFetch
+      .mockResolvedValueOnce(defPage([]))
+      .mockResolvedValueOnce(defPage(["at://group/def/existing"]))
+
+    const ref = await ensureGroupEndorsementDefinition(GROUP_DID)
+
+    expect(ref.uri).toBe("at://group/def/existing")
+    // No POST: the cache-busting re-read is the whole guard.
+    expect(authFetch).toHaveBeenCalledTimes(2)
   })
 })
