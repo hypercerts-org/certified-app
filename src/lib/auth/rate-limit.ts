@@ -302,5 +302,52 @@ export async function enforceRateLimitMulti(
   }
 }
 
+// ============================================================================
+// Group BFF write limiter (HYPER-575)
+// ============================================================================
+
+/**
+ * Enforce the per-collection write limit on a group BFF route. Returns a
+ * 429 to hand straight back to the client, or null when the write may
+ * proceed.
+ *
+ * Why routes need this at all: the per-DID limiter above is applied by the
+ * xrpc proxy, which every group BFF route bypasses BY DESIGN -- they proxy
+ * through `app.certified.group.repo.createRecord` instead of
+ * `com.atproto.repo.createRecord`. So a group route writing a collection in
+ * `RATE_LIMITED_WRITE_COLLECTIONS` is unlimited unless it calls this. Both
+ * sides of that coupling look correct in isolation, which is exactly how
+ * `funding/route.ts` went unlimited (HYPER-575);
+ * `src/app/api/groups/__tests__/write-rate-limit-contract.test.ts` pins the
+ * pair.
+ *
+ * `did` must be the ACTING operator, not the group, so one operator cannot
+ * launder a flood through a group account -- the same key the xrpc proxy
+ * uses on the personal path, so the two share one budget rather than
+ * offering two.
+ *
+ * Fails open: a limiter backend error hands `err` to `onError` and allows
+ * the write. This is hardening, not an authorisation gate -- CGS owns
+ * authorisation. `onError` rather than a logger import so this module stays
+ * dependency-light and the route logs through its own pipeline, matching
+ * `enforceRateLimit` above.
+ */
+export async function enforceWriteRateLimit(
+  did: string,
+  collection: string,
+  onError: (err: unknown) => void,
+): Promise<NextResponse | null> {
+  const scope = RATE_LIMITED_WRITE_COLLECTIONS[collection]
+  if (!scope) return null
+  try {
+    const rate = await checkAndIncrementWriteRate(did, scope)
+    if (rate.allowed) return null
+    return rateLimitResponse(rate, "Too many writes — try again later.")
+  } catch (err) {
+    onError(err)
+    return null
+  }
+}
+
 // Re-export NextRequest type for consumers' convenience.
 export type { NextRequest }

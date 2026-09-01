@@ -11,6 +11,8 @@ import {
   parseJsonBody,
   pickAllowedFields,
 } from "@/lib/utils/api"
+import { enforceWriteRateLimit } from "@/lib/auth/rate-limit"
+import { logSafe } from "@/lib/utils/log-safe"
 
 const FUNDING_RECEIPT_COLLECTION = "org.hypercerts.funding.receipt"
 
@@ -79,6 +81,19 @@ export async function PUT(
       ALLOWED_FUNDING_FIELDS,
       FUNDING_RECEIPT_COLLECTION,
     )
+
+    // `funding.receipt` is rate-limited per-DID in the xrpc proxy, which
+    // this BFF route bypasses entirely — so group-authored receipts were
+    // unlimited. A receipt names a third party in `from`/`to`, which is
+    // why the collection is in the registry at all: a scripted flood is a
+    // reputational attack on someone who never consented to being named.
+    // Counted against the ACTING operator, not the group.
+    const denied = await enforceWriteRateLimit(
+      auth.did,
+      FUNDING_RECEIPT_COLLECTION,
+      (err) => logSafe("[groups/funding] rate-limit check failed", err, { groupDid }),
+    )
+    if (denied) return denied
 
     const groupAgent = createGroupClient(auth.agent, groupDid)
     const upstream = await groupAgent.call(
