@@ -6,8 +6,15 @@ import {
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRecordRef, extractRouteError, parseJsonBody } from "@/lib/utils/api"
+import { parseAtUri } from "@/lib/urls"
+import {
+  checkAndIncrementWriteRate,
+  RATE_LIMITED_WRITE_COLLECTIONS,
+} from "@/lib/auth/rate-limit"
+import { logSafe } from "@/lib/utils/log-safe"
 
 const BADGE_AWARD_COLLECTION = "app.certified.badge.award"
+const BADGE_DEFINITION_COLLECTION = "app.certified.badge.definition"
 
 /** Max byte length we'll allow on `note` from the client. Mirrors the
  *  client-side `createEndorsementAward` cap so a write never gets
@@ -21,6 +28,9 @@ const BADGE_AWARD_NOTE_MAX = 500
  * group itself endorses a foreign account. Used when an owner/admin acts
  * as a group — without this BFF route the client-side
  * `createEndorsementAward` writes the award to the personal repo instead.
+ *
+ * Authorisation: authentication only, here. The owner/admin check is
+ * CGS's, enforced upstream against the service-auth JWT.
  *
  * Body shape:
  *   { subject: string (DID), badge: { uri: string, cid: string }, note?: string }
@@ -81,6 +91,60 @@ export async function POST(
       )
     }
 
+    // Shape alone isn't enough: the ref is client-supplied, and an award
+    // on the group's repo must cite a definition that lives on that same
+    // repo. Without this a caller could point a group's endorsement at
+    // any record on any repo, including a non-definition collection.
+    const badgeRef = parseAtUri(badgeUri)
+    if (
+      !badgeRef ||
+      badgeRef.did !== groupDid ||
+      badgeRef.collection !== BADGE_DEFINITION_COLLECTION
+    ) {
+      return NextResponse.json(
+        {
+          error: `badge.uri must be an ${BADGE_DEFINITION_COLLECTION} record on the group's repo`,
+        },
+        { status: 400 },
+      )
+    }
+
+    // Rate-limit parity with the personal path. The xrpc proxy limits
+    // `badge.award` creates per-DID (see RATE_LIMITED_WRITE_COLLECTIONS);
+    // this route bypasses that proxy entirely, so group-issued
+    // endorsements were unlimited. Counted against the ACTING operator,
+    // not the group, so one operator can't launder a flood through a
+    // group account. Fails open on infra error — hardening, not a gate.
+    const rateScope = RATE_LIMITED_WRITE_COLLECTIONS[BADGE_AWARD_COLLECTION]
+    if (rateScope) {
+      try {
+        const rate = await checkAndIncrementWriteRate(auth.did, rateScope)
+        if (!rate.allowed) {
+          const retryAfterSec = Math.max(
+            1,
+            Math.ceil((rate.resetAt - Date.now()) / 1000),
+          )
+          return NextResponse.json(
+            {
+              error: "Too many writes — try again later.",
+              resetAt: rate.resetAt,
+            },
+            {
+              status: 429,
+              headers: {
+                "Retry-After": String(retryAfterSec),
+                "X-RateLimit-Reset": String(Math.floor(rate.resetAt / 1000)),
+              },
+            },
+          )
+        }
+      } catch (err) {
+        logSafe("[groups/endorse] rate-limit check failed", err, {
+          groupDid,
+        })
+      }
+    }
+
     // Trim + truncate the note. Empty strings are omitted entirely so we
     // don't store noise that round-trips on every read.
     const noteRaw = typeof body.note === "string" ? body.note.trim() : ""
@@ -126,8 +190,13 @@ export async function POST(
  * DELETE /api/groups/[groupDid]/endorse
  *
  * Removes an `app.certified.badge.award` record from the group's repo via
- * `app.certified.group.repo.deleteRecord`. The authenticated viewer must
- * be an owner / admin of the group. Used to retract a group endorsement.
+ * `app.certified.group.repo.deleteRecord`. Used to retract a group
+ * endorsement.
+ *
+ * Authorisation: this route asserts only that the caller is signed in.
+ * The owner/admin check is CGS's, enforced upstream against the service
+ * -auth JWT — a non-member's call reaches CGS and is rejected there. Do
+ * not read the authentication check below as an app-side role gate.
  *
  * Body shape: `{ rkey: string }`.
  */

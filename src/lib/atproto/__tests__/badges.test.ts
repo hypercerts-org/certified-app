@@ -2,13 +2,16 @@ import { describe, it, expect } from "vitest"
 import {
   extractAwardSubjectDid,
   resolveCanonicalEndorsementDef,
+  definitionContentKey,
   ENDORSEMENT_BADGE_TYPE,
   type BadgeDefinitionRecord,
+  type BadgeDefinitionValue,
 } from "../badges"
 
 function makeDef(
   rkey: string,
   createdAt: string | undefined,
+  content?: Partial<Omit<BadgeDefinitionValue, "createdAt">>,
 ): BadgeDefinitionRecord {
   return {
     uri: `at://did:plc:test/app.certified.badge.definition/${rkey}`,
@@ -17,6 +20,7 @@ function makeDef(
     value: {
       badgeType: ENDORSEMENT_BADGE_TYPE,
       title: "Endorsement",
+      ...content,
       // Intentionally allow undefined to model a malformed record.
       createdAt: createdAt as string,
     },
@@ -142,5 +146,136 @@ describe("resolveCanonicalEndorsementDef", () => {
     const result = resolveCanonicalEndorsementDef([empty, wellFormed])
     expect(result?.canonical.rkey).toBe("good")
     expect(result?.duplicates.map((d) => d.rkey)).toEqual(["empty"])
+  })
+
+  // Data-loss regression. Matching on `badgeType` alone treated every
+  // distinct endorsement badge as disposable: a hand-authored
+  // "Organization Endorsement" got hard-deleted on the owner's next
+  // endorse, keeping only the oldest def. Only EXACT content
+  // redundancies may ever be scheduled for deletion.
+  it("does NOT treat a differently-titled def as a duplicate", () => {
+    const dflt = makeDef("default", "2024-01-01T00:00:00.000Z")
+    const org = makeDef("org", "2025-01-01T00:00:00.000Z", {
+      title: "Organization Endorsement",
+    })
+    const result = resolveCanonicalEndorsementDef([dflt, org])
+    expect(result?.canonical.rkey).toBe("default")
+    expect(result?.duplicates).toEqual([])
+  })
+
+  it("does NOT dedupe defs differing only in description", () => {
+    const a = makeDef("a", "2024-01-01T00:00:00.000Z")
+    const b = makeDef("b", "2025-01-01T00:00:00.000Z", {
+      description: "Endorsed for ecological restoration work",
+    })
+    expect(resolveCanonicalEndorsementDef([a, b])?.duplicates).toEqual([])
+  })
+
+  it("does NOT dedupe defs differing only in allowedIssuers", () => {
+    const a = makeDef("a", "2024-01-01T00:00:00.000Z", {
+      allowedIssuers: ["did:plc:one"],
+    })
+    const b = makeDef("b", "2025-01-01T00:00:00.000Z", {
+      allowedIssuers: ["did:plc:two"],
+    })
+    expect(resolveCanonicalEndorsementDef([a, b])?.duplicates).toEqual([])
+  })
+
+  it("keeps the oldest of several distinctly-titled defs, deleting none", () => {
+    // The exact Ma Earth shape: three bespoke badges plus the app default.
+    const defs = [
+      makeDef("trusted", "2025-06-08T00:00:00.000Z", {
+        title: "Trusted Evaluator",
+      }),
+      makeDef("org", "2025-07-01T00:00:00.000Z", {
+        title: "Organization Endorsement",
+      }),
+      makeDef("verified", "2025-07-02T00:00:00.000Z", {
+        title: "Verified by Ma Earth",
+      }),
+      makeDef("default", "2025-08-01T00:00:00.000Z"),
+    ]
+    const result = resolveCanonicalEndorsementDef(defs)
+    expect(result?.canonical.rkey).toBe("trusted")
+    expect(result?.duplicates).toEqual([])
+  })
+
+  it("still dedupes byte-identical twins, keeping the oldest", () => {
+    const older = makeDef("older", "2024-01-01T00:00:00.000Z", {
+      title: "Organization Endorsement",
+    })
+    const twin = makeDef("twin", "2025-01-01T00:00:00.000Z", {
+      title: "Organization Endorsement",
+    })
+    const result = resolveCanonicalEndorsementDef([twin, older])
+    expect(result?.canonical.rkey).toBe("older")
+    expect(result?.duplicates.map((d) => d.rkey)).toEqual(["twin"])
+  })
+
+  it("dedupes only within a content group, leaving unique defs alone", () => {
+    const dflt = makeDef("default", "2024-01-01T00:00:00.000Z")
+    const dfltTwin = makeDef("default-twin", "2024-02-01T00:00:00.000Z")
+    const org = makeDef("org", "2024-03-01T00:00:00.000Z", {
+      title: "Organization Endorsement",
+    })
+    const result = resolveCanonicalEndorsementDef([dflt, dfltTwin, org])
+    expect(result?.canonical.rkey).toBe("default")
+    expect(result?.duplicates.map((d) => d.rkey)).toEqual(["default-twin"])
+  })
+
+  it("ignores non-endorsement badge types entirely", () => {
+    const award = makeDef("award", "2023-01-01T00:00:00.000Z", {
+      badgeType: "award",
+    })
+    const endorsement = makeDef("end", "2024-01-01T00:00:00.000Z")
+    const result = resolveCanonicalEndorsementDef([award, endorsement])
+    expect(result?.canonical.rkey).toBe("end")
+    expect(result?.duplicates).toEqual([])
+  })
+})
+
+describe("definitionContentKey", () => {
+  it("ignores createdAt — twins differ in exactly that", () => {
+    const a = makeDef("a", "2024-01-01T00:00:00.000Z")
+    const b = makeDef("b", "2030-12-31T00:00:00.000Z")
+    expect(definitionContentKey(a.value)).toBe(definitionContentKey(b.value))
+  })
+
+  it("separates every meaningful field", () => {
+    const base = makeDef("base", "2024-01-01T00:00:00.000Z").value
+    const key = definitionContentKey(base)
+    const variants: Partial<BadgeDefinitionValue>[] = [
+      { title: "Other" },
+      { description: "x" },
+      { badgeType: "award" },
+      { allowedIssuers: ["did:plc:one"] },
+      { icon: { $type: "blob", ref: { $link: "bafy" } } },
+    ]
+    for (const v of variants) {
+      expect(definitionContentKey({ ...base, ...v })).not.toBe(key)
+    }
+  })
+
+  it("is order-insensitive for allowedIssuers and icon keys", () => {
+    const base = makeDef("base", "2024-01-01T00:00:00.000Z").value
+    const a = definitionContentKey({
+      ...base,
+      allowedIssuers: ["did:plc:a", "did:plc:b"],
+      icon: { $type: "blob", size: 1, ref: { $link: "bafy" } },
+    })
+    const b = definitionContentKey({
+      ...base,
+      allowedIssuers: ["did:plc:b", "did:plc:a"],
+      icon: { ref: { $link: "bafy" }, $type: "blob", size: 1 },
+    })
+    expect(a).toBe(b)
+  })
+
+  it("treats an absent optional field as equal to an explicit undefined", () => {
+    const withUndef = makeDef("a", "2024-01-01T00:00:00.000Z", {
+      description: undefined,
+    }).value
+    const without = makeDef("b", "2024-01-01T00:00:00.000Z").value
+    expect(definitionContentKey(withUndef)).toBe(definitionContentKey(without))
   })
 })

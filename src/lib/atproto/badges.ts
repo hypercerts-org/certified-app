@@ -269,14 +269,17 @@ const inflightEnsure = new Map<string, Promise<StrongRef>>()
  * Two-layer cross-tab safety:
  *
  *   - **Layer 1 — dedupe-on-read.** If `listDefinitions` returns
- *     more than one `badgeType === "endorsement"` record (because a
- *     previous race created duplicates), pick the OLDEST by
- *     `createdAt` as the canonical, and best-effort delete the
- *     newer duplicates in the background. The deletes use a
- *     `suppressUnauthorizedHandler` authFetch so a transient 401
- *     during cleanup doesn't log the user out as a side-effect of
- *     a successful endorse. Selection stays stable across reads
- *     (oldest never reshuffles), so concurrent reads converge.
+ *     more than one `badgeType === "endorsement"` record, pick the
+ *     OLDEST by `createdAt` as the canonical. Selection stays stable
+ *     across reads (oldest never reshuffles), so concurrent reads
+ *     converge. Cleanup then best-effort deletes only the records
+ *     that are EXACTLY redundant — same content as an older sibling
+ *     AND referenced by no award. A definition with distinct content
+ *     (a hand-authored "Organization Endorsement", say) is never
+ *     touched, however many endorsement-typed defs sit beside it.
+ *     The deletes use a `suppressUnauthorizedHandler` authFetch so a
+ *     transient 401 during cleanup doesn't log the user out as a
+ *     side-effect of a successful endorse.
  *
  *   - **Layer 2 — `navigator.locks`.** The create critical section
  *     is wrapped in a Web Lock keyed by `endorse-def:${ownDid}` so
@@ -317,9 +320,7 @@ async function ensureEndorsementDefinitionInner(
   const existing = await listDefinitions(ownDid)
   const matched = resolveCanonicalEndorsementDef(existing)
   if (matched) {
-    if (matched.duplicates.length > 0) {
-      backgroundDeleteDuplicates(matched.duplicates)
-    }
+    backgroundPruneDuplicates(ownDid, matched.duplicates)
     return { uri: matched.canonical.uri, cid: matched.canonical.cid }
   }
 
@@ -342,9 +343,7 @@ async function ensureEndorsementDefinitionInner(
       })
       const recheckMatch = resolveCanonicalEndorsementDef(recheck)
       if (recheckMatch) {
-        if (recheckMatch.duplicates.length > 0) {
-          backgroundDeleteDuplicates(recheckMatch.duplicates)
-        }
+        backgroundPruneDuplicates(ownDid, recheckMatch.duplicates)
         return {
           uri: recheckMatch.canonical.uri,
           cid: recheckMatch.canonical.cid,
@@ -364,10 +363,15 @@ async function ensureEndorsementDefinitionInner(
  * earlier `createdAt` never loses to a later one regardless of
  * which tab does the read, so concurrent readers converge.
  *
- * Stale-config concern: the default endorsement def is minimal
- * (`title` + `badgeType` + `createdAt`) and never mutated
- * post-create. If list-style customisation ever lands on it the
- * invariant flips and the canonical choice must be revisited.
+ * `duplicates` holds ONLY exact-content redundancies — see
+ * `definitionContentKey`. Matching on `badgeType` alone (as this once
+ * did) treated every distinct endorsement badge as disposable and
+ * deleted hand-authored definitions; the read path at
+ * `endorsementDefUriSet` documents why those legitimately exist.
+ *
+ * Note the canonical is the oldest endorsement-typed def regardless of
+ * content, so a custom def older than the app's default one becomes
+ * the ref for new awards. Pre-existing behaviour, left as-is.
  */
 export function resolveCanonicalEndorsementDef(
   defs: BadgeDefinitionRecord[],
@@ -375,22 +379,82 @@ export function resolveCanonicalEndorsementDef(
   const matches = defs
     .filter((d) => d.value.badgeType === ENDORSEMENT_BADGE_TYPE)
     .slice()
-    .sort((a, b) => {
-      // Sort ascending by createdAt so the OLDEST def is canonical.
-      // A def missing createdAt sorts to the END (treated as latest)
-      // so a malformed def can never win canonical and schedule the
-      // well-formed defs for background deletion.
-      const aHas = typeof a.value.createdAt === "string" && a.value.createdAt !== ""
-      const bHas = typeof b.value.createdAt === "string" && b.value.createdAt !== ""
-      if (!aHas && !bHas) return 0
-      if (!aHas) return 1
-      if (!bHas) return -1
-      if (a.value.createdAt === b.value.createdAt) return 0
-      return a.value.createdAt < b.value.createdAt ? -1 : 1
-    })
+    .sort(byCreatedAtAscending)
   if (matches.length === 0) return null
-  const [canonical, ...duplicates] = matches
+  const [canonical] = matches
+
+  // A duplicate is a definition whose content is EXACTLY that of an
+  // older sibling — same title, description, icon and allowedIssuers.
+  // Grouping by content key means a definition carrying unique content
+  // is never a duplicate, however many other endorsement-typed
+  // definitions sit beside it in the repo. `matches` is already sorted
+  // oldest-first, so the first occurrence of each key is the survivor.
+  const seen = new Set<string>()
+  const duplicates: BadgeDefinitionRecord[] = []
+  for (const def of matches) {
+    const key = definitionContentKey(def.value)
+    if (seen.has(key)) duplicates.push(def)
+    else seen.add(key)
+  }
   return { canonical, duplicates }
+}
+
+/**
+ * Sort ascending by createdAt so the OLDEST def is canonical.
+ * A def missing createdAt sorts to the END (treated as latest) so a
+ * malformed def can never win canonical.
+ */
+function byCreatedAtAscending(
+  a: BadgeDefinitionRecord,
+  b: BadgeDefinitionRecord,
+): number {
+  const aHas = typeof a.value.createdAt === "string" && a.value.createdAt !== ""
+  const bHas = typeof b.value.createdAt === "string" && b.value.createdAt !== ""
+  if (!aHas && !bHas) return 0
+  if (!aHas) return 1
+  if (!bHas) return -1
+  if (a.value.createdAt === b.value.createdAt) return 0
+  return a.value.createdAt < b.value.createdAt ? -1 : 1
+}
+
+/**
+ * Content fingerprint of a badge definition: every field that carries
+ * meaning, and nothing that doesn't. Record identity (`uri` / `cid` /
+ * `rkey`) and `createdAt` are excluded precisely because genuine twins
+ * differ in exactly those.
+ */
+export function definitionContentKey(value: BadgeDefinitionValue): string {
+  return stableStringify({
+    badgeType: value.badgeType,
+    title: value.title,
+    description: value.description ?? null,
+    icon: value.icon ?? null,
+    allowedIssuers: [...(value.allowedIssuers ?? [])].sort(),
+  })
+}
+
+/**
+ * JSON with object keys sorted recursively, so two structurally-equal
+ * values always serialise identically. Needed because `icon` is an
+ * opaque blob ref whose key order isn't guaranteed across reads.
+ *
+ * The bias here is deliberate: if this ever fails to normalise
+ * something, two identical defs simply look different, and the result
+ * is a MISSED cleanup — never an erroneous delete.
+ */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value) ?? "null"
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries
+    .map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`)
+    .join(",")}}`
 }
 
 /**
@@ -401,6 +465,45 @@ export function resolveCanonicalEndorsementDef(
  * trigger the auth-context auto-logout — a sign-in race shouldn't
  * sign the user out the moment they succeed.
  */
+/**
+ * Delete exact-content duplicate definitions, but only those no award
+ * still points at. Identical content does NOT imply identical URI, so
+ * a redundant copy can still be the `badge` ref of existing awards —
+ * deleting it would leave them dangling and drop them out of the
+ * Given/Received views.
+ *
+ * Fails safe: if the award read throws we can't prove a duplicate is
+ * unreferenced, so nothing is deleted. Only the acting user's own
+ * awards are visible here; a foreign award referencing this repo's
+ * definition can't be checked cheaply, which is the residual reason
+ * the content-equality rule above must stay strict.
+ */
+function backgroundPruneDuplicates(
+  ownDid: string,
+  duplicates: BadgeDefinitionRecord[],
+): void {
+  if (duplicates.length === 0) return
+  void (async () => {
+    try {
+      const awards = await listAwards(ownDid)
+      const referenced = new Set(
+        awards
+          .map((a) => a.value.badge?.uri)
+          .filter((uri): uri is string => typeof uri === "string"),
+      )
+      const unreferenced = duplicates.filter((d) => !referenced.has(d.uri))
+      if (unreferenced.length > 0) backgroundDeleteDuplicates(unreferenced)
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[badges] duplicate prune skipped — award read failed",
+          err,
+        )
+      }
+    }
+  })()
+}
+
 function backgroundDeleteDuplicates(
   duplicates: BadgeDefinitionRecord[],
 ): void {
@@ -488,18 +591,67 @@ async function createEndorsementDefinition(ownDid: string): Promise<StrongRef> {
  * createRecord through the operator's OAuth session to the group's
  * service auth.
  *
- * Unlike the personal path there's no Web-Lock / inflight dedupe here:
- * group definition creation goes through one operator at a time and
- * the read-then-create is cheap; duplicates self-heal on the next read
- * via `resolveCanonicalEndorsementDef` (oldest wins), same as personal.
+ * Mirrors the personal path's concurrency guards — same-tab inflight
+ * map, cross-tab Web Lock, and a `noCache` re-read inside the critical
+ * section. The foreign-repo read is cached for 30s, so without the
+ * re-read a bulk group endorse minted one definition per person.
+ *
+ * Duplicates are never deleted here: this path can only write through
+ * the group BFF, and the personal deleteRecord proxy is hard-gated to
+ * `repo === sessionDid`. Extra group defs are inert — oldest wins on
+ * every subsequent read.
  */
 export async function ensureGroupEndorsementDefinition(
+  groupDid: string,
+): Promise<StrongRef> {
+  const cached = inflightGroupEnsure.get(groupDid)
+  if (cached) return cached
+
+  const promise = ensureGroupEndorsementDefinitionInner(groupDid)
+  inflightGroupEnsure.set(groupDid, promise)
+  try {
+    return await promise
+  } finally {
+    inflightGroupEnsure.delete(groupDid)
+  }
+}
+
+const inflightGroupEnsure = new Map<string, Promise<StrongRef>>()
+
+async function ensureGroupEndorsementDefinitionInner(
   groupDid: string,
 ): Promise<StrongRef> {
   const existing = await listDefinitions(groupDid)
   const matched = resolveCanonicalEndorsementDef(existing)
   if (matched) {
     return { uri: matched.canonical.uri, cid: matched.canonical.cid }
+  }
+  const lockName = `endorse-def:${groupDid}`
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request(lockName, () =>
+      createGroupDefinitionIfStillMissing(groupDid),
+    )
+  }
+  return createGroupDefinitionIfStillMissing(groupDid)
+}
+
+/**
+ * Re-read with `noCache` before minting. The group's definitions are a
+ * FOREIGN repo read, served with `Cache-Control: private, max-age=30`
+ * (see the xrpc proxy's `proxyPublicListRecords`) — five times the
+ * same-session window. Without busting it, the second endorsement in a
+ * bulk pass reads a pre-create snapshot, finds nothing, and mints a
+ * second definition; N sequential group endorsements minted N defs.
+ */
+async function createGroupDefinitionIfStillMissing(
+  groupDid: string,
+): Promise<StrongRef> {
+  const recheck = await listDefinitions(groupDid, undefined, {
+    noCache: true,
+  })
+  const recheckMatch = resolveCanonicalEndorsementDef(recheck)
+  if (recheckMatch) {
+    return { uri: recheckMatch.canonical.uri, cid: recheckMatch.canonical.cid }
   }
   const res = await authFetch(
     `/api/groups/${encodeURIComponent(groupDid)}/endorsement-definition`,
