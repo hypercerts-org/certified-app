@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Paperclip, X } from "lucide-react"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
@@ -96,6 +96,30 @@ export default function UpdateForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  // Blob CID → local object URL for attachments uploaded in this form
+  // session. A PDS keeps an uploaded blob in temp storage until a record
+  // references it, so `com.atproto.sync.getBlob` 404s for anything the
+  // user just picked — the thumbnail would render as a broken image
+  // until the update is saved. Previewing the local File bridges that
+  // gap. Same problem, and same fix, as `LeafletImageStorage.pendingBlobs`
+  // in `components/leaflet/nodes/leaflet-image-node.tsx` (which covers
+  // images placed in the rich-text body rather than attached as files).
+  //
+  // Safe to read during render because every write below is immediately
+  // followed by the `setContent` that renders the new chip.
+  const pendingPreviewsRef = useRef<Map<string, string>>(new Map())
+
+  // Free the session's object URLs on unmount. Deliberately NOT freed in
+  // `removeAttachment`: blobs are content-addressed, so attaching the
+  // same image twice yields two entries sharing one CID — and one URL.
+  // Revoking on the first removal would break the surviving chip.
+  useEffect(() => {
+    const previews = pendingPreviewsRef.current
+    return () => {
+      for (const url of previews.values()) URL.revokeObjectURL(url)
+      previews.clear()
+    }
+  }, [])
 
   // A group write is one where the subject (and so the update) lives in
   // a different repo than the viewer's own — uploads target that group's
@@ -124,13 +148,20 @@ export default function UpdateForm({
         ...(isGroupWrite ? { targetDid } : {}),
         attachment: true,
       })
-      setContent((prev) => [
-        ...prev,
-        {
-          $type: ATTACHMENT_BLOB_TYPE,
-          blob: blob as ContextAttachmentContentBlob["blob"],
-        },
-      ])
+      const entry: ContextAttachmentContentBlob = {
+        $type: ATTACHMENT_BLOB_TYPE,
+        blob: blob as ContextAttachmentContentBlob["blob"],
+      }
+      // Key the preview off what `resolveAttachment` reports rather than
+      // the raw `blob.ref.$link` — the resolver also unwraps the
+      // `map[$link:…]` string form, and the render path looks the CID up
+      // through that same function. Gate on its `kind` too, so a blob the
+      // server typed as a non-image falls through to the file label.
+      const resolved = resolveAttachment(entry)
+      if (resolved?.kind === "image") {
+        pendingPreviewsRef.current.set(resolved.cid, URL.createObjectURL(file))
+      }
+      setContent((prev) => [...prev, entry])
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to upload attachment",
@@ -239,9 +270,13 @@ export default function UpdateForm({
             {content.map((entry, i) => {
               const a = resolveAttachment(entry)
               if (!a) return null
+              // Prefer this session's local preview; fall back to the
+              // getBlob proxy for attachments the saved record already
+              // references (edit mode).
               const imgUrl =
                 a.kind === "image"
-                  ? buildAvatarUrlFromCid(targetDid, a.cid)
+                  ? (pendingPreviewsRef.current.get(a.cid) ??
+                    buildAvatarUrlFromCid(targetDid, a.cid))
                   : null
               return (
                 <li
