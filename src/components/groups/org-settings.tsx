@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleUser,
+  Crown,
   ScrollText,
   Share2,
   ShieldAlert,
@@ -40,9 +41,20 @@ import {
   setOrgMemberRole,
   queryOrgAuditLog,
   destroyGroup,
+  getOwnershipTransfer,
+  proposeOwnershipTransfer,
+  acceptOwnershipTransfer,
+  cancelOwnershipTransfer,
 } from "@/lib/groups/api"
-import type { Group, OrgMember, AuditEntry, OrgRole } from "@/lib/groups/types"
+import type {
+  Group,
+  OrgMember,
+  AuditEntry,
+  OrgRole,
+  OwnershipTransfer,
+} from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
+import { formatShortDate } from "@/lib/utils/format-date"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
 import Select from "@/components/ui/select"
@@ -59,6 +71,7 @@ type CategoryKey =
   | "handle"
   | "social-graph"
   | "members"
+  | "ownership"
   | "activity"
   | "danger"
 
@@ -111,6 +124,14 @@ const GROUPS: CategoryGroup[] = [
         label: "Members & Roles",
         description: "Manage who can access and act on behalf of this group.",
         Icon: Users,
+      },
+      {
+        key: "ownership",
+        label: "Transfer ownership",
+        navLabel: "Ownership",
+        description:
+          "Hand this group to another member. They become the owner only once they accept, and you become an admin at that point. An un-accepted transfer expires after 7 days.",
+        Icon: Crown,
       },
       {
         key: "activity",
@@ -180,6 +201,38 @@ export function canRemoveMember(params: {
   )
 }
 
+/**
+ * Which side of an ownership transfer the viewer is on — this decides whether
+ * the Transfer ownership page appears at all, and what it offers.
+ *
+ * Only the two parties can act: the owner proposes and can revoke, and the
+ * member named in a pending proposal can accept or decline. Everyone else gets
+ * "none" and never sees the page. That leaks nothing: CGS reports
+ * `pending: false` to a member who isn't a party, exactly as it does when no
+ * transfer exists, so a bystander can't tell the two apart either way.
+ */
+export function transferViewerRole(params: {
+  transfer: OwnershipTransfer | null
+  callerDid: string | null | undefined
+  isOwner: boolean
+}): "owner" | "recipient" | "none" {
+  const { transfer, callerDid, isOwner } = params
+  if (isOwner) return "owner"
+  if (transfer?.pending && callerDid && transfer.proposedOwner === callerDid) {
+    return "recipient"
+  }
+  return "none"
+}
+
+// Who the owner may propose as the next owner: any member except the current
+// owner (CGS rejects `AlreadyOwner`) and except themselves. CGS also requires
+// the target to already be a member, which everyone in this list is.
+export function eligibleTransferTargets<
+  T extends { did: string; role: OrgRole },
+>(members: T[], callerDid: string | null | undefined): T[] {
+  return members.filter((m) => m.role !== "owner" && m.did !== callerDid)
+}
+
 // groups-6: when the add-members loop fails part-way through, the members
 // before `failedIndex` were already accepted by the service. Re-staging the
 // whole list would double-add them, so keep only the failing member onward
@@ -228,9 +281,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         }
       : g,
   )
-
-  // Owners get the Danger zone (remove group) in the rail + panel.
-  const visibleGroups = isOwner ? [...baseGroups, DANGER_GROUP] : baseGroups
 
   // Remove-group (destroy) state.
   const [confirmDestroy, setConfirmDestroy] = useState(false)
@@ -292,6 +342,36 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [newMemberRole, setNewMemberRole] = useState<OrgRole>("member")
   const [isAdding, setIsAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+
+  // Ownership transfer (CGS >= 0.6.0)
+  const [transfer, setTransfer] = useState<OwnershipTransfer | null>(null)
+  const [transferError, setTransferError] = useState<string | null>(null)
+  const [transferBusy, setTransferBusy] = useState(false)
+  const [transferTarget, setTransferTarget] = useState("")
+  const [confirmPropose, setConfirmPropose] = useState(false)
+  const [confirmAccept, setConfirmAccept] = useState(false)
+
+  // Transfer ownership is only actionable by the two parties — the owner, and
+  // a member with a pending proposal naming them. Everyone else never sees the
+  // page (see `transferViewerRole`).
+  const viewerTransferRole = transferViewerRole({
+    transfer,
+    callerDid: did,
+    isOwner,
+  })
+  const transferGroups: CategoryGroup[] =
+    viewerTransferRole === "none"
+      ? baseGroups.map((g) =>
+          g.label === "Group Management"
+            ? { ...g, items: g.items.filter((c) => c.key !== "ownership") }
+            : g,
+        )
+      : baseGroups
+
+  // Owners get the Danger zone (remove group) in the rail + panel.
+  const visibleGroups = isOwner
+    ? [...transferGroups, DANGER_GROUP]
+    : transferGroups
 
   // Audit log
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
@@ -366,12 +446,33 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     [groupDid, isAdmin]
   )
 
+  const fetchTransfer = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const next = await getOwnershipTransfer(groupDid, signal)
+        if (!signal?.aborted) {
+          setTransfer(next)
+          setTransferError(null)
+        }
+      } catch (err) {
+        if (signal?.aborted) return
+        // Leave `transfer` as-is: a non-party's page stays hidden either way,
+        // and the owner (whose page is always in the rail) sees this inline.
+        setTransferError(
+          err instanceof Error ? err.message : "Couldn't read transfer status"
+        )
+      }
+    },
+    [groupDid]
+  )
+
   useEffect(() => {
     const controller = new AbortController()
     fetchMembers(controller.signal)
     fetchAudit(controller.signal)
+    fetchTransfer(controller.signal)
     return () => controller.abort()
-  }, [fetchMembers, fetchAudit])
+  }, [fetchMembers, fetchAudit, fetchTransfer])
 
   const handleAddMembers = async () => {
     if (pendingMembers.length === 0) return
@@ -393,7 +494,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       }
       setPendingMembers([])
       setNewMemberRole("member")
-      await Promise.all([fetchMembers(), fetchAudit()])
+      await Promise.all([fetchMembers(), fetchAudit(), fetchTransfer()])
     } finally {
       setIsAdding(false)
     }
@@ -407,7 +508,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     try {
       await removeOrgMember(groupDid, memberDid)
       setConfirmRemove(null)
-      await Promise.all([fetchMembers(), fetchAudit()])
+      // Removing a party clears any pending proposal service-side, so the
+      // transfer state has to be re-read rather than kept.
+      await Promise.all([fetchMembers(), fetchAudit(), fetchTransfer()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to remove member"
@@ -419,11 +522,67 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const handleRoleChange = async (memberDid: string, role: OrgRole) => {
     try {
       await setOrgMemberRole(groupDid, memberDid, role)
-      await Promise.all([fetchMembers(), fetchAudit()])
+      // A role change also clears a pending proposal service-side.
+      await Promise.all([fetchMembers(), fetchAudit(), fetchTransfer()])
     } catch (err) {
       setMemberError(
         err instanceof Error ? err.message : "Failed to change role"
       )
+    }
+  }
+
+  const handlePropose = async () => {
+    if (!transferTarget) return
+    setTransferBusy(true)
+    setTransferError(null)
+    try {
+      await proposeOwnershipTransfer(groupDid, transferTarget)
+      setConfirmPropose(false)
+      setTransferTarget("")
+      await Promise.all([fetchTransfer(), fetchAudit()])
+    } catch (err) {
+      setTransferError(
+        err instanceof Error ? err.message : "Failed to propose transfer"
+      )
+      setConfirmPropose(false)
+    } finally {
+      setTransferBusy(false)
+    }
+  }
+
+  const handleAcceptTransfer = async () => {
+    setTransferBusy(true)
+    setTransferError(null)
+    try {
+      await acceptOwnershipTransfer(groupDid)
+      setConfirmAccept(false)
+      // Roles just swapped — the caller is the owner and the proposer an
+      // admin. Refresh the org context too, since `org.role` drives which
+      // pages and controls this whole screen renders.
+      await Promise.all([fetchTransfer(), fetchMembers(), fetchAudit()])
+      await refetchOrgs()
+    } catch (err) {
+      setTransferError(
+        err instanceof Error ? err.message : "Failed to accept transfer"
+      )
+      setConfirmAccept(false)
+    } finally {
+      setTransferBusy(false)
+    }
+  }
+
+  const handleCancelTransfer = async () => {
+    setTransferBusy(true)
+    setTransferError(null)
+    try {
+      await cancelOwnershipTransfer(groupDid)
+      await Promise.all([fetchTransfer(), fetchAudit()])
+    } catch (err) {
+      setTransferError(
+        err instanceof Error ? err.message : "Failed to cancel transfer"
+      )
+    } finally {
+      setTransferBusy(false)
     }
   }
 
@@ -753,6 +912,138 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           </>
         )
 
+      // Ownership transfer (CGS >= 0.6.0). Only the two parties get here —
+      // `viewerTransferRole` keeps the page out of everyone else's rail.
+      case "ownership": {
+        const pending = transfer?.pending ? transfer : null
+        const targets = eligibleTransferTargets(members, did)
+        const identityFor = (memberDid: string) => {
+          const m = members.find((x) => x.did === memberDid)
+          return (
+            <IdentityRow
+              did={memberDid}
+              handle={m?.handle}
+              displayName={m?.displayName}
+              avatarUrl={m?.avatarUrl}
+              size="sm"
+            />
+          )
+        }
+
+        return (
+          <div className="sx-subsections">
+            {transferError && <ErrorMessage message={transferError} />}
+
+            {pending ? (
+              <div className="sx-subsection">
+                <div className="sx-subsection__head">
+                  <h3 className="sx-subsection__title">Transfer in progress</h3>
+                  <p className="sx-subsection__desc">
+                    {viewerTransferRole === "recipient"
+                      ? "You've been proposed as this group's owner. Accepting makes you the owner, and the current owner becomes an admin."
+                      : "Nothing changes until the proposed owner accepts. You can revoke it before then."}
+                  </p>
+                </div>
+
+                <div className="org-members__item">
+                  <div className="org-members__item-info">
+                    {identityFor(pending.proposedOwner)}
+                  </div>
+                  <div className="org-members__item-actions">
+                    <Badge variant="role">proposed owner</Badge>
+                  </div>
+                </div>
+
+                <p className="settings__note">
+                  Proposed {formatShortDate(pending.createdAt)} — expires{" "}
+                  {formatShortDate(pending.expiresAt)} if it isn&apos;t
+                  accepted.
+                </p>
+
+                <div className="org-manage__actions">
+                  {viewerTransferRole === "recipient" ? (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => setConfirmAccept(true)}
+                        disabled={transferBusy}
+                      >
+                        Accept ownership
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelTransfer}
+                        loading={transferBusy}
+                        disabled={transferBusy}
+                      >
+                        Decline
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelTransfer}
+                      loading={transferBusy}
+                      disabled={transferBusy}
+                    >
+                      Cancel transfer
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="sx-subsection">
+                <div className="sx-subsection__head">
+                  <h3 className="sx-subsection__title">Choose the new owner</h3>
+                </div>
+
+                {membersLoading ? (
+                  <div className="org-members__loading">
+                    <LoadingSpinner size="sm" />
+                  </div>
+                ) : targets.length === 0 ? (
+                  <p className="settings__note">
+                    This group has no other members yet. Add someone under
+                    Members &amp; Roles first.
+                  </p>
+                ) : (
+                  <div className="org-members__add-submit">
+                    <Select
+                      size="sm"
+                      aria-label="New owner"
+                      value={transferTarget}
+                      onChange={(e) => setTransferTarget(e.target.value)}
+                    >
+                      <option value="">Select a member…</option>
+                      {targets.map((m) => (
+                        <option key={m.did} value={m.did}>
+                          {m.handle ? `@${m.handle}` : m.did}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={() => setConfirmPropose(true)}
+                      disabled={!transferTarget || transferBusy}
+                      loading={transferBusy}
+                    >
+                      Propose transfer
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="settings__note">
+              This moves control of the group within Certified. It does not
+              hand over the group account&apos;s own sign-in credentials.
+            </p>
+          </div>
+        )
+      }
+
       case "activity":
         return !isAdmin ? (
           <p className="settings__note">Only admins and owners can view the activity log.</p>
@@ -920,6 +1211,31 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           confirmLabel="Remove"
           onCancel={() => setConfirmRemove(null)}
           onConfirm={() => handleRemoveMember(confirmRemove)}
+        />
+      ) : null}
+
+      {confirmPropose ? (
+        <ConfirmDialog
+          title="Propose new owner"
+          message={`Propose @${
+            members.find((m) => m.did === transferTarget)?.handle ??
+            transferTarget
+          } as the owner of @${org.handle}? They become the owner once they accept — and you become an admin. You can cancel until then.`}
+          confirmLabel="Propose transfer"
+          isConfirming={transferBusy}
+          onCancel={() => setConfirmPropose(false)}
+          onConfirm={handlePropose}
+        />
+      ) : null}
+
+      {confirmAccept ? (
+        <ConfirmDialog
+          title="Accept ownership"
+          message={`Become the owner of @${org.handle}? The current owner is demoted to admin. Only the new owner can undo this, by transferring ownership back.`}
+          confirmLabel="Accept ownership"
+          isConfirming={transferBusy}
+          onCancel={() => setConfirmAccept(false)}
+          onConfirm={handleAcceptTransfer}
         />
       ) : null}
 
