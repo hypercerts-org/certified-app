@@ -130,7 +130,7 @@ const GROUPS: CategoryGroup[] = [
         label: "Transfer ownership",
         navLabel: "Ownership",
         description:
-          "Hand this group to another member. They have to accept before it takes effect.",
+          "Hand this group to another member. They become the owner only once they accept, and you become an admin at that point. An un-accepted transfer expires after 7 days.",
         Icon: Crown,
       },
       {
@@ -997,11 +997,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               <div className="sx-subsection">
                 <div className="sx-subsection__head">
                   <h3 className="sx-subsection__title">Choose the new owner</h3>
-                  <p className="sx-subsection__desc">
-                    Pick a current member. They become the owner only once they
-                    accept, and you become an admin at that point. An
-                    un-accepted transfer expires after 7 days.
-                  </p>
                 </div>
 
                 {membersLoading ? (
