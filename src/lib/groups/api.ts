@@ -9,6 +9,7 @@ import type {
   OrgMember,
   AuditEntry,
   OrgRole,
+  OwnershipTransfer,
   RemoteMembership,
 } from "./types"
 
@@ -357,6 +358,77 @@ export async function setOrgMemberRole(
   )
   if (!res.ok) {
     throw new Error(await extractError(res, "Failed to set role"))
+  }
+}
+
+/**
+ * Read the group's pending ownership transfer, if any.
+ *
+ * Any member may ask; CGS discloses the details only to the current owner and
+ * the proposed new owner. Everyone else gets `pending: false` — the same
+ * answer as when no transfer exists.
+ */
+export async function getOwnershipTransfer(
+  groupDid: string,
+  signal?: AbortSignal
+): Promise<OwnershipTransfer> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/ownership-transfer`,
+    { signal }
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to read ownership transfer"))
+  }
+  return res.json()
+}
+
+/**
+ * Propose transferring ownership to another member (owner only).
+ * Ownership does not move until they accept. Re-proposing the same member
+ * renews the 7-day expiry.
+ */
+export async function proposeOwnershipTransfer(
+  groupDid: string,
+  newOwnerDid: string
+): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/ownership-transfer`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newOwner: newOwnerDid }),
+    }
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to propose transfer"))
+  }
+}
+
+/**
+ * Accept a pending transfer — callable only by the proposed member. The
+ * previous owner becomes an admin and the caller becomes the owner.
+ */
+export async function acceptOwnershipTransfer(groupDid: string): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/ownership-transfer`,
+    { method: "PUT", headers: { "Content-Type": "application/json" } }
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to accept transfer"))
+  }
+}
+
+/**
+ * Cancel a pending transfer — the owner revoking it, or the proposed member
+ * declining it.
+ */
+export async function cancelOwnershipTransfer(groupDid: string): Promise<void> {
+  const res = await authFetch(
+    `/api/groups/${encodeURIComponent(groupDid)}/ownership-transfer`,
+    { method: "DELETE", headers: { "Content-Type": "application/json" } }
+  )
+  if (!res.ok) {
+    throw new Error(await extractError(res, "Failed to cancel transfer"))
   }
 }
 
