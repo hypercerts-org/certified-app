@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   transferViewerRole,
   eligibleTransferTargets,
+  transferPendingNote,
 } from "../org-settings"
 import type { OrgRole } from "@/lib/groups/types"
 
@@ -95,6 +96,19 @@ describe("transferViewerRole", () => {
     expect(
       transferViewerRole({ transfer: null, callerDid: ALICE, isOwner: false }),
     ).toBe("none")
+  })
+})
+
+describe("transferPendingNote", () => {
+  it("keeps both dates spaced away from the surrounding words", () => {
+    // Regression: assembled as JSX text around expressions, the space after
+    // the expiry date was dropped ("2026-09-24if it isn't accepted").
+    expect(
+      transferPendingNote({
+        createdAt: "2026-09-17T10:00:00.000Z",
+        expiresAt: "2026-09-24T10:00:00.000Z",
+      }),
+    ).toBe("Proposed 2026-09-17 — expires 2026-09-24 if it isn't accepted.")
   })
 })
 

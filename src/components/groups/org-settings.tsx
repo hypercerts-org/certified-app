@@ -224,6 +224,20 @@ export function transferViewerRole(params: {
   return "none"
 }
 
+/**
+ * The "Proposed … — expires …" line under a pending transfer.
+ *
+ * Built as one string rather than JSX text interleaved with expressions:
+ * JSX drops the space between `}` and the next word when that pair straddles
+ * a line break, which ran the date straight into the following word.
+ */
+export function transferPendingNote(pending: {
+  createdAt: string
+  expiresAt: string
+}): string {
+  return `Proposed ${formatShortDate(pending.createdAt)} — expires ${formatShortDate(pending.expiresAt)} if it isn't accepted.`
+}
+
 // Who the owner may propose as the next owner: any member except the current
 // owner (CGS rejects `AlreadyOwner`) and except themselves. CGS also requires
 // the target to already be a member, which everyone in this list is.
@@ -955,9 +969,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 </div>
 
                 <p className="settings__note">
-                  Proposed {formatShortDate(pending.createdAt)} — expires{" "}
-                  {formatShortDate(pending.expiresAt)} if it isn&apos;t
-                  accepted.
+                  {transferPendingNote(pending)}
                 </p>
 
                 <div className="org-manage__actions">
