@@ -25,6 +25,28 @@ export interface OrgMember {
   addedAt: string
 }
 
+/**
+ * State of a group's pending ownership transfer
+ * (`app.certified.group.ownershipTransfer.status`, CGS >= 0.6.0).
+ *
+ * A member who is not a party to a pending transfer receives the same
+ * `pending: false` as when none exists — the service makes the two cases
+ * indistinguishable on purpose, so don't try to tell them apart.
+ */
+export type OwnershipTransfer =
+  | { groupDid: string; pending: false }
+  | {
+      groupDid: string
+      pending: true
+      /** DID of the member proposed as the new owner. */
+      proposedOwner: string
+      /** DID of the current owner, who proposed the transfer. */
+      proposedBy: string
+      createdAt: string
+      /** 7 days after `createdAt`; a re-propose restarts the window. */
+      expiresAt: string
+    }
+
 export type OrgProfile = CertifiedProfile
 
 export interface GroupMetadata {
