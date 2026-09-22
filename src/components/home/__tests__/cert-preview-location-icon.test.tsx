@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest"
 import { render, screen, cleanup, within } from "@testing-library/react"
 
 import { CertPreview } from "../home-feed-rows"
-import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import type { ActivityHomeFeedView } from "@/hooks/use-home-feed"
 
 // bug-010: the feed PreviewCard's MapPin was gated on
 // `i === 0 && withLocationIcon && i === meta.length - 1`, which is only
@@ -20,24 +20,16 @@ afterEach(() => {
 
 describe("CertPreview location MapPin", () => {
   it("renders a MapPin next to the locations entry even when a period is also present", () => {
-    const record = {
-      uri: URI,
-      cid: "bafycid",
-      value: {
-        title: "Reforestation effort",
-        shortDescription: "Planting trees",
-        createdAt: "2025-01-01T00:00:00.000Z",
-        startDate: "2025-01-15T00:00:00.000Z",
-        endDate: "2025-03-20T00:00:00.000Z",
-        locations: [
-          { uri: "at://did:plc:l/app.certified.location/a", cid: "bafa" },
-          { uri: "at://did:plc:l/app.certified.location/b", cid: "bafb" },
-          { uri: "at://did:plc:l/app.certified.location/c", cid: "bafc" },
-        ],
-      },
-    } as unknown as ActivityRecord
+    const view = {
+      title: "Reforestation effort",
+      shortDescription: "Planting trees",
+      imageUrl: null,
+      startDate: "2025-01-15T00:00:00.000Z",
+      endDate: "2025-03-20T00:00:00.000Z",
+      locationCount: 3,
+    } satisfies ActivityHomeFeedView
 
-    render(<CertPreview record={record} uri={URI} labels={[]} />)
+    render(<CertPreview view={view} uri={URI} />)
 
     // The locations text still renders.
     const locationsItem = screen.getByText(/3 locations/).closest("span")

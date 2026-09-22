@@ -52,7 +52,7 @@ vi.mock("@/lib/atproto/follower-events", async () => {
   }
 })
 
-import { useHomeFeed } from "../use-home-feed"
+import { useLegacyHomeFeed } from "../use-home-feed"
 
 function page(endCursor: string | null, hasNextPage: boolean): FeedEventPage {
   return { events: [], endCursor, hasNextPage }
@@ -66,7 +66,7 @@ beforeEach(() => {
 describe("useHomeFeed — INVALID_CURSOR recovery controller lifecycle", () => {
   it("aborts the recovery fetch when the hook unmounts mid-recovery", async () => {
     const followed = new Set(["did:a"])
-    const { result, unmount } = renderHook(() => useHomeFeed(followed))
+    const { result, unmount } = renderHook(() => useLegacyHomeFeed(followed))
 
     // Page 1 (initial load) — gives us a cursor + hasMore so loadMore runs.
     await waitFor(() => expect(fetchCalls.length).toBe(1))

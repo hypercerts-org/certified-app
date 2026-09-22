@@ -44,6 +44,7 @@ import {
 } from "@/lib/dev/fixtures/profile"
 import { resolveDidsResults } from "@/lib/dev/fixtures/authors"
 import {
+  certifiedFeedPage,
   followerEventsConnection,
   hydrateFeedPageData,
   activitiesConnection,
@@ -60,6 +61,7 @@ import {
   groupsMembershipsResponse,
 } from "@/lib/dev/fixtures/groups"
 import { searchActorsResponse } from "@/lib/dev/fixtures/search"
+import { CERTIFIED_FEED_PATH } from "@/lib/atproto/certified-feed"
 import {
   isManagedAuthorsRequest,
   managedProjectsConnection,
@@ -342,6 +344,12 @@ function installMockFetch(
     }
 
     const path = url.pathname
+
+    // Direct cross-origin feed-service XRPC. Match the path rather than the
+    // origin so preview builds can use any explicitly configured service URL.
+    if (path === CERTIFIED_FEED_PATH) {
+      return json(empty ? { items: [] } : certifiedFeedPage())
+    }
 
     // --- PLC directory (resolvePdsUrl / resolveHandle fetch it directly) ---
     if (url.hostname === "plc.directory") {

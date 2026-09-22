@@ -327,10 +327,10 @@ export default function DesktopTopBar() {
     setCreateOpen(false);
   }, [pathname]);
 
-  if (isLoading) return null;
-
   // Editorial pages use LandingTopBar; suppress the app chrome.
-  // Embeds render bare (board-only) inside a third-party iframe.
+  // Embeds render bare (board-only) inside a third-party iframe. Check
+  // deterministic route state before the hydration gate so these surfaces
+  // never reserve app-chrome space.
   if (
     pathname === "/welcome" ||
     pathname === "/terms" ||
@@ -339,6 +339,21 @@ export default function DesktopTopBar() {
     pathname === "/dsa" ||
     (pathname?.startsWith("/embed") ?? false)
   ) return null;
+
+  // DesktopTopBar is inside a Suspense boundary because it reads
+  // useSearchParams(). Auth can resolve while that boundary is still waiting
+  // to hydrate, which previously made the client render <header> against the
+  // server's empty output. Keep the existing height-reserving fallback until
+  // this component has a client snapshot, so SSR and the first hydration pass
+  // are deterministic without introducing layout shift.
+  if (!mounted || isLoading) {
+    return (
+      <div
+        className="desktop-top-bar desktop-top-bar--placeholder"
+        aria-hidden
+      />
+    );
+  }
 
   const tabHref = (tab: ProfileTab) => {
     if (tab.href) return tab.href;
