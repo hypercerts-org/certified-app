@@ -284,11 +284,10 @@
   pointer-events: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .fancy-tile:hover .fancy-tile__weight {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Not gated to hover devices: a tap is how touch users see the weight. */
+.fancy-tile:hover .fancy-tile__weight {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Respect reduced-motion: no drift, no sheen glide, instant tile reveal. */

@@ -3198,6 +3198,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 8px;
 }
 
+/* Legal pages and /help widen the reading column past the default
+   600/720px app-shell cap (the inner .app-page__inner is max-w-3xl, so
+   the outer cap is the one that binds). Without this, /help renders
+   narrower than /terms and /privacy. */
+.app-shell:has(.legal-page) .app-shell__content {
+  max-width: 880px;
+}
+
 /* Mobile heading scale for prose pages. The `text-h1..h3` Tailwind tokens are
    fixed (2.25/1.75/1.375rem) and eat the narrow column on phones. Scoped to
    `.legal-page`, these out-specify the utility class (0,1,1 > 0,1,0) and shrink

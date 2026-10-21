@@ -702,7 +702,7 @@
    columns here; the author byline already truncates with an ellipsis. */
 @media (min-width: 800px) and (max-width: 1099px) {
   .cert-list-row {
-    grid-template-columns: minmax(0, 1fr) 140px 64px;
+    grid-template-columns: minmax(0, 1fr) 140px 76px;
     gap: 12px;
   }
 }
@@ -1184,7 +1184,7 @@
      flexible "for" column via subgrid below.) `confirmed-by` holds the
      plain-text provenance summary (flexes, truncates). */
   grid-template-columns:
-    7rem minmax(0, 1fr) minmax(0, 1fr) minmax(7rem, max-content) minmax(0, 1fr);
+    7rem minmax(0, 1fr) minmax(0, 1fr) 9rem minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 12px 14px;
@@ -1240,8 +1240,9 @@
   font-weight: 400;
   color: var(--fg-primary);
   font-variant-numeric: tabular-nums;
-  /* Never ellipsize: a clipped amount is wrong data. The track grows to
-     fit (minmax(7rem, max-content)). */
+  /* Never ellipsize: a clipped amount is wrong data. The track is a
+     fixed 9rem so separate row grids stay aligned; an extreme amount
+     overflows into the gap rather than being cut. */
   white-space: nowrap;
   /* Trailing column — flush right. */
   text-align: right;
