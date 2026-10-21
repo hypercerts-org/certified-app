@@ -20,9 +20,11 @@ import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ErrorMessage from "@/components/ui/error-message"
+import Button from "@/components/ui/button"
 import Skeleton from "@/components/ui/skeleton"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import { deriveIdentity } from "@/lib/utils/identity"
 
 type TabKey = "received" | "given"
@@ -34,6 +36,7 @@ interface GivenEndorsementsListProps {
   readonly revokeError: string | null
   readonly revokingRkey: string | null
   readonly onRevoke: (rkey: string) => void
+  readonly onRetry: () => void
 }
 
 function GivenEndorsementsList({
@@ -43,6 +46,7 @@ function GivenEndorsementsList({
   revokeError,
   revokingRkey,
   onRevoke,
+  onRetry,
 }: GivenEndorsementsListProps) {
   if (isLoading) {
     return (
@@ -59,7 +63,7 @@ function GivenEndorsementsList({
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <ErrorMessage message={error} />
+        <ErrorMessage message={error} onRetry={onRetry} />
       </>
     )
   }
@@ -118,7 +122,7 @@ function ReceivedRow({
   } = deriveIdentity(info, endorsement.issuerDid)
 
   return (
-    <li className="endorsement-row">
+    <li className="endorsement-row endorsement-row--received">
       <Link href={href} className="endorsement-row__main">
         {isLoading && !info ? (
           <Skeleton circle animate={false} width={48} height={48} />
@@ -126,17 +130,17 @@ function ReceivedRow({
           <Avatar size="md" src={info?.avatarUrl || undefined} alt="" fallbackInitials={initials} />
         )}
         <div className="endorsement-row__meta">
-          <span className="endorsement-row__name">{displayName}</span>
+          <span className="endorsement-row__name" dir="auto">{displayName}</span>
           {handle ? <span className="endorsement-row__handle">@{handle}</span> : null}
           {endorsement.note ? (
-            <span className="endorsement-row__note">{endorsement.note}</span>
+            <span className="endorsement-row__note" dir="auto">{endorsement.note}</span>
           ) : null}
         </div>
       </Link>
       <time
         dateTime={endorsement.createdAt}
         className="endorsement-row__date"
-        title={new Date(endorsement.createdAt).toLocaleString()}
+        title={formatAbsoluteDateTime(endorsement.createdAt)}
       >
         {formatShortDate(endorsement.createdAt)}
       </time>
@@ -368,16 +372,16 @@ export default function EndorsementsPage() {
               </TabList>
 
               {activeTab === "given" && !isPanelOpen ? (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="endorsements-new-btn"
                   onClick={() => setIsPanelOpen(true)}
                   disabled={!did}
-                  aria-label="New endorsement"
                 >
-                  <Plus size={16} />
-                  <span>New</span>
-                </button>
+                  <Plus size={16} aria-hidden />
+                  New
+                </Button>
               ) : null}
             </div>
 
@@ -404,6 +408,7 @@ export default function EndorsementsPage() {
                 revokeError={revokeError}
                 revokingRkey={revokingRkey}
                 onRevoke={setConfirmRkey}
+                onRetry={refetch}
               />
             </TabPanel>
           </Tabs>

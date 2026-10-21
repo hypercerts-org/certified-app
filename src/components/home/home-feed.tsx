@@ -5,11 +5,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useId,
   useRef,
   useState,
 } from "react"
 import { ChevronDown, Inbox, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
+import Checkbox from "@/components/ui/checkbox"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -147,6 +149,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   // Inline filter panel under the "For you" tab (certs.social pattern:
   // clicking the active tab toggles the disclosure).
   const [filterOpen, setFilterOpen] = useState(false)
+  const filterPanelId = useId()
   const filterWrapRef = useRef<HTMLDivElement>(null)
   useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
   useEffect(() => {
@@ -243,15 +246,15 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       {/* certs.social-style tab strip. One tab for now ("For you");
           clicking the active tab toggles the inline filter panel. */}
       <div ref={filterWrapRef}>
-        <div className="feed-tabs" role="tablist" aria-label="Feed">
+        {/* A disclosure, not a tab: the button shows/hides the inline
+            filter panel below (aria-controls). */}
+        <div className="feed-tabs">
           <div className="feed-tabs__tab-wrapper">
             <button
               type="button"
               className="feed-tabs__tab feed-tabs__tab--active"
-              role="tab"
-              aria-selected="true"
-              aria-haspopup="dialog"
               aria-expanded={filterOpen}
+              aria-controls={filterPanelId}
               onClick={() => setFilterOpen((v) => !v)}
             >
               {isDefaultFilters ? "For you" : "Custom"}
@@ -265,6 +268,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
         </div>
         {filterOpen ? (
           <FeedFilterPanel
+            id={filterPanelId}
             evaluatorDids={evaluatorDids}
             selectedEvaluators={selectedEvaluators}
             onEvaluatorsChange={handleEvaluatorsChange}
@@ -407,7 +411,6 @@ const HomeFeedBody = memo(function HomeFeedBody({
           onLoadMore={loadMore}
           isLoading={isLoadingMore}
           className="home-feed__load-more"
-          buttonClassName="home-feed__load-more-btn"
         />
       ) : null}
     </>
@@ -491,6 +494,7 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
  * tiers), plus a reset row.
  */
 function FeedFilterPanel({
+  id,
   evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
@@ -501,6 +505,7 @@ function FeedFilterPanel({
   isDefault,
   onReset,
 }: {
+  id: string
   evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
@@ -520,61 +525,70 @@ function FeedFilterPanel({
 
   return (
     <div
+      id={id}
       className="feed-evaluator-panel"
       role="region"
       aria-label="Feed filters"
     >
-      <p className="feed-evaluator-panel__heading">
-        Show activities from accounts that are endorsed by:
-      </p>
-      <div className="feed-evaluators__list">
-        {evaluatorDids.map((did) => (
-          <EvaluatorRow
-            key={did}
-            did={did}
-            checked={selectedEvaluators.has(did)}
+      {/* Each checkbox group is a <fieldset> so its heading (the
+          <legend>) is announced when focus moves into the group. */}
+      <fieldset className="feed-evaluators__group">
+        <legend className="feed-evaluator-panel__heading">
+          Show activities from accounts that are endorsed by:
+        </legend>
+        <div className="feed-evaluators__list">
+          {evaluatorDids.map((did) => (
+            <EvaluatorRow
+              key={did}
+              did={did}
+              checked={selectedEvaluators.has(did)}
+              onToggle={() =>
+                onEvaluatorsChange(toggled(selectedEvaluators, did))
+              }
+            />
+          ))}
+        </div>
+      </fieldset>
+      <div className="feed-evaluators__separator" aria-hidden="true" />
+      <fieldset className="feed-evaluators__group">
+        <legend className="feed-evaluator-panel__heading">Activity quality</legend>
+        <div className="feed-evaluators__list">
+          {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
+            <FilterCheckRow
+              key={tier}
+              label={HYPERLABEL_DISPLAY_LABELS[tier]}
+              checked={includedTiers.has(tier)}
+              onToggle={() => onTiersChange(toggled(includedTiers, tier))}
+            />
+          ))}
+          <FilterCheckRow
+            label="Not labeled yet"
+            checked={includedTiers.has(UNLABELED_SLUG)}
+            onToggle={() => onTiersChange(toggled(includedTiers, UNLABELED_SLUG))}
+          />
+        </div>
+      </fieldset>
+      <div className="feed-evaluators__separator" aria-hidden="true" />
+      <fieldset className="feed-evaluators__group">
+        <legend className="feed-evaluator-panel__heading">Organization quality</legend>
+        <div className="feed-evaluators__list">
+          {ORGLABEL_DISPLAY_ORDER.map((tier) => (
+            <FilterCheckRow
+              key={tier}
+              label={ORGLABEL_DISPLAY_LABELS[tier]}
+              checked={includedOrgTiers.has(tier)}
+              onToggle={() => onOrgTiersChange(toggled(includedOrgTiers, tier))}
+            />
+          ))}
+          <FilterCheckRow
+            label="Not labeled yet"
+            checked={includedOrgTiers.has(UNLABELED_SLUG)}
             onToggle={() =>
-              onEvaluatorsChange(toggled(selectedEvaluators, did))
+              onOrgTiersChange(toggled(includedOrgTiers, UNLABELED_SLUG))
             }
           />
-        ))}
-      </div>
-      <div className="feed-evaluators__separator" aria-hidden="true" />
-      <p className="feed-evaluator-panel__heading">Activity quality</p>
-      <div className="feed-evaluators__list">
-        {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-          <FilterCheckRow
-            key={tier}
-            label={HYPERLABEL_DISPLAY_LABELS[tier]}
-            checked={includedTiers.has(tier)}
-            onToggle={() => onTiersChange(toggled(includedTiers, tier))}
-          />
-        ))}
-        <FilterCheckRow
-          label="Not labeled yet"
-          checked={includedTiers.has(UNLABELED_SLUG)}
-          onToggle={() => onTiersChange(toggled(includedTiers, UNLABELED_SLUG))}
-        />
-      </div>
-      <div className="feed-evaluators__separator" aria-hidden="true" />
-      <p className="feed-evaluator-panel__heading">Organization quality</p>
-      <div className="feed-evaluators__list">
-        {ORGLABEL_DISPLAY_ORDER.map((tier) => (
-          <FilterCheckRow
-            key={tier}
-            label={ORGLABEL_DISPLAY_LABELS[tier]}
-            checked={includedOrgTiers.has(tier)}
-            onToggle={() => onOrgTiersChange(toggled(includedOrgTiers, tier))}
-          />
-        ))}
-        <FilterCheckRow
-          label="Not labeled yet"
-          checked={includedOrgTiers.has(UNLABELED_SLUG)}
-          onToggle={() =>
-            onOrgTiersChange(toggled(includedOrgTiers, UNLABELED_SLUG))
-          }
-        />
-      </div>
+        </div>
+      </fieldset>
       <div className="feed-evaluators__separator" aria-hidden="true" />
       <button
         type="button"
@@ -598,15 +612,13 @@ function FilterCheckRow({
   onToggle: () => void
 }) {
   return (
-    <label className="feed-evaluators__row">
-      <input
-        type="checkbox"
-        className="feed-evaluators__checkbox"
+    <div className="feed-evaluators__row">
+      <Checkbox
         checked={checked}
         onChange={onToggle}
+        label={<span className="feed-evaluators__name">{label}</span>}
       />
-      <span className="feed-evaluators__name">{label}</span>
-    </label>
+    </div>
   )
 }
 
@@ -631,31 +643,33 @@ function EvaluatorRow({
     info?.displayName ||
     (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
   return (
-    <label className="feed-evaluators__row">
-      <input
-        type="checkbox"
-        className="feed-evaluators__checkbox"
+    <div className="feed-evaluators__row">
+      <Checkbox
         checked={checked}
         onChange={onToggle}
         aria-label={`Include endorsements by ${label}`}
+        label={
+          <>
+            {info?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={info.avatarUrl}
+                alt=""
+                className="feed-evaluators__avatar"
+                width={24}
+                height={24}
+                onError={hideBrokenThumb}
+              />
+            ) : (
+              <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
+            )}
+            <span className="feed-evaluators__name" dir="auto">{label}</span>
+            {info?.displayName && info?.handle ? (
+              <span className="feed-evaluators__handle">@{info.handle}</span>
+            ) : null}
+          </>
+        }
       />
-      {info?.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={info.avatarUrl}
-          alt=""
-          className="feed-evaluators__avatar"
-          width={24}
-          height={24}
-          onError={hideBrokenThumb}
-        />
-      ) : (
-        <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
-      )}
-      <span className="feed-evaluators__name">{label}</span>
-      {info?.displayName && info?.handle ? (
-        <span className="feed-evaluators__handle">@{info.handle}</span>
-      ) : null}
-    </label>
+    </div>
   )
 }

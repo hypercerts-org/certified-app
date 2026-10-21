@@ -120,7 +120,9 @@ export function FundingForActivity({ uri }: { uri: string | null }) {
             <img src={imageUrl} alt="" loading="lazy" />
           ) : null}
         </span>
-        <span className="funding-receipt-row__activity-title">{title}</span>
+        <span className="funding-receipt-row__activity-title" dir="auto">
+          {title}
+        </span>
       </Link>
     </span>
   )

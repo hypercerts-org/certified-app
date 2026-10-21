@@ -7,6 +7,7 @@ import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deriveIdentity } from "@/lib/utils/identity"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatAbsoluteDateTime } from "./format-display"
 import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
@@ -56,7 +57,9 @@ function AccountListRow({
           className="account-list-row__avatar"
         />
         <div className="account-list-row__body">
-          <span className="account-list-row__name">{displayName}</span>
+          <span className="account-list-row__name" dir="auto">
+            {displayName}
+          </span>
           {handle ? (
             <span className="account-list-row__handle">@{handle}</span>
           ) : (
@@ -76,7 +79,7 @@ function AccountListRow({
         <time
           className="account-list-row__joined"
           dateTime={actor.createdAt}
-          title={`Joined ${actor.createdAt}`}
+          title={`Joined ${formatAbsoluteDateTime(actor.createdAt)}`}
         >
           Joined {formatShortDate(actor.createdAt)}
         </time>

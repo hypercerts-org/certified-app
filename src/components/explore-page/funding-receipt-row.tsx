@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState, type KeyboardEvent, type MouseEvent } from "react"
+import { memo, useState, type MouseEvent } from "react"
 import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
 import {
   FundingPartySlot,
@@ -8,6 +8,7 @@ import {
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatAbsoluteDateTime, formatAmount } from "./format-display"
 import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
@@ -48,39 +49,32 @@ function FundingReceiptRow({
 }) {
   const [detailOpen, setDetailOpen] = useState(false)
 
-  // Open the modal only for clicks on the row's "chrome" — clicks that
-  // land on an inner link (account, activity) or button (wallet copy)
-  // are left to those controls. Mirrors the keyboard guard below.
+  // Mouse convenience: a click on the row's "chrome" opens the modal.
+  // Clicks that land on an inner link (account, activity) or button
+  // (wallet copy) are left to those controls. Keyboard and screen-reader
+  // users get the dedicated "details" button rendered inside the row.
   const onRowClick = (e: MouseEvent<HTMLElement>) => {
     if ((e.target as HTMLElement).closest("a, button")) return
     setDetailOpen(true)
   }
-  // Enter / Space open the modal only when the row itself holds focus;
-  // when a nested link/button is focused we let it handle the key.
-  const onRowKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (e.target !== e.currentTarget) return
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      setDetailOpen(true)
-    }
-  }
 
-  const interactiveProps = interactive
-    ? {
-        role: "button" as const,
-        tabIndex: 0,
-        onClick: onRowClick,
-        onKeyDown: onRowKeyDown,
-        "aria-haspopup": "dialog" as const,
-        "aria-label": "View funding receipt details",
-      }
-    : {}
+  const amountLabel = receipt.amount
+    ? `${formatAmount(receipt.amount)}${receipt.currency ? ` ${receipt.currency}` : ""}`
+    : null
+  const detailsLabel = [
+    "View funding receipt details",
+    [amountLabel, receipt.occurredAt ? formatShortDate(receipt.occurredAt) : null]
+      .filter(Boolean)
+      .join(", "),
+  ]
+    .filter(Boolean)
+    .join(": ")
 
   return (
     <>
     <article
       className={`funding-receipt-row${interactive ? " funding-receipt-row--interactive" : ""}`}
-      {...interactiveProps}
+      onClick={interactive ? onRowClick : undefined}
     >
       {/* Columns: date | from | to | for | amount | source | confirmed-by.
           Date leads, amount (the "punchline") sits before the provenance
@@ -89,13 +83,28 @@ function FundingReceiptRow({
         <time
           className="funding-receipt-row__date"
           dateTime={receipt.occurredAt}
-          title={receipt.occurredAt}
+          title={formatAbsoluteDateTime(receipt.occurredAt)}
         >
           {formatShortDate(receipt.occurredAt)}
         </time>
       ) : (
         <span className="funding-receipt-row__date" aria-hidden />
       )}
+      {/* Keyboard / screen-reader entry point to the detail modal, named
+          with the row's amount and date so rows are distinguishable.
+          Visually hidden (absolutely positioned, so out of the grid flow,
+          and kept off the first/last child slots the subgrid insets
+          target); the row shows a focus ring while it holds focus. */}
+      {interactive ? (
+        <button
+          type="button"
+          className="funding-receipt-row__open sr-only"
+          aria-haspopup="dialog"
+          onClick={() => setDetailOpen(true)}
+        >
+          {detailsLabel}
+        </button>
+      ) : null}
       <span className="funding-receipt-row__from">
         <span className="funding-receipt-row__cell-label" aria-hidden="true">
           From
@@ -114,7 +123,7 @@ function FundingReceiptRow({
       <span className="funding-receipt-row__amount">
         {receipt.amount ? (
           <>
-            {receipt.amount}
+            {formatAmount(receipt.amount)}
             {receipt.currency ? (
               <span className="funding-receipt-row__currency">
                 {receipt.currency}

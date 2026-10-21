@@ -44,7 +44,7 @@ function Rank({
               fallbackInitials={getInitials(n.displayName, n.handle)}
             />
             <span className="viz__rank-name">
-              <span className="viz__rank-name-primary">
+              <span className="viz__rank-name-primary" dir="auto">
                 {n.displayName || (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
               </span>
               {n.handle && n.displayName && (

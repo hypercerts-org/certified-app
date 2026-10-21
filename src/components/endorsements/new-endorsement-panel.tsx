@@ -5,7 +5,6 @@ import { X, Check, AlertCircle } from "lucide-react"
 import HandleSearch from "@/components/groups/handle-search"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
-import Tooltip from "@/components/ui/tooltip"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deriveIdentity } from "@/lib/utils/identity"
 import { createEndorsementAward } from "@/lib/atproto/badges"
@@ -176,17 +175,16 @@ export default function NewEndorsementPanel({
             Search by handle or paste a DID. Endorsements can be revoked anytime.
           </span>
         </div>
-        <Tooltip label="Cancel">
-          <button
-            type="button"
-            className="endorsement-panel__close"
-            onClick={onClose}
-            aria-label="Cancel"
-            disabled={isSubmitting}
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        </Tooltip>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="endorsement-panel__close"
+          onClick={onClose}
+          aria-label="Cancel"
+          disabled={isSubmitting}
+        >
+          <X size={16} aria-hidden="true" />
+        </Button>
       </div>
 
       {!hasResults ? (
@@ -219,7 +217,7 @@ export default function NewEndorsementPanel({
       ) : null}
 
       {hasResults ? (
-        <p className="endorsement-multi-summary">
+        <p className="endorsement-multi-summary" role="status">
           {writeSuccessCount} of {selectedDids.length} endorsement
           {selectedDids.length === 1 ? "" : "s"} written
           {writeSuccessCount < selectedDids.length
@@ -276,7 +274,7 @@ function RecipientRow({ did, handle, status, canRemove, onRemove }: RecipientRow
     <li className="endorsement-multi-row">
       <Avatar size="sm" src={info?.avatarUrl || undefined} fallbackInitials={initials} />
       <div className="endorsement-multi-row__meta">
-        <span className="endorsement-multi-row__name">{displayName}</span>
+        <span className="endorsement-multi-row__name" dir="auto">{displayName}</span>
         {resolvedHandle ? (
           <span className="endorsement-multi-row__handle">@{resolvedHandle}</span>
         ) : null}
@@ -286,16 +284,16 @@ function RecipientRow({ did, handle, status, canRemove, onRemove }: RecipientRow
       </div>
       <RecipientStatus status={status} />
       {canRemove ? (
-        <Tooltip label="Remove">
-          <button
-            type="button"
-            className="endorsement-multi-row__remove"
-            onClick={onRemove}
-            aria-label={`Remove ${displayName}`}
-          >
-            <X size={14} />
-          </button>
-        </Tooltip>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="endorsement-multi-row__remove"
+          onClick={onRemove}
+          aria-label={`Remove ${displayName}`}
+          tooltip="Remove"
+        >
+          <X size={14} aria-hidden />
+        </Button>
       ) : null}
     </li>
   )
@@ -306,6 +304,7 @@ function RecipientStatus({ status }: { status: WriteStatus }) {
     return (
       <span
         className="endorsement-multi-row__status endorsement-multi-row__status--writing"
+        role="img"
         aria-label="Writing endorsement"
       />
     )
@@ -314,9 +313,10 @@ function RecipientStatus({ status }: { status: WriteStatus }) {
     return (
       <span
         className="endorsement-multi-row__status endorsement-multi-row__status--success"
+        role="img"
         aria-label="Endorsed"
       >
-        <Check size={14} />
+        <Check size={14} aria-hidden />
       </span>
     )
   }
@@ -324,9 +324,10 @@ function RecipientStatus({ status }: { status: WriteStatus }) {
     return (
       <span
         className="endorsement-multi-row__status endorsement-multi-row__status--error"
+        role="img"
         aria-label="Failed"
       >
-        <AlertCircle size={14} />
+        <AlertCircle size={14} aria-hidden />
       </span>
     )
   }

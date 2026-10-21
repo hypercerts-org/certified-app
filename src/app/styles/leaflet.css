@@ -436,6 +436,13 @@ ol.leaflet-doc__list {
   box-shadow: 0 0 0 2px var(--overlay-weak);
 }
 
+/* 16px below desktop so iOS Safari doesn't zoom the page on focus. */
+@media (max-width: 799px) {
+  .link-dialog__input {
+    font-size: 16px;
+  }
+}
+
 .link-dialog__hint {
   font-size: 0.75rem;
   color: var(--fg-muted);

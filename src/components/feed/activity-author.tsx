@@ -66,7 +66,7 @@ export default function ActivityAuthor({ did, nameSuffix }: ActivityAuthorProps)
       />
       <span className="feed-card__author-meta">
         <span className="feed-card__author-name-line">
-          <span className="feed-card__author-name">{displayName}</span>
+          <span className="feed-card__author-name" dir="auto">{displayName}</span>
           {nameSuffix}
         </span>
         {handle ? (

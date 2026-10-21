@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import CertListRow from "./cert-list-row"
@@ -451,21 +452,16 @@ function ExploreMain({
                 />
               )}
               <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
-                <Tooltip label="Sort">
-                  <PopoverTrigger>
-                    <button
-                      type="button"
-                      className="explore__chrome-btn explore__chrome-btn--icon"
-                      aria-label="Sort"
-                    >
-                      <ArrowUpDown
-                        size={13}
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
-                    </button>
-                  </PopoverTrigger>
-                </Tooltip>
+                <PopoverTrigger>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="explore__chrome-btn--icon"
+                    aria-label="Sort"
+                  >
+                    <ArrowUpDown size={13} strokeWidth={1.75} aria-hidden />
+                  </Button>
+                </PopoverTrigger>
                 <PopoverContent align="end">
                   {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
                     (s) => (
@@ -480,14 +476,13 @@ function ExploreMain({
                     ),
                   )}
                   <hr className="popover__divider" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="popover__reset-btn"
+                  <PopoverItem
+                    className="popover__item--quiet"
                     onClick={onResetSort}
                     disabled={sort === "newest"}
                   >
                     Reset to default
-                  </button>
+                  </PopoverItem>
                 </PopoverContent>
               </UiPopover>
 
@@ -618,6 +613,7 @@ function ExploreFilterSidebar({
             <button
               type="button"
               className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+              aria-current={activeFilter === f.key ? "true" : undefined}
               data-filter-key={f.key}
               onClick={onFilterClick}
             >
@@ -636,6 +632,7 @@ function ExploreFilterSidebar({
                 <button
                   type="button"
                   className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+                  aria-current={activeFilter === f.key ? "true" : undefined}
                   data-filter-key={f.key}
                   onClick={onFilterClick}
                 >
@@ -1074,8 +1071,6 @@ function AllCategoryPills({
             <button
               type="button"
               className="explore__category-pill explore__category-pill--active"
-              aria-haspopup="listbox"
-              aria-expanded={categoryOpen}
             >
               {active.label}
               <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
@@ -1097,16 +1092,15 @@ function AllCategoryPills({
             {otherCategories.length > 0 && (
               <hr className="popover__divider" aria-hidden="true" />
             )}
-            <button
-              type="button"
-              className="popover__reset-btn"
+            <PopoverItem
+              className="popover__item--quiet"
               onClick={() => {
                 setShow("all")
                 setCategoryOpen(false)
               }}
             >
               Show all
-            </button>
+            </PopoverItem>
           </PopoverContent>
         </UiPopover>
 
@@ -1118,8 +1112,6 @@ function AllCategoryPills({
                 <button
                   type="button"
                   className={`explore__category-pill${activeSub.key !== "all" ? " explore__category-pill--active" : ""}`}
-                  aria-haspopup="listbox"
-                  aria-expanded={subOpen}
                 >
                   {activeSub.label}
                   <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
@@ -1141,16 +1133,15 @@ function AllCategoryPills({
                 {activeSub.key !== "all" && (
                   <>
                     <hr className="popover__divider" aria-hidden="true" />
-                    <button
-                      type="button"
-                      className="popover__reset-btn"
+                    <PopoverItem
+                      className="popover__item--quiet"
                       onClick={() => {
                         onSubChange!("all")
                         setSubOpen(false)
                       }}
                     >
                       Show all
-                    </button>
+                    </PopoverItem>
                   </>
                 )}
               </PopoverContent>
@@ -1399,7 +1390,6 @@ function LoadMoreSentinel({
       onLoadMore={onLoadMore}
       isLoading={isLoading}
       className="explore__load-more"
-      buttonClassName="explore__load-more-btn"
     />
   )
 }

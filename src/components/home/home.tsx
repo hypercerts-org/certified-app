@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -21,7 +21,6 @@ import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
-import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import {
   projectImage,
   projectTitle,
@@ -262,9 +261,32 @@ function GroupRow({ group }: { group: Group }) {
           alt=""
           fallbackInitials={initials}
         />
-        <span className="home-row__label">{label}</span>
+        <span className="home-row__label" dir="auto">{label}</span>
       </Link>
     </li>
+  )
+}
+
+/** Rail-row thumbnail: the record image, or the type icon when there is
+ *  no image or it fails to load (so a broken blob never leaves an empty
+ *  grey tile). Decorative — the row's label already names the link. */
+function RowThumb({ src, icon }: { src: string | null; icon: ReactNode }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const showImage = !!src && failedSrc !== src
+  return (
+    <span className="home-row__thumb">
+      {showImage ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setFailedSrc(src)}
+        />
+      ) : (
+        icon
+      )}
+    </span>
   )
 }
 
@@ -294,26 +316,19 @@ function ProjectRow({
   return (
     <li>
       <Link href={href} className="home-row">
-        <span className="home-row__thumb">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={title ? `Thumbnail for ${title}` : ""}
-              loading="lazy"
-              onError={hideBrokenThumb}
-            />
-          ) : (
+        <RowThumb
+          src={imageUrl}
+          icon={
             <FolderGit2
               size={14}
               strokeWidth={1.5}
               aria-hidden
               className="home-row__thumb-icon"
             />
-          )}
-        </span>
+          }
+        />
         <span className="home-row__text">
-          <span className="home-row__label">{title}</span>
+          <span className="home-row__label" dir="auto">{title}</span>
           {ownerGroup ? <OwnerByline group={ownerGroup} role={owner.role} /> : null}
         </span>
       </Link>
@@ -345,26 +360,19 @@ function CertRow({
   return (
     <li>
       <Link href={href} className="home-row">
-        <span className="home-row__thumb">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={record.value.title ? `Thumbnail for ${record.value.title}` : ""}
-              loading="lazy"
-              onError={hideBrokenThumb}
-            />
-          ) : (
+        <RowThumb
+          src={imageUrl}
+          icon={
             <CertIcon
               size={14}
               strokeWidth={1.5}
               aria-hidden
               className="home-row__thumb-icon"
             />
-          )}
-        </span>
+          }
+        />
         <span className="home-row__text">
-          <span className="home-row__label">
+          <span className="home-row__label" dir="auto">
             {record.value.title || "Untitled activity"}
           </span>
           {ownerGroup ? <OwnerByline group={ownerGroup} role={owner.role} /> : null}

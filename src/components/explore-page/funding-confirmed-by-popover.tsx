@@ -109,15 +109,18 @@ export default function FundingConfirmedByPopover({
               <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
             </Button>
           ) : (
-            <button
-              type="button"
-              className={`explore__chrome-btn explore__chrome-btn--icon${
-                isDefault ? "" : " explore__chrome-btn--active"
-              }`}
+            <Button
+              size="icon"
+              variant="secondary"
+              pressed={!isDefault}
+              // The outer <Tooltip> already explains it; suppress the
+              // icon button's own aria-label tooltip so it doesn't double up.
+              tooltip=""
+              className="explore__chrome-btn--icon"
               aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
             >
               <UserRoundCheck size={13} strokeWidth={1.75} aria-hidden />
-            </button>
+            </Button>
           )}
         </PopoverTrigger>
       </Tooltip>

@@ -593,11 +593,8 @@
   }
 
   /* Summary reads at the same size as the meta values (e.g. work scope).
-     Scoped via the section to beat the base 1rem rule. The funding
-     empty-state copy tracks the same size so it matches the short
-     description at every width (both are 1rem on desktop). */
-  .cert-detail__section--summary .cert-detail__short-desc,
-  .cert-detail__funding-empty {
+     Scoped via the section to beat the base 1rem rule. */
+  .cert-detail__section--summary .cert-detail__short-desc {
     font-size: 0.875rem;
   }
   .cert-detail__eyebrow-date {
@@ -633,6 +630,12 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Funding empty-state copy matches its sibling empty states (Updates,
+   Locations) at 14px on every width, not the 16px summary scale. */
+.cert-detail__funding-empty {
+  font-size: 0.875rem;
 }
 
 /* Locations section relocated into the left pane (aside) — sits
@@ -1181,24 +1184,33 @@
 }
 
 .cert-detail__section-title {
-  /* Match the .cert-detail__meta-label headings (Summary / Author / …) so
-     every section label on the activity page reads at the same scale. */
+  /* Match the .cert-detail__meta-label headings (Summary / Locations / …)
+     so every section label on the activity page reads the same: icon +
+     uppercase label + bare count (`.cert-detail__meta-count`). */
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--fg-muted);
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
+/* Count beside a section title. Same bare look as `.cert-detail__meta-count`
+   (no pill) so it matches the icon + label + count section pattern. */
 .cert-detail__section-count {
-  font-size: 0.75rem;
+  color: var(--fg-secondary);
+  font-size: 0.6875rem;
   font-weight: 500;
-  color: var(--fg-muted);
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
-  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pull a sibling count in tight to its title (the header's 12px gap is
+   for the trailing actions), matching the 4px label/count gap. */
+.cert-detail__section-title + .cert-detail__section-count {
+  margin-left: -8px;
 }
 
 /* ---------- Funding receipts list ----------
@@ -1443,7 +1455,7 @@
   content: "▸";
   font-size: 0.625rem;
   color: var(--fg-muted);
-  transition: transform 0.15s ease;
+  transition: transform var(--transition-fast);
   display: inline-block;
 }
 
@@ -1751,6 +1763,8 @@
   overflow: hidden;
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
+  /* Tints the icon fallback shown when the project has no image. */
+  color: var(--fg-secondary);
 }
 
 .cert-detail__headline-project-thumb-img {
@@ -2036,7 +2050,7 @@
   border: 2px solid var(--border-medium);
   border-top-color: var(--fg-primary);
   border-radius: 50%;
-  animation: spin 600ms linear infinite;
+  animation: spin 1s linear infinite;
   pointer-events: none;
 }
 
@@ -2374,8 +2388,7 @@
   .create-cert__contrib-remove,
   .create-project__cert-remove,
   .create-cert__loc-remove,
-  .create-cert__loc-search-again,
-  .cert-detail__map-expand-btn {
+  .create-cert__loc-search-again {
     width: 44px;
     height: 44px;
   }
@@ -2502,27 +2515,9 @@
      positive z paints this button above the whole map — no need to
      outbid Leaflet's internal 200-700 pane values. */
   z-index: var(--z-local-raise);
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.cert-detail__map-expand-btn:hover {
-  background: var(--bg-sunken);
-  border-color: var(--border-hover);
-}
-
-.cert-detail__map-expand-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  /* Size, border, hover and focus come from <Button size="icon"
+     variant="secondary"> (the opaque fill is a utility on the call site,
+     since Tailwind utilities load after this file). */
 }
 
 /* Modal variant of the map — drops the aside's narrow-column

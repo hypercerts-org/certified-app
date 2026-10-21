@@ -7,6 +7,7 @@ import Map, {
   type MapPolygon as MapPolygonT,
 } from "@/components/map/map-dynamic"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import Button from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { authFetch } from "@/lib/auth/fetch"
@@ -220,7 +221,7 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
           return (
             <li key={r.uri} className="cert-detail__map-locations-item">
               <MapPin size={14} strokeWidth={1.75} aria-hidden />
-              <span className="cert-detail__map-locations-name">
+              <span className="cert-detail__map-locations-name" dir="auto">
                 {displayName}
               </span>
               {split.plusCode ? (
@@ -251,23 +252,20 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
               fine-grained polygon detail is readable. Positioned as
               an overlay (top-right of the map container) so it
               doesn't shift the map's own controls. */}
-          <Tooltip label="Larger map">
-            <button
-              type="button"
-              className="cert-detail__map-expand-btn"
-              onClick={() => setExpanded(true)}
-              aria-label="Open larger map"
-            >
-              <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
-            </button>
-          </Tooltip>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="cert-detail__map-expand-btn !bg-[var(--bg-elevated)]"
+            onClick={() => setExpanded(true)}
+            aria-label="Open larger map"
+            tooltip="Larger map"
+          >
+            <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
+          </Button>
         </div>
-      ) : (
-        <div className="cert-detail__map cert-detail__map--empty">
-          <MapPin size={20} strokeWidth={1.5} aria-hidden />
-          <p>No mappable coordinates</p>
-        </div>
-      )}
+      ) : null}
+      {/* No coordinates to pin: skip the map frame entirely and let the
+          place list below carry the locations. */}
 
       {namesList}
 
@@ -319,15 +317,22 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
 function PlusCodeTag({ code }: { code: string }) {
   const { copied, copy } = useCopyToClipboard()
   return (
-    <Tooltip label={copied ? "Copied" : "Copy Plus Code"}>
-      <button
-        type="button"
-        className="cert-detail__map-locations-plus"
-        onClick={() => copy(code)}
-        aria-label={`Copy Plus Code ${code}`}
-      >
-        {copied ? "Copied" : code}
-      </button>
-    </Tooltip>
+    <>
+      <Tooltip label={copied ? "Copied" : "Copy Plus Code"}>
+        <button
+          type="button"
+          className="cert-detail__map-locations-plus"
+          onClick={() => copy(code)}
+          aria-label={`Copy Plus Code ${code}`}
+        >
+          {copied ? "Copied" : code}
+        </button>
+      </Tooltip>
+      {/* The static aria-label masks the visible "Copied" flip, so
+          announce the confirmation through a live region instead. */}
+      <span role="status" className="sr-only">
+        {copied ? "Plus Code copied" : ""}
+      </span>
+    </>
   )
 }

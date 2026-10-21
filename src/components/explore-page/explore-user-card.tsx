@@ -54,7 +54,7 @@ function ExploreUserCard({
           className="explore-user-card__avatar"
         />
         <div className="explore-user-card__id">
-          <h3 className="explore-user-card__name">{displayName}</h3>
+          <h3 className="explore-user-card__name" dir="auto">{displayName}</h3>
           {handle ? (
             <p className="explore-user-card__handle">@{handle}</p>
           ) : (
@@ -66,7 +66,7 @@ function ExploreUserCard({
         </div>
       </header>
       {description ? (
-        <p className="explore-user-card__desc">{description}</p>
+        <p className="explore-user-card__desc" dir="auto">{description}</p>
       ) : null}
     </Link>
   )

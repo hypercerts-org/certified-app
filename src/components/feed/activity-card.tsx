@@ -11,6 +11,7 @@ import {
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import type { LabelValue } from "@/lib/atproto/labeller"
 import FeedLabelPill from "@/components/ui/feed-label-pill"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import ActivityAuthor from "./activity-author"
 interface ActivityCardProps {
   record: ActivityRecord
@@ -57,7 +58,7 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
           <img
             className="feed-card__image"
             src={imageUrl}
-            alt={value.title || "Activity image"}
+            alt=""
             loading="lazy"
             onError={() => setImageFailed(true)}
           />
@@ -71,10 +72,12 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
         </div>
       )}
 
-      <h2 className="feed-card__title">{value.title}</h2>
+      <h2 className="feed-card__title" dir="auto">
+        {value.title?.trim() || "Untitled activity"}
+      </h2>
 
       {value.shortDescription && (
-        <p className="feed-card__desc">{value.shortDescription}</p>
+        <p className="feed-card__desc" dir="auto">{value.shortDescription}</p>
       )}
 
       <div className="feed-card__meta">
@@ -85,9 +88,15 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
           </>
         )}
 
-        <time className="feed-card__time">
-          {formatRelativeTime(value.createdAt)}
-        </time>
+        {value.createdAt ? (
+          <time
+            className="feed-card__time"
+            dateTime={value.createdAt}
+            title={formatAbsoluteDateTime(value.createdAt)}
+          >
+            {formatRelativeTime(value.createdAt)}
+          </time>
+        ) : null}
       </div>
     </>
   )

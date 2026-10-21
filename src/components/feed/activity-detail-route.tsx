@@ -48,9 +48,14 @@ export default function ActivityDetailRoute({
   if (error || !activity) {
     return (
       <div className="cert-detail-page">
+        {/* Fixed heading; the raw (often technical) error goes in the body. */}
         <ErrorMessage
-          title={error || "Activity not found"}
-          message="This activity claim may have been deleted or is on a PDS we can't reach."
+          title={error ? "Couldn't load this activity" : "Activity not found"}
+          message={
+            error
+              ? `${error}. This activity claim may have been deleted or is on a PDS we can't reach.`
+              : "This activity claim may have been deleted or is on a PDS we can't reach."
+          }
         />
       </div>
     )

@@ -606,26 +606,9 @@
   color: var(--color-error);
 }
 
+/* Chrome comes from <Button variant="ghost" size="sm">. */
 .add-to-list__create-btn {
-  display: inline-flex;
   align-self: flex-start;
-  padding: 6px 10px;
-  border: 1px dashed var(--border-medium);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-primary);
-  font: inherit;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.add-to-list__create-btn:hover {
-  background: var(--bg-sunken);
-}
-
-.add-to-list__create-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .add-to-list__create {
@@ -738,12 +721,17 @@
   overflow: hidden;
 }
 
+/* Animates transform (compositor-only), not width: the fill spans the
+   track and is scaled by --p (0..1), set inline on this element. */
 .profile-lists__paste-progress-bar-fill {
   position: absolute;
   inset: 0 auto 0 0;
+  width: 100%;
   background: var(--fg-primary);
   border-radius: 999px;
-  transition: width 200ms ease-out;
+  transform-origin: left;
+  transform: scaleX(var(--p, 1));
+  transition: transform 200ms ease-out;
 }
 
 .profile-lists__paste-results {

@@ -7,10 +7,10 @@
  * — everything crosses the seam through enumerable props.
  */
 
-import { memo, type ReactNode } from "react"
+import { memo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { FolderGit2, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { projectImage, projectTitle } from "@/lib/atproto/collection"
@@ -21,6 +21,7 @@ import {
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useCertProjects } from "@/hooks/use-cert-projects"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import { getInitials } from "@/lib/utils/initials"
 import { deriveIdentity } from "@/lib/utils/identity"
 import Avatar from "@/components/ui/avatar"
@@ -165,7 +166,7 @@ export const ContributorRow = memo(function ContributorRow({
         fallbackInitials={initials}
       />
       <span className="cert-detail__contributor-meta">
-        <span className="cert-detail__contributor-name">
+        <span className="cert-detail__contributor-name" dir="auto">
           {displayName}
           {role ? (
             <span className="cert-detail__contributor-role"> · {role}</span>
@@ -237,7 +238,7 @@ export function SlimTabHeadline({
   return (
     <header className="cert-detail__headline cert-detail__headline--slim">
       <div className="cert-detail__title-row">
-        <h1 className="cert-detail__title">{title}</h1>
+        <h1 className="cert-detail__title" dir="auto">{title}</h1>
 
         {/* Author + actions sit together at the right edge; the author's
             own content stays left-aligned (avatar then name/handle). The
@@ -257,7 +258,7 @@ export function SlimTabHeadline({
                 fallbackInitials={initials}
               />
               <span className="cert-detail__headline-author-meta">
-                <span className="cert-detail__headline-name">
+                <span className="cert-detail__headline-name" dir="auto">
                   {displayName}
                 </span>
                 {handle ? (
@@ -370,7 +371,7 @@ export function CertHeadlineColumns({
                   fallbackInitials={initials}
                 />
                 <span className="cert-detail__headline-author-meta">
-                  <span className="cert-detail__headline-name">
+                  <span className="cert-detail__headline-name" dir="auto">
                     {displayName}
                   </span>
                   {handle ? (
@@ -394,7 +395,7 @@ export function CertHeadlineColumns({
         <time
           dateTime={createdAt}
           className="cert-detail__headline-col-value"
-          title={createdAt}
+          title={formatAbsoluteDateTime(createdAt)}
         >
           {formattedDate}
         </time>
@@ -431,25 +432,11 @@ export function CertHeadlineColumns({
               rawImage && projectDid
                 ? resolveActivityImageUrl(rawImage, projectDid)
                 : null
-            const thumb = (
-              <span
-                className="cert-detail__headline-project-thumb"
-                aria-hidden="true"
-              >
-                {imageUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob URL; next/image remotePatterns limited to **.certified.app */
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    className="cert-detail__headline-project-thumb-img"
-                  />
-                ) : null}
-              </span>
-            )
+            const thumb = <HeadlineProjectThumb src={imageUrl} />
             const innerBody = (
               <>
                 {thumb}
-                <span className="cert-detail__headline-project-title">
+                <span className="cert-detail__headline-project-title" dir="auto">
                   {title}
                 </span>
               </>
@@ -478,5 +465,26 @@ export function CertHeadlineColumns({
         )}
       </div>
     </div>
+  )
+}
+
+/** Byline project thumb: the project image, or the project icon when
+ *  there is none or it fails to load — never an empty grey tile. */
+function HeadlineProjectThumb({ src }: { src: string | null }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  return (
+    <span className="cert-detail__headline-project-thumb" aria-hidden="true">
+      {src && failedSrc !== src ? (
+        /* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob URL; next/image remotePatterns limited to **.certified.app */
+        <img
+          src={src}
+          alt=""
+          className="cert-detail__headline-project-thumb-img"
+          onError={() => setFailedSrc(src)}
+        />
+      ) : (
+        <FolderGit2 size={13} strokeWidth={1.5} />
+      )}
+    </span>
   )
 }

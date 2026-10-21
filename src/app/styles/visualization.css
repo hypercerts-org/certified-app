@@ -201,7 +201,8 @@
   transition: background var(--transition-fast, 150ms ease-out);
 }
 
-.viz__search-result:hover {
+.viz__search-result:hover,
+.viz__search-result--active {
   background: var(--overlay-weak, var(--bg-raised));
 }
 
@@ -314,25 +315,9 @@
   flex: 1 1 auto;
 }
 
+/* Sizing, hover and focus come from <Button size="icon">. */
 .viz__panel-collapse {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background var(--transition-fast, 150ms ease-out);
-}
-
-.viz__panel-collapse:hover {
-  background: var(--overlay-weak, var(--bg-raised));
-  color: var(--fg-secondary);
 }
 
 .viz__panel-collapse svg {
@@ -401,9 +386,20 @@
   gap: var(--space-1, 4px);
 }
 
+/* Each neighbour avatar is a button that focuses that node on the canvas. */
 .viz__neighbour {
   display: inline-flex;
   align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.viz__neighbour:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* "View profile" button-link in the node panel. */
@@ -568,6 +564,17 @@
   width: 100%;
   height: 100%;
   min-height: 60vh;
+}
+
+.viz__state--loading {
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.viz__state-text {
+  margin: 0;
+  font-size: var(--text-body-sm, 0.875rem);
+  color: var(--fg-muted);
 }
 
 /* Sidebar drops below the graph under the wide-desktop breakpoint. */
