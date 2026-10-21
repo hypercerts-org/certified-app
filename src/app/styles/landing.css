@@ -1502,7 +1502,7 @@
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--shadow-md);
-  transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom 0.15s ease-out;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom var(--transition-fast);
 }
 
 .feedback-trigger:hover {

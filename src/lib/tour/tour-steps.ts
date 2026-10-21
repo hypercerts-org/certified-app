@@ -222,7 +222,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "settings-sync",
     navigateTo: "/settings#social-graph",
     anchor: "settings-bsky-sync",
-    title: "Bring your Bluesky follows",
+    title: "Import Bluesky follows",
     body: "Certified has its own follow graph, kept separate from Bluesky. Sync here any time so you don't have to rebuild your network from scratch.",
     placement: "top",
   },

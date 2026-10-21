@@ -190,7 +190,7 @@ export default function NewEndorsementPanel({
       {!hasResults ? (
         <HandleSearch
           label=""
-          placeholder="Search handle or paste a DID..."
+          placeholder="Search by name or handle…"
           onSelect={handleAddRecipient}
         />
       ) : null}

@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import { parseAtUri, rkeyFromUri } from "@/lib/urls"
 import { purgeAwardFromLists } from "@/lib/atproto/collection"
 import { invalidateEndorsementClosure } from "@/lib/atproto/endorsement-closure-cache"
@@ -590,7 +591,7 @@ async function createEndorsementDefinition(ownDid: string): Promise<StrongRef> {
   }
   if (!res.ok || !data.uri || !data.cid) {
     throw new Error(
-      data.error || `Failed to create endorsement definition: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't create the endorsement. Try again"),
     )
   }
   return { uri: data.uri, cid: data.cid }
@@ -687,8 +688,7 @@ async function createGroupDefinitionIfStillMissing(
   }
   if (!res.ok || !data.uri || !data.cid) {
     throw new Error(
-      data.error ||
-        `Failed to create group endorsement definition: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't create the endorsement. Try again"),
     )
   }
   return { uri: data.uri, cid: data.cid }
@@ -846,7 +846,6 @@ async function writeBadgeAward(
   ownDid: string,
   subjectDid: string,
   badge: StrongRef,
-  errorLabel = "badge award",
   note?: string,
 ): Promise<{ uri: string; cid: string }> {
   const record: BadgeAwardValue = {
@@ -885,7 +884,7 @@ async function writeBadgeAward(
   }
   if (!res.ok || !data.uri || !data.cid) {
     throw new Error(
-      data.error || `Failed to create ${errorLabel}: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't send the endorsement. Try again"),
     )
   }
   return { uri: data.uri, cid: data.cid }
@@ -935,8 +934,7 @@ export async function createEndorsementAward(
     }
     if (!res.ok || !data.uri || !data.cid) {
       throw new Error(
-        data.error ||
-          `Failed to create group endorsement award: ${res.status}`,
+        toUserErrorMessage(res.status, data.error, "Couldn't send the endorsement. Try again"),
       )
     }
     // Bust the endorsement-closure cache — same rationale as the
@@ -945,7 +943,7 @@ export async function createEndorsementAward(
     return { uri: data.uri, cid: data.cid }
   }
   const badge = await ensureEndorsementDefinition(ownDid)
-  const result = await writeBadgeAward(ownDid, subjectDid, badge, "endorsement award", note)
+  const result = await writeBadgeAward(ownDid, subjectDid, badge, note)
   // Bust the endorsement-closure cache (certified-app #84). Cheap
   // counter bump + listener notify; the explore hook re-fetches
   // because its effect deps include the cache version. Safe to fire
@@ -990,8 +988,7 @@ export async function deleteEndorsementAward(
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(
-        data.error ||
-          `Failed to delete group endorsement award: ${res.status}`,
+        toUserErrorMessage(res.status, data.error, "Couldn't revoke the endorsement. Try again"),
       )
     }
     invalidateEndorsementClosure()
@@ -1012,7 +1009,7 @@ export async function deleteEndorsementAward(
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
     throw new Error(
-      data.error || `Failed to delete endorsement award: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't revoke the endorsement. Try again"),
     )
   }
   // Bust the endorsement-closure cache — same rationale as
@@ -1110,7 +1107,7 @@ export async function createResponse(
     }
     if (!res.ok || !data.uri || !data.cid) {
       throw new Error(
-        data.error || `Failed to create group badge response: ${res.status}`,
+        toUserErrorMessage(res.status, data.error, "Couldn't save your response. Try again"),
       )
     }
     invalidateEndorsementClosure()
@@ -1140,7 +1137,7 @@ export async function createResponse(
   }
   if (!res.ok || !data.uri || !data.cid) {
     throw new Error(
-      data.error || `Failed to create badge response: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't save your response. Try again"),
     )
   }
   // Bust the endorsement-closure cache (certified-app #84). A
@@ -1179,7 +1176,7 @@ export async function deleteResponse(
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(
-        data.error || `Failed to delete group badge response: ${res.status}`,
+        toUserErrorMessage(res.status, data.error, "Couldn't remove your response. Try again"),
       )
     }
     return
@@ -1196,7 +1193,7 @@ export async function deleteResponse(
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
     throw new Error(
-      data.error || `Failed to delete badge response: ${res.status}`,
+      toUserErrorMessage(res.status, data.error, "Couldn't remove your response. Try again"),
     )
   }
   // Bust the endorsement-closure cache (certified-app #84). Deleting

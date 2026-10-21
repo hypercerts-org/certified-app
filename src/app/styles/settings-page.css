@@ -604,8 +604,8 @@
   cursor: pointer;
   text-align: left;
   transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
+    background var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 /* Inline variant: size to content (e.g. the handle, beside an Edit/Unlock

@@ -363,6 +363,8 @@ export function useReceivedEndorsements(
   endorsements: ReceivedEndorsement[]
   isLoading: boolean
   error: string | null
+  /** Re-run the scan after an error (failures are never cached). */
+  refetch: () => void
 } {
   const [scanResult, setScanResult] = useState<ReceivedEndorsement[]>([])
   const [scanLoading, setScanLoading] = useState(!!profileDid)
@@ -485,9 +487,15 @@ export function useReceivedEndorsements(
     return base.filter((e) => e.responseState !== "rejected")
   }, [scanResult, includeRejected, profileDid, overlaySnapshot])
 
+  const refetch = useCallback(() => {
+    const did = profileDidRef.current
+    if (did) void doScan(did)
+  }, [doScan])
+
   return {
     endorsements,
     isLoading: scanLoading,
     error,
+    refetch,
   }
 }

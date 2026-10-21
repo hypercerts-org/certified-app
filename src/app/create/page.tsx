@@ -47,6 +47,7 @@ import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useTour } from "@/lib/tour/tour-context"
 import { countGraphemes } from "@/lib/utils/graphemes"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
@@ -248,7 +249,9 @@ export default function CreatePage() {
     )
       .then(async (res) => {
         if (!res.ok) {
-          throw new Error(`listRecords failed: ${res.status}`)
+          throw new Error(
+            "Couldn't load the rights options. Reload the page to try again.",
+          )
         }
         const body = (await res.json()) as {
           records?: Array<{
@@ -288,7 +291,9 @@ export default function CreatePage() {
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
         setRightsLoadError(
-          err instanceof Error ? err.message : "Failed to load rights",
+          err instanceof Error
+            ? err.message
+            : "Couldn't load the rights options. Reload the page to try again.",
         )
       })
       .finally(() => {
@@ -390,8 +395,8 @@ export default function CreatePage() {
           <div className="dashboard__main">
             <EmptyState
               icon={PenLine}
-              title="Sign in to create"
-              description="You need to be signed in to create an activity claim."
+              title="Sign in to create an activity"
+              description="Activities are published under your Certified account."
             />
           </div>
         </div>
@@ -572,7 +577,13 @@ export default function CreatePage() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || `Failed: ${res.status}`)
+        throw new Error(
+          toUserErrorMessage(
+            res.status,
+            data.error,
+            "Couldn't publish your activity. Your draft is still here; try again",
+          ),
+        )
       }
 
       const uri: unknown = data?.uri
@@ -827,7 +838,7 @@ export default function CreatePage() {
                   <span className="cert-detail__meta-aux">Loading…</span>
                 ) : rightsLoadError ? (
                   <span className="cert-detail__meta-aux">
-                    Failed to load
+                    Couldn&apos;t load
                   </span>
                 ) : rightsOptions.length === 0 ? (
                   <span className="cert-detail__meta-aux">

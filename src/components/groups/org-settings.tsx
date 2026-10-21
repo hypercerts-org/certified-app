@@ -108,7 +108,7 @@ const GROUPS: CategoryGroup[] = [
       },
       {
         key: "social-graph",
-        label: "Sync social graph",
+        label: "Import Bluesky follows",
         navLabel: "Social graph",
         description:
           "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",

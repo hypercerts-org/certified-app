@@ -22,6 +22,7 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { deleteFollow } from "@/lib/atproto/follow"
 import PersonCard from "@/components/profile/person-card"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Badge from "@/components/ui/badge"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
@@ -261,6 +262,7 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           entries={followers.entries}
           isLoading={followers.isLoading}
           error={followers.error}
+          onRetry={() => void followers.refetch()}
           query={query}
           sort={sort}
           names={names}
@@ -271,6 +273,7 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           records={following.records}
           isLoading={following.isLoading}
           error={following.error}
+          onRetry={() => void following.refetch()}
           query={query}
           sort={sort}
           names={names}
@@ -295,6 +298,7 @@ interface FollowersGridProps {
   entries: FollowerEntry[]
   isLoading: boolean
   error: string | null
+  onRetry: () => void
   query: string
   sort: SortKey
   names: Map<string, string>
@@ -304,6 +308,7 @@ function FollowersGrid({
   entries,
   isLoading,
   error,
+  onRetry,
   query,
   sort,
   names,
@@ -326,8 +331,12 @@ function FollowersGrid({
         <EmptyState
           icon={Inbox}
           title="Couldn’t load followers"
-          description={error}
-        />
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </EmptyState>
       </div>
     )
   }
@@ -373,6 +382,7 @@ interface FollowingGridProps {
   records: FollowRecord[]
   isLoading: boolean
   error: string | null
+  onRetry: () => void
   query: string
   sort: SortKey
   names: Map<string, string>
@@ -390,6 +400,7 @@ function FollowingGrid({
   records,
   isLoading,
   error,
+  onRetry,
   query,
   sort,
   names,
@@ -413,7 +424,15 @@ function FollowingGrid({
   if (error) {
     return (
       <div className="profile-endorsements-v2__grid">
-        <EmptyState icon={Inbox} title="Couldn’t load follows" description={error} />
+        <EmptyState
+          icon={Inbox}
+          title="Couldn’t load follows"
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </EmptyState>
       </div>
     )
   }

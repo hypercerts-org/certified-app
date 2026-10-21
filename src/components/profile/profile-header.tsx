@@ -180,7 +180,7 @@ export default function ProfileHeader({
             {!hasCertifiedProfile && hasBlueskyProfile ? (
               <span
                 className="profile-hero__pds-tag"
-                title="This profile information is imported from Bluesky"
+                title="Imported from Bluesky"
               >
                 Bluesky profile
               </span>
@@ -195,7 +195,7 @@ export default function ProfileHeader({
         <p className="profile-hero__count">
           <span className="profile-hero__count-value">{activityCountLabel}</span>
           <span className="profile-hero__count-label">
-            {activityCountLabel === "1" ? "activity claim" : "activity claims"}
+            {activityCountLabel === "1" ? "activity" : "activities"}
           </span>
         </p>
 
@@ -218,7 +218,7 @@ export default function ProfileHeader({
                 className="profile-hero__graph-count"
                 title={
                   viewedFollowing.truncated
-                    ? "Hit the 10,000 follow display cap; the underlying repo has more."
+                    ? "Showing the first 10,000 follows; this account has more."
                     : undefined
                 }
               >

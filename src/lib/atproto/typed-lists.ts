@@ -20,6 +20,7 @@
  * surface as a typo'd row.
  */
 import { authFetch } from "@/lib/auth/fetch"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import { rkeyFromUri } from "@/lib/urls"
 import { invalidateEndorsementLists } from "@/lib/atproto/endorsement-lists-cache"
 import type {
@@ -213,7 +214,7 @@ async function putRecord(
     error?: string
   }
   if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to write list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't save the list. Try again"))
   }
   return { uri: data.uri, cid: data.cid }
 }
@@ -246,7 +247,7 @@ export async function createTypedList(
     error?: string
   }
   if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to create list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't create the list. Try again"))
   }
   invalidateEndorsementLists()
   return { uri: data.uri, cid: data.cid }
@@ -294,7 +295,7 @@ export async function deleteTypedList(ownDid: string, rkey: string): Promise<voi
   })
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Failed to delete list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't delete the list. Try again"))
   }
   invalidateEndorsementLists()
 }

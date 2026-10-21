@@ -122,7 +122,7 @@ export default function LocationPickerDialog({
       { signal: controller.signal },
     )
       .then(async (res) => {
-        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
+        if (!res.ok) throw new Error("Couldn't load your saved locations.")
         const body = (await res.json()) as {
           records?: Array<{
             uri: string
@@ -167,7 +167,9 @@ export default function LocationPickerDialog({
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
         setMyLocationsError(
-          err instanceof Error ? err.message : "Failed to load locations",
+          err instanceof Error
+            ? err.message
+            : "Couldn't load your saved locations.",
         )
       })
       .finally(() => {

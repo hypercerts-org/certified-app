@@ -52,32 +52,9 @@
   padding: 2px 0;
 }
 
-/* Post-record confirmation note + its inline refresh affordance. */
+/* Post-record confirmation note. */
 .funding-form__recorded-note {
   color: var(--fg-secondary);
-}
-
-.funding-form__recorded-refresh {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  width: 24px;
-  height: 24px;
-  margin-left: 6px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.funding-form__recorded-refresh:hover,
-.funding-form__recorded-refresh:focus-visible {
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
 }
 
 /* ---------- Inputs ---------- */

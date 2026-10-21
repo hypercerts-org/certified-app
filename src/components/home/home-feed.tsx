@@ -11,6 +11,7 @@ import {
 } from "react"
 import { ChevronDown, Inbox, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -370,14 +371,18 @@ const HomeFeedBody = memo(function HomeFeedBody({
       <EmptyState
         icon={Users}
         title="You're not following anyone yet"
-        description="Follow people to see their activity here."
-      />
+        description="Follow people to see their work here."
+      >
+        <Button href="/explore" variant="secondary" size="sm">
+          Find people on Explore
+        </Button>
+      </EmptyState>
     )
   }
   if (error) {
     return (
       <Banner variant="warning">
-        Could not load activity: {error}
+        Couldn&apos;t load the feed. Try again in a moment.
       </Banner>
     )
   }

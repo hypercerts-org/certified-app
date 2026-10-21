@@ -289,7 +289,7 @@ export default function EndorsePeopleModal({
               ref={inputRef}
               type="search"
               className="endorse-people-modal__search-input"
-              placeholder="Search for someone on atproto…"
+              placeholder="Search by name or handle…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoComplete="off"

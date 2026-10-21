@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   ExternalLink,
   File,
@@ -190,7 +191,8 @@ export default function ContextUpdates({
             scroll={false}
             className="context-updates__see-all"
           >
-            See all →
+            See all
+            <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
           </TransitionLink>
         ) : null}
         {newButton}

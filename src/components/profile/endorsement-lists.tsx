@@ -502,7 +502,7 @@ function ListDetail({
                 type="button"
                 className="endorsement-lists__add-btn"
                 onClick={onBulkPaste}
-                aria-label="Bulk add people by handle or DID"
+                aria-label="Bulk add people by handle or account ID"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
               </button>
@@ -538,7 +538,7 @@ function ListDetail({
         <EmptyState
           icon={ListIcon}
           title="No items yet"
-          description="Awards added to this list will show up here."
+          description="People you add to this list will show up here."
         />
       ) : (
         <ul className="endorsement-lists__items">
@@ -793,7 +793,13 @@ function RevokeListItemButton({
       setConfirmOpen(false)
     } catch (err) {
       console.error(`Failed to ${action} endorsement:`, err)
-      setError(err instanceof Error ? err.message : `Failed to ${action}`)
+      setError(
+        err instanceof Error
+          ? err.message
+          : action === "remove"
+            ? "Couldn't remove them from this list. Try again."
+            : "Couldn't revoke the endorsement. Try again.",
+      )
     } finally {
       setBusy(null)
     }
@@ -1153,7 +1159,7 @@ function PasteSubjectsModal({
 
   return (
     <AppDialog
-      ariaLabel="Bulk add people by handle or DID"
+      ariaLabel="Bulk add people by handle or account ID"
       maxWidth={600}
       onClose={() => !running && onClose()}
       disableBackdropClose={running}
@@ -1165,7 +1171,7 @@ function PasteSubjectsModal({
       />
       <AppDialogBody className="profile-lists__paste-body">
         <p className="profile-lists__paste-help" id={pasteHelpId}>
-          Paste handles, DIDs, or profile URLs separated by commas,
+          Paste handles, account IDs (DIDs), or profile links separated by commas,
           newlines, or spaces. Each person gets an endorsement from you
           (if they don&rsquo;t have one already) and is added to this
           list.
@@ -1173,12 +1179,12 @@ function PasteSubjectsModal({
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
-          aria-label="Handles, DIDs or URLs to add"
+          aria-label="Handles, account IDs or profile links to add"
           aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
-          placeholder="alice.bsky.social, did:plc:…, https://redesign.certified.app/profile/bob.bsky.social"
+          placeholder="alice.bsky.social, did:plc:…, https://certified.app/profile/bob.bsky.social"
           disabled={running || showCloseOnly}
         />
         {rows.length > 0 ? (

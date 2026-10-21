@@ -31,7 +31,7 @@ const HELP_FAQ_ITEMS = [
   {
     question: "What does it mean to endorse someone?",
     answer:
-      "An endorsement is a public vouch — a way of saying \"I stand behind this account.\" People and groups use them to back accounts they trust.\n\nTaken together, endorsements build a web of trust: instead of relying on a single authority to verify claims, credibility emerges from who is willing to publicly stake their reputation on whom. You can see how this connects up on the endorsement graph.",
+      "An endorsement is a public vouch — a way of saying \"I stand behind this account.\" People and groups use them to back accounts they trust.\n\nTaken together, endorsements build a web of trust: instead of relying on a single authority to verify claims, credibility emerges from who is willing to publicly stake their reputation on whom. You can see how this connects up on the endorsement network.",
   },
   {
     question: "What are groups, and how do roles work?",
@@ -102,7 +102,7 @@ export default function HelpFaq() {
             onClick={() => setGraphOpen(true)}
           >
             <Network size={14} strokeWidth={1.75} aria-hidden />
-            Open the endorsement graph
+            Open the endorsement network
           </Button>
         ),
       };

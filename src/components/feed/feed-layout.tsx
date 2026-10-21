@@ -5,6 +5,7 @@ import { AlertCircle, Inbox } from "lucide-react"
 import ActivityCard from "./activity-card"
 import ActivityCardSkeleton from "./activity-card-skeleton"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { LabelValue } from "@/lib/atproto/labeller"
 
@@ -23,6 +24,8 @@ export interface FeedLayoutProps {
   loadMore: () => void
   /** Custom empty state to show instead of the default. */
   emptyState?: React.ReactNode
+  /** Re-runs the initial load; shows a "Try again" button on error. */
+  onRetry?: () => void
 }
 
 /**
@@ -44,6 +47,7 @@ export default function FeedLayout({
   hasMore,
   loadMore,
   emptyState,
+  onRetry,
 }: FeedLayoutProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const loadMoreRef = useRef(loadMore)
@@ -95,9 +99,15 @@ export default function FeedLayout({
       <div className="feed">
         <EmptyState
           icon={AlertCircle}
-          title="Something went wrong"
-          description={error}
-        />
+          title="Couldn't load activities"
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          {onRetry ? (
+            <Button variant="secondary" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          ) : null}
+        </EmptyState>
       </div>
     )
   }
@@ -111,7 +121,7 @@ export default function FeedLayout({
         <EmptyState
           icon={Inbox}
           title="No activities yet"
-          description="When impact claims are created, they will appear here."
+          description="Activities people publish will appear here."
         />
       </div>
     )

@@ -478,7 +478,7 @@ function ListDetail({
       {confirmingDelete ? (
         <ConfirmDialog
           title={`Delete "${list.title}"?`}
-          message="The list record is removed from your PDS. Items themselves are not deleted."
+          message="This deletes the list. The items in it are not deleted."
           confirmLabel="Delete list"
           cancelLabel="Cancel"
           confirmVariant="destructive"

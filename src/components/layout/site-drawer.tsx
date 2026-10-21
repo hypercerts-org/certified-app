@@ -34,7 +34,7 @@ export default function SiteDrawer({
   const { isLoading, isAuthenticated } = useAuth()
   const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
-  // The "My profile" item — and any future identity-bound link added
+  // The "Profile" item — and any future identity-bound link added
   // to this drawer — must route to the account the user is currently
   // *acting as*, not their personal identity. When the account
   // switcher is on a group, that's the group's handle; otherwise it
@@ -44,9 +44,8 @@ export default function SiteDrawer({
 
   // Profile target: active identity's profile when signed in (group's
   // when acting as a group, personal otherwise); sign-in prompt
-  // otherwise. The label stays "My profile" — "my" follows the
-  // currently active identity by design, same as everywhere else
-  // in the chrome.
+  // otherwise. The label is "Profile", matching the mobile sidebar
+  // and the tour; the target follows the currently active identity.
   const profileHref =
     isAuthenticated && activeHandle
       ? profileUrl(activeHandle)
@@ -64,7 +63,7 @@ export default function SiteDrawer({
     { key: "apps", label: "Apps", href: "/apps", icon: LayoutGrid },
     {
       key: "profile",
-      label: "My profile",
+      label: "Profile",
       href: profileHref,
       icon: User,
       requiresAuth: true,

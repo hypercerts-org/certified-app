@@ -251,7 +251,11 @@ export default function ActivityEditRoute({
       signal: controller.signal,
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
+        if (!res.ok) {
+          throw new Error(
+            "Couldn't load the rights options. Reload the page to try again.",
+          )
+        }
         const body = (await res.json()) as {
           records?: Array<{
             uri: string
@@ -276,7 +280,9 @@ export default function ActivityEditRoute({
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
         setRightsLoadError(
-          err instanceof Error ? err.message : "Failed to load rights",
+          err instanceof Error
+            ? err.message
+            : "Couldn't load the rights options. Reload the page to try again.",
         )
       })
       .finally(() => {
@@ -742,7 +748,9 @@ export default function ActivityEditRoute({
           const res = await fetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: ClaimActivity

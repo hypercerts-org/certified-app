@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import EmptyState from "@/components/ui/empty-state"
 import Tooltip from "@/components/ui/tooltip"
 import Button from "@/components/ui/button"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
@@ -913,6 +914,8 @@ function ExploreAllBlocks() {
               title="Activities"
               icon={CertIcon}
               isLoading={activities.isLoading}
+              error={activities.error}
+              onRetry={activities.refetch}
               isEmpty={activityItems.length === 0}
               onShowAll={() => setShow("activities")}
             >
@@ -932,6 +935,8 @@ function ExploreAllBlocks() {
               title="Projects"
               icon={FolderGit2}
               isLoading={projects.isLoading}
+              error={projects.error}
+              onRetry={projects.refetch}
               isEmpty={projectItems.length === 0}
               onShowAll={() => setShow("projects")}
             >
@@ -948,6 +953,8 @@ function ExploreAllBlocks() {
               title="Accounts"
               icon={Users}
               isLoading={accounts.isLoading}
+              error={accounts.error}
+              onRetry={accounts.refetch}
               isEmpty={accountItems.length === 0}
               onShowAll={() => setShow("accounts")}
             >
@@ -964,6 +971,8 @@ function ExploreAllBlocks() {
               title="Funding"
               icon={HandCoins}
               isLoading={funding.isLoading}
+              error={funding.error}
+              onRetry={funding.refetch}
               isEmpty={fundingItems.length === 0}
               onShowAll={() => setShow("funding")}
             >
@@ -1225,6 +1234,8 @@ function AllSection({
   icon: Icon,
   isLoading,
   isEmpty,
+  error = false,
+  onRetry,
   onShowAll,
   children,
 }: {
@@ -1232,6 +1243,9 @@ function AllSection({
   icon: SectionIcon
   isLoading: boolean
   isEmpty: boolean
+  /** The block's fetch failed: show a retry instead of "No … found". */
+  error?: boolean
+  onRetry?: () => void
   /** Collapses the All view to this single category. The "Show all"
    *  control renders in the section header (matching the project
    *  detail page's "See all →" affordance) only when there's content
@@ -1246,7 +1260,7 @@ function AllSection({
           <Icon size={14} strokeWidth={1.75} aria-hidden />
           {title}
         </h2>
-        {!isLoading && !isEmpty ? (
+        {!isLoading && !isEmpty && !error ? (
           <button
             type="button"
             className="explore__all-section-action"
@@ -1261,6 +1275,17 @@ function AllSection({
         <div className="explore__all-loading">
           <LoadingSpinner size="sm" />
         </div>
+      ) : error ? (
+        <EmptyState
+          variant="inline"
+          title={`Couldn’t load ${title.toLowerCase()}.`}
+        >
+          {onRetry ? (
+            <Button variant="ghost" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          ) : null}
+        </EmptyState>
       ) : isEmpty ? (
         <p className="explore__all-empty">No {title.toLowerCase()} found</p>
       ) : (
@@ -1371,7 +1396,7 @@ function EndorsementDegreeBar({
           role="status"
           aria-live="polite"
         >
-          Building your endorsement graph — results in a moment.
+          Building your endorsement network — results in a moment.
         </p>
       ) : null}
     </div>

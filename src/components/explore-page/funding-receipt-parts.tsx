@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import CertIcon from "@/components/ui/cert-icon"
+import RowThumb from "@/components/ui/row-thumb"
 import IdentityRow from "@/components/ui/identity-row"
 import WalletAddress from "@/components/ui/wallet-address"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -114,12 +116,11 @@ export function FundingForActivity({ uri }: { uri: string | null }) {
         For
       </span>
       <Link href={href} className="funding-receipt-row__activity">
-        <span className="funding-receipt-row__activity-img">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" loading="lazy" />
-          ) : null}
-        </span>
+        <RowThumb
+          className="funding-receipt-row__activity-img"
+          src={imageUrl}
+          icon={<CertIcon size={16} strokeWidth={1.5} aria-hidden />}
+        />
         <span className="funding-receipt-row__activity-title" dir="auto">
           {title}
         </span>

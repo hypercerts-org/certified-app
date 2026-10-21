@@ -1319,7 +1319,11 @@
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-sunken);
-  display: block;
+  /* Centres the CertIcon fallback when there is no image. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
 }
 
 .funding-receipt-row__activity-img img {
@@ -1440,6 +1444,7 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* Explore funding list → a true table. The <ul> owns the column tracks

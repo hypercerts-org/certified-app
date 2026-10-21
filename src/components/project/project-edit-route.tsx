@@ -510,7 +510,9 @@ export default function ProjectEditRoute({
           const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: CollectionValue

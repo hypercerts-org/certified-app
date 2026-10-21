@@ -102,6 +102,9 @@ export * from "./radio";
 export { default as ResponsiveDialog } from "./responsive-dialog";
 export * from "./responsive-dialog";
 
+export { default as RowThumb } from "./row-thumb";
+export * from "./row-thumb";
+
 export { default as SegmentedControl } from "./segmented-control";
 export * from "./segmented-control";
 

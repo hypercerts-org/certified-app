@@ -363,7 +363,7 @@ export default function ProfileSidebar({
             className="profile-sidebar__followers-count"
             title={
               viewedFollowing.truncated
-                ? "Hit the 10,000 follow display cap; the underlying repo has more."
+                ? "Showing the first 10,000 follows; this account has more."
                 : undefined
             }
           >
@@ -490,7 +490,7 @@ export default function ProfileSidebar({
               className="profile-sidebar__bsky-tag"
               rel="noopener noreferrer"
               target="_blank"
-              title="The profile information is imported from Bluesky"
+              title="Imported from Bluesky"
             >
               Bluesky profile
             </a>

@@ -426,7 +426,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           <h2 className="pe__section-title">Bio</h2>
           <p className="pe__hint">
             {isOrg
-              ? "A short description of this organization."
+              ? "A short description of this group."
               : "A short description of you and your work."}
           </p>
         </div>

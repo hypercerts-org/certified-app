@@ -124,31 +124,6 @@
   gap: 12px;
 }
 
-.social-graph-sync__modal-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.social-graph-sync__modal-back:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.social-graph-sync__modal-back:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .social-graph-sync__modal-lede {
   margin: 0;
   font-size: 0.9375rem;

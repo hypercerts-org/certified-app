@@ -62,7 +62,7 @@ export function useProject(
           throw new Error(
             res.status === 404
               ? "Project not found"
-              : `Failed to load project (${res.status})`,
+              : "Couldn't load this project. Try again.",
           )
         }
         const data = (await res.json()) as {

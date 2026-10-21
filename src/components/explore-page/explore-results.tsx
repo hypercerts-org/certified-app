@@ -1,10 +1,11 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { FolderGit2, HandCoins, Users } from "lucide-react"
+import { AlertCircle, FolderGit2, HandCoins, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
@@ -125,6 +126,9 @@ export function ResultsArea({
     )
   }
 
+  // A failed fetch is not "no results": say so and offer a retry.
+  if (data.error) return <LoadError kind={kind} onRetry={data.refetch} />
+
   if (kind === "funding") {
     const receipts = filteredFundingReceipts
     if (receipts.length === 0) return <EmptyResults kind={kind} />
@@ -235,6 +239,36 @@ export function ResultsArea({
         )
       })}
     </ul>
+  )
+}
+
+function kindLabel(kind: ExploreKind): string {
+  return kind === "accounts"
+    ? "accounts"
+    : kind === "projects"
+      ? "projects"
+      : kind === "funding"
+        ? "funding receipts"
+        : "activities"
+}
+
+function LoadError({
+  kind,
+  onRetry,
+}: {
+  kind: ExploreKind
+  onRetry: () => void
+}) {
+  return (
+    <EmptyState
+      icon={AlertCircle}
+      title={`Couldn’t load ${kindLabel(kind)}`}
+      description="Something went wrong on our side. Try again in a moment."
+    >
+      <Button variant="secondary" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </EmptyState>
   )
 }
 

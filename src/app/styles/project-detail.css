@@ -723,10 +723,13 @@
   background: var(--overlay-weak);
 }
 
-/* Section-header action link ("Read full description →", "Show all
-   activities →"). Matches the Updates section's "See all →" exactly:
-   same size, weight, colour, and hover. */
+/* Section-header "See all" link with a trailing chevron icon. Matches
+   the Updates section's "See all" exactly: same size, weight, colour,
+   and hover. */
 .project-detail__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 500;

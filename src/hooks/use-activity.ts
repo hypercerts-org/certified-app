@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import { createBoundedCache } from "@/lib/utils/bounded-cache"
 import { fetchIndexerActivitiesByUris } from "@/lib/atproto/indexer"
@@ -114,7 +114,7 @@ function loadActivity(did: string, rkey: string): Promise<SingleActivity> {
         throw new Error(
           res.status === 404
             ? "Activity not found"
-            : `Failed to load activity (${res.status})`
+            : "Couldn't load this activity. Try again."
         )
       }
       const data = (await res.json()) as {
@@ -176,6 +176,8 @@ export function useActivity(
   activity: SingleActivity | null
   isLoading: boolean
   error: string | null
+  /** Re-run the load after an error (failures are never cached). */
+  refetch: () => void
 } {
   // Seed synchronously from the cache so an already-resolved activity
   // renders without a loading flash on (re)mount.
@@ -186,6 +188,9 @@ export function useActivity(
     () => !!(did && rkey) && !cache.get(cacheKey(did, rkey))
   )
   const [error, setError] = useState<string | null>(null)
+  // Bumped by refetch() to re-run the load effect.
+  const [reloadKey, setReloadKey] = useState(0)
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), [])
 
   useEffect(() => {
     if (!did || !rkey) {
@@ -229,7 +234,7 @@ export function useActivity(
     return () => {
       cancelled = true
     }
-  }, [did, rkey])
+  }, [did, rkey, reloadKey])
 
-  return { activity, isLoading, error }
+  return { activity, isLoading, error, refetch }
 }

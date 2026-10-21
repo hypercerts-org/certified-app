@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
+import RowThumb from "@/components/ui/row-thumb"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useManagedProjects } from "@/hooks/use-managed-projects"
@@ -267,29 +268,6 @@ function GroupRow({ group }: { group: Group }) {
   )
 }
 
-/** Rail-row thumbnail: the record image, or the type icon when there is
- *  no image or it fails to load (so a broken blob never leaves an empty
- *  grey tile). Decorative — the row's label already names the link. */
-function RowThumb({ src, icon }: { src: string | null; icon: ReactNode }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const showImage = !!src && failedSrc !== src
-  return (
-    <span className="home-row__thumb">
-      {showImage ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          onError={() => setFailedSrc(src)}
-        />
-      ) : (
-        icon
-      )}
-    </span>
-  )
-}
-
 function ProjectRow({
   project,
   owner,
@@ -317,6 +295,7 @@ function ProjectRow({
     <li>
       <Link href={href} className="home-row">
         <RowThumb
+          className="home-row__thumb"
           src={imageUrl}
           icon={
             <FolderGit2
@@ -361,6 +340,7 @@ function CertRow({
     <li>
       <Link href={href} className="home-row">
         <RowThumb
+          className="home-row__thumb"
           src={imageUrl}
           icon={
             <CertIcon

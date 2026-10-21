@@ -26,6 +26,7 @@ import { countGraphemes } from "@/lib/utils/graphemes"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -204,8 +205,8 @@ export default function CreateProjectPage() {
           <div className="dashboard__main">
             <EmptyState
               icon={FolderGit2}
-              title="Sign in to create"
-              description="You need to be signed in to create a project."
+              title="Sign in to create a project"
+              description="Projects are published under your Certified account."
             />
           </div>
         </div>
@@ -303,7 +304,13 @@ export default function CreateProjectPage() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || `Failed: ${res.status}`)
+        throw new Error(
+          toUserErrorMessage(
+            res.status,
+            data.error,
+            "Couldn't publish your project. Your draft is still here; try again",
+          ),
+        )
       }
 
       const uri: unknown = data?.uri

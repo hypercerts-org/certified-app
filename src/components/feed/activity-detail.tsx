@@ -14,6 +14,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import {
   AlignLeft,
   Calendar,
@@ -704,8 +705,11 @@ export default function ActivityDetail({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(
-          (data as { error?: string }).error ||
-            `Delete failed: ${res.status}`,
+          toUserErrorMessage(
+            res.status,
+            (data as { error?: string }).error,
+            "Couldn't delete this activity. Try again",
+          ),
         )
       }
       // Redirect away from the deleted cert. We use a hard
@@ -722,7 +726,9 @@ export default function ActivityDetail({
       }
     } catch (err) {
       setDeleteError(
-        err instanceof Error ? err.message : "Delete failed",
+        err instanceof Error
+          ? err.message
+          : "Couldn't delete this activity. Try again.",
       )
       setIsDeleting(false)
     }
@@ -874,7 +880,9 @@ export default function ActivityDetail({
           const res = await fetch(
             `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: ClaimActivity

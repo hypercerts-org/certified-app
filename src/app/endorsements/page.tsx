@@ -63,7 +63,11 @@ function GivenEndorsementsList({
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <ErrorMessage message={error} onRetry={onRetry} />
+        <ErrorMessage
+          title="Couldn't load endorsements"
+          message="Something went wrong on our side. Try again in a moment."
+          onRetry={onRetry}
+        />
       </>
     )
   }
@@ -164,7 +168,7 @@ function ReceivedEndorsementsList() {
   // otherwise an already-rejected endorsement vanishes with no UI to
   // un-reject it. §22.21 privacy is preserved: foreign viewers never
   // reach this surface, so they never see rejected awards.
-  const { endorsements, isLoading, error } = useReceivedEndorsements(did, {
+  const { endorsements, isLoading, error, refetch } = useReceivedEndorsements(did, {
     includeRejected: true,
   })
   const ownStates = useOwnResponseStates()
@@ -176,7 +180,15 @@ function ReceivedEndorsementsList() {
       </div>
     )
   }
-  if (error) return <ErrorMessage message={error} />
+  if (error) {
+    return (
+      <ErrorMessage
+        title="Couldn't load endorsements"
+        message="Something went wrong on our side. Try again in a moment."
+        onRetry={refetch}
+      />
+    )
+  }
   if (endorsements.length === 0) {
     return (
       <p className="endorsements-empty">
@@ -418,8 +430,8 @@ export default function EndorsementsPage() {
 
       {confirmRkey ? (
         <ConfirmDialog
-          title="Revoke endorsement"
-          message="Do you really want to delete this endorsement?"
+          title="Revoke endorsement?"
+          message="Your endorsement will be removed from their profile. You can endorse them again later."
           confirmLabel="Revoke"
           isConfirming={revokingRkey === confirmRkey}
           onCancel={() => {

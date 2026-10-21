@@ -576,7 +576,7 @@ export default function UserProfilePage() {
                     onChange={(next: LinearDocument) =>
                       handleDraftChange("longDescription", next)
                     }
-                    placeholder="A longer, multi-line description of this organization."
+                    placeholder="A longer, multi-line description of this group."
                     ariaLabel="Long description"
                     did={did}
                     onImageUpload={handleLongDescImageUpload}

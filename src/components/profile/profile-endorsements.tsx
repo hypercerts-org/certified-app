@@ -518,6 +518,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             total={filteredReceived.length}
             isLoading={received.isLoading}
             error={received.error}
+            onRetry={received.refetch}
             responseFilter={responseFilter}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
@@ -535,6 +536,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             total={filteredReceived.length}
             isLoading={received.isLoading}
             error={received.error}
+            onRetry={received.refetch}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
             targetDid={manageTargetDid}
@@ -552,7 +554,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             allSelected={allSelected}
             anyVisible={visibleUris.length > 0}
             onToggleAll={toggleAll}
-            actionLabel="Delete selected"
+            actionLabel="Revoke selected"
             actionIcon={Trash2}
             busy={bulkBusy}
             error={bulkError}
@@ -565,6 +567,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             total={given.endorsements.length}
             isLoading={given.isLoading}
             error={given.error}
+            onRetry={given.refetch}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
             targetDid={manageTargetDid}
@@ -579,6 +582,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
             total={given.endorsements.length}
             isLoading={given.isLoading}
             error={given.error}
+            onRetry={given.refetch}
             viewerIsOwner={canManage}
             viewerDid={viewerDid}
             targetDid={manageTargetDid}
@@ -589,9 +593,9 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
       {bulkConfirmOpen ? (
         <ConfirmDialog
-          title={`Delete ${selected.size} endorsement${selected.size === 1 ? "" : "s"}?`}
-          message="The selected endorsements will be permanently removed from this profile. You can endorse those accounts again later."
-          confirmLabel="Delete"
+          title={`Revoke ${selected.size} endorsement${selected.size === 1 ? "" : "s"}?`}
+          message="The selected endorsements will be removed. You can endorse those accounts again later."
+          confirmLabel="Revoke"
           cancelLabel="Keep"
           confirmVariant="destructive"
           isConfirming={bulkBusy}

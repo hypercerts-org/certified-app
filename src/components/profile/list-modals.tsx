@@ -244,7 +244,7 @@ export function PasteUrisModal({
             setRows((prev) =>
               prev.map((r) =>
                 r.uri === row.uri
-                  ? { ...r, status: "missing", message: "Record not found on PDS" }
+                  ? { ...r, status: "missing", message: "Not found. Check the link and try again." }
                   : r,
               ),
             )
@@ -443,7 +443,8 @@ function PasteProgress({
       >
         <div
           className="profile-lists__paste-progress-bar-fill"
-          style={{ width: `${percent}%` }}
+          // --p (0..1) drives transform: scaleX in profile-lists.css.
+          style={{ "--p": percent / 100 } as React.CSSProperties}
         />
       </div>
     </div>
@@ -687,7 +688,7 @@ async function searchProjects(query: string, signal: AbortSignal): Promise<Searc
     { first: 10, after: null, authors: null, search: query },
     { signal },
   )
-  if (!res.ok) throw new Error(`Project search failed: ${res.status}`)
+  if (!res.ok) throw new Error("Couldn't search projects. Try again.")
   const out: SearchResult[] = []
   for (const edge of res.data?.orgHypercertsCollection?.edges ?? []) {
     if (!edge.node) continue

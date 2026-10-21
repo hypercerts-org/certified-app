@@ -81,6 +81,7 @@ export default function ProfileCerts({
     error,
     hasMore,
     loadMore,
+    refetch,
   } = useUserIndexerActivities(did, {
     authoredAuthors: aggregateOwned ? authors : undefined,
   })
@@ -109,8 +110,18 @@ export default function ProfileCerts({
       <EmptyState
         icon={Inbox}
         title="No contributions yet"
-        description="Activities on other users' repos that list this user as a contributor will appear here."
+        description="Activities where someone else lists this account as a contributor will appear here."
       />
+    ) : viewerIsOwner && !query.trim() ? (
+      <EmptyState
+        icon={Inbox}
+        title="No activities yet"
+        description="Activities you publish will appear here."
+      >
+        <Button href="/create" variant="secondary" size="sm">
+          Create an activity
+        </Button>
+      </EmptyState>
     ) : undefined
 
   const feed = (
@@ -123,6 +134,7 @@ export default function ProfileCerts({
       hasMore={hasMore}
       loadMore={loadMore}
       emptyState={emptyState}
+      onRetry={refetch}
     />
   )
 

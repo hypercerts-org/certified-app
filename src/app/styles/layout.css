@@ -3072,6 +3072,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--fg-primary);
+  /* Long unbroken titles (URLs) wrap instead of spilling out of the row. */
+  overflow-wrap: anywhere;
 }
 
 .profile-overview__activity-desc {
@@ -3082,6 +3084,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .profile-overview__activity-meta {
