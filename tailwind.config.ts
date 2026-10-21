@@ -2,6 +2,11 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["selector", '[data-theme="dark"]'],
+  /* `hover:` utilities only apply on devices that can hover, so a tap on a
+     touch screen doesn't leave the hover style stuck on. */
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
