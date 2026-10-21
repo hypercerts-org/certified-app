@@ -51,7 +51,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
     const baseChrome =
-      "w-full appearance-none bg-[var(--bg-elevated)] text-[var(--fg-primary)] focus:outline-none transition-all duration-150 motion-reduce:transition-none";
+      "w-full appearance-none bg-[var(--bg-elevated)] text-[var(--fg-primary)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none";
 
     const borderChrome = `border ${
       error

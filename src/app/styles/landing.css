@@ -219,7 +219,7 @@
 
 /* Counter-rotating layers give the engine-turned moire its slow
    shimmer (duration + direction set inline per layer); the global
-   reduced-motion kill-switch freezes them. */
+   reduced-motion rule in tokens.css runs them once to their end state. */
 .lp-guilloche__layer {
   transform-origin: 400px 400px;
   animation: lpSealRotate linear infinite;
@@ -1479,13 +1479,13 @@
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom 0.15s ease-out;
 }
 
 .feedback-trigger:hover {
   background: var(--color-accent);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Small "Beta" chip — sized down and tucked in a translucent pill so the

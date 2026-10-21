@@ -28,7 +28,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       <Brandmark
         size="100%"
         title="Loading"
-        className={`${sizeMap[size]} animate-pulse`}
+        className={`${sizeMap[size]} animate-pulse motion-reduce:animate-none`}
         style={{
           animationDuration: "1.5s",
           animationTimingFunction: "ease-in-out",

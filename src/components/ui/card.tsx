@@ -42,9 +42,9 @@ const baseByVariant: Record<CardVariant, string> = {
 const hoverByVariant: Record<CardVariant, string> = {
   row: "transition-colors duration-150 motion-reduce:transition-none hover:bg-[var(--overlay-weak)]",
   elevated:
-    "transition-all duration-150 motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
+    "transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
   inset:
-    "transition-all duration-150 motion-reduce:transition-none hover:border-[var(--border-hover-soft)]",
+    "transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none hover:border-[var(--border-hover-soft)]",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(

@@ -47,6 +47,12 @@
   display: block;
 }
 
+/* Source SVG is pure black; flip it in dark mode like the top-bar and
+   footer wordmarks. */
+:root[data-theme="dark"] .site-drawer__wordmark {
+  filter: invert(1);
+}
+
 .site-drawer__close {
   display: inline-flex;
   align-items: center;

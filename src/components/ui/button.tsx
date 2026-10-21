@@ -49,7 +49,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "rounded text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale";
+      "rounded text-sm font-medium tracking-wider transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-150 focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale";
 
     const variantStyles = {
       primary:

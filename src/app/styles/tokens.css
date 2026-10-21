@@ -381,9 +381,16 @@ button:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Collapse motion to its end state. Duration alone is not enough:
+     `infinite` loops would then cycle every 0.01ms (a flicker), and
+     delays would still hold content back. */
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

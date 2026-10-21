@@ -166,7 +166,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
     const baseChrome =
-      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-all duration-150 motion-reduce:transition-none";
+      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none";
 
     // Muted fill + not-allowed cursor when disabled. Semantic tokens keep the
     // treatment correct in dark mode.

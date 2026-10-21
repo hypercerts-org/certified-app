@@ -130,7 +130,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     };
 
     const baseChrome =
-      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-all duration-150 motion-reduce:transition-none resize-y";
+      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none resize-y";
 
     const disabledChrome = disabled
       ? "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[var(--bg-sunken)] disabled:resize-none"

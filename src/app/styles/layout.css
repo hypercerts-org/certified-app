@@ -1792,7 +1792,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 /* Hide the textual meta on narrower viewports so the trigger stays
    compact next to the search and icon-buttons. */
-@media (max-width: 1099.98px) {
+@media (max-width: 1099px) {
   .desktop-top-bar__switcher-meta {
     display: none;
   }
@@ -1892,10 +1892,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: background var(--transition-fast);
 }
 
+.desktop-top-bar__create-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .desktop-top-bar__create-item:hover,
 .desktop-top-bar__create-item:focus-visible {
   background: var(--overlay-weak);
-  outline: none;
 }
 
 .desktop-top-bar__create-item > svg {
