@@ -176,7 +176,7 @@ describe("getGroupEmail", () => {
     mockAuthFetch.mockResolvedValue(errResp(500, { error: "db down" }))
     const { getGroupEmail } = await loadModule()
 
-    await expect(getGroupEmail(DID)).rejects.toThrow("db down")
+    await expect(getGroupEmail(DID)).rejects.toThrow("Something went wrong on our side")
   })
 
   it("throws the fallback message when there is no error field", async () => {
@@ -211,7 +211,7 @@ describe("requestGroupEmailUpdate", () => {
     mockAuthFetch.mockResolvedValue(errResp(429, { error: "slow down" }))
     const { requestGroupEmailUpdate } = await loadModule()
 
-    await expect(requestGroupEmailUpdate(DID)).rejects.toThrow("slow down")
+    await expect(requestGroupEmailUpdate(DID)).rejects.toThrow("Too many attempts")
   })
 
   it("throws the fallback message when there is no error field", async () => {
@@ -274,7 +274,7 @@ describe("updateGroupEmail", () => {
     const { updateGroupEmail } = await loadModule()
 
     await expect(updateGroupEmail(DID, "new@example.com")).rejects.toThrow(
-      "nope",
+      "Sign in again",
     )
   })
 
@@ -322,7 +322,7 @@ describe("updateGroupHandle", () => {
     const { updateGroupHandle } = await loadModule()
 
     await expect(updateGroupHandle(DID, "new-handle")).rejects.toThrow(
-      "session expired",
+      "Sign in again",
     )
   })
 
