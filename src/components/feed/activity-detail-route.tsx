@@ -46,14 +46,17 @@ export default function ActivityDetailRoute({
   }
 
   if (error || !activity) {
+    // A 404 from the loader means the record is gone: say so, and don't
+    // offer a retry that can never succeed.
+    const loadFailed = !!error && error !== "Activity not found"
     return (
       <div className="cert-detail-page">
         {/* Fixed heading and plain body; the hook's error only picks the
             heading, so no technical text reaches the page. */}
         <ErrorMessage
-          title={error ? "Couldn't load this activity" : "Activity not found"}
+          title={loadFailed ? "Couldn't load this activity" : "Activity not found"}
           message="This activity may have been deleted, or its account's server is unreachable right now. Try again later."
-          onRetry={error ? refetch : undefined}
+          onRetry={loadFailed ? refetch : undefined}
         />
       </div>
     )

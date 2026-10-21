@@ -40,9 +40,17 @@ const TODAY = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-/** Strips thousands separators / spaces so "1,000" and "1 000" parse. */
+/**
+ * Accepts "1000", "1 000", "1_000" and comma-grouped "1,000.50". A comma is
+ * only dropped when it is clearly a thousands separator: in "12,50" it is
+ * a decimal comma, so the value is left as-is and rejected rather than
+ * silently recorded as 1250.
+ */
 function normalizeAmount(raw: string): string {
-  return raw.trim().replace(/[,\s_]/g, "")
+  const compact = raw.trim().replace(/[\s_]/g, "")
+  return /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(compact)
+    ? compact.replace(/,/g, "")
+    : compact
 }
 
 function isPositiveAmount(raw: string): boolean {
@@ -123,7 +131,7 @@ export default function FundingReceiptFormModal({
 
   const amountValid = isPositiveAmount(amount)
   const amountError =
-    amountTouched && !amountValid ? "Enter an amount greater than 0, e.g. 1000 or 12.50." : null
+    amountTouched && !amountValid ? "Enter an amount greater than 0, using a dot for decimals, e.g. 1000 or 12.50." : null
 
   async function handleSubmit() {
     if (submitting) return

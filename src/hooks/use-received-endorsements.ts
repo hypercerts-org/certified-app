@@ -487,9 +487,20 @@ export function useReceivedEndorsements(
     return base.filter((e) => e.responseState !== "rejected")
   }, [scanResult, includeRejected, profileDid, overlaySnapshot])
 
+  // Retry scans are cancellable like the others: aborted by the next
+  // retry, by a profile change and on unmount, so a slow retry for one
+  // profile can't land its results on the next one.
+  const retryControllerRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    return () => retryControllerRef.current?.abort()
+  }, [profileDid])
+
   const refetch = useCallback(() => {
     const did = profileDidRef.current
-    if (did) void doScan(did)
+    if (!did) return
+    retryControllerRef.current?.abort()
+    retryControllerRef.current = new AbortController()
+    void doScan(did, retryControllerRef.current.signal)
   }, [doScan])
 
   return {

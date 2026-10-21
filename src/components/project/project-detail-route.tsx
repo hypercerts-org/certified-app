@@ -48,7 +48,9 @@ export default function ProjectDetailRoute({
       <div className="project-detail-page">
         <div className="project-detail__error">
           <p className="project-detail__error-title">
-            {error ? "Couldn’t load this project" : "Project not found"}
+            {error && error !== "Project not found"
+              ? "Couldn’t load this project"
+              : "Project not found"}
           </p>
           <p className="project-detail__error-desc">
             This project may have been deleted, or its account&rsquo;s server

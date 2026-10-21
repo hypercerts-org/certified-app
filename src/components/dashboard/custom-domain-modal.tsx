@@ -7,6 +7,7 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { clearSessionCache } from "@/hooks/use-session";
 import Button from "@/components/ui/button";
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
+import { toUserErrorMessage } from "@/lib/utils/api";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -81,9 +82,11 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        // Classify only what the server said; the fallback must not match
+        // the DNS check, or every 5xx would read as "record not found".
         const errMsg = (data as { error?: string; message?: string }).message
           || (data as { error?: string }).error
-          || "Couldn't verify the domain. Check the DNS record and try again.";
+          || "";
 
         if (errMsg.includes("resolve") || errMsg.includes("DNS") || errMsg.includes("not found")) {
           throw new Error(
@@ -93,7 +96,9 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
         if (errMsg.includes("already") || errMsg.includes("taken")) {
           throw new Error("This domain is already in use by another account.");
         }
-        throw new Error(errMsg);
+        throw new Error(
+          toUserErrorMessage(res.status, errMsg || undefined, "Couldn't verify the domain"),
+        );
       }
 
       // Success
