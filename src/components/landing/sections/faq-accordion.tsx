@@ -44,27 +44,31 @@ export default function FaqAccordion({ items }: { items: FaqItem[] }) {
         const questionId = `faq-q-${index}`;
         return (
           <div key={index} className="lp-faq__item">
-            <button
-              id={questionId}
-              className="lp-faq__btn"
-              aria-expanded={isOpen}
-              aria-controls={answerId}
-              onClick={() => setOpenFaq(isOpen ? null : index)}
-            >
-              {item.question}
-              <svg
-                className={`lp-faq__icon${isOpen ? " lp-faq__icon--open" : ""}`}
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
+            {/* Heading wrapper so questions show up in screen-reader heading
+                navigation (APG accordion pattern); styled away in CSS. */}
+            <h3 className="lp-faq__q">
+              <button
+                id={questionId}
+                className="lp-faq__btn"
+                aria-expanded={isOpen}
+                aria-controls={answerId}
+                onClick={() => setOpenFaq(isOpen ? null : index)}
               >
-                <line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" strokeWidth="1.5" />
-                <line className="lp-faq__icon-v" x1="9" y1="2" x2="9" y2="16" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            </button>
+                {item.question}
+                <svg
+                  className={`lp-faq__icon${isOpen ? " lp-faq__icon--open" : ""}`}
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" strokeWidth="1.5" />
+                  <line className="lp-faq__icon-v" x1="9" y1="2" x2="9" y2="16" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </button>
+            </h3>
             <div
               id={answerId}
               role="region"

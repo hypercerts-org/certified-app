@@ -106,7 +106,7 @@ export default function StepProfile({
       </div>
 
       <div className="onboarding-step__media-actions">
-        <label className="onboarding-step__file-btn">
+        <label className="onboarding-step__file-btn focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus-ring)]">
           Replace avatar
           <input
             type="file"
@@ -114,10 +114,10 @@ export default function StepProfile({
             onChange={(e) =>
               update("replacementAvatarFile", e.target.files?.[0] ?? null)
             }
-            hidden
+            className="sr-only"
           />
         </label>
-        <label className="onboarding-step__file-btn">
+        <label className="onboarding-step__file-btn focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--focus-ring)]">
           Replace banner
           <input
             type="file"
@@ -125,21 +125,24 @@ export default function StepProfile({
             onChange={(e) =>
               update("replacementBannerFile", e.target.files?.[0] ?? null)
             }
-            hidden
+            className="sr-only"
           />
         </label>
       </div>
 
       <div className="onboarding-step__fields">
         <div className="onboarding-step__field">
-          <label htmlFor={displayNameId} className="onboarding-step__label">
-            <span>Display name</span>
-            <span className="onboarding-step__label-count">
+          {/* Counter sits beside (not inside) the label so it doesn't become
+              part of the field's accessible name; linked via aria-describedby. */}
+          <div className="onboarding-step__label">
+            <label htmlFor={displayNameId}>Display name</label>
+            <span id={`${displayNameId}-count`} className="onboarding-step__label-count">
               {draft.displayName.length}/64
             </span>
-          </label>
+          </div>
           <Input
             id={displayNameId}
+            aria-describedby={`${displayNameId}-count`}
             type="text"
             value={draft.displayName}
             maxLength={64}
@@ -150,14 +153,15 @@ export default function StepProfile({
         </div>
 
         <div className="onboarding-step__field">
-          <label htmlFor={descriptionId} className="onboarding-step__label">
-            <span>About</span>
-            <span className="onboarding-step__label-count">
+          <div className="onboarding-step__label">
+            <label htmlFor={descriptionId}>About</label>
+            <span id={`${descriptionId}-count`} className="onboarding-step__label-count">
               {draft.description.length}/256
             </span>
-          </label>
+          </div>
           <Textarea
             id={descriptionId}
+            aria-describedby={`${descriptionId}-count`}
             rows={3}
             maxLength={256}
             value={draft.description}

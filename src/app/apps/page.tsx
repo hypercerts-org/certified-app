@@ -25,7 +25,6 @@ export default function AppsPage() {
             <SsoAppLink
               url={app.url}
               ssoHandleUrl={"ssoHandleUrl" in app ? app.ssoHandleUrl : undefined}
-              ariaLabel={`${app.name} — ${app.desc}`}
             >
               <span className="apps-store__row">
                 <span className="apps-store__icon-wrap">

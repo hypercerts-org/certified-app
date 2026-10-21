@@ -148,7 +148,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--border-default);
-  transition: background 150ms ease;
+  transition: background var(--transition-fast);
 }
 
 .product-tour__dot--active {

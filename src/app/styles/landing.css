@@ -396,6 +396,29 @@
   flex: none;
 }
 
+/* Touch sizes: on phones these fixed controls are the page's only chrome,
+   so lift them to the 44px tap target. */
+@media (max-width: 799px) {
+  .lp-topbar__btn {
+    height: 44px;
+  }
+
+  .lp-topbar__theme {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Legal pages (/terms, /privacy, /imprint, /dsa) also mount the app's mobile
+   navbar below 800px (it only steps aside on /welcome). Keep exactly one top
+   bar there: the navbar wins on phones, the landing chrome on desktop. */
+@media (max-width: 799px) {
+  .legal-page .lp-topbar,
+  .legal-page .lp-topbar__actions {
+    display: none;
+  }
+}
+
 /* ---------- Hero ---------- */
 
 .lp-hero {
@@ -413,7 +436,7 @@
 .lp-hero__inner {
   width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .lp-hero__copy {
@@ -432,7 +455,8 @@
   width: min(52vw, 760px);
   aspect-ratio: 1;
   color: var(--color-navy);
-  z-index: 0;
+  /* No z-index: the transform already gives the art its own stacking
+     context, and .lp-hero__inner (--z-local-raise) paints above it. */
   pointer-events: none;
   animation: lpFadeIn 900ms cubic-bezier(0.16, 1, 0.3, 1) 150ms backwards;
 }
@@ -1196,7 +1220,7 @@
 
 .lp-band__inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .lp-band__eyebrow {
@@ -1288,6 +1312,13 @@
 
 .lp-faq__item:first-child {
   border-top: 0;
+}
+
+/* Semantic heading around each trigger; neutral so the button's own type
+   (and not .legal-page h3) sets the look. */
+.lp-faq .lp-faq__q {
+  margin: 0;
+  letter-spacing: normal;
 }
 
 .lp-faq__btn {
@@ -1407,7 +1438,7 @@
 
 .lp-closing__inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1444,23 +1475,14 @@
  * SHARED, NON-LANDING — used by app-wide surfaces. Do not remove with
  * landing iterations.
  *
- *  - modalFadeIn / modalSlideUp back AppDialog's animate-[modalSlideUp]
- *    and the feedback modal animations.
  *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
  *  - .app-page backs /about, /terms, /privacy, /dsa,
  *    /imprint, /help.
  *  - .welcome-footer wraps SiteFooter on /welcome (welcome/layout.tsx).
  * ========================================================================== */
 
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
+/* modalFadeIn / modalSlideUp (used below and by AppDialog) live in
+   components.css — the single app-wide definition. */
 
 /* ========== Feedback Modal ========== */
 .feedback-trigger {
@@ -1715,9 +1737,20 @@
 
 /* ========== App Pages (authenticated) ========== */
 .app-page {
+  background: var(--color-off-white);
+}
+
+/* Shell-less pages (/terms, /privacy, /imprint, /dsa) supply their own
+   offset for the fixed mobile navbar (--navbar-height is 0 on desktop).
+   Inside AppShell (/help) .app-shell__content already pads for the navbar
+   and the shell's footer follows the page, so neither rule applies there. */
+.app-page:not(.app-shell .app-page) {
   padding-top: var(--navbar-height);
   min-height: 100vh;
-  background: var(--color-off-white);
+}
+
+.app-shell .app-page {
+  min-height: 0;
 }
 
 .app-page__inner {
@@ -1768,7 +1801,7 @@
   }
 }
 
-.legal-page .prose section + section {
+.legal-page .legal-prose section + section {
   border-top: 1px solid var(--color-light-gray);
   padding-top: 2rem;
 }
@@ -1776,7 +1809,7 @@
 /* The FAQ accordion carries its own bottom hairline; on legal/help pages the
    `section + section` divider above already separates it from what follows,
    so drop the accordion's closing line to avoid a stacked double rule. */
-.legal-page .prose .lp-faq {
+.legal-page .legal-prose .lp-faq {
   border-bottom: 0;
 }
 
@@ -1791,11 +1824,21 @@
   letter-spacing: -0.025em;
 }
 
-.legal-page .prose p,
-.legal-page .prose li {
+.legal-page .legal-prose p,
+.legal-page .legal-prose li {
   color: var(--color-mid-gray);
 }
 
-.legal-page .prose strong {
+/* Inline links in legal/help copy (replaces a per-link Tailwind string). */
+.legal-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.legal-link:hover {
+  color: var(--color-accent-hover);
+}
+
+.legal-page .legal-prose strong {
   color: var(--color-navy);
 }

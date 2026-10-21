@@ -71,7 +71,7 @@ const BUILD_LINKS = (
       href="https://docs.hypercerts.org/"
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+      className="legal-link"
     >
       docs.hypercerts.org
     </a>
@@ -79,7 +79,7 @@ const BUILD_LINKS = (
       href="https://t.me/+o4wPsJ7yEZYzNGFk"
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+      className="legal-link"
     >
       Telegram group
     </a>

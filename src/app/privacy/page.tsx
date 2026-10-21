@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
 
-        <div className="prose max-w-none space-y-8">
+        <div className="legal-prose space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. Introduction</h2>
             <p>
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -111,7 +111,7 @@ export default function PrivacyPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -356,7 +356,7 @@ export default function PrivacyPage() {
               To delete your account, contact us at{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 support@hypercerts.org
               </a>
@@ -428,7 +428,7 @@ export default function PrivacyPage() {
                 href="https://www.datenschutz-berlin.de"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 https://www.datenschutz-berlin.de
               </a>
@@ -438,7 +438,7 @@ export default function PrivacyPage() {
             <p className="mt-2">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -500,7 +500,7 @@ export default function PrivacyPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>

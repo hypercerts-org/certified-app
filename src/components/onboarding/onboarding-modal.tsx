@@ -33,7 +33,7 @@ const STEP_LABELS: Record<StepKey, string> = {
  *  relative sizing. */
 const STEP_TITLES: Record<StepKey, string> = {
   profile: "Welcome to Certified",
-  graph: "Import your Bluesky follows",
+  graph: "Import Bluesky follows",
 }
 
 /**
@@ -206,7 +206,7 @@ function OnboardingModalContent({
                 .toUpperCase()}
             </div>
           )}
-          <h2 className="onboarding-success__title">
+          <h2 className="onboarding-success__title font-headline text-h2">
             Welcome, {profileDraft.displayName.trim() || handle || "friend"}
           </h2>
           <p className="onboarding-success__subtitle">
@@ -229,7 +229,7 @@ function OnboardingModalContent({
       disableBackdropClose={commit.state.status === "running"}
     >
       <header className="onboarding-modal__header">
-        <h2 className="onboarding-modal__title">{STEP_TITLES[step]}</h2>
+        <h2 className="onboarding-modal__title font-headline text-h3">{STEP_TITLES[step]}</h2>
         <ol className="onboarding-modal__steps" aria-label="Onboarding steps">
           {STEP_ORDER.map((s, i) => (
             <li key={s} aria-current={s === step ? "step" : undefined}>

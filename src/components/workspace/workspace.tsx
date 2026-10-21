@@ -138,7 +138,7 @@ export default function Workspace() {
     <div className="workspace">
       <header className="workspace__head">
         <span className="workspace__eyebrow">Workspace</span>
-        <h1 className="workspace__title">Navigation patterns</h1>
+        <h1 className="workspace__title font-headline text-h2">Navigation patterns</h1>
         <p className="workspace__subtitle">
           Five candidate structures for stepping between the network,
           actors, and per-lexicon listings. Pick a layout below and

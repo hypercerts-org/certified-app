@@ -105,7 +105,7 @@ function StoryArt({ variant }: { variant: "diagonal" | "row" }) {
             y={f.y}
             width={SIZE}
             height={SIZE}
-            rx={4}
+            rx={2}
             stroke="currentColor"
             strokeWidth={0.75}
             opacity={0.28}

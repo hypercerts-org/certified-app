@@ -24,7 +24,7 @@ export default function HelpPage() {
     <div className="app-page legal-page">
       <PageTitle title="Help" />
       <div className="app-page__inner">
-        <div className="prose max-w-none space-y-8">
+        <div className="legal-prose space-y-8">
           <section>
             <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-4">
               Help &amp; getting started
@@ -38,7 +38,7 @@ export default function HelpPage() {
                 href="https://atproto.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 AT Protocol
               </a>

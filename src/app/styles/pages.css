@@ -626,7 +626,7 @@
   color: var(--fg-muted);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .account-switcher__signout:hover {
@@ -651,7 +651,7 @@
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: color 0.15s, background 0.15s;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .account-switcher__signout-row:hover {

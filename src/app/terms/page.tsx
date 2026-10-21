@@ -28,7 +28,7 @@ export default function TermsPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose max-w-none space-y-8">
+        <div className="legal-prose space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About Certified</h2>
             <p>
@@ -304,7 +304,7 @@ export default function TermsPage() {
             <p className="mt-4">
               Reports of illegal content may be submitted in accordance with the notice-and-action
               procedure described in our{" "}
-              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/dsa" className="legal-link">
                 DSA Compliance Page
               </Link>
               .
@@ -313,7 +313,7 @@ export default function TermsPage() {
               Reports and legal notices may also be sent to:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -361,7 +361,7 @@ export default function TermsPage() {
               If you believe your account has been compromised, you must notify us promptly at{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -385,7 +385,7 @@ export default function TermsPage() {
               To delete your account, contact us at{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 support@hypercerts.org
               </a>
@@ -609,7 +609,7 @@ export default function TermsPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
