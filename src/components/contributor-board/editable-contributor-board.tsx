@@ -392,7 +392,7 @@ export function EditableContributorBoard({
       </div>
 
       {error ? (
-        <p className="mb-2 text-body-sm text-[var(--color-error)]">{error}</p>
+        <p className="mb-2 text-body-sm text-[var(--color-error)]" role="alert">{error}</p>
       ) : null}
       <p className="contributor-board__status">
         Drag the bottom-right corner of a tile to resize its weight, or click the

@@ -286,7 +286,7 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
 
 function formatCount(n: number | null | undefined): string | null {
   if (n === null || n === undefined || n === 0) return null
-  return `${n}`
+  return n.toLocaleString()
 }
 
 // ----------------------------- Followers -----------------------------

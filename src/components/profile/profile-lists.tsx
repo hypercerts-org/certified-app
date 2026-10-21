@@ -214,7 +214,7 @@ function ListSection({
                 onClick={() => onOpen(list.rkey)}
               >
                 <span className="profile-lists__row-body">
-                  <span className="profile-lists__row-title">{list.title}</span>
+                  <span className="profile-lists__row-title" dir="auto">{list.title}</span>
                   {list.description ? (
                     <span className="profile-lists__row-desc">{list.description}</span>
                   ) : null}
@@ -348,7 +348,7 @@ function ListDetail({
           </button>
         </Tooltip>
         <h2 className="profile-lists__detail-title">
-          {list.title}
+          <bdi>{list.title}</bdi>
           <span className="profile-lists__detail-count">{list.items.length}</span>
         </h2>
         {viewerIsOwner ? (

@@ -166,10 +166,7 @@ export default function ProfileOverview({
             isUploading={bannerUploading}
           />
           {hasPendingBanner ? (
-            <p
-              className="profile-overview__website-label"
-              style={{ marginTop: 6 }}
-            >
+            <p className="profile-overview__website-label mt-1.5">
               New banner staged — will save on Save.
             </p>
           ) : null}
@@ -428,7 +425,7 @@ export default function ProfileOverview({
                   <Link href={href} className="profile-overview__activity-link">
                     <ActivityThumb value={a.value} did={did} />
                     <span className="profile-overview__activity-text">
-                      <span className="profile-overview__activity-title">
+                      <span className="profile-overview__activity-title" dir="auto">
                         {a.value.title || "Untitled activity"}
                       </span>
                       {a.value.shortDescription ? (
@@ -572,7 +569,7 @@ function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
       <Link href={href} className="profile-overview__endorse-link">
         <Avatar size="sm" src={avatarSrc} fallbackInitials={initials} />
         <span className="profile-overview__endorse-meta">
-          <span className="profile-overview__endorse-name">{displayName}</span>
+          <span className="profile-overview__endorse-name" dir="auto">{displayName}</span>
           <span className="profile-overview__endorse-when">
             {formatShortDate(endorsement.createdAt)}
           </span>
@@ -630,7 +627,7 @@ function OrgTypePickerSection({
       >
         Organization type
       </h2>
-      <ul className="profile-overview__type-chip-list" role="group">
+      <ul className="profile-overview__type-chip-list">
         {ORG_TYPE_PRESETS.map((preset) => {
           const active = selected.includes(preset)
           return (

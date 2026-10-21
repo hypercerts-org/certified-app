@@ -468,8 +468,8 @@
 }
 
 .profile-overview__type-chip:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .profile-overview__type-other-input {
@@ -502,6 +502,14 @@
   padding: 6px 10px;
   width: 100%;
   min-width: 0;
+}
+
+/* 16px keeps iOS Safari from zooming the page on focus. */
+@media (max-width: 799px) {
+  .profile-overview__location-input,
+  .profile-overview__type-other-input {
+    font-size: 16px;
+  }
 }
 
 .profile-overview__location-input:focus {

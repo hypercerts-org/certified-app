@@ -91,7 +91,7 @@ function FancyTile({ tile, percent, delay }: FancyTileProps) {
         ) : null}
 
         {showLabel ? (
-          <span className="fancy-tile__name" style={{ fontSize }}>
+          <span className="fancy-tile__name" style={{ fontSize }} dir="auto">
             {entry.name}
           </span>
         ) : null}

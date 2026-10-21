@@ -93,17 +93,16 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
 
         <div className="profile-groups__controls">
           {isOwnProfile ? (
-            <Link href="/groups/create">
-              <Button
-                variant="primary"
-                size="sm"
-                className="profile-new-record-btn"
-                aria-label="New group"
-              >
-                <Plus size={14} strokeWidth={1.75} aria-hidden />
-                <span className="profile-new-record-btn__label">New group</span>
-              </Button>
-            </Link>
+            <Button
+              href="/groups/create"
+              variant="primary"
+              size="sm"
+              className="profile-new-record-btn"
+              aria-label="New group"
+            >
+              <Plus size={14} strokeWidth={1.75} aria-hidden />
+              <span className="profile-new-record-btn__label">New group</span>
+            </Button>
           ) : null}
           <label className="profile-groups__search">
             <Search
@@ -176,7 +175,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
       ) : error ? (
         <EmptyState
           icon={Building2}
-          title="Couldn't load groups"
+          title="Couldn’t load groups"
           description={error}
         />
       ) : visible.length === 0 ? (
@@ -186,7 +185,9 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
           description={
             query
               ? "Try a different search term."
-              : "When you join a group, it'll appear here."
+              : isOwnProfile
+                ? "When you join a group, it’ll appear here."
+                : "Groups this profile belongs to will appear here."
           }
         />
       ) : (
@@ -254,7 +255,7 @@ function GroupRow({ group }: GroupRowProps) {
             className="profile-groups__identity"
             title={`${name} (@${group.handle})`}
           >
-            <span className="profile-groups__name">{name}</span>
+            <span className="profile-groups__name" dir="auto">{name}</span>
             <span className="profile-groups__handle">@{group.handle}</span>
           </Link>
           {group.description ? (

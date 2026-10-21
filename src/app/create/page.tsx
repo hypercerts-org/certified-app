@@ -19,6 +19,7 @@ import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
+import Select from "@/components/ui/select"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -46,6 +47,8 @@ import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useTour } from "@/lib/tour/tour-context"
 import { countGraphemes } from "@/lib/utils/graphemes"
+import { isEmptyLongDescription } from "@/lib/leaflet/guards"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
 /**
  * `/create` — new cert. Mirrors the visual language of the cert detail
@@ -198,6 +201,23 @@ export default function CreatePage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Unsaved-changes guard. Rights is excluded — it's auto-filled with a
+  // default on load, so it doesn't signal user input on its own.
+  const isDirty =
+    !isSubmitting &&
+    (title.trim() !== "" ||
+      shortDescription.trim() !== "" ||
+      startDate !== "" ||
+      endDate !== "" ||
+      workScope.trim() !== "" ||
+      !isEmptyLongDescription(description) ||
+      contributors.length > 0 ||
+      !!pendingImageBlob ||
+      locations.length > 0)
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const shortDescRef = useRef<HTMLTextAreaElement>(null)
 
   // Revoke any staged preview URL on unmount so the blob URL doesn't
   // linger in memory after the user navigates away mid-flow.
@@ -387,6 +407,14 @@ export default function CreatePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!did) return
+    // Publish stays enabled so a click always explains itself: list
+    // whatever is still missing and focus the first offending field.
+    if (unmetRequirements.length > 0) {
+      setError(`Before publishing: ${unmetRequirements.join("; ")}.`)
+      if (titleUnder0 || titleOver) titleInputRef.current?.focus()
+      else if (shortDescUnder0 || shortDescOver) shortDescRef.current?.focus()
+      return
+    }
     // Guard against the form firing past the disabled submit button
     // (Enter-key submit in a child input would still trigger
     // handleSubmit). Same bounds the submit-disable check enforces.
@@ -603,15 +631,21 @@ export default function CreatePage() {
   // the check.
   const datesValid =
     !startDate || !endDate || startDate <= endDate
-  const canSubmit =
-    trimmedTitleCount >= TITLE_MIN &&
-    titleCount <= TITLE_MAX &&
-    trimmedShortDescCount >= SHORT_DESC_MIN &&
-    shortDescCount <= SHORT_DESC_MAX &&
-    allContributorsValid &&
-    noContributorDuplicates &&
-    datesValid &&
-    !isSubmitting
+  // Including empty fields (the `…Under` flags above skip zero so the
+  // counters don't turn red before the author starts typing).
+  const titleUnder0 = trimmedTitleCount < TITLE_MIN
+  const shortDescUnder0 = trimmedShortDescCount < SHORT_DESC_MIN
+  const unmetRequirements: string[] = [
+    titleUnder0 && `the title needs at least ${TITLE_MIN} characters`,
+    titleOver && `the title must be ${TITLE_MAX} characters or fewer`,
+    shortDescUnder0 &&
+      `the short description needs at least ${SHORT_DESC_MIN} characters`,
+    shortDescOver &&
+      `the short description must be ${SHORT_DESC_MAX} characters or fewer`,
+    !allContributorsValid && "fix the highlighted contributor rows",
+    !noContributorDuplicates && "remove duplicate contributors",
+    !datesValid && "the end date must be on or after the start date",
+  ].filter((m): m is string => !!m)
 
   return (
     <form onSubmit={handleSubmit}>
@@ -800,17 +834,8 @@ export default function CreatePage() {
                     None available
                   </span>
                 ) : (
-                  // NOTE: left as a native <select> with the compact
-                  // `cert-detail__meta-input` chrome. The <Select>
-                  // primitive only exposes a sm/md/lg size axis (no
-                  // `density="compact"`), and its smallest size (sm =
-                  // h-9, 1px --border-default) is taller and lighter
-                  // than this 0.8125rem / 1.5px --border-hover meta
-                  // field — adopting it would change the inline meta-row
-                  // rhythm. Migrate once <Select> grows a compact
-                  // density that matches the meta-input scale.
-                  <select
-                    className="cert-detail__meta-input"
+                  <Select
+                    size="sm"
                     aria-label="Rights"
                     value={rightsUri}
                     onChange={(e) => setRightsUri(e.target.value)}
@@ -821,7 +846,7 @@ export default function CreatePage() {
                         {opt.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </dd>
             </div>
@@ -844,7 +869,9 @@ export default function CreatePage() {
                 size="bare"
                 borderWeight="hover"
                 type="text"
+                ref={titleInputRef}
                 aria-label="Title"
+                aria-describedby="create-title-counter"
                 placeholder="Title for your activity"
                 className="flex-[1_1_auto] min-w-0 font-headline !text-[1.375rem] font-bold !leading-[1.15] tracking-[-0.015em] text-[var(--fg-primary)] !px-2.5 py-1"
                 value={title}
@@ -861,7 +888,7 @@ export default function CreatePage() {
                       ? " create-cert__counter--under"
                       : ""
                 }`}
-                aria-live="polite"
+                id="create-title-counter"
               >
                 {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
               </p>
@@ -871,7 +898,9 @@ export default function CreatePage() {
           <section className="cert-detail__section">
             <div className="create-cert__input-with-counter">
               <textarea
+                ref={shortDescRef}
                 className="cert-detail__short-desc-input"
+                aria-describedby="create-short-desc-counter"
                 value={shortDescription}
                 placeholder="A short description (one or two lines)…"
                 aria-label="Short description"
@@ -886,7 +915,7 @@ export default function CreatePage() {
                       ? " create-cert__counter--under"
                       : ""
                 }`}
-                aria-live="polite"
+                id="create-short-desc-counter"
               >
                 {shortDescCount}/{SHORT_DESC_MAX} · min. {SHORT_DESC_MIN} characters
               </p>
@@ -1174,6 +1203,7 @@ export default function CreatePage() {
               type="button"
               variant="ghost"
               onClick={() => {
+                if (!confirmDiscard()) return
                 if (arrivedFromInApp) router.back()
                 else router.push("/")
               }}
@@ -1185,7 +1215,7 @@ export default function CreatePage() {
               type="submit"
               variant="primary"
               loading={isSubmitting}
-              disabled={!canSubmit}
+              disabled={isSubmitting}
               data-tour="create-submit"
             >
               {isSubmitting ? "Publishing…" : "Publish activity"}

@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -407,7 +401,7 @@ function ListsBody({
             onClick={() => onOpen(list.uri)}
           >
             <div className="endorsement-lists__row-main">
-              <span className="endorsement-lists__row-title">{list.title}</span>
+              <span className="endorsement-lists__row-title" dir="auto">{list.title}</span>
               {list.description ? (
                 <span className="endorsement-lists__row-desc">
                   {list.description}
@@ -485,7 +479,7 @@ function ListDetail({
             </button>
           </Tooltip>
           <h2 className="endorsement-lists__title">
-            {list.title}
+            <bdi>{list.title}</bdi>
             <span className="endorsement-lists__title-count">
               {list.items.length}
             </span>
@@ -969,6 +963,7 @@ function PasteSubjectsModal({
   const [rows, setRows] = useState<SubjectPasteRow[]>([])
   const [running, setRunning] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pasteHelpId = useId()
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -1169,7 +1164,7 @@ function PasteSubjectsModal({
         disabled={running}
       />
       <AppDialogBody className="profile-lists__paste-body">
-        <p className="profile-lists__paste-help">
+        <p className="profile-lists__paste-help" id={pasteHelpId}>
           Paste handles, DIDs, or profile URLs separated by commas,
           newlines, or spaces. Each person gets an endorsement from you
           (if they don&rsquo;t have one already) and is added to this
@@ -1178,6 +1173,8 @@ function PasteSubjectsModal({
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
+          aria-label="Handles, DIDs or URLs to add"
+          aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}

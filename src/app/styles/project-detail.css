@@ -1165,7 +1165,11 @@
 .project-detail__cert-menu-btn[aria-expanded="true"] {
   background: var(--overlay-weak);
   color: var(--fg-primary);
-  outline: none;
+}
+
+.project-detail__cert-menu-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* The per-card ⋯ menu popover + items now render via the shared

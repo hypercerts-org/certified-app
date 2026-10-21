@@ -80,7 +80,7 @@ export function ContributorTile({
       ) : null}
 
       {showLabel ? (
-        <span className="contributor-tile__name" style={{ fontSize }}>
+        <span className="contributor-tile__name" style={{ fontSize }} dir="auto">
           {entry.name}
         </span>
       ) : null}

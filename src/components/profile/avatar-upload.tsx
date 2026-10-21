@@ -20,7 +20,6 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.5MB
@@ -80,46 +79,61 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div
-        className="relative cursor-pointer"
-        role="button"
-        tabIndex={0}
+      {/* A real <button>: keyboard / touch users get the same affordance.
+          The camera overlay shows on hover AND keyboard focus; touch
+          devices (no hover) get a persistent camera badge instead. */}
+      <button
+        type="button"
+        className="group relative cursor-pointer rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-wait"
         aria-label="Upload avatar"
         onClick={handleClick}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        disabled={isUploading}
       >
         {/* Avatar */}
-        <div className="h-16 w-16">
+        <span className="block h-16 w-16">
           <Avatar
             src={displayUrl || undefined}
             fallbackInitials={fallbackInitials}
             size="lg"
           />
-        </div>
+        </span>
 
         {/* Overlay */}
-        {(isHovered || isUploading) && (
-          <div className="absolute inset-0 rounded-full bg-[var(--navy-overlay-70)] flex items-center justify-center">
-            {isUploading ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <Camera className="h-8 w-8 text-[var(--color-white)]" />
-            )}
-          </div>
-        )}
+        <span
+          aria-hidden
+          className={`absolute inset-0 rounded-full bg-[var(--navy-overlay-70)] flex items-center justify-center transition-opacity duration-150 motion-reduce:transition-none group-hover:opacity-100 group-focus-visible:opacity-100 ${
+            isUploading ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {isUploading ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+            <Camera className="h-8 w-8 text-[var(--color-white)]" />
+          )}
+        </span>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleFileChange}
-          className="hidden"
-          disabled={isUploading}
-        />
-      </div>
+        {/* Touch-only camera badge (no hover to reveal the overlay). */}
+        {!isUploading ? (
+          <span
+            aria-hidden
+            className="absolute -bottom-0.5 -right-0.5 hidden h-6 w-6 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)] [@media(hover:none)]:flex"
+          >
+            <Camera className="h-3.5 w-3.5" />
+          </span>
+        ) : null}
+      </button>
+
+      {/* Hidden file input (outside the button — no nested controls) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFileChange}
+        className="hidden"
+        disabled={isUploading}
+        tabIndex={-1}
+        aria-hidden
+      />
 
       {/* Error message */}
       {error && (

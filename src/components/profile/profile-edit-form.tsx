@@ -5,6 +5,7 @@ import { profileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, X, ChevronLeft } from "lucide-react";
+import Button from "@/components/ui/button";
 import ErrorMessage from "@/components/ui/error-message";
 import Input from "@/components/ui/input";
 import Textarea from "@/components/ui/textarea";
@@ -19,6 +20,7 @@ import type {
 import type { UploadedBlob } from "@/lib/atproto/profile";
 import type { BlobRef } from "@atproto/api";
 import type { OrgUrlItem } from "@/lib/groups/types";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 
 /**
  * Org URL list passed in/out as a plain array. The parent owns whether
@@ -249,12 +251,9 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     return false;
   })();
 
-  const isValid =
-    !displayNameError &&
-    !pronounsError &&
-    !descriptionError &&
-    !websiteError &&
-    urlRows.every((r) => !r.error);
+  // Same beforeunload + link-capture guard the inline profile edit uses;
+  // Cancel asks through `confirmDiscard` before leaving.
+  const { confirmDiscard } = useUnsavedChangesGuard(hasChanges && !isSaving);
 
   const handleSave = async () => {
     const displayNameValid = validateDisplayName(displayName);
@@ -324,11 +323,22 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const profileHref = handle ? profileUrl(handle) : "/profile";
 
   const handleCancel = () => {
+    if (!confirmDiscard()) return;
     router.push(profileHref);
   };
 
   return (
-    <div className="pe">
+    // A real <form> so Enter in any field submits. Save stays enabled once
+    // there's something to save; handleSave re-runs every validator, which
+    // paints the inline errors explaining what still needs fixing.
+    <form
+      className="pe"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+    >
       {/* Subtle textual back affordance above the hero. Mirrors GitHub's
           "Back to <owner>" pattern — repeats the navbar breadcrumb in a
           way that's visible in the content area itself. */}
@@ -490,16 +500,18 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           </div>
 
           <div className="pe__fields">
-            <div className="pe__field">
-              <label className="pe__label">
+            <fieldset className="pe__field">
+              <legend className="pe__label">
                 <span>Additional URLs</span>
-              </label>
+              </legend>
 
               {urlRows.length === 0 ? (
                 <p className="pe__url-empty">No additional links yet.</p>
               ) : (
                 <div className="pe__url-list">
-                  {urlRows.map((row) => (
+                  {urlRows.map((row, i) => {
+                    const rowName = row.label.trim() || row.url.trim() || `URL ${i + 1}`;
+                    return (
                     <div key={row.id} className="pe__url-item">
                       <div className="pe__url-row">
                         {/* flush Input as a direct grid child. `error` drives
@@ -513,7 +525,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                           inputMode="url"
                           value={row.url}
                           placeholder="https://example.com"
-                          aria-label="URL"
+                          aria-label={`URL ${i + 1}`}
                           error={row.error}
                           aria-describedby={
                             row.error ? `${row.id}-error` : undefined
@@ -528,7 +540,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                           value={row.label}
                           maxLength={48}
                           placeholder="Label"
-                          aria-label="Link label"
+                          aria-label={`Label for URL ${i + 1}`}
                           onChange={(e) =>
                             updateUrlRow(row.id, { label: e.target.value })
                           }
@@ -537,7 +549,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                           <button
                             type="button"
                             className="pe__url-remove"
-                            aria-label="Remove URL"
+                            aria-label={`Remove ${rowName}`}
                             onClick={() => removeUrlRow(row.id)}
                           >
                             <X size={16} strokeWidth={1.75} aria-hidden />
@@ -554,19 +566,22 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                         </p>
                       ) : null}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
-              <button
+              <Button
                 type="button"
-                className="pe__url-add"
+                variant="ghost"
+                size="sm"
+                className="self-start"
                 onClick={addUrlRow}
               >
                 <Plus size={14} strokeWidth={2} aria-hidden />
                 Add URL
-              </button>
-            </div>
+              </Button>
+            </fieldset>
           </div>
         </div>
       ) : null}
@@ -581,25 +596,27 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           the user scrolls long forms so Save is always one click away. */}
       <div className="pe__footer">
         <div className="pe__footer-inner">
-          <button
+          <Button
             type="button"
-            className="pe__action-btn pe__action-btn--ghost"
+            variant="ghost"
+            size="sm"
             onClick={handleCancel}
             disabled={isSaving}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className="pe__action-btn pe__action-btn--primary"
-            onClick={handleSave}
-            disabled={!hasChanges || !isValid || isSaving}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            loading={isSaving}
+            disabled={!hasChanges || isSaving}
           >
             {isSaving ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 

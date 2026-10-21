@@ -107,17 +107,16 @@ export default function ProfileProjects({
     <div className="profile-projects__toolbar">
       <div className="profile-projects__controls">
         {viewerIsOwner ? (
-          <Link href="/project/new">
-            <Button
-              variant="primary"
-              size="sm"
-              className="profile-new-record-btn"
-              aria-label="New project"
-            >
-              <Plus size={14} strokeWidth={1.75} aria-hidden />
-              <span className="profile-new-record-btn__label">New project</span>
-            </Button>
-          </Link>
+          <Button
+            href="/project/new"
+            variant="primary"
+            size="sm"
+            className="profile-new-record-btn"
+            aria-label="New project"
+          >
+            <Plus size={14} strokeWidth={1.75} aria-hidden />
+            <span className="profile-new-record-btn__label">New project</span>
+          </Button>
         ) : null}
         <label className="profile-certs__search">
           <Search
@@ -185,7 +184,7 @@ export default function ProfileProjects({
         {toolbar}
         <EmptyState
           icon={FolderGit2}
-          title="Couldn't load projects"
+          title="Couldn’t load projects"
           description={error}
         />
       </div>

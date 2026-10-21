@@ -94,6 +94,13 @@
   width: 100%;
 }
 
+/* 16px keeps iOS Safari from zooming the page on focus. */
+@media (max-width: 799px) {
+  .funding-form__input {
+    font-size: 16px;
+  }
+}
+
 .funding-form__input::placeholder {
   color: var(--fg-muted);
 }

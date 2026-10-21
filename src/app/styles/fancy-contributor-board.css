@@ -127,15 +127,23 @@
 
 /* Hover lights the tile up: the gold accent is carried by the BORDER only;
    the interior glow + lift stay neutral. */
-.fancy-tile:hover {
-  border-color: var(--accent-gold);
-  box-shadow: var(--shadow-lg);
-  transform: translate3d(0, -3px, 0) scale(1.025);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover {
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-lg);
+    transform: translate3d(0, -3px, 0) scale(1.025);
+  }
 }
 
 .fancy-tile:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
+}
+
+/* Keyboard focus reveals the weight badge the hover state shows. */
+.fancy-tile:focus-visible .fancy-tile__weight {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Diagonal sheen sweep — a soft highlight that glides across on hover. */
@@ -156,9 +164,11 @@
   pointer-events: none;
 }
 
-.fancy-tile:hover .fancy-tile__sheen {
-  opacity: 0.7;
-  transform: translateX(60%);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__sheen {
+    opacity: 0.7;
+    transform: translateX(60%);
+  }
 }
 
 /* Radial glow that blooms from the tile centre on hover — neutral, so the
@@ -176,8 +186,10 @@
   pointer-events: none;
 }
 
-.fancy-tile:hover .fancy-tile__glow {
-  opacity: 0.85;
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__glow {
+    opacity: 0.85;
+  }
 }
 
 /* Content wrapper is positioned, so it paints above the sheen/glow layers
@@ -215,10 +227,12 @@
   border-radius: var(--radius);
 }
 
-.fancy-tile:hover .fancy-tile__media {
-  box-shadow:
-    var(--shadow-md),
-    inset 0 0 0 1px var(--border-hover);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__media {
+    box-shadow:
+      var(--shadow-md),
+      inset 0 0 0 1px var(--border-hover);
+  }
 }
 
 .fancy-tile__img {
@@ -270,9 +284,11 @@
   pointer-events: none;
 }
 
-.fancy-tile:hover .fancy-tile__weight {
-  opacity: 1;
-  transform: translateY(0);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__weight {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Respect reduced-motion: no drift, no sheen glide, instant tile reveal. */

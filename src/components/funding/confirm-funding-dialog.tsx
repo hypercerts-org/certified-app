@@ -12,6 +12,7 @@ import {
 import { addOptimisticConfirmation } from "@/lib/atproto/funding-confirmed-store"
 import type { FundingRole } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
+import { formatAmount } from "@/components/explore-page/format-display"
 
 /**
  * Confirm an existing funding payment. Rendered *in place* inside the receipt
@@ -111,8 +112,8 @@ export default function ConfirmFundingContent({
         </div>
         <div className="funding-form__summary-row">
           <span className="funding-form__summary-label">Amount</span>
-          <span className="funding-form__summary-value">
-            {receipt.amount}
+          <span className="funding-form__summary-value tabular-nums">
+            {receipt.amount ? formatAmount(receipt.amount) : null}
             {receipt.currency ? ` ${receipt.currency}` : ""}
           </span>
         </div>

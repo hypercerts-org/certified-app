@@ -95,6 +95,7 @@ export default function ProfileHeader({
   }
 
   const hasAdminActions = !!editHref || !!settingsHref
+  const followerCount = viewedFollowers.count ?? viewedFollowers.entries.length
 
   // Half-height when there's no real banner — a half-height gradient
   // panel reads as "no banner set" intentionally rather than
@@ -132,19 +133,26 @@ export default function ProfileHeader({
             {hasAdminActions ? (
               <div className="profile-hero__action-group">
                 {editHref ? (
-                  <Link href={editHref} data-tour="profile-edit">
-                    <Button variant="secondary" size="sm">
-                      <Pencil size={14} />
-                      Edit
-                    </Button>
-                  </Link>
+                  <Button
+                    href={editHref}
+                    variant="secondary"
+                    size="sm"
+                    data-tour="profile-edit"
+                  >
+                    <Pencil size={14} aria-hidden />
+                    Edit
+                  </Button>
                 ) : null}
                 {settingsHref ? (
-                  <Link href={settingsHref} aria-label="Group settings">
-                    <Button variant="secondary" size="sm" tooltip="Group settings">
-                      <SettingsIcon size={14} />
-                    </Button>
-                  </Link>
+                  <Button
+                    href={settingsHref}
+                    variant="secondary"
+                    size="sm"
+                    aria-label="Group settings"
+                    tooltip="Group settings"
+                  >
+                    <SettingsIcon size={14} aria-hidden />
+                  </Button>
                 ) : null}
               </div>
             ) : did ? (
@@ -161,10 +169,10 @@ export default function ProfileHeader({
         </div>
 
         {eyebrow ? <p className="profile-hero__eyebrow">{eyebrow}</p> : null}
-        <h1 className="profile-hero__name">{displayName}</h1>
+        <h1 className="profile-hero__name" dir="auto">{displayName}</h1>
         {handle ? (
           <p className="profile-hero__handle">
-            @{handle}
+            <span className="profile-hero__handle-text">@{handle}</span>
             {/* "Bluesky profile" tag — shown when the displayed
                 profile data came from app.bsky.actor.profile because
                 no app.certified.actor.profile record with a
@@ -198,10 +206,10 @@ export default function ProfileHeader({
             <Users size={16} strokeWidth={1.75} aria-hidden />
             <span>
               <span className="profile-hero__graph-count">
-                {formatGraphCount(viewedFollowers.count ?? viewedFollowers.entries.length)}
+                {formatGraphCount(followerCount)}
               </span>{" "}
               <Link href={`${basePath}?tab=followers`} scroll={false} className="profile-hero__graph-link">
-                followers
+                {followerCount === 1 ? "follower" : "followers"}
               </Link>
             </span>
             <span aria-hidden className="profile-hero__graph-sep">·</span>

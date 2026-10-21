@@ -937,7 +937,7 @@ export default function ProjectDetail({
                 }
               />
             ) : (
-              <h1 className="project-detail__title" title={title}>
+              <h1 className="project-detail__title" title={title} dir="auto">
                 {title}
               </h1>
             )}
@@ -1362,7 +1362,11 @@ export default function ProjectDetail({
                           <button
                             type="button"
                             className="project-detail__cert-menu-btn"
-                            aria-label="Activity actions"
+                            aria-label={`Actions for ${
+                              (typeof rec.value.title === "string" &&
+                                rec.value.title.trim()) ||
+                              "untitled activity"
+                            }`}
                           >
                             <MoreVertical
                               size={16}

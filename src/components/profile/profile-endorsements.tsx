@@ -628,5 +628,5 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
 function formatCount(n: number): string | null {
   if (n === 0) return null
-  return `${n}`
+  return n.toLocaleString()
 }

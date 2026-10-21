@@ -159,6 +159,7 @@ export default function ProfileSidebar({
   // `appCertifiedGraphFollow` connection with `subject.eq`.
   const viewedFollowing = useFollowing(did)
   const viewedFollowers = useFollowers(did)
+  const followerCount = viewedFollowers.count ?? viewedFollowers.entries.length
   // Received-endorsements count for THIS profile — drives the
   // "Endorsed by N" row below the followers strip. Default
   // (non-owner) call: rejected awards are filtered out for us by
@@ -233,8 +234,11 @@ export default function ProfileSidebar({
           // scale (font/size/weight/leading cascade from
           // `.profile-sidebar__name`). `borderWeight="hover"` gives the
           // 1.5px --border-hover resting / --fg-primary + --overlay-weak focus
-          // chrome expected for an inline-edit field.
-          <h1 className="profile-sidebar__name">
+          // chrome expected for an inline-edit field. The heading itself
+          // stays a text-only sr-only h1 so assistive tech keeps a name.
+          <>
+          <h1 className="sr-only">{displayName}</h1>
+          <div className="profile-sidebar__name">
             <Input
               size="bare"
               flush
@@ -247,9 +251,12 @@ export default function ProfileSidebar({
               aria-label="Display name"
               onChange={(e) => onDraftChange?.("displayName", e.target.value)}
             />
-          </h1>
+          </div>
+          </>
         ) : (
-          <h1 className="profile-sidebar__name">{displayName}</h1>
+          <h1 className="profile-sidebar__name" dir="auto" title={displayName}>
+            {displayName}
+          </h1>
         )}
         {handle ? (
           <p className="profile-sidebar__handle">@{handle}</p>
@@ -340,14 +347,14 @@ export default function ProfileSidebar({
         <Users size={16} strokeWidth={1.75} aria-hidden />
         <span>
           <span className="profile-sidebar__followers-count">
-            {formatGraphCount(viewedFollowers.count ?? viewedFollowers.entries.length)}
+            {formatGraphCount(followerCount)}
           </span>{" "}
           <Link
             href={`${basePath}?tab=followers`}
             scroll={false}
             className="profile-sidebar__followers-link"
           >
-            followers
+            {followerCount === 1 ? "follower" : "followers"}
           </Link>
         </span>
         <span aria-hidden className="profile-sidebar__followers-sep">·</span>

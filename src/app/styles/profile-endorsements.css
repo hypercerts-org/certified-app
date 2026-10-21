@@ -85,6 +85,8 @@
     width: auto;
     min-width: 0;
     flex: 1 1 auto;
+    /* 16px keeps iOS Safari from zooming the page on focus. */
+    font-size: 16px;
   }
   /* Scoped under their containers so they beat the base `…__sort-btn`
      / `…__endorse-add` rules declared LATER in this file (equal
@@ -445,7 +447,7 @@
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   flex-shrink: 0;
 }
 
@@ -657,6 +659,7 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--fg-primary);
+  overflow-wrap: anywhere;
 }
 
 .endorsement-lists__row-desc {
@@ -1330,6 +1333,17 @@
   resize: vertical;
   min-height: 96px;
   line-height: 1.45;
+}
+
+/* 16px keeps iOS Safari from zooming the page on focus. */
+@media (max-width: 799px) {
+  .endorse-reason-modal__textarea,
+  .endorse-people-modal__reason-textarea,
+  .endorse-people-modal__search-input,
+  .endorsement-lists__create-input,
+  .endorsement-lists__create-textarea {
+    font-size: 16px;
+  }
 }
 
 .endorse-reason-modal__textarea:focus {

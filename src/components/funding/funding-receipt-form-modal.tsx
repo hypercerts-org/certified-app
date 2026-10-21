@@ -40,8 +40,15 @@ const TODAY = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** Strips thousands separators / spaces so "1,000" and "1 000" parse. */
+function normalizeAmount(raw: string): string {
+  return raw.trim().replace(/[,\s_]/g, "")
+}
+
 function isPositiveAmount(raw: string): boolean {
-  const n = Number(raw.trim())
+  const normalized = normalizeAmount(raw)
+  if (normalized === "") return false
+  const n = Number(normalized)
   return Number.isFinite(n) && n > 0
 }
 
@@ -101,6 +108,9 @@ export default function FundingReceiptFormModal({
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Show the amount's inline error only after the field is left (or a
+  // submit is attempted), not while the first digit is being typed.
+  const [amountTouched, setAmountTouched] = useState(false)
 
   const { from, to } = useMemo((): { from: FundingParty; to: FundingParty } => {
     const me: FundingParty = { kind: "account", did: writerDid }
@@ -111,18 +121,34 @@ export default function FundingReceiptFormModal({
     return { from: fromParty.party, to: toParty.party }
   }, [role, writerDid, activityAuthorDid, fromParty.party, toParty.party])
 
-  const canSubmit =
-    !submitting && to !== null && isPositiveAmount(amount) && currency.trim().length > 0
+  const amountValid = isPositiveAmount(amount)
+  const amountError =
+    amountTouched && !amountValid ? "Enter an amount greater than 0, e.g. 1000 or 12.50." : null
 
   async function handleSubmit() {
-    if (!canSubmit || to === null) return
+    if (submitting) return
+    // Record stays enabled so a click explains what's missing instead of
+    // silently doing nothing.
+    if (!amountValid) {
+      setAmountTouched(true)
+      document.getElementById("funding-amount")?.focus()
+      return
+    }
+    if (to === null) {
+      setError("Choose who received the funds.")
+      return
+    }
+    if (currency.trim().length === 0) {
+      setError("Enter a currency, e.g. USDC.")
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       const record = buildFundingReceiptRecord({
         to,
         from: from ?? undefined,
-        amount: amount.trim(),
+        amount: normalizeAmount(amount),
         currency: currency.trim(),
         for: forActivity,
         occurredAt: occurredAt ? new Date(occurredAt).toISOString() : null,
@@ -252,7 +278,12 @@ export default function FundingReceiptFormModal({
                 value={amount}
                 disabled={submitting}
                 maxLength={50}
+                aria-invalid={!!amountError || undefined}
+                aria-describedby={amountError ? "funding-amount-error" : undefined}
                 onChange={(e) => setAmount(e.target.value)}
+                onBlur={() => {
+                  if (amount.trim() !== "") setAmountTouched(true)
+                }}
               />
               <input
                 type="text"
@@ -272,6 +303,11 @@ export default function FundingReceiptFormModal({
                 <option value="ETH" />
               </datalist>
             </div>
+            {amountError ? (
+              <p id="funding-amount-error" className="funding-form__error" role="alert">
+                {amountError}
+              </p>
+            ) : null}
           </div>
 
           {/* When the payment happened. */}
@@ -376,7 +412,7 @@ export default function FundingReceiptFormModal({
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
+            <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
               Record
             </Button>
           </div>

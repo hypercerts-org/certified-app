@@ -272,7 +272,6 @@ export default function EndorsePeopleModal({
                     ? " endorse-people-modal__reason-counter--warn"
                     : ""
                 }`}
-                aria-live="polite"
               >
                 {500 - note.length} character{500 - note.length === 1 ? "" : "s"} left
               </span>

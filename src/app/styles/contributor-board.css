@@ -150,7 +150,15 @@
   pointer-events: none;
   transition: opacity var(--transition-base);
 }
-.contributor-tile:hover .contributor-tile__hover {
+/* Hover reveal is gated to real pointers so a tap doesn't leave it stuck
+   on touch; keyboard focus reveals it too. */
+@media (hover: hover) and (pointer: fine) {
+  .contributor-tile:hover .contributor-tile__hover {
+    opacity: 1;
+  }
+}
+.contributor-tile:focus-visible .contributor-tile__hover,
+.contributor-tile:focus-within .contributor-tile__hover {
   opacity: 1;
 }
 .contributor-tile__hover-img {

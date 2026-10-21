@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Search } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Avatar from "@/components/ui/avatar"
@@ -177,6 +177,7 @@ export function PasteUrisModal({
   const [rows, setRows] = useState<ParseRow[]>([])
   const [running, setRunning] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pasteHelpId = useId()
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -312,7 +313,7 @@ export function PasteUrisModal({
         disabled={running}
       />
       <AppDialogBody className="profile-lists__paste-body">
-        <p className="profile-lists__paste-help">
+        <p className="profile-lists__paste-help" id={pasteHelpId}>
           Paste at-URIs separated by commas, newlines, or spaces.
           Only items matching{" "}
           <code className="profile-lists__paste-nsid">{ITEM_NSID[type]}</code>{" "}
@@ -329,6 +330,8 @@ export function PasteUrisModal({
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
+          aria-label="At-URIs to add"
+          aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
@@ -536,7 +539,8 @@ export function AddItemsModal({
           <input
             ref={inputRef}
             className="profile-lists__add-input"
-            type="text"
+            type="search"
+            aria-label={`Search ${LABELS[type]}`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={SEARCH_PLACEHOLDERS[type]}

@@ -343,7 +343,7 @@ function UpdateCard({
       ) : null}
       <header className="context-updates__item-head">
         {title ? (
-          <h3 className="context-updates__title">{title}</h3>
+          <h3 className="context-updates__title" dir="auto">{title}</h3>
         ) : null}
         {/* Date lives in the numbered row when a heading is shown. */}
         {!heading && createdLabel ? (

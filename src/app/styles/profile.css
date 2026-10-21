@@ -85,6 +85,10 @@
   letter-spacing: -0.01em;
   margin: 12px 0 2px;
   line-height: 1.15;
+  /* A long unbroken name, or the `@handle` fallback, must wrap inside
+     a phone viewport instead of pushing the page wide. */
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* When the eyebrow is present, tighten the top margin on the name so
@@ -102,12 +106,19 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.profile-hero__handle-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Inline tag shown next to the handle when the profile's PDS is
    Bluesky-hosted, so visitors recognise the data origin. Quiet
    styling — small pill, muted border. */
 .profile-hero__pds-tag {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
@@ -242,6 +253,8 @@
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  /* Keep a swipe at the strip's end from starting a browser back-swipe. */
+  overscroll-behavior-x: contain;
 }
 
 /* The in-page tab strip is mobile-only — on desktop the top bar's row 2

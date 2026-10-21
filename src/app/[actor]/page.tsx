@@ -36,6 +36,7 @@ import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+import { formatGraphCount } from "@/lib/utils/format-graph-count"
 
 // Non-default tab panels + the own-profile settings surface are
 // code-split out of the route's first-load chunk: profiles are the
@@ -367,7 +368,7 @@ export default function UserProfilePage() {
   // count resolves.
   const activityCount = useUserActivityCount(did)
   const activityCountLabel =
-    activityCount === null ? "…" : `${activityCount}`
+    activityCount === null ? "…" : formatGraphCount(activityCount)
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -542,7 +543,7 @@ export default function UserProfilePage() {
           <div className="page-layout__main">
             <TabPanelTransition activeKey={activeTab} order={TAB_ORDER}>
             {activeTab === "overview" && (
-              <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+              <div role="region" id="tabpanel-overview" aria-label="Overview">
                 <ProfileOverview
                   bannerUrl={effectiveBannerUrl}
                   did={did}
@@ -564,9 +565,9 @@ export default function UserProfilePage() {
             )}
             {activeTab === "about" ? (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-about"
-                aria-labelledby="tab-about"
+                aria-label="About"
                 className="profile-page__about"
               >
                 {editing && sidebarIsOrg ? (
@@ -602,9 +603,9 @@ export default function UserProfilePage() {
             ) : null}
             {activeTab === "activities" && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-activities"
-                aria-labelledby="tab-activities"
+                aria-label="Activities"
               >
                 <ProfileCerts
                   did={did}
@@ -615,9 +616,9 @@ export default function UserProfilePage() {
             )}
             {activeTab === "projects" && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-projects"
-                aria-labelledby="tab-projects"
+                aria-label="Projects"
               >
                 <ProfileProjects
                   did={did}
@@ -628,36 +629,36 @@ export default function UserProfilePage() {
             )}
             {activeTab === "groups" && isActiveIdentityThisProfile && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-groups"
-                aria-labelledby="tab-groups"
+                aria-label="Groups"
               >
                 <ProfileGroups did={did} />
               </div>
             )}
             {activeTab === "endorsements" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-endorsements"
-                aria-labelledby="tab-endorsements"
+                aria-label="Endorsements"
               >
                 <ProfileEndorsements did={did} />
               </div>
             )}
             {activeTab === "followers" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-followers"
-                aria-labelledby="tab-followers"
+                aria-label="Followers"
               >
                 <ProfileFollowers did={did} />
               </div>
             )}
             {activeTab === "lists" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-lists"
-                aria-labelledby="tab-lists"
+                aria-label="Lists"
               >
                 <ProfileLists did={did} viewerIsOwner={isViewerThisEntity} />
               </div>

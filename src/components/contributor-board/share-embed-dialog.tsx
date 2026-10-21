@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Copy, Check } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
@@ -23,17 +24,23 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
   // own check mark; the hook auto-resets after 1500ms.
   const { copied: linkCopied, copy: copyLink } = useCopyToClipboard()
   const { copied: embedCopied, copy: copyEmbed } = useCopyToClipboard()
+  const linkId = useId()
+  const embedId = useId()
 
   return (
     <AppDialog ariaLabel="Share contributor board" onClose={onClose} maxWidth={520}>
       <AppDialogHeader title="Share board" onClose={onClose} />
       <AppDialogBody className="space-y-4">
         <div>
-          <label className="mb-1 block text-body-sm font-medium text-[var(--fg-primary)]">
+          <label
+            htmlFor={linkId}
+            className="mb-1 block text-body-sm font-medium text-[var(--fg-primary)]"
+          >
             Link
           </label>
           <div className="flex gap-2">
             <input
+              id={linkId}
               readOnly
               value={shareUrl}
               className="min-w-0 flex-1 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-canvas)] px-2 py-1.5 text-body-sm text-[var(--fg-primary)]"
@@ -50,11 +57,15 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
         </div>
 
         <div>
-          <label className="mb-1 block text-body-sm font-medium text-[var(--fg-primary)]">
+          <label
+            htmlFor={embedId}
+            className="mb-1 block text-body-sm font-medium text-[var(--fg-primary)]"
+          >
             Embed
           </label>
           <div className="flex gap-2">
             <textarea
+              id={embedId}
               readOnly
               value={embedCode}
               rows={3}
@@ -70,6 +81,10 @@ export function ShareEmbedDialog({ did, rkey, onClose }: ShareEmbedDialogProps) 
             </Button>
           </div>
         </div>
+        {/* The copy buttons only swap their icon; announce the result. */}
+        <p className="sr-only" aria-live="polite">
+          {linkCopied ? "Link copied" : embedCopied ? "Embed code copied" : ""}
+        </p>
       </AppDialogBody>
     </AppDialog>
   )

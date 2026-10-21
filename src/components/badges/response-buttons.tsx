@@ -131,8 +131,6 @@ export default function ResponseButtons({
 
   return (
     <div
-      role="group"
-      aria-label={`Response to endorsement from ${issuerDisplayName}`}
       aria-busy={writing}
       className="inline-flex items-center gap-1.5 flex-shrink-0"
     >
@@ -162,7 +160,7 @@ export default function ResponseButtons({
         ]}
       />
       {error ? (
-        <span className="text-[0.6875rem] text-[var(--color-error)] ml-1.5" role="alert">
+        <span className="text-caption text-[var(--color-error)] ml-1.5" role="alert">
           {error}
         </span>
       ) : null}
