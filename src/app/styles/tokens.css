@@ -143,7 +143,7 @@
   --badge-success-bg: #e8f5e9;
   --badge-success-fg: #1b7a3d;
   --badge-warning-bg: #fff3e0;
-  --badge-warning-fg: #b37100;
+  --badge-warning-fg: #8a5700; /* 5.56:1 on --badge-warning-bg (was 3.63) */
   --badge-neutral-bg: #f5f5f5;
   /* Darkened from #9ca3af (~2.8:1 on bg) to align with --fg-muted at
      ~5.4:1 — small uppercase badge text needs WCAG AA contrast. */
@@ -286,9 +286,9 @@
   --modal-backdrop: var(--navy-overlay-70);
 
   /* Navbar + sheets */
-  --navbar-bg: rgba(11, 11, 13, 0.8);
+  --navbar-bg: rgba(24, 24, 27, 0.8); /* --bg-canvas at 80% */
   --navbar-border: rgba(255, 255, 255, 0.06);
-  --sheet-bg: rgba(20, 20, 23, 0.95);
+  --sheet-bg: rgba(45, 45, 51, 0.95); /* --bg-elevated at 95% */
 
   /* Shadows — stronger on dark */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -334,7 +334,7 @@
   --badge-warning-bg: rgba(245, 166, 35, 0.15);
   --badge-warning-fg: #fbbf24;
   --badge-neutral-bg: rgba(255, 255, 255, 0.06);
-  --badge-neutral-fg: #8e8e93;
+  --badge-neutral-fg: #aeaeb4; /* 5.12:1 over --bg-elevated (was 3.47) */
   --badge-neutral-border: rgba(255, 255, 255, 0.1);
   /* Notification count badge — brighter red on dark surfaces for contrast */
   --badge-count-bg: #dc2626;
