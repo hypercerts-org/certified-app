@@ -107,7 +107,7 @@ const GROUPS: PageGroup[] = [
           },
           {
             key: "username",
-            title: "Username",
+            title: "Handle",
             description: "The @handle people use to find you on Certified.",
           },
           {

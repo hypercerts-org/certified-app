@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, type RefObject, type ReactNode, type MouseEvent } from "react"
 import { X } from "lucide-react"
+import Button from "@/components/ui/button"
 
 /**
  * Shared chrome around `<dialog>` for every modal in the app.
@@ -140,7 +141,7 @@ export function AppDialogHeader({
   return (
     <div
       className={`flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pt-5 pb-3 ${
-        center ? "px-10" : "pl-5 pr-10"
+        center ? "px-12" : "pl-5 pr-12"
       }`}
     >
       <span
@@ -151,15 +152,20 @@ export function AppDialogHeader({
         {title}
       </span>
       {onClose ? (
-        <button
-          type="button"
-          className="absolute right-1 top-1 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[var(--radius)] border-0 bg-transparent p-0 text-[var(--fg-muted)] transition-[background,color] duration-150 ease-out hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-primary)] focus-visible:shadow-[0_0_0_2px_var(--focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        // Canonical icon button: 44px tap target on mobile, 40px on
+        // desktop. tooltip="" because a body-portaled tooltip would render
+        // beneath the top-layer <dialog>.
+        <Button
+          variant="ghost"
+          size="icon"
+          tooltip=""
+          className="absolute right-1 top-1"
           onClick={onClose}
           aria-label="Close"
           disabled={disabled}
         >
-          <X size={18} />
-        </button>
+          <X size={18} aria-hidden />
+        </Button>
       ) : null}
     </div>
   )
@@ -376,7 +382,7 @@ export default function AppDialog({
   // UA's top-layer placement: centered in the VIEWPORT, wherever the
   // page is scrolled.
   const baseChrome =
-    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[shadow:var(--shadow-modal)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[shadow:var(--shadow-modal)] backdrop:bg-[var(--modal-backdrop)] motion-safe:backdrop:animate-[modalFadeIn_200ms_ease-out] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`

@@ -138,7 +138,16 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         <div className="password-section__header">
           <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
         </div>
-        <div className="password-section--form">
+        {/* A real <form> so Enter submits; noValidate keeps our own
+            validation messages in charge. */}
+        <form
+          className="password-section--form"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSubmit();
+          }}
+        >
           <p className="password-section__hint">
             We sent a password reset code to your email. Enter it below with your new password.
           </p>
@@ -156,6 +165,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
               label="New password"
               type="password"
               placeholder="Enter new password"
+              autoComplete="new-password"
               minLength={8}
               maxLength={256}
               value={password}
@@ -166,6 +176,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
               label="Confirm password"
               type="password"
               placeholder="Confirm new password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               error={confirmPasswordError ?? undefined}
@@ -177,14 +188,14 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
             </Banner>
           )}
           <div className="password-section__actions">
-            <Button size="sm" onClick={handleSubmit} disabled={saving}>
+            <Button size="sm" type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleCancel} disabled={saving}>
               Cancel
             </Button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -210,7 +221,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         </Button>
       </div>
       {state === "success" && (
-        <p className="password-section__status password-section__status--success">Password updated successfully.</p>
+        <p className="password-section__status password-section__status--success" role="status">Password updated successfully.</p>
       )}
       {idleError && (
         <Banner variant="error" className="mt-3">

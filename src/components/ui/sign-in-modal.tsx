@@ -74,20 +74,20 @@ export default function SignInModal({
   const switchLabel = isCertified
     ? "Or sign in with ATProto/Bluesky"
     : "Or sign in with Certified"
-  const submitLabel = isSubmitting ? "Connecting..." : "Continue"
+  const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
     <AppDialog ariaLabel="Sign in" onClose={onClose}>
       <AppDialogHeader title="" onClose={onClose} />
 
       <AppDialogBody>
-        <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[520px]:mb-6">
+        <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[799px]:mb-6">
           <Brandmark size={72} decorative className="block" />
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col" method="post" aria-label="Sign in">
           <label
-            className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[520px]:text-base"
+            className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[799px]:text-base"
             htmlFor={isCertified ? "email" : "username"}
           >
             {heading}

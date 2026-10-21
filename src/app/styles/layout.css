@@ -144,7 +144,10 @@
   right: 0;
   z-index: var(--z-navbar);
   height: var(--navbar-height);
-  transition: background var(--transition-fast), backdrop-filter var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-base);
+  /* Only transform + shadow animate: the default <-> profile-overlay mode
+     switch is instantaneous (DESIGN.md §4), and transitioning
+     backdrop-filter re-runs the blur every frame. */
+  transition: transform var(--transition-base), box-shadow var(--transition-fast);
 }
 
 .navbar--hidden {
@@ -169,8 +172,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  /* 44px touch target: this bar only renders below 800px. */
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 999px;
   background: var(--navy-overlay-30);
@@ -463,8 +467,12 @@
   justify-content: center;
 }
 
-.bottom-nav__item:hover {
-  color: var(--fg-primary);
+/* Gated so a tap doesn't leave a sticky hover colour that reads as a
+   second active item. */
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav__item:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .bottom-nav__item:active {
@@ -719,6 +727,19 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 /* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
    in components.css's mobile block, which loads after this file and wins. */
+
+/* Browser-tab mobile (<800px, no PWA bottom nav): the floating Feedback
+   button (44px tall, 16px off the edge; lifts 12px above the footer) would
+   otherwise sit over the last rows of pages that zero the shell's bottom
+   padding (settings, cert detail). Reserve its height + gaps. Keyed on the
+   trigger itself, which unmounts whenever the PWA bottom nav shows, so that
+   case keeps its own padding. html + two classes outranks the per-page
+   `.app-shell:has(...) .app-shell__content` overrides. */
+@media (max-width: 799px) {
+  html:has(.feedback-trigger) .app-shell .app-shell__content {
+    padding-bottom: calc(44px + 32px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
    rails (mounted in PR2) provide the lateral context the mobile column
@@ -996,6 +1017,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   opacity: 0.8;
 }
 
+/* The global --focus-ring is too low-contrast on the inverted bar; use the
+   bar's own foreground instead. */
+.acting-as-bar__switch:focus-visible {
+  outline: 2px solid var(--btn-primary-fg);
+  outline-offset: 2px;
+}
+
 /* Mobile: the bar is fixed so it's never tucked behind the fixed navbar.
    It sits just below the navbar while the navbar is shown, and slides to
    the very top when the navbar auto-hides on scroll. One row only — the
@@ -1009,10 +1037,22 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     z-index: var(--z-navbar);
     height: 44px;
     flex-wrap: nowrap;
-    transition: top var(--transition-base);
+    /* Follows the navbar's auto-hide with the same compositor-only
+       transform + timing as .navbar, so the two stay in sync on scroll. */
+    transition: transform var(--transition-base);
   }
   .acting-as-bar--nav-hidden {
-    top: 0;
+    transform: translateY(calc(-1 * var(--navbar-height)));
+  }
+  /* 44px touch target without growing the 28px outlined control: an
+     invisible hit area extends 8px above and below (filling the bar). */
+  .acting-as-bar__switch {
+    position: relative;
+  }
+  .acting-as-bar__switch::before {
+    content: "";
+    position: absolute;
+    inset: -8px 0;
   }
   .acting-as-bar__text {
     overflow: hidden;
@@ -1858,23 +1898,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   outline-offset: 2px;
 }
 
-/* "+" create-menu trigger wrapper — kept as a wrapper so the
-   open/close effects can anchor against a stable DOM node even
-   when the button itself re-renders. */
+/* "+" create-menu trigger wrapper (also the product tour's
+   `nav-create` spotlight target). */
 .desktop-top-bar__create-wrap {
   display: inline-flex;
 }
 
-/* Dropdown panel rendered via createPortal — elevated surface
-   treatment (border + --shadow-md) so the three shortcuts visually
-   read as the same "menu" family as the other portaled menus. */
+/* Item stack inside the <PopoverContent portal> panel. The surface
+   (elevated bg, border, radius, --shadow-md, z) comes from the
+   Popover primitive. */
 .desktop-top-bar__create-menu {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 6px;
-  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3160,16 +3193,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-}
-
-/* Legal pages (about / terms / privacy / dsa / imprint) widen the
-   reading column compared to the default 600/720px app-shell cap.
-   Dense legal text benefits from longer line lengths; the inner
-   .app-page__inner's Tailwind max-w-3xl (768px) was already wider
-   than the outer 600/720 cap, so the actual cap was the OUTER one.
-   This bumps it to ~880px on both mobile and desktop. */
-.app-shell:has(.legal-page) .app-shell__content {
-  max-width: 880px;
 }
 
 /* Mobile heading scale for prose pages. The `text-h1..h3` Tailwind tokens are

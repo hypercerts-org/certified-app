@@ -50,8 +50,11 @@ export default function AccountSwitcherList({
         {selfGroup ? "Group account" : "User"}
       </p>
       <div className="account-switcher__user-row">
+        {/* Identity rows are single-select: menuitemradio + aria-checked
+            exposes the active identity, not just its background. */}
         <button
-          role="menuitem"
+          role="menuitemradio"
+          aria-checked={!activeOrg}
           className={`account-switcher__item ${!activeOrg ? "account-switcher__item--active" : ""}`}
           onClick={() => {
             switchOrg(null);
@@ -92,7 +95,8 @@ export default function AccountSwitcherList({
           <p className="account-switcher__section-label">Groups</p>
           {sortedOrgs.map((org) => (
             <button
-              role="menuitem"
+              role="menuitemradio"
+              aria-checked={activeOrg?.groupDid === org.groupDid}
               key={org.groupDid}
               className={`account-switcher__item ${activeOrg?.groupDid === org.groupDid ? "account-switcher__item--active" : ""}`}
               onClick={() => {

@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle, AlertCircle } from "lucide-react";
-import Tooltip from "@/components/ui/tooltip";
+import Button from "@/components/ui/button";
 
 /*
  * Shared toast system.
@@ -143,9 +143,10 @@ function Toaster({
 
   return createPortal(
     <div
-      // Bottom-right stack on desktop; full-width pinned to the bottom on
-      // narrow viewports so it clears the bottom-nav comfortably.
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
+      // Bottom-right stack on desktop; full-width on narrow viewports,
+      // lifted by the bottom-nav height + safe-area inset so it clears the
+      // bar instead of covering it.
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch max-[799px]:bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
     >
       {/* Enter keyframe lives with the component (toast.tsx is the only file
           this step owns; no global stylesheet edit). Each item carries
@@ -300,16 +301,17 @@ function ToastItem({
           {action.label}
         </button>
       )}
-      <Tooltip label="Dismiss notification">
-        <button
-          type="button"
-          onClick={() => onDismiss(id)}
-          aria-label="Dismiss notification"
-          className="-mr-1 shrink-0 self-start rounded p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </Tooltip>
+      {/* Negative margins let the 44/40px tap target overhang the padding
+          instead of growing the toast. */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onDismiss(id)}
+        aria-label="Dismiss notification"
+        className="-my-2 -mr-2 shrink-0 self-start"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+      </Button>
     </div>
   );
 }

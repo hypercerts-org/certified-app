@@ -1,8 +1,8 @@
 "use client"
 
 import React from "react"
-import Link from "next/link"
 import Button from "./button"
+import EmptyState from "./empty-state"
 
 /**
  * Shared fallback used by Next.js segment `error.tsx` files. Renders a
@@ -30,33 +30,23 @@ export default function ErrorBoundaryFallback({
   title = "Couldn't load this section",
   message = "Something went wrong while loading the page. Try again or head back home.",
 }: ErrorBoundaryFallbackProps) {
+  // EmptyState owns the centered block + headline (h1: the fallback IS the
+  // page); the actions use the Button primitive, "Go home" in link mode.
   return (
-    <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">{title}</h1>
+    <EmptyState title={title} description={message} headingLevel={1}>
+      {error.digest ? (
+        <p className="mb-4 text-xs text-[var(--fg-muted)]">
+          Reference: {error.digest}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button variant="secondary" size="sm" onClick={onReset}>
+          Try again
+        </Button>
+        <Button variant="ghost" size="sm" href="/">
+          Go home
+        </Button>
       </div>
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          <div className="dash-card">
-            <p className="dash-card__desc">{message}</p>
-            {error.digest ? (
-              <p className="dash-card__desc text-xs text-[var(--fg-muted)]">
-                Reference: {error.digest}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" size="sm" onClick={onReset}>
-                Try again
-              </Button>
-              <Link href="/">
-                <Button variant="ghost" size="sm">
-                  Go home
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </EmptyState>
   )
 }

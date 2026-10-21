@@ -24,12 +24,16 @@ export default function SettingsPage() {
   // The breadcrumb above the settings panel shows whichever identity
   // the user is currently acting as — so clicking it lands on the
   // matching profile, not the personal one. Matches the chrome
-  // convention.
+  // convention. The right segment keeps the page name visible
+  // (`handle / Settings`), mirroring /settings/edit-profile.
   const activeHandle = activeOrg?.handle ?? personalHandle;
   usePageTitle("Settings");
   usePageTitleBreadcrumb(
     activeHandle
-      ? { left: { text: activeHandle, href: profileUrl(activeHandle) } }
+      ? {
+          left: { text: activeHandle, href: profileUrl(activeHandle) },
+          right: { text: "Settings", href: "/settings" },
+        }
       : null,
   );
   return <SettingsPanel />;

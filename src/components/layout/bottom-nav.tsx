@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LayoutGrid, Newspaper, Search, PlusCircle, MessageSquare } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
 import { useOrg } from "@/lib/groups/org-context";
@@ -11,7 +12,6 @@ import Tooltip from "@/components/ui/tooltip";
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { openFeedback } = useFeedback();
   const { activeOrg } = useOrg();
   const { isDesktop, isStandalone } = useLayoutBreakpoints();
@@ -24,31 +24,35 @@ export default function BottomNav() {
 
   const isHome = pathname === "/home" || pathname.startsWith("/home/");
 
-  const handleHomeClick = () => {
-    if (isHome) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      router.push("/home");
-    }
+  // Re-tapping Home while already there scrolls to the top instead of
+  // navigating. JS smooth scrolling isn't covered by the CSS reduced-motion
+  // block, so honour the preference here.
+  const handleHomeClick = (e: React.MouseEvent) => {
+    if (!isHome) return;
+    e.preventDefault();
+    const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   };
 
   const showCreate = isRouteVisibleToActor("create", !!activeOrg);
-  const items = [
-    { key: "home", label: "Home", icon: Newspaper, onClick: handleHomeClick, active: isHome, tour: "nav-home" },
-    { key: "explore", label: "Explore", icon: Search, onClick: () => router.push("/explore"), active: pathname === "/explore", tour: undefined },
+  // Destinations are real links (long-press / open-in-new-tab / prefetch);
+  // only Feedback, which opens a modal, stays a button.
+  const links = [
+    { key: "home", label: "Home", icon: Newspaper, href: "/home", onClick: handleHomeClick, active: isHome, tour: "nav-home" },
+    { key: "explore", label: "Explore", icon: Search, href: "/explore", onClick: undefined, active: pathname === "/explore", tour: undefined },
     ...(showCreate
-      ? [{ key: "create", label: "Create", icon: PlusCircle, onClick: () => router.push("/create"), active: pathname === "/create", tour: "nav-create" }]
+      ? [{ key: "create", label: "Create", icon: PlusCircle, href: "/create", onClick: undefined, active: pathname === "/create", tour: "nav-create" }]
       : []),
-    { key: "apps", label: "Apps", icon: LayoutGrid, onClick: () => router.push("/apps"), active: pathname === "/apps", tour: "nav-apps" },
-    { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: () => openFeedback(), active: false, tour: undefined },
+    { key: "apps", label: "Apps", icon: LayoutGrid, href: "/apps", onClick: undefined, active: pathname === "/apps", tour: "nav-apps" },
   ];
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
       <div className="bottom-nav__inner">
-        {items.map(({ key, label, icon: Icon, onClick, active, tour }) => (
+        {links.map(({ key, label, icon: Icon, href, onClick, active, tour }) => (
           <Tooltip key={key} label={label} className="flex-1 h-full">
-            <button
+            <Link
+              href={href}
               className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
               onClick={onClick}
               aria-label={label}
@@ -56,11 +60,23 @@ export default function BottomNav() {
               data-tour={tour}
             >
               <span className="bottom-nav__icon-wrap">
-                <Icon size={24} strokeWidth={active ? 2.5 : 1.5} />
+                <Icon size={24} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
               </span>
-            </button>
+            </Link>
           </Tooltip>
         ))}
+        <Tooltip label="Feedback" className="flex-1 h-full">
+          <button
+            type="button"
+            className="bottom-nav__item"
+            onClick={() => openFeedback()}
+            aria-label="Feedback"
+          >
+            <span className="bottom-nav__icon-wrap">
+              <MessageSquare size={24} strokeWidth={1.5} aria-hidden />
+            </span>
+          </button>
+        </Tooltip>
       </div>
     </nav>
   );

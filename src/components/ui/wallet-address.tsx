@@ -55,32 +55,39 @@ export default function WalletAddress({
   const display = name ?? shortenAddress(address)
 
   return (
-    <Tooltip label={copied ? "Copied" : address} side={tooltipSide}>
-      <button
-        type="button"
-        className={`wallet-address ${className}`.trim()}
-        onClick={() => copy(address)}
-        aria-label={copied ? "Copied address" : `Copy address ${address}`}
-        data-ens={name ? "" : undefined}
-      >
-        {showAvatar && avatar ? (
-          <Avatar
-            size="sm"
-            src={avatar}
-            alt=""
-            fallbackInitials={getInitials(name, address)}
-            className="wallet-address__avatar"
-          />
-        ) : null}
-        <span className="wallet-address__label">{display}</span>
-        <span className="wallet-address__copy" aria-hidden>
-          {copied ? (
-            <Check size={12} strokeWidth={2} />
-          ) : (
-            <Copy size={12} strokeWidth={1.75} />
-          )}
-        </span>
-      </button>
-    </Tooltip>
+    <>
+      <Tooltip label={copied ? "Copied" : address} side={tooltipSide}>
+        <button
+          type="button"
+          className={`wallet-address ${className}`.trim()}
+          onClick={() => copy(address)}
+          aria-label={`Copy address ${address}`}
+          data-ens={name ? "" : undefined}
+        >
+          {showAvatar && avatar ? (
+            <Avatar
+              size="sm"
+              src={avatar}
+              alt=""
+              fallbackInitials={getInitials(name, address)}
+              className="wallet-address__avatar"
+            />
+          ) : null}
+          <span className="wallet-address__label">{display}</span>
+          <span className="wallet-address__copy" aria-hidden>
+            {copied ? (
+              <Check size={12} strokeWidth={2} />
+            ) : (
+              <Copy size={12} strokeWidth={1.75} />
+            )}
+          </span>
+        </button>
+      </Tooltip>
+      {/* aria-label changes on a focused button aren't announced; a polite
+          live region confirms the copy instead. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? "Address copied" : ""}
+      </span>
+    </>
   )
 }

@@ -28,19 +28,9 @@ export function useBottomSheetDrag({
   const sheetRef = useRef<HTMLDivElement>(null)
   const [sheetExpanded, setSheetExpanded] = useState(false)
   const dragStartY = useRef(0)
+  const dragStartTime = useRef(0)
   const isDragging = useRef(false)
-  const dismissTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isDesktop } = useLayoutBreakpoints()
-
-  // Clear any pending dismiss timeout on unmount so onClose can't fire after
-  // the component is gone.
-  useEffect(() => {
-    return () => {
-      if (dismissTimeout.current !== null) {
-        clearTimeout(dismissTimeout.current)
-      }
-    }
-  }, [])
 
   // Reset sheet expanded state when closed — adjusted during render so
   // the collapse doesn't wait for an effect pass.
@@ -56,7 +46,12 @@ export function useBottomSheetDrag({
       const target = e.target as HTMLElement
       if (target.tagName === "TEXTAREA" || target.tagName === "INPUT") {
         setSheetExpanded(true)
-        setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)
+        // JS smooth scrolling isn't covered by the CSS reduced-motion block.
+        const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        setTimeout(
+          () => target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" }),
+          300,
+        )
       }
     }
 
@@ -102,6 +97,7 @@ export function useBottomSheetDrag({
 
   const onHandleTouchStart = useCallback((e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY
+    dragStartTime.current = e.timeStamp
     isDragging.current = true
     if (sheetRef.current) {
       sheetRef.current.style.transition = "none"
@@ -124,13 +120,21 @@ export function useBottomSheetDrag({
     if (!isDragging.current || !sheetRef.current) return
     isDragging.current = false
     const dy = e.changedTouches[0].clientY - dragStartY.current
-    sheetRef.current.style.transition = "transform 0.3s ease-out, max-height 0.3s ease-out"
+    const elapsed = Math.max(1, e.timeStamp - dragStartTime.current)
+
+    // Dismiss on distance OR a fast downward flick (px/ms). The consumer
+    // (<BottomSheet>) owns the exit: it slides the sheet out from the
+    // current dragged position, so leave the transform where it is.
+    if (dy > 80 || (dy > 10 && dy / elapsed > 0.11)) {
+      onClose()
+      return
+    }
+
+    sheetRef.current.style.transition =
+      "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
     sheetRef.current.style.transform = "translateY(0)"
 
-    if (dy > 80) {
-      sheetRef.current.style.transform = "translateY(100%)"
-      dismissTimeout.current = setTimeout(() => onClose(), 250)
-    } else if (dy < -40) {
+    if (dy < -40) {
       setSheetExpanded(true)
     } else if (dy > 20 && sheetExpanded) {
       setSheetExpanded(false)

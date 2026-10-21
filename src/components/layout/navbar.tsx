@@ -20,7 +20,6 @@ import MobileSidebar from "./mobile-sidebar";
 import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import BottomSheet from "@/components/ui/bottom-sheet";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import Tooltip from "@/components/ui/tooltip";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
@@ -169,7 +168,7 @@ const Navbar: React.FC = () => {
       className="navbar__hamburger"
       onClick={() => { setDropdownOpen(!dropdownOpen); setSwitcherOpen(false); }}
       aria-label={dropdownOpen ? "Close menu" : "Open menu"}
-      aria-haspopup="menu"
+      aria-haspopup="dialog"
       aria-expanded={dropdownOpen}
       data-tour="nav-menu"
     >
@@ -183,57 +182,16 @@ const Navbar: React.FC = () => {
   const accountCluster = isAuthenticated ? (
     <>
       <div className="account-switcher" ref={switcherRef}>
-        {isDesktop ? (
-          <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
-            <PopoverTrigger>
-              <button
-                className="account-switcher__trigger"
-                onClick={() => { setDropdownOpen(false); }}
-                aria-label="Switch account"
-              >
-                <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
-                <ChevronDown size={14} className="navbar__chevron-desktop" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              portal
-              side="bottom"
-              align="end"
-              minWidth={260}
-              className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
-            >
-              <AccountSwitcherList
-                session={{ handle }}
-                profile={profile}
-                avatarUrl={avatarUrl || undefined}
-                sortedOrgs={sortedOrgs}
-                selfGroup={selfGroup}
-                activeOrg={activeOrg}
-                switchOrg={switchOrg}
-                onAfterSwitch={(next) => {
-                  setSwitcherOpen(false);
-                  router.push(routeForActorSwitch(pathname, next));
-                }}
-                onSignOut={signOut}
-                onSwitchAccount={() => {
-                  setSwitcherOpen(false);
-                  openSignIn();
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-        ) : (
-          <button
-            className="account-switcher__trigger"
-            onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
-            aria-label="Switch account"
-            aria-haspopup="menu"
-            aria-expanded={switcherOpen}
-          >
-            <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
-            <ChevronDown size={14} className="navbar__chevron-desktop" />
-          </button>
-        )}
+        <button
+          className="account-switcher__trigger"
+          onClick={() => { setSwitcherOpen(!switcherOpen); setDropdownOpen(false); }}
+          aria-label="Switch account"
+          aria-haspopup="dialog"
+          aria-expanded={switcherOpen}
+        >
+          <Avatar size="sm" src={displayAvatarUrl} fallbackInitials={avatarInitials} seed={did ?? undefined} />
+          <ChevronDown size={14} className="navbar__chevron-desktop" />
+        </button>
       </div>
 
       {/* Mobile bottom sheet for account switcher — the canonical

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import Tooltip from "@/components/ui/tooltip";
 
@@ -17,6 +18,15 @@ type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "chil
   // this is omitted, so every icon button explains itself on hover for free;
   // pass an explicit string to override or to add a tooltip to a text button.
   tooltip?: string;
+  // Link mode: pass `href` to render a Next <Link> with the identical button
+  // classes instead of a <button>. Use this rather than wrapping <Button> in
+  // <Link> (which nests interactive content: <a><button>). `target`, `rel`
+  // and `prefetch` are forwarded to the link; `disabled` renders an inert
+  // link (aria-disabled, no pointer events, removed from the tab order).
+  href?: string;
+  target?: string;
+  rel?: string;
+  prefetch?: boolean;
 };
 
 type IconButtonProps = ButtonBaseProps & {
@@ -44,6 +54,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       type = "button",
       className = "",
       children,
+      href,
+      target,
+      rel,
+      prefetch,
       ...props
     },
     ref
@@ -108,6 +122,30 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const ariaLabel = (props as { "aria-label"?: string })["aria-label"];
     const tooltipText = tooltip ?? (size === "icon" ? ariaLabel : undefined);
 
+    const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`;
+
+    if (href !== undefined) {
+      const inert = disabled || loading;
+      const link = (
+        <Link
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          target={target}
+          rel={rel}
+          prefetch={prefetch}
+          aria-disabled={inert || undefined}
+          aria-busy={loading || undefined}
+          tabIndex={inert ? -1 : undefined}
+          className={`${classes} ${inert ? "pointer-events-none" : ""}`}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        >
+          {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+          {!(loading && size === "icon") && children}
+        </Link>
+      );
+      return tooltipText ? <Tooltip label={tooltipText}>{link}</Tooltip> : link;
+    }
+
     const button = (
       <button
         ref={ref}
@@ -115,7 +153,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading}
         aria-pressed={pressed}
-        className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`}
+        className={classes}
         {...props}
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}

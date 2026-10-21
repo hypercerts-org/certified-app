@@ -234,14 +234,15 @@
   gap: 6px;
 }
 
+/* Canonical h3 step (1.375rem / 1.4); h4 on mobile below. */
 .sx-panel__title {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--fg-primary);
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .sx-panel__desc {
@@ -768,6 +769,6 @@
   }
 
   .sx-panel__title {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
   }
 }

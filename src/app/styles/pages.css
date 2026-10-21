@@ -664,71 +664,10 @@
   outline-offset: -2px;
 }
 
-/* Bottom sheet (mobile profile switcher) */
-.bottom-sheet__backdrop {
-  display: none;
-}
-
-.bottom-sheet {
-  display: none;
-}
-
+/* Bottom sheet (mobile profile switcher). Layout and motion live in
+   ui/bottom-sheet.tsx as Tailwind utilities; only the keyframes it
+   references are defined here. */
 @media (max-width: 799px) {
-  .bottom-sheet__backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: var(--navy-overlay-30);
-    /* Backdrop and sheet tie at --z-portal-sheet; the backdrop renders
-       first in the portal fragment, so DOM order keeps it underneath. */
-    z-index: var(--z-portal-sheet);
-    animation: bottomSheetFadeIn 0.2s ease-out;
-  }
-
-  .bottom-sheet {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 70vh;
-    background: var(--bg-elevated);
-    border-radius: var(--radius) var(--radius) 0 0;
-    z-index: var(--z-portal-sheet);
-    animation: bottomSheetSlideUp 0.3s ease-out;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-  }
-
-  .bottom-sheet--expanded {
-    max-height: 92vh;
-  }
-
-  .bottom-sheet__handle {
-    display: flex;
-    justify-content: center;
-    padding: 14px 0 10px;
-    flex-shrink: 0;
-    cursor: grab;
-    touch-action: none;
-  }
-
-  .bottom-sheet__handle::after {
-    content: "";
-    width: 36px;
-    height: 4px;
-    background: var(--border-default);
-    border-radius: var(--radius);
-  }
-
-  .bottom-sheet__content {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-
   @keyframes bottomSheetSlideUp {
     from {
       transform: translateY(100%);

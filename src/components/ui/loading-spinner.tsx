@@ -27,7 +27,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     >
       <Brandmark
         size="100%"
-        title="Loading"
+        // Decorative: the sr-only span below is the single "Loading" name.
+        decorative
         className={`${sizeMap[size]} animate-pulse motion-reduce:animate-none`}
         style={{
           animationDuration: "1.5s",

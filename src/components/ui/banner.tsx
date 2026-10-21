@@ -6,6 +6,7 @@ import {
   Info,
   X,
 } from "lucide-react";
+import Button from "@/components/ui/button";
 
 export type BannerVariant = "info" | "warning" | "success" | "error";
 
@@ -119,14 +120,15 @@ const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
           )}
         </div>
         {onDismiss && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onDismiss}
             aria-label={dismissLabel}
-            className="flex-shrink-0 -mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded text-[var(--fg-muted)] transition-colors duration-150 motion-reduce:transition-none hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+            className="flex-shrink-0 -mr-2 -mt-2"
           >
-            <X className="h-4 w-4" />
-          </button>
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
         )}
       </div>
     );

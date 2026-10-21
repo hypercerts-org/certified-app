@@ -226,6 +226,7 @@
    paragraph rather than the small tracked field-label style, so both prompts
    match. */
 .feedback-modal__prompt {
+  display: block;
   font-size: 0.875rem;
   color: var(--fg-secondary);
   margin: 0 0 10px;
@@ -866,26 +867,6 @@
   word-break: break-all;
 }
 
-.domain-modal__copy-btn {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: var(--bg-elevated);
-  border-radius: var(--radius);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.domain-modal__copy-btn:hover {
-  color: var(--color-accent);
-  background: var(--overlay-medium);
-}
-
 /* Info box */
 .domain-modal__info-box {
   display: flex;
@@ -1420,9 +1401,6 @@
 
 .onboarding-modal__title {
   margin: 0 0 14px;
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.375rem;
-  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.15;
   color: var(--fg-primary);
@@ -2136,9 +2114,6 @@
 
 .onboarding-success__title {
   margin: 0 0 6px;
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.625rem;
-  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--fg-primary);
   line-height: 1.15;

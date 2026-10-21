@@ -21,10 +21,13 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
       className={`rounded border border-[var(--color-error-border)] bg-[var(--color-error-bg)] p-6 ${className}`}
     >
       <div className="flex gap-4">
-        <AlertCircle className="w-5 h-5 text-[var(--color-error)] flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h4 className="text-sm font-semibold text-[var(--fg-primary)] tracking-wider mb-1">{title}</h4>
-          <p className="text-sm text-[var(--fg-secondary)]">{message}</p>
+        <AlertCircle className="w-5 h-5 text-[var(--color-error)] flex-shrink-0 mt-0.5" aria-hidden="true" />
+        {/* min-w-0 + break-words keep long unbroken messages (URLs, DIDs)
+            inside the box. The title is a <p>, not a heading, so the alert
+            doesn't skip levels wherever it's placed. */}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[var(--fg-primary)] tracking-wider mb-1">{title}</p>
+          <p className="text-sm text-[var(--fg-secondary)] break-words">{message}</p>
           {onRetry && (
             <div className="mt-4">
               <Button variant="secondary" size="sm" onClick={onRetry}>

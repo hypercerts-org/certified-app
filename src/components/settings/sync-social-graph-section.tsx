@@ -288,9 +288,9 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
       {result || step === "select" ? (
         <div className="social-graph-sync__flow-head">
           {step === "select" && !result ? (
-            <button
-              type="button"
-              className="social-graph-sync__modal-back"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 if (isImporting) return
                 setStep("choose")
@@ -300,7 +300,7 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
               disabled={isImporting}
             >
               <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            </Button>
           ) : null}
           <h3 className="social-graph-sync__flow-title">
             {result ? "Sync complete" : `Select people to ${copy.verbLower}`}
@@ -537,7 +537,7 @@ function SelectStep({
         </span>
       </div>
 
-      <ul className="social-graph-sync__modal-list" role="listbox" aria-label={`${copy.source}-only follows`}>
+      <ul className="social-graph-sync__modal-list" aria-label={`${copy.source}-only follows`}>
         {pageDids.map((d) => (
           <CandidateRow
             key={d}
