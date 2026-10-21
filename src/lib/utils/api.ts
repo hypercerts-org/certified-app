@@ -139,20 +139,49 @@ export async function parseJsonBody(
   }
 }
 
+// Server messages that name protocol internals mean nothing to a user;
+// show the caller's plain-language fallback instead.
+const TECHNICAL_ERROR =
+  /\b(csrf|rkey|pds|xrpc|lexicon|json|at-uri|upstream)\b|\b[45]\d\d\b/i
+// Upper-case only, so ordinary English ("did not") is left alone.
+const TECHNICAL_ACRONYM = /\b(DID|CID)\b/
+
 /**
- * Extract an error message from a failed API response.
- * Attempts to parse JSON and look for an `error` field; falls back to `fallback`.
+ * Turn a failed response's status + server message into text a user can
+ * act on. 4xx messages written for people (e.g. "Handle must be at least
+ * 3 characters") pass through; session, rate-limit, server and technical
+ * errors become a plain sentence.
+ */
+export function toUserErrorMessage(
+  status: number,
+  message: string | undefined,
+  fallback: string
+): string {
+  if (status === 401) return "Your session has expired. Sign in again to continue."
+  if (status === 429) return "Too many attempts. Wait a moment and try again."
+  if (status >= 500) return `${fallback}. Something went wrong on our side; try again in a moment.`
+  if (!message || TECHNICAL_ERROR.test(message) || TECHNICAL_ACRONYM.test(message)) {
+    return fallback
+  }
+  return message
+}
+
+/**
+ * Extract a user-facing error message from a failed API response.
+ * Reads the JSON `error` field, then maps it through toUserErrorMessage.
  */
 export async function extractError(
   res: Response,
   fallback: string
 ): Promise<string> {
+  let message: string | undefined
   try {
     const data = (await res.json()) as { error?: unknown }
-    return typeof data.error === "string" ? data.error : fallback
+    if (typeof data.error === "string") message = data.error
   } catch {
-    return fallback
+    // Non-JSON body: fall through with no server message.
   }
+  return toUserErrorMessage(res.status, message, fallback)
 }
 
 /**
