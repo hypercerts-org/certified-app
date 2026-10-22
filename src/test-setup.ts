@@ -32,8 +32,8 @@ Object.defineProperty(window, "matchMedia", {
 // `--localstorage-file`). On Node 25 it's present by default but has no
 // real backing store, and it shadows jsdom's working `window.localStorage`
 // on both `globalThis` and `window` — so the storage-util suites blow up
-// with "localStorage.clear is not a function". CI pins Node 20 (where the
-// native global doesn't exist and jsdom's Storage is used), but to keep
+// with "localStorage.clear is not a function". CI pins Node 24 (where the
+// native global is still behind the flag and jsdom's Storage is used), but to keep
 // the suite deterministic on any local Node version we install a small
 // in-memory Storage and force it onto both globals.
 class MemoryStorage implements Storage {
