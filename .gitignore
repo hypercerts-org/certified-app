@@ -49,3 +49,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /core
+
+# Claude Code agent worktrees
+.claude/worktrees/
