@@ -1501,7 +1501,10 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: calc(var(--z-skip-nav) - 1);
+  /* Above page chrome (navbar, bottom nav) but below every overlay
+     (drawer + scrim, bottom sheet, modals), so an open overlay dims and
+     covers it instead of the button floating bright and clickable. */
+  z-index: var(--z-feedback-trigger);
   display: flex;
   align-items: center;
   gap: 6px;

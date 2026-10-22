@@ -221,7 +221,13 @@ function ProfileProjectsBody({
               ? "Create your first project to group related activities together."
               : "When this profile creates a project collection, it'll appear here."
           }
-        />
+        >
+          {viewerIsOwner ? (
+            <Button href="/project/new" variant="secondary" size="sm">
+              Create a project
+            </Button>
+          ) : null}
+        </EmptyState>
       </div>
     )
   }

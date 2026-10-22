@@ -16,6 +16,7 @@ import {
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
 import {
+  AlignLeft,
   ChevronRight,
   FolderGit2,
   Inbox,
@@ -29,6 +30,7 @@ import ActivityAuthor from "@/components/feed/activity-author"
 import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
 import CertLocationsMap from "@/components/feed/cert-locations-map"
+import CertIcon from "@/components/ui/cert-icon"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
@@ -1101,10 +1103,14 @@ export default function ProjectDetail({
               />
             ) : shortDesc || showFullDescription ? (
               <section className="project-detail__summary">
-                {/* Section header in the same style as "Activities in this
-                    project" / "Updates": title left, action link right. */}
-                <div className="project-detail__certs-header">
-                  <h2 className="project-detail__certs-title">Summary</h2>
+                {/* Section header in the activity page's eyebrow style
+                    (icon + uppercase label), like Location / Updates:
+                    title left, action link right. */}
+                <div className="project-detail__certs-header project-detail__section-head">
+                  <h2 className="cert-detail__section-title">
+                    <AlignLeft size={11} strokeWidth={2} aria-hidden />
+                    Summary
+                  </h2>
                   {showFullDescription && descriptionHref ? (
                     <TransitionLink
                       href={descriptionHref}
@@ -1202,13 +1208,12 @@ export default function ProjectDetail({
               className="project-detail__certs project-detail__certs--preview"
               aria-label="Activities preview"
             >
-              <div className="project-detail__certs-header">
-                <h2 className="project-detail__certs-title">
+              <div className="project-detail__certs-header project-detail__section-head">
+                <h2 className="cert-detail__section-title">
+                  <CertIcon size={11} strokeWidth={2} aria-hidden />
                   Activities in this project
+                  <span className="cert-detail__meta-count">{certCount}</span>
                 </h2>
-                <span className="project-detail__certs-count">
-                  {certCount}
-                </span>
                 <TransitionLink
                   href={certsHref}
                   replace

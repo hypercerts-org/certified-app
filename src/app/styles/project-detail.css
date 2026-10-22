@@ -308,6 +308,25 @@
   gap: 8px;
 }
 
+/* Desktop overview spacing: the Location section and the activities
+   preview get the normal 24px section gap from whatever precedes them,
+   so the Summary text never runs straight into the next eyebrow. The
+   details box (`.project-detail__meta`) already carries its own 32px
+   bottom margin, so a Location right after it adds none. Desktop only:
+   mobile reorders the overview and sets its own 24px gaps. */
+@media (min-width: 800px) {
+  .project-detail__location-section {
+    margin-top: 24px;
+  }
+  .project-detail__meta + .project-detail__location-section {
+    margin-top: 0;
+  }
+  .project-detail__summary + .project-detail__certs--preview,
+  .project-detail__location-section + .project-detail__certs--preview {
+    margin-top: 24px;
+  }
+}
+
 /* Mobile activities preview as full-width list rows (no card grid, no
    extra side margins — the rows fill the content width). */
 .project-detail__certs-list {
@@ -710,6 +729,16 @@
   color: var(--fg-primary);
   margin: 0;
   letter-spacing: -0.005em;
+}
+
+/* Overview section headers (Summary, Activities) use the activity
+   page's eyebrow: `.cert-detail__section-title` (icon + uppercase label
+   + bare count), same as Location and Updates. Centre-aligned so the
+   small label lines up with the trailing "See all" link, and the same
+   12px label-to-content gap as `.cert-detail__section`. */
+.project-detail__section-head {
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .project-detail__certs-count {

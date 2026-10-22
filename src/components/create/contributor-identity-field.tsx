@@ -239,7 +239,7 @@ export function ContributorIdentityField({
             }
             aria-label={ariaLabel}
             aria-invalid={invalid}
-            placeholder="@handle or did:plc:…"
+            placeholder="@alice.bsky.social"
             maxLength={1000}
             onKeyDown={onKeyDown}
             onBlur={handleBlur}

@@ -493,7 +493,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       </div>
 
       <TabPanel value="received">
-        {canManage ? (
+        {canManage && displayReceived.length > 0 ? (
           <p className="profile-endorsements-v2__response-note">
             Endorsements with no response are shown on your profile by
             default. Rejected endorsements are hidden from your profile.

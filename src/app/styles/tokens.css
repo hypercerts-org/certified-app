@@ -219,6 +219,7 @@
   --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
   --z-navbar: 50;                   /* fixed top navbar */
   --z-bottom-nav: 50;               /* only mounted < 800px; never co-mounts with rails */
+  --z-feedback-trigger: 55;         /* floating Feedback button: above navbar + bottom nav, below drawers/sheets/modals */
   --z-portal-sheet: 60;             /* bottom-sheet, mobile-sidebar drawer */
   --z-modal: 100;                   /* generic modals */
   --z-skip-nav: 9999;               /* skip-nav link */

@@ -334,14 +334,21 @@ export default function DesktopTopBar() {
             )}
           </Link>
           {breadcrumb ? (
-            <h1 className="desktop-top-bar__title">
-              <Link href={breadcrumb.left.href} className="desktop-top-bar__title-part">
+            <h1 className="desktop-top-bar__title desktop-top-bar__title--breadcrumb">
+              <Link
+                href={breadcrumb.left.href}
+                className="desktop-top-bar__title-part desktop-top-bar__title-part--left"
+                title={breadcrumb.left.text}
+              >
                 {breadcrumb.left.text}
               </Link>
               {breadcrumb.right ? (
                 <>
                   <span className="desktop-top-bar__title-sep" aria-hidden="true"> / </span>
-                  <Link href={breadcrumb.right.href} className="desktop-top-bar__title-part">
+                  <Link
+                    href={breadcrumb.right.href}
+                    className="desktop-top-bar__title-part desktop-top-bar__title-part--right"
+                  >
                     {breadcrumb.right.text}
                   </Link>
                 </>

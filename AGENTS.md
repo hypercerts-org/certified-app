@@ -416,7 +416,7 @@ Token catalog is the source of truth at `src/app/styles/tokens.css`. The most-us
 - **Invariant primitives (don't use on app surfaces):** `--color-primary` (#111 always), `--color-white` (#fff always). Reserved for skip-nav, brand SVG, anything that must not flip.
 - **Motion:** `--transition-fast` (150 ms ease-out) · `--transition-base` (250 ms ease-out) · `--transition-slow` (400 ms spring).
 - **Geometry:** `--radius` (2 px) · `--navbar-height` (64 px) · `--top-bar-row1` / `--top-bar-row2` / `--top-bar-total` for desktop top-bar heights · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
-- **Z-index:** `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001).
+- **Z-index:** `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-feedback-trigger` (55) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001).
 
 ### Rules
 

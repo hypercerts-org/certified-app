@@ -15,37 +15,14 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.profile-groups__title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 4px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0;
-  position: relative;
-}
-
-.profile-groups__title::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--fg-primary);
-  border-radius: var(--radius);
-}
-
-.profile-groups__count {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
+/* No sub-tab label (the profile tab strip already names the section),
+   so on desktop reserve the same 47px height + divider the Activities /
+   Projects toolbars use; the controls then land in the same place when
+   switching tabs. */
+@media (min-width: 800px) {
+  .profile-groups__toolbar {
+    min-height: 47px;
+  }
 }
 
 .profile-groups__controls {
@@ -97,11 +74,6 @@
 }
 
 @media (max-width: 799px) {
-  /* The mobile tab strip already labels this section "Groups" — drop the
-     duplicate in-content heading. */
-  .profile-groups__title {
-    display: none;
-  }
   /* Controls take their own full-width row; the search stretches to fill
      it beside the buttons, and every control matches the plus button's
      30px height. */

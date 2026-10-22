@@ -1741,6 +1741,32 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-weight: 400;
 }
 
+/* Two-part breadcrumb ("handle / Settings"): when space runs out the
+   left segment (often a long handle) shrinks and ellipsizes first; the
+   separator and the right segment stay whole. */
+.desktop-top-bar__title--breadcrumb {
+  display: flex;
+  align-items: center;
+}
+
+.desktop-top-bar__title-part--left {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-top-bar__title--breadcrumb .desktop-top-bar__title-sep {
+  flex-shrink: 0;
+  /* Flex items drop leading/trailing spaces; keep the " / " padding. */
+  white-space: pre;
+}
+
+.desktop-top-bar__title-part--right {
+  flex-shrink: 0;
+}
+
 .desktop-top-bar__right {
   display: flex;
   align-items: center;
@@ -3012,6 +3038,14 @@ h2.profile-sidebar__name {
   color: var(--fg-muted);
   margin: 0;
   padding: 8px 0;
+}
+
+/* Empty Recent activities + the owner-only "Create an activity" action. */
+.profile-overview__empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .profile-overview__digest {

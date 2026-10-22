@@ -1109,7 +1109,7 @@ export default function CreatePage() {
                         className="create-cert__contrib-error"
                         role="alert"
                       >
-                        Use a DID (did:plc:…) or a handle (alice.bsky.social).
+                        Use a handle like alice.bsky.social.
                       </p>
                     ) : identityDuplicate ? (
                       <p

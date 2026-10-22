@@ -286,7 +286,7 @@ export default function FundingPartyField({
               type="text"
               className={FIELD_TEXT}
               aria-label={`${ariaLabel} account`}
-              placeholder="@handle or did:plc:…"
+              placeholder="@alice.bsky.social"
               maxLength={1000}
               disabled={disabled}
               onKeyDown={onKeyDown}

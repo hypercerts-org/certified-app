@@ -84,11 +84,11 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
   return (
     <div className="profile-groups">
       <div className="profile-groups__toolbar">
-        <h2 className="profile-groups__title">
-          Groups
-          {count > 0 ? (
-            <span className="profile-groups__count">{count}</span>
-          ) : null}
+        {/* The profile tab strip already labels this section, so the
+            lone sub-tab label is dropped visually; the heading stays for
+            screen readers. */}
+        <h2 className="sr-only">
+          Groups{count > 0 ? ` (${count})` : ""}
         </h2>
 
         <div className="profile-groups__controls">
@@ -190,10 +190,16 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
             query
               ? "Try a different search term."
               : isOwnProfile
-                ? "When you join a group, it'll appear here."
+                ? "Create a group or join one to see it here."
                 : "Groups this profile belongs to will appear here."
           }
-        />
+        >
+          {isOwnProfile && !query ? (
+            <Button href="/groups/create" variant="secondary" size="sm">
+              Create a group
+            </Button>
+          ) : null}
+        </EmptyState>
       ) : (
         <ul className="profile-groups__list">
           {visible.map((g) => (

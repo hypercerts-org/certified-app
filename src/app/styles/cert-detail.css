@@ -977,6 +977,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .cert-detail__meta-value {
@@ -1138,6 +1139,13 @@
 
 .cert-detail__section-see-all {
   margin-left: auto;
+  /* Label + chevron stay on one line and the link never gets squeezed
+     by the title cluster beside it (the right rail is narrow). */
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--fg-secondary);
@@ -1150,10 +1158,12 @@
   transition: color var(--transition-fast);
 }
 
-.cert-detail__section-see-all:hover {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+@media (hover: hover) and (pointer: fine) {
+  .cert-detail__section-see-all:hover {
+    color: var(--fg-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 /* Centered "X contributors — see all" link at the bottom of the
@@ -1848,6 +1858,22 @@
 .create-cert__date-row .cert-detail__meta-input {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* Time-period date fields (/create + the activity edit view). The Input
+   primitive's md size pads 16px a side, which in the narrow meta column
+   clips the native "mm/dd/yyyy" text. Date fields take the meta-input
+   6px side padding and a tighter picker-icon gap so the full date shows.
+   (0,2,1) specificity beats the single-class Tailwind padding utility. */
+.create-cert__date-row input[type="date"],
+.cert-detail__meta-edit input[type="date"] {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.create-cert__date-row input[type="date"]::-webkit-calendar-picker-indicator,
+.cert-detail__meta-edit input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-left: 2px;
 }
 
 /* "Add contributor" + "Add me" sit side by side. Wrapping the two

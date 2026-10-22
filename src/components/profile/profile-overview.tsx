@@ -8,6 +8,7 @@ import CertIcon from "@/components/ui/cert-icon"
 import Avatar from "@/components/ui/avatar"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Button from "@/components/ui/button"
 import BannerUpload from "@/components/profile/banner-upload"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
@@ -35,6 +36,10 @@ interface ProfileOverviewProps {
   did: string
   profile: CertifiedProfile | null
   basePath: string
+  /** True when the viewer is looking at their own profile (or acting as
+   *  the group shown). Adds a "Create an activity" action to the empty
+   *  Recent activities state. */
+  viewerIsOwner?: boolean
   /** True when the page is in inline-edit mode. Only sent by the page
    *  when the viewer can edit their own profile — the overview itself
    *  doesn't gate on viewer identity. */
@@ -82,6 +87,7 @@ export default function ProfileOverview({
   did,
   profile,
   basePath,
+  viewerIsOwner = false,
   isEditing = false,
   drafts,
   onDraftChange,
@@ -421,10 +427,17 @@ export default function ProfileOverview({
         {activitiesLoading && previewActivities.length === 0 ? (
           <div className="profile-overview__loading"><LoadingSpinner size="sm" /></div>
         ) : previewActivities.length === 0 ? (
-          <p className="profile-overview__empty">
-            No activities yet. Published and contributed work will show up
-            here.
-          </p>
+          <div className="profile-overview__empty-block">
+            <p className="profile-overview__empty">
+              No activities yet. Published and contributed work will show up
+              here.
+            </p>
+            {viewerIsOwner ? (
+              <Button href="/create" variant="secondary" size="sm">
+                Create an activity
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <ul className="profile-overview__activity-list">
             {previewActivities.map((a) => {

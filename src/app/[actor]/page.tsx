@@ -579,6 +579,7 @@ export default function UserProfilePage() {
                   did={did}
                   profile={effectiveProfile}
                   basePath={pathname || ""}
+                  viewerIsOwner={isViewerThisEntity}
                   isEditing={editing}
                   drafts={drafts}
                   onDraftChange={handleDraftChange}
