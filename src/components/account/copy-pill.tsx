@@ -45,7 +45,7 @@ export default function CopyPill({
         </span>
       </button>
       <span className="sr-only" role="status" aria-live="polite">
-        {copied ? `${label} copied to clipboard` : ""}
+        {copied ? `Copied ${label} to clipboard` : ""}
       </span>
     </>
   );

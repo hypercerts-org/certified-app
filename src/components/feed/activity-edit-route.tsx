@@ -519,7 +519,7 @@ export default function ActivityEditRoute({
             <EmptyState
               icon={PenLine}
               title="Can't edit right now"
-              description="We couldn't reach this record's home server, so we only have a partial copy. Try again once it's reachable to avoid losing details."
+              description="We couldn't load the full activity, so editing now could lose details. Try again in a minute."
             />
           </div>
         </div>

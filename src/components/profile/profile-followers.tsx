@@ -330,7 +330,7 @@ function FollowersGrid({
       <div className="profile-endorsements-v2__grid">
         <EmptyState
           icon={Inbox}
-          title="Couldn’t load followers"
+          title="Couldn't load followers"
           description="Something went wrong on our side. Try again in a moment."
         >
           <Button variant="secondary" size="sm" onClick={onRetry}>
@@ -426,7 +426,7 @@ function FollowingGrid({
       <div className="profile-endorsements-v2__grid">
         <EmptyState
           icon={Inbox}
-          title="Couldn’t load follows"
+          title="Couldn't load follows"
           description="Something went wrong on our side. Try again in a moment."
         >
           <Button variant="secondary" size="sm" onClick={onRetry}>

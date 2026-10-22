@@ -18,10 +18,13 @@ import {
 } from "@/lib/atproto/typed-lists"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { resolveHandleToDid } from "@/lib/atproto/did"
+import { collectionForType, isRecordType } from "@/lib/urls"
+import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import { getInitials } from "@/lib/utils/initials"
 
 // The three modals ProfileLists opens: create/edit a list, bulk-add by
-// pasted at-URI, and search-driven add. Each keeps its own form state;
+// pasted links / at-URIs, and search-driven add. Each keeps its own form state;
 // the parent only supplies the list type + membership and the write
 // callbacks.
 
@@ -160,6 +163,63 @@ interface ParseRow {
   message?: string
 }
 
+const DID_RE = /^did:[a-z]+:[A-Za-z0-9._:-]+$/
+
+/** A DID passes through; anything else is treated as a handle and
+ *  resolved. Null when the handle doesn't resolve. */
+async function actorToDid(actor: string): Promise<string | null> {
+  if (DID_RE.test(actor)) return actor
+  return resolveHandleToDid(actor)
+}
+
+/**
+ * Turn one pasted token into an item at-URI for a list of `type`.
+ *
+ * Accepts, in order:
+ *   - an at:// URI (passed through; type-checked by the caller)
+ *   - an app record link, `https://<host>/<actor>/<activity|project>/<rkey>`
+ *   - for accounts lists: a bare DID, an actor at-URI, a handle
+ *     (`@` optional) or a profile link — expanded to the profile record
+ *     (`at://<did>/app.certified.actor.profile/self`; its rkey is always
+ *     `self`)
+ *
+ * Returns null when the token isn't any of those (or a handle in it
+ * doesn't resolve). Any http(s) host is accepted so staging / preview
+ * links work too.
+ */
+async function pastedTokenToItemUri(
+  token: string,
+  type: TypedListType,
+): Promise<string | null> {
+  if (type === LIST_ACCOUNTS_TYPE) {
+    // Actor at-URI with no collection (`at://did:…` or `at://did:…/`).
+    const bareActor = token.match(/^(?:at:\/\/)?(did:[a-z]+:[A-Za-z0-9._:-]+)\/?$/)
+    if (bareActor) {
+      return `at://${bareActor[1]}/${ITEM_NSID[LIST_ACCOUNTS_TYPE]}/self`
+    }
+  }
+  if (token.startsWith("at://")) return token
+
+  const recordLink = token.match(
+    /^https?:\/\/[^/]+\/([^/?#]+)\/([^/?#]+)\/([^/?#]+)\/?(?:[?#].*)?$/,
+  )
+  if (recordLink) {
+    const [, rawActor, segment, rkey] = recordLink
+    if (!isRecordType(segment)) return null
+    const did = await actorToDid(decodeURIComponent(rawActor))
+    return did ? `at://${did}/${collectionForType(segment)}/${rkey}` : null
+  }
+
+  if (type === LIST_ACCOUNTS_TYPE) {
+    const subject = parseSubjectInput(token)
+    if (!subject) return null
+    const did =
+      subject.kind === "did" ? subject.value : await resolveHandleToDid(subject.value)
+    return did ? `at://${did}/${ITEM_NSID[LIST_ACCOUNTS_TYPE]}/self` : null
+  }
+  return null
+}
+
 export function PasteUrisModal({
   type,
   alreadyIn,
@@ -185,46 +245,52 @@ export function PasteUrisModal({
 
   const handleRun = useCallback(async () => {
     if (running) return
-    // Accept commas, newlines, and whitespace as separators so users
-    // can paste a list of URIs from any reasonable source without
-    // hand-formatting it. Dedupe within the input.
-    // Accounts list: accept a bare DID (`did:plc:…`) or an actor URI
-    // (`at://did:plc:…`), with or without a trailing slash, and expand it
-    // to the conventional profile record path
-    // (`at://<did>/app.certified.actor.profile/self`) before validation —
-    // the profile record's rkey is always `self`. For certs / projects the
-    // rkey is record-specific, so those URIs are left untouched.
-    const normalize = (uri: string): string => {
-      if (type !== LIST_ACCOUNTS_TYPE) return uri
-      const m = uri.match(/^(?:at:\/\/)?(did:[a-z]+:[A-Za-z0-9._:-]+)\/?$/)
-      return m ? `at://${m[1]}/${ITEM_NSID[LIST_ACCOUNTS_TYPE]}/self` : uri
-    }
-
-    const parsed = Array.from(
+    // One link per line is what the help text asks for, but commas and
+    // other whitespace still split so a pasted comma list works too.
+    // Dedupe within the input.
+    const tokens = Array.from(
       new Set(
         raw
           .split(/[\s,]+/)
           .map((s) => s.trim())
-          .filter(Boolean)
-          .map(normalize),
+          .filter(Boolean),
       ),
     )
-    if (parsed.length === 0) return
-
-    const initial: ParseRow[] = parsed.map((uri) => {
-      if (!uri.startsWith("at://")) {
-        return { uri, status: "error", message: "Not an at:// URI" }
-      }
-      if (!itemUriMatchesType(uri, type)) {
-        return { uri, status: "wrong-type", message: `Doesn't match ${ITEM_NSID[type]}` }
-      }
-      if (alreadyIn.has(uri)) {
-        return { uri, status: "already", message: "Already in list" }
-      }
-      return { uri, status: "pending" }
-    })
-    setRows(initial)
+    if (tokens.length === 0) return
     setRunning(true)
+
+    // Phase 0: turn each pasted link / handle / at-URI into an item
+    // at-URI. Handle resolution (record links by handle, account
+    // handles) is a network round-trip, so it fans out in parallel.
+    const normalized = await Promise.all(
+      tokens.map(async (token) => ({
+        token,
+        uri: await pastedTokenToItemUri(token, type),
+      })),
+    )
+    const seen = new Set<string>()
+    const initial: ParseRow[] = []
+    for (const { token, uri } of normalized) {
+      if (!uri) {
+        initial.push({
+          uri: token,
+          status: "error",
+          message: "Not a link to an activity or profile",
+        })
+        continue
+      }
+      // Two different links can name the same record (handle vs DID).
+      if (seen.has(uri)) continue
+      seen.add(uri)
+      if (!itemUriMatchesType(uri, type)) {
+        initial.push({ uri, status: "wrong-type", message: "Doesn't belong in this list" })
+      } else if (alreadyIn.has(uri)) {
+        initial.push({ uri, status: "already", message: "Already in list" })
+      } else {
+        initial.push({ uri, status: "pending" })
+      }
+    }
+    setRows(initial)
 
     // Phase 1: parallel CID resolution. Each row flips to "writing"
     // as its lookup starts, then either "missing" (no record) or
@@ -302,43 +368,34 @@ export function PasteUrisModal({
 
   return (
     <AppDialog
-      ariaLabel="Bulk add by at-URI"
+      ariaLabel="Add several at once"
       maxWidth={600}
       onClose={() => !running && onClose()}
       disableBackdropClose={running}
     >
       <AppDialogHeader
-        title="Bulk add by at-URI"
+        title="Add several at once"
         onClose={() => !running && onClose()}
         disabled={running}
       />
       <AppDialogBody className="profile-lists__paste-body">
         <p className="profile-lists__paste-help" id={pasteHelpId}>
-          Paste at-URIs separated by commas, newlines, or spaces.
-          Only items matching{" "}
-          <code className="profile-lists__paste-nsid">{ITEM_NSID[type]}</code>{" "}
-          will be added.
-          {type === LIST_ACCOUNTS_TYPE ? (
-            <>
-              {" "}For accounts a bare DID{" "}
-              <code className="profile-lists__paste-nsid">did:plc:…</code>{" "}
-              (with or without <code className="profile-lists__paste-nsid">at://</code>)
-              is also accepted — we&rsquo;ll expand it to the profile record.
-            </>
-          ) : null}
+          Paste links to activities or profiles, one per line.
         </p>
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
-          aria-label="At-URIs to add"
+          aria-label="Links to add"
           aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
           placeholder={
             type === LIST_ACCOUNTS_TYPE
-              ? "did:plc:…, did:plc:…, …"
-              : "at://did:plc:…/…/abc123, at://did:plc:…/…/def456, …"
+              ? "https://certified.app/alice.bsky.social"
+              : `https://certified.app/alice.bsky.social/${
+                  type === LIST_CERTS_TYPE ? "activity" : "project"
+                }/…`
           }
           disabled={running}
         />

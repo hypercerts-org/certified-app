@@ -363,12 +363,12 @@ function ListDetail({
                 <Plus size={16} strokeWidth={1.75} aria-hidden />
               </button>
             </Tooltip>
-            <Tooltip label="Bulk add by at-URI">
+            <Tooltip label="Add several at once">
               <button
                 type="button"
                 className="profile-lists__create-btn"
                 onClick={() => setPasteOpen(true)}
-                aria-label="Bulk add by at-URI"
+                aria-label="Add several at once"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
               </button>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useParams, useSearchParams, useRouter } from "next/navigation"
 import { profileUrl } from "@/lib/urls"
 import {
@@ -32,9 +32,10 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
-import { AlignLeft, UserX } from "lucide-react"
+import { AlignLeft, Pencil, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
 
@@ -405,6 +406,34 @@ export default function UserProfilePage() {
     setActiveTab(tabFromUrl)
   }
 
+  // Keep the active mobile tab visible in the scrolling strip — a deep
+  // link (e.g. the header's "Endorsed by" → ?tab=endorsements) can select
+  // a tab that starts off-screen. Scrolls the strip only (never the page),
+  // and is a no-op on desktop where the strip is display:none.
+  const mobileTabsRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    const strip = mobileTabsRef.current
+    const tab = strip?.querySelector<HTMLElement>(".profile-tabs__tab--active")
+    if (!strip || !tab || strip.clientWidth === 0) return
+    // Tab edges in the strip's scroll coordinates.
+    const tabLeft =
+      tab.getBoundingClientRect().left -
+      strip.getBoundingClientRect().left +
+      strip.scrollLeft
+    const tabRight = tabLeft + tab.offsetWidth
+    const viewLeft = strip.scrollLeft
+    const viewRight = viewLeft + strip.clientWidth
+    if (tabLeft >= viewLeft && tabRight <= viewRight) return
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches
+    // Leave room for the edge fade (16px left, 32px right).
+    strip.scrollTo({
+      left: tabLeft < viewLeft ? tabLeft - 16 : tabRight - strip.clientWidth + 32,
+      behavior: reduceMotion ? "auto" : "smooth",
+    })
+  }, [activeTab, isProfileLoading])
+
   if (isProfileLoading) {
     return (
       <div className="loading-screen">
@@ -453,6 +482,7 @@ export default function UserProfilePage() {
       {/* Mobile-only tab strip (hidden ≥800px, where the top bar carries the
           tabs). Horizontally scrollable; reuses the .profile-tabs styling. */}
       <nav
+        ref={mobileTabsRef}
         className="profile-page__mobile-tabs profile-tabs"
         aria-label="Profile sections"
         data-tour="profile-tabs"
@@ -589,15 +619,22 @@ export default function UserProfilePage() {
                   />
                 ) : isViewerThisEntity ? (
                   /* Empty About tab, but the viewer is signed in as
-                     this entity — show the prompt to click "Edit
-                     profile". Foreign viewers don't reach this branch
-                     because the tab gate hides the About tab when
-                     there's no content for them. */
+                     this entity — offer the edit action in place.
+                     Foreign viewers don't reach this branch because the
+                     tab gate hides the About tab when there's no content
+                     for them. */
                   <EmptyState
                     icon={AlignLeft}
                     title="Nothing here yet"
-                    description="Click Edit profile to add an About section to your profile."
-                  />
+                    description="Add an About section so people know who you are."
+                  >
+                    {canEditInline ? (
+                      <Button variant="secondary" size="sm" onClick={handleEditClick}>
+                        <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                        Edit profile
+                      </Button>
+                    ) : null}
+                  </EmptyState>
                 ) : null}
               </div>
             ) : null}

@@ -59,82 +59,12 @@
 
 /* ---------- Inputs ---------- */
 
-.funding-form__input {
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-  min-width: 0;
-  width: 100%;
-}
-
-/* 16px keeps iOS Safari from zooming the page on focus. */
-@media (max-width: 799px) {
-  .funding-form__input {
-    font-size: 16px;
-  }
-}
-
-.funding-form__input::placeholder {
-  color: var(--fg-muted);
-}
-
-.funding-form__input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
-
-.funding-form__textarea {
-  resize: vertical;
-  min-height: 48px;
-}
-
+/* Text fields are the ui <Input> / <Textarea> primitives (flush, size sm);
+   only the amount + currency row layout lives here. The role choice is a
+   <SegmentedControl>. */
 .funding-form__amount-row {
   display: flex;
   gap: 8px;
-}
-
-.funding-form__input--amount {
-  flex: 1;
-}
-
-.funding-form__input--currency {
-  width: 96px;
-  flex: none;
-}
-
-/* ---------- Direction (role) radios ---------- */
-
-.funding-form__directions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.funding-form__direction {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  cursor: pointer;
-}
-
-.funding-form__direction input {
-  margin: 0;
-}
-
-.funding-form__direction[data-active] {
-  border-color: var(--fg-primary);
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
 }
 
 /* ---------- Advanced disclosure ---------- */

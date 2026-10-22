@@ -381,7 +381,7 @@ export default function ProjectEditRoute({
             <EmptyState
               icon={FolderGit2}
               title="Project not found"
-              description={projectError || "Couldn’t load this project to edit."}
+              description={projectError || "Couldn't load this project to edit."}
             />
           </div>
         </div>

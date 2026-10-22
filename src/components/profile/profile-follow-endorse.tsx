@@ -314,8 +314,10 @@ export function EndorseButton({
 
   return (
     <>
+      {/* Always secondary: Follow is the row's one primary action, and
+          the Check icon + "Endorsed" label carry the toggled state. */}
       <Button
-        variant={isEndorsed ? "secondary" : "primary"}
+        variant="secondary"
         size="sm"
         onClick={isEndorsed ? () => setConfirmRevoke(true) : handleEndorseClick}
         disabled={disabled}
@@ -341,7 +343,7 @@ export function EndorseButton({
         <ConfirmDialog
           title="Revoke endorsement?"
           message="Your endorsement will be removed from this profile. You can endorse them again later."
-          confirmLabel="Revoke"
+          confirmLabel="Revoke endorsement"
           cancelLabel="Keep endorsement"
           confirmVariant="destructive"
           isConfirming={isWriting}

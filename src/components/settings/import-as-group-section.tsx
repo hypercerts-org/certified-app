@@ -125,7 +125,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
 
       <UnlockAppPasswordFields
         state={unlock}
-        intro="Enter your account password to authorize the promotion. We create a one-time app password in the background and revoke it as soon as the group is created — nothing is shown or stored."
+        intro="Enter your account password to confirm. We create a one-time app password in the background and revoke it as soon as the group is created — nothing is shown or stored."
       />
 
       {error && <ErrorMessage message={error} />}
@@ -137,7 +137,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
           loading={busy}
           disabled={!unlock.canSubmit || busy}
         >
-          Promote to group
+          Turn into a group
         </Button>
       </div>
     </form>

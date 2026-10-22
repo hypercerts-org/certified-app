@@ -100,12 +100,6 @@ const GROUPS: PageGroup[] = [
         Icon: CircleUser,
         sections: [
           {
-            key: "did",
-            title: "DID",
-            description:
-              "Your account's permanent identifier. Unlike your @handle, it never changes — apps and records reference you by it. It's shown here for reference only; there's nothing you need to do with it.",
-          },
-          {
             key: "username",
             title: "Handle",
             description: "The @handle people use to find you on Certified.",
@@ -120,6 +114,13 @@ const GROUPS: PageGroup[] = [
             title: "Password",
             description:
               "Lets you sign in to other AT Protocol apps (like Bluesky) with your handle. Your main sign-in here stays the passwordless email code.",
+          },
+          // Reference-only and technical, so it sits last on the page.
+          {
+            key: "did",
+            title: "Account ID (DID)",
+            description:
+              "Your account's permanent identifier. Unlike your @handle, it never changes — apps and records reference you by it. It's shown here for reference only; there's nothing you need to do with it.",
           },
         ],
       },
@@ -154,7 +155,7 @@ const GROUPS: PageGroup[] = [
       },
       {
         key: "group",
-        label: "Promote this account to a group account",
+        label: "Turn this account into a group",
         navLabel: "Group account",
         description:
           "Turn this personal account into a shared group that several people can manage.",
@@ -336,7 +337,7 @@ export default function SettingsPanel() {
 
   return (
     <div className="sx" data-view={active ? "detail" : "list"}>
-      <h1 className="sx__heading sr-only">Settings</h1>
+      <h2 className="sx__heading sr-only">Settings</h2>
 
       <div className="page-layout">
         <aside className="sx__menu">

@@ -19,7 +19,7 @@ interface ProfileHeaderProps {
   bannerUrl: string | null
   handle: string | null
   did: string | null
-  /** Display string for activity claim count, e.g. "12" or "20+". */
+  /** Display string for the activity count, e.g. "12" or "20+". */
   activityCountLabel: string
   /** If set, render an "Edit" button linking here (in place of Follow). */
   editHref?: string
@@ -169,7 +169,7 @@ export default function ProfileHeader({
         </div>
 
         {eyebrow ? <p className="profile-hero__eyebrow">{eyebrow}</p> : null}
-        <h1 className="profile-hero__name" dir="auto">{displayName}</h1>
+        <h2 className="profile-hero__name" dir="auto">{displayName}</h2>
         {handle ? (
           <p className="profile-hero__handle">
             <span className="profile-hero__handle-text">@{handle}</span>

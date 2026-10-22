@@ -214,10 +214,13 @@ export default function ProfileSidebar({
             : "profile-sidebar__avatar"
         }
       >
+        {/* 160px on desktop: the 240px `2xl` hero dominated the
+            296px column, so the slot overrides the primitive's size. */}
         <Avatar
           size="2xl"
           src={avatarUrl || undefined}
           fallbackInitials={initials}
+          className="!h-[160px] !w-[160px]"
         />
         {isEditing && hasInline ? (
           <AvatarEditOverlay
@@ -237,7 +240,7 @@ export default function ProfileSidebar({
           // chrome expected for an inline-edit field. The heading itself
           // stays a text-only sr-only h1 so assistive tech keeps a name.
           <>
-          <h1 className="sr-only">{displayName}</h1>
+          <h2 className="sr-only">{displayName}</h2>
           <div className="profile-sidebar__name">
             <Input
               size="bare"
@@ -254,16 +257,16 @@ export default function ProfileSidebar({
           </div>
           </>
         ) : (
-          <h1 className="profile-sidebar__name" dir="auto" title={displayName}>
+          <h2 className="profile-sidebar__name" dir="auto" title={displayName}>
             {displayName}
-          </h1>
+          </h2>
         )}
         {handle ? (
           <p className="profile-sidebar__handle">@{handle}</p>
         ) : null}
         <p className="profile-sidebar__did" title={did}>
           <span className="profile-sidebar__did-value">{did}</span>
-          <CopyButton value={did} label="Copy DID" />
+          <CopyButton value={did} label="Copy account ID" />
         </p>
       </div>
 
@@ -670,7 +673,7 @@ interface AvatarEditOverlayProps {
 }
 
 /**
- * Click-to-upload overlay rendered on top of the existing 240×240
+ * Click-to-upload overlay rendered on top of the existing 160×160
  * <Avatar>. Keeps the avatar at the same position and size as
  * read-only mode — only adds an affordance on top.
  */

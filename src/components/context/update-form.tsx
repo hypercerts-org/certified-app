@@ -219,9 +219,9 @@ export default function UpdateForm({
 
   return (
     <form className="flex flex-col gap-5 py-2" onSubmit={handleSubmit}>
-      <h1 className="font-headline text-h3">
+      <h2 className="font-headline text-h3">
         {mode === "edit" ? "Edit update" : "New update"}
-      </h1>
+      </h2>
 
       <Input
         label="Title"

@@ -368,7 +368,7 @@ function ListsBody({
     return (
       <EmptyState
         icon={ListIcon}
-        title="Couldn’t load lists"
+        title="Couldn't load lists"
         description={error}
       />
     )
@@ -502,7 +502,7 @@ function ListDetail({
                 type="button"
                 className="endorsement-lists__add-btn"
                 onClick={onBulkPaste}
-                aria-label="Bulk add people by handle or account ID"
+                aria-label="Bulk add people by handle or profile link"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
               </button>
@@ -1009,7 +1009,7 @@ function PasteSubjectsModal({
           input,
           did: null,
           status: "wrong-shape",
-          message: "Not a DID, handle, or profile URL",
+          message: "Not a handle or profile link.",
         }
       }
       if (parsed.kind === "did") {
@@ -1159,7 +1159,7 @@ function PasteSubjectsModal({
 
   return (
     <AppDialog
-      ariaLabel="Bulk add people by handle or account ID"
+      ariaLabel="Bulk add people by handle or profile link"
       maxWidth={600}
       onClose={() => !running && onClose()}
       disableBackdropClose={running}
@@ -1171,20 +1171,20 @@ function PasteSubjectsModal({
       />
       <AppDialogBody className="profile-lists__paste-body">
         <p className="profile-lists__paste-help" id={pasteHelpId}>
-          Paste handles, account IDs (DIDs), or profile links separated by commas,
-          newlines, or spaces. Each person gets an endorsement from you
+          Paste handles or profile links separated by commas, newlines, or
+          spaces. Each person gets an endorsement from you
           (if they don&rsquo;t have one already) and is added to this
           list.
         </p>
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
-          aria-label="Handles, account IDs or profile links to add"
+          aria-label="Handles or profile links to add"
           aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
-          placeholder="alice.bsky.social, did:plc:…, https://certified.app/profile/bob.bsky.social"
+          placeholder="alice.bsky.social, https://certified.app/bob.bsky.social"
           disabled={running || showCloseOnly}
         />
         {rows.length > 0 ? (

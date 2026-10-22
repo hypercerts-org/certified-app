@@ -49,7 +49,7 @@ export default function ProjectDetailRoute({
         <div className="project-detail__error">
           <p className="project-detail__error-title">
             {error && error !== "Project not found"
-              ? "Couldn’t load this project"
+              ? "Couldn't load this project"
               : "Project not found"}
           </p>
           <p className="project-detail__error-desc">

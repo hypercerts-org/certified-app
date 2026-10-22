@@ -189,7 +189,7 @@ export default function EditOrgProfilePage() {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Edit</h1>
+        <h1 className="dashboard__page-title">Edit group profile</h1>
       </div>
 
       <div className="dashboard__body dashboard__body--single">
@@ -281,7 +281,7 @@ export default function EditOrgProfilePage() {
                     Cancel
                   </Button>
                   <Button type="submit" variant="primary" loading={isSaving} disabled={isSaving}>
-                    Save Changes
+                    Save changes
                   </Button>
                 </div>
               </div>

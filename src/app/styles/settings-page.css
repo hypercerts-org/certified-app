@@ -137,15 +137,17 @@
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* Active = the panel currently shown (solid fg-primary fill with inverted
-   text, mirroring .explore__filter--active). Desktop only — on the mobile
-   master list nothing is pre-selected, so the fill is suppressed below. */
+/* Active = the panel currently shown: a subtle --overlay-medium fill (a
+   step past the --bg-sunken hover, theme-aware in dark mode) with
+   --fg-primary text at 600, mirroring .explore__filter--active. Desktop
+   only — on the mobile master list nothing is pre-selected, so the fill is
+   suppressed below. */
 .sx-menu__item--active,
 .sx-menu__item--active:hover,
 .sx-menu__item--active:focus-visible {
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
-  font-weight: 500;
+  background: var(--overlay-medium);
+  color: var(--fg-primary);
+  font-weight: 600;
 }
 
 .sx-menu__icon {
@@ -165,7 +167,7 @@
 
 .sx-menu__item--active .sx-menu__icon,
 .sx-menu__item--active:hover .sx-menu__icon {
-  color: var(--bg-canvas);
+  color: var(--fg-primary);
 }
 
 .sx-menu__label {

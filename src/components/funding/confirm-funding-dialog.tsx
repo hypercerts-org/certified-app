@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Button from "@/components/ui/button"
+import Textarea from "@/components/ui/textarea"
 import { FundingPartySlot } from "@/components/explore-page/funding-receipt-parts"
 import {
   buildConfirmationRecord,
@@ -124,9 +125,11 @@ export default function ConfirmFundingContent({
         <label className="funding-form__label" htmlFor="confirm-notes">
           Note <span className="funding-form__optional">(optional)</span>
         </label>
-        <textarea
+        <Textarea
+          flush
+          size="sm"
           id="confirm-notes"
-          className="funding-form__input funding-form__textarea"
+          className="resize-y text-base md:text-sm"
           placeholder="Any context for your confirmation"
           value={notes}
           disabled={submitting}

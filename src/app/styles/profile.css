@@ -255,6 +255,25 @@
   -webkit-overflow-scrolling: touch;
   /* Keep a swipe at the strip's end from starting a browser back-swipe. */
   overscroll-behavior-x: contain;
+  /* Light snap so a flick settles on a tab edge, not mid-label. */
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 16px;
+  /* Edge fade: hints that the strip scrolls when a tab is cut off at
+     either side. The left fade only covers the 16px gutter at rest. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 16px,
+    black calc(100% - 32px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 16px,
+    black calc(100% - 32px),
+    transparent
+  );
 }
 
 /* The in-page tab strip is mobile-only — on desktop the top bar's row 2
@@ -284,10 +303,13 @@
   position: relative;
   transition: color var(--transition-fast);
   white-space: nowrap;
+  scroll-snap-align: start;
 }
 
-.profile-tabs__tab:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .profile-tabs__tab:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .profile-tabs__tab--active {

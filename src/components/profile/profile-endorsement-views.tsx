@@ -68,7 +68,7 @@ function LoadError({ onRetry }: { onRetry?: () => void }) {
   return (
     <EmptyState
       icon={Inbox}
-      title="Couldn’t load endorsements"
+      title="Couldn't load endorsements"
       description="Something went wrong on our side. Try again in a moment."
     >
       {onRetry ? (
@@ -383,7 +383,7 @@ function RevokeGivenButton({
         <ConfirmDialog
           title={`Revoke endorsement of ${subjectDisplay}?`}
           message="Your endorsement will be removed from this profile. You can endorse them again later."
-          confirmLabel="Revoke"
+          confirmLabel="Revoke endorsement"
           cancelLabel="Keep endorsement"
           confirmVariant="destructive"
           isConfirming={isRevoking}

@@ -1045,9 +1045,9 @@ export default function ActivityDetail({
             }
           />
         ) : (
-          <h1 className="cert-detail__title" dir="auto">
+          <h2 className="cert-detail__title" dir="auto">
             {effectiveValue.title?.trim() || "Untitled activity"}
-          </h1>
+          </h2>
         )}
         {!editing && rkey ? (
           // Three-dot record menu — DESKTOP only, right-aligned on the title
@@ -1709,7 +1709,7 @@ export default function ActivityDetail({
     </article>
     {deleteOpen ? (
       <DeleteRecordDialog
-        title="Delete this activity"
+        title="Delete activity?"
         recordName={effectiveValue.title || ""}
         recordTypeLabel="activity"
         isDeleting={isDeleting}

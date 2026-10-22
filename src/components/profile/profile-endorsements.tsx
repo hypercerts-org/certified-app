@@ -595,7 +595,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         <ConfirmDialog
           title={`Revoke ${selected.size} endorsement${selected.size === 1 ? "" : "s"}?`}
           message="The selected endorsements will be removed. You can endorse those accounts again later."
-          confirmLabel="Revoke"
+          confirmLabel={`Revoke endorsement${selected.size === 1 ? "" : "s"}`}
           cancelLabel="Keep"
           confirmVariant="destructive"
           isConfirming={bulkBusy}

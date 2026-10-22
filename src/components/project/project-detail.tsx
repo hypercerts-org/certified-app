@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
-import Link from "next/link"
 import { TransitionLink } from "@/lib/view-transitions"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -33,7 +32,7 @@ import CertLocationsMap from "@/components/feed/cert-locations-map"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
-import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { PROJECT_DETAIL_TABS } from "@/lib/detail-tabs"
 import LeafletDocument, {
@@ -948,9 +947,9 @@ export default function ProjectDetail({
                 }
               />
             ) : (
-              <h1 className="project-detail__title" title={title} dir="auto">
+              <h2 className="project-detail__title" title={title} dir="auto">
                 {title}
-              </h1>
+              </h2>
             )}
           </div>
           <div className="project-detail__head-actions">
@@ -960,41 +959,44 @@ export default function ProjectDetail({
             {!editing && (isOwner || editAsGroup) ? (
               <>
                 {isOwner ? (
-                  <Link
+                  <Button
                     href={editHref}
-                    className="project-detail__edit-btn"
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
                     aria-label="Edit project"
-                    title="Edit project"
                   >
                     <Pencil size={14} strokeWidth={1.75} aria-hidden />
                     Edit
-                  </Link>
+                  </Button>
                 ) : (
-                  <button
-                    type="button"
-                    className="project-detail__edit-btn"
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
                     aria-label="Edit project"
-                    title={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
+                    tooltip={`Edit as ${editAsGroup!.displayName || editAsGroup!.handle}`}
                     onClick={() => setGroupEditOpen(true)}
                   >
                     <Pencil size={14} strokeWidth={1.75} aria-hidden />
                     Edit
-                  </button>
+                  </Button>
                 )}
                 {isOwner ? (
-                  <Tooltip label="Delete project">
-                    <button
-                      type="button"
-                      className="project-detail__delete-btn"
-                      aria-label="Delete project"
-                      onClick={() => {
-                        setDeleteError(null)
-                        setDeleteOpen(true)
-                      }}
-                    >
-                      <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                    </button>
-                  </Tooltip>
+                  // Desktop size matches the sm Edit button beside it (30px);
+                  // mobile keeps the primitive's 44px tap target.
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Delete project"
+                    className="shrink-0 md:!h-[30px] md:!w-[30px]"
+                    onClick={() => {
+                      setDeleteError(null)
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                  </Button>
                 ) : null}
               </>
             ) : null}
@@ -1263,16 +1265,16 @@ export default function ProjectDetail({
                     record. Editing here will replace the link with new
                     content.
                   </p>
-                  <button
-                    type="button"
-                    className="project-detail__desc-preserve-cta"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => {
                       setPreserveDescription(false)
                       setDrafts((d) => ({ ...d, description: null }))
                     }}
                   >
                     Edit anyway
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <LeafletEditor
@@ -1312,14 +1314,15 @@ export default function ProjectDetail({
             <h2 className="project-detail__certs-title">Activities in this project</h2>
             <span className="project-detail__certs-count">{certCount}</span>
             {editing && !addingCert ? (
-              <button
-                type="button"
-                className="project-detail__add-cert-btn"
+              <Button
+                variant="secondary"
+                size="sm"
+                className="ml-auto"
                 onClick={() => setAddingCert(true)}
               >
                 <Plus size={14} strokeWidth={1.75} aria-hidden />
                 Add activity
-              </button>
+              </Button>
             ) : null}
           </div>
 
@@ -1333,13 +1336,14 @@ export default function ProjectDetail({
                 autoFocus
                 clearOnSelect
               />
-              <button
-                type="button"
-                className="project-detail__add-cert-cancel"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 self-center"
                 onClick={() => setAddingCert(false)}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : null}
 
@@ -1351,8 +1355,19 @@ export default function ProjectDetail({
                 <EmptyState
                   icon={Inbox}
                   title="No activities in this project yet"
-                  description="Click “Add activity” above to search for and add activities."
-                />
+                  description="Search for activities and add them to this project."
+                >
+                  {!addingCert ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setAddingCert(true)}
+                    >
+                      <Plus size={14} strokeWidth={1.75} aria-hidden />
+                      Add activity
+                    </Button>
+                  ) : null}
+                </EmptyState>
               ) : (
                 resolvedActivities.map((rec) => (
                   <div
@@ -1442,7 +1457,7 @@ export default function ProjectDetail({
       </article>
       {deleteOpen ? (
         <DeleteRecordDialog
-          title="Delete this project"
+          title="Delete project?"
           recordName={asString(effectiveValue.title) || ""}
           recordTypeLabel="project"
           isDeleting={isDeleting}

@@ -12,7 +12,7 @@ export default function ProfileError({ error, reset }: ErrorPageProps) {
     <ErrorBoundaryFallback
       error={error}
       onReset={reset}
-      title="Couldn’t load this profile"
+      title="Couldn't load this profile"
       message="Something went wrong loading this profile. Try again, or head back home."
     />
   )

@@ -278,9 +278,9 @@ export default function AppPasswordsSection() {
 
       {confirmRevoke !== null ? (
         <ConfirmDialog
-          title="Revoke app password"
+          title="Revoke app password?"
           message={`Revoke "${confirmRevoke}"? Apps using it will be signed out.`}
-          confirmLabel="Revoke"
+          confirmLabel="Revoke app password"
           isConfirming={revoking === confirmRevoke}
           onCancel={() => setConfirmRevoke(null)}
           onConfirm={() => handleRevoke(confirmRevoke)}

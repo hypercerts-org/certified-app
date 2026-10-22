@@ -100,6 +100,29 @@
     width: 30px;
     height: 30px;
   }
+  /* The compact 28/30px controls keep their visual size, but an invisible
+     ::before grows each tap area to 44px tall. Horizontally it only
+     reaches 4px out — half the 8px row gap — so neighbouring controls'
+     hit areas never overlap. The search pill is a <label>, so a tap on
+     its extended area still focuses the input. */
+  .profile-endorsements-v2__controls .profile-endorsements-v2__search,
+  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
+  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add,
+  .endorsement-lists .endorsement-lists__sort-btn {
+    position: relative;
+  }
+  .profile-endorsements-v2__controls .profile-endorsements-v2__search::before,
+  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn::before,
+  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add::before {
+    content: "";
+    position: absolute;
+    inset: -8px -4px;
+  }
+  .endorsement-lists .endorsement-lists__sort-btn::before {
+    content: "";
+    position: absolute;
+    inset: -7px -4px;
+  }
 }
 
 .profile-endorsements-v2__sort-wrap {

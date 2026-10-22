@@ -45,7 +45,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
   const { did: viewerDid } = useAuth()
   const isOwnProfile = !!did && !!viewerDid && did === viewerDid
 
-  const { groups, isLoading, error } = useCgsMemberships(did)
+  const { groups, isLoading, error, refresh } = useCgsMemberships(did)
 
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("joined-desc")
@@ -175,9 +175,13 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
       ) : error ? (
         <EmptyState
           icon={Building2}
-          title="Couldn’t load groups"
-          description={error}
-        />
+          title="Couldn't load groups"
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={refresh}>
+            Try again
+          </Button>
+        </EmptyState>
       ) : visible.length === 0 ? (
         <EmptyState
           icon={Building2}
@@ -186,7 +190,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
             query
               ? "Try a different search term."
               : isOwnProfile
-                ? "When you join a group, it’ll appear here."
+                ? "When you join a group, it'll appear here."
                 : "Groups this profile belongs to will appear here."
           }
         />

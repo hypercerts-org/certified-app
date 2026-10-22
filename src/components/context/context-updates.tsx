@@ -432,12 +432,12 @@ function UpdateCard({
 
       {confirmingDelete ? (
         <ConfirmDialog
-          title="Delete update"
+          title="Delete update?"
           message={
             deleteError ??
             "This update will be permanently removed. This can't be undone."
           }
-          confirmLabel="Delete"
+          confirmLabel="Delete update"
           confirmVariant="destructive"
           isConfirming={deleting}
           onCancel={() => {

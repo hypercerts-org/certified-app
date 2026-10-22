@@ -329,6 +329,9 @@ export default function ProfileOverview({
           edit the long description; the Overview only carries the
           short About paragraph + "more" navigation now. */}
 
+      {/* Each card: label, then one or more figures with the descriptor
+          directly under its number, packed from the left so a
+          single-figure card (Projects) doesn't leave an empty half. */}
       <section className="profile-overview__stats" aria-label="Profile stats">
         <Link
           href={`${basePath}?tab=activities`}
@@ -336,21 +339,23 @@ export default function ProfileOverview({
           className="profile-overview__stat"
         >
           <span className="profile-overview__stat-label">Activities</span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {activitiesLoading
-                ? "—"
-                : `${createdCount}${activitiesHasMore ? "+" : ""}`}
+          <span className="profile-overview__stat-figures">
+            <span className="profile-overview__stat-split">
+              <span className="profile-overview__stat-value">
+                {activitiesLoading
+                  ? "—"
+                  : `${createdCount}${activitiesHasMore ? "+" : ""}`}
+              </span>
+              <span className="profile-overview__stat-sub">created</span>
             </span>
-            <span className="profile-overview__stat-sub">created</span>
-          </span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {activitiesLoading
-                ? "—"
-                : `${contributedCount}${activitiesHasMore ? "+" : ""}`}
+            <span className="profile-overview__stat-split">
+              <span className="profile-overview__stat-value">
+                {activitiesLoading
+                  ? "—"
+                  : `${contributedCount}${activitiesHasMore ? "+" : ""}`}
+              </span>
+              <span className="profile-overview__stat-sub">contributed</span>
             </span>
-            <span className="profile-overview__stat-sub">contributed</span>
           </span>
         </Link>
         <Link
@@ -359,9 +364,11 @@ export default function ProfileOverview({
           className="profile-overview__stat"
         >
           <span className="profile-overview__stat-label">Projects</span>
-          <span className="profile-overview__stat-split profile-overview__stat-split--solo">
-            <span className="profile-overview__stat-value">
-              {projectsLoading ? "—" : projects.length}
+          <span className="profile-overview__stat-figures">
+            <span className="profile-overview__stat-split">
+              <span className="profile-overview__stat-value">
+                {projectsLoading ? "—" : projects.length}
+              </span>
             </span>
           </span>
         </Link>
@@ -371,17 +378,19 @@ export default function ProfileOverview({
           className="profile-overview__stat"
         >
           <span className="profile-overview__stat-label">Endorsements</span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {endorsementsLoading ? "—" : endorsements.length}
+          <span className="profile-overview__stat-figures">
+            <span className="profile-overview__stat-split">
+              <span className="profile-overview__stat-value">
+                {endorsementsLoading ? "—" : endorsements.length}
+              </span>
+              <span className="profile-overview__stat-sub">received</span>
             </span>
-            <span className="profile-overview__stat-sub">received</span>
-          </span>
-          <span className="profile-overview__stat-split">
-            <span className="profile-overview__stat-value">
-              {givenLoading ? "—" : givenEndorsements.length}
+            <span className="profile-overview__stat-split">
+              <span className="profile-overview__stat-value">
+                {givenLoading ? "—" : givenEndorsements.length}
+              </span>
+              <span className="profile-overview__stat-sub">given</span>
             </span>
-            <span className="profile-overview__stat-sub">given</span>
           </span>
         </Link>
       </section>

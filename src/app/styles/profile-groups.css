@@ -128,6 +128,20 @@
     width: 30px;
     height: 30px;
   }
+  /* Keep the 30px look but grow the tap area to 44px tall with an
+     invisible ::before; it reaches only 4px sideways so it never
+     overlaps the neighbouring control. The search pill is a <label>, so
+     its extended area still focuses the input. */
+  .profile-groups__controls .profile-groups__search,
+  .profile-groups__controls .profile-groups__sort-btn {
+    position: relative;
+  }
+  .profile-groups__controls .profile-groups__search::before,
+  .profile-groups__controls .profile-groups__sort-btn::before {
+    content: "";
+    position: absolute;
+    inset: -7px -4px;
+  }
 }
 
 .profile-groups__sort-wrap {

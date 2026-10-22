@@ -68,11 +68,25 @@ const CERTS_PER_PROJECT_PREVIEW = 5
  * CTA at the top; it links to `/project/new` (currently a
  * coming-soon placeholder while the editor is being built).
  */
-export default function ProfileProjects({
+export default function ProfileProjects(props: ProfileProjectsProps) {
+  // The project hooks expose no refetch, so "Try again" remounts the tab
+  // body (a fresh mount re-runs both loads).
+  const [attempt, setAttempt] = useState(0)
+  return (
+    <ProfileProjectsBody
+      key={attempt}
+      {...props}
+      onRetry={() => setAttempt((n) => n + 1)}
+    />
+  )
+}
+
+function ProfileProjectsBody({
   did,
   viewerIsOwner,
   aggregateOwned = false,
-}: ProfileProjectsProps) {
+  onRetry,
+}: ProfileProjectsProps & { onRetry: () => void }) {
   // On the viewer's own personal profile, aggregate projects owned by the
   // groups they own/admin (each tagged "by {group}"); elsewhere show just
   // this profile's own projects. Both hooks are always called; the inactive
@@ -184,9 +198,13 @@ export default function ProfileProjects({
         {toolbar}
         <EmptyState
           icon={FolderGit2}
-          title="Couldn’t load projects"
-          description={error}
-        />
+          title="Couldn't load projects"
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </EmptyState>
       </div>
     )
   }

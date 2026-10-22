@@ -373,7 +373,7 @@ function ChooseStep({
       <p className="social-graph-sync__modal-lede">
         You follow <strong>{candidateCount}</strong>{" "}
         {candidateCount === 1 ? "person" : "people"} on {copy.source} who you
-        don’t follow yet on {copy.target}.
+        don&apos;t follow yet on {copy.target}.
       </p>
 
       <div className="social-graph-sync__modal-choices">

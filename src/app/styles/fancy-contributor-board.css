@@ -100,7 +100,8 @@
   color: var(--fg-primary);
   text-decoration: none;
   box-shadow: var(--shadow-sm);
-  transform: translateZ(0);
+  /* No permanent translateZ(0) layer per tile — the hover transition
+     promotes the tile on demand. */
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
@@ -115,9 +116,11 @@
     opacity: 0;
     transform: translate3d(0, 10px, 0) scale(0.94);
   }
+  /* No transform in the end keyframe: with `forwards` fill it would pin
+     the tile's transform and override the hover lift. Ending on the
+     underlying value lets the hover rule apply after the entrance. */
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -160,7 +163,7 @@
   transform: translateX(-60%);
   transition:
     opacity var(--transition-base),
-    transform 0.7s ease;
+    transform 400ms ease-out;
   pointer-events: none;
 }
 

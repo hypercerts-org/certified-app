@@ -238,7 +238,7 @@ export function SlimTabHeadline({
   return (
     <header className="cert-detail__headline cert-detail__headline--slim">
       <div className="cert-detail__title-row">
-        <h1 className="cert-detail__title" dir="auto">{title}</h1>
+        <h2 className="cert-detail__title" dir="auto">{title}</h2>
 
         {/* Author + actions sit together at the right edge; the author's
             own content stays left-aligned (avatar then name/handle). The
