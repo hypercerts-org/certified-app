@@ -57,7 +57,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       error
         ? "border-[var(--color-error-border)]"
         : "border-[var(--border-default)]"
-    } rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20`;
+    } rounded focus:border-[var(--focus-ring)] focus:ring-1`;
 
     const disabledChrome = disabled
       ? "disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:bg-[var(--bg-sunken)]"

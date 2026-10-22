@@ -152,13 +152,13 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         // `border` (1px) for default weight is byte-identical to the
         // pre-enhancement string; `border-[1.5px]` for hover weight.
         return borderWeight === "hover"
-          ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20"
-          : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20";
+          ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1"
+          : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
       }
       if (borderWeight === "hover") {
         return "border-[1.5px] border-[var(--border-hover)] rounded focus:border-[var(--fg-primary)] focus:ring-2 focus:ring-[var(--overlay-weak)]";
       }
-      return "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20";
+      return "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
     })();
 
     const densityClasses = density === "compact" ? compactClasses : "";

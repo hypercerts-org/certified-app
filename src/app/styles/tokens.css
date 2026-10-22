@@ -250,7 +250,7 @@
   --measure: 65ch;
 
   /* Control heights. 44 is every control's minimum below 800px. */
-  --control-h-compact: 32px;  /* desktop-only dense controls */
+  --control-h-compact: 32px;  /* compact dismiss controls (icon-sm); 44px hit area via ::after */
   --control-h-sm: 36px;
   --control-h-md: 44px;
   --control-h-lg: 56px;
@@ -454,9 +454,9 @@
 }
 
 /* Default colour for Tailwind `ring-*` utilities: the focus-ring token at
-   20%. Without this, field focus rings render Tailwind's default blue,
-   because the `ring-[var(--focus-ring)]/20` the primitives set can't take
-   an opacity modifier on a var() and compiles to nothing. `:root` beats
+   20%. Without this, field focus rings render Tailwind's default blue
+   (Tailwind can't put an opacity modifier on a var() colour, so the
+   primitives rely on this default instead). `:root` beats
    the `*` rule in @tailwind base, which loads after this file. */
 :root *,
 :root ::before,

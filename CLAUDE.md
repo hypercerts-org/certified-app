@@ -38,7 +38,7 @@ npx tsc --noEmit
 npm run lint
 ```
 
-All six should be silent (or, for `npm run lint`, no change vs. main's baseline of 60 warnings).
+All six should be silent (or, for `npm run lint`, 0 problems; it must stay clean).
 
 ## Where to look
 

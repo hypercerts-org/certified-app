@@ -86,7 +86,7 @@
   left: 16px;
   bottom: -36px;
   padding: 4px;
-  background: var(--bg-default);
+  background: var(--bg-canvas);
   border-radius: 999px;
   line-height: 0;
   box-shadow: var(--shadow-outline-subtle);
@@ -285,7 +285,7 @@ fieldset.pe__field > legend {
      with the fields above. */
   margin: 24px -32px 0;
   padding: 12px 32px;
-  background: var(--bg-default);
+  background: var(--navbar-bg);
   border-top: 1px solid var(--border-subtle);
   /* A subtle blur so content scrolling under the footer doesn't read as
      hard-cut. Falls back to the solid bg when backdrop-filter is unsupported. */

@@ -408,7 +408,7 @@ The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind 
 
 | Height | Token | Use |
 |---|---|---|
-| 32 | `h-control-compact` | Compact, desktop only (`icon-sm` visual) |
+| 32 | `h-control-compact` | Compact dismiss/close controls at any width (`icon-sm` visual; 44px hit area via ::after) |
 | 36 | `h-control-sm` | `<Input size="sm">` |
 | 44 | `h-control-md` | `<Input size="md">`, `<Button size="icon">` below 800px; every control's minimum below 800px |
 | 56 | `h-control-lg` | `<Input size="lg">` (sign-in field) |

@@ -1640,7 +1640,7 @@
   border-radius: var(--radius);
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast),

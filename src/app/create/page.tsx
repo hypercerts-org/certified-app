@@ -740,7 +740,7 @@ export default function CreatePage() {
                     className={
                       datesValid
                         ? "flex-[1_1_0] min-w-0"
-                        : "flex-[1_1_0] min-w-0 !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[var(--color-error)]/15"
+                        : "flex-[1_1_0] min-w-0 !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[color-mix(in_srgb,var(--color-error)_15%,transparent)]"
                     }
                     aria-invalid={!datesValid}
                     value={endDate}
@@ -1075,7 +1075,7 @@ export default function CreatePage() {
                       className={
                         weightValid
                           ? "create-cert__contrib-weight"
-                          : "create-cert__contrib-weight !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[var(--color-error)]/15"
+                          : "create-cert__contrib-weight !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[color-mix(in_srgb,var(--color-error)_15%,transparent)]"
                       }
                       aria-label={`Contributor ${idx + 1} weight (optional)`}
                       aria-invalid={!weightValid}

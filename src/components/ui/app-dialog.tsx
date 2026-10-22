@@ -146,7 +146,7 @@ export function AppDialogHeader({
   // Compact icon button: 32px visual, 44px hit area (Button size="icon-sm").
   // tooltip="" because a body-portaled tooltip would render beneath the
   // top-layer <dialog>.
-  const closeButton = (className: string) =>
+  const closeButton = (className = "") =>
     onClose ? (
       <Button
         variant="ghost"
@@ -163,7 +163,9 @@ export function AppDialogHeader({
   if (bare) {
     return (
       <div className="relative h-12 shrink-0">
-        {closeButton("absolute right-2 top-2")}
+        {/* Positioned wrapper: icon-sm sets its own `relative` (for the
+            44px ::after hit area), which would override `absolute` here. */}
+        <div className="absolute right-2 top-2">{closeButton()}</div>
       </div>
     )
   }
