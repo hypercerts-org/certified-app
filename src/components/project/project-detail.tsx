@@ -985,13 +985,13 @@ export default function ProjectDetail({
                   </Button>
                 )}
                 {isOwner ? (
-                  // Desktop size matches the sm Edit button beside it (30px);
+                  // Desktop size matches the sm Edit button beside it (32px);
                   // mobile keeps the primitive's 44px tap target.
                   <Button
                     size="icon"
                     variant="ghost"
                     aria-label="Delete project"
-                    className="shrink-0 md:!h-[30px] md:!w-[30px]"
+                    className="shrink-0 md:!h-control-compact md:!w-8"
                     onClick={() => {
                       setDeleteError(null)
                       setDeleteOpen(true)

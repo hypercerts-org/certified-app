@@ -76,17 +76,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error-border)] hover:opacity-90",
     };
 
-    // Mobile tap targets: every size meets the 44px WCAG 2.5.5 minimum below
-    // 800px, then reverts to its compact desktop dimensions at `md` (= 800px,
-    // the canonical breakpoint). `min-h-11` (44px) wins over the smaller
-    // padding-driven height on mobile without touching the desktop look.
+    // Heights come from the control-height scale (--control-h-*), not from
+    // padding: sm 32 / md 36 / lg 44 on desktop. Below 800px (`md` = the
+    // canonical breakpoint) every size meets the 44px WCAG 2.5.5 minimum.
+    // `min-h` rather than `h` so a label that wraps grows instead of clipping;
+    // `py-1` only matters then.
     const sizeStyles: Record<ButtonSize, string> = {
-      sm: "py-1.5 px-4 text-xs min-h-control-md md:min-h-0",
-      md: "py-2.5 px-6 text-sm min-h-control-md md:min-h-0",
-      lg: "py-3 px-8 text-sm",
-      // 44 x 44 on mobile, 40 x 40 on desktop. Padding zeroed; the icon child
-      // sits in the centered flex slot.
-      icon: "h-control-md w-11 md:h-10 md:w-10 p-0 text-sm",
+      sm: "py-1 px-4 text-xs min-h-control-md md:min-h-control-compact",
+      md: "py-1 px-6 text-sm min-h-control-md md:min-h-control-sm",
+      lg: "py-1 px-8 text-sm min-h-control-md",
+      // 44 x 44 on mobile, 36 x 36 on desktop (matches md). Padding zeroed;
+      // the icon child sits in the centered flex slot.
+      icon: "h-control-md w-11 md:h-control-sm md:w-9 p-0 text-sm",
       // Compact icon button for dismiss / close controls (dialog, sheet,
       // banner, toast): 32 x 32 visual, hit area expanded to 44 x 44 by a
       // transparent ::after (inset -6px), so the tap target still meets
@@ -166,7 +167,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {/* For icon-size, the 40x40 slot fits one glyph: while loading, show
+        {/* For icon-size, the 36x36 slot fits one glyph: while loading, show
             only the spinner so it doesn't overlap the icon child. */}
         {!(loading && isIcon) && children}
       </button>

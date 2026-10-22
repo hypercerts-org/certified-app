@@ -302,7 +302,7 @@ Multi-column layouts are explicit opt-ins on wide pages (the profile Overview is
 
 ### 4.7 Spacing and rhythm
 
-Scale (Tailwind steps): **4 · 8 · 12 · 16 · 20 · 24 · 32 · 48 · 64** (`1 2 3 4 5 6 8 12 16`). 2 / 6 / 10 are allowed only inside controls to hit a fixed height (Button md `py-2.5` → 40px on desktop), never between elements.
+Scale (Tailwind steps): **4 · 8 · 12 · 16 · 20 · 24 · 32 · 48 · 64** (`1 2 3 4 5 6 8 12 16`). 2 / 6 / 10 are allowed only inside controls (for example a chip's `py-0.5`), never between elements. Control heights come from §6.3, not from padding.
 
 | Relationship | Space |
 |---|---|
@@ -408,16 +408,15 @@ The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind 
 
 | Height | Token | Use |
 |---|---|---|
-| 32 | `h-control-compact` | Compact dismiss/close controls at any width (`icon-sm` visual; 44px hit area via ::after) |
-| 36 | `h-control-sm` | `<Input size="sm">` |
-| 44 | `h-control-md` | `<Input size="md">`, `<Button size="icon">` below 800px; every control's minimum below 800px |
+| 32 | `h-control-compact` | `<Button size="sm">` on desktop; compact dismiss/close controls at any width (`icon-sm` visual; 44px hit area via ::after) |
+| 36 | `h-control-sm` | `<Input size="sm">`, `<Button size="md">` and `<Button size="icon">` on desktop |
+| 44 | `h-control-md` | `<Input size="md">`, `<Button size="lg">`; every control's minimum below 800px |
 | 56 | `h-control-lg` | `<Input size="lg">` (sign-in field) |
 
-- `<Button size="icon">` is 44 on mobile, 40 on desktop.
+- `<Button size="icon">` is 44 on mobile, 36 on desktop (the same as `md`).
 - `<Button size="icon-sm">` is 32 visual, with its hit area expanded to 44 by a transparent `::after` (inset -6px).
 - Dismiss and close controls in Dialog, Sheet, Banner and Toast are `<Button size="icon-sm" variant="ghost" aria-label="Close">`, never hand-rolled.
-- `sm` and `md` Buttons carry `min-h-control-md` below 800px (reset with `md:min-h-0`), so a compact desktop control is still 44 on touch.
-- **Not yet applied to Button sizes.** Button `sm` / `md` / `lg` are still padding-driven at about 30 / 40 / 44px on desktop (§9.1), not 32 / 36-44 / 56 from this scale. Moving them is an open owner decision.
+- Button heights are `min-h-control-*` (not padding): `sm` 32 / `md` 36 / `lg` 44 on desktop, every size 44 below 800px. `min-h` rather than `h`, so a wrapped label grows instead of clipping. Borders sit inside the height, so outlined and filled buttons of one size match.
 - `<SegmentedControl>` is off the scale too: `sm` 28px, `md` 32px.
 
 ### 6.4 Touch
@@ -521,13 +520,13 @@ All icons are Lucide React (`lucide-react`). The cert icon is Tabler, wrapped by
 
 | Size | Height (desktop / below 800px) | Text |
 |---|---|---|
-| `sm` | ~30 (padding-driven, `py-1.5`) / 44 min | `text-xs` (0.75rem) |
-| `md` | ~40 (padding-driven, `py-2.5`) / 44 min | `text-sm` (0.875rem) |
-| `lg` | ~44 (padding-driven, `py-3`) / same | `text-sm` |
-| `icon` | 40 square / 44 square | n/a; requires `aria-label` |
+| `sm` | 32 (`control-compact`) / 44 | `text-xs` (0.75rem) |
+| `md` | 36 (`control-sm`) / 44 | `text-sm` (0.875rem) |
+| `lg` | 44 (`control-md`) / 44 | `text-sm` |
+| `icon` | 36 square / 44 square | n/a; requires `aria-label` |
 | `icon-sm` | 32 visual, 44 hit / same | n/a; requires `aria-label` |
 
-The control-height scale (§6.3) is **not yet applied** to `sm` / `md` / `lg`; their heights come from padding plus line height (secondary and destructive add 2px of border). Moving them onto `h-control-*` is an open owner decision.
+Heights come from the control-height scale (§6.3) as `min-h-control-*`; padding sets only the horizontal inset.
 
 All buttons: `var(--radius)`, weight 500, 0 tracking, named-property transitions, `.press-scale`. `pressed` (toggle buttons) uses the selected state from §6.1. `href` renders a `next/link` with the same chrome. Filled variants disable to a sunken fill; outlined and ghost variants disable by opacity.
 
@@ -814,6 +813,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-10-22, Button sizes on the control-height scale.** Owner decision: Button `sm` / `md` / `lg` are 32 / 36 / 44 on desktop (`min-h-control-compact` / `-sm` / `-md`), `icon` is 36 on desktop to match `md`; all stay 44 below 800px. Replaces the padding-driven ~30 / 40 / 44 and the 40px icon square.
 - **2026-10-22, docs-to-code reconciliation.** Synced this file, `AGENTS.md` and `CLAUDE.md` with the shipped code. Motion: popover and toast enter at `--duration-fast`; tab panel is `--duration-base` + `--ease-emphasized`, 12px; tooltip has no fade; dialog has no exit animation; drawer and bottom-sheet exits documented; navbar hide uses `--transition-base`; `--ease-in-out` has no consumer; `--transition-slow` removed. Reduced motion: spinners keep turning (they are exempt from the backstop); dialog, toast, tab panel and popover keep 150ms fades. Button `sm` / `md` / `lg` documented at their current ~30 / 40 / 44px desktop heights, with the control-height scale marked not yet applied (owner decision pending); `icon-sm` documented. `--border-control` scoped to checkbox and switch-off (RadioGroup draws no circle). Bottom nav documented as opaque `--bg-elevated` with 0.6875rem / 500 mixed-case labels and a 2.5 active stroke. Skeleton fill is `--overlay-weak` (`--skeleton-bg` is not a defined token). Bottom sheet surface is `--bg-elevated`. Shadow hard rule reworded in all three files: elevation is `--shadow-sm/md/lg` + `--shadow-modal` (dialogs), rings and hairlines use the new `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. §12 now documents the shipped stylelint config (`npm run lint:css`), also added to the `CLAUDE.md` first checks. Avatar `xs` / `2xl`, Input `bare`, removed AppDialogHeader `center` prop, `--text-*` and `--control-h-*` tokens added to the appendix. AGENTS.md token lists updated (four border tokens, motion tokens, `--scrim`, `--z-feedback-trigger`).
 - **2026-10-22, polish pass** (`docs/polish-2026-10/design-md-proposals.md`). This document was rewritten as one body with `tokens.css` as the single numeric source. Added: type ramp with loaded weights (Noto Serif 600 now loaded; `ui`, `label`, `micro` steps), uppercase-only tracking, tabular numerals rule, text-wrap and measure, contrast table and badge fixes, `--border-control`, border tokens collapsed to four, `--bg-raised` redefined as a tint, `--bg-overlay`, one `--scrim`, translucent chrome derived from surfaces, interaction-state table, `hoverOnlyWhenSupported`, focus recipe and ring-color safety net, control heights and `icon-sm`, motion duration/easing tokens, reduced-motion rule, icon ladder, spacing rhythm, async-state matrix, dialog voice (serif titles), sentence-case field labels, stylelint. Removed stale content: retired rails, old dark palette, phantom tokens, the "spring overshoots" claim, the 768px iOS rule, the 4px / 16px radius exceptions.
 - **2026-06, landing redesign** (PR #165). `lp-` system, guilloche, landing dark mode.
