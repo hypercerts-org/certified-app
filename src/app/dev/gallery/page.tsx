@@ -1181,9 +1181,9 @@ export default function GalleryPage() {
 
       {confirmOpen && (
         <ConfirmDialog
-          title="Delete this record?"
+          title="Delete record?"
           message="This action can't be undone."
-          confirmLabel="Delete"
+          confirmLabel="Delete record"
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => setConfirmOpen(false)}
         />
@@ -1256,7 +1256,7 @@ export default function GalleryPage() {
 
       {deleteOpen && (
         <DeleteRecordDialog
-          title="Delete this cert"
+          title="Delete cert?"
           recordName="Climate Action 2026"
           recordTypeLabel="cert"
           onCancel={() => setDeleteOpen(false)}

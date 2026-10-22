@@ -28,9 +28,144 @@ export default function TermsPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
+        <nav aria-label="Contents" className="legal-toc mb-8">
+          <ol>
+            <li>
+              <a href="#about-certified" className="legal-link">
+                1. About Certified
+              </a>
+            </li>
+            <li>
+              <a href="#nature-of-the-services" className="legal-link">
+                2. Nature of the services
+              </a>
+            </li>
+            <li>
+              <a href="#agreement-to-these-terms" className="legal-link">
+                3. Agreement to these Terms
+              </a>
+            </li>
+            <li>
+              <a href="#at-protocol-identity-and-user-responsibility" className="legal-link">
+                4. AT Protocol identity and user responsibility
+              </a>
+            </li>
+            <li>
+              <a href="#group-and-organization-accounts" className="legal-link">
+                5. Group and organization accounts
+              </a>
+            </li>
+            <li>
+              <a href="#intellectual-property" className="legal-link">
+                6. Intellectual property
+              </a>
+            </li>
+            <li>
+              <a href="#acceptable-use" className="legal-link">
+                7. Acceptable use
+              </a>
+            </li>
+            <li>
+              <a href="#infrastructure-and-service-operation" className="legal-link">
+                8. Infrastructure and service operation
+              </a>
+            </li>
+            <li>
+              <a href="#third-party-services" className="legal-link">
+                9. Third-party services
+              </a>
+            </li>
+            <li>
+              <a href="#privacy-and-data-protection" className="legal-link">
+                10. Privacy and data protection
+              </a>
+            </li>
+            <li>
+              <a href="#handling-unlawful-data-and-legal-orders" className="legal-link">
+                11. Handling unlawful data and legal orders
+              </a>
+            </li>
+            <li>
+              <a href="#availability-modification-and-discontinuation" className="legal-link">
+                12. Availability, modification, and discontinuation
+              </a>
+            </li>
+            <li>
+              <a href="#data-persistence-in-federated-systems" className="legal-link">
+                13. Data persistence in federated systems
+              </a>
+            </li>
+            <li>
+              <a href="#account-security" className="legal-link">
+                14. Account security
+              </a>
+            </li>
+            <li>
+              <a href="#termination" className="legal-link">
+                15. Termination
+              </a>
+            </li>
+            <li>
+              <a href="#feedback" className="legal-link">
+                16. Feedback
+              </a>
+            </li>
+            <li>
+              <a href="#disclaimer-of-warranties" className="legal-link">
+                17. Disclaimer of warranties
+              </a>
+            </li>
+            <li>
+              <a href="#limitation-of-liability" className="legal-link">
+                18. Limitation of liability
+              </a>
+            </li>
+            <li>
+              <a href="#indemnification" className="legal-link">
+                19. Indemnification
+              </a>
+            </li>
+            <li>
+              <a href="#consumer-protections" className="legal-link">
+                20. Consumer protections
+              </a>
+            </li>
+            <li>
+              <a href="#validity-and-waiver" className="legal-link">
+                21. Validity and waiver
+              </a>
+            </li>
+            <li>
+              <a href="#changes-to-these-terms" className="legal-link">
+                22. Changes to these Terms
+              </a>
+            </li>
+            <li>
+              <a href="#transfer-of-rights" className="legal-link">
+                23. Transfer of rights
+              </a>
+            </li>
+            <li>
+              <a href="#governing-law" className="legal-link">
+                24. Governing law
+              </a>
+            </li>
+            <li>
+              <a href="#entire-agreement" className="legal-link">
+                25. Entire agreement
+              </a>
+            </li>
+            <li>
+              <a href="#contact" className="legal-link">
+                26. Contact
+              </a>
+            </li>
+          </ol>
+        </nav>
+
         <div className="legal-prose space-y-8">
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About Certified</h2>
+            <h2 id="about-certified" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">1. About Certified</h2>
             <p>
               Certified is operated by the Hypercerts Foundation (&quot;Hypercerts
               Foundation&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;), a Delaware
@@ -60,7 +195,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="nature-of-the-services" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               2. Nature of the services
             </h2>
             <p>
@@ -83,7 +218,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="agreement-to-these-terms" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               3. Agreement to these Terms
             </h2>
             <p>
@@ -101,7 +236,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="at-protocol-identity-and-user-responsibility" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               4. AT Protocol identity and user responsibility
             </h2>
             <p>
@@ -134,7 +269,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="group-and-organization-accounts" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               5. Group and organization accounts
             </h2>
             <p>
@@ -151,7 +286,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="intellectual-property" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               6. Intellectual property
             </h2>
             <p>
@@ -174,7 +309,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">7. Acceptable use</h2>
+            <h2 id="acceptable-use" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">7. Acceptable use</h2>
             <p>
               You may use Certified only for lawful purposes and in a manner that does not
               interfere with the operation or stability of the services.
@@ -208,7 +343,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="infrastructure-and-service-operation" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               8. Infrastructure and service operation
             </h2>
             <p>
@@ -239,7 +374,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="third-party-services" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               9. Third-party services
             </h2>
             <p>
@@ -255,7 +390,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="privacy-and-data-protection" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               10. Privacy and data protection
             </h2>
             <p>
@@ -273,7 +408,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="handling-unlawful-data-and-legal-orders" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               11. Handling unlawful data and legal orders
             </h2>
             <p>
@@ -321,7 +456,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="availability-modification-and-discontinuation" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               12. Availability, modification, and discontinuation
             </h2>
             <p>Certified services are provided on a best-effort basis.</p>
@@ -336,7 +471,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="data-persistence-in-federated-systems" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               13. Data persistence in federated systems
             </h2>
             <p>
@@ -350,7 +485,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="account-security" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               14. Account security
             </h2>
             <p>
@@ -378,7 +513,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">15. Termination</h2>
+            <h2 id="termination" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">15. Termination</h2>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Termination by you</h3>
             <p>
@@ -438,7 +573,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">16. Feedback</h2>
+            <h2 id="feedback" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">16. Feedback</h2>
             <p>
               If you provide suggestions, ideas, or feedback regarding the services, the Hypercerts
               Foundation may use such feedback{" "}
@@ -447,7 +582,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="disclaimer-of-warranties" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               17. Disclaimer of warranties
             </h2>
             <p>
@@ -468,7 +603,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="limitation-of-liability" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               18. Limitation of liability
             </h2>
             <p>
@@ -491,7 +626,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="indemnification" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               19. Indemnification
             </h2>
             <p>
@@ -511,7 +646,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="consumer-protections" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               20. Consumer protections
             </h2>
             <p>
@@ -521,7 +656,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="validity-and-waiver" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               21. Validity and waiver
             </h2>
             <p>
@@ -535,7 +670,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="changes-to-these-terms" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               22. Changes to these Terms
             </h2>
             <p>
@@ -557,7 +692,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="transfer-of-rights" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               23. Transfer of rights
             </h2>
             <p>
@@ -571,7 +706,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">24. Governing law</h2>
+            <h2 id="governing-law" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">24. Governing law</h2>
             <p>
               These Terms are governed by the laws of the State of California, regardless of
               conflict of laws rules.
@@ -589,7 +724,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="entire-agreement" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               25. Entire agreement
             </h2>
             <p>
@@ -601,7 +736,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">26. Contact</h2>
+            <h2 id="contact" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">26. Contact</h2>
             <p>
               For all inquiries — including support, legal notices, Digital Services Act
               communications, and privacy matters:

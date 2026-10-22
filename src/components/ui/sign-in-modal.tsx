@@ -72,13 +72,13 @@ export default function SignInModal({
   const heading = isCertified ? "Your email" : "Your handle"
   const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
   const switchLabel = isCertified
-    ? "Or sign in with ATProto/Bluesky"
+    ? "Or sign in with Bluesky or another AT Protocol account"
     : "Or sign in with Certified"
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
     <AppDialog ariaLabel="Sign in" onClose={onClose}>
-      <AppDialogHeader title="" onClose={onClose} />
+      <AppDialogHeader title="" bare onClose={onClose} />
 
       <AppDialogBody>
         <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[799px]:mb-6">

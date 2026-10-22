@@ -30,7 +30,7 @@ export default function ExploreProfiles({ profiles }: { profiles: FeaturedProfil
             first communities work in ecological regeneration — the network is
             built for any impact domain.
           </p>
-          <Link href="/explore" target="_blank" rel="noopener noreferrer" className="lp-link">
+          <Link href="/explore" className="lp-link">
             Explore the network <LpArrow />
           </Link>
         </header>
@@ -46,8 +46,6 @@ export default function ExploreProfiles({ profiles }: { profiles: FeaturedProfil
               <Link
                 key={curated.did}
                 href={profileUrl(actor)}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="lp-explore__row"
               >
                 <Avatar

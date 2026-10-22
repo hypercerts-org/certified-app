@@ -40,7 +40,6 @@ import Brandmark from "@/components/ui/brandmark";
 import GlobalSearch from "@/components/search/global-search";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tabs, TabList, Tab } from "@/components/ui/tabs";
-import Tooltip from "@/components/ui/tooltip";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -545,22 +544,11 @@ export default function DesktopTopBar() {
               </Popover>
             </div>
           ) : (
-            <Tooltip label="Sign in">
-              <button
-                type="button"
-                onClick={openSignIn}
-                className="desktop-top-bar__signin-btn"
-                aria-label="Sign in"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG sign-in glyph; no optimization benefit from next/image */}
-                <img
-                  src="/brand/signin/certified_signin_black.svg"
-                  alt=""
-                  aria-hidden
-                  className="desktop-top-bar__signin-img"
-                />
-              </button>
-            </Tooltip>
+            // Theme-aware primary Button (inverts in dark mode) replaces the
+            // old black SVG pill, whose edge vanished on the dark canvas.
+            <Button variant="primary" size="sm" onClick={openSignIn}>
+              Sign in
+            </Button>
           )}
         </div>
       </div>

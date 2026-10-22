@@ -10,8 +10,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  /* 44x44 so the mobile-sidebar toggle meets the touch-target minimum;
+     .mobile-sidebar__theme's negative margins keep the glyph in place. */
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: transparent;
   border: none;
@@ -21,8 +23,10 @@
   transition: color var(--transition-fast);
 }
 
-.theme-toggle-cycle:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .theme-toggle-cycle:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .theme-toggle-cycle:focus {
@@ -431,10 +435,9 @@
   margin: 0 auto;
   height: 100%;
   display: flex;
-  /* Center items vertically so the icon+label cluster sits in the
+  /* Center items vertically so each icon + label cluster sits in the
      middle of the 56px bar and the full row is a comfortable tap
-     target. (Previously flex-start left a strip at the bottom that
-     wasn't visually obvious as "tappable".) */
+     target. */
   align-items: center;
   justify-content: space-around;
 }
@@ -453,9 +456,15 @@
   background: none;
   color: var(--fg-muted);
   cursor: pointer;
-  transition: color var(--transition-fast);
+  /* Transform lives on the base rule so the :active press eases back on
+     release instead of snapping. */
+  transition: color var(--transition-fast), transform var(--transition-fast);
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  /* A long-press shouldn't select the label or open the iOS callout. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .bottom-nav__icon-wrap {
@@ -476,19 +485,22 @@
 }
 
 .bottom-nav__item:active {
-  transform: scale(0.92);
-  transition: transform var(--transition-fast);
+  transform: scale(0.95);
 }
 
 .bottom-nav__item--active {
   color: var(--fg-primary);
 }
 
+/* Small label under each icon (matches .desktop-top-bar__icon-label) so
+   ambiguous glyphs like Apps / Home read on touch, where the tooltip is
+   suppressed. */
 .bottom-nav__label {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* Bottom nav is mobile-only chrome (<800px). On desktop the top bar /
@@ -561,8 +573,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .mobile-sidebar__theme {
   flex-shrink: 0;
-  margin-top: -12px;
-  margin-right: -16px;
+  /* Offsets the 44x44 hit area so the icon still sits where the old 36x36
+     box put it (4px extra per side). */
+  margin-top: -16px;
+  margin-right: -20px;
 }
 
 .mobile-sidebar__section {
@@ -612,17 +626,25 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .mobile-sidebar__section--legal {
-  padding: 16px 24px;
+  /* Vertical padding lives on the links (44px tap height) instead. */
+  padding: 2px 24px;
   font-size: 0.75rem;
 }
 
 .mobile-sidebar__legal-link {
+  /* 14px + 16px line + 14px = 44px tap height; the section's own vertical
+     padding shrank to match, so the row looks the same. */
+  display: inline-block;
+  padding: 14px 0;
+  line-height: 1rem;
   color: var(--fg-muted);
   text-decoration: none;
 }
 
-.mobile-sidebar__legal-link:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .mobile-sidebar__legal-link:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .mobile-sidebar__legal-sep {
@@ -1762,9 +1784,26 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: nowrap;
 }
 
-.desktop-top-bar__icon-btn:hover {
-  background: var(--overlay-weak);
+@media (hover: hover) and (pointer: fine) {
+  .desktop-top-bar__icon-btn:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
+}
+
+/* Current section: same treatment as the bottom-nav active item (primary
+   colour + heavier stroke), keyed off the aria-current the component sets
+   from the pathname. */
+.desktop-top-bar__icon-btn[aria-current="page"] {
   color: var(--fg-primary);
+}
+
+.desktop-top-bar__icon-btn[aria-current="page"] svg {
+  stroke-width: 2.25;
+}
+
+.desktop-top-bar__icon-btn[aria-current="page"] .desktop-top-bar__icon-label {
+  font-weight: 600;
 }
 
 .desktop-top-bar__icon-btn:focus-visible {
@@ -1838,38 +1877,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* Icon-only "Sign in" affordance — uses the Certified signin
-   brandmark glyph. Padding kept for tap area; no border/fill. */
-.desktop-top-bar__signin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.desktop-top-bar__signin-btn:hover {
-  opacity: 0.85;
-}
-
-.desktop-top-bar__signin-btn:active {
-  transform: scale(0.97);
-}
-
-.desktop-top-bar__signin-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.desktop-top-bar__signin-img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
+/* The signed-out "Sign in" affordance is now a canonical
+   <Button variant="primary" size="sm"> (theme-aware); the old
+   .desktop-top-bar__signin-btn / __signin-img SVG-pill rules were removed. */
 
 /* Back affordance rendered in the row-2 slot on cert / project detail
    pages. Left-aligned, sits at the same height as the tab strip. */
@@ -2022,8 +2032,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .profile-sidebar__avatar {
-  /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
-     !w-[240px]); this wrapper just provides the layout slot. */
+  /* The inner <Avatar> is sized via Tailwind override (!h-[160px]
+     !w-[160px]); this wrapper just provides the layout slot. */
   display: inline-flex;
 }
 
@@ -2045,11 +2055,21 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-primary);
   margin: 0;
   line-height: 1.2;
-  /* A display name with no spaces (e.g. a handle used as the name) can't
-     wrap — cut it off with an ellipsis rather than overflow. */
-  white-space: nowrap;
+  /* The page's H1: wrap long names (breaking unspaced ones anywhere)
+     and clamp at three lines; the element carries a title attribute
+     with the full name for the clamped case. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Read-mode only: the edit-mode wrapper (a div holding the Input) keeps
+   block layout. */
+h2.profile-sidebar__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .profile-sidebar__handle {
@@ -2494,9 +2514,11 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.profile-overview__stat:hover {
-  border-color: var(--border-hover-soft);
-  background: var(--bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .profile-overview__stat:hover {
+    border-color: var(--border-hover-soft);
+    background: var(--bg-sunken);
+  }
 }
 
 .profile-overview__stat-label {
@@ -2514,15 +2536,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-width: 0;
 }
 
-.profile-overview__stat-split {
+/* Figures sit side by side, packed from the left; each one stacks its
+   descriptor ("created"/"received"/…) directly under the number. */
+.profile-overview__stat-figures {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 24px;
 }
 
-.profile-overview__stat-split--solo {
-  justify-content: flex-start;
+.profile-overview__stat-split {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .profile-overview__stat-value {
@@ -3223,6 +3248,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   .legal-page :is(h3, .text-h3) {
     font-size: 1.125rem;
     line-height: 1.35;
+  }
+  /* Help's page title is an h2 (the chrome owns the h1) styled as text-h1;
+     keep it on the h1 step rather than the h2 one above. */
+  .legal-page h2.legal-page__title {
+    font-size: 1.75rem;
+    line-height: 1.25;
   }
   /* Trim list indentation so deeply-nested items keep usable width on phones
      (Tailwind `pl-6` = 24px is generous for a ~300px column). */

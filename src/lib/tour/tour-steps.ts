@@ -121,7 +121,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/apps",
     anchor: "nav-apps",
     title: "Apps",
-    body: "This is where you can see all the apps that are built with Certified on AT Protocol.",
+    body: "Other apps that work with your Certified account. Sign in to any of them with the same account.",
     placement: "bottom",
     platform: "desktop",
   },

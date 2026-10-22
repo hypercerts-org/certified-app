@@ -128,6 +128,7 @@ export function AppDialogHeader({
   onClose,
   disabled = false,
   center = false,
+  bare = false,
 }: {
   title: ReactNode
   /** When omitted the X button is hidden. Use for alertdialog
@@ -137,7 +138,28 @@ export function AppDialogHeader({
   /** Center the title. Uses symmetric horizontal padding so the title
    *  is centered in the modal while leaving room for the close X. */
   center?: boolean
+  /** Title-less dialogs (e.g. sign-in, which leads with a brandmark):
+   *  drop the title row and its hairline, keeping only the close X and
+   *  enough top space for it. Other dialogs are unaffected. */
+  bare?: boolean
 }) {
+  // Canonical icon button: 44px tap target on mobile, 40px on desktop.
+  // tooltip="" because a body-portaled tooltip would render beneath the
+  // top-layer <dialog>.
+  const closeButton = onClose ? (
+    <Button
+      variant="ghost"
+      size="icon"
+      tooltip=""
+      className="absolute right-1 top-1"
+      onClick={onClose}
+      aria-label="Close"
+      disabled={disabled}
+    >
+      <X size={18} aria-hidden />
+    </Button>
+  ) : null
+  if (bare) return <div className="h-12 shrink-0">{closeButton}</div>
   return (
     <div
       className={`flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pt-5 pb-3 ${
@@ -151,22 +173,7 @@ export function AppDialogHeader({
       >
         {title}
       </span>
-      {onClose ? (
-        // Canonical icon button: 44px tap target on mobile, 40px on
-        // desktop. tooltip="" because a body-portaled tooltip would render
-        // beneath the top-layer <dialog>.
-        <Button
-          variant="ghost"
-          size="icon"
-          tooltip=""
-          className="absolute right-1 top-1"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={disabled}
-        >
-          <X size={18} aria-hidden />
-        </Button>
-      ) : null}
+      {closeButton}
     </div>
   )
 }

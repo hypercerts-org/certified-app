@@ -7,12 +7,14 @@ import { Moon, Sun } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import Avatar from "@/components/ui/avatar";
+import Button from "@/components/ui/button";
 import { getInitials } from "@/lib/utils/initials";
 
 /**
- * Landing light/dark switch, styled to match the sign-in button (off-white
- * pill, hairline border). Binary on purpose — the full Light/Dark/System
- * control lives in Settings. The icon reflects the CURRENT theme (Sun in
+ * Landing light/dark switch: the canonical icon <Button>, re-skinned via
+ * .lp-topbar__theme to match the sign-in button (off-white, hairline
+ * border). Binary on purpose — the full Light/Dark/System control lives in
+ * Settings. The icon reflects the CURRENT theme (Sun in
  * light, Moon in dark), matching the app's other theme controls. Renders a
  * stable Sun until mounted so SSR (default light) and the client agree.
  */
@@ -31,17 +33,15 @@ function LandingThemeToggle() {
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="secondary"
+      size="icon"
       className="lp-topbar__theme"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={label}
-      title={label}
     >
-      <span className="lp-topbar__theme-icon" aria-hidden="true">
-        {isDark ? <Moon size={16} /> : <Sun size={16} />}
-      </span>
-    </button>
+      {isDark ? <Moon size={16} aria-hidden /> : <Sun size={16} aria-hidden />}
+    </Button>
   );
 }
 

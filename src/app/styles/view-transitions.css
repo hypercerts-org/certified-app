@@ -58,18 +58,36 @@ html[data-vt-dir="back"]::view-transition-new(root) {
   animation: vt-slide-in-left 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Persistent mobile chrome stays put while the page slides: the fixed
+   navbar and bottom nav get their own snapshot groups (so they're cut out
+   of `root`) and those groups don't move. Names are scoped to the
+   directional transition itself (`data-vt-dir` is only set while one runs),
+   so they never linger on the live page; each element mounts once in the
+   root layout, and both unmount (or are display:none) at >=800px where the
+   provider never starts a slide, so a name can't be duplicated. */
+html[data-vt-dir] .navbar {
+  view-transition-name: site-navbar;
+}
+html[data-vt-dir] .bottom-nav {
+  view-transition-name: bottom-nav;
+}
+html[data-vt-dir]::view-transition-group(site-navbar),
+html[data-vt-dir]::view-transition-group(bottom-nav) {
+  animation: none;
+}
+
 /* ---------- Desktop tab-content transition ----------
    The full-page slide above is mobile-only (the provider navigates plainly
    on desktop). On desktop, switching tabs animates only the content panel —
    the chrome and the surface's own sidebar/aside stay put. TabPanelTransition
    re-mounts the panel with a direction class matching the tab's position in
    its strip: a tab further right slides the new content in from the right.
-   A "contained" slide (fuller offset, same directional feel as the mobile
-   page slide) scoped to the content panel so the chrome + title stay put. */
+   Tab switches happen tens of times a session, so the slide is short and
+   travels only 12px: enough to hint direction without reading as a delay. */
 @keyframes tab-panel-in-right {
   from {
     opacity: 0;
-    transform: translateX(64px);
+    transform: translateX(12px);
   }
   to {
     opacity: 1;
@@ -80,7 +98,7 @@ html[data-vt-dir="back"]::view-transition-new(root) {
 @keyframes tab-panel-in-left {
   from {
     opacity: 0;
-    transform: translateX(-64px);
+    transform: translateX(-12px);
   }
   to {
     opacity: 1;
@@ -97,10 +115,10 @@ html[data-vt-dir="back"]::view-transition-new(root) {
 
 @media (min-width: 800px) {
   .tab-panel--from-right {
-    animation: tab-panel-in-right 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: tab-panel-in-right 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .tab-panel--from-left {
-    animation: tab-panel-in-left 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: tab-panel-in-left 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }
 

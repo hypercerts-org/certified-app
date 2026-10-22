@@ -8,7 +8,6 @@ import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility";
-import Tooltip from "@/components/ui/tooltip";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -46,37 +45,37 @@ export default function BottomNav() {
     { key: "apps", label: "Apps", icon: LayoutGrid, href: "/apps", onClick: undefined, active: pathname === "/apps", tour: "nav-apps" },
   ];
 
+  // Each item carries a visible label (the tooltip is suppressed on touch,
+  // and glyphs like Apps / Home are ambiguous on their own), so the text
+  // is the accessible name and no Tooltip / aria-label is needed.
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
       <div className="bottom-nav__inner">
         {links.map(({ key, label, icon: Icon, href, onClick, active, tour }) => (
-          <Tooltip key={key} label={label} className="flex-1 h-full">
-            <Link
-              href={href}
-              className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
-              onClick={onClick}
-              aria-label={label}
-              aria-current={active ? "page" : undefined}
-              data-tour={tour}
-            >
-              <span className="bottom-nav__icon-wrap">
-                <Icon size={24} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
-              </span>
-            </Link>
-          </Tooltip>
-        ))}
-        <Tooltip label="Feedback" className="flex-1 h-full">
-          <button
-            type="button"
-            className="bottom-nav__item"
-            onClick={() => openFeedback()}
-            aria-label="Feedback"
+          <Link
+            key={key}
+            href={href}
+            className={`bottom-nav__item ${active ? "bottom-nav__item--active" : ""}`}
+            onClick={onClick}
+            aria-current={active ? "page" : undefined}
+            data-tour={tour}
           >
             <span className="bottom-nav__icon-wrap">
-              <MessageSquare size={24} strokeWidth={1.5} aria-hidden />
+              <Icon size={24} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
             </span>
-          </button>
-        </Tooltip>
+            <span className="bottom-nav__label">{label}</span>
+          </Link>
+        ))}
+        <button
+          type="button"
+          className="bottom-nav__item"
+          onClick={() => openFeedback()}
+        >
+          <span className="bottom-nav__icon-wrap">
+            <MessageSquare size={24} strokeWidth={1.5} aria-hidden />
+          </span>
+          <span className="bottom-nav__label">Feedback</span>
+        </button>
       </div>
     </nav>
   );

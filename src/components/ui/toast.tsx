@@ -69,6 +69,8 @@ export interface ToastOptions {
 
 interface ToastRecord extends ToastOptions {
   id: string;
+  /** Set on dismiss; the item plays its exit transition, then is removed. */
+  leaving?: boolean;
 }
 
 interface ToastContextValue {
@@ -81,6 +83,16 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const DEFAULT_DURATION = 6000;
+// Exit transition length (opacity + 8px drop). The removal backstop waits a
+// little longer in case `transitionend` never fires (hidden tab, jsdom).
+const EXIT_MS = 150;
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 /**
  * Access the toast API. Must be called from inside a <ToastProvider>.
@@ -98,9 +110,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // Monotonic counter so ids are unique even within the same tick.
   const counter = useRef(0);
 
-  const dismiss = useCallback((id: string) => {
+  // Final removal, called once the exit transition has played.
+  const remove = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  // Dismiss marks the toast `leaving` so it can fade + drop out before it
+  // unmounts (otherwise it vanishes and the stack jumps). Reduced motion
+  // skips the exit and removes it at once.
+  const dismiss = useCallback(
+    (id: string) => {
+      if (prefersReducedMotion()) {
+        remove(id);
+        return;
+      }
+      setToasts((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
+      );
+    },
+    [remove]
+  );
 
   const toast = useCallback((options: ToastOptions) => {
     const id = `toast-${counter.current++}`;
@@ -116,7 +145,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <Toaster toasts={toasts} onDismiss={dismiss} />
+      <Toaster toasts={toasts} onDismiss={dismiss} onRemove={remove} />
     </ToastContext.Provider>
   );
 }
@@ -129,9 +158,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 function Toaster({
   toasts,
   onDismiss,
+  onRemove,
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   // SSR portal guard: stay null until mounted on the client so the
@@ -155,7 +186,12 @@ function Toaster({
           users who ask for reduced motion. */}
       <style>{TOAST_KEYFRAMES}</style>
       {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
+        <ToastItem
+          key={t.id}
+          toast={t}
+          onDismiss={onDismiss}
+          onRemove={onRemove}
+        />
       ))}
     </div>,
     document.body
@@ -199,12 +235,15 @@ const variantIcon: Record<ToastVariant, React.ReactNode> = {
 function ToastItem({
   toast,
   onDismiss,
+  onRemove,
 }: {
   toast: ToastRecord;
   onDismiss: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const {
     id,
+    leaving = false,
     title,
     description,
     variant = "default",
@@ -241,25 +280,42 @@ function ToastItem({
   );
 
   useEffect(() => {
-    if (!autoDismiss) return;
+    if (!autoDismiss || leaving) return;
     remainingRef.current = duration;
     startTimer(duration);
     return clearTimer;
-  }, [autoDismiss, duration, startTimer, clearTimer]);
+  }, [autoDismiss, leaving, duration, startTimer, clearTimer]);
+
+  // Exit: remove on transitionend, with a timeout backstop for when the
+  // event never arrives (background tab, no layout in tests).
+  useEffect(() => {
+    if (!leaving) return;
+    const backstop = setTimeout(() => onRemove(id), EXIT_MS + 100);
+    return () => clearTimeout(backstop);
+  }, [leaving, id, onRemove]);
+
+  const handleTransitionEnd = useCallback(
+    (e: React.TransitionEvent<HTMLDivElement>) => {
+      if (leaving && e.target === e.currentTarget && e.propertyName === "opacity") {
+        onRemove(id);
+      }
+    },
+    [leaving, id, onRemove]
+  );
 
   const pause = useCallback(() => {
-    if (!autoDismiss || timerRef.current === null) return;
+    if (!autoDismiss || leaving || timerRef.current === null) return;
     remainingRef.current = Math.max(
       0,
       remainingRef.current - (Date.now() - startedRef.current)
     );
     clearTimer();
-  }, [autoDismiss, clearTimer]);
+  }, [autoDismiss, leaving, clearTimer]);
 
   const resume = useCallback(() => {
-    if (!autoDismiss || timerRef.current !== null) return;
+    if (!autoDismiss || leaving || timerRef.current !== null) return;
     startTimer(remainingRef.current);
-  }, [autoDismiss, startTimer]);
+  }, [autoDismiss, leaving, startTimer]);
 
   const handleAction = useCallback(() => {
     action?.onClick();
@@ -279,7 +335,14 @@ function ToastItem({
       onMouseLeave={resume}
       onFocus={pause}
       onBlur={resume}
-      className={`pointer-events-auto flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] animate-[toast-in_150ms_ease-out] motion-reduce:animate-none ${variantChrome[variant]}`}
+      onTransitionEnd={handleTransitionEnd}
+      // While leaving, the toast is out of the a11y tree and click-through.
+      aria-hidden={leaving || undefined}
+      className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
+        leaving
+          ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"
+          : "pointer-events-auto animate-[toast-in_150ms_ease-out] motion-reduce:animate-none"
+      } ${variantChrome[variant]}`}
     >
       {variantIcon[variant]}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
