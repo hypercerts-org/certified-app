@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "hypercerts": {
+      "source": "hypercerts-org/skills",
+      "sourceType": "github",
+      "skillPath": "skills/hypercerts/SKILL.md",
+      "computedHash": "ddac9d5359de29a885e37a62e6325e88d93754b597aa4659b431b1155ca8af13"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
