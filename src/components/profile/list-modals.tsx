@@ -263,10 +263,15 @@ export function PasteUrisModal({
     // at-URI. Handle resolution (record links by handle, account
     // handles) is a network round-trip, so it fans out in parallel.
     const normalized = await Promise.all(
-      tokens.map(async (token) => ({
-        token,
-        uri: await pastedTokenToItemUri(token, type),
-      })),
+      tokens.map(async (token) => {
+        // A malformed link (e.g. bad percent-encoding) is a per-row error,
+        // not a reason to leave the modal stuck in `running`.
+        try {
+          return { token, uri: await pastedTokenToItemUri(token, type) }
+        } catch {
+          return { token, uri: null }
+        }
+      }),
     )
     const seen = new Set<string>()
     const initial: ParseRow[] = []

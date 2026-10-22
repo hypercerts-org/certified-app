@@ -336,8 +336,10 @@ function ToastItem({
       onFocus={pause}
       onBlur={resume}
       onTransitionEnd={handleTransitionEnd}
-      // While leaving, the toast is out of the a11y tree and click-through.
-      aria-hidden={leaving || undefined}
+      // While leaving, the toast is inert: out of the a11y tree, unfocusable
+      // and click-through. Unlike aria-hidden, inert is allowed on a subtree
+      // that still holds focus (the dismiss button that was just pressed).
+      inert={leaving || undefined}
       className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
         leaving
           ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"

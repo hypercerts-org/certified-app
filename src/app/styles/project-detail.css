@@ -228,7 +228,7 @@
 /* ---------- Title (inside head-bar) ----------
 
    Sized to fit in the head-bar row alongside the byline; smaller
-   than the previous full-bleed hero title. The page's H1, so a long
+   than the previous full-bleed hero title. The page's main heading, so a long
    title wraps (breaking unspaced words anywhere) and clamps at three
    lines rather than truncating to one; the element's title attribute
    carries the full text. */

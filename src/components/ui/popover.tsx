@@ -445,12 +445,13 @@ export function PopoverContent({
       const menu = contentRef.current;
       if (!trigger || !menu) return;
       const triggerRect = trigger.getBoundingClientRect();
-      const menuRect = menu.getBoundingClientRect();
-      const menuW = matchTriggerWidth ? triggerRect.width : menuRect.width;
+      // offsetWidth/Height ignore transforms, so the @starting-style
+      // entry scale doesn't shrink the measured size.
+      const menuW = matchTriggerWidth ? triggerRect.width : menu.offsetWidth;
       const { left, top } = computePortalCoords(
         triggerRect,
         menuW,
-        menuRect.height,
+        menu.offsetHeight,
         side,
         align,
         resolvedSideOffset,

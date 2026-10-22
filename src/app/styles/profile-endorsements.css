@@ -108,7 +108,10 @@
   .profile-endorsements-v2__controls .profile-endorsements-v2__search,
   .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
   .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add,
-  .endorsement-lists .endorsement-lists__sort-btn {
+  .endorsement-lists .endorsement-lists__sort-btn,
+  /* Positioned so it paints above the pill's ::before hit area, keeping
+     caret placement, selection and paste on the input itself. */
+  .profile-endorsements-v2__controls .profile-endorsements-v2__search-input {
     position: relative;
   }
   .profile-endorsements-v2__controls .profile-endorsements-v2__search::before,

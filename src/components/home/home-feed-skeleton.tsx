@@ -24,13 +24,11 @@ export default function HomeFeedSkeleton() {
               </div>
             </div>
             <div className="home-feed__card-body">
-              {/* Same box as .home-feed__card-image: square, capped
-                  at 400px on desktop. */}
-              <Skeleton
-                variant="box"
-                width="min(100%, 400px)"
-                style={{ height: "auto", aspectRatio: "1 / 1" }}
-              />
+              {/* Same box as .home-feed__card-image: square, full width
+                  on mobile, capped at 400px on desktop. */}
+              <div className="home-feed__card-image">
+                <Skeleton variant="box" height="100%" />
+              </div>
               <Skeleton variant="line" width="70%" height={20} />
               <Skeleton variant="line" width="90%" height={14} />
             </div>

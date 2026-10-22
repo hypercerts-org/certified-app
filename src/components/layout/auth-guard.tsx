@@ -6,6 +6,7 @@ import { Lock, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import type { EmptyStateIcon } from "@/components/ui/empty-state";
+import { usePageTitle } from "@/lib/navbar-context";
 import SignedOutPrompt from "./signed-out-prompt";
 
 export interface AuthGuardProps {
@@ -18,6 +19,8 @@ export interface AuthGuardProps {
 }
 
 interface SignedOutCopy {
+  /** Chrome title (the page's h1) while the guarded page isn't mounted. */
+  pageTitle: string;
   icon: EmptyStateIcon;
   title: string;
   description: string;
@@ -29,16 +32,25 @@ interface SignedOutCopy {
 function signedOutCopyFor(pathname: string | null): SignedOutCopy {
   if (pathname === "/settings" || pathname?.startsWith("/settings/")) {
     return {
+      pageTitle: "Settings",
       icon: Settings,
       title: "Sign in to manage your settings",
       description: "Your account, profile and privacy settings live here once you sign in to Certified.",
     };
   }
   return {
+    pageTitle: "Sign in",
     icon: Lock,
     title: "Sign in to continue",
     description: "This page is only available once you sign in to Certified.",
   };
+}
+
+// The guarded page normally sets the chrome title; it isn't mounted while
+// signed out, so set it here to keep the page's single h1.
+function SignedOutPageTitle({ title }: { title: string }) {
+  usePageTitle(title);
+  return null;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({
@@ -66,11 +78,15 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   if (!isAuthenticated) {
     const copy = signedOutCopyFor(pathname);
     return (
-      <SignedOutPrompt
-        icon={copy.icon}
-        title={signedOutTitle ?? copy.title}
-        description={signedOutDescription ?? copy.description}
-      />
+      <>
+        <SignedOutPageTitle title={copy.pageTitle} />
+        <SignedOutPrompt
+          icon={copy.icon}
+          title={signedOutTitle ?? copy.title}
+          description={signedOutDescription ?? copy.description}
+          headingLevel={2}
+        />
+      </>
     );
   }
 

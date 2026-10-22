@@ -133,7 +133,10 @@
      overlaps the neighbouring control. The search pill is a <label>, so
      its extended area still focuses the input. */
   .profile-groups__controls .profile-groups__search,
-  .profile-groups__controls .profile-groups__sort-btn {
+  .profile-groups__controls .profile-groups__sort-btn,
+  /* Positioned so it paints above the pill's ::before hit area, keeping
+     caret placement, selection and paste on the input itself. */
+  .profile-groups__controls .profile-groups__search-input {
     position: relative;
   }
   .profile-groups__controls .profile-groups__search::before,

@@ -2055,7 +2055,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-primary);
   margin: 0;
   line-height: 1.2;
-  /* The page's H1: wrap long names (breaking unspaced ones anywhere)
+  /* The page's main heading: wrap long names (breaking unspaced ones anywhere)
      and clamp at three lines; the element carries a title attribute
      with the full name for the clamped case. */
   white-space: normal;
