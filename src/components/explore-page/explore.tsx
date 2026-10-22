@@ -1278,7 +1278,7 @@ function AllSection({
       ) : error ? (
         <EmptyState
           variant="inline"
-          title={`Couldn’t load ${title.toLowerCase()}.`}
+          title={`Couldn't load ${title.toLowerCase()}.`}
         >
           {onRetry ? (
             <Button variant="ghost" size="sm" onClick={onRetry}>

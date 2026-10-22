@@ -370,7 +370,7 @@ export default function FundingReceiptDetailModal({
           <div className="funding-receipt-detail__footer">
             <div className="funding-receipt-detail__delete-confirm">
               <span className="funding-receipt-detail__delete-prompt">
-                Delete this payment receipt?
+                Delete payment receipt?
               </span>
               <Button
                 variant="secondary"
@@ -386,7 +386,7 @@ export default function FundingReceiptDetailModal({
                 loading={deleting}
                 onClick={() => void handleDelete()}
               >
-                Delete
+                Delete receipt
               </Button>
             </div>
           </div>

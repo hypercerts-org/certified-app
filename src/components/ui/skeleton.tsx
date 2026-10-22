@@ -39,8 +39,11 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   animate?: boolean;
 }
 
+// `animate-skeleton` (tailwind.config.ts) = 200ms-delayed fade-in, then
+// the shared 1.5s pulse. Reduced motion drops both: the bar renders
+// static and immediately.
 const baseClass =
-  "bg-[var(--overlay-weak)] rounded animate-pulse motion-reduce:animate-none";
+  "bg-[var(--overlay-weak)] rounded animate-skeleton motion-reduce:animate-none";
 
 const cssFor = (
   variant: SkeletonVariant,

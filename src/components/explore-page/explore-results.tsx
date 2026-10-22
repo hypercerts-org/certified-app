@@ -262,7 +262,7 @@ function LoadError({
   return (
     <EmptyState
       icon={AlertCircle}
-      title={`Couldn’t load ${kindLabel(kind)}`}
+      title={`Couldn't load ${kindLabel(kind)}`}
       description="Something went wrong on our side. Try again in a moment."
     >
       <Button variant="secondary" size="sm" onClick={onRetry}>

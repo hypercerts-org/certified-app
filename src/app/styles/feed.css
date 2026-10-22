@@ -661,24 +661,22 @@
   color: var(--fg-muted) !important;
 }
 
-/* Map skeleton (shown while the Leaflet chunk is loading) */
+/* Map skeleton (shown while the Leaflet chunk is loading). Uses the
+   shared skeleton recipe from tailwind.config.ts (`animate-skeleton`:
+   200ms-delayed fade-in, then the 1.5s `pulse`) so it matches every
+   <Skeleton> instead of running its own keyframe. */
 .map-skeleton {
   width: 100%;
   border-radius: var(--radius);
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  animation: map-skeleton-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes map-skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  animation: skeleton-in 150ms ease-out 200ms both,
+    pulse 1.5s ease-in-out 350ms infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .map-skeleton {
     animation: none;
-    opacity: 0.5;
   }
 }
 
@@ -789,18 +787,6 @@
   background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-}
-
-.endorsements-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
-  padding: 24px;
-  color: var(--fg-muted);
-  font-size: 0.875rem;
-  margin: 0;
-  text-align: center;
 }
 
 .endorsements-list {

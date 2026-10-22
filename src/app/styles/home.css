@@ -537,10 +537,12 @@
   margin-top: 4px;
 }
 
-.home-feed__loading {
+/* Follow-list error banner: message + inline Retry button. */
+.home-feed__error {
   display: flex;
-  justify-content: center;
-  padding: 48px 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 
 /* ---- Body: record image + headline + description + meta ---- */
@@ -593,9 +595,15 @@ a.home-feed__card-body:hover .home-feed__card-title {
   color: var(--fg-primary);
   line-height: 1.3;
   min-width: 0;
+  /* Two-line clamp: long titles stay readable instead of cutting at
+     the first line. */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .home-feed__card-desc {
@@ -648,9 +656,10 @@ a.home-feed__card-body:hover .home-feed__card-title {
     font-size: 1.25rem;
   }
 
+  /* Capped width, but flush with the title / text column's left
+     edge (not centred) so image and title line up. */
   .home-feed__card-image {
     width: min(100%, 400px);
-    margin-inline: auto;
   }
 }
 

@@ -14,7 +14,6 @@ import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import EmptyState from "@/components/ui/empty-state"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
@@ -35,6 +34,7 @@ import {
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
+import HomeFeedSkeleton from "./home-feed-skeleton"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
 
 const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
@@ -115,6 +115,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     subjects: followedDids,
     isLoading: followsLoading,
     error: followsError,
+    refetch: refetchFollows,
   } = useFollowing(activeDid)
   // Default state has every visible Hyperlabel tier checked AND
   // "Not labeled yet" checked — same default as the explore page so
@@ -285,6 +286,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
       <HomeFeedBody
         followsLoading={followsLoading}
         followsError={!!followsError}
+        onRetryFollows={refetchFollows}
         followedCount={effectiveFollows.size}
         isLoading={isLoading}
         error={error}
@@ -305,6 +307,7 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
 const HomeFeedBody = memo(function HomeFeedBody({
   followsLoading,
   followsError,
+  onRetryFollows,
   followedCount,
   isLoading,
   error,
@@ -315,6 +318,7 @@ const HomeFeedBody = memo(function HomeFeedBody({
 }: {
   followsLoading: boolean
   followsError: boolean
+  onRetryFollows: () => void
   followedCount: number
   isLoading: boolean
   error: string | null
@@ -353,16 +357,17 @@ const HomeFeedBody = memo(function HomeFeedBody({
   }, [items.length, hasMore, isLoading, isLoadingMore, loadMore])
 
   if (followsLoading || isLoading) {
-    return (
-      <div className="home-feed__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
+    return <HomeFeedSkeleton />
   }
   if (followsError) {
     return (
       <Banner variant="warning">
-        Could not load your follow list. Please try again later.
+        <span className="home-feed__error">
+          Could not load your follow list.
+          <Button variant="secondary" size="sm" onClick={onRetryFollows}>
+            Retry
+          </Button>
+        </span>
       </Banner>
     )
   }

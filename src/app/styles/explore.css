@@ -166,15 +166,14 @@
 
 .explore__filter--active,
 .explore__filter--active:hover {
-  /* The hover style on the generic filter dimmed the background
-     to bg-sunken while the active style inverts the text — producing
-     unreadable text mid-hover. Keep the fg-primary fill on hover when
-     the filter is already active. Text is --bg-canvas (not a fixed
-     white) so it inverts with the fg-primary fill: light in light mode,
-     dark in dark mode. A fixed white was white-on-white in dark mode,
-     where --fg-primary is itself near-white. */
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
+  /* Subtle selected state shared with .sx-menu__item--active: an
+     --overlay-medium fill (one step past the --bg-sunken hover, and
+     theme-aware so it lifts rather than inverts in dark mode) with
+     --fg-primary text at 600. Held on hover so the selection doesn't
+     flicker back to the hover fill. */
+  background: var(--overlay-medium);
+  color: var(--fg-primary);
+  font-weight: 600;
 }
 
 /* ---------- Main pane ---------- */

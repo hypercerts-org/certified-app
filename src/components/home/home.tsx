@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useId } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -136,14 +136,15 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
   // Profile detail accepts the DID under the [handle] slot, so
   // "Show more" stays correct even before we've resolved the handle.
   const profileBase = profileUrl(activeDid)
+  const profileTitleId = useId()
 
   return (
     <>
-      <section className="home-section">
+      <section className="home-section" aria-labelledby={profileTitleId}>
         <header className="home-section__head">
           <User size={14} strokeWidth={1.75} aria-hidden />
           <Link href={profileBase} className="home-section__title-link">
-            <h2 className="home-section__title">My profile</h2>
+            <span id={profileTitleId} className="home-section__title">My profile</span>
           </Link>
         </header>
       </section>
@@ -214,12 +215,16 @@ function SidebarSection<T>({
   // "Show all" only makes sense when there are extras to reveal —
   // hide when the preview already contains everything.
   const hasMore = total > items.length
+  // The title is an eyebrow nav label, not a document heading (it sits
+  // below the canonical type scale on purpose) — so it's a <span>, and
+  // the section takes its accessible name from it via aria-labelledby.
+  const titleId = useId()
   return (
-    <section className="home-section">
+    <section className="home-section" aria-labelledby={titleId}>
       <header className="home-section__head">
         <Icon size={14} strokeWidth={1.75} aria-hidden />
         <Link href={moreHref} className="home-section__title-link">
-          <h2 className="home-section__title">{title}</h2>
+          <span id={titleId} className="home-section__title">{title}</span>
         </Link>
         {total > 0 ? (
           <Badge variant="count-bare" className="home-section__count">

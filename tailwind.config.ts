@@ -71,6 +71,26 @@ export default {
       borderRadius: {
         DEFAULT: "2px",
       },
+      /* One pulse recipe app-wide (DESIGN.md): opacity 1 -> .5 -> 1 over
+         1.5s. `animate-skeleton` is what <Skeleton> uses: it stays
+         invisible for 200ms, fades in over 150ms, then pulses — so a
+         sub-200ms load never flashes a placeholder. `.map-skeleton` in
+         feed.css repeats the same value. */
+      keyframes: {
+        pulse: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: ".5" },
+        },
+        "skeleton-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+      },
+      animation: {
+        pulse: "pulse 1.5s ease-in-out infinite",
+        skeleton:
+          "skeleton-in 150ms ease-out 200ms both, pulse 1.5s ease-in-out 350ms infinite",
+      },
     },
   },
   plugins: [],

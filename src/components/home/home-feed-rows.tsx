@@ -63,13 +63,14 @@ function FeedCardHead({
   createdAt: string
 }) {
   const { info: lookup } = useAuthorInfo(actor)
-  const actorName =
-    lookup?.displayName ||
-    actorProfile.displayName ||
-    lookup?.handle ||
-    actorProfile.handle ||
-    actor.slice(0, 16)
+  const actorDisplayName = lookup?.displayName || actorProfile.displayName || null
   const actorHandle = lookup?.handle || actorProfile.handle || null
+  // No display name → the @handle takes the name slot and the separate
+  // handle row is dropped, so the handle never shows twice.
+  const actorName =
+    actorDisplayName ||
+    (actorHandle ? `@${actorHandle}` : null) ||
+    actor.slice(0, 16)
   const actorAvatar =
     lookup?.avatarUrl ||
     buildAvatarUrlFromCid(actorProfile.did, actorProfile.avatarCid)
@@ -95,7 +96,8 @@ function FeedCardHead({
       </Link>
       <div className="home-feed__card-head-meta">
         {/* Row 1: display name + relative time pinned right. The
-            @handle gets its own second row below the name. */}
+            @handle gets its own second row below the name (only when
+            there is a display name to sit under). */}
         <p className="home-feed__byline">
           <Link href={profileHref} className="home-feed__actor" dir="auto">
             {actorName}
@@ -108,7 +110,7 @@ function FeedCardHead({
             {formatRelativeTime(createdAt)}
           </time>
         </p>
-        {actorHandle ? (
+        {actorDisplayName && actorHandle ? (
           <p className="home-feed__handle">@{actorHandle}</p>
         ) : null}
         <p className="home-feed__sentence">{action}</p>

@@ -21,6 +21,15 @@ import ForceGraph2D, {
   type LinkObject,
 } from "react-force-graph-2d"
 import Link from "next/link"
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Maximize,
+  Maximize2,
+  Minimize,
+  Minus,
+  Plus,
+} from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
@@ -954,7 +963,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             if (fg) fg.zoom(fg.zoom() * 1.4, camMs(300))
           }}
         >
-          +
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
@@ -965,7 +974,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             if (fg) fg.zoom(fg.zoom() / 1.4, camMs(300))
           }}
         >
-          −
+          <Minus size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
@@ -973,7 +982,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           aria-label="Fit graph to view"
           onClick={() => fgRef.current?.zoomToFit(camMs(400), 40)}
         >
-          ⤢
+          <Maximize2 size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
@@ -981,33 +990,11 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           onClick={toggleFullscreen}
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            {isFullscreen ? (
-              <>
-                <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-              </>
-            ) : (
-              <>
-                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-              </>
-            )}
-          </svg>
+          {isFullscreen ? (
+            <Minimize size={16} strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Maximize size={16} strokeWidth={1.75} aria-hidden />
+          )}
         </Button>
       </div>
 
@@ -1045,19 +1032,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
               aria-expanded={!panelCollapsed}
               onClick={() => setPanelCollapsed((v) => !v)}
             >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
+              <ChevronDown size={16} strokeWidth={1.75} aria-hidden />
             </Button>
           </div>
 
@@ -1123,21 +1098,12 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             rel="noopener noreferrer"
           >
             <span>View profile</span>
-            <svg
+            <ArrowUpRight
               className="viz__profile-link-icon"
-              viewBox="0 0 24 24"
-              width="14"
-              height="14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M7 17 17 7" />
-              <path d="M9 7h8v8" />
-            </svg>
+              size={16}
+              strokeWidth={1.75}
+              aria-hidden
+            />
           </Link>
           </>
           )}
