@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "lint:css": "stylelint \"src/**/*.css\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -59,6 +60,7 @@
     "jsdom": "29.1.1",
     "playwright": "1.60.0",
     "postcss": "^8.5.10",
+    "stylelint": "16.26.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "4.1.6"

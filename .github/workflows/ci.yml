@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint CSS (design-system hard rules)
+        run: npm run lint:css
+
       - name: Type check
         run: npx tsc --noEmit
 
