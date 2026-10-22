@@ -1,4 +1,5 @@
 import React, { useId, useState } from "react";
+import { AlertCircle } from "lucide-react";
 
 export type TextareaSize = "sm" | "md" | "lg" | "bare";
 export type TextareaVariant = "default" | "underline";
@@ -130,10 +131,10 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     };
 
     const baseChrome =
-      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none resize-y";
+      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none resize-y";
 
     const disabledChrome = disabled
-      ? "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[var(--bg-sunken)] disabled:resize-none"
+      ? "disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:bg-[var(--bg-sunken)] disabled:resize-none"
       : "";
 
     const variantChrome = (() => {
@@ -141,7 +142,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         return `border-0 border-b ${
           error
             ? "border-[var(--color-error-border)]"
-            : "border-[var(--border-medium)]"
+            : "border-[var(--border-default)]"
         } rounded-none bg-transparent focus:border-[var(--fg-primary)]`;
       }
       // default variant — two border families, chosen by `borderWeight`.
@@ -189,7 +190,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block mb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-[var(--color-mid-gray)] [font-feature-settings:'case'_1]"
+            className="block mb-1.5 text-ui font-medium text-[var(--fg-secondary)]"
           >
             {label}
           </label>
@@ -201,15 +202,16 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               <p
                 id={errorId}
                 role="alert"
-                className="mt-1.5 text-xs text-[var(--color-error)]"
+                className="mt-1.5 flex items-start gap-1 text-caption text-[var(--color-error)]"
               >
-                {error}
+                <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+                <span>{error}</span>
               </p>
             )}
             {!error && helperText && (
               <p
                 id={helperId}
-                className="mt-1.5 text-xs text-[var(--fg-muted)]"
+                className="mt-1.5 text-caption text-[var(--fg-muted)]"
               >
                 {helperText}
               </p>
@@ -219,7 +221,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             <p
               id={counterId}
               aria-live="polite"
-              className="mt-1.5 shrink-0 text-xs tabular-nums text-[var(--fg-muted)]"
+              className="mt-1.5 shrink-0 text-caption tabular-nums text-[var(--fg-muted)]"
             >
               {maxLength != null ? `${currentLen} / ${maxLength}` : currentLen}
             </p>

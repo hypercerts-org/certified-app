@@ -265,7 +265,7 @@ export const Radio = React.forwardRef<HTMLButtonElement, RadioProps>(
         tabIndex={isTabbable ? 0 : -1}
         onClick={() => onSelect(value)}
         onKeyDown={onKeyDown}
-        className={`inline-flex items-center gap-2 rounded text-sm text-[var(--fg-primary)] transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`inline-flex items-center gap-2 rounded text-sm text-[var(--fg-primary)] transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
         {...props}
       >
         {children}

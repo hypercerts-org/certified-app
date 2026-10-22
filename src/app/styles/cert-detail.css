@@ -351,7 +351,7 @@
 .cert-detail__title-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Unified placeholder color for the cert-detail form inputs. The
@@ -398,7 +398,7 @@
 .cert-detail__short-desc-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* (Older byline used to sit in the aside — it moved into the main pane
@@ -421,7 +421,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   margin: 0;
 }
@@ -544,7 +545,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   line-height: 1.2;
 }
@@ -801,7 +803,7 @@
 
 .cert-detail__headline-date {
   color: var(--fg-secondary);
-  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .cert-detail__headline-label,
@@ -955,7 +957,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   display: inline-flex;
   align-items: center;
@@ -1019,7 +1022,7 @@
 .cert-detail__meta-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .cert-detail__uri {
@@ -1200,7 +1203,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   margin: 0;
   display: inline-flex;
@@ -1392,7 +1396,7 @@
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--overlay-weak);
-  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
@@ -1433,6 +1437,8 @@
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 /* "Show full description" disclosure — sits under shortDescription and
@@ -2052,7 +2058,7 @@
 
 .create-cert__contrib-id-input--invalid:focus {
   border-color: var(--color-error);
-  box-shadow: 0 0 0 2px var(--color-error-ring);
+  box-shadow: var(--shadow-ring-error);
 }
 
 /* Per-row identity error — slots into the contributor grid by
@@ -2073,7 +2079,7 @@
   margin-top: -6px;
   width: 12px;
   height: 12px;
-  border: 2px solid var(--border-medium);
+  border: 2px solid var(--border-default);
   border-top-color: var(--fg-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;

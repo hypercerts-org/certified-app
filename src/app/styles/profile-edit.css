@@ -89,7 +89,7 @@
   background: var(--bg-default);
   border-radius: 999px;
   line-height: 0;
-  box-shadow: 0 0 0 1px var(--border-subtle);
+  box-shadow: var(--shadow-outline-subtle);
 }
 
 /* ------------------------------------------------------------------------
@@ -194,7 +194,6 @@ fieldset.pe__field > legend {
   font-size: 0.6875rem;
   font-weight: 400;
   color: var(--fg-muted);
-  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 

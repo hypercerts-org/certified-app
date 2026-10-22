@@ -92,7 +92,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -134,7 +135,7 @@
 }
 
 .sx-menu__item:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: var(--shadow-ring-focus);
 }
 
 /* Active = the panel currently shown: a subtle --overlay-medium fill (a
@@ -215,7 +216,7 @@
 }
 
 .sx-back:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: var(--shadow-ring-focus);
 }
 
 .sx-section {
@@ -468,7 +469,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -573,16 +575,16 @@
   100% { transform: translate(var(--gx), var(--gy)) scale(1) rotate(var(--gr)); opacity: 0; }
 }
 
-.gr-c0 { --gx: -62px; --gy: -30px; --gr: 140deg; background: hsl(150 38% 55%); }
-.gr-c1 { --gx: 60px; --gy: -26px; --gr: -110deg; background: hsl(25 55% 60%); }
-.gr-c2 { --gx: -46px; --gy: 30px; --gr: 80deg; background: hsl(210 45% 58%); }
-.gr-c3 { --gx: 48px; --gy: 34px; --gr: -70deg; background: hsl(45 60% 58%); }
-.gr-c4 { --gx: -30px; --gy: -44px; --gr: 200deg; background: hsl(280 35% 62%); }
-.gr-c5 { --gx: 34px; --gy: -46px; --gr: -160deg; background: hsl(340 50% 64%); }
-.gr-c6 { --gx: -72px; --gy: 6px; --gr: 90deg; background: hsl(190 42% 55%); }
-.gr-c7 { --gx: 70px; --gy: 10px; --gr: -100deg; background: hsl(95 38% 55%); }
-.gr-c8 { --gx: -14px; --gy: 46px; --gr: 50deg; background: hsl(15 55% 60%); }
-.gr-c9 { --gx: 16px; --gy: 48px; --gr: -60deg; background: hsl(255 40% 64%); }
+.gr-c0 { --gx: -62px; --gy: -30px; --gr: 140deg; background: var(--confetti-0); }
+.gr-c1 { --gx: 60px; --gy: -26px; --gr: -110deg; background: var(--confetti-1); }
+.gr-c2 { --gx: -46px; --gy: 30px; --gr: 80deg; background: var(--confetti-2); }
+.gr-c3 { --gx: 48px; --gy: 34px; --gr: -70deg; background: var(--confetti-3); }
+.gr-c4 { --gx: -30px; --gy: -44px; --gr: 200deg; background: var(--confetti-4); }
+.gr-c5 { --gx: 34px; --gy: -46px; --gr: -160deg; background: var(--confetti-5); }
+.gr-c6 { --gx: -72px; --gy: 6px; --gr: 90deg; background: var(--confetti-6); }
+.gr-c7 { --gx: 70px; --gy: 10px; --gr: -100deg; background: var(--confetti-7); }
+.gr-c8 { --gx: -14px; --gy: 46px; --gr: 50deg; background: var(--confetti-8); }
+.gr-c9 { --gx: 16px; --gy: 48px; --gr: -60deg; background: var(--confetti-9); }
 
 @media (prefers-reduced-motion: reduce) {
   .group-result__badge {

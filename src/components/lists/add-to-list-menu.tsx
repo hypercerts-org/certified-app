@@ -137,7 +137,7 @@ export default function AddToListMenu({
                     router.push(editActions.editHref)
                   }}
                 >
-                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
                 </PopoverItem>
               ) : editActions.editAsGroupLabel ? (
                 <PopoverItem
@@ -146,7 +146,7 @@ export default function AddToListMenu({
                     editActions.onEditAsGroup()
                   }}
                 >
-                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
                   {editActions.editAsGroupLabel}
                 </PopoverItem>
               ) : null}
@@ -157,7 +157,7 @@ export default function AddToListMenu({
                     editActions.onDelete()
                   }}
                 >
-                  <Trash2 size={13} strokeWidth={1.75} aria-hidden /> Delete
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
                 </PopoverItem>
               ) : null}
             </>
@@ -168,7 +168,7 @@ export default function AddToListMenu({
                 void copyShare(`${window.location.origin}${sharePath}`)
               }
             >
-              <Share2 size={13} strokeWidth={1.75} aria-hidden />
+              <Share2 size={14} strokeWidth={1.75} aria-hidden />
               {shareCopied ? "Link copied" : "Share"}
             </PopoverItem>
           ) : null}
@@ -181,11 +181,11 @@ export default function AddToListMenu({
               else openSignIn()
             }}
           >
-            <ListPlus size={13} strokeWidth={1.75} aria-hidden />
+            <ListPlus size={14} strokeWidth={1.75} aria-hidden />
             Add to list
           </PopoverItem>
           <PopoverItem onClick={() => void copyUri(targetUri)}>
-            <Copy size={13} strokeWidth={1.75} aria-hidden />
+            <Copy size={14} strokeWidth={1.75} aria-hidden />
             {uriCopied ? "Copied" : "Copy AT URI"}
           </PopoverItem>
         </PopoverContent>

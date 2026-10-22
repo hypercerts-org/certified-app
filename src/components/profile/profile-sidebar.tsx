@@ -657,9 +657,9 @@ function CopyButton({ value, label }: CopyButtonProps) {
         aria-label={copied ? "Copied" : label}
       >
         {copied ? (
-          <Check size={13} strokeWidth={2} aria-hidden />
+          <Check size={14} strokeWidth={1.75} aria-hidden />
         ) : (
-          <Copy size={13} strokeWidth={1.75} aria-hidden />
+          <Copy size={14} strokeWidth={1.75} aria-hidden />
         )}
       </button>
     </Tooltip>

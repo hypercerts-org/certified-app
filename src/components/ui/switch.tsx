@@ -52,16 +52,18 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         aria-label={!label ? ariaLabel : undefined}
         disabled={disabled}
         onClick={() => onCheckedChange?.(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-[999px] border border-transparent transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-[999px] border transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+          // Off: the track keeps its quiet fill but gains a 3:1
+          // --border-control boundary so the control is findable (WCAG 1.4.11).
           checked
-            ? "bg-[var(--btn-primary-bg)]"
-            : "bg-[var(--border-hover)]"
+            ? "border-transparent bg-[var(--btn-primary-bg)]"
+            : "border-[var(--border-control)] bg-[var(--border-hover)]"
         } ${className}`}
         {...props}
       >
         <span
           aria-hidden="true"
-          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-[var(--bg-elevated)] shadow-sm transition-transform duration-150 motion-reduce:transition-none ${
+          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-[var(--bg-elevated)] shadow-sm transition-transform duration-fast motion-reduce:transition-none ${
             checked ? "translate-x-4" : "translate-x-0.5"
           }`}
         />

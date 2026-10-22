@@ -561,7 +561,7 @@ export function CertPreview({
         period,
         locationCount > 0 ? (
           <>
-            <MapPin size={11} strokeWidth={1.75} aria-hidden />
+            <MapPin size={12} strokeWidth={2} aria-hidden />
             {`${locationCount.toLocaleString()} location${locationCount === 1 ? "" : "s"}`}
           </>
         ) : null,

@@ -119,7 +119,7 @@ export default function FundingConfirmedByPopover({
               className="explore__chrome-btn--icon"
               aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
             >
-              <UserRoundCheck size={13} strokeWidth={1.75} aria-hidden />
+              <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
             </Button>
           )}
         </PopoverTrigger>

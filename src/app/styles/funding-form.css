@@ -25,9 +25,9 @@
 }
 
 .funding-form__label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  /* Field label: sentence case, `ui` step (DESIGN.md §4 Inputs). */
+  font-size: var(--text-ui);
+  font-weight: 500;
   color: var(--fg-secondary);
 }
 
@@ -184,7 +184,7 @@
 .funding-identity-choice__option:focus-visible {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* ===========================================================================

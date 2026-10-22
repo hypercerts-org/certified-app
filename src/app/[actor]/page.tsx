@@ -124,7 +124,7 @@ export default function UserProfilePage() {
     hasBlueskyProfile,
   } = useUserProfile(handleOrDid)
 
-  const { isAuthenticated, did: sessionDid } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading, did: sessionDid } = useAuth()
 
   const titleForTopBar =
     profile?.displayName || resolvedHandle || "Profile"
@@ -406,6 +406,17 @@ export default function UserProfilePage() {
     setActiveTab(tabFromUrl)
   }
 
+  // A deep link can name a tab this viewer doesn't get (e.g. ?tab=groups on
+  // someone else's profile). The tab strip already hides it and the desktop
+  // bar falls back to Overview, so show Overview's content too rather than a
+  // blank panel. Wait for the session so an owner's own link isn't bounced.
+  const shownTab: TabKey =
+    !isAuthLoading &&
+    ((activeTab === "groups" && !isActiveIdentityThisProfile) ||
+      (activeTab === "settings" && !isViewerThisEntity))
+      ? "overview"
+      : activeTab
+
   // Keep the active mobile tab visible in the scrolling strip — a deep
   // link (e.g. the header's "Endorsed by" → ?tab=endorsements) can select
   // a tab that starts off-screen. Scrolls the strip only (never the page),
@@ -432,7 +443,7 @@ export default function UserProfilePage() {
       left: tabLeft < viewLeft ? tabLeft - 16 : tabRight - strip.clientWidth + 32,
       behavior: reduceMotion ? "auto" : "smooth",
     })
-  }, [activeTab, isProfileLoading])
+  }, [shownTab, isProfileLoading])
 
   if (isProfileLoading) {
     return (
@@ -497,11 +508,11 @@ export default function UserProfilePage() {
             <button
               key={t.key}
               type="button"
-              aria-current={activeTab === t.key ? "page" : undefined}
+              aria-current={shownTab === t.key ? "page" : undefined}
               aria-disabled={locked || undefined}
               disabled={locked}
               className={`profile-tabs__tab${
-                activeTab === t.key ? " profile-tabs__tab--active" : ""
+                shownTab === t.key ? " profile-tabs__tab--active" : ""
               }`}
               onClick={() => {
                 if (locked) return
@@ -536,7 +547,7 @@ export default function UserProfilePage() {
           no certified profile yet). Internally self-gating. */}
       {isOwnProfile && !activeOrg ? <OnboardingBanner /> : null}
 
-      {activeTab === "settings" && isViewerThisEntity ? (
+      {shownTab === "settings" && isViewerThisEntity ? (
         // Settings tab swaps the entire profile-page two-pane layout
         // out for the settings panel's own menu+sections two-pane
         // layout — same 296px slim rail, but the left pane carries
@@ -571,8 +582,8 @@ export default function UserProfilePage() {
           />
 
           <div className="page-layout__main">
-            <TabPanelTransition activeKey={activeTab} order={TAB_ORDER}>
-            {activeTab === "overview" && (
+            <TabPanelTransition activeKey={shownTab} order={TAB_ORDER}>
+            {shownTab === "overview" && (
               <div role="region" id="tabpanel-overview" aria-label="Overview">
                 <ProfileOverview
                   bannerUrl={effectiveBannerUrl}
@@ -594,7 +605,7 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "about" ? (
+            {shownTab === "about" ? (
               <div
                 role="region"
                 id="tabpanel-about"
@@ -639,7 +650,7 @@ export default function UserProfilePage() {
                 ) : null}
               </div>
             ) : null}
-            {activeTab === "activities" && (
+            {shownTab === "activities" && (
               <div
                 role="region"
                 id="tabpanel-activities"
@@ -652,7 +663,7 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "projects" && (
+            {shownTab === "projects" && (
               <div
                 role="region"
                 id="tabpanel-projects"
@@ -665,7 +676,7 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "groups" && isActiveIdentityThisProfile && (
+            {shownTab === "groups" && isActiveIdentityThisProfile && (
               <div
                 role="region"
                 id="tabpanel-groups"
@@ -674,7 +685,7 @@ export default function UserProfilePage() {
                 <ProfileGroups did={did} />
               </div>
             )}
-            {activeTab === "endorsements" && did && (
+            {shownTab === "endorsements" && did && (
               <div
                 role="region"
                 id="tabpanel-endorsements"
@@ -683,7 +694,7 @@ export default function UserProfilePage() {
                 <ProfileEndorsements did={did} />
               </div>
             )}
-            {activeTab === "followers" && did && (
+            {shownTab === "followers" && did && (
               <div
                 role="region"
                 id="tabpanel-followers"
@@ -692,7 +703,7 @@ export default function UserProfilePage() {
                 <ProfileFollowers did={did} />
               </div>
             )}
-            {activeTab === "lists" && did && (
+            {shownTab === "lists" && did && (
               <div
                 role="region"
                 id="tabpanel-lists"

@@ -26,7 +26,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 // Canonical border tokens for the card family:
 // - Row dividers use --border-subtle (matches tabs.tsx and the vast majority
 //   of `border-bottom` divider rules across the app's CSS). This is THE
-//   row-divider token — do not reintroduce --border-light here.
+//   row-divider token.
 // - Full-bordered surfaces (elevated, inset) use --border-default so the two
 //   "boxed" variants read as the same weight; only the background recesses.
 // All tokens above flip in dark mode (see tokens.css [data-theme="dark"]).
@@ -40,11 +40,11 @@ const baseByVariant: Record<CardVariant, string> = {
 };
 
 const hoverByVariant: Record<CardVariant, string> = {
-  row: "transition-colors duration-150 motion-reduce:transition-none hover:bg-[var(--overlay-weak)]",
+  row: "transition-colors duration-fast motion-reduce:transition-none hover:bg-[var(--overlay-weak)]",
   elevated:
-    "transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
+    "transition-[border-color,box-shadow] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
   inset:
-    "transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none hover:border-[var(--border-hover-soft)]",
+    "transition-[border-color,box-shadow] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)]",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(

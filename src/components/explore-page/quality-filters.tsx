@@ -281,7 +281,7 @@ export function QualityFilterPopover({
           className="explore__chrome-btn--icon"
           aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
         >
-          <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
+          <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" role="group" aria-label="Quality filter">

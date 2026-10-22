@@ -42,7 +42,7 @@ export interface BottomSheetProps {
  * `pages.css`, matching the existing profile-switcher / feedback sheets.
  *
  * Exit: closing (X, backdrop, Esc or drag) keeps the sheet mounted for a
- * 300ms slide-down + backdrop fade, mirroring the slide-up entry, then
+ * ~225ms slide-down (75% of the enter) + backdrop fade, mirroring the slide-up entry, then
  * unmounts. Drag-dismiss starts that same exit from the dragged position.
  * Reduced motion unmounts immediately.
  *
@@ -112,11 +112,13 @@ export default function BottomSheet({
       return () => clearTimeout(t)
     }
     sheet.style.animation = "none"
-    sheet.style.transition = "transform 300ms cubic-bezier(0.32, 0.72, 0, 1)"
+    // Exit runs at ~75% of the 300ms enter, on the same emphasized curve.
+    sheet.style.transition =
+      "transform calc(var(--duration-slow) * 0.75) var(--ease-emphasized)"
     sheet.style.transform = "translateY(100%)"
     if (backdrop) {
       backdrop.style.animation = "none"
-      backdrop.style.transition = "opacity 200ms ease-out"
+      backdrop.style.transition = "opacity var(--duration-fast) var(--ease-out)"
       backdrop.style.opacity = "0"
     }
     const onEnd = (e: TransitionEvent) => {
@@ -151,7 +153,7 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_300ms_cubic-bezier(0.32,0.72,0,1)] max-[799px]:transition-[max-height] max-[799px]:duration-300 max-[799px]:ease-[cubic-bezier(0.16,1,0.3,1)]"
+    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
   // `.bottom-sheet--expanded` raises the cap to 92vh.
   const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
   const sheetClassName = `${sheetBase}${sheetExpandedClass}${
@@ -163,12 +165,18 @@ export default function BottomSheet({
   const resolvedHeader =
     header ??
     (title ? (
-      <div className="flex items-center justify-between px-5 pb-3">
-        <span className="font-headline text-h4 text-[var(--fg-primary)]">
+      <div className="flex items-start gap-3 pb-3 pl-5 pr-3">
+        <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)]">
           {title}
-        </span>
-        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
-          <X size={18} aria-hidden />
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="-mt-0.5 shrink-0"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          <X size={16} strokeWidth={1.75} aria-hidden />
         </Button>
       </div>
     ) : null)
@@ -179,7 +187,7 @@ export default function BottomSheet({
         ref={backdropRef}
         // Backdrop ties with the sheet at --z-portal-sheet; it renders first
         // in this portal fragment, so DOM order keeps it underneath.
-        className={`bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--navy-overlay-30)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:animate-[bottomSheetFadeIn_0.2s_ease-out]${closing ? " pointer-events-none" : ""}`}
+        className={`bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--scrim)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:animate-[bottomSheetFadeIn_var(--duration-base)_var(--ease-out)]${closing ? " pointer-events-none" : ""}`}
         onClick={onClose}
         aria-hidden="true"
       />

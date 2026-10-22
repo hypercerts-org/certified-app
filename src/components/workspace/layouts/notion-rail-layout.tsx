@@ -37,7 +37,7 @@ export default function NotionRailLayout({
               onSetLexicon(null)
             }}
           >
-            <Globe size={13} strokeWidth={1.75} aria-hidden />
+            <Globe size={14} strokeWidth={1.75} aria-hidden />
             Network
           </button>
         </div>

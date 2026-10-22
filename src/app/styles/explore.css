@@ -63,7 +63,7 @@
   bottom: 0;
   left: var(--explore-sidebar-width);
   width: 1px;
-  background: var(--border-medium);
+  background: var(--border-default);
   pointer-events: none;
 }
 
@@ -568,7 +568,8 @@
   margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-secondary);
 }
@@ -625,7 +626,7 @@
   width: 1px;
   align-self: stretch;
   min-height: 20px;
-  background: var(--border-medium);
+  background: var(--border-default);
 }
 
 /* Inline variant of the degree bar — drops the standalone bar's block
@@ -1224,7 +1225,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -1565,7 +1567,8 @@
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
+    font-feature-settings: 'case' 1;
     color: var(--fg-muted);
   }
   /* The value side fills the remaining width and truncates internally. */
@@ -1726,7 +1729,6 @@
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.02em;
   border: 1px solid transparent;
 }
 
@@ -1832,7 +1834,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   /* Nudge the label down so its cap-height sits on the value's first line. */
   padding-top: 3px;

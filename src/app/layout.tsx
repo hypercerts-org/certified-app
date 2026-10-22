@@ -23,9 +23,10 @@ import PwaInstallGuard from "@/components/layout/pwa-install-guard";
 import { ToastProvider } from "@/components/ui/toast";
 import { Analytics } from "@vercel/analytics/next";
 
+// Inter loads as the variable font: one file covers every weight. The
+// design system uses 400 / 500 / 600 only (DESIGN.md §3).
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-inter",
   display: "swap",
 });
@@ -33,8 +34,10 @@ const inter = Inter({
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
   // 300 is the landing-page display weight (hero + section headlines);
-  // 400/700 are the app-wide heading weights.
-  weight: ["300", "400", "700"],
+  // 400 / 600 / 700 are the app heading weights (h1 + display 700,
+  // h2-h4 + EmptyState titles 600). Without 600 loaded, `font-semibold`
+  // on the serif silently rendered the 700 face.
+  weight: ["300", "400", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-headline",
   display: "swap",

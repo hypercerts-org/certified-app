@@ -9,7 +9,7 @@ export default function ProviderRedirectOverlay() {
     >
       <div className="loading-screen__inner">
         <Brandmark title="" className="loading-screen__logo" />
-        <p className="mt-6 text-sm font-sans tracking-wide" style={{ color: "var(--fg-muted)" }}>
+        <p className="mt-6 text-sm font-sans" style={{ color: "var(--fg-muted)" }}>
           Redirecting…
         </p>
       </div>

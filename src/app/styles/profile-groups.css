@@ -302,7 +302,7 @@
 
 .profile-groups__row:hover {
   background: var(--overlay-weak);
-  border-color: var(--border-hover-soft);
+  border-color: var(--border-hover);
 }
 
 .profile-groups__avatar-link {
@@ -383,7 +383,8 @@
 .profile-groups__role {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   padding: 1px 6px;
@@ -420,7 +421,7 @@
 
 .profile-groups__action-btn:hover:not(:disabled) {
   background: var(--overlay-weak);
-  border-color: var(--border-hover-soft);
+  border-color: var(--border-hover);
 }
 
 .profile-groups__action-btn:focus-visible {

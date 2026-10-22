@@ -252,7 +252,7 @@ export default function FundingReceiptDetailModal({
       maxWidth={460}
       onClose={onClose}
     >
-      <AppDialogHeader title="Funding receipt" onClose={onClose} center />
+      <AppDialogHeader title="Funding receipt" onClose={onClose} />
 
       <div className="px-5 pb-5 pt-4">
         {/* Grouped as a top-to-bottom narrative: who paid whom (Transfer),
@@ -602,9 +602,9 @@ export function CopyableValue({ value, label }: { value: string; label: string }
         tooltip={copied ? "Copied" : label}
       >
         {copied ? (
-          <Check size={13} strokeWidth={2} aria-hidden />
+          <Check size={14} strokeWidth={1.75} aria-hidden />
         ) : (
-          <Copy size={13} strokeWidth={1.75} aria-hidden />
+          <Copy size={14} strokeWidth={1.75} aria-hidden />
         )}
       </Button>
       {/* The static aria-label keeps the button's name stable; this live

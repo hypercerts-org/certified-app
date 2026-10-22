@@ -245,7 +245,7 @@ export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement
 }
 
 /*
- * Enter motion for the panel: a 120ms fade + slight scale/drop out of the
+ * Enter motion for the panel: a 150ms (--duration-fast) fade + slight scale/drop out of the
  * trigger's corner, driven by `@starting-style` so it plays on mount with no
  * JS. No exit animation (the menu closes instantly). Uses the individual
  * `scale` / `translate` properties rather than `transform` so it composes
@@ -256,7 +256,7 @@ export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement
 const POPOVER_MOTION_CSS = `
 .popover-panel {
   transform-origin: top left;
-  transition: opacity 120ms ease-out, scale 120ms cubic-bezier(0.16, 1, 0.3, 1), translate 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-emphasized), translate var(--duration-fast) var(--ease-emphasized);
 }
 .popover-panel[data-align="center"] { transform-origin: top center; }
 .popover-panel[data-align="end"] { transform-origin: top right; }
@@ -268,7 +268,7 @@ const POPOVER_MOTION_CSS = `
   .popover-panel[data-side="top"] { translate: 0 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .popover-panel { transition: opacity 120ms ease-out; }
+  .popover-panel { transition: opacity var(--duration-fast) var(--ease-out) !important; }
   @starting-style {
     .popover-panel,
     .popover-panel[data-side="top"] { scale: none; translate: none; }

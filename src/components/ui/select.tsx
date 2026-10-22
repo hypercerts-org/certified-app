@@ -1,5 +1,5 @@
 import React, { useId } from "react";
-import { ChevronDown } from "lucide-react";
+import { AlertCircle, ChevronDown } from "lucide-react";
 
 export type SelectSize = "sm" | "md" | "lg";
 
@@ -15,9 +15,9 @@ export interface SelectProps
 // `sm` keeps its compact 36px height on desktop but meets the 44px tap target
 // below the canonical 800px breakpoint (mirrors Button's mobile bump).
 const sizeClasses: Record<SelectSize, string> = {
-  sm: "h-9 pl-3 pr-9 text-sm min-h-11 md:min-h-0",
-  md: "h-11 pl-4 pr-10 text-base md:text-sm",
-  lg: "h-14 pl-5 pr-11 text-base",
+  sm: "h-control-sm pl-3 pr-9 text-sm min-h-control-md md:min-h-0",
+  md: "h-control-md pl-4 pr-10 text-base md:text-sm",
+  lg: "h-control-lg pl-5 pr-11 text-base",
 };
 
 // Chevron horizontal inset, per size — keeps it visually aligned with the
@@ -51,7 +51,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
     const baseChrome =
-      "w-full appearance-none bg-[var(--bg-elevated)] text-[var(--fg-primary)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none";
+      "w-full appearance-none bg-[var(--bg-elevated)] text-[var(--fg-primary)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none";
 
     const borderChrome = `border ${
       error
@@ -60,7 +60,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     } rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20`;
 
     const disabledChrome = disabled
-      ? "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[var(--bg-sunken)]"
+      ? "disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:bg-[var(--bg-sunken)]"
       : "";
 
     return (
@@ -68,7 +68,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="block mb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-[var(--color-mid-gray)] [font-feature-settings:'case'_1]"
+            className="block mb-1.5 text-ui font-medium text-[var(--fg-secondary)]"
           >
             {label}
           </label>
@@ -99,13 +99,14 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           <p
             id={errorId}
             role="alert"
-            className="mt-1.5 text-xs text-[var(--color-error)]"
+            className="mt-1.5 flex items-start gap-1 text-caption text-[var(--color-error)]"
           >
-            {error}
+            <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+            <span>{error}</span>
           </p>
         )}
         {!error && helperText && (
-          <p id={helperId} className="mt-1.5 text-xs text-[var(--fg-muted)]">
+          <p id={helperId} className="mt-1.5 text-caption text-[var(--fg-muted)]">
             {helperText}
           </p>
         )}

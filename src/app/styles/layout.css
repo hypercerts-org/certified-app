@@ -161,7 +161,7 @@
 .navbar--default {
   background: var(--navbar-bg);
   backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 var(--navbar-border);
+  box-shadow: var(--shadow-navbar-hairline);
 }
 
 /* Profile overlay: transparent navbar that floats over a full-bleed page
@@ -279,7 +279,8 @@
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
   background: var(--bg-sunken);
   padding: 1px 6px;
@@ -322,7 +323,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   text-decoration: none;
@@ -382,7 +384,7 @@
   right: 0;
   background: var(--sheet-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-subtle);
   padding: 20px 32px;
   flex-direction: column;
   gap: 16px;
@@ -648,7 +650,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .mobile-sidebar__legal-sep {
-  color: var(--border-medium);
+  color: var(--border-default);
 }
 
 
@@ -1140,7 +1142,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      labels (0.6875rem / 0.08em). */
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0 0 12px;
@@ -1263,7 +1266,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .news__rich-link {
   color: var(--fg-primary);
   text-decoration: underline;
-  text-decoration-color: var(--border-medium);
+  text-decoration-color: var(--border-default);
   text-underline-offset: 2px;
   transition: text-decoration-color var(--transition-fast);
 }
@@ -1413,7 +1416,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .people-search__item--highlighted {
   background: var(--overlay-weak);
-  box-shadow: inset 2px 0 0 var(--fg-primary);
+  box-shadow: var(--shadow-inset-indicator);
 }
 
 .people-search__item-info {
@@ -1504,7 +1507,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   pointer-events: none;
   user-select: none;
@@ -1529,7 +1533,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .cert-search__item--highlighted {
   background: var(--overlay-weak);
-  box-shadow: inset 2px 0 0 var(--fg-primary);
+  box-shadow: var(--shadow-inset-indicator);
 }
 
 .cert-search__thumb {
@@ -1605,7 +1609,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     display: flex;
     flex-direction: column;
     background: var(--navbar-bg);
-    box-shadow: 0 1px 0 var(--navbar-border);
+    box-shadow: var(--shadow-navbar-hairline);
   }
 
   /* Placeholder rendered by the Suspense fallback while the real
@@ -1644,13 +1648,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    covers the case cleanly because row-chrome is always followed by
    row-tabs when row-tabs is present. */
 .desktop-top-bar__row--chrome:last-child {
-  border-bottom: 1px solid var(--border-medium);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .desktop-top-bar__row--tabs {
   height: var(--top-bar-row2);
   gap: 20px;
-  border-bottom: 1px solid var(--border-medium);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .desktop-top-bar__left {
@@ -2350,7 +2354,6 @@ h2.profile-sidebar__name {
   font-weight: 500;
   color: var(--fg-secondary);
   text-decoration: none;
-  letter-spacing: 0.02em;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -2373,7 +2376,8 @@ h2.profile-sidebar__name {
 .profile-sidebar__section-title {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0;
@@ -2542,7 +2546,7 @@ h2.profile-sidebar__name {
 
 @media (hover: hover) and (pointer: fine) {
   .profile-overview__stat:hover {
-    border-color: var(--border-hover-soft);
+    border-color: var(--border-hover);
     background: var(--bg-sunken);
   }
 }
@@ -2550,7 +2554,8 @@ h2.profile-sidebar__name {
 .profile-overview__stat-label {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   /* Keep the uppercase letter-spaced label on one line so the tablet column
@@ -2608,6 +2613,8 @@ h2.profile-sidebar__name {
   color: var(--fg-secondary);
   margin: 0;
   white-space: pre-wrap;
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 /* About + side map. Falls back to a single column when no map is set
@@ -2804,7 +2811,8 @@ h2.profile-sidebar__name {
 .profile-overview__section-title {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0;
@@ -3211,9 +3219,9 @@ h2.profile-sidebar__name {
    ============================================================ */
 
 .site-footer {
-  /* Matches the sidebar / row-2 dividers (--border-medium) so the
+  /* Matches the sidebar / row-2 dividers (--border-default) so the
      page-frame borders all read at the same visual weight. */
-  border-top: 1px solid var(--border-medium);
+  border-top: 1px solid var(--border-default);
   padding: 16px 32px 24px;
   margin-top: 48px;
   font-size: 0.75rem;

@@ -57,7 +57,7 @@ export default function EditBanner({
 }: EditBannerProps) {
   // Shared button chrome (mirrors `.edit-banner__btn` in profile-inline-edit.css).
   const btnBase =
-    "inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3.5 font-[inherit] text-[0.8125rem] font-medium leading-none text-[var(--fg-primary)] cursor-pointer transition-[background-color,border-color] duration-150 ease-out enabled:hover:bg-[var(--overlay-weak)] disabled:cursor-not-allowed disabled:opacity-60"
+    "inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3.5 font-[inherit] text-[0.8125rem] font-medium leading-none text-[var(--fg-primary)] cursor-pointer transition-[background-color,border-color] duration-fast ease-out enabled:hover:bg-[var(--overlay-weak)] disabled:cursor-not-allowed disabled:opacity-60"
   // Primary modifier (`.edit-banner__btn--primary`): dark fill that stays dark on
   // hover (opacity affordance), re-pinning bg + border so the ghost-hover rule
   // above can't repaint it near-white. The text color is forced (`!`) because
@@ -77,7 +77,7 @@ export default function EditBanner({
       role="region"
       aria-label={label}
     >
-      <span className="font-[var(--font-inter),system-ui,sans-serif] text-[0.8125rem] font-semibold tracking-[0.01em] text-[var(--fg-primary)]">
+      <span className="font-[var(--font-inter),system-ui,sans-serif] text-[0.8125rem] font-semibold text-[var(--fg-primary)]">
         {label}
       </span>
       {error ? (

@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef } from "react";
-import { Check, Minus } from "lucide-react";
+import { AlertCircle, Check, Minus } from "lucide-react";
 
 export interface CheckboxProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size"> {
@@ -55,7 +55,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
 
     const boxBorder = error
       ? "border-[var(--color-error-border)]"
-      : "border-[var(--border-hover)]";
+      : "border-[var(--border-control)]";
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -77,7 +77,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             />
             <span
               aria-hidden="true"
-              className={`pointer-events-none flex h-4 w-4 items-center justify-center rounded border bg-[var(--bg-elevated)] ${boxBorder} text-transparent transition-colors duration-150 motion-reduce:transition-none peer-checked:border-[var(--btn-primary-bg)] peer-checked:bg-[var(--btn-primary-bg)] peer-checked:text-[var(--btn-primary-fg)] peer-indeterminate:border-[var(--btn-primary-bg)] peer-indeterminate:bg-[var(--btn-primary-bg)] peer-indeterminate:text-[var(--btn-primary-fg)] peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--focus-ring)] peer-focus-visible:outline-offset-2 peer-disabled:opacity-50`}
+              className={`pointer-events-none flex h-4 w-4 items-center justify-center rounded border bg-[var(--bg-elevated)] ${boxBorder} text-transparent transition-colors duration-fast motion-reduce:transition-none peer-checked:border-[var(--btn-primary-bg)] peer-checked:bg-[var(--btn-primary-bg)] peer-checked:text-[var(--btn-primary-fg)] peer-indeterminate:border-[var(--btn-primary-bg)] peer-indeterminate:bg-[var(--btn-primary-bg)] peer-indeterminate:text-[var(--btn-primary-fg)] peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--focus-ring)] peer-focus-visible:outline-offset-2 peer-disabled:opacity-50`}
             >
               {/* Both glyphs inherit the box's `color`, which is transparent
                   until the input is :checked / :indeterminate — so the glyph is
@@ -102,8 +102,13 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           )}
         </div>
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-error">
-            {error}
+          <p
+            id={errorId}
+            role="alert"
+            className="flex items-start gap-1 text-caption text-[var(--color-error)]"
+          >
+            <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+            <span>{error}</span>
           </p>
         )}
       </div>

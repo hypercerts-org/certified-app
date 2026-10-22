@@ -219,7 +219,7 @@ export default function HandleSearch({
           <Loader2
             size={14}
             strokeWidth={2}
-            className="animate-spin motion-reduce:animate-none"
+            className="animate-spin"
             aria-hidden
           />
         ) : undefined,

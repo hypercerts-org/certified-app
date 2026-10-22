@@ -13,9 +13,9 @@ import { useState, type ReactNode } from "react"
  * from the left. The page chrome and the surface's own sidebar/aside sit
  * outside this wrapper, so only the content panel moves.
  *
- * The animation itself lives in `view-transitions.css`, gated to ≥800px and
- * disabled under `prefers-reduced-motion` — so below desktop (where the
- * full-page View Transitions slide still runs) and for reduced-motion users
+ * The animation itself lives in `view-transitions.css`, gated to ≥800px;
+ * under `prefers-reduced-motion` the slide becomes a 150ms crossfade.
+ * Below desktop (where the full-page View Transitions slide still runs)
  * this is an inert wrapper.
  */
 export function TabPanelTransition({

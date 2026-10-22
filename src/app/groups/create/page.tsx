@@ -434,7 +434,7 @@ export default function CreateGroupPage() {
           <div className="create-group__identity-row">
             <div className="create-group__identity-col">
               <span className="project-detail__meta-label">
-                <Users size={11} strokeWidth={2} aria-hidden />
+                <Users size={12} strokeWidth={2} aria-hidden />
                 Avatar
               </span>
               <div
@@ -472,7 +472,7 @@ export default function CreateGroupPage() {
 
             <div className="create-group__identity-col">
               <span className="project-detail__meta-label">
-                <ImageIcon size={11} strokeWidth={2} aria-hidden />
+                <ImageIcon size={12} strokeWidth={2} aria-hidden />
                 Banner
               </span>
               <div
@@ -546,7 +546,7 @@ export default function CreateGroupPage() {
 
           <section className="cert-detail__section create-group__about">
             <span className="project-detail__meta-label">
-              <FileText size={11} strokeWidth={2} aria-hidden />
+              <FileText size={12} strokeWidth={2} aria-hidden />
               About
             </span>
             <div className="create-cert__input-with-counter">
@@ -569,7 +569,7 @@ export default function CreateGroupPage() {
           <section className="project-detail__meta create-project__meta create-group__account">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <AtSign size={11} strokeWidth={2} aria-hidden />
+                <AtSign size={12} strokeWidth={2} aria-hidden />
                 Handle
               </span>
               <input
@@ -615,7 +615,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Mail size={11} strokeWidth={2} aria-hidden />
+                <Mail size={12} strokeWidth={2} aria-hidden />
                 Email
               </span>
               <input
@@ -659,7 +659,7 @@ export default function CreateGroupPage() {
           <section className="project-detail__meta create-project__meta">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Globe size={11} strokeWidth={2} aria-hidden />
+                <Globe size={12} strokeWidth={2} aria-hidden />
                 Website
               </span>
               <input
@@ -676,7 +676,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
+                <Calendar size={12} strokeWidth={2} aria-hidden />
                 Founded
               </span>
               <input
@@ -690,7 +690,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Building2 size={11} strokeWidth={2} aria-hidden />
+                <Building2 size={12} strokeWidth={2} aria-hidden />
                 Organization type
               </span>
               <input

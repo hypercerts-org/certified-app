@@ -47,7 +47,7 @@ export default function BreadcrumbLayout({
         >
           {scope.kind === "network" ? (
             <>
-              <Globe size={13} strokeWidth={1.75} aria-hidden />
+              <Globe size={14} strokeWidth={1.75} aria-hidden />
               Network
             </>
           ) : (
@@ -83,7 +83,7 @@ export default function BreadcrumbLayout({
                 setOpenLevel(null)
               }}
             >
-              <Globe size={13} strokeWidth={1.75} aria-hidden />
+              <Globe size={14} strokeWidth={1.75} aria-hidden />
               Network
             </button>
           </li>

@@ -44,7 +44,7 @@
   bottom: 0;
   left: var(--home-sidebar-width);
   width: 1px;
-  background: var(--border-medium);
+  background: var(--border-default);
   pointer-events: none;
 }
 
@@ -126,7 +126,8 @@
   margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-secondary);
   transition: color var(--transition-fast);
@@ -320,7 +321,7 @@
    isn't room for the rail below ~1300px — so below that the layout collapses
    to a single feed column and the rail is hidden entirely (never squished,
    never stacked under the feed). */
-@media (max-width: 1299.98px) {
+@media (max-width: 1299px) {
   .home__split {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;

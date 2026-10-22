@@ -311,7 +311,7 @@ export default function UpdateForm({
                       onClick={() => removeAttachment(i)}
                       className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
                     >
-                      <X size={13} strokeWidth={2} aria-hidden />
+                      <X size={14} strokeWidth={1.75} aria-hidden />
                     </button>
                   </Tooltip>
                 </li>

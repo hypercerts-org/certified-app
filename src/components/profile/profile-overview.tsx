@@ -974,7 +974,7 @@ function LocationPickerColumn({
               onDraftChange?.("locationLng", null)
             }}
           >
-            <X size={13} strokeWidth={1.75} aria-hidden />
+            <X size={14} strokeWidth={1.75} aria-hidden />
             Clear pin
           </button>
         ) : null}

@@ -69,7 +69,7 @@ export default function BlueskySwitcherLayout({
                   setOpen(false)
                 }}
               >
-                <Globe size={13} strokeWidth={1.75} aria-hidden />
+                <Globe size={14} strokeWidth={1.75} aria-hidden />
                 Network
               </button>
             </li>

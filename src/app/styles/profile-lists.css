@@ -55,7 +55,7 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid var(--border-medium);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   background: transparent;
   color: var(--fg-primary);
@@ -69,7 +69,7 @@
 
 .profile-lists__create-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: var(--shadow-ring-focus);
 }
 
 .profile-lists__empty {
@@ -107,7 +107,7 @@
 
 .profile-lists__row:hover {
   background: var(--bg-sunken);
-  border-color: var(--border-medium);
+  border-color: var(--border-default);
 }
 
 .profile-lists__row-body {
@@ -156,7 +156,7 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid var(--border-medium);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   background: transparent;
   color: var(--fg-primary);
@@ -368,7 +368,7 @@
 }
 
 .profile-lists__project:hover {
-  border-color: var(--border-medium);
+  border-color: var(--border-default);
 }
 
 .profile-lists__project-row {
@@ -459,7 +459,7 @@
 .profile-lists__create-textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .profile-lists__create-error {
@@ -503,7 +503,7 @@
 
 .add-to-list__trigger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring, var(--fg-primary));
+  box-shadow: var(--shadow-ring-focus);
 }
 
 .add-to-list__pop {
@@ -518,7 +518,7 @@
   min-width: 168px;
   padding: 4px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border-medium);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
@@ -631,7 +631,7 @@
 .add-to-list__create-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .add-to-list__create-actions {
@@ -682,7 +682,7 @@
 .profile-lists__paste-textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Overall progress strip — sits above the per-row results list and
@@ -821,7 +821,7 @@
 
 .profile-lists__add-search:focus-within {
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .profile-lists__add-input {

@@ -21,7 +21,7 @@
 .product-tour__panel {
   position: fixed;
   z-index: var(--z-tour-backdrop);
-  background: var(--modal-backdrop);
+  background: var(--scrim);
   pointer-events: auto;
 }
 

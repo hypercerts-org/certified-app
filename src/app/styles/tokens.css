@@ -62,6 +62,11 @@
   --bg-sunken: #eeeeee;
   --bg-raised: #f3f3f3;
   --bg-elevated: #FFFFFF;
+  /* Overlay surface (dialogs, sheets, drawers): the top of the elevation
+     ramp sunken < canvas < elevated < overlay. A dialog is a lifted page,
+     so it reads the canvas value; controls inside it sit on --bg-elevated.
+     Derived, so it needs no dark override. */
+  --bg-overlay: var(--bg-canvas);
 
   /* Foregrounds */
   --fg-primary: #111111;
@@ -70,13 +75,16 @@
      small-text contrast on --bg-canvas clears WCAG AA (4.5:1). */
   --fg-muted: #6b6263;
 
-  /* Borders (transparent overlays — adapt naturally) */
+  /* Borders (transparent overlays — adapt naturally). Four steps only:
+     subtle = row dividers, default = boxed surfaces + text fields,
+     hover = hover/emphasis, control = the boundary of a control the user
+     must find and operate (checkbox, radio, switch-off). Hairlines
+     separate content; --border-control clears WCAG 1.4.11 at >= 3:1
+     (3.35:1 on elevated, 3.32:1 on canvas). */
   --border-subtle: rgba(0, 0, 0, 0.04);
-  --border-light: rgba(0, 0, 0, 0.06);
   --border-default: rgba(0, 0, 0, 0.08);
-  --border-medium: rgba(0, 0, 0, 0.1);
   --border-hover: rgba(0, 0, 0, 0.15);
-  --border-hover-soft: rgba(0, 0, 0, 0.12);
+  --border-control: rgba(0, 0, 0, 0.45);
 
   /* Overlays */
   --overlay-weak: rgba(0, 0, 0, 0.04);
@@ -84,12 +92,10 @@
   --navy-overlay-30: rgba(0, 0, 0, 0.3);
   --navy-overlay-70: rgba(0, 0, 0, 0.7);
 
-  /* Modal backdrop — the ::backdrop fill behind a native modal
-     <dialog> (AppDialog). Mirrors the live `dialog.signin-modal::backdrop`
-     rule: rgba(0,0,0,0.5) in light, --navy-overlay-70 in dark (see the
-     dark-theme override below). Tokenized so the AppDialog engine can
-     reference it from TSX without a raw rgb() literal. */
-  --modal-backdrop: rgba(0, 0, 0, 0.5);
+  /* Scrim — the one dimming layer behind every blocking surface
+     (AppDialog ::backdrop, Drawer, BottomSheet, feedback modal), so a
+     dialog and a sheet showing the same content dim the page equally. */
+  --scrim: rgba(0, 0, 0, 0.4);
 
   /* Media letterbox — opaque backdrop behind embedded video / iframe
      content. Intentionally invariant (not overridden in dark mode): a
@@ -103,10 +109,12 @@
   --scrim-pill-hover: rgba(17, 17, 17, 0.92);
   --scrim-pill-ghost: rgba(255, 255, 255, 0.92);
 
-  /* Navbar + sheets */
-  --navbar-bg: rgba(255, 255, 255, 0.8);
+  /* Navbar + sheets. Translucent chrome is the surface it sits on at
+     reduced alpha, derived with color-mix so it follows the theme with no
+     dark override. */
+  --navbar-bg: color-mix(in srgb, var(--bg-canvas) 80%, transparent);
   --navbar-border: rgba(0, 0, 0, 0.05);
-  --sheet-bg: rgba(255, 255, 255, 0.95);
+  --sheet-bg: color-mix(in srgb, var(--bg-elevated) 95%, transparent);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -116,6 +124,41 @@
      definition: --navy-overlay-30 carries its own dark override on :root,
      so this resolves theme-correctly without a dark-theme duplicate. */
   --shadow-modal: 0 24px 64px var(--navy-overlay-30);
+  /* Ring / hairline shadows. Not elevation: they draw a focus ring, a
+     selected-state halo or a 1px hairline without affecting layout. Built
+     from theme-aware color tokens defined on :root, so they flip with
+     data-theme="dark" without a dark duplicate. stylelint only allows
+     box-shadow: var(--shadow-*), so new rings go here, not inline. */
+  --shadow-ring-weak: 0 0 0 2px var(--overlay-weak);        /* hover / selected halo on rows + chips */
+  --shadow-ring-medium: 0 0 0 3px var(--overlay-medium);    /* stronger halo (active swatch) */
+  --shadow-ring-focus: 0 0 0 2px var(--focus-ring);         /* keyboard focus ring drawn as shadow */
+  --shadow-ring-error: 0 0 0 2px var(--color-error-ring);   /* invalid-input halo */
+  --shadow-ring-elevated: 0 0 0 3px var(--bg-elevated);     /* surface-colored gap ring (stacked avatars) */
+  --shadow-outline-subtle: 0 0 0 1px var(--border-subtle);  /* 1px outline outside the box */
+  --shadow-inset-subtle: inset 0 0 0 1px var(--border-subtle); /* 1px inner border */
+  --shadow-inset-hover: inset 0 0 0 1px var(--border-hover);   /* 1px inner border, hover */
+  --shadow-inset-indicator: inset 2px 0 0 var(--fg-primary);   /* left active-item indicator */
+  --shadow-navbar-hairline: 0 1px 0 var(--navbar-border);      /* navbar bottom hairline */
+
+  /* Mask-image stops. A mask reads only alpha, so this is "fully opaque"
+     rather than a visible color. Invariant. */
+  --mask-opaque: #000000;
+  /* Shade mixed into a status color for its hover state
+     (color-mix(in srgb, <status> 85%, var(--mix-shade))). Invariant. */
+  --mix-shade: #000000;
+
+  /* Group-result confetti particles (settings-page.css .gr-c0..9).
+     Decorative, invariant across themes. */
+  --confetti-0: hsl(150 38% 55%);
+  --confetti-1: hsl(25 55% 60%);
+  --confetti-2: hsl(210 45% 58%);
+  --confetti-3: hsl(45 60% 58%);
+  --confetti-4: hsl(280 35% 62%);
+  --confetti-5: hsl(340 50% 64%);
+  --confetti-6: hsl(190 42% 55%);
+  --confetti-7: hsl(95 38% 55%);
+  --confetti-8: hsl(15 55% 60%);
+  --confetti-9: hsl(255 40% 64%);
 
   /* Focus + selection */
   --focus-ring: var(--color-accent);
@@ -169,12 +212,52 @@
 
   /* Primary button (inverts in dark mode) */
   --btn-primary-bg: var(--color-primary);
+  --btn-primary-bg-hover: #2a2a2a;
   --btn-primary-fg: var(--color-white);
 
-  /* Transitions */
-  --transition-fast: 150ms ease-out;
-  --transition-base: 250ms ease-out;
-  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion. Duration and easing are separate tokens; combine them per
+     property (`transition: transform var(--duration-slow) var(--ease-emphasized)`).
+     Exits run at ~75% of the enter duration. Never `transition: all`,
+     never ease-in for UI. */
+  --duration-instant: 100ms;  /* press, colour flips */
+  --duration-fast: 150ms;     /* hover, focus, small fades */
+  --duration-base: 200ms;     /* tab panel, modal fade; popover / toast enter use fast */
+  --duration-slow: 300ms;     /* dialog, sheet, drawer enter */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);          /* default UI */
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);    /* dialogs, sheets, drawers (expo-out, no overshoot) */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);       /* on-screen movement, navbar hide */
+  /* Shorthand aliases for the existing CSS consumers. */
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-base: var(--duration-base) var(--ease-out);
+
+  /* Type ramp sizes, for CSS consumers (Tailwind `text-*` steps carry the
+     same sizes plus leading / tracking / weight). Sizes outside this
+     ramp are not allowed in new code. */
+  --text-display: 3rem;
+  --text-h1: 2.25rem;
+  --text-h2: 1.75rem;
+  --text-h3: 1.375rem;
+  --text-h4: 1.125rem;
+  --text-body: 1rem;
+  --text-body-sm: 0.875rem;
+  --text-ui: 0.8125rem;
+  --text-caption: 0.75rem;
+  --text-label: 0.6875rem;
+  --text-micro: 0.625rem;
+  /* Positive tracking exists only on uppercase text, at this one value. */
+  --tracking-label: 0.06em;
+  /* Prose measure: long-form paragraphs cap here regardless of container. */
+  --measure: 65ch;
+
+  /* Control heights. 44 is every control's minimum below 800px. */
+  --control-h-compact: 32px;  /* desktop-only dense controls */
+  --control-h-sm: 36px;
+  --control-h-md: 44px;
+  --control-h-lg: 56px;
+
+  /* Disabled controls dim to this opacity (outlined / text controls;
+     filled buttons use a sunken fill instead). */
+  --opacity-disabled: 0.5;
 
   /* Radius */
   --radius: 2px;
@@ -270,11 +353,10 @@
 
   /* Borders flip to white-on-transparent */
   --border-subtle: rgba(255, 255, 255, 0.04);
-  --border-light: rgba(255, 255, 255, 0.06);
   --border-default: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.12);
   --border-hover: rgba(255, 255, 255, 0.18);
-  --border-hover-soft: rgba(255, 255, 255, 0.14);
+  /* 3.05:1 on --bg-elevated, 3.23:1 on --bg-canvas. */
+  --border-control: rgba(255, 255, 255, 0.35);
 
   /* Overlays */
   --overlay-weak: rgba(255, 255, 255, 0.04);
@@ -282,14 +364,11 @@
   --navy-overlay-30: rgba(0, 0, 0, 0.5);
   --navy-overlay-70: rgba(0, 0, 0, 0.8);
 
-  /* Modal backdrop — dark. Mirrors `[data-theme="dark"]
-     dialog.signin-modal::backdrop { background: var(--navy-overlay-70) }`. */
-  --modal-backdrop: var(--navy-overlay-70);
+  /* Scrim — dark. */
+  --scrim: rgba(0, 0, 0, 0.6);
 
-  /* Navbar + sheets */
-  --navbar-bg: rgba(24, 24, 27, 0.8); /* --bg-canvas at 80% */
+  /* Navbar border (--navbar-bg / --sheet-bg derive from the surfaces). */
   --navbar-border: rgba(255, 255, 255, 0.06);
-  --sheet-bg: rgba(45, 45, 51, 0.95); /* --bg-elevated at 95% */
 
   /* Shadows — stronger on dark */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -354,6 +433,7 @@
 
   /* Primary button inverts so it pops off the dark canvas */
   --btn-primary-bg: #f5f5f7;
+  --btn-primary-bg-hover: #e5e5e7;
   --btn-primary-fg: #0b0b0d;
 
   /* Landing palette — dark mode. Built to mirror the rest of the
@@ -393,7 +473,8 @@ button:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Collapse motion to its end state. Duration alone is not enough:
+  /* Remove movement, keep meaning. The kill-switch below collapses motion
+     to its end state as a backstop. Duration alone is not enough:
      `infinite` loops would then cycle every 0.01ms (a flicker), and
      delays would still hold content back. */
   *, *::before, *::after {
@@ -403,6 +484,29 @@ button:focus-visible,
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Spinners keep rotating: they carry status, not decoration. */
+  .animate-spin,
+  .domain-modal__spinner,
+  .create-cert__contrib-id-spinner,
+  .endorsement-multi-row__status--writing {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* Opacity and colour changes up to 150ms stay: they communicate state
+     (toast in, tab-panel crossfade, dialog open), with no movement.
+     Primitives opt back in with `.motion-reduce-fade`: transitions are
+     narrowed to opacity / colour, and any animation runs at 150ms — so
+     only put it on elements whose reduced-motion animation is a pure
+     fade (e.g. `motion-reduce:animate-[modalFadeIn_…]`). */
+  .motion-reduce-fade,
+  .motion-reduce-fade::backdrop {
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: var(--duration-fast) !important;
+    transition-timing-function: var(--ease-out) !important;
+    animation-duration: var(--duration-fast) !important;
   }
 }
 
@@ -443,24 +547,25 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   color: var(--fg-primary);
+  /* Balanced headings: no one-word last line. Progressive enhancement. */
+  text-wrap: balance;
 }
 
-/* OpenType features for Inter — tabular numerals for aligned counts,
-   case-sensitive forms for uppercase labels */
-.feed-card__time,
-.dash-card__stat-value,
-.profile-hero__count-value {
-  font-feature-settings: 'tnum' 1;
-}
-
-.dash-card__title,
-.dash-card__preview-label,
-.navbar__app-link,
-.domain-modal__label,
-.domain-modal__dns-label,
-.domain-modal__verify-label,
-.username-card__form-label {
+/* The `label` type step is uppercase-only: transform + case-sensitive
+   forms ride with the Tailwind `text-label` size (tailwind.config.ts).
+   Tabular numerals live on each numeric rule via
+   `font-variant-numeric: tabular-nums` (Tailwind `tabular-nums`), never
+   `font-feature-settings`, which would replace other features. */
+.text-label {
+  text-transform: uppercase;
   font-feature-settings: 'case' 1;
+}
+
+/* Long-form paragraphs: cap the measure and avoid orphans (Tailwind
+   `text-pretty` alone covers the wrap without the cap). */
+.prose-measure {
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 ::selection {

@@ -87,13 +87,6 @@ const DEFAULT_DURATION = 6000;
 // little longer in case `transitionend` never fires (hidden tab, jsdom).
 const EXIT_MS = 150;
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
 /**
  * Access the toast API. Must be called from inside a <ToastProvider>.
  */
@@ -117,18 +110,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   // Dismiss marks the toast `leaving` so it can fade + drop out before it
   // unmounts (otherwise it vanishes and the stack jumps). Reduced motion
-  // skips the exit and removes it at once.
+  // keeps the exit as a pure 150ms fade (no drop; see ToastItem).
   const dismiss = useCallback(
     (id: string) => {
-      if (prefersReducedMotion()) {
-        remove(id);
-        return;
-      }
       setToasts((prev) =>
         prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
       );
     },
-    [remove]
+    []
   );
 
   const toast = useCallback((options: ToastOptions) => {
@@ -180,10 +169,10 @@ function Toaster({
       className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch max-[799px]:bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
     >
       {/* Enter keyframe lives with the component (toast.tsx is the only file
-          this step owns; no global stylesheet edit). Each item carries
-          motion-reduce:animate-none, which compiles to a
-          prefers-reduced-motion media query, so the animation is disabled for
-          users who ask for reduced motion. */}
+          this step owns; no global stylesheet edit). Under reduced motion
+          each item swaps the rise for a 150ms opacity fade
+          (`motion-reduce-fade`, tokens.css), so it still announces itself
+          without movement. */}
       <style>{TOAST_KEYFRAMES}</style>
       {toasts.map((t) => (
         <ToastItem
@@ -342,8 +331,8 @@ function ToastItem({
       inert={leaving || undefined}
       className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
         leaving
-          ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none"
-          : "pointer-events-auto animate-[toast-in_150ms_ease-out] motion-reduce:animate-none"
+          ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-fast ease-out motion-reduce:translate-y-0 motion-reduce-fade"
+          : "pointer-events-auto animate-[toast-in_var(--duration-fast)_var(--ease-out)] motion-reduce:animate-[modalFadeIn_var(--duration-fast)_var(--ease-out)] motion-reduce-fade"
       } ${variantChrome[variant]}`}
     >
       {variantIcon[variant]}
@@ -361,21 +350,22 @@ function ToastItem({
         <button
           type="button"
           onClick={handleAction}
-          className="shrink-0 self-center rounded px-2 py-1 text-xs font-semibold text-[var(--fg-primary)] underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
+          className="shrink-0 self-center rounded px-2 py-1 text-xs font-semibold text-[var(--fg-primary)] underline-offset-2 transition-colors duration-fast hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
         >
           {action.label}
         </button>
       )}
-      {/* Negative margins let the 44/40px tap target overhang the padding
-          instead of growing the toast. */}
+      {/* Compact dismiss: 32px visual, 44px hit area (size="icon-sm"). The
+          negative margins let it overhang the padding instead of growing
+          the toast. */}
       <Button
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         onClick={() => onDismiss(id)}
         aria-label="Dismiss notification"
-        className="-my-2 -mr-2 shrink-0 self-start"
+        className="-my-1.5 -mr-1.5 shrink-0 self-start"
       >
-        <X className="h-4 w-4" aria-hidden="true" />
+        <X size={16} strokeWidth={1.75} aria-hidden="true" />
       </Button>
     </div>
   );

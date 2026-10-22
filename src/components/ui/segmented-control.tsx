@@ -125,7 +125,7 @@ function segmentClass({
   orientation: Orientation;
 }): string {
   const parts: string[] = [
-    "relative inline-flex items-center justify-center gap-1.5 font-medium leading-none transition-colors duration-150 motion-reduce:transition-none",
+    "relative inline-flex items-center justify-center gap-1.5 font-medium leading-none transition-colors duration-fast motion-reduce:transition-none",
     // Focus ring drawn INSIDE the box so the joined overflow-hidden can't clip
     // it. outline-offset is negative → the 2px outline sits within the segment.
     "focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:-outline-offset-2",

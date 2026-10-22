@@ -483,7 +483,7 @@ function HeadlineProjectThumb({ src }: { src: string | null }) {
           onError={() => setFailedSrc(src)}
         />
       ) : (
-        <FolderGit2 size={13} strokeWidth={1.5} />
+        <FolderGit2 size={14} strokeWidth={1.75} />
       )}
     </span>
   )

@@ -64,7 +64,7 @@ function AccountListRow({
             <span className="account-list-row__handle">@{handle}</span>
           ) : (
             <span className="account-list-row__handle account-list-row__handle--did">
-              <User size={11} strokeWidth={1.75} aria-hidden />
+              <User size={12} strokeWidth={2} aria-hidden />
               {truncateDid(actor.did)}
             </span>
           )}

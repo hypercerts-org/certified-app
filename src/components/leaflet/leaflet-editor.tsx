@@ -589,7 +589,7 @@ function Toolbar({
         }}
         disabled={disabled}
       >
-        <Icon size={15} strokeWidth={1.75} aria-hidden />
+        <Icon size={16} strokeWidth={1.75} aria-hidden />
       </button>
     </Tooltip>
   )

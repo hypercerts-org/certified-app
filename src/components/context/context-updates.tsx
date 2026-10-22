@@ -192,7 +192,7 @@ export default function ContextUpdates({
             className="context-updates__see-all"
           >
             See all
-            <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
           </TransitionLink>
         ) : null}
         {newButton}
@@ -366,7 +366,7 @@ function UpdateCard({
                 aria-label="Edit update"
                 onClick={() => router.push(editHref)}
               >
-                <Pencil size={15} strokeWidth={1.75} aria-hidden />
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
               </Button>
             ) : null}
             {viewerDid ? (
@@ -377,7 +377,7 @@ function UpdateCard({
                 aria-label="Delete update"
                 onClick={() => setConfirmingDelete(true)}
               >
-                <Trash2 size={15} strokeWidth={1.75} aria-hidden />
+                <Trash2 size={16} strokeWidth={1.75} aria-hidden />
               </Button>
             ) : null}
           </span>

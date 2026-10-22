@@ -355,7 +355,6 @@
   font-size: 0.6875rem;
   font-weight: 500;
   color: var(--fg-secondary);
-  letter-spacing: 0.02em;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -948,11 +947,10 @@
 }
 
 .endorsement-lists__create-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+  /* Field label: sentence case, `ui` step (DESIGN.md §4 Inputs). */
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
 }
 
 .endorsement-lists__create-optional {
@@ -984,7 +982,7 @@
 .endorsement-lists__create-textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .endorsement-lists__create-error {
@@ -1024,11 +1022,10 @@
 }
 
 .endorse-people-modal__reason-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+  /* Field label: sentence case, `ui` step (DESIGN.md §4 Inputs). */
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
 }
 
 .endorse-people-modal__reason-hint {
@@ -1054,7 +1051,7 @@
 .endorse-people-modal__reason-textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .endorse-people-modal__reason-counter {
@@ -1085,7 +1082,7 @@
 
 .endorse-people-modal__search:focus-within {
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .endorse-people-modal__search-icon {
@@ -1222,7 +1219,8 @@
 .endorse-people-modal__selected-title {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0 0 8px;
@@ -1376,7 +1374,7 @@
 .endorse-reason-modal__textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Right-aligned counter beneath the textarea. Small font so it
@@ -1414,7 +1412,7 @@
 .endorse-reason-modal__select:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .endorse-reason-modal__select:disabled {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import Tooltip from "@/components/ui/tooltip";
 
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+type ButtonSize = "sm" | "md" | "lg" | "icon" | "icon-sm";
 
 // Icon-size requires aria-label so screen readers have something to read.
 // All other sizes accept children as the accessible label and aria-label is optional.
@@ -30,7 +30,7 @@ type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "chil
 };
 
 type IconButtonProps = ButtonBaseProps & {
-  size: "icon";
+  size: "icon" | "icon-sm";
   "aria-label": string;
   children: React.ReactNode;
 };
@@ -63,11 +63,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "rounded text-sm font-medium tracking-wider transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-150 focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale select-none [-webkit-touch-callout:none]";
+      "rounded text-sm font-medium transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-fast ease-out focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale select-none [-webkit-touch-callout:none]";
 
     const variantStyles = {
       primary:
-        "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-none hover:opacity-90",
+        "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-none hover:bg-[var(--btn-primary-bg-hover)]",
       secondary:
         "bg-transparent text-[var(--fg-primary)] border border-[var(--border-default)] hover:border-[var(--border-hover)]",
       ghost:
@@ -81,12 +81,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // the canonical breakpoint). `min-h-11` (44px) wins over the smaller
     // padding-driven height on mobile without touching the desktop look.
     const sizeStyles: Record<ButtonSize, string> = {
-      sm: "py-1.5 px-4 text-xs min-h-11 md:min-h-0",
-      md: "py-2.5 px-6 text-sm min-h-11 md:min-h-0",
+      sm: "py-1.5 px-4 text-xs min-h-control-md md:min-h-0",
+      md: "py-2.5 px-6 text-sm min-h-control-md md:min-h-0",
       lg: "py-3 px-8 text-sm",
       // 44 x 44 on mobile, 40 x 40 on desktop. Padding zeroed; the icon child
       // sits in the centered flex slot.
-      icon: "h-11 w-11 md:h-10 md:w-10 p-0 text-sm",
+      icon: "h-control-md w-11 md:h-10 md:w-10 p-0 text-sm",
+      // Compact icon button for dismiss / close controls (dialog, sheet,
+      // banner, toast): 32 x 32 visual, hit area expanded to 44 x 44 by a
+      // transparent ::after (inset -6px), so the tap target still meets
+      // the 44px rule without the chrome growing.
+      "icon-sm":
+        "relative h-control-compact w-8 p-0 text-sm after:absolute after:-inset-1.5 after:content-['']",
     };
 
     // Disabled treatment. Filled variants (primary / destructive) read as
@@ -109,10 +115,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Active visual for toggle buttons. Only secondary/ghost have an "off" look
     // distinct enough that a pressed state reads as on; primary/destructive keep
     // their base styling.
+    // Selected is never colour alone: --overlay-medium plus a stroke change
+    // (secondary: border goes to --fg-primary) or a weight change (ghost).
     const pressedStyles: Partial<Record<NonNullable<ButtonProps["variant"]>, string>> = {
       secondary:
-        "bg-[var(--overlay-medium)] text-[var(--fg-primary)] border-[var(--border-hover)]",
-      ghost: "bg-[var(--overlay-medium)] text-[var(--fg-primary)]",
+        "bg-[var(--overlay-medium)] text-[var(--fg-primary)] border-[var(--fg-primary)]",
+      ghost: "bg-[var(--overlay-medium)] text-[var(--fg-primary)] font-semibold",
     };
     const activeStyles = pressed ? pressedStyles[variant] ?? "" : "";
 
@@ -120,7 +128,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // an explicit `tooltip` overrides that, and is the only source for the
     // (rare) text button that opts into a tooltip.
     const ariaLabel = (props as { "aria-label"?: string })["aria-label"];
-    const tooltipText = tooltip ?? (size === "icon" ? ariaLabel : undefined);
+    const isIcon = size === "icon" || size === "icon-sm";
+    const tooltipText = tooltip ?? (isIcon ? ariaLabel : undefined);
 
     const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`;
 
@@ -139,8 +148,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className={`${classes} ${inert ? "pointer-events-none" : ""}`}
           {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
-          {!(loading && size === "icon") && children}
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {!(loading && isIcon) && children}
         </Link>
       );
       return tooltipText ? <Tooltip label={tooltipText}>{link}</Tooltip> : link;
@@ -156,10 +165,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={classes}
         {...props}
       >
-        {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         {/* For icon-size, the 40x40 slot fits one glyph: while loading, show
             only the spinner so it doesn't overlap the icon child. */}
-        {!(loading && size === "icon") && children}
+        {!(loading && isIcon) && children}
       </button>
     );
 

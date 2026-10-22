@@ -19,7 +19,8 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -55,7 +56,7 @@
 .create-form__cancel {
   color: var(--fg-secondary);
   background: transparent;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-subtle);
 }
 
 .create-form__submit:hover {
@@ -152,7 +153,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -460,6 +462,7 @@
 .feed-card__time {
   font-size: 0.75rem;
   color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .feed-card__meta-sep {
@@ -1048,8 +1051,8 @@
 .response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
   /* Slightly darker on hover to surface the "click to reset"
      affordance without losing the filled-active read. */
-  background: color-mix(in srgb, var(--color-success) 85%, black);
-  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+  background: color-mix(in srgb, var(--color-success) 85%, var(--mix-shade));
+  border-color: color-mix(in srgb, var(--color-success) 85%, var(--mix-shade));
   color: var(--bg-canvas);
 }
 
@@ -1060,8 +1063,8 @@
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning) 85%, black);
-  border-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  background: color-mix(in srgb, var(--color-warning) 85%, var(--mix-shade));
+  border-color: color-mix(in srgb, var(--color-warning) 85%, var(--mix-shade));
   color: var(--bg-canvas);
 }
 
@@ -1129,7 +1132,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   padding: 6px 10px 4px;
   margin: 0;

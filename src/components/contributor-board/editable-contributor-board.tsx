@@ -369,17 +369,17 @@ export function EditableContributorBoard({
           variant="secondary"
           onClick={() => setEditingDraft(emptyDraft())}
         >
-          <Plus size={15} /> Add contributor
+          <Plus size={16} strokeWidth={1.75} /> Add contributor
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>
-          <Settings size={15} /> Settings
+          <Settings size={16} strokeWidth={1.75} /> Settings
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setAppearanceOpen(true)}>
-          <UserCog size={15} /> My appearance
+          <UserCog size={16} strokeWidth={1.75} /> My appearance
         </Button>
         {rkey ? (
           <Button size="sm" variant="ghost" onClick={() => setShareOpen(true)}>
-            <Share2 size={15} /> Share
+            <Share2 size={16} strokeWidth={1.75} /> Share
           </Button>
         ) : null}
         <span className="contributor-board__toolbar-spacer" />
@@ -425,7 +425,7 @@ export function EditableContributorBoard({
                   if (d) setEditingDraft(d)
                 }}
               >
-                <Pencil size={13} />
+                <Pencil size={14} strokeWidth={1.75} />
               </Button>
             </span>
             <span

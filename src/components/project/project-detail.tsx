@@ -1108,7 +1108,7 @@ export default function ProjectDetail({
                     title left, action link right. */}
                 <div className="project-detail__certs-header project-detail__section-head">
                   <h2 className="cert-detail__section-title">
-                    <AlignLeft size={11} strokeWidth={2} aria-hidden />
+                    <AlignLeft size={12} strokeWidth={2} aria-hidden />
                     Summary
                   </h2>
                   {showFullDescription && descriptionHref ? (
@@ -1187,7 +1187,7 @@ export default function ProjectDetail({
               aria-label="Location"
             >
               <span className="cert-detail__meta-label">
-                <MapPin size={11} strokeWidth={2} aria-hidden />
+                <MapPin size={12} strokeWidth={2} aria-hidden />
                 Location
               </span>
               {locationRefUri ? (
@@ -1210,7 +1210,7 @@ export default function ProjectDetail({
             >
               <div className="project-detail__certs-header project-detail__section-head">
                 <h2 className="cert-detail__section-title">
-                  <CertIcon size={11} strokeWidth={2} aria-hidden />
+                  <CertIcon size={12} strokeWidth={2} aria-hidden />
                   Activities in this project
                   <span className="cert-detail__meta-count">{certCount}</span>
                 </h2>
@@ -1220,7 +1220,7 @@ export default function ProjectDetail({
                   className="project-detail__see-all"
                 >
                   See all
-                  <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+                  <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
                 </TransitionLink>
               </div>
               {isDesktop ? (

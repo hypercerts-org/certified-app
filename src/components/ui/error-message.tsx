@@ -26,7 +26,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
             inside the box. The title is a <p>, not a heading, so the alert
             doesn't skip levels wherever it's placed. */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-[var(--fg-primary)] tracking-wider mb-1">{title}</p>
+          <p className="text-sm font-semibold text-[var(--fg-primary)] mb-1">{title}</p>
           <p className="text-sm text-[var(--fg-secondary)] break-words">{message}</p>
           {onRetry && (
             <div className="mt-4">

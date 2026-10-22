@@ -47,8 +47,8 @@
     linear-gradient(var(--border-subtle) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
   background-size: 44px 44px;
-  -webkit-mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
-  mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 0%, var(--mask-opaque) 35%, transparent 80%);
+  mask-image: radial-gradient(120% 120% at 50% 0%, var(--mask-opaque) 35%, transparent 80%);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -218,7 +218,7 @@
   background: var(--bg-sunken);
   box-shadow:
     var(--shadow-sm),
-    inset 0 0 0 1px var(--border-subtle);
+    var(--shadow-inset-subtle);
   transition: box-shadow var(--transition-base);
 }
 
@@ -234,7 +234,7 @@
   .fancy-tile:hover .fancy-tile__media {
     box-shadow:
       var(--shadow-md),
-      inset 0 0 0 1px var(--border-hover);
+      var(--shadow-inset-hover);
   }
 }
 

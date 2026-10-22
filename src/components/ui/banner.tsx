@@ -107,7 +107,7 @@ const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
         )}
         <div className="flex-1 min-w-0">
           {title && (
-            <p className="font-semibold tracking-wider text-[var(--fg-primary)]">
+            <p className="font-semibold text-[var(--fg-primary)]">
               {title}
             </p>
           )}
@@ -122,12 +122,12 @@ const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
         {onDismiss && (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             onClick={onDismiss}
             aria-label={dismissLabel}
-            className="flex-shrink-0 -mr-2 -mt-2"
+            className="flex-shrink-0 -mr-1.5 -mt-1.5"
           >
-            <X className="h-4 w-4" aria-hidden="true" />
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </Button>
         )}
       </div>

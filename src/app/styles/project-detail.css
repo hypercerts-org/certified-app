@@ -141,7 +141,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   line-height: 1.2;
 }
@@ -392,7 +393,8 @@
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
+    font-feature-settings: 'case' 1;
     color: var(--fg-muted);
     line-height: 1;
   }
@@ -625,6 +627,8 @@
    width. */
 .project-detail__prose {
   margin: 0 0 28px;
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 /* Per-tab empty state — used when the Overview / Description tab
@@ -688,7 +692,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -939,7 +944,7 @@
 .project-detail__title-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .project-detail__lead-input {
@@ -965,7 +970,7 @@
 .project-detail__lead-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Description preserve banner — shown when the existing description
@@ -1138,10 +1143,10 @@
 
 .create-group__avatar-tile--placeholder {
   /* Bump the dashed outline up from `--border-subtle` (4%) to
-     `--border-medium` (10%) and from 1px to 2px so the empty
+     `--border-default` (10%) and from 1px to 2px so the empty
      dropzone reads as a clear "tap to add" affordance rather than
      fading into the background. */
-  border: 2px dashed var(--border-medium);
+  border: 2px dashed var(--border-default);
   background: var(--bg-sunken);
 }
 

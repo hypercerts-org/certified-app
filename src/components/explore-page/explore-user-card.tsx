@@ -59,7 +59,7 @@ function ExploreUserCard({
             <p className="explore-user-card__handle">@{handle}</p>
           ) : (
             <p className="explore-user-card__handle explore-user-card__handle--did">
-              <User size={11} strokeWidth={1.75} aria-hidden />
+              <User size={12} strokeWidth={2} aria-hidden />
               {truncateDid(actor.did)}
             </p>
           )}

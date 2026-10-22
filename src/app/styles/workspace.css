@@ -17,7 +17,8 @@
 .workspace__eyebrow {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
 }
 
@@ -215,7 +216,8 @@
 .wks-notion__section-label {
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
   padding: 0 8px 4px;
 }

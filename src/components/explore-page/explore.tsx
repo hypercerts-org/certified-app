@@ -460,7 +460,7 @@ function ExploreMain({
                     className="explore__chrome-btn--icon"
                     aria-label="Sort"
                   >
-                    <ArrowUpDown size={13} strokeWidth={1.75} aria-hidden />
+                    <ArrowUpDown size={14} strokeWidth={1.75} aria-hidden />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="end">
@@ -1203,7 +1203,7 @@ function AllCategoryDropdown({
               display:contents and so has no rect for the spotlight to find. */}
           <button type="button" className="explore__sub-dropdown-trigger" data-tour="explore-category">
             <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
           </button>
         </PopoverTrigger>
       </Tooltip>
@@ -1267,7 +1267,7 @@ function AllSection({
             onClick={onShowAll}
           >
             Show all
-            <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -1452,7 +1452,7 @@ function SubPrefixDropdown({
         <PopoverTrigger>
           <button type="button" className="explore__sub-dropdown-trigger">
             <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
           </button>
         </PopoverTrigger>
       </Tooltip>

@@ -423,7 +423,7 @@ export default function ActivityDetail({
         size={14}
         strokeWidth={2}
         aria-hidden
-        className="animate-spin motion-reduce:animate-none ml-1.5 inline-block align-middle"
+        className="animate-spin ml-1.5 inline-block align-middle"
       />
     </p>
   ) : fundingRecordPollTimedOut ? (
@@ -1124,7 +1124,7 @@ export default function ActivityDetail({
   const summaryHead = (
     <div className="cert-detail__summary-head">
       <span className="cert-detail__meta-label">
-        <AlignLeft size={11} strokeWidth={2} aria-hidden />
+        <AlignLeft size={12} strokeWidth={2} aria-hidden />
         Summary
       </span>
     </div>
@@ -1174,8 +1174,8 @@ export default function ActivityDetail({
       >
         {descriptionExpanded ? "Hide description" : "Read full description"}
         <ChevronDown
-          size={15}
-          strokeWidth={2}
+          size={16}
+          strokeWidth={1.75}
           aria-hidden
           className="cert-detail__desc-toggle-chevron"
         />
@@ -1191,7 +1191,7 @@ export default function ActivityDetail({
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
         <h2 className="cert-detail__section-title">
-          <ScrollText size={11} strokeWidth={2} aria-hidden />
+          <ScrollText size={12} strokeWidth={2} aria-hidden />
           Description
         </h2>
       </div>
@@ -1211,7 +1211,7 @@ export default function ActivityDetail({
       <section className="cert-detail__section">
         <div className="cert-detail__section-header">
           <h2 className="cert-detail__section-title">
-          <ScrollText size={11} strokeWidth={2} aria-hidden />
+          <ScrollText size={12} strokeWidth={2} aria-hidden />
           Description
         </h2>
         </div>
@@ -1229,7 +1229,7 @@ export default function ActivityDetail({
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
         <h2 className="cert-detail__section-title">
-          <Users size={11} strokeWidth={2} aria-hidden />
+          <Users size={12} strokeWidth={2} aria-hidden />
           Contributors
           <span className="cert-detail__meta-count">{contributorCount}</span>
         </h2>
@@ -1327,7 +1327,7 @@ export default function ActivityDetail({
           <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
             <dt className="cert-detail__meta-label">
               <span className="cert-detail__meta-label-text">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
+                <Calendar size={12} strokeWidth={2} aria-hidden />
                 Time period
               </span>
             </dt>
@@ -1376,7 +1376,7 @@ export default function ActivityDetail({
           {editing || workScopeLabel ? (
             <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
               <dt className="cert-detail__meta-label">
-                <Target size={11} strokeWidth={2} aria-hidden />
+                <Target size={12} strokeWidth={2} aria-hidden />
                 Work scope
               </dt>
               <dd className="cert-detail__meta-value">
@@ -1430,7 +1430,7 @@ export default function ActivityDetail({
                   <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
                     <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
                       <span className="cert-detail__meta-label-text">
-                        <Users size={11} strokeWidth={2} aria-hidden />
+                        <Users size={12} strokeWidth={2} aria-hidden />
                         Contributors
                         <span className="cert-detail__meta-count">
                           {contributorCount}
@@ -1443,7 +1443,7 @@ export default function ActivityDetail({
                           className="cert-detail__section-see-all"
                         >
                           See all
-                          <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+                          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
                         </TransitionLink>
                       ) : null}
                     </dt>
@@ -1481,7 +1481,7 @@ export default function ActivityDetail({
           {value.rights ? (
             <div className="cert-detail__meta-row cert-detail__meta-row--rights">
               <dt className="cert-detail__meta-label">
-                <FileText size={11} strokeWidth={2} aria-hidden />
+                <FileText size={12} strokeWidth={2} aria-hidden />
                 Rights
               </dt>
               <dd className="cert-detail__meta-value">
@@ -1555,7 +1555,7 @@ export default function ActivityDetail({
               <section className="cert-detail__section">
                 <div className="cert-detail__section-header">
                   <h2 className="cert-detail__section-title">
-                    <Coins size={11} strokeWidth={2} aria-hidden />
+                    <Coins size={12} strokeWidth={2} aria-hidden />
                     Funding
                     {fundingReceipts.length > 0 ? (
                       <span className="cert-detail__meta-count">
@@ -1573,7 +1573,7 @@ export default function ActivityDetail({
                         className="cert-detail__section-see-all"
                       >
                         See all
-                        <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+                        <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
                       </TransitionLink>
                     ) : null}
                   </div>
@@ -1621,7 +1621,7 @@ export default function ActivityDetail({
             {locations.length > 0 ? (
               <section className="cert-detail__section cert-detail__section--locations">
                 <span className="cert-detail__meta-label">
-                  <MapPin size={11} strokeWidth={2} aria-hidden />
+                  <MapPin size={12} strokeWidth={2} aria-hidden />
                   Locations
                   <span className="cert-detail__meta-count">
                     {locations.length}
@@ -1646,7 +1646,7 @@ export default function ActivityDetail({
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
               <h2 className="cert-detail__section-title">
-                <Coins size={11} strokeWidth={2} aria-hidden />
+                <Coins size={12} strokeWidth={2} aria-hidden />
                 Funding
                 {fundingReceipts.length > 0 ? (
                   <span className="cert-detail__meta-count">

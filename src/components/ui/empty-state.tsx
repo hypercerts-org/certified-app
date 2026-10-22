@@ -91,14 +91,14 @@ export default function EmptyState({
           className="mb-4 text-[var(--fg-muted)] opacity-50"
           aria-hidden="true"
         >
-          <Icon size={40} strokeWidth={1.2} />
+          <Icon size={40} strokeWidth={1.25} />
         </div>
       )}
       <Heading className="mb-2 font-headline text-h4 text-[var(--fg-primary)]">
         {title}
       </Heading>
       {description && (
-        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-[var(--fg-muted)]">
+        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-pretty text-[var(--fg-muted)]">
           {description}
         </p>
       )}

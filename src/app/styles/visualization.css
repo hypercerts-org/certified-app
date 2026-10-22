@@ -375,7 +375,8 @@
 .viz__panel-section-title {
   font-size: var(--text-caption, 0.75rem);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   margin-bottom: var(--space-1, 4px);
 }
