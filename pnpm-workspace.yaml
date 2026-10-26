@@ -2,3 +2,5 @@
 # list each one explicitly. core-js only prints a funding notice.
 allowBuilds:
   core-js: false
+minimumReleaseAgeExclude:
+  - '@hypercerts-org/ui-react@0.2.1'

@@ -1,13 +1,18 @@
+import {
+  Avatar,
+  Badge,
+  Card,
+  Heading,
+  IdentityRow,
+  Text,
+} from "@hypercerts-org/ui-react"
 import Link from "next/link"
-
 import type {
   ActivityCard,
   ActorCard,
   BadgeCard,
   ProjectCard,
 } from "@/lib/hypercerts/views"
-
-import { Avatar, Badge, Card, Heading, IdentityRow, Text } from "./ui"
 
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.

@@ -1,12 +1,10 @@
 "use client"
 
+import { Button, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react"
 import { useCallback } from "react"
-
 import type { ActivityCard, Page } from "@/lib/hypercerts/views"
 import { useCursorPages } from "@/lib/use-cursor-pages"
-
 import { ActivityCardView } from "./cards"
-import { Button, EmptyState, ErrorMessage } from "./ui"
 
 export type ActivitySource =
   | { kind: "all" }

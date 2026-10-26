@@ -1,9 +1,8 @@
+import { Heading, Skeleton } from "@hypercerts-org/ui-react"
 import type { Metadata } from "next"
 import { Suspense } from "react"
-
 import { ExploreSearch } from "@/components/explore-search"
 import { OrganizationList } from "@/components/organization-list"
-import { Heading, Skeleton } from "@/components/ui"
 import { listOrganizationsPage } from "@/lib/hypercerts/queries"
 
 export const metadata: Metadata = { title: "Explore" }

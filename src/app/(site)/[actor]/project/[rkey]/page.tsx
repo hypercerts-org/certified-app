@@ -1,11 +1,16 @@
+import {
+  Avatar,
+  Eyebrow,
+  Heading,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-
 import { ActivityList } from "@/components/activity-list"
 import { actorHref } from "@/components/cards"
 import { Tile, TileSkeleton } from "@/components/tiles"
-import { Avatar, Eyebrow, Heading, Skeleton, Text } from "@/components/ui"
 import {
   getActor,
   getProject,

@@ -1,9 +1,8 @@
+import { ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react"
 import type { Metadata } from "next"
 import { Suspense } from "react"
-
 import { ActivityList } from "@/components/activity-list"
 import { actorHref } from "@/components/cards"
-import { ErrorMessage, Skeleton, Text } from "@/components/ui"
 import { listActivitiesPage } from "@/lib/hypercerts/queries"
 import { isDid } from "@/lib/validate"
 

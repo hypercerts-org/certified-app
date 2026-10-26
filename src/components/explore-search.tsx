@@ -1,8 +1,7 @@
 "use client"
 
+import { SearchInput } from "@hypercerts-org/ui-react"
 import { usePathname, useRouter } from "next/navigation"
-
-import { SearchInput } from "./ui"
 
 // The search term lives in the URL, so a search result page can be shared and
 // is rendered on the server. Typing replaces the URL after a short debounce.

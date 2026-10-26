@@ -1,13 +1,18 @@
 import {
+  Badge,
+  EmptyState,
+  Eyebrow,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react"
+import {
   listActivitiesPage,
   listBadgesReceived,
   listProjectsPage,
 } from "@/lib/hypercerts/queries"
 import type { ActorDetail } from "@/lib/hypercerts/views"
-
 import { ActivityList } from "./activity-list"
 import { BadgeCardView, ProjectCardView } from "./cards"
-import { Badge, EmptyState, Eyebrow, Skeleton, Text } from "./ui"
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
 // reorder tiles without the others knowing. That is the separability the

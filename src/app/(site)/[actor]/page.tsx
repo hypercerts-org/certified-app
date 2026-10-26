@@ -1,6 +1,6 @@
+import { Avatar, Heading, Skeleton, Text } from "@hypercerts-org/ui-react"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
-
 import {
   AboutTile,
   ActivitiesTile,
@@ -8,7 +8,6 @@ import {
   ProjectsTile,
   TileSkeleton,
 } from "@/components/tiles"
-import { Avatar, Heading, Skeleton, Text } from "@/components/ui"
 import { getActor } from "@/lib/hypercerts/queries"
 
 // Prerender one known organization at build time; every other actor gets the

@@ -1,8 +1,7 @@
+import { Eyebrow, Heading, Text } from "@hypercerts-org/ui-react"
 import { Suspense } from "react"
-
 import { ActivityList } from "@/components/activity-list"
 import { TileSkeleton } from "@/components/tiles"
-import { Eyebrow, Heading, Text } from "@/components/ui"
 import { listActivitiesPage } from "@/lib/hypercerts/queries"
 
 async function RecentActivities() {

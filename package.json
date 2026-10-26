@@ -18,11 +18,10 @@
   },
   "dependencies": {
     "@atproto/lex": "0.4.2",
-    "@hypercerts-org/ui-react": "0.2.0",
+    "@hypercerts-org/ui-react": "0.2.1",
     "next": "16.4.3",
     "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "tailwindcss": "4.3.3"
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
