@@ -197,12 +197,15 @@ const TOAST_KEYFRAMES = `
 const variantChrome: Record<ToastVariant, string> = {
   default:
     "bg-[var(--bg-elevated)] text-[var(--fg-primary)] border-[var(--border-default)]",
+  // The tint tokens are translucent, so they're laid over the opaque
+  // elevated surface; on their own, whatever floats beneath the toast (the
+  // Feedback button) shows through.
   // Soft success tint; border stays neutral (no success-border token exists).
   success:
-    "bg-[var(--color-success-bg)] text-[var(--fg-primary)] border-[var(--border-default)]",
+    "bg-[var(--bg-elevated)] [background-image:linear-gradient(var(--color-success-bg),var(--color-success-bg))] text-[var(--fg-primary)] border-[var(--border-default)]",
   // Subtle error tint that flips in dark mode via the error-surface tokens.
   error:
-    "bg-[var(--color-error-bg)] text-[var(--fg-primary)] border-[var(--color-error-border)]",
+    "bg-[var(--bg-elevated)] [background-image:linear-gradient(var(--color-error-bg),var(--color-error-bg))] text-[var(--fg-primary)] border-[var(--color-error-border)]",
 };
 
 const variantIcon: Record<ToastVariant, React.ReactNode> = {
