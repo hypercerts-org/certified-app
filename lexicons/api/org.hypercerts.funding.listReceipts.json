@@ -1,0 +1,85 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.funding.listReceipts",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed funding receipts matching the supplied filters: filters combine with AND, while values within an array combine with OR. Repeat array parameters to supply multiple values; duplicates are ignored. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs, including facilitator, personal, and group repositories.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "uris": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Funding-receipt AT-URIs with a DID authority, matched by URI only, not CID.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "from": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Sender DIDs or full record AT-URIs with a DID authority. DIDs match only the DID variant; AT-URIs match only the strong-reference URI, not CID. Resolve handles to DIDs; invalid entries reject the request with the parameter and entry identified.",
+            "items": { "type": "string" }
+          },
+          "to": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Recipient DIDs or full record AT-URIs with a DID authority. DIDs match only the DID variant; AT-URIs match only the strong-reference URI, not CID. Resolve handles to DIDs; invalid entries reject the request with the parameter and entry identified.",
+            "items": { "type": "string" }
+          },
+          "forUris": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Funded-target AT-URIs with a DID authority, matched by URI only; CID is not compared.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "transactionIds": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact transaction ID matches; values are not normalized.",
+            "items": { "type": "string" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Direction for ordering by createdAt then URI; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum receipts per page; default 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor bound to sortDirection; keep all other parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter or pagination parameter is invalid." },
+        { "name": "ReceiptQueryFailed", "description": "The receipt query or publisher hydration failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["receipts"],
+      "properties": {
+        "receipts": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.funding.getReceipt#receiptView" }
+        },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when there is no next page." }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.getOrganization",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Gets an actor's indexed organization sidecar and associated profile by DID. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor"],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the actor to look up."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The actor DID is invalid or an unsupported parameter was supplied." },
+        { "name": "RecordNotFound", "description": "No indexed organization sidecar exists for this DID." },
+        { "name": "OrganizationQueryFailed", "description": "The indexed organization sidecar or associated profile could not be queried." }
+      ]
+    },
+    "organizationActorView": {
+      "type": "object",
+      "description": "Actor with an indexed organization sidecar and nullable profile view.",
+      "required": ["did", "profile", "organization"],
+      "nullable": ["profile"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "profile": { "type": "ref", "ref": "org.hypercerts.api.defs#profileView" },
+        "organization": { "type": "ref", "ref": "org.hypercerts.api.defs#organizationView" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["actor"],
+      "properties": {
+        "actor": { "type": "ref", "ref": "#organizationActorView" }
+      }
+    }
+  }
+}

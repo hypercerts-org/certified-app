@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.getProfile",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Gets an indexed Certified profile by DID or handle. Handles resolve through the configured resolver's com.atproto.identity.resolveHandle endpoint; no DID document is fetched for independent verification. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor"],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "format": "at-identifier",
+            "description": "DID or handle of the profile actor."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The actor is not a valid DID or handle, or an unsupported parameter was supplied." },
+        { "name": "HandleResolverConfigError", "description": "HYPERCERTS_HANDLE_RESOLVER_URL is missing or invalid." },
+        { "name": "HandleResolutionFailed", "description": "The handle could not be resolved to a valid DID." },
+        { "name": "RecordNotFound", "description": "The actor was identified, but no indexed Certified profile exists." },
+        { "name": "ProfileQueryFailed", "description": "The indexed profile could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["profile"],
+      "properties": {
+        "profile": {
+          "type": "ref",
+          "ref": "org.hypercerts.api.defs#profileView",
+          "description": "Indexed Certified profile record with its AT-URI, CID, repository DID, and indexing time."
+        }
+      }
+    }
+  }
+}

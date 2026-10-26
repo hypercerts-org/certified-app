@@ -1,0 +1,62 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.getRights",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Looks up one indexed rights record by exact DID-authority AT-URI. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full AT-URI of a rights record, using a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#output"
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "The URI is invalid or does not identify a rights record."
+        },
+        {
+          "name": "RecordNotFound",
+          "description": "No indexed rights record exists at this AT-URI."
+        }
+      ]
+    },
+    "rightsView": {
+      "type": "object",
+      "description": "Rights record with its publisher actor; the full record is preserved and attachments are not expanded.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.claim.rights" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["rights"],
+      "properties": {
+        "rights": {
+          "type": "ref",
+          "ref": "#rightsView"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.feed.getActorReactions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns the indexed like and repost for each supplied subject occurrence by one actor. Authentication is not required. Subject matching ignores CID; duplicate inputs and request order are preserved. For each reaction collection, duplicate actor and subject URI pairs use the earliest valid createdAt; when it is absent or invalid, ordering falls back to indexedAt and then the database row's created_at timestamp, with reaction URI ascending on ties. A missing indexed reaction is null; query failures return an error.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor", "subjects"],
+        "properties": {
+          "actor": { "type": "string", "format": "did", "description": "Repository-owner DID of the actor whose reactions to look up." },
+          "subjects": {
+            "type": "array",
+            "description": "One or more full record AT-URIs with DID authorities, not handle authorities, supplied as repeated unbracketed query values. Results preserve each occurrence and its input order.",
+            "minLength": 1,
+            "maxLength": 100,
+            "items": { "type": "string", "format": "at-uri" }
+          }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The actor DID, subjects array, subject AT-URI, or another query parameter is invalid." },
+        { "name": "ActorReactionsQueryFailed", "description": "The indexed actor reactions could not be queried or returned a malformed result; retry the request." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["results"],
+      "properties": {
+        "results": { "type": "array", "description": "One result for each supplied subject occurrence, in request order, including duplicates.", "items": { "type": "ref", "ref": "#actorReactionResult" } }
+      }
+    },
+    "actorReactionResult": {
+      "type": "object",
+      "required": ["subject", "like", "repost"],
+      "nullable": ["like", "repost"],
+      "properties": {
+        "subject": { "type": "string", "format": "at-uri", "description": "The subject AT-URI from this request occurrence; matching ignores CID." },
+        "like": { "type": "ref", "ref": "app.certified.feed.getLikes#likeRecordView", "description": "The actor's earliest indexed like for this subject URI, or null when none is indexed." },
+        "repost": { "type": "ref", "ref": "app.certified.feed.getReposts#repostRecordView", "description": "The actor's earliest indexed repost for this subject URI, or null when none is indexed." }
+      }
+    }
+  }
+}

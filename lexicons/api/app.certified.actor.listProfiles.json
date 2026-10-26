@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.listProfiles",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed Certified profiles with pagination. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "sortDirection": { "type": "string", "description": "Sort by a valid zoned createdAt, otherwise indexedAt, falling back to row creation time; URI breaks ties. Default desc.", "enum": ["asc", "desc"] },
+          "limit": { "type": "integer", "description": "Page size; default 25.", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "description": "Opaque cursor bound to sortDirection; keep parameters unchanged between pages. Pages are not a snapshot." }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A pagination parameter is invalid, repeated where scalar, or unsupported." },
+        { "name": "ProfileQueryFailed", "description": "The indexed profiles could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["profiles"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.api.defs#profileView" }
+        },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when pagination is complete." }
+      }
+    }
+  }
+}

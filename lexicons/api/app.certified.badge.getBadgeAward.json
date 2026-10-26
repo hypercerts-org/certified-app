@@ -1,0 +1,92 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.badge.getBadgeAward",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Gets a badge award and its recipient response by AT-URI without authentication.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full AT-URI of the badge-award record."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or is not a badge-award AT-URI." },
+        { "name": "RecordNotFound", "description": "No indexed badge award exists at this AT-URI." },
+        { "name": "BadgeAwardQueryFailed", "description": "The indexed badge award could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["badgeAward"],
+      "properties": {
+        "badgeAward": { "type": "ref", "ref": "#badgeAwardView" }
+      }
+    },
+    "badgeDefinitionRecordView": {
+      "type": "object",
+      "description": "Exact indexed badge-definition version referenced by the award.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "record": { "type": "ref", "ref": "app.certified.badge.definition" }
+      }
+    },
+    "badgeResponseRecordView": {
+      "type": "object",
+      "description": "Raw recipient response record without author hydration.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "record": { "type": "ref", "ref": "app.certified.badge.response" }
+      }
+    },
+    "badgeAwardView": {
+      "type": "object",
+      "description": "Badge award with its publisher, exact definition version, and recipient response status.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record", "badge", "responseStatus", "recipientResponse"],
+      "nullable": ["badge", "recipientResponse", "indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "app.certified.badge.award" },
+        "badge": {
+          "type": "ref",
+          "ref": "#badgeDefinitionRecordView",
+          "description": "The referenced definition version, or null when it is unavailable."
+        },
+        "responseStatus": {
+          "type": "string",
+          "enum": ["accepted", "rejected", "unanswered"],
+          "description": "Latest eligible recipient response, or unanswered when none exists."
+        },
+        "recipientResponse": {
+          "type": "ref",
+          "ref": "#badgeResponseRecordView",
+          "description": "Latest eligible response record, or null when unanswered."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.graph.listActorFollowing",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists actors named as subjects by the requested DID's follow records. No authentication is required; duplicate relationships are collapsed before pagination, and only the returned actors are hydrated.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor"],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "format": "did",
+            "description": "DID whose outgoing follows are listed."
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sorts by representative follow createdAt and URI; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum relationships per page; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque next-page cursor bound to sortDirection; keep the other query parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A DID or query parameter is invalid." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["following", "totalCount"],
+      "properties": {
+        "following": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "app.certified.graph.getFollow#actorFollowView" },
+          "description": "Outgoing relationships; each displayed DID identifies the actor named as the follow subject."
+        },
+        "totalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of deduplicated relationships before cursor and limit are applied."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Next-page cursor; omitted when no more results are available."
+        }
+      }
+    }
+  }
+}

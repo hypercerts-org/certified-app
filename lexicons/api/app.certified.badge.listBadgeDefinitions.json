@@ -1,0 +1,71 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.badge.listBadgeDefinitions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed badge definitions. Author and badgeType filters are combined with AND; values within each filter are matched with OR. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher DIDs to include.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "badgeTypes": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact badgeType strings to include.",
+            "items": { "type": "string", "maxLength": 100 }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Selects ascending or descending order by createdAt, then AT-URI."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum number of definitions to return in the page."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from the previous page, bound to sortDirection. Keep other query parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "A filter, query parameter, page bound, or cursor is invalid."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["badgeDefinitions"],
+      "properties": {
+        "badgeDefinitions": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "app.certified.badge.getBadgeDefinition#badgeDefinitionView"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Cursor for the next page; omitted when there are no more results."
+        }
+      }
+    }
+  }
+}

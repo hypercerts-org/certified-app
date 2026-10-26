@@ -1,0 +1,41 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.graph.getEntityFollow",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns the representative entity-follow record for an actor and entity AT-URI, or null if none is indexed. No authentication is required; lookup failures return errors rather than null.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor", "entity"],
+        "properties": {
+          "actor": { "type": "string", "format": "did", "description": "DID that published the entity-follow record." },
+          "entity": { "type": "string", "format": "at-uri", "description": "Full AT-URI of the followed record using a DID authority; any target collection is accepted, and matching is by URI, not CID." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [{ "name": "InvalidRequest", "description": "The actor DID, entity AT-URI, or another query parameter is invalid." }]
+    },
+    "entityFollowRecordView": {
+      "type": "object",
+      "description": "Raw indexed entity-follow record view, including the DID that published the relationship.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "record": { "type": "ref", "ref": "app.certified.graph.entityFollow" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["follow"],
+      "nullable": ["follow"],
+      "properties": {
+        "follow": { "type": "ref", "ref": "#entityFollowRecordView", "description": "Earliest matching record by createdAt, with URI ascending on ties; null if none is indexed." }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.feed.like",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Record declaring a 'like' of a piece of subject content. Social feedback only: a like carries no protocol meaning about the subject (it is not an evaluation, endorsement, or acknowledgement). Schema-compatible with app.bsky.feed.like.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subject", "createdAt"],
+        "properties": {
+          "subject": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Strong reference to the record being liked. May be a record of any lexicon (e.g. an activity, a collection, or a repost's subject)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared timestamp when this record was originally created."
+          },
+          "via": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Optional strong reference to the record through which the subject was encountered, typically an app.certified.feed.repost. Lets AppViews credit the account that surfaced the subject. Mirrors the optional `via` field on app.bsky.feed.like; the referenced record may conform with any lexicon."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Optional cryptographic signatures attesting to this record's content."
+          }
+        }
+      }
+    }
+  }
+}

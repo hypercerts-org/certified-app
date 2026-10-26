@@ -1,0 +1,59 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.feed.getLikes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists distinct actors liking a subject record. No authentication is required. Matches subject.uri regardless of CID or whether the subject is indexed. Duplicate author and subject URI pairs use the earliest createdAt, with URI ascending on ties. Only the returned page is hydrated; missing sidecars are null and hydration failures return errors, not partial pages.",
+      "parameters": {
+        "type": "params",
+        "required": ["subject"],
+        "properties": {
+          "subject": { "type": "string", "format": "at-uri", "description": "Full DID-authority record AT-URI; any target collection is accepted." },
+          "sortDirection": { "type": "string", "enum": ["asc", "desc"], "description": "Sort by representative like createdAt and URI; defaults to desc." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum relationships per page; defaults to 25." },
+          "cursor": { "type": "string", "description": "Opaque next-page cursor bound to sortDirection; keep all other parameters unchanged between pages." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The subject AT-URI, sort direction, limit, cursor, or another query parameter is invalid." },
+        { "name": "LikeQueryFailed", "description": "The like query, total count, or required actor hydration failed; retry the request." }
+      ]
+    },
+    "likeRecordView": {
+      "type": "object",
+      "description": "Raw indexed like preserving the full record, including subject, via, and signatures when present. Duplicates use the earliest createdAt, with URI ascending on ties.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did", "description": "Repository-owner DID of the like publisher." },
+        "record": { "type": "ref", "ref": "app.certified.feed.like" }
+      }
+    },
+    "likeView": {
+      "type": "object",
+      "description": "Liker actor sidecars paired with the representative raw like record. Missing profile and organization records are null.",
+      "required": ["did", "profile", "organization", "like"],
+      "nullable": ["profile", "organization"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "profile": { "type": "ref", "ref": "org.hypercerts.api.defs#profileView" },
+        "organization": { "type": "ref", "ref": "org.hypercerts.api.defs#organizationView" },
+        "like": { "type": "ref", "ref": "#likeRecordView" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["likeCount", "likes"],
+      "properties": {
+        "likeCount": { "type": "integer", "minimum": 0, "description": "Total distinct indexed author DIDs liking this subject URI, independent of page size. Zero when no likes are indexed; totals may change between requests." },
+        "likes": { "type": "array", "items": { "type": "ref", "ref": "#likeView" } },
+        "cursor": { "type": "string", "description": "Next-page cursor; omitted when pagination is complete." }
+      }
+    }
+  }
+}

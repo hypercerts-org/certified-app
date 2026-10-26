@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.context.getAcknowledgement",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Gets one public acknowledgement by exact AT-URI; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Acknowledgement record AT-URI with a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or does not identify an acknowledgement record." },
+        { "name": "RecordNotFound", "description": "No acknowledgement is indexed at this AT-URI." },
+        { "name": "AcknowledgementQueryFailed", "description": "The acknowledgement or publisher lookup failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["acknowledgement"],
+      "properties": {
+        "acknowledgement": {
+          "type": "ref",
+          "ref": "org.hypercerts.api.defs#acknowledgementView"
+        }
+      }
+    }
+  }
+}

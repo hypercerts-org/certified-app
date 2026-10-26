@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.collection.searchCollections",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Searches collection title or shortDescription for the complete trimmed text as a case-insensitive literal substring; blank text adds no search restriction. Other filters combine with search using AND, with OR within arrays except tagUris, which requires every supplied URI. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["search"],
+        "properties": {
+          "search": { "type": "string", "description": "Case-insensitive literal substring in title or shortDescription; blank trimmed text adds no search restriction." },
+          "authors": { "type": "array", "maxLength": 100, "description": "Repository-owner DID to match.", "items": { "type": "string", "format": "did" } },
+          "hasOrganizationRecord": { "type": "boolean", "description": "Filter by the author's organization/self record; false matches absence regardless of profile presence." },
+          "types": { "type": "array", "maxLength": 100, "description": "Exact collection type to match.", "items": { "type": "string", "maxLength": 64 } },
+          "uris": { "type": "array", "maxLength": 100, "description": "Match by collection record AT-URI; this does not select a CID version.", "items": { "type": "string", "format": "at-uri" } },
+          "itemUris": { "type": "array", "maxLength": 100, "description": "Match when an embedded item's itemIdentifier.uri equals a supplied AT-URI; matching ignores CID.", "items": { "type": "string", "format": "at-uri" } },
+          "tagUris": { "type": "array", "maxLength": 100, "description": "Require every supplied vocabulary-tag AT-URI to occur in record.tags; matching ignores CID and tag records.", "items": { "type": "string", "format": "at-uri" } },
+          "sortDirection": { "type": "string", "enum": ["asc", "desc"], "description": "Direction for (createdAt, uri) ordering; defaults to desc." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum collections per page; defaults to 25." },
+          "cursor": { "type": "string", "description": "Opaque cursor from a previous response; use the same sortDirection." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [{ "name": "InvalidRequest", "description": "Search text or another query parameter is invalid or unsupported." }]
+    },
+    "output": {
+      "type": "object",
+      "required": ["collections"],
+      "properties": {
+        "collections": { "type": "array", "items": { "type": "ref", "ref": "org.hypercerts.collection.getCollection#collectionView" } },
+        "cursor": { "type": "string", "description": "Cursor for the next page; omitted when there is no next page." }
+      }
+    }
+  }
+}

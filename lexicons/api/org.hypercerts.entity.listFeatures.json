@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.entity.listFeatures",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed features with filters and direction-bound pagination; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Repository-owner DIDs; values combine with OR.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "hasOrganizationRecord": {
+            "type": "boolean",
+            "description": "Whether the author has an organization self record; false is independent of profile presence."
+          },
+          "types": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact open-string feature types; values combine with OR.",
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Exact case-sensitive feature type."
+            }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Direction for sorting by createdAt and URI."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum number of features in the page."
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 32768,
+            "description": "Opaque cursor from the previous page, bound to sortDirection."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter, page bound, cursor, repeated scalar, or query parameter is invalid." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["features"],
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.entity.defs#featureView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when there is no next page."
+        }
+      }
+    }
+  }
+}

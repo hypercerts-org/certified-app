@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.getProfiles",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns an indexed Certified profile for each supplied actor DID. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["actors"],
+        "properties": {
+          "actors": {
+            "type": "array",
+            "description": "Actor DIDs to look up, supplied as repeated unbracketed query values.",
+            "minLength": 1,
+            "maxLength": 100,
+            "items": { "type": "string", "format": "did" }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "An actor DID or query parameter is invalid." },
+        { "name": "ProfileQueryFailed", "description": "The indexed profiles could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["profiles"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "description": "One result per supplied actor occurrence, in request order.",
+          "items": { "type": "ref", "ref": "#profileResult" }
+        }
+      }
+    },
+    "profileResult": {
+      "type": "object",
+      "required": ["actor", "profile"],
+      "nullable": ["profile"],
+      "properties": {
+        "actor": { "type": "string", "format": "did", "description": "Actor DID from the corresponding request occurrence." },
+        "profile": { "type": "ref", "ref": "org.hypercerts.api.defs#profileView", "description": "Indexed profile view, or null when none is indexed." }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.feed.getActorLikes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists an actor's indexed likes, one representative per subject URI regardless of subject CID. No authentication is required. Duplicates use the earliest createdAt, with URI ascending on ties. Returns raw like records including subject, via, and signatures when present; subjects are not hydrated and need not be indexed.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor"],
+        "properties": {
+          "actor": { "type": "string", "format": "did", "description": "Repository-owner DID of the actor whose likes to list." },
+          "sortDirection": { "type": "string", "enum": ["asc", "desc"], "description": "Sort by representative like createdAt and URI; defaults to desc." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum relationships per page; defaults to 25." },
+          "cursor": { "type": "string", "description": "Opaque next-page cursor bound to sortDirection; keep all other parameters unchanged between pages." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The actor DID, sort direction, limit, cursor, or another query parameter is invalid." },
+        { "name": "LikeQueryFailed", "description": "The actor likes query failed; retry the request." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["likes"],
+      "properties": {
+        "likes": { "type": "array", "items": { "type": "ref", "ref": "app.certified.feed.getLikes#likeRecordView" } },
+        "cursor": { "type": "string", "description": "Next-page cursor; omitted when pagination is complete." }
+      }
+    }
+  }
+}

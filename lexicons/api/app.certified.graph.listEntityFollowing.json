@@ -1,0 +1,49 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.graph.listEntityFollowing",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists entities followed by an actor DID. No authentication is required; duplicate actor–entity relationships use the earliest createdAt, with URI ascending on ties. Only returned-page targets are hydrated and resolved to the latest indexed record by URI; missing or unsupported targets retain their URI and follow with entity null, while lookup failures return errors rather than partial pages.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor"],
+        "properties": {
+          "actor": { "type": "string", "format": "did", "description": "DID whose outgoing entity follows are listed." },
+          "sortDirection": { "type": "string", "enum": ["asc", "desc"], "description": "Sorts by representative follow createdAt and URI; defaults to desc." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum relationships per page; defaults to 25." },
+          "cursor": { "type": "string", "description": "Opaque next-page cursor bound to sortDirection; keep the other query parameters unchanged between pages." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [{ "name": "InvalidRequest", "description": "The actor DID or another query parameter is invalid." }]
+    },
+    "entityFollowingItem": {
+      "type": "object",
+      "description": "An entity-follow target and its relationship record. Resolve the latest indexed target by URI; retain the URI and follow when the target is missing or unsupported.",
+      "required": ["uri", "entity", "follow"],
+      "nullable": ["entity"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri", "description": "AT-URI of the followed entity, retained even when the target cannot be resolved." },
+        "entity": {
+          "type": "union",
+          "refs": [
+            "org.hypercerts.claim.getActivity#activityView",
+            "org.hypercerts.collection.getCollection#collectionView",
+            "org.hypercerts.collection.listCollectionItems#featureView"
+          ],
+          "description": "Resolved ActivityView, CollectionView, or author-hydrated FeatureView, or null when missing or unsupported."
+        },
+        "follow": { "type": "ref", "ref": "app.certified.graph.getEntityFollow#entityFollowRecordView" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["entities"],
+      "properties": {
+        "entities": { "type": "array", "items": { "type": "ref", "ref": "#entityFollowingItem" } },
+        "cursor": { "type": "string", "description": "Next-page cursor; omitted when no more results are available." }
+      }
+    }
+  }
+}

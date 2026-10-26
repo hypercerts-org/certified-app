@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.link.getEvmLink",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Looks up an indexed EVM-link record by exact AT-URI and hydrates its actor. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full AT-URI of an app.certified.link.evm record with a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or is not an app.certified.link.evm record AT-URI." },
+        { "name": "RecordNotFound", "description": "No indexed EVM-link record exists at this AT-URI." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["evmLink"],
+      "properties": {
+        "evmLink": { "type": "ref", "ref": "#evmLinkView" }
+      }
+    },
+    "evmLinkView": {
+      "type": "object",
+      "description": "Indexed EVM-link record with its original address and proof, and the linked actor's hydrated Certified records.",
+      "required": ["uri", "cid", "indexedAt", "did", "actor", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Index timestamp, or null when the indexed row has no timestamp."
+        },
+        "did": { "type": "string", "format": "did" },
+        "actor": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "app.certified.link.evm" }
+      }
+    }
+  }
+}

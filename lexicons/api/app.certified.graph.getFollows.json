@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.graph.getFollows",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns the representative raw follow record, or null, for each requested actor-to-actor relationship. Authentication is not required. Supply 1–100 repeated subjects values; the encoded GET request-target must not exceed 7,000 bytes.",
+      "parameters": {
+        "type": "params",
+        "required": ["actor", "subjects"],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "format": "did",
+            "maxLength": 2048,
+            "description": "DID of the actor who published the follow records."
+          },
+          "subjects": {
+            "type": "array",
+            "description": "Subject DIDs to check, supplied as repeated unbracketed query values. Every occurrence is returned in the same order, including duplicates.",
+            "minLength": 1,
+            "maxLength": 100,
+            "items": { "type": "string", "format": "did", "maxLength": 2048 }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The actor DID, subjects array, request-target length, or another query parameter is invalid." },
+        { "name": "ActorFollowQueryFailed", "description": "The indexed follow relationships could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["results"],
+      "properties": {
+        "results": {
+          "type": "array",
+          "description": "One result per supplied subject occurrence, in request order.",
+          "items": { "type": "ref", "ref": "#followResult" }
+        }
+      }
+    },
+    "followResult": {
+      "type": "object",
+      "required": ["subject", "follow"],
+      "nullable": ["follow"],
+      "properties": {
+        "subject": {
+          "type": "string",
+          "format": "did",
+          "description": "Subject DID from the corresponding request occurrence."
+        },
+        "follow": {
+          "type": "ref",
+          "ref": "app.certified.graph.getFollow#followRecordView",
+          "description": "Earliest indexed matching record by createdAt, with URI ascending on ties, or null when no relationship is indexed. Query failures are errors, not null results."
+        }
+      }
+    }
+  }
+}

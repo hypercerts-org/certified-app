@@ -1,0 +1,60 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.listContributions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists contribution records by publisher DID, sorted by createdAt and URI; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Repeated unbracketed publisher DIDs are ORed; use at most 100 values.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction for createdAt and URI; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum records in a page from 1 to 100; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor bound to sortDirection; keep filters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "An author DID, sort direction, page bound, or cursor is invalid." },
+        { "name": "ContributionQueryFailed", "description": "The contribution records or publishers could not be read from PostgreSQL." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["contributions"],
+      "properties": {
+        "contributions": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.claim.getContribution#contributionView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted after the last page."
+        }
+      }
+    }
+  }
+}

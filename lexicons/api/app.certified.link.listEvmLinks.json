@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.link.listEvmLinks",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed EVM-link records, optionally filtered by actor DID and wallet address. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "actors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Actor DIDs that own matching records; values within this filter use OR.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "addresses": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "EVM wallet addresses matched case-insensitively; values within this filter use OR.",
+            "items": { "type": "string", "minLength": 42, "maxLength": 42 }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Order by the record's createdAt timestamp and then AT-URI."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum number of links to return."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from a previous page, bound to sortDirection."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "An actor DID, EVM address, page bound, cursor, repeated scalar, or query parameter is invalid." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["evmLinks"],
+      "properties": {
+        "evmLinks": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "app.certified.link.getEvmLink#evmLinkView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when there is no next page."
+        }
+      }
+    }
+  }
+}

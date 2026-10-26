@@ -1,0 +1,84 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.badge.listBadgeAwards",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists public badge awards with recipient response status and pagination without authentication.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "DIDs of repositories that published the awards.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "badgeUris": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Badge-definition AT-URIs.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "badgeTypes": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact badgeType values from the referenced definition version.",
+            "items": { "type": "string", "maxLength": 100 }
+          },
+          "subjects": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "DIDs or full record AT-URIs with valid collection NSIDs.",
+            "items": { "type": "string" }
+          },
+          "responses": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Computed recipient response statuses.",
+            "items": { "type": "string", "enum": ["accepted", "rejected", "unanswered"] }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction for (createdAt, uri)."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum awards returned."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from the previous page."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter or page parameter is invalid." },
+        { "name": "BadgeAwardQueryFailed", "description": "The indexed badge awards could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["badgeAwards"],
+      "properties": {
+        "badgeAwards": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "app.certified.badge.getBadgeAward#badgeAwardView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when pagination is complete."
+        }
+      }
+    }
+  }
+}

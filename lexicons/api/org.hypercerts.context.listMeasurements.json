@@ -1,0 +1,76 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.context.listMeasurements",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists measurements with optional publisher and subject filters. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs, not record.measurers.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "subjects": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Subject AT-URIs matched against record.subjects[].uri, ignoring CID.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort by createdAt and URI; default desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum page size; default 25."
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 8192,
+            "description": "Opaque cursor tied to sortDirection; retain other filters between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#output"
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "A filter value, sort direction, page bound, cursor, repeated scalar, or query parameter is invalid."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["measurements"],
+      "properties": {
+        "measurements": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "org.hypercerts.context.getMeasurement#measurementView"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 8192,
+          "description": "Next-page cursor; omitted when no page follows."
+        }
+      }
+    }
+  }
+}

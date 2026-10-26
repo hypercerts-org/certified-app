@@ -1,0 +1,31 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.location.listLocations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed location records; authentication is not required. Array filters use repeated unbracketed query keys; filters combine with AND, values within each array with OR, and omitted filters are unrestricted.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": { "type": "array", "description": "Filter by author DID.", "maxLength": 100, "items": { "type": "string", "format": "did" } },
+          "uris": { "type": "array", "description": "Filter by full location AT-URI with a DID authority; matching uses the URI, not a CID.", "maxLength": 100, "items": { "type": "string", "format": "at-uri" } },
+          "locationTypes": { "type": "array", "description": "Match exact strings against locationType; empty strings are matched literally.", "maxLength": 100, "items": { "type": "string", "maxLength": 20 } },
+          "limit": { "type": "integer", "description": "Page size; defaults to 25.", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "description": "Opaque keyset cursor; keep all other parameters unchanged between pages. The cursor is bound to sortDirection, and pagination is not snapshot-isolated." },
+          "sortDirection": { "type": "string", "description": "Sort by a valid zoned createdAt; otherwise indexedAt or stored row creation time, then URI, all in this direction. Defaults to desc.", "enum": ["asc", "desc"] }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [{ "name": "InvalidRequest", "description": "A query parameter is invalid, unknown, or repeated where only one value is allowed." }]
+    },
+    "output": {
+      "type": "object",
+      "required": ["locations"],
+      "properties": {
+        "locations": { "type": "array", "description": "Matching location records in page order.", "items": { "type": "ref", "ref": "app.certified.location.getLocation#locationView" } },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when there is no next page." }
+      }
+    }
+  }
+}

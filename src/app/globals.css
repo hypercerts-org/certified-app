@@ -1,37 +1,125 @@
-/* Design system — split into modular files for maintainability.
-   Import order matters: tokens first (variables), then layout (structure),
-   then components (UI primitives), then feature-specific styles. */
-@import "./styles/tokens.css";
-@import "./styles/layout.css";
-@import "./styles/components.css";
-@import "./styles/feed.css";
-@import "./styles/profile.css";
-@import "./styles/pages.css";
-@import "./styles/cert-detail.css";
-@import "./styles/contributor-board.css";
-@import "./styles/fancy-contributor-board.css";
-@import "./styles/profile-endorsements.css";
-@import "./styles/profile-lists.css";
-@import "./styles/profile-edit.css";
-@import "./styles/profile-inline-edit.css";
-@import "./styles/profile-projects.css";
-@import "./styles/social-graph-sync.css";
-@import "./styles/project-detail.css";
-@import "./styles/context-updates.css";
-@import "./styles/workspace.css";
-@import "./styles/explore.css";
-@import "./styles/funding-form.css";
-@import "./styles/home.css";
-@import "./styles/site-drawer.css";
-@import "./styles/profile-groups.css";
-@import "./styles/smart-link.css";
-@import "./styles/settings-page.css";
-@import "./styles/leaflet.css";
-@import "./styles/landing.css";
-@import "./styles/view-transitions.css";
-@import "./styles/tour.css";
-@import "./styles/visualization.css";
+@import "@hypercerts-org/ui-react/styles.css";
+@import "@hypercerts-org/ui-react/base.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Layout only. Colors, type, radii and spacing scale come from the theme. */
+
+.site-header {
+  border-bottom: 1px solid var(--hc-line-hairline);
+  background: var(--hc-surface-panel);
+}
+
+.site-header nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 3.5rem;
+}
+
+.site-header .brand {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+}
+
+.site-main {
+  padding-block: 2rem 4rem;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.stack > * {
+  width: 100%;
+}
+
+.stack > button {
+  width: auto;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+@media (max-width: 799px) {
+  .tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.meta-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prewrap {
+  white-space: pre-line;
+}
+
+.embed {
+  padding: 1rem;
+}
+
+.embed-footer {
+  margin-top: 1rem;
+}

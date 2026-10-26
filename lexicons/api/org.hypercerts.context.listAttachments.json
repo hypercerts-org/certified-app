@@ -1,0 +1,73 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.context.listAttachments",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed attachments with optional publisher, record URI, subject URI, and content-type filters. Values within each array filter use OR; distinct filters use AND, and duplicate values are ignored. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs to match.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "uris": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Attachment AT-URIs with DID authorities to include; matching uses URI only, not CID/version. Results follow sort order, not input order.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "subjects": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Match any record.subjects[].uri against these AT-URIs with DID authorities; CID values are ignored.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "contentTypes": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact matches on record.contentType; this is not a file MIME-type filter.",
+            "items": { "type": "string" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort direction by (createdAt, uri); defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum page size; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor tied to sortDirection; keep all other parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter value, cursor, sort direction, page size, or query parameter is invalid." },
+        { "name": "AttachmentQueryFailed", "description": "The attachment query or required publisher hydration failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["attachments"],
+      "properties": {
+        "attachments": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.context.getAttachment#attachmentView" }
+        },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when there is no next page." }
+      }
+    }
+  }
+}
