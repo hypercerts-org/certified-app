@@ -231,7 +231,7 @@ export function BoardSettingsDialog({
       </div>
 
       {error ? (
-        <p className="mt-3 text-body-sm text-[var(--color-error)]">{error}</p>
+        <p className="mt-3 text-body-sm text-[var(--color-error)]" role="alert">{error}</p>
       ) : null}
     </FormDialog>
   )

@@ -107,7 +107,7 @@ export default function IdentityRow({
     return (
       <Link
         href={href}
-        className={`${containerClass} rounded transition-colors duration-150 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]`}
+        className={`${containerClass} rounded transition-colors duration-fast hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]`}
       >
         {inner}
       </Link>

@@ -126,32 +126,26 @@ describe("CreateGroupPage email validation", () => {
     expect(await screen.findByText("Email is required")).toBeTruthy()
   })
 
-  it("keeps the Create button disabled until name + handle + a valid email are present", async () => {
+  it("keeps Create enabled and blocks submit with inline errors until the form is valid", async () => {
     render(<CreateGroupPage />)
     const button = getCreateButton()
 
-    // Nothing filled in → disabled.
-    expect(button.disabled).toBe(true)
+    // Submit stays enabled (it only disables while creating); clicking it
+    // with missing fields paints the inline errors instead.
+    expect(button.disabled).toBe(false)
 
     const name = screen.getByLabelText("Display name") as HTMLInputElement
     const handle = screen.getByLabelText("Handle") as HTMLInputElement
     const email = getEmailInput()
 
-    // Name + handle only, still no email → disabled.
     fireEvent.change(name, { target: { value: "My Test Group" } })
     fireEvent.change(handle, { target: { value: "my-group" } })
-    expect(button.disabled).toBe(true)
-
-    // Add an INVALID email → blur sets emailError → still disabled.
     fireEvent.change(email, { target: { value: "nope" } })
-    fireEvent.blur(email)
-    await screen.findByText("Enter a valid email address")
-    expect(button.disabled).toBe(true)
+    fireEvent.submit(button.closest("form")!)
 
-    // Correct it to a valid email → error clears → button enabled.
-    fireEvent.change(email, { target: { value: "group@example.com" } })
+    expect(await screen.findByText("Enter a valid email address")).toBeTruthy()
     await waitFor(() => {
-      expect(button.disabled).toBe(false)
+      expect(document.activeElement).toBe(email)
     })
   })
 })

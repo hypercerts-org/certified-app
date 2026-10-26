@@ -214,7 +214,7 @@ function ListSection({
                 onClick={() => onOpen(list.rkey)}
               >
                 <span className="profile-lists__row-body">
-                  <span className="profile-lists__row-title">{list.title}</span>
+                  <span className="profile-lists__row-title" dir="auto">{list.title}</span>
                   {list.description ? (
                     <span className="profile-lists__row-desc">{list.description}</span>
                   ) : null}
@@ -348,7 +348,7 @@ function ListDetail({
           </button>
         </Tooltip>
         <h2 className="profile-lists__detail-title">
-          {list.title}
+          <bdi>{list.title}</bdi>
           <span className="profile-lists__detail-count">{list.items.length}</span>
         </h2>
         {viewerIsOwner ? (
@@ -363,12 +363,12 @@ function ListDetail({
                 <Plus size={16} strokeWidth={1.75} aria-hidden />
               </button>
             </Tooltip>
-            <Tooltip label="Bulk add by at-URI">
+            <Tooltip label="Add several at once">
               <button
                 type="button"
                 className="profile-lists__create-btn"
                 onClick={() => setPasteOpen(true)}
-                aria-label="Bulk add by at-URI"
+                aria-label="Add several at once"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
               </button>
@@ -478,7 +478,7 @@ function ListDetail({
       {confirmingDelete ? (
         <ConfirmDialog
           title={`Delete "${list.title}"?`}
-          message="The list record is removed from your PDS. Items themselves are not deleted."
+          message="This deletes the list. The items in it are not deleted."
           confirmLabel="Delete list"
           cancelLabel="Cancel"
           confirmVariant="destructive"

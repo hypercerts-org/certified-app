@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { extractRouteError, pickAllowedFields } from "../api"
+import { extractError, extractRouteError, pickAllowedFields, toUserErrorMessage } from "../api"
 
 // Silence the logSafe console output during tests (it logs every
 // extractRouteError invocation). We don't assert on log content here
@@ -196,5 +196,47 @@ describe("pickAllowedFields", () => {
       "app.example.test",
     )
     expect(result).toEqual({ $type: "app.example.test" })
+  })
+})
+
+describe("toUserErrorMessage", () => {
+  it("passes a human-written 4xx message through", () => {
+    expect(toUserErrorMessage(400, "Handle must be at least 3 characters", "Failed")).toBe(
+      "Handle must be at least 3 characters",
+    )
+  })
+
+  it("replaces protocol jargon with the fallback", () => {
+    expect(toUserErrorMessage(400, "Invalid group DID", "Failed to save")).toBe("Failed to save")
+    expect(toUserErrorMessage(403, "csrf origin mismatch", "Failed to save")).toBe("Failed to save")
+    expect(toUserErrorMessage(400, "listRecords failed: 502", "Failed to load")).toBe("Failed to load")
+  })
+
+  it("maps session, rate-limit and server errors to plain sentences", () => {
+    expect(toUserErrorMessage(401, "Not authenticated", "Failed")).toMatch(/Sign in again/)
+    expect(toUserErrorMessage(429, undefined, "Failed")).toMatch(/Too many attempts/)
+    expect(toUserErrorMessage(502, "Upstream PDS returned 502", "Failed to save")).toBe(
+      "Failed to save. Something went wrong on our side; try again in a moment.",
+    )
+  })
+
+  it("keeps ordinary English that happens to contain 'did'", () => {
+    expect(toUserErrorMessage(400, "You did not add a title", "Failed")).toBe("You did not add a title")
+  })
+
+  it("uses the fallback when the server sent no message", () => {
+    expect(toUserErrorMessage(400, undefined, "Failed to save")).toBe("Failed to save")
+  })
+})
+
+describe("extractError", () => {
+  it("reads the JSON error field", async () => {
+    const res = new Response(JSON.stringify({ error: "Title is too short" }), { status: 400 })
+    expect(await extractError(res, "Failed")).toBe("Title is too short")
+  })
+
+  it("falls back on a non-JSON body", async () => {
+    const res = new Response("<html>", { status: 400 })
+    expect(await extractError(res, "Failed")).toBe("Failed")
   })
 })

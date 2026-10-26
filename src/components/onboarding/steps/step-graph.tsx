@@ -256,6 +256,7 @@ function Picker({
         <input
           type="search"
           placeholder="Search Bluesky-only follows…"
+          aria-label="Search Bluesky-only follows"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"
@@ -278,10 +279,10 @@ function Picker({
         </span>
       </div>
 
-      <ul className="onboarding-step__picker-list" role="listbox">
+      <ul className="onboarding-step__picker-list" aria-label="Bluesky-only follows">
         {filtered.length === 0 ? (
           <li className="onboarding-step__picker-empty">
-            {query.trim() ? `No matches for "${query.trim()}".` : "Empty."}
+            {query.trim() ? `No matches for "${query.trim()}".` : "None of your Bluesky follows are left to import."}
           </li>
         ) : (
           filtered.map((d) => (

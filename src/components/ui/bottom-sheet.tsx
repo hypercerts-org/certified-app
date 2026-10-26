@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
+import Button from "@/components/ui/button"
 import { useBottomSheetDrag } from "@/hooks/use-bottom-sheet-drag"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
@@ -39,6 +40,11 @@ export interface BottomSheetProps {
  * Visual chrome (2px top-corner radius, slide-up animation, dark-mode
  * surfaces, reduced-motion handling) lives in `.bottom-sheet*` CSS in
  * `pages.css`, matching the existing profile-switcher / feedback sheets.
+ *
+ * Exit: closing (X, backdrop, Esc or drag) keeps the sheet mounted for a
+ * ~225ms slide-down (75% of the enter) + backdrop fade, mirroring the slide-up entry, then
+ * unmounts. Drag-dismiss starts that same exit from the dragged position.
+ * Reduced motion unmounts immediately.
  *
  * Only mounts below 800px — the `.bottom-sheet` base class is
  * `display: none` at desktop widths, so callers that also need a desktop
@@ -78,7 +84,64 @@ export default function BottomSheet({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [open, onClose])
 
-  if (!open) return null
+  // Exit phase: `rendered` outlives `open` by the length of the exit
+  // transition. Derived during render so opening mounts immediately.
+  const [rendered, setRendered] = useState(open)
+  const [closing, setClosing] = useState(false)
+  if (open && !rendered) setRendered(true)
+  if (open && closing) setClosing(false)
+  if (!open && rendered && !closing) setClosing(true)
+
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const finishExit = useCallback(() => {
+    setRendered(false)
+    setClosing(false)
+  }, [])
+
+  // Drive the exit imperatively (the drag hook already owns the sheet's
+  // inline transform/transition), unmounting on transitionend with a
+  // timeout backstop for the no-op case (e.g. already off-screen).
+  useLayoutEffect(() => {
+    if (!closing) return
+    const sheet = sheetRef.current
+    const backdrop = backdropRef.current
+    const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    // Reduced motion (or no node): unmount on the next tick, no slide.
+    if (!sheet || reduce) {
+      const t = setTimeout(finishExit, 0)
+      return () => clearTimeout(t)
+    }
+    sheet.style.animation = "none"
+    // Exit runs at ~75% of the 300ms enter, on the same emphasized curve.
+    sheet.style.transition =
+      "transform calc(var(--duration-slow) * 0.75) var(--ease-emphasized)"
+    sheet.style.transform = "translateY(100%)"
+    if (backdrop) {
+      backdrop.style.animation = "none"
+      backdrop.style.transition = "opacity var(--duration-fast) var(--ease-out)"
+      backdrop.style.opacity = "0"
+    }
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target === sheet && e.propertyName === "transform") finishExit()
+    }
+    sheet.addEventListener("transitionend", onEnd)
+    const backstop = setTimeout(finishExit, 350)
+    return () => {
+      sheet.removeEventListener("transitionend", onEnd)
+      clearTimeout(backstop)
+      // Re-opened mid-exit: drop the exit styles so the sheet shows again.
+      sheet.style.animation = ""
+      sheet.style.transition = ""
+      sheet.style.transform = ""
+      if (backdrop) {
+        backdrop.style.animation = ""
+        backdrop.style.transition = ""
+        backdrop.style.opacity = ""
+      }
+    }
+  }, [closing, sheetRef, finishExit])
+
+  if (!rendered) return null
   // Portal targets document.body, which is undefined during SSR.
   if (typeof document === "undefined") return null
 
@@ -90,7 +153,7 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_0.3s_ease-out] max-[799px]:transition-[max-height] max-[799px]:duration-300 max-[799px]:ease-out"
+    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
   // `.bottom-sheet--expanded` raises the cap to 92vh.
   const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
   const sheetClassName = `${sheetBase}${sheetExpandedClass}${
@@ -102,27 +165,29 @@ export default function BottomSheet({
   const resolvedHeader =
     header ??
     (title ? (
-      <div className="flex items-center justify-between px-5 pb-3">
-        <span className="font-headline text-h4 text-[var(--fg-primary)]">
+      <div className="flex items-start gap-3 pb-3 pl-5 pr-3">
+        <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)]">
           {title}
-        </span>
-        <button
-          type="button"
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="-mt-0.5 shrink-0"
           onClick={onClose}
           aria-label="Close"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--fg-muted)] transition-colors duration-150 hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
         >
-          <X size={18} />
-        </button>
+          <X size={16} strokeWidth={1.75} aria-hidden />
+        </Button>
       </div>
     ) : null)
 
   return createPortal(
     <>
       <div
+        ref={backdropRef}
         // Backdrop ties with the sheet at --z-portal-sheet; it renders first
         // in this portal fragment, so DOM order keeps it underneath.
-        className="bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--navy-overlay-30)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:animate-[bottomSheetFadeIn_0.2s_ease-out]"
+        className={`bottom-sheet__backdrop hidden max-[799px]:block max-[799px]:fixed max-[799px]:inset-0 max-[799px]:bg-[var(--scrim)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:animate-[bottomSheetFadeIn_var(--duration-base)_var(--ease-out)]${closing ? " pointer-events-none" : ""}`}
         onClick={onClose}
         aria-hidden="true"
       />

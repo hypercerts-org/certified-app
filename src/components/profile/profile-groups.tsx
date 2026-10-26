@@ -45,7 +45,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
   const { did: viewerDid } = useAuth()
   const isOwnProfile = !!did && !!viewerDid && did === viewerDid
 
-  const { groups, isLoading, error } = useCgsMemberships(did)
+  const { groups, isLoading, error, refresh } = useCgsMemberships(did)
 
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("joined-desc")
@@ -84,26 +84,25 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
   return (
     <div className="profile-groups">
       <div className="profile-groups__toolbar">
-        <h2 className="profile-groups__title">
-          Groups
-          {count > 0 ? (
-            <span className="profile-groups__count">{count}</span>
-          ) : null}
+        {/* The profile tab strip already labels this section, so the
+            lone sub-tab label is dropped visually; the heading stays for
+            screen readers. */}
+        <h2 className="sr-only">
+          Groups{count > 0 ? ` (${count})` : ""}
         </h2>
 
         <div className="profile-groups__controls">
           {isOwnProfile ? (
-            <Link href="/groups/create">
-              <Button
-                variant="primary"
-                size="sm"
-                className="profile-new-record-btn"
-                aria-label="New group"
-              >
-                <Plus size={14} strokeWidth={1.75} aria-hidden />
-                <span className="profile-new-record-btn__label">New group</span>
-              </Button>
-            </Link>
+            <Button
+              href="/groups/create"
+              variant="primary"
+              size="sm"
+              className="profile-new-record-btn"
+              aria-label="New group"
+            >
+              <Plus size={14} strokeWidth={1.75} aria-hidden />
+              <span className="profile-new-record-btn__label">New group</span>
+            </Button>
           ) : null}
           <label className="profile-groups__search">
             <Search
@@ -177,8 +176,12 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
         <EmptyState
           icon={Building2}
           title="Couldn't load groups"
-          description={error}
-        />
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={refresh}>
+            Try again
+          </Button>
+        </EmptyState>
       ) : visible.length === 0 ? (
         <EmptyState
           icon={Building2}
@@ -186,9 +189,17 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
           description={
             query
               ? "Try a different search term."
-              : "When you join a group, it'll appear here."
+              : isOwnProfile
+                ? "Create a group or join one to see it here."
+                : "Groups this profile belongs to will appear here."
           }
-        />
+        >
+          {isOwnProfile && !query ? (
+            <Button href="/groups/create" variant="secondary" size="sm">
+              Create a group
+            </Button>
+          ) : null}
+        </EmptyState>
       ) : (
         <ul className="profile-groups__list">
           {visible.map((g) => (
@@ -254,7 +265,7 @@ function GroupRow({ group }: GroupRowProps) {
             className="profile-groups__identity"
             title={`${name} (@${group.handle})`}
           >
-            <span className="profile-groups__name">{name}</span>
+            <span className="profile-groups__name" dir="auto">{name}</span>
             <span className="profile-groups__handle">@{group.handle}</span>
           </Link>
           {group.description ? (

@@ -36,6 +36,10 @@ interface ExploreData {
   isLoadingMore: boolean
   hasMore: boolean
   loadMore: () => void
+  /** True when the initial page failed to load (not "no results"). */
+  error: boolean
+  /** Re-run the initial load, e.g. from an error state's Retry. */
+  refetch: () => void
   /** Non-null only when the active filter is endorsement-based. */
   endorsementClosure: EndorsementClosureMeta | null
 }
@@ -50,6 +54,7 @@ interface InternalState {
   isLoadingMore: boolean
   hasMore: boolean
   cursor: string | null
+  error: boolean
   endorsementClosure: EndorsementClosureMeta | null
 }
 
@@ -63,6 +68,7 @@ const EMPTY: InternalState = {
   isLoadingMore: false,
   hasMore: false,
   cursor: null,
+  error: false,
   endorsementClosure: null,
 }
 
@@ -231,6 +237,9 @@ export function useExploreData(opts: {
   // this controller in the effect cleanup) also cancels an in-flight
   // page instead of fetching-then-discarding it.
   const controllerRef = useRef<AbortController | null>(null)
+  // Bumped by refetch() to re-run the initial-load effect.
+  const [reloadKey, setReloadKey] = useState(0)
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), [])
 
   // Initial fetch — runs on every state-resetting input change.
   useEffect(() => {
@@ -277,7 +286,7 @@ export function useExploreData(opts: {
         if (controller.signal.aborted) return
         console.warn("[explore] fetch failed:", err)
         if (generation !== generationRef.current) return
-        setState({ ...EMPTY, isLoading: false })
+        setState({ ...EMPTY, isLoading: false, error: true })
       }
     }
     run()
@@ -312,6 +321,7 @@ export function useExploreData(opts: {
     excludeOrgLabels,
     includeOrgLabels,
     confirmedBy,
+    reloadKey,
   ])
 
   const loadMore = useCallback(() => {
@@ -443,6 +453,8 @@ export function useExploreData(opts: {
     isLoadingMore: state.isLoadingMore,
     hasMore: state.hasMore,
     loadMore,
+    error: state.error,
+    refetch,
     endorsementClosure: state.endorsementClosure,
   }
 }

@@ -119,9 +119,10 @@ export async function establish(
   }
   if (res.status === 401) return { status: "invalid" }
 
-  throw Object.assign(new Error(`createSession failed (${res.status})`), {
-    status: res.status,
-  })
+  throw Object.assign(
+    new Error("Couldn't sign in right now. Try again in a minute."),
+    { status: res.status },
+  )
 }
 
 export async function getElevated(

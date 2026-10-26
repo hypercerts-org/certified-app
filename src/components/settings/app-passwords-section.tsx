@@ -15,6 +15,7 @@ import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import UnlockAppPasswordsDialog from "./unlock-app-passwords-dialog"
 
 /**
@@ -46,6 +47,9 @@ export default function AppPasswordsSection() {
   const [created, setCreated] = useState<CreatedAppPassword | null>(null)
 
   const [revoking, setRevoking] = useState<string | null>(null)
+  // Revoke is irreversible and signs out every client using the password,
+  // so it goes through a confirm step.
+  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
   const { copied, copy } = useCopyToClipboard()
 
   const goLocked = useCallback(() => {
@@ -129,6 +133,7 @@ export default function AppPasswordsSection() {
         setLoadError("Couldn't revoke that app password.")
       } finally {
         setRevoking(null)
+        setConfirmRevoke(null)
       }
     },
     [refresh, goLocked],
@@ -260,9 +265,10 @@ export default function AppPasswordsSection() {
                   size="sm"
                   loading={revoking === p.name}
                   disabled={revoking === p.name}
-                  onClick={() => handleRevoke(p.name)}
+                  onClick={() => setConfirmRevoke(p.name)}
+                  aria-label={`Revoke ${p.name}`}
                 >
-                  <Trash2 size={14} /> Revoke
+                  <Trash2 size={14} aria-hidden /> Revoke
                 </Button>
               </li>
             ))}
@@ -270,6 +276,16 @@ export default function AppPasswordsSection() {
         </div>
       )}
 
+      {confirmRevoke !== null ? (
+        <ConfirmDialog
+          title="Revoke app password?"
+          message={`Revoke "${confirmRevoke}"? Apps using it will be signed out.`}
+          confirmLabel="Revoke app password"
+          isConfirming={revoking === confirmRevoke}
+          onCancel={() => setConfirmRevoke(null)}
+          onConfirm={() => handleRevoke(confirmRevoke)}
+        />
+      ) : null}
     </div>
   )
 }

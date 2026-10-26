@@ -194,6 +194,11 @@ export function useUserIndexerActivities(
 
   const hasMore = created.hasMore || contributed.hasMore
 
+  // Retry hook for error states: re-runs the initial load.
+  const refetch = useCallback(() => {
+    void loadInitial()
+  }, [loadInitial])
+
   return {
     /** Records where the profile DID is the author. */
     created: created.records,
@@ -208,6 +213,7 @@ export function useUserIndexerActivities(
     error,
     hasMore,
     loadMore,
+    refetch,
   }
 }
 

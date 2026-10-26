@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { ArrowUpRight } from "lucide-react"
 import PageTitle from "@/components/layout/page-title"
 import { CONNECTED_APPS } from "@/lib/constants/apps"
 import SsoAppLink from "./sso-app-link"
@@ -11,11 +12,15 @@ export default function AppsPage() {
   return (
     <div className="apps-store">
       <PageTitle title="Apps" />
-      {/* The navbar already carries the "Apps" page title — no eyebrow /
-          h1 repeat here, just the one-line intro. */}
+      {/* The chrome carries the "Apps" page title (the h1), so the in-page
+          heading is an h2 that says what the list is rather than repeating
+          the word. */}
       <header className="apps-store__header">
+        <h2 className="apps-store__title font-headline text-h2">
+          Apps that work with Certified
+        </h2>
         <p className="apps-store__intro">
-          Apps built with Certified on AT Protocol.
+          Sign in to any of them with your Certified account.
         </p>
       </header>
 
@@ -25,7 +30,6 @@ export default function AppsPage() {
             <SsoAppLink
               url={app.url}
               ssoHandleUrl={"ssoHandleUrl" in app ? app.ssoHandleUrl : undefined}
-              ariaLabel={`${app.name} — ${app.desc}`}
             >
               <span className="apps-store__row">
                 <span className="apps-store__icon-wrap">
@@ -41,6 +45,14 @@ export default function AppsPage() {
                   <span className="apps-store__name">{app.name}</span>
                   <span className="apps-store__tag">{app.desc}</span>
                 </span>
+                {/* Visible "opens elsewhere" affordance; the link's
+                    sr-only "(opens in new tab)" carries it for AT. */}
+                <ArrowUpRight
+                  className="apps-store__open"
+                  size={18}
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
               </span>
               <span className="apps-store__desc">{app.longDesc}</span>
             </SsoAppLink>

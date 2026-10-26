@@ -133,13 +133,12 @@ export default function FeedbackModal() {
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
       ) : null}
-      <p className="feedback-modal__prompt">
+      <label htmlFor="feedback-message" className="feedback-modal__prompt">
         {copy.note ? `${copy.note} ${copy.messageLabel}` : copy.messageLabel}
-      </p>
+      </label>
       <Textarea
         ref={textareaRef}
         id="feedback-message"
-        aria-label={copy.messageLabel}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         required
@@ -148,11 +147,12 @@ export default function FeedbackModal() {
       />
 
       <div className="mt-4">
-        <p className="feedback-modal__prompt">{copy.emailLabel}</p>
+        <label htmlFor="feedback-email" className="feedback-modal__prompt">
+          {copy.emailLabel}
+        </label>
         <Input
           id="feedback-email"
           type="email"
-          aria-label={copy.emailLabel}
           value={email}
           onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
           onBlur={() => validateEmail(email)}
@@ -173,7 +173,7 @@ export default function FeedbackModal() {
         aria-busy={isSubmitting}
         className="mt-5 w-full"
       >
-        {isSubmitting ? "Sending..." : copy.submit}
+        {isSubmitting ? "Sending…" : copy.submit}
       </Button>
     </form>
   )

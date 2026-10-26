@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import Drawer from "@/components/ui/drawer"
-import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 
 /**
  * GitHub-style site-nav drawer.
@@ -34,7 +34,7 @@ export default function SiteDrawer({
   const { isLoading, isAuthenticated } = useAuth()
   const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
-  // The "My profile" item — and any future identity-bound link added
+  // The "Profile" item — and any future identity-bound link added
   // to this drawer — must route to the account the user is currently
   // *acting as*, not their personal identity. When the account
   // switcher is on a group, that's the group's handle; otherwise it
@@ -44,9 +44,8 @@ export default function SiteDrawer({
 
   // Profile target: active identity's profile when signed in (group's
   // when acting as a group, personal otherwise); sign-in prompt
-  // otherwise. The label stays "My profile" — "my" follows the
-  // currently active identity by design, same as everywhere else
-  // in the chrome.
+  // otherwise. The label is "Profile", matching the mobile sidebar
+  // and the tour; the target follows the currently active identity.
   const profileHref =
     isAuthenticated && activeHandle
       ? profileUrl(activeHandle)
@@ -64,7 +63,7 @@ export default function SiteDrawer({
     { key: "apps", label: "Apps", href: "/apps", icon: LayoutGrid },
     {
       key: "profile",
-      label: "My profile",
+      label: "Profile",
       href: profileHref,
       icon: User,
       requiresAuth: true,
@@ -89,16 +88,14 @@ export default function SiteDrawer({
               className="site-drawer__wordmark"
             />
           </Link>
-          <Tooltip label="Close navigation">
-            <button
-              type="button"
-              className="site-drawer__close"
-              onClick={onClose}
-              aria-label="Close navigation"
-            >
-              <X size={18} strokeWidth={1.75} aria-hidden />
-            </button>
-          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close navigation"
+          >
+            <X size={18} strokeWidth={1.75} aria-hidden />
+          </Button>
         </header>
 
         <nav className="site-drawer__nav" aria-label="Primary">
@@ -128,6 +125,7 @@ export default function SiteDrawer({
                 key={item.key}
                 href={item.href}
                 className={`site-drawer__item${isActive ? " site-drawer__item--active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
                 onClick={onClose}
               >
                 <Icon size={16} strokeWidth={1.75} aria-hidden />

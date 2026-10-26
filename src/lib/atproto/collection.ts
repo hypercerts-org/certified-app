@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import { rkeyFromUri } from "@/lib/urls"
 import type { HypercertsUri, HypercertsSmallImage } from "./types"
 
@@ -316,7 +317,7 @@ export async function createEndorsementListCollection(
     error?: string
   }
   if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to create list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't create the list. Try again"))
   }
   return { uri: data.uri, cid: data.cid }
 }
@@ -372,7 +373,7 @@ export async function deleteEndorsementListCollection(
   })
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Failed to delete list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't delete the list. Try again"))
   }
 }
 
@@ -561,7 +562,7 @@ async function putCollectionRecord(
     error?: string
   }
   if (!res.ok || !data.uri || !data.cid) {
-    throw new Error(data.error || `Failed to update list: ${res.status}`)
+    throw new Error(toUserErrorMessage(res.status, data.error, "Couldn't save the list. Try again"))
   }
   return { uri: data.uri, cid: data.cid }
 }

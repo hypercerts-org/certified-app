@@ -25,9 +25,9 @@
 }
 
 .funding-form__label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  /* Field label: sentence case, `ui` step (DESIGN.md §4 Inputs). */
+  font-size: var(--text-ui);
+  font-weight: 500;
   color: var(--fg-secondary);
 }
 
@@ -52,105 +52,19 @@
   padding: 2px 0;
 }
 
-/* Post-record confirmation note + its inline refresh affordance. */
+/* Post-record confirmation note. */
 .funding-form__recorded-note {
   color: var(--fg-secondary);
 }
 
-.funding-form__recorded-refresh {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  width: 24px;
-  height: 24px;
-  margin-left: 6px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.funding-form__recorded-refresh:hover,
-.funding-form__recorded-refresh:focus-visible {
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-}
-
 /* ---------- Inputs ---------- */
 
-.funding-form__input {
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-  min-width: 0;
-  width: 100%;
-}
-
-.funding-form__input::placeholder {
-  color: var(--fg-muted);
-}
-
-.funding-form__input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
-}
-
-.funding-form__textarea {
-  resize: vertical;
-  min-height: 48px;
-}
-
+/* Text fields are the ui <Input> / <Textarea> primitives (flush, size sm);
+   only the amount + currency row layout lives here. The role choice is a
+   <SegmentedControl>. */
 .funding-form__amount-row {
   display: flex;
   gap: 8px;
-}
-
-.funding-form__input--amount {
-  flex: 1;
-}
-
-.funding-form__input--currency {
-  width: 96px;
-  flex: none;
-}
-
-/* ---------- Direction (role) radios ---------- */
-
-.funding-form__directions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.funding-form__direction {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  cursor: pointer;
-}
-
-.funding-form__direction input {
-  margin: 0;
-}
-
-.funding-form__direction[data-active] {
-  border-color: var(--fg-primary);
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
 }
 
 /* ---------- Advanced disclosure ---------- */
@@ -270,7 +184,7 @@
 .funding-identity-choice__option:focus-visible {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* ===========================================================================

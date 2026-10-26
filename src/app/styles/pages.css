@@ -324,13 +324,14 @@
   gap: 12px;
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .org-members__add-title {
   font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -472,10 +473,28 @@
   margin: 0;
 }
 
+.org-audit__actor {
+  color: var(--fg-primary);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .org-audit__actor:hover {
+    text-decoration: underline;
+  }
+}
+
+.org-audit__actor:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
 .org-audit__result {
   font-size: 0.6875rem;
   font-weight: 500;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: var(--radius);
@@ -518,7 +537,8 @@
 .account-switcher__section-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   padding: 12px 16px 6px;
@@ -582,7 +602,7 @@
 
 .account-switcher__divider {
   height: 1px;
-  background: var(--border-light);
+  background: var(--border-subtle);
   margin: 4px 0;
 }
 
@@ -626,7 +646,7 @@
   color: var(--fg-muted);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .account-switcher__signout:hover {
@@ -651,7 +671,7 @@
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: color 0.15s, background 0.15s;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .account-switcher__signout-row:hover {
@@ -664,71 +684,10 @@
   outline-offset: -2px;
 }
 
-/* Bottom sheet (mobile profile switcher) */
-.bottom-sheet__backdrop {
-  display: none;
-}
-
-.bottom-sheet {
-  display: none;
-}
-
+/* Bottom sheet (mobile profile switcher). Layout and motion live in
+   ui/bottom-sheet.tsx as Tailwind utilities; only the keyframes it
+   references are defined here. */
 @media (max-width: 799px) {
-  .bottom-sheet__backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: var(--navy-overlay-30);
-    /* Backdrop and sheet tie at --z-portal-sheet; the backdrop renders
-       first in the portal fragment, so DOM order keeps it underneath. */
-    z-index: var(--z-portal-sheet);
-    animation: bottomSheetFadeIn 0.2s ease-out;
-  }
-
-  .bottom-sheet {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: 70vh;
-    background: var(--bg-elevated);
-    border-radius: var(--radius) var(--radius) 0 0;
-    z-index: var(--z-portal-sheet);
-    animation: bottomSheetSlideUp 0.3s ease-out;
-    overflow: hidden;
-    transition: max-height 0.3s ease-out;
-  }
-
-  .bottom-sheet--expanded {
-    max-height: 92vh;
-  }
-
-  .bottom-sheet__handle {
-    display: flex;
-    justify-content: center;
-    padding: 14px 0 10px;
-    flex-shrink: 0;
-    cursor: grab;
-    touch-action: none;
-  }
-
-  .bottom-sheet__handle::after {
-    content: "";
-    width: 36px;
-    height: 4px;
-    background: var(--border-default);
-    border-radius: var(--radius);
-  }
-
-  .bottom-sheet__content {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-
   @keyframes bottomSheetSlideUp {
     from {
       transform: translateY(100%);
@@ -806,10 +765,18 @@
   padding-top: 8px;
 }
 
-/* The navbar carries the "Apps" page title; the header is just the
-   one-line intro now. */
+/* The chrome carries the "Apps" page title (h1); the header is an h2
+   naming the list plus a one-line intro. */
 .apps-store__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 24px;
+}
+
+.apps-store__title {
+  color: var(--fg-primary);
+  margin: 0;
 }
 
 .apps-store__intro {
@@ -846,10 +813,24 @@
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
-.apps-store__tile:hover {
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .apps-store__tile:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .apps-store__tile:hover .apps-store__open {
+    color: var(--fg-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apps-store__tile {
+    transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  }
+  .apps-store__tile:hover {
+    transform: none;
+  }
 }
 
 .apps-store__tile:focus-visible {
@@ -859,7 +840,7 @@
 
 .apps-store__row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   column-gap: 14px;
 }
@@ -874,7 +855,13 @@
   overflow: hidden;
   flex-shrink: 0;
   background: var(--bg-sunken);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  box-shadow: var(--shadow-inset-subtle);
+}
+
+.apps-store__open {
+  align-self: start;
+  color: var(--fg-muted);
+  transition: color var(--transition-fast);
 }
 
 .apps-store__icon {

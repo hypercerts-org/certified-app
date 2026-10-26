@@ -21,10 +21,19 @@ import ForceGraph2D, {
   type LinkObject,
 } from "react-force-graph-2d"
 import Link from "next/link"
+import {
+  ArrowUpRight,
+  ChevronDown,
+  Maximize,
+  Maximize2,
+  Minimize,
+  Minus,
+  Plus,
+} from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
-import Input from "@/components/ui/input"
+import Combobox from "@/components/ui/combobox"
 import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
@@ -296,6 +305,16 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   const dragRef = useRef<{ sx: number; sy: number; bx: number; by: number } | null>(null)
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null)
   const [panelCollapsed, setPanelCollapsed] = useState(true)
+  // Reduced motion: the camera tweens and the live force simulation are
+  // canvas/JS-driven, so the CSS motion kill-switch can't reach them. Read
+  // once (client-only component): settle the layout before first paint and
+  // jump the camera instead of animating it.
+  const [reduceMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+  )
+  const camMs = useCallback((ms: number) => (reduceMotion ? 0 : ms), [reduceMotion])
 
   // --- theme colours (re-read on dark-mode flip) -------------------------
   useEffect(() => {
@@ -577,9 +596,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       const inView = new Set<string>([did])
       for (const n of adjacency.get(did) ?? []) inView.add(n)
       // zoomToFit's third arg filters which nodes must fit in the viewport.
-      fg.zoomToFit(700, 60, (n: FGNode) => inView.has(n.id as string))
+      fg.zoomToFit(camMs(700), 60, (n: FGNode) => inView.has(n.id as string))
     },
-    [adjacency],
+    [adjacency, camMs],
   )
 
   useEffect(() => {
@@ -610,14 +629,6 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
       setSearchOpen(false)
     },
     [focusNode],
-  )
-
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
-      if (searchResults[0]) selectSearchResult(searchResults[0].id)
-    },
-    [searchResults, selectSearchResult],
   )
 
   // --- canvas painters ---------------------------------------------------
@@ -800,8 +811,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           backgroundColor={bgColor}
           nodeRelSize={4}
           nodeLabel={() => ""}
-          cooldownTicks={120}
-          onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
+          warmupTicks={reduceMotion ? 120 : 0}
+          cooldownTicks={reduceMotion ? 0 : 120}
+          onEngineStop={() => fgRef.current?.zoomToFit(camMs(400), 40)}
           nodeCanvasObject={paintNode}
           nodePointerAreaPaint={paintPointerArea}
           linkColor={linkColor}
@@ -824,53 +836,57 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
 
       {/* controls */}
       <div className="viz__controls">
-        <form onSubmit={handleSearch} className="viz__search-wrap">
-          <Input
-            className="viz__search"
-            placeholder="Find account"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setSearchOpen(true)
-            }}
-            onFocus={() => setSearchOpen(true)}
-            onBlur={() => setSearchOpen(false)}
-            aria-label="Find an account in the graph"
-          />
-          {searchOpen && searchResults.length > 0 && (
-            <ul className="viz__search-results" role="listbox">
-              {searchResults.map((n) => (
-                <li key={n.id} role="option" aria-selected={false}>
-                  <button
-                    type="button"
-                    className="viz__search-result"
-                    // Fire before the input's blur so the dropdown doesn't
-                    // close out from under the click.
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      selectSearchResult(n.id)
-                    }}
-                  >
-                    <Avatar
-                      src={n.avatarUrl || undefined}
-                      size="sm"
-                      fallbackInitials={getInitials(n.displayName, n.handle)}
-                    />
-                    <span className="viz__search-result-name">
-                      <span className="viz__search-result-primary">
-                        {n.displayName ||
-                          (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
-                      </span>
-                      {n.handle && n.displayName && (
-                        <span className="viz__search-result-secondary">@{n.handle}</span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <Combobox<GraphNode>
+          className="viz__search-wrap"
+          listboxClassName="viz__search-results"
+          value={search}
+          onValueChange={(v) => {
+            setSearch(v)
+            setSearchOpen(true)
+          }}
+          items={searchResults}
+          getItemKey={(n) => n.id}
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          onSelect={(n) => selectSearchResult(n.id)}
+          escapeStage="two-stage"
+          inputProps={{
+            className: "viz__search",
+            placeholder: "Find account",
+            "aria-label": "Find an account in the graph",
+          }}
+          liveStatus={{
+            searching: "Searching",
+            results: (n) => `${n} ${n === 1 ? "account" : "accounts"} found`,
+            empty: "No matching accounts",
+          }}
+          renderOption={({ item: n, highlighted, optionId, onHover, onSelect }) => (
+            <li
+              id={optionId}
+              role="option"
+              aria-selected={highlighted}
+              data-combobox-option
+              className={`viz__search-result${highlighted ? " viz__search-result--active" : ""}`}
+              onMouseEnter={onHover}
+              onMouseDown={onSelect}
+            >
+              <Avatar
+                src={n.avatarUrl || undefined}
+                size="sm"
+                fallbackInitials={getInitials(n.displayName, n.handle)}
+              />
+              <span className="viz__search-result-name">
+                <span className="viz__search-result-primary" dir="auto">
+                  {n.displayName ||
+                    (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
+                </span>
+                {n.handle && n.displayName && (
+                  <span className="viz__search-result-secondary">@{n.handle}</span>
+                )}
+              </span>
+            </li>
           )}
-        </form>
+        />
         <div className="viz__control-row">
           <SegmentedControl
             className="viz__layout-toggle"
@@ -944,10 +960,10 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           aria-label="Zoom in"
           onClick={() => {
             const fg = fgRef.current
-            if (fg) fg.zoom(fg.zoom() * 1.4, 300)
+            if (fg) fg.zoom(fg.zoom() * 1.4, camMs(300))
           }}
         >
-          +
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
@@ -955,18 +971,18 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           aria-label="Zoom out"
           onClick={() => {
             const fg = fgRef.current
-            if (fg) fg.zoom(fg.zoom() / 1.4, 300)
+            if (fg) fg.zoom(fg.zoom() / 1.4, camMs(300))
           }}
         >
-          −
+          <Minus size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
           variant="secondary"
           aria-label="Fit graph to view"
-          onClick={() => fgRef.current?.zoomToFit(400, 40)}
+          onClick={() => fgRef.current?.zoomToFit(camMs(400), 40)}
         >
-          ⤢
+          <Maximize2 size={16} strokeWidth={1.75} aria-hidden />
         </Button>
         <Button
           size="icon"
@@ -974,33 +990,11 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           onClick={toggleFullscreen}
         >
-          <svg
-            viewBox="0 0 24 24"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            {isFullscreen ? (
-              <>
-                <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-              </>
-            ) : (
-              <>
-                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-              </>
-            )}
-          </svg>
+          {isFullscreen ? (
+            <Minimize size={16} strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Maximize size={16} strokeWidth={1.75} aria-hidden />
+          )}
         </Button>
       </div>
 
@@ -1025,32 +1019,21 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
               bordered
             />
             <div className="viz__panel-id">
-              <span className="viz__panel-name">
+              <span className="viz__panel-name" dir="auto">
                 {panelNode.displayName || (panelNode.handle ? `@${panelNode.handle}` : "Unknown")}
               </span>
               {panelNode.handle && <span className="viz__panel-handle">@{panelNode.handle}</span>}
             </div>
-            <button
-              type="button"
+            <Button
+              size="icon"
+              variant="ghost"
               className="viz__panel-collapse"
               aria-label={panelCollapsed ? "Expand details" : "Collapse details"}
               aria-expanded={!panelCollapsed}
               onClick={() => setPanelCollapsed((v) => !v)}
             >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+              <ChevronDown size={16} strokeWidth={1.75} aria-hidden />
+            </Button>
           </div>
 
           {!panelCollapsed && (
@@ -1084,15 +1067,25 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
                   {title} ({list.length})
                 </div>
                 <div className="viz__neighbours">
-                  {list.slice(0, 12).map((n) => (
-                    <span key={n.id} className="viz__neighbour" title={n.displayName || n.id}>
-                      <Avatar
-                        src={n.avatarUrl || undefined}
-                        size="sm"
-                        fallbackInitials={getInitials(n.displayName, n.handle)}
-                      />
-                    </span>
-                  ))}
+                  {list.slice(0, 12).map((n) => {
+                    const name = n.displayName || (n.handle ? `@${n.handle}` : n.id)
+                    return (
+                      <button
+                        key={n.id}
+                        type="button"
+                        className="viz__neighbour"
+                        aria-label={`Focus ${name}`}
+                        title={name}
+                        onClick={() => focusNode(n.id)}
+                      >
+                        <Avatar
+                          src={n.avatarUrl || undefined}
+                          size="sm"
+                          fallbackInitials={getInitials(n.displayName, n.handle)}
+                        />
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ) : null,
@@ -1105,21 +1098,12 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             rel="noopener noreferrer"
           >
             <span>View profile</span>
-            <svg
+            <ArrowUpRight
               className="viz__profile-link-icon"
-              viewBox="0 0 24 24"
-              width="14"
-              height="14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M7 17 17 7" />
-              <path d="M9 7h8v8" />
-            </svg>
+              size={16}
+              strokeWidth={1.75}
+              aria-hidden
+            />
           </Link>
           </>
           )}

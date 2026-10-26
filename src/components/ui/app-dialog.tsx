@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, type RefObject, type ReactNode, type MouseEvent } from "react"
 import { X } from "lucide-react"
+import Button from "@/components/ui/button"
 
 /**
  * Shared chrome around `<dialog>` for every modal in the app.
@@ -113,10 +114,14 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Standard modal header — title on the left, close X on the right.
+ * Standard modal header — title on the left, close X at the trailing edge.
  * Drop-in replacement for the open-coded
  * `<div className="signin-modal__header">…<button signin-modal__close>…</button></div>`
  * pattern repeated across ~14 modals in `src/components/**`.
+ *
+ * The title speaks in the content voice (`font-headline text-h4`,
+ * balanced wrap), matching the BottomSheet title, so a ResponsiveDialog
+ * keeps one typeface across the 800px switch.
  *
  * Pass `onClose` — usually the same handler the parent passes to
  * `AppDialog`'s `onClose` prop — and `disabled` to gate the X
@@ -126,41 +131,50 @@ export function AppDialogHeader({
   title,
   onClose,
   disabled = false,
-  center = false,
+  bare = false,
 }: {
   title: ReactNode
   /** When omitted the X button is hidden. Use for alertdialog
    *  modals where the only exits are explicit footer buttons. */
   onClose?: () => void
   disabled?: boolean
-  /** Center the title. Uses symmetric horizontal padding so the title
-   *  is centered in the modal while leaving room for the close X. */
-  center?: boolean
+  /** Title-less dialogs (e.g. sign-in, which leads with a brandmark):
+   *  drop the title row and its hairline, keeping only the close X and
+   *  enough top space for it. Other dialogs are unaffected. */
+  bare?: boolean
 }) {
-  return (
-    <div
-      className={`flex shrink-0 items-center gap-2.5 border-b border-[var(--color-light-gray)] pt-5 pb-3 ${
-        center ? "px-10" : "pl-5 pr-10"
-      }`}
-    >
-      <span
-        className={`flex-1 text-[0.8125rem] font-semibold tracking-[0.02em] text-[var(--fg-primary)] ${
-          center ? "text-center" : ""
-        }`}
+  // Compact icon button: 32px visual, 44px hit area (Button size="icon-sm").
+  // tooltip="" because a body-portaled tooltip would render beneath the
+  // top-layer <dialog>.
+  const closeButton = (className = "") =>
+    onClose ? (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        tooltip=""
+        className={className}
+        onClick={onClose}
+        aria-label="Close"
+        disabled={disabled}
       >
+        <X size={16} strokeWidth={1.75} aria-hidden />
+      </Button>
+    ) : null
+  if (bare) {
+    return (
+      <div className="relative h-12 shrink-0">
+        {/* Positioned wrapper: icon-sm sets its own `relative` (for the
+            44px ::after hit area), which would override `absolute` here. */}
+        <div className="absolute right-2 top-2">{closeButton()}</div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex shrink-0 items-start gap-3 border-b border-[var(--color-light-gray)] pt-4 pb-3 pl-5 pr-3">
+      <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)]">
         {title}
-      </span>
-      {onClose ? (
-        <button
-          type="button"
-          className="absolute right-1 top-1 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-[var(--radius)] border-0 bg-transparent p-0 text-[var(--fg-muted)] transition-[background,color] duration-150 ease-out hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-primary)] focus-visible:shadow-[0_0_0_2px_var(--focus-ring)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={onClose}
-          aria-label="Close"
-          disabled={disabled}
-        >
-          <X size={18} />
-        </button>
-      ) : null}
+      </h2>
+      {closeButton("-mt-0.5 shrink-0")}
     </div>
   )
 }
@@ -358,8 +372,9 @@ export default function AppDialog({
   //     / max-width:none (radius:0 there is OUT-specificity'd by the
   //     0-2-1 app-modal rule, so radius stays var(--radius)).
   // The inline `maxWidth` prop still wins over max-w-[420px] via the
-  // style attribute. Backdrop uses the added --modal-backdrop token
-  // (black at 50% alpha in light / --navy-overlay-70 in dark).
+  // style attribute. Surface is --bg-overlay (the top of the elevation
+  // ramp); the backdrop is the shared --scrim. Under reduced motion the
+  // slide is dropped and the dialog only fades (opacity, <= 150ms).
   // `text-[var(--fg-primary)] font-normal normal-case tracking-normal`
   // establish a clean typographic baseline so the modal renders normal
   // body text regardless of the DOM context it's mounted in. A native
@@ -376,7 +391,7 @@ export default function AppDialog({
   // UA's top-layer placement: centered in the VIEWPORT, wherever the
   // page is scrolled.
   const baseChrome =
-    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--color-off-white)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-[shadow:var(--shadow-modal)] backdrop:bg-[var(--modal-backdrop)] motion-safe:animate-[modalSlideUp_300ms_cubic-bezier(0.16,1,0.3,1)] max-[799px]:w-full max-[799px]:max-w-none"
+    "fixed inset-0 m-auto flex w-[90vw] max-w-[420px] max-h-[calc(100vh-40px)] flex-col items-stretch overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-overlay)] p-0 text-[var(--fg-primary)] font-normal normal-case tracking-normal shadow-modal backdrop:bg-[var(--scrim)] backdrop:animate-[modalFadeIn_var(--duration-base)_var(--ease-out)] motion-safe:animate-[modalSlideUp_var(--duration-slow)_var(--ease-emphasized)] motion-reduce:animate-[modalFadeIn_var(--duration-fast)_var(--ease-out)] motion-reduce-fade max-[799px]:w-full max-[799px]:max-w-none"
 
   const composedClassName = className
     ? `${baseChrome} ${className}`

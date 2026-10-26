@@ -19,31 +19,9 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
-}
-
-.create-form__input,
-.create-form__textarea {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-  background: var(--bg-raised);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.create-form__input:focus,
-.create-form__textarea:focus {
-  border-color: var(--fg-primary);
-}
-
-.create-form__textarea {
-  resize: vertical;
-  min-height: 100px;
 }
 
 .create-form__error {
@@ -78,7 +56,7 @@
 .create-form__cancel {
   color: var(--fg-secondary);
   background: transparent;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-subtle);
 }
 
 .create-form__submit:hover {
@@ -151,49 +129,6 @@
   transform: rotate(180deg);
 }
 
-/* ---- Label Filter Dropdown ---- */
-
-.feed-filter {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-popover);
-  min-width: 180px;
-  padding: 8px 0;
-}
-
-.feed-filter__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.feed-filter__item:hover {
-  background: var(--bg-canvas);
-}
-
-.feed-filter__checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--fg-primary);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.feed-filter__label {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  color: var(--fg-primary);
-}
-
 @media (min-width: 800px) {
   .feed-tabs__tab {
     font-size: 0.9375rem;
@@ -218,12 +153,25 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
-.feed-evaluator-panel__heading:first-child {
+.feed-evaluators__group:first-child > .feed-evaluator-panel__heading {
   margin-top: 2px;
+}
+
+/* Each checkbox group is a <fieldset> + <legend>; drop the UA chrome. */
+.feed-evaluators__group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.feed-evaluators__group > legend {
+  padding: 0;
 }
 
 /* Quiet text button at the panel's bottom. */
@@ -272,17 +220,32 @@
   padding: 2px 0;
 }
 
+/* Mobile: each filter row is a 44px tap target. */
+@media (max-width: 799px) {
+  .feed-evaluators__row {
+    min-height: 44px;
+  }
+}
+
 .feed-evaluators__row--disabled {
   opacity: 0.45;
   pointer-events: none;
 }
 
-.feed-evaluators__checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--fg-primary);
-  cursor: pointer;
-  flex-shrink: 0;
+/* Rows host the <Checkbox> primitive; let its wrapper + label shrink so
+   long evaluator names ellipsize, and lay the label slot out as a row
+   (avatar + name + handle) at the panel's 13px scale. */
+.feed-evaluators__row > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.feed-evaluators__row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: inherit;
 }
 
 .feed-evaluators__avatar {
@@ -301,6 +264,8 @@
 .feed-evaluators__name {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-weight: 500;
+  /* Flex item: let long names ellipsize instead of overflowing the row. */
+  min-width: 0;
   color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -321,22 +286,6 @@
   background: var(--border-subtle);
   margin: 8px 0;
 }
-
-.feed-evaluators__show-all {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.feed-evaluators__show-all-label {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-}
-
 
 /* ==========================================================================
    Activity Feed (mobile-first)
@@ -496,6 +445,9 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* Break pasted URLs / long words inside the clamp so the ellipsis
+     lands on the last line instead of clipping mid-character. */
+  overflow-wrap: anywhere;
 }
 
 .feed-card__meta {
@@ -510,6 +462,7 @@
 .feed-card__time {
   font-size: 0.75rem;
   color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .feed-card__meta-sep {
@@ -522,37 +475,6 @@
 
 /* .feed-card__label* rules were retired — FeedLabelPill now composes
    <Badge variant="high-quality|standard|draft|test"> instead. */
-
-/* ---- Load More ---- */
-
-.feed__load-more {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-}
-
-.feed__load-more-btn {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-accent);
-  background: transparent;
-  border: 1px solid var(--border-default);
-  padding: 10px 24px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.feed__load-more-btn:hover {
-  border-color: var(--border-hover);
-  background: var(--bg-canvas);
-}
-
-.feed__load-more-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* ---- Skeleton ---- */
 
@@ -649,6 +571,8 @@
 
 .activity-detail__contributor-name {
   font-weight: 600;
+  /* Free-text contributors can be emails / URLs / long org names. */
+  overflow-wrap: anywhere;
 }
 
 .activity-detail__contributor-handle {
@@ -740,24 +664,22 @@
   color: var(--fg-muted) !important;
 }
 
-/* Map skeleton (shown while the Leaflet chunk is loading) */
+/* Map skeleton (shown while the Leaflet chunk is loading). Uses the
+   shared skeleton recipe from tailwind.config.ts (`animate-skeleton`:
+   200ms-delayed fade-in, then the 1.5s `pulse`) so it matches every
+   <Skeleton> instead of running its own keyframe. */
 .map-skeleton {
   width: 100%;
   border-radius: var(--radius);
   background: var(--bg-raised);
   border: 1px solid var(--border-subtle);
-  animation: map-skeleton-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes map-skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  animation: skeleton-in 150ms ease-out 200ms both,
+    pulse 1.5s ease-in-out 350ms infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .map-skeleton {
     animation: none;
-    opacity: 0.5;
   }
 }
 
@@ -783,33 +705,11 @@
   margin-bottom: 16px;
 }
 
-/* Generic "+ New X" toolbar button used in the tab-bar pattern
-   (endorsements). Subtle text-button styling so it doesn't
-   compete with primary content actions further down the page. */
+/* "+ New" toolbar <Button> in the endorsements tab bar — only its
+   placement lives here; the look comes from the primitive. */
 .endorsements-new-btn {
   align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  border: none;
-  background: transparent;
-  color: var(--fg-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
   flex-shrink: 0;
-}
-
-.endorsements-new-btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-}
-
-.endorsements-new-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Inline "new endorsement" panel that sits at the top of the Given
@@ -839,27 +739,9 @@
   min-width: 0;
 }
 
+/* <Button size="icon"> — placement only. */
 .endorsement-panel__close {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: var(--fg-muted);
-  border-radius: var(--radius);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-}
-
-.endorsement-panel__close:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.endorsement-panel__close:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .endorsement-panel__title {
@@ -908,18 +790,6 @@
   background: var(--overlay-weak);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-}
-
-.endorsements-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
-  padding: 24px;
-  color: var(--fg-muted);
-  font-size: 0.875rem;
-  margin: 0;
-  text-align: center;
 }
 
 .endorsements-list {
@@ -986,36 +856,10 @@
   flex-shrink: 0;
 }
 
+/* <Button size="icon"> — placement only (the class also keys the
+   kebab-column reservation selector below). */
 .endorsement-row__revoke {
-  background: transparent;
-  border: 1px solid transparent;
-  /* --fg-secondary (not --fg-muted) so the icon-only control clears the
-     contrast bar without a visible label; hover lifts it to --fg-primary. */
-  color: var(--fg-secondary);
-  border-radius: var(--radius);
-  /* ≥44×44 hit area on every viewport (the icon stays 16px). The
-     <=799px media block already enforced this on touch; promote it to
-     the base rule so desktop pointers get the same target. */
-  min-width: 44px;
-  min-height: 44px;
-  padding: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
-}
-
-.endorsement-row__revoke:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-  border-color: var(--border-default);
-}
-
-.endorsement-row__revoke:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Optional note shown under the issuer display name on received rows */
@@ -1207,8 +1051,8 @@
 .response-menu__quick-btn--accept.response-menu__quick-btn--active:hover:not(:disabled) {
   /* Slightly darker on hover to surface the "click to reset"
      affordance without losing the filled-active read. */
-  background: color-mix(in srgb, var(--color-success) 85%, black);
-  border-color: color-mix(in srgb, var(--color-success) 85%, black);
+  background: color-mix(in srgb, var(--color-success) 85%, var(--mix-shade));
+  border-color: color-mix(in srgb, var(--color-success) 85%, var(--mix-shade));
   color: var(--bg-canvas);
 }
 
@@ -1219,8 +1063,8 @@
 }
 
 .response-menu__quick-btn--reject.response-menu__quick-btn--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning) 85%, black);
-  border-color: color-mix(in srgb, var(--color-warning) 85%, black);
+  background: color-mix(in srgb, var(--color-warning) 85%, var(--mix-shade));
+  border-color: color-mix(in srgb, var(--color-warning) 85%, var(--mix-shade));
   color: var(--bg-canvas);
 }
 
@@ -1288,7 +1132,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   padding: 6px 10px 4px;
   margin: 0;
@@ -1371,16 +1216,15 @@
     min-height: 44px;
     padding: 10px 12px;
   }
-  /* Endorsement row controls → 44px tap targets. */
-  .endorsement-panel__close,
-  .endorsement-row__revoke {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
+  /* Narrow rows: let the trailing Accept / Reject controls drop below
+     the identity (indented past the 48px avatar + 12px gap) instead of
+     squeezing the name column to a few characters. */
+  .endorsement-row--received {
+    flex-wrap: wrap;
   }
-  /* Tab-bar "New" buttons (endorsements) → 44px tall. */
-  .endorsements-new-btn {
-    min-height: 44px;
+  .endorsement-row--received > :last-child {
+    flex-basis: calc(100% - 60px);
+    margin-left: 60px;
   }
 }
 
@@ -1451,7 +1295,7 @@
 .endorsement-multi-row__status--writing {
   border: 2px solid var(--border-default);
   border-top-color: var(--fg-primary);
-  animation: endorsement-multi-spin 0.8s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
 .endorsement-multi-row__status--success {
@@ -1464,38 +1308,9 @@
   color: var(--color-white);
 }
 
-@keyframes endorsement-multi-spin {
-  to { transform: rotate(360deg); }
-}
-
+/* <Button size="icon"> — placement only. */
 .endorsement-multi-row__remove {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  /* ≥44×44 hit area on every viewport (the X icon stays 14px); higher
-     resting contrast via --fg-secondary, hover lifts to --fg-primary. */
-  min-width: 44px;
-  min-height: 44px;
-  padding: 4px;
-  color: var(--fg-secondary);
-  border-radius: var(--radius);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.endorsement-multi-row__remove:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-/* Mobile: the multi-recipient row's remove button → 44px tap target. */
-@media (max-width: 799px) {
-  .endorsement-multi-row__remove {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
-  }
+  flex-shrink: 0;
 }
 
 .endorsement-multi-summary {
@@ -1536,42 +1351,6 @@
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-}
-
-.profile-endorsements__endorse-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: transparent;
-  color: var(--fg-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.profile-endorsements__endorse-btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  border-color: var(--fg-primary);
-}
-
-.profile-endorsements__endorse-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Active state — the viewer has already endorsed this profile.
-   Filled background so the click affordance (= "revoke") reads
-   distinctly from the empty Endorse state. */
-.profile-endorsements__endorse-btn--active {
-  background: var(--overlay-weak);
-  border-color: var(--fg-primary);
-  color: var(--fg-primary);
 }
 
 .profile-endorsements__endorse-error {
@@ -1637,17 +1416,6 @@
   display: flex;
   justify-content: center;
   padding: 24px 0;
-}
-
-/* iOS auto-zoom rule: any input touched on mobile must be >=16px or
-   Safari zooms the viewport. The people-search input lives on /search
-   and in the right rail; ensure that and the create-form inputs hit
-   the threshold. */
-@media (max-width: 799px) {
-  .create-form__input,
-  .create-form__textarea {
-    font-size: 16px;
-  }
 }
 
 /* ==========================================================================

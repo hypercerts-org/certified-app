@@ -280,7 +280,7 @@
 .profile-overview__about-textarea:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* --- Sidebar org-only field edits ----------------------------------- */
@@ -309,7 +309,8 @@
   list-style: none;
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 8px 0 4px;
@@ -426,7 +427,8 @@
   font-weight: 500;
   color: var(--fg-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
 }
 
 /* --- Org-type chip picker (edit mode) ------------------------------- */
@@ -468,8 +470,8 @@
 }
 
 .profile-overview__type-chip:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .profile-overview__type-other-input {
@@ -487,7 +489,7 @@
 .profile-overview__type-other-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* --- Location picker (edit mode) ------------------------------------ */
@@ -504,10 +506,18 @@
   min-width: 0;
 }
 
+/* 16px keeps iOS Safari from zooming the page on focus. */
+@media (max-width: 799px) {
+  .profile-overview__location-input,
+  .profile-overview__type-other-input {
+    font-size: 16px;
+  }
+}
+
 .profile-overview__location-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .profile-overview__location--editing .profile-overview__location-map {

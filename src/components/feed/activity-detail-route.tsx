@@ -27,7 +27,7 @@ export default function ActivityDetailRoute({
   rkey: string | null
   resolving: boolean
 }) {
-  const { activity, isLoading, error } = useActivity(did, rkey)
+  const { activity, isLoading, error, refetch } = useActivity(did, rkey)
 
   // Recently-viewed: record the at:// URI once the cert resolves so the
   // /explore "Recently viewed" filter can surface it later.
@@ -46,11 +46,17 @@ export default function ActivityDetailRoute({
   }
 
   if (error || !activity) {
+    // A 404 from the loader means the record is gone: say so, and don't
+    // offer a retry that can never succeed.
+    const loadFailed = !!error && error !== "Activity not found"
     return (
       <div className="cert-detail-page">
+        {/* Fixed heading and plain body; the hook's error only picks the
+            heading, so no technical text reaches the page. */}
         <ErrorMessage
-          title={error || "Activity not found"}
-          message="This activity claim may have been deleted or is on a PDS we can't reach."
+          title={loadFailed ? "Couldn't load this activity" : "Activity not found"}
+          message="This activity may have been deleted, or its account's server is unreachable right now. Try again later."
+          onRetry={loadFailed ? refetch : undefined}
         />
       </div>
     )

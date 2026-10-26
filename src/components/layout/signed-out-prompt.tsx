@@ -14,6 +14,8 @@ export interface SignedOutPromptProps {
   description: string
   /** Sign-in button label. Defaults to "Sign in". */
   ctaLabel?: string
+  /** Headline level; 2 when the prompt stands in for a whole page. */
+  headingLevel?: 2 | 3
 }
 
 /**
@@ -31,10 +33,11 @@ export default function SignedOutPrompt({
   title,
   description,
   ctaLabel = "Sign in",
+  headingLevel = 3,
 }: SignedOutPromptProps) {
   const { openSignIn } = useAuth()
   return (
-    <EmptyState icon={icon} title={title} description={description}>
+    <EmptyState icon={icon} title={title} description={description} headingLevel={headingLevel}>
       <Button variant="primary" size="md" onClick={() => void openSignIn()}>
         {ctaLabel}
       </Button>

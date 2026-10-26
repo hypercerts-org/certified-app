@@ -68,12 +68,14 @@ export default function FeedbackTrigger() {
   }, [updatePosition])
 
   // Hidden on the marketing landing page (/welcome has its own contact
-  // CTA), and wherever the mobile bottom nav is on screen — that bar
-  // already carries a Feedback entry, so the floating button would
-  // duplicate it and overlap the bar.
+  // CTA), on /embed (bare board inside a third-party iframe), and wherever
+  // the mobile bottom nav is on screen — that bar already carries a
+  // Feedback entry, so the floating button would duplicate it and overlap
+  // the bar.
   if (
     isOpen ||
     pathname === "/welcome" ||
+    pathname.startsWith("/embed") ||
     isBottomNavVisible({ pathname, isDesktop, isStandalone })
   )
     return null

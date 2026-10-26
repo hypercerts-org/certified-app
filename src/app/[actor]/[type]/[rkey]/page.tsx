@@ -6,6 +6,7 @@ import { useUserProfile } from "@/hooks/use-user-profile"
 import { isRecordType, parseActor, recordUrl, type RecordType } from "@/lib/urls"
 import ActivityDetailRoute from "@/components/feed/activity-detail-route"
 import ProjectDetailRoute from "@/components/project/project-detail-route"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import { FileQuestion } from "lucide-react"
 
@@ -62,7 +63,11 @@ export default function RecordDetailPage() {
         title="Not found"
         description="This link doesn't point to an activity or project we can show."
         className="pt-[120px]"
-      />
+      >
+        <Button href="/explore" variant="secondary" size="sm">
+          Go to Explore
+        </Button>
+      </EmptyState>
     )
   }
 

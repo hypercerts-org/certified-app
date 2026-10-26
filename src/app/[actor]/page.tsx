@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useParams, useSearchParams, useRouter } from "next/navigation"
 import { profileUrl } from "@/lib/urls"
 import {
@@ -32,10 +32,12 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
-import { AlignLeft, UserX } from "lucide-react"
+import { AlignLeft, Pencil, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+import { formatGraphCount } from "@/lib/utils/format-graph-count"
 
 // Non-default tab panels + the own-profile settings surface are
 // code-split out of the route's first-load chunk: profiles are the
@@ -122,7 +124,7 @@ export default function UserProfilePage() {
     hasBlueskyProfile,
   } = useUserProfile(handleOrDid)
 
-  const { isAuthenticated, did: sessionDid } = useAuth()
+  const { isAuthenticated, isLoading: isAuthLoading, did: sessionDid } = useAuth()
 
   const titleForTopBar =
     profile?.displayName || resolvedHandle || "Profile"
@@ -367,7 +369,7 @@ export default function UserProfilePage() {
   // count resolves.
   const activityCount = useUserActivityCount(did)
   const activityCountLabel =
-    activityCount === null ? "…" : `${activityCount}`
+    activityCount === null ? "…" : formatGraphCount(activityCount)
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -403,6 +405,45 @@ export default function UserProfilePage() {
   if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
     setActiveTab(tabFromUrl)
   }
+
+  // A deep link can name a tab this viewer doesn't get (e.g. ?tab=groups on
+  // someone else's profile). The tab strip already hides it and the desktop
+  // bar falls back to Overview, so show Overview's content too rather than a
+  // blank panel. Wait for the session so an owner's own link isn't bounced.
+  const shownTab: TabKey =
+    !isAuthLoading &&
+    ((activeTab === "groups" && !isActiveIdentityThisProfile) ||
+      (activeTab === "settings" && !isViewerThisEntity))
+      ? "overview"
+      : activeTab
+
+  // Keep the active mobile tab visible in the scrolling strip — a deep
+  // link (e.g. the header's "Endorsed by" → ?tab=endorsements) can select
+  // a tab that starts off-screen. Scrolls the strip only (never the page),
+  // and is a no-op on desktop where the strip is display:none.
+  const mobileTabsRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    const strip = mobileTabsRef.current
+    const tab = strip?.querySelector<HTMLElement>(".profile-tabs__tab--active")
+    if (!strip || !tab || strip.clientWidth === 0) return
+    // Tab edges in the strip's scroll coordinates.
+    const tabLeft =
+      tab.getBoundingClientRect().left -
+      strip.getBoundingClientRect().left +
+      strip.scrollLeft
+    const tabRight = tabLeft + tab.offsetWidth
+    const viewLeft = strip.scrollLeft
+    const viewRight = viewLeft + strip.clientWidth
+    if (tabLeft >= viewLeft && tabRight <= viewRight) return
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches
+    // Leave room for the edge fade (16px left, 32px right).
+    strip.scrollTo({
+      left: tabLeft < viewLeft ? tabLeft - 16 : tabRight - strip.clientWidth + 32,
+      behavior: reduceMotion ? "auto" : "smooth",
+    })
+  }, [shownTab, isProfileLoading])
 
   if (isProfileLoading) {
     return (
@@ -452,6 +493,7 @@ export default function UserProfilePage() {
       {/* Mobile-only tab strip (hidden ≥800px, where the top bar carries the
           tabs). Horizontally scrollable; reuses the .profile-tabs styling. */}
       <nav
+        ref={mobileTabsRef}
         className="profile-page__mobile-tabs profile-tabs"
         aria-label="Profile sections"
         data-tour="profile-tabs"
@@ -466,11 +508,11 @@ export default function UserProfilePage() {
             <button
               key={t.key}
               type="button"
-              aria-current={activeTab === t.key ? "page" : undefined}
+              aria-current={shownTab === t.key ? "page" : undefined}
               aria-disabled={locked || undefined}
               disabled={locked}
               className={`profile-tabs__tab${
-                activeTab === t.key ? " profile-tabs__tab--active" : ""
+                shownTab === t.key ? " profile-tabs__tab--active" : ""
               }`}
               onClick={() => {
                 if (locked) return
@@ -505,7 +547,7 @@ export default function UserProfilePage() {
           no certified profile yet). Internally self-gating. */}
       {isOwnProfile && !activeOrg ? <OnboardingBanner /> : null}
 
-      {activeTab === "settings" && isViewerThisEntity ? (
+      {shownTab === "settings" && isViewerThisEntity ? (
         // Settings tab swaps the entire profile-page two-pane layout
         // out for the settings panel's own menu+sections two-pane
         // layout — same 296px slim rail, but the left pane carries
@@ -540,14 +582,15 @@ export default function UserProfilePage() {
           />
 
           <div className="page-layout__main">
-            <TabPanelTransition activeKey={activeTab} order={TAB_ORDER}>
-            {activeTab === "overview" && (
-              <div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+            <TabPanelTransition activeKey={shownTab} order={TAB_ORDER}>
+            {shownTab === "overview" && (
+              <div role="region" id="tabpanel-overview" aria-label="Overview">
                 <ProfileOverview
                   bannerUrl={effectiveBannerUrl}
                   did={did}
                   profile={effectiveProfile}
                   basePath={pathname || ""}
+                  viewerIsOwner={isViewerThisEntity}
                   isEditing={editing}
                   drafts={drafts}
                   onDraftChange={handleDraftChange}
@@ -562,11 +605,11 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "about" ? (
+            {shownTab === "about" ? (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-about"
-                aria-labelledby="tab-about"
+                aria-label="About"
                 className="profile-page__about"
               >
                 {editing && sidebarIsOrg ? (
@@ -575,7 +618,7 @@ export default function UserProfilePage() {
                     onChange={(next: LinearDocument) =>
                       handleDraftChange("longDescription", next)
                     }
-                    placeholder="A longer, multi-line description of this organization."
+                    placeholder="A longer, multi-line description of this group."
                     ariaLabel="Long description"
                     did={did}
                     onImageUpload={handleLongDescImageUpload}
@@ -588,23 +631,30 @@ export default function UserProfilePage() {
                   />
                 ) : isViewerThisEntity ? (
                   /* Empty About tab, but the viewer is signed in as
-                     this entity — show the prompt to click "Edit
-                     profile". Foreign viewers don't reach this branch
-                     because the tab gate hides the About tab when
-                     there's no content for them. */
+                     this entity — offer the edit action in place.
+                     Foreign viewers don't reach this branch because the
+                     tab gate hides the About tab when there's no content
+                     for them. */
                   <EmptyState
                     icon={AlignLeft}
                     title="Nothing here yet"
-                    description="Click Edit profile to add an About section to your profile."
-                  />
+                    description="Add an About section so people know who you are."
+                  >
+                    {canEditInline ? (
+                      <Button variant="secondary" size="sm" onClick={handleEditClick}>
+                        <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                        Edit profile
+                      </Button>
+                    ) : null}
+                  </EmptyState>
                 ) : null}
               </div>
             ) : null}
-            {activeTab === "activities" && (
+            {shownTab === "activities" && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-activities"
-                aria-labelledby="tab-activities"
+                aria-label="Activities"
               >
                 <ProfileCerts
                   did={did}
@@ -613,11 +663,11 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "projects" && (
+            {shownTab === "projects" && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-projects"
-                aria-labelledby="tab-projects"
+                aria-label="Projects"
               >
                 <ProfileProjects
                   did={did}
@@ -626,38 +676,38 @@ export default function UserProfilePage() {
                 />
               </div>
             )}
-            {activeTab === "groups" && isActiveIdentityThisProfile && (
+            {shownTab === "groups" && isActiveIdentityThisProfile && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-groups"
-                aria-labelledby="tab-groups"
+                aria-label="Groups"
               >
                 <ProfileGroups did={did} />
               </div>
             )}
-            {activeTab === "endorsements" && did && (
+            {shownTab === "endorsements" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-endorsements"
-                aria-labelledby="tab-endorsements"
+                aria-label="Endorsements"
               >
                 <ProfileEndorsements did={did} />
               </div>
             )}
-            {activeTab === "followers" && did && (
+            {shownTab === "followers" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-followers"
-                aria-labelledby="tab-followers"
+                aria-label="Followers"
               >
                 <ProfileFollowers did={did} />
               </div>
             )}
-            {activeTab === "lists" && did && (
+            {shownTab === "lists" && did && (
               <div
-                role="tabpanel"
+                role="region"
                 id="tabpanel-lists"
-                aria-labelledby="tab-lists"
+                aria-label="Lists"
               >
                 <ProfileLists did={did} viewerIsOwner={isViewerThisEntity} />
               </div>

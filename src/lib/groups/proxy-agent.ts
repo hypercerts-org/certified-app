@@ -305,7 +305,9 @@ export async function callGroupServiceJson(
     return text ? JSON.parse(text) : {}
   }
   let code: string | undefined
-  let message = `Group service error ${res.status}`
+  // Plain-language default: route handlers can forward this to the UI.
+  // The HTTP status rides along on the error object for logging.
+  let message = "The group service didn't respond. Try again in a minute."
   try {
     const data = (await res.json()) as { error?: string; message?: string }
     if (typeof data.error === "string") code = data.error

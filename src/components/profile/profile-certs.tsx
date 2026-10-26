@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { ArrowUpDown, Inbox, Plus, Search } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useManagedAuthors } from "@/hooks/use-managed-authors"
@@ -82,6 +81,7 @@ export default function ProfileCerts({
     error,
     hasMore,
     loadMore,
+    refetch,
   } = useUserIndexerActivities(did, {
     authoredAuthors: aggregateOwned ? authors : undefined,
   })
@@ -110,8 +110,18 @@ export default function ProfileCerts({
       <EmptyState
         icon={Inbox}
         title="No contributions yet"
-        description="Activities on other users' repos that list this user as a contributor will appear here."
+        description="Activities where someone else lists this account as a contributor will appear here."
       />
+    ) : viewerIsOwner && !query.trim() ? (
+      <EmptyState
+        icon={Inbox}
+        title="No activities yet"
+        description="Activities you publish will appear here."
+      >
+        <Button href="/create" variant="secondary" size="sm">
+          Create an activity
+        </Button>
+      </EmptyState>
     ) : undefined
 
   const feed = (
@@ -124,6 +134,7 @@ export default function ProfileCerts({
       hasMore={hasMore}
       loadMore={loadMore}
       emptyState={emptyState}
+      onRetry={refetch}
     />
   )
 
@@ -162,19 +173,18 @@ export default function ProfileCerts({
 
         <div className="profile-certs__controls">
           {viewerIsOwner ? (
-            <Link href="/create">
-              <Button
-                variant="primary"
-                size="sm"
-                className="profile-new-record-btn"
-                aria-label="New activity"
-              >
-                <Plus size={14} strokeWidth={1.75} aria-hidden />
-                <span className="profile-new-record-btn__label">
-                  New activity
-                </span>
-              </Button>
-            </Link>
+            <Button
+              href="/create"
+              variant="primary"
+              size="sm"
+              className="profile-new-record-btn"
+              aria-label="New activity"
+            >
+              <Plus size={14} strokeWidth={1.75} aria-hidden />
+              <span className="profile-new-record-btn__label">
+                New activity
+              </span>
+            </Button>
           ) : null}
           <label className="profile-certs__search">
             <Search
@@ -235,7 +245,7 @@ export default function ProfileCerts({
 
 function formatCount(n: number, hasMore: boolean): string | null {
   if (n === 0) return hasMore ? "…" : null
-  return `${n}${hasMore ? "+" : ""}`
+  return `${n.toLocaleString()}${hasMore ? "+" : ""}`
 }
 
 function filterAndSort(

@@ -139,9 +139,10 @@ export async function establish(
   // 4xx (other than 401) / 429 / 5xx — an upstream problem, not a user
   // credential result. Surface the status so the route doesn't masquerade
   // it as "invalid password".
-  throw Object.assign(new Error(`createSession failed (${res.status})`), {
-    status: res.status,
-  })
+  throw Object.assign(
+    new Error("Couldn't sign in right now. Try again in a minute."),
+    { status: res.status },
+  )
 }
 
 async function storeElevated(

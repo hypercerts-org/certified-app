@@ -35,7 +35,7 @@ export default function WorkspacePane({
       <div className="wks-pane">
         <header className="wks-pane__head">
           <Globe size={16} strokeWidth={1.75} aria-hidden />
-          <h2 className="wks-pane__heading">Network</h2>
+          <h2 className="wks-pane__heading font-headline text-h4">Network</h2>
         </header>
         <p className="wks-pane__lede">
           Everything on the Certified atproto network. Pick an actor on
@@ -67,7 +67,7 @@ export default function WorkspacePane({
     return (
       <div className="wks-pane">
         <header className="wks-pane__head">
-          <h2 className="wks-pane__heading">
+          <h2 className="wks-pane__heading font-headline text-h4">
             {actor.displayName ?? truncateDid(actor.did)}
           </h2>
         </header>
@@ -107,7 +107,7 @@ export default function WorkspacePane({
   return (
     <div className="wks-pane">
       <header className="wks-pane__head">
-        <h2 className="wks-pane__heading">
+        <h2 className="wks-pane__heading font-headline text-h4">
           {lexLabel} · {actor.displayName ?? truncateDid(actor.did)}
         </h2>
       </header>

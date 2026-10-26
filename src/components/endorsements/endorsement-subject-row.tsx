@@ -101,12 +101,12 @@ export default function EndorsementSubjectRow({
         />
       )}
       <span className={classes.meta}>
-        <span className={classes.name}>{identity.displayName}</span>
+        <span className={classes.name} dir="auto">{identity.displayName}</span>
         {identity.handle ? (
           <span className={classes.handle}>@{identity.handle}</span>
         ) : null}
         {dateInMeta ? time : null}
-        {note ? <span className={classes.note}>{note}</span> : null}
+        {note ? <span className={classes.note} dir="auto">{note}</span> : null}
       </span>
     </>
   )

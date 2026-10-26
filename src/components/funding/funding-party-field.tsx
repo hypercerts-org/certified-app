@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
 import Combobox from "@/components/ui/combobox"
+import Input from "@/components/ui/input"
 import { HydratedIdentityRow } from "@/components/explore-page/funding-receipt-parts"
 import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 import type { FundingParty } from "@/lib/atproto/indexer"
+
+/** 16px below the 800px breakpoint (keeps iOS Safari from zooming on
+ *  focus), the compact 14px scale above it. */
+const FIELD_TEXT = "text-base md:text-sm"
 
 /**
  * One side (`from` / `to`) of a funding receipt. Offers three input modes:
@@ -223,9 +228,11 @@ export default function FundingPartyField({
       </div>
 
       {mode !== "account" ? (
-        <input
+        <Input
+          flush
+          size="sm"
           type="text"
-          className="funding-form__input"
+          className={FIELD_TEXT}
           aria-label={`${ariaLabel} ${mode === "address" ? "address" : "text"}`}
           placeholder={textPlaceholder}
           value={textValue}
@@ -273,12 +280,13 @@ export default function FundingPartyField({
           escapeStage="close-only"
           liveStatus={null}
           renderInput={({ ref, onKeyDown, ...rest }) => (
-            <input
+            <Input
               ref={ref}
+              flush
               type="text"
-              className="funding-form__input"
+              className={FIELD_TEXT}
               aria-label={`${ariaLabel} account`}
-              placeholder="@handle or did:plc:…"
+              placeholder="@alice.bsky.social"
               maxLength={1000}
               disabled={disabled}
               onKeyDown={onKeyDown}
@@ -286,6 +294,9 @@ export default function FundingPartyField({
                 if (query.trim()) void commitTyped(query)
               }}
               {...rest}
+              // After the spread: the combobox's input props are typed as
+              // native attributes, whose numeric `size` would clash.
+              size="sm"
             />
           )}
           renderOption={({ item: a, highlighted, optionId, onHover, onSelect }) => (

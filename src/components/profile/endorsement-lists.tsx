@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -374,7 +368,7 @@ function ListsBody({
     return (
       <EmptyState
         icon={ListIcon}
-        title="Couldn’t load lists"
+        title="Couldn't load lists"
         description={error}
       />
     )
@@ -407,7 +401,7 @@ function ListsBody({
             onClick={() => onOpen(list.uri)}
           >
             <div className="endorsement-lists__row-main">
-              <span className="endorsement-lists__row-title">{list.title}</span>
+              <span className="endorsement-lists__row-title" dir="auto">{list.title}</span>
               {list.description ? (
                 <span className="endorsement-lists__row-desc">
                   {list.description}
@@ -485,7 +479,7 @@ function ListDetail({
             </button>
           </Tooltip>
           <h2 className="endorsement-lists__title">
-            {list.title}
+            <bdi>{list.title}</bdi>
             <span className="endorsement-lists__title-count">
               {list.items.length}
             </span>
@@ -508,7 +502,7 @@ function ListDetail({
                 type="button"
                 className="endorsement-lists__add-btn"
                 onClick={onBulkPaste}
-                aria-label="Bulk add people by handle or DID"
+                aria-label="Bulk add people by handle or profile link"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
               </button>
@@ -544,7 +538,7 @@ function ListDetail({
         <EmptyState
           icon={ListIcon}
           title="No items yet"
-          description="Awards added to this list will show up here."
+          description="People you add to this list will show up here."
         />
       ) : (
         <ul className="endorsement-lists__items">
@@ -799,7 +793,13 @@ function RevokeListItemButton({
       setConfirmOpen(false)
     } catch (err) {
       console.error(`Failed to ${action} endorsement:`, err)
-      setError(err instanceof Error ? err.message : `Failed to ${action}`)
+      setError(
+        err instanceof Error
+          ? err.message
+          : action === "remove"
+            ? "Couldn't remove them from this list. Try again."
+            : "Couldn't revoke the endorsement. Try again.",
+      )
     } finally {
       setBusy(null)
     }
@@ -969,6 +969,7 @@ function PasteSubjectsModal({
   const [rows, setRows] = useState<SubjectPasteRow[]>([])
   const [running, setRunning] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pasteHelpId = useId()
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -1008,7 +1009,7 @@ function PasteSubjectsModal({
           input,
           did: null,
           status: "wrong-shape",
-          message: "Not a DID, handle, or profile URL",
+          message: "Not a handle or profile link.",
         }
       }
       if (parsed.kind === "did") {
@@ -1158,7 +1159,7 @@ function PasteSubjectsModal({
 
   return (
     <AppDialog
-      ariaLabel="Bulk add people by handle or DID"
+      ariaLabel="Bulk add people by handle or profile link"
       maxWidth={600}
       onClose={() => !running && onClose()}
       disableBackdropClose={running}
@@ -1169,19 +1170,21 @@ function PasteSubjectsModal({
         disabled={running}
       />
       <AppDialogBody className="profile-lists__paste-body">
-        <p className="profile-lists__paste-help">
-          Paste handles, DIDs, or profile URLs separated by commas,
-          newlines, or spaces. Each person gets an endorsement from you
+        <p className="profile-lists__paste-help" id={pasteHelpId}>
+          Paste handles or profile links separated by commas, newlines, or
+          spaces. Each person gets an endorsement from you
           (if they don&rsquo;t have one already) and is added to this
           list.
         </p>
         <textarea
           ref={textareaRef}
           className="profile-lists__paste-textarea"
+          aria-label="Handles or profile links to add"
+          aria-describedby={pasteHelpId}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={6}
-          placeholder="alice.bsky.social, did:plc:…, https://redesign.certified.app/profile/bob.bsky.social"
+          placeholder="alice.bsky.social, https://certified.app/bob.bsky.social"
           disabled={running || showCloseOnly}
         />
         {rows.length > 0 ? (

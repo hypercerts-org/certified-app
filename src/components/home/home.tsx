@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useId } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
+import RowThumb from "@/components/ui/row-thumb"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useManagedProjects } from "@/hooks/use-managed-projects"
@@ -21,7 +22,6 @@ import NewsSection from "@/components/right-rail/news-section"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { getInitials } from "@/lib/utils/initials"
-import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import {
   projectImage,
   projectTitle,
@@ -136,14 +136,15 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
   // Profile detail accepts the DID under the [handle] slot, so
   // "Show more" stays correct even before we've resolved the handle.
   const profileBase = profileUrl(activeDid)
+  const profileTitleId = useId()
 
   return (
     <>
-      <section className="home-section">
+      <section className="home-section" aria-labelledby={profileTitleId}>
         <header className="home-section__head">
           <User size={14} strokeWidth={1.75} aria-hidden />
           <Link href={profileBase} className="home-section__title-link">
-            <h2 className="home-section__title">My profile</h2>
+            <span id={profileTitleId} className="home-section__title">My profile</span>
           </Link>
         </header>
       </section>
@@ -214,12 +215,16 @@ function SidebarSection<T>({
   // "Show all" only makes sense when there are extras to reveal —
   // hide when the preview already contains everything.
   const hasMore = total > items.length
+  // The title is an eyebrow nav label, not a document heading (it sits
+  // below the canonical type scale on purpose) — so it's a <span>, and
+  // the section takes its accessible name from it via aria-labelledby.
+  const titleId = useId()
   return (
-    <section className="home-section">
+    <section className="home-section" aria-labelledby={titleId}>
       <header className="home-section__head">
         <Icon size={14} strokeWidth={1.75} aria-hidden />
         <Link href={moreHref} className="home-section__title-link">
-          <h2 className="home-section__title">{title}</h2>
+          <span id={titleId} className="home-section__title">{title}</span>
         </Link>
         {total > 0 ? (
           <Badge variant="count-bare" className="home-section__count">
@@ -262,7 +267,7 @@ function GroupRow({ group }: { group: Group }) {
           alt=""
           fallbackInitials={initials}
         />
-        <span className="home-row__label">{label}</span>
+        <span className="home-row__label" dir="auto">{label}</span>
       </Link>
     </li>
   )
@@ -294,26 +299,20 @@ function ProjectRow({
   return (
     <li>
       <Link href={href} className="home-row">
-        <span className="home-row__thumb">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={title ? `Thumbnail for ${title}` : ""}
-              loading="lazy"
-              onError={hideBrokenThumb}
-            />
-          ) : (
+        <RowThumb
+          className="home-row__thumb"
+          src={imageUrl}
+          icon={
             <FolderGit2
               size={14}
               strokeWidth={1.5}
               aria-hidden
               className="home-row__thumb-icon"
             />
-          )}
-        </span>
+          }
+        />
         <span className="home-row__text">
-          <span className="home-row__label">{title}</span>
+          <span className="home-row__label" dir="auto">{title}</span>
           {ownerGroup ? <OwnerByline group={ownerGroup} role={owner.role} /> : null}
         </span>
       </Link>
@@ -345,26 +344,20 @@ function CertRow({
   return (
     <li>
       <Link href={href} className="home-row">
-        <span className="home-row__thumb">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={record.value.title ? `Thumbnail for ${record.value.title}` : ""}
-              loading="lazy"
-              onError={hideBrokenThumb}
-            />
-          ) : (
+        <RowThumb
+          className="home-row__thumb"
+          src={imageUrl}
+          icon={
             <CertIcon
               size={14}
               strokeWidth={1.5}
               aria-hidden
               className="home-row__thumb-icon"
             />
-          )}
-        </span>
+          }
+        />
         <span className="home-row__text">
-          <span className="home-row__label">
+          <span className="home-row__label" dir="auto">
             {record.value.title || "Untitled activity"}
           </span>
           {ownerGroup ? <OwnerByline group={ownerGroup} role={owner.role} /> : null}

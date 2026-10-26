@@ -54,7 +54,7 @@ describe("EndorsementSubjectRow", () => {
     const link = container.querySelector("a.t-main")
     expect(link?.getAttribute("href")).toBe("/alice.test")
     // Resolved info → avatar, not the loading skeleton.
-    expect(container.querySelector(".animate-pulse")).toBeNull()
+    expect(container.querySelector(".animate-skeleton")).toBeNull()
   })
 
   it("shows the avatar skeleton only while info is loading", () => {
@@ -67,7 +67,7 @@ describe("EndorsementSubjectRow", () => {
         classes={CLASSES}
       />,
     )
-    expect(loading.container.querySelector(".animate-pulse")).not.toBeNull()
+    expect(loading.container.querySelector(".animate-skeleton")).not.toBeNull()
     // Canonical no-info fallback: truncated DID, never the raw DID.
     expect(loading.container.querySelector(".t-name")?.textContent).toBe(
       "did:plc:abcdefgh…stuvwx",
@@ -85,7 +85,7 @@ describe("EndorsementSubjectRow", () => {
         classes={CLASSES}
       />,
     )
-    expect(settled.container.querySelector(".animate-pulse")).toBeNull()
+    expect(settled.container.querySelector(".animate-skeleton")).toBeNull()
     expect(settled.container.querySelector(".t-name")?.textContent).toBe(
       "did:plc:abcdefgh…stuvwx",
     )

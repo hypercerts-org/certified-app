@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { useOrg } from "@/lib/groups/org-context"
 import { useSession } from "@/hooks/use-session"
 import { useScrollHideNavbar } from "@/hooks/use-scroll-hide-navbar"
@@ -23,7 +24,9 @@ export default function ActingAsBar() {
   const { activeOrg, switchOrg } = useOrg()
   const { handle } = useSession()
   const { navHidden } = useScrollHideNavbar()
-  const active = !!activeOrg
+  const pathname = usePathname()
+  // Embeds render bare inside a third-party iframe — no chrome.
+  const active = !!activeOrg && !(pathname?.startsWith("/embed") ?? false)
 
   useEffect(() => {
     if (!active) return
@@ -32,7 +35,7 @@ export default function ActingAsBar() {
     return () => root.classList.remove("has-acting-as-bar")
   }, [active])
 
-  if (!activeOrg) return null
+  if (!active || !activeOrg) return null
 
   return (
     <div

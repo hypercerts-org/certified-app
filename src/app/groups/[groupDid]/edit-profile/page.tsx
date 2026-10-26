@@ -18,6 +18,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import AvatarUpload from "@/components/profile/avatar-upload"
 import BannerUpload from "@/components/profile/banner-upload"
 import { getInitials } from "@/lib/utils/initials"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
 export default function EditOrgProfilePage() {
   const router = useRouter()
@@ -44,6 +45,10 @@ export default function EditOrgProfilePage() {
   const [bannerBlob, setBannerBlob] = useState<UploadedBlob | null>(null)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
+  // Any field edit / upload marks the form dirty (seeding from the
+  // fetched record goes through the setters directly, not onChange).
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const { confirmDiscard } = useUnsavedChangesGuard(hasInteracted && !isSaving)
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -91,6 +96,7 @@ export default function EditOrgProfilePage() {
     try {
       const blobRef = await uploadOrgBlob(groupDid, file)
       setAvatarBlob(blobRef)
+      setHasInteracted(true)
     } finally {
       setIsUploadingAvatar(false)
     }
@@ -101,6 +107,7 @@ export default function EditOrgProfilePage() {
     try {
       const blobRef = await uploadOrgBlob(groupDid, file)
       setBannerBlob(blobRef)
+      setHasInteracted(true)
     } finally {
       setIsUploadingBanner(false)
     }
@@ -182,7 +189,7 @@ export default function EditOrgProfilePage() {
   return (
     <div className="dashboard">
       <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Edit</h1>
+        <h1 className="dashboard__page-title">Edit group profile</h1>
       </div>
 
       <div className="dashboard__body dashboard__body--single">
@@ -192,7 +199,16 @@ export default function EditOrgProfilePage() {
               <LoadingSpinner size="md" />
             </div>
           ) : (
-            <div className="edit-profile">
+            // A real <form> so Enter in a field submits.
+            <form
+              className="edit-profile"
+              noValidate
+              onInput={() => setHasInteracted(true)}
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleSave()
+              }}
+            >
               {/* Banner + avatar — mirrors profile page layout */}
               <div className="dash-card">
                 <BannerUpload
@@ -255,18 +271,21 @@ export default function EditOrgProfilePage() {
 
                 <div className="edit-profile__actions">
                   <Button
+                    type="button"
                     variant="ghost"
-                    onClick={() => router.push(`/groups/${encodeURIComponent(groupDid)}`)}
+                    onClick={() => {
+                      if (confirmDiscard()) router.push(`/groups/${encodeURIComponent(groupDid)}`)
+                    }}
                     disabled={isSaving}
                   >
                     Cancel
                   </Button>
-                  <Button variant="primary" onClick={handleSave} loading={isSaving} disabled={isSaving}>
-                    Save Changes
+                  <Button type="submit" variant="primary" loading={isSaving} disabled={isSaving}>
+                    Save changes
                   </Button>
                 </div>
               </div>
-            </div>
+            </form>
           )}
         </div>
       </div>

@@ -1,24 +1,3 @@
-/* ---------- Hamburger button (in the top bar) ---------- */
-
-.desktop-top-bar__menu {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-right: 4px;
-  background: none;
-  border: 0;
-  border-radius: var(--radius);
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.desktop-top-bar__menu:hover {
-  background: var(--bg-sunken);
-}
-
 /* ---------- Site drawer (slides in from the left) ---------- */
 /* The portal shell — scrim (.site-drawer__scrim), the sliding
    <aside> panel (.site-drawer / .site-drawer--open), focus trap,
@@ -47,23 +26,10 @@
   display: block;
 }
 
-.site-drawer__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: none;
-  border: 0;
-  border-radius: var(--radius);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.site-drawer__close:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
+/* Source SVG is pure black; flip it in dark mode like the top-bar and
+   footer wordmarks. */
+:root[data-theme="dark"] .site-drawer__wordmark {
+  filter: invert(1);
 }
 
 .site-drawer__nav {

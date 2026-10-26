@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { parseActor, profileUrl } from "@/lib/urls"
 import {
   CERT_DETAIL_TABS,
   PROJECT_DETAIL_TABS,
   type DetailTab,
 } from "@/lib/detail-tabs"
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -32,7 +31,6 @@ import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
-import { useMounted } from "@/hooks/use-mounted";
 import { routeForActorSwitch } from "@/lib/groups/navigation";
 import Avatar from "@/components/ui/avatar";
 import Button from "@/components/ui/button";
@@ -42,7 +40,6 @@ import Brandmark from "@/components/ui/brandmark";
 import GlobalSearch from "@/components/search/global-search";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tabs, TabList, Tab } from "@/components/ui/tabs";
-import Tooltip from "@/components/ui/tooltip";
 
 const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
@@ -249,20 +246,13 @@ export default function DesktopTopBar() {
   // and re-measurement on resize/scroll.
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const mounted = useMounted();
 
-  // "+" create dropdown — same pattern as the account switcher
-  // (portal to body, anchor recomputed on resize, close on outside
-  // click + Escape + route change). Lives left of the global search
-  // field as a single-icon trigger that expands into three Create-
-  // shortcut Links.
+  // "+" create dropdown — the canonical <Popover> (portal, side="bottom",
+  // align="start"), like the account switcher. It owns positioning,
+  // click-outside, Esc + focus return and arrow-key roving. Lives left of
+  // the global search field as a single-icon trigger that expands into
+  // three Create-shortcut Links.
   const [createOpen, setCreateOpen] = useState(false);
-  const createRef = useRef<HTMLDivElement>(null);
-  const createMenuRef = useRef<HTMLDivElement>(null);
-  const [createAnchor, setCreateAnchor] = useState<{
-    left: number;
-    top: number;
-  } | null>(null);
 
   // Close the switcher on navigation. Positioning, click-outside and
   // Esc-to-close are owned by the <Popover> primitive.
@@ -271,63 +261,17 @@ export default function DesktopTopBar() {
     setSwitcherOpen(false);
   }, [pathname]);
 
-  // ----- Create-menu effects (mirror the switcher) -----
-  // Anchor the menu's LEFT edge to the trigger's left edge so it opens
-  // to the right of the "+" button (no chance of running off the
-  // viewport's left side when the button sits near the chrome's right
-  // edge — same affordance as GitHub's "+" menu). The initial compute
-  // happens in the trigger's onClick; a stale anchor while closed is
-  // unobservable because the portal gates on createOpen && createAnchor.
-  const computeCreateAnchor = useCallback(() => {
-    const rect = createRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setCreateAnchor({
-      left: rect.left,
-      top: rect.bottom + 8,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!createOpen) return;
-    globalThis.addEventListener("resize", computeCreateAnchor);
-    globalThis.addEventListener("scroll", computeCreateAnchor, true);
-    return () => {
-      globalThis.removeEventListener("resize", computeCreateAnchor);
-      globalThis.removeEventListener("scroll", computeCreateAnchor, true);
-    };
-  }, [createOpen, computeCreateAnchor]);
-
-  useEffect(() => {
-    if (!createOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      const inTrigger = createRef.current?.contains(t) ?? false;
-      const inMenu = createMenuRef.current?.contains(t) ?? false;
-      if (!inTrigger && !inMenu) setCreateOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [createOpen]);
-
-  useEffect(() => {
-    if (!createOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      setCreateOpen(false);
-      createRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [createOpen]);
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- close create-menu on route change; same rationale as the switcher close above
     setCreateOpen(false);
   }, [pathname]);
 
   if (isLoading) return null;
+
+  // aria-current for the row-1 shortcut links (exact section match).
+  const currentIf = (active: boolean) => (active ? ("page" as const) : undefined);
+  const isUnder = (base: string) =>
+    pathname === base || (pathname?.startsWith(`${base}/`) ?? false);
 
   // Editorial pages use LandingTopBar; suppress the app chrome.
   // Embeds render bare (board-only) inside a third-party iframe.
@@ -363,17 +307,15 @@ export default function DesktopTopBar() {
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
           {SHOW_SITE_NAV_HAMBURGER ? (
-            <Tooltip label="Open site navigation">
-              <button
-                type="button"
-                className="desktop-top-bar__menu"
-                aria-label="Open site navigation"
-                aria-expanded={drawerOpen}
-                onClick={() => setDrawerOpen(true)}
-              >
-                <Menu size={18} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Open site navigation"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Menu size={18} strokeWidth={1.75} aria-hidden />
+            </Button>
           ) : null}
           <Link
             href={brandHref}
@@ -392,21 +334,28 @@ export default function DesktopTopBar() {
             )}
           </Link>
           {breadcrumb ? (
-            <h1 className="desktop-top-bar__title" aria-live="polite">
-              <Link href={breadcrumb.left.href} className="desktop-top-bar__title-part">
+            <h1 className="desktop-top-bar__title desktop-top-bar__title--breadcrumb">
+              <Link
+                href={breadcrumb.left.href}
+                className="desktop-top-bar__title-part desktop-top-bar__title-part--left"
+                title={breadcrumb.left.text}
+              >
                 {breadcrumb.left.text}
               </Link>
               {breadcrumb.right ? (
                 <>
                   <span className="desktop-top-bar__title-sep" aria-hidden="true"> / </span>
-                  <Link href={breadcrumb.right.href} className="desktop-top-bar__title-part">
+                  <Link
+                    href={breadcrumb.right.href}
+                    className="desktop-top-bar__title-part desktop-top-bar__title-part--right"
+                  >
                     {breadcrumb.right.text}
                   </Link>
                 </>
               ) : null}
             </h1>
           ) : desktopShownTitle ? (
-            <h1 className="desktop-top-bar__title" aria-live="polite">{desktopShownTitle}</h1>
+            <h1 className="desktop-top-bar__title">{desktopShownTitle}</h1>
           ) : null}
         </div>
 
@@ -421,24 +370,60 @@ export default function DesktopTopBar() {
 
           {isAuthenticated ? (
             <div
-              ref={createRef}
               className="desktop-top-bar__create-wrap"
               data-tour="nav-create"
             >
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (!createOpen) computeCreateAnchor();
-                  setCreateOpen((v) => !v);
-                }}
-                aria-haspopup="menu"
-                aria-expanded={createOpen}
-                aria-label="Create new"
-              >
-                <Plus size={20} strokeWidth={1.75} aria-hidden />
-              </Button>
+              <Popover open={createOpen} onOpenChange={setCreateOpen}>
+                <PopoverTrigger>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Create new"
+                  >
+                    <Plus size={20} strokeWidth={1.75} aria-hidden />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  portal
+                  side="bottom"
+                  align="start"
+                  offset={8}
+                  minWidth={220}
+                  className="desktop-top-bar__create-menu"
+                >
+                  <Link
+                    href="/create"
+                    role="menuitem"
+                    tabIndex={-1}
+                    className="desktop-top-bar__create-item"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    <FileBadge size={16} strokeWidth={1.75} aria-hidden />
+                    <span>New activity</span>
+                  </Link>
+                  <Link
+                    href="/project/new"
+                    role="menuitem"
+                    tabIndex={-1}
+                    className="desktop-top-bar__create-item"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    <FolderKanban size={16} strokeWidth={1.75} aria-hidden />
+                    <span>New project</span>
+                  </Link>
+                  <Link
+                    href="/groups/create"
+                    role="menuitem"
+                    tabIndex={-1}
+                    className="desktop-top-bar__create-item"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    <Building2 size={16} strokeWidth={1.75} aria-hidden />
+                    <span>New group</span>
+                  </Link>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : null}
 
@@ -447,6 +432,7 @@ export default function DesktopTopBar() {
               href="/home"
               className="desktop-top-bar__icon-btn"
               aria-label="Home"
+              aria-current={currentIf(pathname === "/home")}
               data-tour="nav-home"
             >
               <Home size={20} strokeWidth={1.5} aria-hidden />
@@ -458,6 +444,7 @@ export default function DesktopTopBar() {
             href="/apps"
             className="desktop-top-bar__icon-btn"
             aria-label="Apps"
+            aria-current={currentIf(isUnder("/apps"))}
             data-tour="nav-apps"
           >
             <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
@@ -469,6 +456,7 @@ export default function DesktopTopBar() {
               href={profileHref}
               className="desktop-top-bar__icon-btn"
               aria-label="My profile"
+              aria-current={currentIf(isOnProfile && isOnOwnProfile)}
               data-tour="nav-profile"
             >
               <User size={20} strokeWidth={1.5} aria-hidden />
@@ -481,6 +469,7 @@ export default function DesktopTopBar() {
               href="/settings"
               className="desktop-top-bar__icon-btn"
               aria-label="Settings"
+              aria-current={currentIf(isOnSettings)}
               data-tour="nav-settings"
             >
               <Settings size={20} strokeWidth={1.5} aria-hidden />
@@ -492,6 +481,7 @@ export default function DesktopTopBar() {
             href="/help"
             className="desktop-top-bar__icon-btn"
             aria-label="Help"
+            aria-current={currentIf(isUnder("/help"))}
             data-tour="nav-help"
           >
             <HelpCircle size={20} strokeWidth={1.5} aria-hidden />
@@ -561,22 +551,11 @@ export default function DesktopTopBar() {
               </Popover>
             </div>
           ) : (
-            <Tooltip label="Sign in">
-              <button
-                type="button"
-                onClick={openSignIn}
-                className="desktop-top-bar__signin-btn"
-                aria-label="Sign in"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG sign-in glyph; no optimization benefit from next/image */}
-                <img
-                  src="/brand/signin/certified_signin_black.svg"
-                  alt=""
-                  aria-hidden
-                  className="desktop-top-bar__signin-img"
-                />
-              </button>
-            </Tooltip>
+            // Theme-aware primary Button (inverts in dark mode) replaces the
+            // old black SVG pill, whose edge vanished on the dark canvas.
+            <Button variant="primary" size="sm" onClick={openSignIn}>
+              Sign in
+            </Button>
           )}
         </div>
       </div>
@@ -685,50 +664,6 @@ export default function DesktopTopBar() {
         </div>
       ) : null}
 
-      {mounted && createOpen && isAuthenticated && createAnchor
-        ? createPortal(
-            <div
-              ref={createMenuRef}
-              className="desktop-top-bar__create-menu"
-              role="menu"
-              style={{
-                position: "fixed",
-                top: createAnchor.top,
-                left: createAnchor.left,
-                width: 220,
-              }}
-            >
-              <Link
-                href="/create"
-                role="menuitem"
-                className="desktop-top-bar__create-item"
-                onClick={() => setCreateOpen(false)}
-              >
-                <FileBadge size={16} strokeWidth={1.75} aria-hidden />
-                <span>New activity</span>
-              </Link>
-              <Link
-                href="/project/new"
-                role="menuitem"
-                className="desktop-top-bar__create-item"
-                onClick={() => setCreateOpen(false)}
-              >
-                <FolderKanban size={16} strokeWidth={1.75} aria-hidden />
-                <span>New project</span>
-              </Link>
-              <Link
-                href="/groups/create"
-                role="menuitem"
-                className="desktop-top-bar__create-item"
-                onClick={() => setCreateOpen(false)}
-              >
-                <Building2 size={16} strokeWidth={1.75} aria-hidden />
-                <span>New group</span>
-              </Link>
-            </div>,
-            document.body
-          )
-        : null}
     </header>
   );
 }

@@ -1,716 +1,820 @@
 # DESIGN.md — Certified (certified-app)
 
-> **AI agents: read §14 first.** It locks in the post-consolidation rules (2026-05-28) and supersedes earlier sections where they contradict. Read the "Rules at a glance" callout in `AGENTS.md` §0 in parallel — it's the executive summary of what to do and not do.
->
-> **certified-app's `src/components/ui/` is the canonical, portable, barrel-exported component library** (`src/components/ui/index.ts` re-exports every primitive). It is the source of truth reused by other hypercerts-org apps — treat changes here as changes to a shared dependency. The library is now self-contained Tailwind: primitives express their chrome inline as Tailwind utilities + token arbitrary values (e.g. `bg-[var(--bg-elevated)]`), not legacy BEM classes. Intra-`ui` imports are relative (`./button`), so the directory ports cleanly into another app. Two files (`feed-label-pill`, `feedback-modal`) are app-coupled and excluded from the portable surface — see the barrel header.
+The design system for certified-app. `CLAUDE.md` holds the hard rules and first checks; `AGENTS.md` §11/§12 hold the CSS and component conventions. This file holds the reasoning and the specs behind them.
 
-## 1. Visual Theme & Atmosphere
+**One numeric source.** `src/app/styles/tokens.css` (plus `tailwind.config.ts` for the type ramp and motion utilities) is the only place values live. This document names tokens and their roles. It quotes numbers only where it defines a scale (type ramp, motion, spacing, icons, control heights). If this file and the code disagree on a value, the code wins and this file is wrong; fix it.
 
-Certified feels like a notary's ledger reimagined as a mobile app — austere, monochrome, and quietly authoritative. The near-absence of color forces attention onto the content: serif headlines anchor each card like a document title, while the surrounding chrome recedes into warm grays. It's deliberately under-decorated — no gradients, no brand accent hue, no playful illustrations. The restraint *is* the brand.
+**The primitive library is a shared dependency.** `src/components/ui/` is the canonical, portable, barrel-exported library (`src/components/ui/index.ts`) reused by other hypercerts-org apps. Primitives express their chrome as Tailwind utilities with token arbitrary values (`bg-[var(--bg-elevated)]`), not BEM classes. Intra-`ui` imports are relative (`./button`) so the directory ports cleanly. `feed-label-pill` and `feedback-modal` are app-coupled and excluded from the portable surface (see the barrel header).
 
-Underneath the calm surface sits a social feed. Activity cards scroll by like entries in a shared register; endorsements carry the weight of a countersignature. The tension between institutional formality (certificates, seals, identity) and casual social patterns (feeds, follows, tabs) is the defining character of the design.
+## Contents
 
-The app is **mobile-first**. Every layout, component, and interaction is designed for small screens first; the desktop experience is a natural widening of that single-column flow, not a separate layout. There is no desktop sidebar, no multi-column dashboard — just a centered, narrow content column that reads like a social feed on any viewport.
+0. Rules at a glance
+1. Brand and atmosphere
+2. Color
+3. Typography
+4. Layout
+5. Depth and elevation
+6. Interaction
+7. Motion
+8. Icons
+9. Components
+10. Async states and copy
+11. Landing page system
+12. Enforcement
+13. Agent prompt guide
+14. Token appendix
+15. Changelog
 
-**Key Characteristics:**
-- Monochrome palette: near-black primary, warm grays, no brand accent color — identity is carried by typography
-- Noto Serif headlines give content the weight of a printed document; Inter handles all UI chrome
-- Minimal border-radius (`--radius: 2px`) gives cards and buttons a sharp, document-like feel
-- Full dark mode via `data-theme="dark"` — surfaces invert, primary button inverts (dark-on-light becomes light-on-dark)
-- Mobile-native navigation: bottom tab bar, hamburger sidebar, bottom-sheet account switcher with drag-to-dismiss
-- Feed-centric layout: the home screen is a social feed, not a dashboard
-- Frosted-glass navbar with `backdrop-filter: blur(12px)` and translucent backgrounds
-- Skeleton loading states with subtle pulse animations for perceived performance
-- Accessibility-first: skip-nav link, focus rings, ARIA roles on tabs, `prefers-reduced-motion` support throughout
-- Spring-eased transitions (`cubic-bezier(0.16, 1, 0.3, 1)`) for physical, weighted motion
+---
 
-## 2. Color Palette & Roles
+## 0. Rules at a glance
 
-Colors are defined as CSS custom properties in `:root` and overridden in `[data-theme="dark"]`. The system has two layers: **invariant primitives** (`--color-primary`, `--color-white`) that never change between themes, and **semantic tokens** (`--bg-canvas`, `--fg-primary`, `--border-default`) that flip in dark mode. All CSS references semantic tokens — never raw hex values or primitives.
+These mirror the `CLAUDE.md` hard rules. Hold every UI change to them.
 
-### Core
-
-| Name | Token | Light | Dark | Role |
-|---|---|---|---|---|
-| Ink | `--color-primary` | `#111111` | `#111111` | Theme-invariant primary (skip-nav) |
-| Paper | `--color-white` | `#FFFFFF` | `#FFFFFF` | Theme-invariant white |
-| Slate | `--color-accent` | `#5e5e5e` | `#a0a0a8` | Secondary text, muted interactive |
-
-### Surfaces (elevation ramp)
-
-| Name | Token | Light | Dark | Role |
-|---|---|---|---|---|
-| Canvas | `--bg-canvas` | `#f9f9f9` | `#0b0b0d` | Page background |
-| Sunken | `--bg-sunken` | `#eeeeee` | `#08080a` | Recessed areas (toggle tracks) |
-| Raised | `--bg-raised` | `#f3f3f3` | `#141417` | Slightly elevated surfaces |
-| Elevated | `--bg-elevated` | `#FFFFFF` | `#1a1a1e` | Cards, modals, inputs — highest elevation |
-
-### Foregrounds
-
-| Name | Token | Light | Dark | Role |
-|---|---|---|---|---|
-| Primary | `--fg-primary` | `#111111` | `#f5f5f7` | Headings, primary text |
-| Secondary | `--fg-secondary` | `#4c4546` | `#c7c7cc` | Body text (default) |
-| Muted | `--fg-muted` | `#7e7576` | `#8e8e93` | Placeholders, tertiary text, timestamps |
-
-### Borders
-
-Borders use transparent black/white overlays so they adapt naturally:
-
-| Name | Token | Light | Dark | Use |
-|---|---|---|---|---|
-| Whisper | `--border-subtle` | `rgba(0,0,0,0.04)` | `rgba(255,255,255,0.04)` | Card separators, list dividers |
-| Default | `--border-default` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Input borders, card borders |
-| Hover | `--border-hover` | `rgba(0,0,0,0.15)` | `rgba(255,255,255,0.18)` | Hover state on bordered elements |
-
-### Semantic
-
-| Name | Token | Light | Dark | Role |
-|---|---|---|---|---|
-| Error | `--color-error` | `#ba1a1a` | `#f87171` | Error text, destructive actions |
-| Success | `--color-success` | `#2ECC71` | `#2ECC71` | Success dots, badges |
-| Warning | `--color-warning` | `#F5A623` | `#F5A623` | Warning icons |
-| Verified bg/fg | `--badge-success-bg/fg` | `#e8f5e9` / `#1b7a3d` | `rgba(46,204,113,0.15)` / `#6ee7a7` | "High quality" label, verified badge |
-| Pending bg/fg | `--badge-warning-bg/fg` | `#fff3e0` / `#b37100` | `rgba(245,166,35,0.15)` / `#fbbf24` | "Pending" badge |
-| Count bg/fg | `--badge-count-bg/fg` | `#b91c1c` / `#ffffff` | `#dc2626` / `#ffffff` | Notification count chip (`Badge variant="count"`) |
-
-### Badge tones (danger / accent)
-
-Two additional badge tone triplets ship with the canonical library for cross-app parity. They are **additive** (not yet referenced by a certified-app call site today), but live in the token map so consuming apps inherit them. Each is a `bg` / `fg` / `border` set:
-
-| Name | Token | Light | Dark | Role |
-|---|---|---|---|---|
-| Danger bg | `--badge-danger-bg` | `#fdecea` | `rgba(248,113,113,0.15)` | Destructive / error-toned badge surface (derives from `--color-error`) |
-| Danger fg | `--badge-danger-fg` | `#9f1717` | `#f87171` | Danger badge text |
-| Danger border | `--badge-danger-border` | `#f4c7c3` | `rgba(248,113,113,0.3)` | Danger badge border |
-| Accent bg | `--badge-accent-bg` | `#ededed` | `rgba(255,255,255,0.08)` | Neutral-accent badge surface |
-| Accent fg | `--badge-accent-fg` | `#454747` | `#c7c7cc` | Accent badge text |
-| Accent border | `--badge-accent-border` | `#dcdcdc` | `rgba(255,255,255,0.14)` | Accent badge border |
-
-### Primary Button (theme-inverting)
-
-The primary button **inverts** in dark mode so it always pops off the canvas:
-
-| Token | Light | Dark |
+| # | Rule | Quick test |
 |---|---|---|
-| `--btn-primary-bg` | `#111111` | `#f5f5f7` |
-| `--btn-primary-fg` | `#FFFFFF` | `#0b0b0d` |
-| `--btn-primary-bg-hover` | `#2a2a2a` | `#e5e5e7` |
+| 1 | `border-radius` is `var(--radius)` (2px), `var(--radius-pill)` (999px) for pills, `50%` for circles. Never 4/6/8/12/16/20px. No exceptions, including sign-in and the bottom sheet. | `grep -rEn "border-radius:\s+(4\|6\|8\|12\|16\|20)px" src/app/styles/` is silent |
+| 2 | No raw hex / rgb / rgba / hsl / named colors outside `tokens.css` and `landing.css`. | stylelint (§12) |
+| 3 | Breakpoints are 800 / 1100 / 1300 only. "Below desktop" is `@media (max-width: 799px)`. | `grep -rEn "@media.*?\((max\|min)-width:\s*(76[08]\|64[80])px\)" src/app/styles/` is silent |
+| 4 | Elevation shadows are `var(--shadow-sm \| --shadow-md \| --shadow-lg)`, plus `--shadow-modal` for dialogs only. Rings and hairlines use `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline`. Never a literal `box-shadow`. | stylelint |
+| 5 | Z-index is a `--z-*` token. | stylelint |
+| 6 | Headings use `font-headline` + `text-h1`..`text-h4`. Never `text-xl` / `text-lg` / `text-2xl`. | `grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/` is silent |
+| 7 | Modals are `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` / `<FormDialog>`). Never a hand-rolled backdrop + focus trap. | `grep -rn "signin-modal__backdrop" src/components/` only hits the two allowed files |
+| 8 | Icon-only buttons are `<Button size="icon" aria-label="…">` (or `size="icon-sm"`). | TypeScript enforces the label |
+| 9 | Dark mode must work. Toggle `data-theme="dark"` on `<html>` and check. Landing uses the theme-aware `--color-navy` / `--color-off-white`, not the invariant `--color-primary` / `--color-white`. | Manual |
+| 10 | Reach for a primitive in `src/components/ui/` before writing a component or BEM class. | `ls src/components/ui/` |
 
-### Shadows
+And the rules that this document adds on top:
 
-| Token | Light | Dark | Use |
+- Never put a Tailwind `/NN` opacity modifier on a `var()` color (`ring-[var(--x)]/20`). Tailwind 3.4 compiles it to nothing. Use a pre-mixed token or `color-mix()`.
+- Only sizes from the type ramp (§3.2). Positive letter-spacing only on uppercase text.
+- Hover styles exist only on devices that hover (§6.1).
+- Name transition properties; never `transition: all` (§7).
+- Cards never carry shadows, including on hover (§5).
+
+---
+
+## 1. Brand and atmosphere
+
+Certified feels like a notary's ledger reimagined as a mobile app: austere, monochrome, quietly authoritative. The near-absence of color puts attention on content. Serif titles anchor each entry like a document heading while the chrome recedes into warm grays. No gradients, no brand accent hue, no playful illustration. The restraint is the brand.
+
+Underneath sits a social feed. Activity cards scroll by like entries in a shared register; an endorsement carries the weight of a countersignature. The tension between institutional formality (certificates, seals, identity) and casual social patterns (feeds, follows, tabs) is the defining character.
+
+**Mobile-first.** Every layout and interaction is designed for a phone first. On desktop the reading column stays editorial-width; wider pages are explicit opt-ins (§4.4), never a stretched column.
+
+Key characteristics:
+
+- Monochrome: near-black ink, warm grays, no accent color. Identity is carried by typography.
+- Noto Serif for content titles, Inter for all chrome.
+- `--radius: 2px` gives cards, buttons and dialogs a sharp, document-like edge.
+- Full dark mode via `data-theme="dark"`. Surfaces flip; the primary button inverts.
+- Mobile-native navigation: labeled bottom tab bar, bottom sheets with drag-to-dismiss, a translucent top navbar.
+- Feed-centric: home is a feed, not a dashboard.
+
+---
+
+## 2. Color
+
+Colors are custom properties in `:root`, overridden in `:root[data-theme="dark"]`. Values live in `tokens.css` only. CSS and JSX reference semantic tokens, never raw values or primitives.
+
+### 2.1 Layers
+
+| Layer | Tokens | Rule |
+|---|---|---|
+| Invariant primitives | `--color-primary`, `--color-white` | Never flip. Reserved for skip-nav and brand SVG. Do not use on app surfaces. |
+| Semantic (app) | `--bg-*`, `--fg-*`, `--border-*`, `--overlay-*`, `--btn-*`, `--badge-*`, `--color-error/success/warning*`, `--focus-ring` | Flip in dark mode. Everything in the app uses these. |
+| Landing palette | `--color-navy`, `--color-off-white`, `--color-gray-100`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low` | Theme-aware. Landing (`lp-`) surfaces only; never inside a `ui/` primitive. |
+| Theme-aware accent | `--color-accent`, `--color-accent-hover` | Muted interactive gray; overridden in dark mode. `--focus-ring` derives from it. |
+
+### 2.2 Surfaces
+
+| Token | Role |
+|---|---|
+| `--bg-sunken` | Recessed: toggle tracks, disabled filled controls, inset wells. |
+| `--bg-canvas` | Page background. |
+| `--bg-elevated` | Cards, inputs, popovers. Lighter than canvas in both themes. |
+| `--bg-overlay` | `<AppDialog>` and the dialogs built on it. A lifted page (it resolves to the canvas value); inputs and cards inside it sit on `--bg-elevated`. Bottom sheet and drawer currently paint `--bg-elevated` instead. |
+| `--bg-raised` | **A tint, not an elevation step.** A quiet filled area: code blocks, location cards, the `test` badge. In light mode it is darker than canvas; in dark mode lighter. Never use it to mean "above". |
+
+### 2.3 Foregrounds
+
+| Token | Role |
+|---|---|
+| `--fg-primary` | Headings, names, primary text, selected state. |
+| `--fg-secondary` | Body text (the default on `body`), field labels. |
+| `--fg-muted` | Placeholders, timestamps, helper text, inactive nav. |
+
+### 2.4 Borders
+
+Four tokens. All are transparent black (light) or white (dark) so they adapt to whatever they sit on.
+
+| Token | Role |
+|---|---|
+| `--border-subtle` | Dividers between rows (feed cards, list items). |
+| `--border-default` | Box edges: cards, text fields, dialogs, popovers. |
+| `--border-hover` | Hover on bordered elements; unchecked states that need a touch more presence. |
+| `--border-control` | Boundaries a user must find to operate a control: checkbox box, switch-off track. Meets 3:1 against its surface. |
+
+Hairlines (`subtle`, `default`) separate content. `--border-control` is only for the checkbox box and the switch-off track; text fields keep the `default` hairline because their label always identifies them. The `<RadioGroup>` primitive draws no circle (its options are labeled buttons with a selected state), so radio is not covered by `--border-control` today. The old names (`--border-light`, `--border-medium`, `--border-hover-soft`) are removed; don't reintroduce them.
+
+### 2.5 Status and badges
+
+| Token family | Role |
+|---|---|
+| `--color-error` | Error text, destructive actions, error icons. |
+| `--color-error-bg` / `-border` / `-ring` | Error-tinted surfaces, their border, and the invalid-field ring. |
+| `--color-success`, `--color-warning` | **Fills and dots only.** As text on canvas they fail contrast. |
+| `--color-success-text/-bg`, `--color-warning-text/-bg/-border` | Text and tinted surfaces for success and warning. |
+| `--badge-success-*`, `--badge-warning-*`, `--badge-neutral-*` | Badge bg / fg / border triplets for status and quality pills. |
+| `--badge-count-bg/fg` | Notification count pill. |
+| `--badge-danger-*`, `--badge-accent-*` | Additive tones for cross-app parity; unreferenced in this app today. |
+| `--accent-gold`, `--accent-gold-soft` | The single splash of color: deluxe contributor board hover only. |
+
+Color is never the sole signal. Errors pair red with text and an icon; success pairs green with an icon or label.
+
+### 2.6 Primary button
+
+`--btn-primary-bg` / `--btn-primary-fg` invert in dark mode so the primary action always pops off the canvas. `--btn-primary-bg-hover` is the hover fill (§6.1).
+
+### 2.7 Contrast
+
+Every fg/bg pair gets a row here. Targets: ≥ 4.5:1 for text under 18px, ≥ 3:1 for icons and control boundaries. Ratios are WCAG 2.x, computed from `tokens.css`. Re-run them when a value changes.
+
+| Pair | Light | Dark |
+|---|---|---|
+| `--fg-muted` on canvas / elevated / sunken | 5.61 / 5.91 / 5.10 | 6.34 / 4.89 / 6.74 |
+| `--fg-secondary` on canvas / elevated | 8.88 / 9.35 | 10.52 / 8.12 |
+| `--focus-ring` on canvas / elevated | 6.16 / 6.48 | 6.82 / 5.27 |
+| `--badge-success-fg` on its bg | 4.79 | 6.73 |
+| `--badge-warning-fg` on its bg | 5.56 | 6.12 |
+| `--badge-neutral-fg` on its bg, over elevated | 5.42 | 5.12 |
+| `--badge-count-fg` on `--badge-count-bg` | 6.47 | 4.83 |
+| `--border-control` on canvas / elevated | 3.32 / 3.35 | 3.23 / 3.05 |
+| `--color-success` / `--color-warning` as text on canvas | 2.00 / 1.93 (fills only) | n/a |
+
+Weakest pair: dark `--fg-muted` on `--bg-elevated` (4.89). Don't darken elevated or lighten muted without re-checking it.
+
+### 2.8 Overlays and scrim
+
+| Token | Role |
+|---|---|
+| `--overlay-weak` | Hover fill on neutral surfaces (ghost button, row card, menu item). |
+| `--overlay-medium` | Selected / pressed-toggle fill. |
+| `--scrim` | The one dimming layer behind every blocking surface: AppDialog `::backdrop`, Drawer, BottomSheet, FeedbackModal (and the tour backdrop). 0.4 black in light, 0.6 in dark. A dialog and a sheet showing the same content dim the page by the same amount. `--modal-backdrop` is removed. |
+| `--scrim-pill`, `--scrim-pill-hover`, `--scrim-pill-ghost` | Invariant pills over user images (avatar / banner "Change"). Don't flip with the theme. |
+| `--media-letterbox` | Invariant black behind embedded video. |
+
+### 2.9 Translucent chrome
+
+Translucent chrome is always the surface it sits on at reduced alpha, never a separate literal: `--navbar-bg` is canvas at 80% (`color-mix()` toward transparent), `--sheet-bg` is elevated at 95% (both defined once, no dark override). The mobile navbar and the desktop top bar use `--navbar-bg`; the bottom nav is opaque (§4.3). Chrome blurs what scrolls under it (`backdrop-filter: blur(12px)`). Text over blur uses `--fg-primary` or `--fg-secondary`, never `--fg-muted`. The chrome edge is a 1px `--navbar-border` hairline (drawn with `--shadow-navbar-hairline`), not an elevation shadow.
+
+### 2.10 Selection
+
+`::selection` uses `--selection-bg` / `--selection-fg`: ink on paper in light, paper on ink in dark.
+
+---
+
+## 3. Typography
+
+### 3.1 Families and loaded weights
+
+| Var | Family | Loaded weights | Role |
 |---|---|---|---|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | `0 1px 2px rgba(0,0,0,0.4)` | Subtle lift (theme toggle) |
-| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.08)` | `0 4px 12px rgba(0,0,0,0.5)` | Feedback trigger, dropdowns |
-| `--shadow-lg` | `0 12px 32px rgba(0,0,0,0.12)` | `0 12px 32px rgba(0,0,0,0.6)` | Modals, sign-in dialog |
+| `--font-inter` | Inter | Variable font (every weight in one file); the system uses 400 / 500 / 600 | All chrome and body: buttons, nav, labels, descriptions. |
+| `--font-headline` | Noto Serif (normal + italic) | 300 / 400 / 600 / 700 | Content titles. 300 is landing display only; 400 is landing item titles; 600 is app headings h2-h4; 700 is display, h1 and feed card titles. |
+| `--font-mono` | System stack (`ui-monospace, SFMono-Regular, …`) | n/a | DIDs, AT URIs, code; on landing also registry numerals and stats. No web font. |
 
-## 3. Typography Rules
+Inter and Noto Serif load via `next/font/google` with `display: swap`. A spec may only name a loaded weight: an unloaded serif weight silently renders as the nearest loaded face. Inter is loaded as a variable font, so 700 would render; the system still never uses it.
 
-### Font Families
+### 3.2 Type ramp
 
-| Var | Family | Role |
-|---|---|---|
-| `--font-inter` | Inter (300–700) | All UI text: body, labels, buttons, navigation |
-| `--font-headline` | Noto Serif (300, 400, 700, normal+italic) | Headlines, card titles, feed titles, empty-state headings. **300 is the landing display weight** (hero + landing section headlines, §10); app surfaces keep 400/700. |
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` | Monospace contexts: DID strings, AT URIs, code blocks; on the landing page also the editorial register — `01/02/03` item numerals and the live stats figures (§10). System stack (no web font load). |
+`tailwind.config.ts` `fontSize` is authoritative; this table must match it. Each step carries its own leading and tracking. The sizes are mirrored as `--text-*` tokens in `tokens.css` (`--text-display` … `--text-micro`) for CSS consumers, with `--tracking-label` (0.06em) and `--measure` (65ch).
 
-Inter and Noto Serif are loaded via `next/font/google` with `display: swap`. `--font-mono` is a system stack — no font load.
-
-### OpenType Features
-
-Inter supports several features that should be enabled where appropriate:
-
-| Feature | Code | Use |
-|---|---|---|
-| Tabular numerals | `tnum` | Stats, counts, timestamps — anywhere numbers should align vertically |
-| Slashed zero | `zero` | DID strings, AT URIs, monospace-adjacent contexts |
-| Case-sensitive forms | `case` | Uppercase labels — adjusts punctuation and brackets for cap height |
-
-Apply via `font-feature-settings: 'tnum' 1, 'case' 1;` on the relevant elements.
-
-### Type Scale
-
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
+| Utility | Size | Leading | Tracking | Weight | Font | Use |
 |---|---|---|---|---|---|---|
-| Feed card title | `--font-headline` | 1.125rem (mobile) / 1.25rem (desktop) | 700 | 1.3 | — | Single-line, ellipsis overflow |
-| Empty state heading | `--font-headline` | 1.125rem | 600 | — | — | Centered empty states |
-| Page title (navbar) | Inter | 0.9375rem | 600 | — | -0.01em | Centered in titled navbar |
-| Sign-in heading | Inter | 1.125rem | 700 | — | -0.01em | Modal heading |
-| Body | Inter | 1rem / 0.875rem | 400 | 1.6 / 1.5 | — | Default reading text |
-| Body small | Inter | 0.8125rem | 400–500 | 1.6 | — | Sidebar links, descriptions |
-| Caption / label | Inter | 0.6875rem | 500–600 | — | 0.08–0.2em | Uppercase labels, section markers |
-| Tiny | Inter | 0.625rem | 500 | 1 | — | Bottom nav labels |
-| Landing hero H1 | `--font-headline` | `clamp(2.625rem, 1.5rem + 4.5vw, 4.75rem)` | 300 | 1.04 | -0.03em | Landing only (§10); fluid — the one exception to the fixed scale |
-| Landing section H2 | `--font-headline` | `clamp(1.75rem, 1.25rem + 2vw, 2.75rem)` | 300 | 1.12 | -0.02em | Landing only (`.lp-h2`) |
-| Landing item title | `--font-headline` | `clamp(1.25rem, 1.125rem + 0.5vw, 1.5rem)` | 400 | 1.25 | — | Numbered-item rows (`.lp-item__title`) |
-| Registry numeral | `--font-mono` | 0.75rem | 500 | — | 0.08em | `01/02/03` markers; stats figures use the same family at `clamp(2rem, …, 3.25rem)` with `tabular-nums` |
+| `text-display` | 3rem | 1.1 | -0.03em | 700 | serif | Rare app hero |
+| `text-h1` | 2.25rem | 1.15 | -0.02em | 700 | serif | Wide-page title |
+| `text-h2` | 1.75rem | 1.2 | -0.015em | 600 | serif | Page title in the content (column pages) |
+| `text-h3` | 1.375rem | 1.3 | -0.01em | 600 | serif | Section title, profile name |
+| `text-h4` | 1.125rem | 1.35 | -0.005em | 600 | serif | Card title, empty-state title, dialog and sheet title |
+| `text-body` | 1rem | 1.6 | 0 | 400 | Inter | Reading text |
+| `text-body-sm` | 0.875rem | 1.5 | 0 | 400 / 500 | Inter | Default UI text, descriptions, buttons |
+| `text-ui` | 0.8125rem | 1.45 | 0 | none set (400 / 500) | Inter | Dense chrome, meta rows, menu items, field labels |
+| `text-caption` | 0.75rem | 1.4 | +0.01em | none set (400 / 500) | Inter | Timestamps, helper and error text |
+| `text-label` | 0.6875rem | 1.2 | +0.06em | 600 | Inter, uppercase, `'case' 1` | Eyebrows, section labels, square tags |
+| `text-micro` | 0.625rem | 1 | +0.02em | 500 | Inter | Reserved for the tightest chrome; no consumer today |
 
-### Principles
+Rules:
 
-- **Serif for content, sans for chrome.** Headlines and card titles use Noto Serif to signal "this is the content worth reading." Everything structural — buttons, nav, labels — is Inter.
-- **Uppercase + wide tracking for labels.** Section labels, card labels, and dashboard headers use `text-transform: uppercase` with `letter-spacing: 0.08em–0.2em` to create visual hierarchy without size increase.
-- **Negative tracking at display sizes.** Headlines at 1rem+ use -0.01em to -0.02em for a tighter, more editorial feel.
-- **Weight ceiling on Inter.** Body text caps at 600 (semibold). Weight 700 is reserved exclusively for Noto Serif headlines.
-- **Two serif voices.** App surfaces speak bold serif (700 titles); the landing page speaks *light* serif (300 display, 400 item titles) — editorial, engraving-adjacent. Don't mix the voices within a surface.
+- Sizes not in this table are not allowed in new code. Snap 0.9375 / 0.85 / 0.9 / 0.95rem to `body-sm`; 0.7 / 0.78rem to `caption`.
+- Feed card title is serif 700 at `h4` size on mobile, 1.25rem on desktop. It is the one sanctioned responsive app title.
+- App type does not scale with the viewport. Landing display type is fluid via `clamp()` (§11).
+- Two serif voices: the app speaks firm serif (600/700); the landing speaks light serif (300 display, 400 item titles). Don't mix them on one surface.
 
-## 4. Component Styles
+### 3.3 Tracking and case
 
-### Buttons
+- Positive tracking exists only on uppercase text, one value: `+0.06em` via `text-label` / `tracking-label`. The landing mono registry numerals are the only place wider tracking appears. (`caption` and `micro` carry their small optical tracking from the ramp.)
+- Mixed-case text, including button labels and field labels, has 0 tracking. Spaced-out lowercase degrades word shapes.
+- Serif headings get the slight negative tracking in their ramp step. Don't add more.
+- UI copy is sentence case. Uppercase is a style (`text-label`), never typed into the string.
 
-The `<Button>` component (`src/components/ui/button.tsx`) defines four variants and three sizes. This is the canonical button system.
+### 3.4 Numerals and OpenType
 
-| Variant | Background | Text | Border | Hover | Use |
-|---|---|---|---|---|---|
-| **Primary** | `--btn-primary-bg` | `--btn-primary-fg` | none | opacity 0.9 | Main CTAs, form submits |
-| **Secondary** | transparent | `--fg-primary` | `--border-default` | border → `--border-hover` | Cancel, secondary actions |
-| **Ghost** | transparent | `--fg-muted` | none | bg `--overlay-weak`, text → primary | Toolbar actions, less emphasis |
-| **Destructive** | `error/10` | error | `error/20` | bg error/15, border error/35 | Delete, remove actions |
+- Any number that changes or sits in a column uses `font-variant-numeric: tabular-nums` (Tailwind `tabular-nums`): counts, badges, pagination, timestamps, funding amounts, stats, table cells. Never `font-feature-settings` for this; it replaces other features on the element.
+- `'case' 1` is part of `text-label`, not a per-class list.
+- DIDs, AT URIs and wallet addresses use `slashed-zero` (`<WalletAddress>`).
 
-| Size | Padding | Font Size |
+### 3.5 Wrapping and measure
+
+- `h1`-`h4` and serif titles use `text-wrap: balance`.
+- Descriptions and long-form paragraphs use `text-wrap: pretty`.
+- Prose caps at `--measure` (65ch) regardless of container width. 1280px pages hold grids, not paragraphs.
+- Long unbroken strings (DIDs, URLs, handles) wrap via `overflow-wrap: break-word` on `body`; components that want an ellipsis set `white-space: nowrap` themselves.
+
+### 3.6 Heading hierarchy
+
+- The chrome title is the page's single `<h1>`: the mobile navbar title or the desktop top bar title (`AuthGuard` sets it when signed out).
+- Page content therefore starts at `<h2>`. Section headings are `<h3>`; card and empty-state titles are `<h4>` (or the level passed via `headingLevel`).
+- Visual size and DOM level are independent: pick the ramp step for the look and the element for the outline.
+
+---
+
+## 4. Layout
+
+### 4.1 Shell
+
+The app shell (`src/components/layout/app-shell.tsx`) is a single centered column. The left and right rails were retired in the Overview redesign; desktop chrome is the top bar.
+
+| Viewport | Chrome | Content |
 |---|---|---|
-| `sm` | 6px 16px | 0.75rem |
-| `md` | 10px 24px | 0.875rem |
-| `lg` | 12px 32px | 0.875rem |
-| `icon` | 40 × 40 square | — |
+| < 800px | Mobile navbar (top) + labeled bottom nav + hamburger drawer | Column up to 720px, 16px side gutter |
+| ≥ 800px | Desktop top bar (bottom nav, hamburger and mobile drawer unmount) | Column 600px; fullbleed pages up to 1280px |
 
-`size="icon"` is the canonical icon-only button (requires `aria-label` — enforced by the TS discriminated union). See the Icons subsection. All buttons: `border-radius: var(--radius)` (2px), `font-weight: 500`, `tracking-wider`, 150ms transition.
+`useLayoutBreakpoints()` mirrors the CSS breakpoints and JS-unmounts the components that must not exist on desktop (bottom nav, mobile drawer, hamburger). Everything else is CSS-only.
 
-### Cards
+### 4.2 Mobile navbar (< 800px)
 
-**App Card** (`.app-card`): `bg-elevated`, 1px `border-default`, `border-radius: var(--radius)`, 24px padding. Hover: border shifts to `--border-hover-soft`.
+Fixed, `--navbar-height`, translucent chrome (§2.9). Hides on scroll down, returns on scroll up (compositor-only transform, `--transition-base`: 200ms `--ease-out`). On desktop `--navbar-height` is zeroed.
 
-**Feed Card** (`.feed-card`): No background, no border — just a `border-bottom: 1px solid var(--border-subtle)` separator. 20px vertical padding (24px on desktop). Content-forward: author byline, optional 1:1 image, serif title, description (3-line clamp), meta row.
-
-**Dashboard Card** (`.dash-card`): No background, no border-radius — just a `border-bottom: 1px solid var(--border-light)` separator. Used in sidebar-style stacked content.
-
-### Inputs
-
-**Text Input** (`src/components/ui/input.tsx`): Height 44px, `bg-elevated`, 1px `border-default`, `var(--radius)` radius, 16px horizontal padding. Focus: border → `--focus-ring`, 1px ring at 20% opacity. Error: border → `error/40`.
-
-**Textarea** (`src/components/ui/textarea.tsx`): Same styling as input, `resize-y`, 12px vertical padding.
-
-**Input sizes / variants**: `<Input>` carries `size="sm|md|lg"` (36 / 44 / 56 px) and `variant="default|underline|inline-edit"`. The old `.signin-modal__input` BEM is gone — the sign-in field is now `<Input size="lg">` (56px) at `var(--radius)` (2px, not the retired 8px), and the delete-record typed-confirmation field is `<Input variant="inline-edit">`.
-
-**iOS auto-zoom rule**: any focusable `<input>` / `<textarea>` must have **font-size ≥ 16px on mobile** (`@media (max-width: 768px)`). Below 16px, iOS Safari auto-zooms on focus and overflows the viewport. Desktop can stay at 14–15px for visual density, but mobile must override to 16px. See the override blocks at the bottom of `feed.css`, `components.css`, and `pages.css`.
-
-### Badges
-
-`<Badge>` (`src/components/ui/badge.tsx`) is the single badge primitive — it absorbed the old `.feed-card__label*` quality variants and `.org-list__item-role`. Variants:
-
-| Variant | Background | Text | Icon | Notes |
-|---|---|---|---|---|
-| `verified` | `--badge-success-bg` | `--badge-success-fg` | CheckCircle | Status (full density) |
-| `pending` | `--badge-warning-bg` | `--badge-warning-fg` | Clock | Status (full density) |
-| `unverified` | `--badge-neutral-bg` | `--badge-neutral-fg` + border | none | Status (full density) |
-| `tag` | `--bg-sunken` | `--fg-secondary` | none | Uppercase label chip (compact) |
-| `role` | `--bg-canvas` | `--fg-muted` | none | Membership role chip (compact) |
-| `count` | `--badge-count-bg` | `--badge-count-fg` | none | Notification count pill (compact) |
-| `count-bare` | — | `--fg-muted` | none | Chromeless muted tabular number (no pill / border / padding) — for right-aligned section counts |
-| `high-quality` | `--badge-success-bg` | `--badge-success-fg` | none | Feed quality label (compact) |
-| `standard` | `--bg-sunken` | `--fg-secondary` | none | Feed quality label (compact) |
-| `draft` | `--badge-warning-bg` | `--badge-warning-fg` | none | Feed quality label (compact) |
-| `test` | `--bg-raised` | `--fg-muted` | none | Feed quality label (compact) |
-
-**Shape.** Defaults to `pill` (`999px`, one-shape-per-semantic). `shape="square"` renders a small `var(--radius)` (2px) uppercase chip whose palette is selected by `tone` (`error` / `warn` / `success` / `neutral`; `warn` is an error-toned alias) — mirrors the legacy `home-feed__preview-tag` look.
-
-**Tone.** For `variant="count"`, `tone="default"` is the red attention pill; `tone="neutral"` repaints it as a muted `--bg-sunken` / `--fg-muted` pill for non-attention counts. Every other pill variant ignores `tone`.
-
-**Density.** The `compact` prop overrides the per-variant default (`px-2 py-0.5 text-caption` compact vs. `px-3 py-1 text-body-sm` full). Status variants are full by default; tag / role / count / quality variants are compact by default.
-
-**CountBadge.** There is no separate `CountBadge` component — a count badge is `<Badge variant="count">` (red pill, white text). Pair it with the `formatCountBadge(count, more?)` helper (`src/lib/utils/format-count-badge.ts`), which returns `null` for counts ≤ 0, the number for 1–98, and `"99+"` at ≥ 99 or when `more` is true. This consolidates the bottom-nav / left-rail / mobile-sidebar count formatters.
-
-### Feed Label Pills
-
-Inline quality labels on feed cards: `border-radius: 999px`, `0.6875rem`, `font-weight: 600`, uppercase.
-
-| Label | Background | Text |
-|---|---|---|
-| High quality | `--badge-success-bg` | `--badge-success-fg` |
-| Standard | `--badge-neutral-bg` | `--badge-neutral-fg` |
-| Draft | `--badge-warning-bg` | `--badge-warning-fg` |
-| Likely test | `--badge-neutral-bg` | `--badge-neutral-fg` |
-
-### Avatar
-
-`<Avatar>` component with four sizes: `sm` (32px), `md` (48px), `lg` (64px), `xl` (96px). Always circular (`border-radius: 50%`). Fallback: `--color-surface-container-high` background with centered initials.
-
-### Icons
-
-All icons from **Lucide React**. Conventions:
-
-| Context | Size | Stroke Width | Notes |
+| Mode | Left | Center | Right |
 |---|---|---|---|
-| Bottom nav | 24px | 1.5 (default), 2.5 (active) | Active state uses heavier stroke, not fill |
-| Navbar (back, menu) | 20–22px | default | ArrowLeft, Menu, X |
-| Inline actions | 14px | default | Pencil, Copy, ChevronDown, Trash2 |
-| Modal close / header | 18px | default | X, Globe |
-| Success/error callouts | 14–16px | default | AlertCircle, CheckCircle |
-| Large success states | 40px | default | CheckCircle2 (domain verification) |
+| Default | Hamburger | Brandmark | Account switcher or sign-in |
+| Titled page | Back | Page title (`<h1>`) | Empty |
+| Profile overlay | Back in a floating pill | none | none |
 
-**Icon-only buttons are `<Button size="icon" aria-label="…">`** (40 × 40 square; the TypeScript discriminated union enforces `aria-label`). This absorbed the old `.desktop-top-bar__icon-btn` and similar one-off icon buttons. Don't hand-roll a bare `<button>` with an icon.
+In profile overlay mode the navbar is transparent so the banner reaches the top edge.
 
-### Modals
+### 4.3 Bottom nav (< 800px)
 
-**All modals are `<AppDialog>` — self-contained Tailwind, no global modal CSS.** The legacy `signin-modal` / `app-modal` BEM pair is gone: `AppDialog` (`src/components/ui/app-dialog.tsx`) now expresses the modal chrome inline as Tailwind utilities + token arbitrary values (radius `var(--radius)`, surface `--color-off-white`, border `--border-default`, shadow `0 24px 64px var(--navy-overlay-30)`, `backdrop:bg-[var(--modal-backdrop)]`, `modalSlideUp` 300ms spring entry). The translation is at strict visual parity with the old resolved cascade. There is no separate sign-in shape anymore — sign-in is just an `AppDialog` at `var(--radius)` (2px), in line with §14.1 #1.
+Fixed bottom, `--bottom-nav-height` + `env(safe-area-inset-bottom)`; zeroed on desktop. Opaque `--bg-elevated` surface with a 1px `--border-subtle` top line (not translucent). Items: Home, Explore, Create (signed in), Apps, Feedback. Each item is a 24px icon over a short label (labels make ambiguous glyphs readable on touch, where tooltips are suppressed). The label is Inter 0.6875rem (the `label` size) / 500 / leading 1, mixed case with no tracking: it borrows the size, not the uppercase `text-label` style. Every item is at least 44px tall. Active: `--fg-primary` and a heavier icon stroke (1.5 → 2.5), never a fill or tint pill. Inactive: `--fg-muted`. Press: `scale(0.95)`. Hover color only under `(hover: hover) and (pointer: fine)`.
 
-`AppDialog` owns the full modal skeleton so consumers don't re-implement it: native `<dialog>` + `showModal()`, per-layer Escape via the browser's native `close` event, a Tab focus-trap that wraps, focus restore on close, backdrop-click close (suppressible mid-save via `disableBackdropClose`), and optional `autoFocusFirst` / `initialFocusRef`.
+### 4.4 Desktop top bar (≥ 800px)
 
-Three composable slots ship alongside it:
+Mounted in the root layout as a sibling to `<main>`. Translucent chrome with a 1px `--navbar-border` line.
 
-- **`<AppDialogHeader title onClose? disabled?>`** — title on the left, close X (18px) on the right. Omit `onClose` to hide the X (for `alertdialog` modals whose only exits are footer buttons).
-- **`<AppDialogBody className?>`** — the padded content slot (`px-5 pb-5 pt-0`). The `<dialog>` shell owns the scroll; the body is purely the padded region. This is the new slot — use it instead of a hand-written content `<div>`.
-- Footer/actions are provided by the consumer.
+- **Row 1** (`--top-bar-row1`): brandmark, page title (`<h1>`, or a breadcrumb), search, labeled icon buttons, account switcher.
+- **Row 2** (`--top-bar-row2`): the profile tabs strip, only on `/profile/[handle]`. `--top-bar-total` is row 1, or row 1 + row 2 on `.app-shell--fullbleed`.
 
-`<ConfirmDialog>` and `<DeleteRecordDialog>` wrap `AppDialog` for the common confirm / typed-confirmation flows. Build new modals from `AppDialog` (+ its slots) — never hand-roll a backdrop + focus-trap. (`AddOrgModal` and `MembershipSyncModal` were already migrated to it; `CustomDomainModal` is the remaining deferred migration — see §14.4.)
+### 4.5 Breakpoints
 
-**Bottom sheet** (`<BottomSheet>`, mobile account switcher / mobile feedback): Fixed to bottom, draggable handle, swipe-down-to-dismiss, expandable via swipe-up. `bg-elevated`, top border-radius. Self-contained Tailwind. Modal vs. sheet is selected by viewport via `<ResponsiveDialog>` (dropdown/AppDialog ≥800px, sheet below).
+Three, everywhere: tokens `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop` (informational; `@media` can't read `var()`, so CSS hard-codes the numbers). Tailwind `screens` is replaced (not extended): `md` 800, `lg` 1100, `xl` 1300, so a stray `md:` can never resolve to 768.
 
-### Empty State
+| Range | What changes |
+|---|---|
+| < 800px | Mobile chrome, bottom sheets instead of dropdowns, 16px input text (iOS zoom rule), dialog actions stack |
+| ≥ 800px | Desktop top bar; column narrows to 600px; dropdowns and centered dialogs replace sheets; tab panels slide |
+| ≥ 1100px | Top-bar search widens and the switcher shows its text meta; profile Overview about-block and project detail go two-column |
+| ≥ 1300px | Grid wrapper reaches its max width; endorsement grids go to three columns |
 
-`<EmptyState>` (`src/components/ui/empty-state.tsx`, self-contained Tailwind) for lists and sections with no content. Props: optional `icon` (accepts Lucide icons and our own wrappers like `CertIcon`, rendered at 40px/1.2 stroke in rich mode), `title`, optional `description`, `children` (CTA slot), and `variant`.
+Write mobile first: base styles, then `@media (min-width: 800px)`. "Below desktop" is `max-width: 799px`. Never 768 / 760 / 640.
 
-- `variant="rich"` (default): centered block with optional icon, serif headline title, description, and CTA slot — for full-section placeholders.
-- `variant="inline"`: a single muted line of text — no icon, no headline weight, no container, zero margin. Canonical replacement for the ~12 one-off `*__empty` BEM hints (`home-section__empty`, `org-list__empty`, `right-rail__empty`, …).
-- `variant="compact"`: back-compat alias of `inline`; new code should prefer `inline`.
+### 4.6 Container widths
 
-### Identity Row
+| Context | Width | Notes |
+|---|---|---|
+| Reading column, mobile | 720px max | `.app-shell__content` |
+| Reading column, desktop | 600px | Narrower on purpose; the column is editorial, not stretched |
+| Fullbleed pages | 1280px | Profile, settings, workspace, cert detail, project detail. Opt in with `.app-shell--fullbleed`. |
+| Page-frame pages | Edge to edge | Home and Explore carry their own sidebar/main split |
+| Grid wrapper | 1300px | Ultra-wide screens get passive gutters |
 
-`<IdentityRow>` (`src/components/ui/identity-row.tsx`) — the canonical avatar + name + `@handle` byline. Replaces the four hand-rolled byline rows (activity-author, activity-contributor, endorsement-row, notification-row). Built on `<Avatar>` + `<Skeleton>`.
+Multi-column layouts are explicit opt-ins on wide pages (the profile Overview is an intentional two-column layout). The reading column never gets a second column.
 
-- Props: `did` (required), `handle`, `displayName`, `avatarUrl`, `href` (makes the whole row a link), `size` (`sm` 32px avatar / `md` 48px avatar, default `md`), `loading` (renders the skeleton placeholder), `className`.
-- Primary line resolution: `displayName` → `handle` → `truncateDid(did)`. The `@handle` secondary line shows only when a real handle (distinct from the DID) is present.
-- Primary line is `font-medium` `--fg-primary`; handle is `--fg-muted`. Both truncate.
+### 4.7 Spacing and rhythm
 
-### Pagination
+Scale (Tailwind steps): **4 · 8 · 12 · 16 · 20 · 24 · 32 · 48 · 64** (`1 2 3 4 5 6 8 12 16`). 2 / 6 / 10 are allowed only inside controls (for example a chip's `py-0.5`), never between elements. Control heights come from §6.3, not from padding.
 
-`<Pagination>` (`src/components/ui/pagination.tsx`) — a centered Previous / "Page X of Y" / Next cluster of bordered (`Button variant="secondary" size="sm"`) controls around a `tabular-nums`, `aria-live="polite"` status. Buttons disable at the bounds; the whole control returns `null` when `pageCount <= 1`.
+| Relationship | Space |
+|---|---|
+| Label → its control | 6 (`mb-1.5`, the one in-control exception) |
+| Field → field, paragraph → paragraph | 16 |
+| Heading → its content | 8 (h4) / 12 (h3) / 16 (h2 and up) |
+| Related groups within a card or section | 24 |
+| Section → section | 32 mobile / 48 desktop |
+| Page top → first heading | 24 mobile / 32 desktop |
 
-- Props: `page` (1-based), `pageCount`, `onChange(page)`, optional `label` (nav landmark, default "Pagination"), `className`.
-- This is the **numbered/explicit** pager. It ships **alongside** `<LoadMoreSentinel>` (infinite-scroll, IntersectionObserver-driven) — pick numbered pagination or the load-more sentinel per surface; they are not combined.
+Proximity rule: the space above a heading is always at least twice the space below it. Whitespace, not borders, carries the structure: feed cards are separated by one hairline and the padding around it; settings stack cards with space rather than nesting them in containers.
 
-### Feed Label Pill
+### 4.8 Radius
 
-`<FeedLabelPill>` (`src/components/ui/feed-label-pill.tsx`) renders the quality label for an activity card from a `label` prop (LabelValue). It now **composes `<Badge>`** (the `high-quality` / `standard` / `draft` / `test` variants) rather than carrying its own styles. App-coupled (imports app context) — not part of the portable surface; consuming apps keep their own copy.
+| Value | Token | Use |
+|---|---|---|
+| 2px | `var(--radius)` (Tailwind `rounded`) | Everything: cards, buttons, inputs, dialogs, sheets (top corners), images, square chips |
+| 999px | `var(--radius-pill)` | Pills: badges, feed labels |
+| 50% | literal | Circles: avatars, dots, step numbers |
 
-### Distinctive Components
+No other value, at any viewport.
 
-These components define the visual identity of Certified — they are what makes the app recognizable:
+### 4.9 Images
 
-**Frosted navbar with three modes.** The navbar isn't just sticky — it shapeshifts. In *default* mode: brandmark center, hamburger/avatar on the sides, frosted glass background. In *titled page* mode: back arrow left, page title center, empty right — like a native mobile app. In *profile overlay* mode: fully transparent, only a floating back-arrow pill over the full-bleed banner. The transition between these is instantaneous on route change.
+| Context | Ratio | Fit | Radius | Placeholder |
+|---|---|---|---|---|
+| Feed card image | 1:1 | cover | `--radius` | `--bg-sunken` |
+| Activity detail image | 16:9 | cover | `--radius` | `--bg-sunken` |
+| Profile banner | free (fixed height) | cover | none (full-bleed) | `--bg-sunken` fill |
+| Avatar | 1:1 | cover | 50% | `--color-surface-container-high` + initials |
+| Partner / app logo | 1:1 | cover | `--radius` | `--bg-canvas` |
 
-**Bottom-sheet account switcher.** On mobile, tapping the avatar opens a bottom sheet (not a dropdown) with a drag handle. Swipe down to dismiss, swipe up to expand. The sheet has momentum-based physics — dragging past 80px down dismisses, past 40px up expands. Desktop gets a regular dropdown instead.
+Every image has `loading="lazy"` and an `onError` fallback: feed images hide their wrapper, avatars show initials, banners show the fill.
 
-**Feed with evaluator filter.** The "For you" tab label doubles as a filter toggle — tapping it when already active opens an inline panel with evaluator checkboxes and a "Show everything" toggle. When the filter is non-default, the tab text changes to "Custom." The unfiltered state shows a caution banner.
+### 4.10 Z-index
 
-**Profile hero with banner overlap.** The profile page uses a full-bleed banner with the avatar overlapping downward (negative margin). The navbar goes transparent in this mode so the banner extends to the top edge of the viewport.
+Every layer is a `--z-*` token in `tokens.css`. Lowest to highest: `--z-local-raise`, `--z-rail-sticky`, `--z-popover`, `--z-navbar` / `--z-bottom-nav`, `--z-feedback-trigger` (floating Feedback button: above the nav bars, below sheets and dialogs), `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-feedback-above`, `--z-tour-backdrop`, `--z-tour-card`, `--z-tooltip`. A genuinely new layer gets a new token, placed in this order.
 
-### Motion & Animation
+---
 
-The app uses a consistent motion language built on three timing tokens and one easing curve:
+## 5. Depth and elevation
+
+Depth is carried by surface lightness and hairlines, not shadows.
+
+| Level | Surface | Edge | Shadow | Use |
+|---|---|---|---|---|
+| Sunken | `--bg-sunken` | none | none | Tracks, wells, disabled fills |
+| Canvas | `--bg-canvas` | none | none | Page |
+| Elevated | `--bg-elevated` | `--border-default` | none | Cards, inputs |
+| Floating | `--bg-elevated` | `--border-default` | `--shadow-md` | Popover, toast. Tooltip is the exception: an inverted bubble (`--fg-primary` fill, `--bg-canvas` text, `--shadow-md`). |
+| Overlay | `--bg-overlay` (dialog), `--bg-elevated` (sheet, drawer) | `--border-default` (dialog) | `--shadow-modal` (dialog), `--shadow-lg` (drawer), none (sheet) | Dialogs, sheets, drawers, over `--scrim` |
+
+Elevation shadow tokens:
+
+| Token | Use |
+|---|---|
+| `--shadow-sm` | Controls only: switch thumb, segmented active segment |
+| `--shadow-md` | Popover, tooltip, toast, floating Feedback button |
+| `--shadow-lg` | Drawer |
+| `--shadow-modal` | AppDialog (Tailwind `shadow-modal`), the feedback modal, the domain modal and the landing contact modal. Dialogs only. |
+
+Ring and hairline tokens (box-shadow used as a border or halo, not elevation): `--shadow-ring-weak` (hover / selected halo), `--shadow-ring-medium` (active swatch), `--shadow-ring-focus` (focus ring drawn as a shadow), `--shadow-ring-error` (invalid-input halo), `--shadow-ring-elevated` (surface-colored gap ring, stacked avatars), `--shadow-outline-subtle` (1px outer outline), `--shadow-inset-subtle` / `--shadow-inset-hover` (1px inner border), `--shadow-inset-indicator` (left active-item bar), `--shadow-navbar-hairline` (navbar bottom line). They compose with commas.
+
+Rules:
+
+- Cards never get shadows, including on hover. A hoverable card shifts its border to `--border-hover`.
+- In dark mode, elevation is carried by surface lightness plus a hairline. Shadows stay but are not relied on. A floating surface is at least one step lighter than what is directly beneath it.
+- No backdrop blur on dialogs; blur is for translucent chrome only (§2.9). Known exception in code: `.feedback-modal__backdrop` still blurs 8px.
+
+---
+
+## 6. Interaction
+
+### 6.1 States
+
+| State | Neutral (ghost, row, menu item, tab) | Filled (primary) | Outlined (secondary, field, elevated card) |
+|---|---|---|---|
+| Hover | bg `--overlay-weak`, text → `--fg-primary` | bg `--btn-primary-bg-hover` | border → `--border-hover` |
+| Active (press) | `.press-scale`: `scale(0.98)`, `--duration-instant` | same | same |
+| Selected / pressed toggle | bg `--overlay-medium` + `--fg-primary` + weight 600 | n/a | border `--fg-primary` |
+| Focus-visible | §6.2 | same | same |
+| Disabled | `opacity: var(--opacity-disabled)`, `cursor: not-allowed`, no hover | `--bg-sunken` fill + `--fg-muted` text + `--border-default` | opacity + `--bg-sunken` fill |
+| Loading | Keep the fill; a spinner replaces the leading icon; `aria-busy` | same | same |
+
+- Hover applies only on devices that hover. Tailwind `future.hoverOnlyWhenSupported` gates every `hover:` utility; hand-written CSS wraps `:hover` in `@media (hover: hover)`. A tap must never leave a sticky hover.
+- Selected is never hover: selection is `--overlay-medium` plus a weight or stroke change, never color alone.
+- Interactive elements that can be long-pressed (buttons, nav items) set `user-select: none` and `-webkit-touch-callout: none`.
+
+### 6.2 Focus
+
+One color, two geometries. Color is `--focus-ring` (derived from `--color-accent`, theme-aware).
+
+| Geometry | Applies to | Recipe |
+|---|---|---|
+| Outline | Buttons, links, tabs, checkbox, radio, switch, menu items, anything with `tabindex` | `:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px }` (global rule in `tokens.css`; primitives repeat it as utilities) |
+| Field | Input, Textarea, Select, Combobox | `:focus`: border → `--focus-ring`, plus a 1px ring inside the radius, no offset (fields sit close together) |
+
+Safety net: `tokens.css` sets `--tw-ring-color` on every element to `--focus-ring` mixed toward transparent, so any `ring-*` utility is gray, never Tailwind's default blue. Invalid fields swap the ring to `--color-error-ring`.
+
+### 6.3 Control heights and hit areas
+
+The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind `h-control-*` / `min-h-control-*`.
+
+| Height | Token | Use |
+|---|---|---|
+| 32 | `h-control-compact` | `<Button size="sm">` on desktop; compact dismiss/close controls at any width (`icon-sm` visual; 44px hit area via ::after) |
+| 36 | `h-control-sm` | `<Input size="sm">`, `<Button size="md">` and `<Button size="icon">` on desktop |
+| 44 | `h-control-md` | `<Input size="md">`, `<Button size="lg">`; every control's minimum below 800px |
+| 56 | `h-control-lg` | `<Input size="lg">` (sign-in field) |
+
+- `<Button size="icon">` is 44 on mobile, 36 on desktop (the same as `md`).
+- `<Button size="icon-sm">` is 32 visual, with its hit area expanded to 44 by a transparent `::after` (inset -6px).
+- Dismiss and close controls in Dialog, Sheet, Banner and Toast are `<Button size="icon-sm" variant="ghost" aria-label="Close">`, never hand-rolled.
+- Button heights are `min-h-control-*` (not padding): `sm` 32 / `md` 36 / `lg` 44 on desktop, every size 44 below 800px. `min-h` rather than `h`, so a wrapped label grows instead of clipping. Borders sit inside the height, so outlined and filled buttons of one size match.
+- `<SegmentedControl>` is off the scale too: `sm` 28px, `md` 32px.
+
+### 6.4 Touch
+
+- Inputs are at least 16px font size below 800px, or iOS Safari zooms on focus. Tailwind `md:text-sm` on fields flips at 800, not 768.
+- Safe-area insets: bottom nav, bottom sheets and the floating Feedback button respect `env(safe-area-inset-bottom)`.
+- Dialog actions stack (column-reverse, primary on top) below 800px.
+
+---
+
+## 7. Motion
+
+### 7.1 Tokens
 
 | Token | Value | Use |
 |---|---|---|
-| `--transition-fast` | `150ms ease-out` | Micro-interactions: hover, focus, color shifts |
-| `--transition-base` | `250ms ease-out` | Medium transitions: navbar hide/show, FAQ expand |
-| `--transition-slow` | `400ms cubic-bezier(0.16, 1, 0.3, 1)` | Layout shifts: sidebar slide, bottom sheet |
+| `--duration-instant` | 100ms | Press, color flips |
+| `--duration-fast` | 150ms | Hover, focus, small fades, popover and toast enter/exit, every reduced-motion fade |
+| `--duration-base` | 200ms | Scrim fade, tab-panel slide, navbar hide, drawer exit |
+| `--duration-slow` | 300ms | Dialog, sheet, drawer enter |
+| `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | Default for UI |
+| `--ease-emphasized` | `cubic-bezier(0.16, 1, 0.3, 1)` | Signature curve for dialogs, sheets, drawers. Expo-out: fast start, long settle, **no overshoot** (both control-point y values are ≤ 1). |
+| `--ease-in-out` | `cubic-bezier(0.65, 0, 0.35, 1)` | On-screen movement of something already visible. Defined (and in Tailwind as `ease-in-out`) but no consumer yet; the navbar hide uses `--transition-base`. |
 
-**Spring easing** (`cubic-bezier(0.16, 1, 0.3, 1)`) is the signature curve — used for sidebar entry, modal slide-up, bottom sheet transitions. It overshoots slightly before settling, giving motion a physical, weighted feel.
+`--transition-fast` and `--transition-base` remain as aliases (`--duration-fast` / `--duration-base` + `--ease-out`) for existing CSS. `--transition-slow` is removed. Tailwind exposes the tokens in `transitionDuration` (`duration-instant|fast|base|slow`; bare `transition-*` defaults to fast) and `transitionTimingFunction` (`ease-out|emphasized|in-out`; default `--ease-out`).
 
-**Animation patterns:**
-- **Press scale** (`.press-scale`): `transform: scale(0.98)` on `:active`. Applied to all `<Button>` variants. Bottom nav items use `scale(0.92)` for a more pronounced tap feel. Disabled via `prefers-reduced-motion`.
-- **Skeleton pulse**: `opacity: 0.4 → 1 → 0.4` over 1.4–1.5s, ease-in-out. Used for all loading placeholders.
-- **Modal entry**: backdrop fades in (200ms linear) while content slides up 16px and scales from 0.98 → 1 (300ms spring).
-- **Logo pulse** (loading screen): `opacity: 0.3 → 1`, `scale: 0.95 → 1` over 2s. Slow, calming.
-- **Navbar hide**: `transform: translateY(-100%)` on scroll-down, reversed on scroll-up, using `--transition-base`.
+### 7.2 Rules
 
-**`prefers-reduced-motion`**: All animations are disabled — `animation-duration: 0.01ms`, `transition-duration: 0.01ms`. Elements render at their final state with `opacity: 1` and no transform.
+- Exits run at about 75% of the enter duration.
+- Never `transition: all`. Name properties: `transform, opacity` for movement; `background-color, border-color, color` for state.
+- Never `ease-in` for UI.
+- Nothing enters from `scale(0)`; the smallest start is 0.95.
+- Animate `transform` and `opacity` only; never layout properties.
+- Keyframes are defined once (no duplicate `@keyframes` across files).
 
-## 5. Layout Principles
+### 7.3 Recipes
 
-### Mobile-First Philosophy (revised)
-
-> **Note (2026-05):** This section was rewritten when the proper desktop layout shipped. The previous rule — "single narrow column at every viewport, no sidebars, no multi-column grids" — was reversed by product direction. The mobile experience is unchanged; the desktop experience now adds context rails around the center spine rather than stretching the column. Rails are *additive context*, not new per-page layouts.
-
-The layout is a **single narrow column on mobile** (≤ 799px) and the same center spine flanked by **persistent rails on desktop** (≥ 800px). The reading width is preserved or slightly narrowed on desktop — the column is not stretched. Rails carry navigation and context (suggested follows, search, footer), so the center can stay editorial.
-
-- **Mobile (< 800px)**: `padding: 0 16px–20px`, content fills viewport width, max 720px on small tablets. Bottom-nav + hamburger drawer + bottom-sheet account switcher.
-- **Tablet desktop (800–1099px)**: 86px left rail (icon-only) + center column (max 600px). Bottom-nav and hamburger unmount.
-- **Narrow desktop (1100–1299px)**: + 250px right rail (search, suggestions, footer). Center column shifts slightly to balance.
-- **Full desktop (≥ 1300px)**: 240px left rail (icon+label) + 600px center + 300px right rail (300px). Outer wrapper `max-width: 1300px; margin: 0 auto` so ultra-wide displays show passive horizontal gutters rather than anchored-left layout.
-
-The center column **narrows from 720px → 600px** on desktop because the flanking rails carry context the mobile column had to carry alone. This is intentional and matches bsky.app / x.com.
-
-#### Rail visual specs
-
-- **Surface**: `--bg-canvas` (chrome, not card). No bordered card around the rail.
-- **Divider rail↔center**: 1px `--border-subtle` (the hairline; same separator the feed cards use).
-- **Row height**: 48px (mouse target). Padding: 16px horizontal / 12px vertical at icon+label mode; centered at icon-only mode. Icon↔label gap: 12px.
-- **Label**: Inter `0.875rem / 500 / -0.005em`. The `-0.005em` tracking is deliberately tight (half the display-size convention) — do NOT "correct" it to `-0.01em`; rail labels are chrome, not headlines.
-- **Active state**: `strokeWidth 1.5 → 2.5` on the Lucide icon **+** label color `--fg-muted → --fg-primary` + weight `400 → 600`. **No fills, no background-tint pill.** This is the same active-state recipe the bottom-nav uses; it preserves the brand rule that fills are reserved for content (avatars, images), not chrome.
-- **Hover**: `--overlay-weak`.
-- **"New activity" primary button** (left rail bottom): full-width primary at 240px mode, 44px **square** primary at 86px mode (NOT a circular FAB — the 2px radius is the brand's primary-button system).
-- **Account-switcher trigger** (left rail bottom, above New-activity): minimal avatar + handle + chevron. Reads `useOrg().activeOrg` so identity reflects the acting role.
-- **Right-rail items** (suggested-people, suggested-groups cards): use the `.feed-card` pattern (no border, hairline `--border-subtle` between items, 16px vertical padding). Not bordered cards.
-- **Right-rail footer**: single inline line with `·` separators (matches feed-card meta convention). NOT a vertical stack.
-- **Right-rail search**: existing `<Input>` component (44px, 2px radius, `--bg-elevated`, `--border-default`). Not pill-shaped.
-
-#### Logged-out variant
-
-Unauthenticated users see a **slim left rail** (Home, Explore, About) plus a sign-in CTA card replacing the account-switcher trigger. Right rail and bottom nav are unchanged.
-
-### Whitespace Philosophy
-
-Whitespace does the work that borders and dividers don't. Feed cards are separated by a single hairline border — the generous 20–24px vertical padding on each side is what actually creates the visual gap. Settings pages stack cards with whitespace between them rather than grouping them in bordered containers. The single-column layout means horizontal whitespace is passive (the unused margins on desktop) while vertical whitespace is active and deliberate — it controls reading rhythm. More space between sections means "new topic"; tight space means "related."
-
-### Spacing System
-
-Base unit: **4px**. The scale:
-
-`2px · 4px · 6px · 8px · 10px · 12px · 16px · 20px · 24px · 32px · 40px · 48px · 64px`
-
-Key usage patterns:
-- **4–8px**: Inline gaps (icon + text, meta separators)
-- **12–16px**: Component internal spacing (card content gaps, form field spacing)
-- **20–24px**: Section padding within cards, sidebar sections
-- **32px**: Major section gaps, desktop side padding
-- **48–64px**: Page-level vertical spacing
-
-### Container Widths
-
-| Context | Max Width | Use |
+| Element | Enter | Exit |
 |---|---|---|
-| App shell content | `720px` | Feed, settings, create form — the editorial column |
-| App page inner | `1024px` | Wider app pages (settings with cards) |
-| Navbar inner | `1536px` | Navigation bar content |
+| Button / card press | `scale(0.98)`, instant, `--ease-out` | eases back on release |
+| Bottom-nav press | `scale(0.95)` | eases back |
+| Popover | `--duration-fast` (150ms) fade + `scale(0.97)` + 2px drop from the trigger side, via `@starting-style` | unmount |
+| Tooltip | appears after a 300ms hover delay, no fade | unmount |
+| Toast | `--duration-fast` (150ms) fade + 8px rise | 150ms fade + 8px drop, then removed on `transitionend` |
+| Tab panel (≥ 800px) | `--duration-base` (200ms) `--ease-emphasized` fade + 12px slide from the direction of the new tab | none |
+| Dialog | scrim fades `--duration-base`; panel rises 16px from `scale(0.98)`, `--duration-slow` `--ease-emphasized` | none (native close) |
+| Drawer | `--duration-slow` (300ms) slide, `--ease-emphasized`; scrim `--duration-base` fade | `--duration-base` (200ms), `--ease-emphasized` |
+| Bottom sheet | `--duration-slow` slide up, `--ease-emphasized`; scrim `--duration-base` fade | 75% of slow (225ms), `--ease-emphasized`; scrim `--duration-fast`. Drag follows the finger; past threshold it dismisses |
+| Skeleton | invisible for 200ms, 150ms fade-in, then one pulse: opacity 1 → 0.5 → 1 over 1.5s ease-in-out | content replaces it |
+| Navbar hide | `translateY(-100%)`, `--transition-base` (200ms `--ease-out`) | reverse |
+| Loading screen | Brandmark opacity/scale pulse, slow | n/a |
 
-### Border Radius Scale
+There is one pulse recipe (`animate-skeleton` / `animate-pulse` in `tailwind.config.ts`). Don't author another.
 
-| Value | Token / Literal | Use |
-|---|---|---|
-| `2px` | `var(--radius)` | Default: cards, buttons, inputs, modals (incl. sign-in — no longer a 20px exception), badges in app chrome |
-| `4px` | `calc(var(--radius) * 2)` | Desktop feed card images |
-| `16px` | literal | Bottom sheet top corners — signals "draggable" on mobile |
-| `999px` | `var(--radius-pill)` | Pill shapes: badge pills, feed labels. Token added to codify hard-rule #1 (use it instead of the `999px` literal). |
-| `50%` | literal | Circles: avatars, dots, step numbers |
+### 7.4 Reduced motion
 
-> **Note:** the old `20px` sign-in-modal exception is retired (see §14.1 #1) — every modal, including sign-in, uses `var(--radius)` (2px). `--radius-pill` (999px) is the canonical pill token; prefer it over a raw `999px`.
+Under `prefers-reduced-motion: reduce`, movement goes and meaning stays.
 
-### Image Treatment
-
-| Context | Aspect Ratio | Object Fit | Border Radius | Placeholder |
-|---|---|---|---|---|
-| Feed card image | 1:1 (square) | `cover` | `var(--radius)` (mobile), `calc(var(--radius) * 2)` (desktop) | `--color-surface-container` bg |
-| Activity detail image | 16:9 | `cover` | `var(--radius)` | `--color-surface-container` bg |
-| Profile banner | Free (180px height) | `cover` | none (full-bleed) | Linear gradient `--color-gray-100` → `--color-light-gray` |
-| Avatar | 1:1 (circle) | `cover` | `50%` | `--color-surface-container-high` bg + initials |
-| Partner/app logos | 1:1 | `cover` | `var(--radius)` | `--color-off-white` bg |
-
-All images use `loading="lazy"` and include `onError` fallbacks. Feed card images show nothing (hide the wrapper) on failure. Avatars fall back to initials.
-
-### Navbar
-
-Fixed at top, 64px height (`--navbar-height`). Three-column grid: left (hamburger or theme toggle) | center (brandmark) | right (avatar switcher or sign-in). Frosted glass: `var(--navbar-bg)` + `backdrop-filter: blur(12px)`. Hides on scroll-down, reappears on scroll-up.
-
-Three modes:
-1. **Default**: Brandmark center, hamburger/avatar sides
-2. **Titled page**: Back arrow left, page title center, empty right
-3. **Profile overlay**: Transparent background, back arrow in floating pill
-
-### Bottom Nav
-
-Fixed at bottom on mobile only (< 800px), 56px + safe area inset. 5 items: Home, Explore, Create, Notifications, Feedback. **Unmounted at desktop widths** — the persistent left rail is the primary nav on desktop.
-
-### Left Rail (desktop)
-
-Mounted at ≥ 800px. Two width modes:
-- **86px icon-only** at 800–1299px (touchpads, small laptops)
-- **240px icon+label** at ≥ 1300px
-
-Items (authenticated): Home, Explore, Endorsements, Notifications, Groups, Profile, Settings. When acting as an org, Groups is hidden (matching mobile-sidebar).
-
-Items (unauthenticated): Home, Explore, About — plus a sign-in CTA card in the bottom slot.
-
-Bottom of rail: account-switcher trigger (minimal avatar + handle + chevron; reads `useOrg().activeOrg`) and a primary "New activity" button.
-
-### Right Rail (desktop, wider)
-
-Mounted at ≥ 1100px. Width 250px at 1100–1299px, 300px at ≥ 1300px. Contents:
-- Sticky search input (existing `<Input>`; hidden on `/search` itself)
-- "Suggested to endorse" — `.feed-card` pattern, hairline separators
-- "Groups to join" — same pattern
-- Footer: inline `·`-separated link line including About / Terms / Privacy / DSA / Imprint / Feedback (Feedback is a button opening the existing modal)
-
-### Breakpoint cascade
-
-| Range | Layout | Components |
-|---|---|---|
-| `< 800px` | **Mobile** | navbar (hamburger + brandmark + account switcher), bottom-nav, mobile-sidebar drawer on hamburger; content max-width 720px |
-| `800–1099px` | **Tablet desktop** | navbar (brandmark only), left rail icon-only (86px); bottom-nav + hamburger + mobile-sidebar unmounted; center 600px |
-| `1100–1299px` | **Narrow desktop** | + right rail (250px); center column shifts left to balance |
-| `≥ 1300px` | **Full desktop** | left rail icon+label (240px); right rail full (300px); center 600px centered |
-
-CSS tokens (`src/app/styles/tokens.css`): `--bp-gt-mobile: 800px`, `--bp-gt-narrow-desktop: 1100px`, `--bp-gt-desktop: 1300px`. The hook `useLayoutBreakpoints()` mirrors these numbers and is used to JS-unmount the three components with focusable/portal content that must NOT exist at desktop widths (bottom-nav, mobile-sidebar, hamburger button). All other responsive behavior is CSS-only.
-
-**Mobile behavior change at 769–799px**: prior to the desktop layout, the boundary between mobile and desktop affordances was 768px. It is now 800px. At iPad-landscape edge and foldable widths (769–799px), the account switcher, feedback modal, and bottom-sheet drag now use the desktop dropdown pattern instead of the bottom-sheet pattern.
-
-## 6. Depth & Elevation
-
-The depth system is minimal and uses **background luminance steps** rather than heavy shadows:
-
-| Level | Light Treatment | Dark Treatment | Use |
-|---|---|---|---|
-| Sunken | `--bg-sunken` (#eeeeee) | `--bg-sunken` (#08080a) | Toggle tracks, recessed panels |
-| Canvas | `--bg-canvas` (#f9f9f9) | `--bg-canvas` (#0b0b0d) | Page background |
-| Raised | `--bg-raised` (#f3f3f3) | `--bg-raised` (#141417) | Code blocks, location cards |
-| Elevated | `--bg-elevated` (#FFFFFF) | `--bg-elevated` (#1a1a1e) | Cards, modals, inputs, navbar |
-| Floating | `--bg-elevated` + `--shadow-md` | Same + stronger shadow | Dropdowns, feedback trigger |
-| Modal | `--bg-elevated` + `--shadow-lg` + backdrop blur | Same | Sign-in modal, bottom sheets |
-
-Shadows are intentionally subtle in light mode and stronger in dark mode (where luminance differences are harder to perceive). The navbar uses a 1px border-bottom (`--navbar-border`) instead of shadow for its floating effect.
-
-### Overlays
-
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `--overlay-weak` | `rgba(0,0,0,0.04)` | `rgba(255,255,255,0.04)` | Ghost button hover |
-| `--overlay-medium` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Focus ring glow |
-| `--navy-overlay-70` | `rgba(0,0,0,0.7)` | `rgba(0,0,0,0.8)` | Generic dark overlay |
-| `--modal-backdrop` | `rgba(0,0,0,0.5)` | `var(--navy-overlay-70)` | The `::backdrop` fill behind a native modal `<dialog>` (AppDialog). Tokenized so the AppDialog engine references it from TSX (`backdrop:bg-[var(--modal-backdrop)]`) without a raw rgb() literal. |
-
-## 7. Do's and Don'ts
-
-### Do
-
-- Use `var(--radius)` (2px) for all app chrome: buttons, cards, inputs, modals
-- Use `var(--fg-secondary)` as the default body text color — not primary
-- Use `--font-headline` (Noto Serif) for content titles; Inter for everything else
-- Use `--border-default` for input/card borders; `--border-subtle` for list separators
-- Use the `<Button>` component for all interactive buttons — don't hand-roll button styles
-- Use transparent overlay borders (`rgba(0,0,0,0.08)`) — they adapt to dark mode automatically
-- Use `var(--transition-fast)` (150ms ease-out) for micro-interactions; spring easing for layout shifts
-- Respect `prefers-reduced-motion` — disable animations, keep opacity at 1
-- Keep mobile touch targets at least 44x44px (the hamburger and bottom nav items do this)
-- Use the semantic token layer (`--bg-canvas`, `--fg-primary`, etc.) — never hard-code hex values in components
-- Use `--btn-primary-bg` for primary CTAs — it inverts automatically in dark mode
-- Use the `<EmptyState>` component for empty lists — don't hand-roll empty state markup
-- Use Lucide icons at 14px for inline actions, 20–24px for navigation, consistent stroke-width
-- Add skeleton loading states for every data-fetching view — match the shape of the expected content
-- Add `.press-scale` class to interactive elements for tap feedback
-
-### Don't
-
-- Don't use `border-radius` values other than `var(--radius)`, `999px`, or `50%` — avoid 4px, 6px, 8px in new code (the sign-in modal's 20px and 8px input are deliberate exceptions)
-- Don't stretch the center reading column on desktop — the layout is mobile-first; the desktop column stays editorial-width (600px) and is flanked by context rails. Stretching the center to fill the viewport breaks the editorial cadence.
-- Don't use bold (700) weight on Inter — reserve 700 for Noto Serif headlines only; Inter body caps at 600
-- Don't use `--color-primary` or `--color-white` for theme-aware surfaces — those are invariant; use `--bg-elevated` / `--fg-primary`
-- Don't add shadows to cards by default — elevation is communicated through background color, not shadows
-- Don't use different button styles in one-off CSS classes — extend the `<Button>` component instead
-- Don't skip loading states — every data-fetching view should have a skeleton or spinner
-- Don't use fill on Lucide icons — the system uses stroke icons exclusively; active states use heavier stroke-width, not fill
-- Don't add images without `onError` fallback handling and a visible placeholder
-
-## 8. Responsive Behavior
-
-### Breakpoints
-
-| Name | Width | Key Changes |
-|---|---|---|
-| Mobile | < 800px | Bottom nav visible, hamburger sidebar, bottom sheets, tighter padding (16–20px) |
-| Tablet desktop | 800–1099px | Left rail icon-only (86px); bottom-nav + hamburger + mobile-sidebar unmounted; center 600px |
-| Narrow desktop | 1100–1299px | + right rail (250px); center column shifts left to balance |
-| Full desktop | ≥ 1300px | Left rail icon+label (240px); right rail full (300px); outer wrapper centers on ultra-wide |
-
-The single 769px breakpoint that this section previously described was replaced when the desktop layout shipped. See §5 (Layout Principles) for the rail visual specs and the mobile behavior change at 769–799px.
-
-### Touch Targets
-
-| Element | Size | Notes |
-|---|---|---|
-| Bottom nav items | full flex width, 56px height | Oversized for comfortable thumb reach |
-| Hamburger button | 44x44px | Meets WCAG minimum |
-| Back overlay (profile) | 40x40px | Floating pill on transparent navbar |
-| Sidebar links | full width, 44px+ padding | Generous vertical padding for tap accuracy |
-| Sign-in button | 34px height, 18px horizontal | Compact but reachable in navbar corner |
-
-### Typography Scaling
-
-- Feed card title: 1.125rem (mobile) → 1.25rem (desktop)
-- Landing display type (`.lp-hero__title`, `.lp-h2`, stats figures) is fluid via `clamp()` — the landing page is the standing exception (§10)
-- No other text scales with viewport — the app type scale is fixed
-
-### Mobile-Specific Patterns
-
-- **Bottom sheets** replace desktop dropdowns/modals for account switcher and feedback
-- **Sidebar** (83.33% width, max 320px) slides in from left with spring easing
-- **Safe area insets**: bottom nav and bottom sheets respect `env(safe-area-inset-bottom)` for notched devices
-- **16px minimum font size** on inputs in bottom sheets to prevent iOS zoom
-- **Modal actions stack vertically** (column-reverse) on small screens for thumb-friendly ordering
-
-## 9. Agent Prompt Guide
-
-### Quick Color Reference
-
-- **Canvas** (page bg): #f9f9f9 (light), #0b0b0d (dark)
-- **Elevated** (cards, modals): #FFFFFF (light), #1a1a1e (dark)
-- **Primary text**: #111111 (light), #f5f5f7 (dark)
-- **Secondary text** (body default): #4c4546 (light), #c7c7cc (dark)
-- **Muted text** (placeholders): #7e7576 (light), #8e8e93 (dark)
-- **Primary button**: #111111 bg / #FFFFFF text (light), inverted in dark
-- **Borders**: rgba(0,0,0,0.08) (light), rgba(255,255,255,0.08) (dark)
-- **Error**: #ba1a1a (light), #f87171 (dark)
-- **Success badge**: #e8f5e9 bg / #1b7a3d text (light)
-
-### Example Component Prompts
-
-**Feed card:**
-"Create a feed card with no background — only a 1px bottom border in rgba(0,0,0,0.04). Author byline: 32px circular avatar, 0.875rem/600 Inter name, 0.8125rem muted handle. 1:1 aspect-ratio image with 2px border-radius. Title in Noto Serif 1.125rem/700 #111111. Description in Inter 0.875rem/400 #4c4546, 3-line clamp. Meta row: 0.75rem muted text with 3px dot separators and pill badges."
-
-**Primary button:**
-"Create a button on #f9f9f9 canvas with #111111 background, #FFFFFF text, Inter 0.875rem/500, py-2.5 px-6, border-radius 2px. Hover: opacity 0.9. Active: scale(0.98). Disabled: opacity 0.5. Include a Loader2 spinner when loading."
-
-**App card (settings):**
-"Create a card with #FFFFFF background, 1px border rgba(0,0,0,0.08), border-radius 2px, 24px padding. Label above in Inter 0.6875rem/600, uppercase, letter-spacing 0.08em, color #7e7576."
-
-**Sign-in modal:**
-"Use `<AppDialog ariaLabel="Sign in">` with `<AppDialogHeader>` + `<AppDialogBody>`. Backdrop is `var(--modal-backdrop)`; centered card max-width ~420px, `--color-off-white` background, `var(--radius)` (2px) corners, `0 24px 64px var(--navy-overlay-30)` shadow, `modalSlideUp` 300ms spring entry. Brandmark centered. Field: `<Input size=\"lg\">` (56px, 2px radius). Submit: full-width primary `<Button>` (2px radius). Don't hand-roll the backdrop or use the old 20px/8px sign-in chrome — it's retired."
-
-**Bottom nav bar:**
-"Fixed to bottom, 56px height + safe area inset. White background, 1px top border rgba(0,0,0,0.04). 5 equally-spaced Lucide icons at 24px, strokeWidth 1.5 default / 2.5 active. Active: #111111, inactive: #7e7576. No labels on current build."
-
-**Profile hero:**
-"Full-bleed banner at 180px height with gradient placeholder (#eeeeee to #e2e2e2). Avatar 96px circle overlapping the banner by 48px (negative margin). Display name in Noto Serif 1.5rem/700. Handle in Inter 0.875rem muted. Activity count in Inter 0.875rem/600 primary. Below: tab bar with underline-style active indicator."
-
-**Skeleton loading state:**
-"Mimic the feed card shape: 1:1 rectangle for image, 70%-width bar for title, full-width bar for description, 45%-width bar for second line, row of small pills for meta. All shapes use --color-surface-container (#eeeeee) background with opacity pulsing 0.4→1→0.4 over 1.5s ease-in-out."
-
-**Dark mode variant (feed card):**
-"Same structure as light feed card but on #0b0b0d canvas. Title: #f5f5f7. Description: #c7c7cc. Muted text: #8e8e93. Border: rgba(255,255,255,0.04). Badge backgrounds use low-opacity color (rgba(46,204,113,0.15) for success). Primary button inverts to #f5f5f7 bg / #0b0b0d text."
-
-### Common Mistakes
-
-Things an AI agent is likely to get wrong:
-
-- **Using semantic tokens where invariants are needed.** The skip-nav uses `--color-navy` (always #111111) — if you use `--bg-elevated` it will flip in dark mode when it shouldn't.
-- **Adding multi-column layouts on desktop.** The single-column layout is intentional. Don't create sidebars or 2-column grids for app pages just because there's horizontal space available.
-- **Using shadows on cards.** Cards use background color for elevation, not box-shadow. Shadows are reserved for floating elements (modals, dropdowns, tooltips).
-- **Using fill on icons.** Lucide icons are stroke-based. Active states use heavier `strokeWidth` (2.5 vs 1.5), never fill.
-- **Forgetting `onError` on images.** Every `<img>` needs a fallback — feed images hide on error, avatars show initials, banners show a gradient.
-- **Hard-coding border colors.** Use `var(--border-default)` etc. — they flip automatically in dark mode. Hard-coded `rgba(0,0,0,...)` borders will be invisible on dark backgrounds.
-- **Using 700 weight on Inter.** This weight exists in the font load but is reserved for Noto Serif headlines only. Inter body text should cap at 600.
-
-### Iteration Guide
-
-1. **Start with CSS custom properties.** Never hard-code colors — use `var(--bg-canvas)`, `var(--fg-primary)`, etc. This ensures dark mode works automatically.
-2. **Default to `var(--radius)` (2px).** Only use 999px for pills (badges, avatars, sign-in submit) or 50% for circles.
-3. **Use the `<Button>` component.** Don't create new button styles in CSS — add variants to the component if needed.
-4. **Mobile-first CSS.** Write base styles for mobile, then use `@media (min-width: 800px)` for desktop overrides. For "below desktop", use `max-width: 799px`. 768 / 760 / 640 are not canonical — see §14.1.
-5. **Check both themes.** Toggle `data-theme="dark"` and verify all text is readable, borders are visible, and the primary button inverts correctly.
-6. **Respect the type system.** Headlines → Noto Serif 700. Body → Inter 400. Labels → Inter 500–600 uppercase. Don't mix these roles.
-7. **No new shadows on cards.** Cards communicate elevation via background color (`--bg-elevated` vs `--bg-canvas`), not box-shadow. Shadows are reserved for floating elements (modals, tooltips, dropdowns).
-8. **Test skeleton states.** Every new data-fetching component needs a skeleton. Match the geometry of the loaded state — rectangles where text will be, circles where avatars will be, same spacing.
-9. **Icon sizing follows context.** 14px for inline actions alongside text, 20–22px for navigation chrome, 24px for bottom nav. Don't mix these.
+- Translate, scale, rotate and parallax are removed.
+- The global backstop in `tokens.css` collapses every animation and transition to its end state, stops `infinite` loops after one iteration (no 0.01ms flicker), and clears delays.
+- Primitives that communicate state with a fade (dialog, toast, tab panel, popover) keep a short opacity fade at `--duration-fast` (150ms): dialog and toast via the `.motion-reduce-fade` opt-in, tab panel and popover via their own reduced-motion rules.
+- Spinners keep turning. `.animate-spin` and the named spinner classes are exempted from the backstop (1s, infinite): they carry status, not decoration. Loading still never relies on motion alone; pair a spinner with `aria-busy` and a label.
+- The skeleton pulse, drawer slide and `.press-scale` press are switched off.
+- Landing has its own three-brake contract (§11.3).
 
 ---
 
-## 10. Landing page system (`lp-`, June 2026 redesign)
+## 8. Icons
 
-The `/welcome` landing page (PR #165) has its own visual register, namespaced `lp-` in `src/app/styles/landing.css`. It shares the app's tokens but deliberately speaks differently: editorial, engraved, monochrome. Components live in `src/components/landing/`.
+All icons are Lucide React (`lucide-react`). The cert icon is Tabler, wrapped by `<CertIcon>` with a Lucide-compatible `strokeWidth`; don't import Tabler elsewhere.
 
-### Layout grammar
+| Size | Pairs with | Stroke | Use |
+|---|---|---|---|
+| 12 | `label` / `caption` | 2 | Meta-row glyphs, badge icons |
+| 14 | `ui` / `body-sm` | 1.75 | Inline actions, menu items, chevrons |
+| 16 | `body`, Button md | 1.75 | Button icons, toast and banner icons |
+| 20 | chrome | 1.5 | Top bar, navbar |
+| 24 | bottom nav | 1.5, **2.5 active** | Bottom nav; active is a heavier stroke, never a fill |
+| 40 | empty state | 1.25 | `EmptyState` rich (hard-coded in the primitive) |
 
-- **One canvas, ruled sections.** Every section sits on `var(--color-off-white)`; sections are separated by full-width 1px rules (`var(--color-light-gray)`), not background tints. Content column max-width 1280px, section padding `clamp(80px, 6vw + 40px, 136px)`.
-- **One inversion moment.** The organizations band (`.lp-band`) is the page's single polarity flip: `--color-navy` surface, `--color-off-white` ink. In dark mode it flips the other way (light panel on dark canvas) — the *contrast event* is the constant. It locally remaps `--band-rule`, `--btn-primary-bg/fg`, and `--focus-ring`. Don't add a second inversion; scarcity is the signal (it marks the audience switch to organizations).
-- **Numbered-item pattern** (`.lp-item`): 24px overline, mono registry numeral (`01`), serif title, sans body. Used by the holdings rows, story steps, and trust columns.
-- **Asymmetric splits** (`.lp-split`): sticky header in the left 5 columns, content rows right. Hairline-divided grids (app wall) instead of cards.
-
-### Guilloche artwork
-
-The page's signature is engine-turned guilloche (the banknote/certificate ornament), generated as inline SVG in `src/components/landing/guilloche-art.tsx`:
-
-- **Construction:** one path per zone (sampled parametric curves — twisted loops, scallops, offset rings) stamped as rotated/scaled copies via `defs` + `use`. Ink density does the shading: `currentColor` hairlines (0.7–0.75 width, `vector-effect="non-scaling-stroke"`) at opacity tiers ~0.1–0.9 inside a wrapper that sets `color: var(--color-navy)` — dark mode flips for free. No gradients, no images.
-- **The hero plate** continuously SMIL-morphs ring field → loop rosette → star (all shapes sampled with matching point counts so `d` interpolates), sits in a scroll-scrubbed 3D rig (spin 0.3°/px, tilt 38°→62°), and renders a second time — flat, own `idPrefix` — in the closing section's corner (SVG ids are document-global).
-- **Wanderers:** short bright dash segments with comet-dot heads lapping the stamped outlines (`stroke-dashoffset` over `pathLength`-normalized paths; the dot is a point-length dash phase-shifted by the segment length).
-
-### Motion vocabulary & reduced-motion contract
-
-- Layer groups counter-rotate (CSS, durations inline); wanderers lap; the plate morphs (SMIL); rows/steps fade up and the holdings glyphs animate their meaning via **CSS scroll-driven animations** (`animation-timeline: view()`, progressive enhancement behind `@supports`).
-- Reduced motion needs THREE brakes: the global kill-switch (tokens.css) freezes CSS animations; **scrubbed view() timelines ignore the duration trick and need explicit `animation: none`**; SMIL needs `svg.pauseAnimations()` (done in `GuillocheArt`'s effect). Markup attribute opacities are always the finished state, so static rendering is correct everywhere.
-
-### Other landing-specific notes
-
-- CTAs that are real `<button>`s use the canonical `<Button>`; href/modal CTAs styled as buttons use `.lp-btn` (+ `.lp-contact-btn` reset), which read the same `--btn-primary-*` tokens so the band inversion applies to both.
-- The feedback modal has a `contact` variant (`useFeedback().openFeedback("contact")`) — same form and `/api/feedback` wiring, contact copy, message prefixed `[Contact request]`. Landing "Get in touch" CTAs and FAQ answers use it.
-- `AppDialog` is `position: fixed` (top-layer, viewport-centered) — do not reintroduce `relative`; it lays modals out at document-top coordinates (§14-era legacy bug fixed in PR #165).
+- Smaller icons get heavier strokes so the rendered weight stays constant. Snap 11 / 13 / 15px to the nearest step.
+- Icons inherit `currentColor`. Never `fill`.
+- Decorative icons get `aria-hidden`. Icon-only controls get an `aria-label` (and a tooltip comes free on `<Button size="icon">`).
 
 ---
 
-## 14. Design consolidation pass (2026-05-28)
+## 9. Components
 
-This section documents the changes from `feat/design-consolidation` (PR #108, merged into `feat/positioning-redesign`). It supersedes any contradictions earlier in this file.
+`src/components/ui/` is the catalog. `AGENTS.md` §12 lists the full API surface; this section covers the visual contract. BEM classes such as `.app-card`, `.dash-card` and `.feed-card` are legacy: migrate toward the primitive when you touch them.
 
-The audit that drove the work: [`docs/design-audit/component-audit.md`](docs/design-audit/component-audit.md).
-The visual divergence sheet: [`docs/design-audit/visual-divergence.md`](docs/design-audit/visual-divergence.md).
-The implementation plan + decision log: [`docs/design-consolidation/plan.md`](docs/design-consolidation/plan.md).
+### 9.1 Button
 
-### 14.0 Rules at a glance (the agent quick-reference)
+`<Button variant size loading pressed tooltip href>`.
 
-The shortlist of rules that drift most often. Hold yourself to these on every UI change.
+| Variant | Rest | Hover | Use |
+|---|---|---|---|
+| `primary` | `--btn-primary-bg` / `--btn-primary-fg` | `--btn-primary-bg-hover` | Main action, form submit. One per view. |
+| `secondary` | transparent, `--fg-primary`, `--border-default` | border `--border-hover` | Cancel, secondary actions |
+| `ghost` | transparent, `--fg-muted` | `--overlay-weak`, `--fg-primary` | Toolbar actions |
+| `destructive` | `--color-error-bg`, `--color-error`, `--color-error-border` | slightly stronger tint | Delete, remove |
 
-| Rule | Quick test |
-| --- | --- |
-| `border-radius` is `var(--radius)` (2 px), pills `999px`, circles `50%`. No 4/6/8/12/16/20. | `grep -rEn "border-radius:\s+(4\|6\|8\|12\|16\|20)px" src/app/styles/` returns 0 |
-| No raw hex / rgb outside `tokens.css` (+ `landing.css` for the brand palette). | Search for `#[0-9a-fA-F]{3,8}` in your diff |
-| Canonical breakpoints are 800 / 1100 / 1300; "below desktop" is `max-width: 799px`. | `grep -E "@media.*?\((max\|min)-width:\s*(76[08]\|64[80])px\)"` returns 0 |
-| Shadows are `var(--shadow-sm\|md\|lg)`. No ad-hoc `box-shadow: 0 X Y rgba(...)`. | Search `box-shadow:` for non-token values |
-| Z-index is a `--z-*` token. | Search `z-index:\s+[0-9]+` for literals |
-| Headings use `text-h1`..`text-h4` + `font-headline`. Not `text-xl` / `text-lg`. | Search your diff for `font-headline text-(xl\|lg\|2xl)` |
-| Modals use `<AppDialog>`. No hand-rolled backdrops. | Search your diff for `signin-modal__backdrop` |
-| Icon-only buttons are `<Button size="icon" aria-label="…">`. | TypeScript enforces the label |
-| Dark mode must work. | Toggle `data-theme="dark"` and verify everything reads |
-| Reach for a `src/components/ui/` primitive before writing a new component or CSS class. | List the directory first |
+| Size | Height (desktop / below 800px) | Text |
+|---|---|---|
+| `sm` | 32 (`control-compact`) / 44 | `text-xs` (0.75rem) |
+| `md` | 36 (`control-sm`) / 44 | `text-sm` (0.875rem) |
+| `lg` | 44 (`control-md`) / 44 | `text-sm` |
+| `icon` | 36 square / 44 square | n/a; requires `aria-label` |
+| `icon-sm` | 32 visual, 44 hit / same | n/a; requires `aria-label` |
 
-### 14.1 New rules
+Heights come from the control-height scale (§6.3) as `min-h-control-*`; padding sets only the horizontal inset.
 
-1. **All `border-radius` values are `var(--radius)` (2 px).** No exceptions. The previous `--radius: 2px` policy was being eroded by 116+ instances of 4 / 6 / 8 / 12 / 16 / 20 px corners; those are gone. Pills stay at `999px`, circles at `50%`. The sign-in modal is no longer a "hero exception" (was 20 px → 2 px).
-2. **Landing has proper dark mode.** The "landing palette kept invariant so /welcome always renders light-themed" policy is retired. The landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low`) flip in `[data-theme="dark"]`. `--color-primary` and `--color-white` remain invariant for systems that still depend on them (skip-nav, brand SVG).
-3. **Breakpoints: 800 / 1100 / 1300 only.** Previously `landing.css` used 768 (9 places) and `home/explore/workspace` used 760 (5 places). All migrated to `max-width: 799px` to match the existing "just below desktop" convention.
-4. **Form input padding follows the 4-px grid.** `12 × 14` and `7 × 12` arbitrary values were replaced with `12 × 16` / `8 × 12`.
-5. **Cert-detail / project-detail "wide" pages share the 1280 px fullbleed width** with profile / settings / workspace.
+All buttons: `var(--radius)`, weight 500, 0 tracking, named-property transitions, `.press-scale`. `pressed` (toggle buttons) uses the selected state from §6.1. `href` renders a `next/link` with the same chrome. Filled variants disable to a sunken fill; outlined and ghost variants disable by opacity.
 
-### 14.2 New UI components
+### 9.2 Fields: Input, Textarea, Select, Combobox
 
-| Component | File | Purpose |
-| --- | --- | --- |
-| `<Card variant="row\|elevated\|inset">` | `src/components/ui/card.tsx` | Canonical card with three shapes. Migrate `.feed-card`, `.dash-card`, `.explore-*-card`, `.app-card`, `.endorsements-v2__card` to it. |
-| `<Tabs>`, `<TabList>`, `<Tab>`, `<TabPanel>` | `src/components/ui/tabs.tsx` | Proper ARIA tab pattern with keyboard arrow navigation. Migrate `.profile-tabs__tab`, `.feed-tabs__tab`. |
-| `<Skeleton variant="line\|box\|circle\|text">` | `src/components/ui/skeleton.tsx` | Single primitive for all loading states. Migrate `ActivityCardSkeleton`, `NotificationRowSkeleton`, `.feed-card__author--skeleton`, etc. |
-| `<Popover>`, `<PopoverTrigger>`, `<PopoverContent>`, `<PopoverItem>` | `src/components/ui/popover.tsx` | Floating menus — click-outside, Esc, ARIA wired. Migrate `.feed-filter`, account switcher menu, workspace breadcrumb menu, `.response-menu__menu`. |
+- `<Input size="sm|md|lg|bare">`: `sm|md|lg` are `h-control-sm|md|lg` (36 / 44 / 56px); `bare` has no fixed height and inherits type from its parent. `variant="default|underline|inline-edit"`; an optional `density` overrides padding and text size. Sign-in uses `size="lg"`; type-to-confirm uses `inline-edit`.
+- Rest: `--bg-elevated`, 1px `--border-default`, `var(--radius)`, 16px horizontal padding. Focus: §6.2. Error: border `--color-error` + `--color-error-ring`.
+- **Label:** `text-ui` (0.8125rem) / 500 / 0 tracking / `--fg-secondary`, sentence case, 6px above the control.
+- **Helper text:** `text-caption` / `--fg-muted`.
+- **Error text:** `text-caption` / `--color-error`, with an icon. Wired via `aria-describedby` / `aria-invalid`.
+- The uppercase `text-label` step is for section eyebrows, never field labels.
+- The checkbox box and the switch-off track use `--border-control` for their boundary (§2.4). `<RadioGroup>` draws no circle, so it has no control boundary to apply it to.
 
-### 14.3 Extended component APIs
+### 9.3 Badge
 
-| Component | New API | What absorbed |
-| --- | --- | --- |
-| `<Button>` | `size="icon"` (40 × 40 square, requires `aria-label`) | `.desktop-top-bar__icon-btn` and similar icon-only buttons. Variant `accent` rejected; domain modal moved to `primary`. |
-| `<Input>` | `size="sm\|md\|lg"` (36 / 44 / 56 px), `variant="default\|underline\|inline-edit"` | `.signin-modal__input` (size=lg), `.delete-record-dialog__input` (variant=inline-edit). |
-| `<Badge>` | New variants: `tag`, `role`, `count`, `high-quality`, `standard`, `draft`, `test`. `compact` prop for the tighter 11 px chip. | `.feed-card__label*` (4 quality variants), `.org-list__item-role`. `FeedLabelPill` now composes Badge. |
+`<Badge>` is the single badge primitive. `<FeedLabelPill>` composes it for activity quality labels.
 
-### 14.4 Modal hygiene
+| Variant | Colors | Notes |
+|---|---|---|
+| `verified` | `--badge-success-*` + CheckCircle | Status, full density |
+| `pending` | `--badge-warning-*` + Clock | Status, full density |
+| `unverified` | `--badge-neutral-*` | Status, full density |
+| `high-quality` / `draft` | `--badge-success-*` / `--badge-warning-*` | Quality, compact |
+| `standard` | `--bg-sunken`, `--fg-secondary` | Quality, compact |
+| `test` | `--bg-raised` (tint), `--fg-muted` | Quality, compact |
+| `tag` | `--bg-sunken`, `--fg-secondary`, uppercase | Compact |
+| `role` | `--bg-canvas`, `--fg-muted` | Membership role, compact |
+| `count` | `--badge-count-*`; `tone="neutral"` repaints to sunken/muted | Notification count, compact, tabular |
+| `count-bare` | `--fg-muted`, no chrome | Right-aligned section counts, tabular |
 
-`AddOrgModal` and `MembershipSyncModal` moved from hand-rolled backdrop/Esc/focus-trap implementations to the canonical `<AppDialog>`. `CustomDomainModal` migration is deferred (multi-step indicator needs visual review). `<ResponsiveModal>` extraction from `FeedbackModal` is deferred until a second consumer exists.
+- Shape defaults to pill. `shape="square"` is a `var(--radius)` uppercase chip whose palette comes from `tone` (`error` / `warn` / `success` / `neutral`).
+- `compact` overrides density (compact: `caption`; full: `body-sm`).
+- Counts use `formatCountBadge(count, more?)`: `null` at ≤ 0, the number for 1-98, `99+` above.
 
-### 14.5 Z-index tokens
+### 9.4 Card
 
-Added `--z-feedback: 10000` and `--z-feedback-above: 10001` to the token map. Hardcoded z-index values (`49`, `999`, `10000`, `10001`) in `layout.css` / `landing.css` / `components.css` are now token references.
+`<Card variant="row|elevated|inset" hoverable unpadded as>`.
 
-### 14.6 What didn't make it
+| Variant | Surface | Edge | Hover (`hoverable`) |
+|---|---|---|---|
+| `row` | transparent | bottom `--border-subtle` | `--overlay-weak` fill |
+| `elevated` | `--bg-elevated` | `--border-default`, `var(--radius)` | border → `--border-hover`; no shadow |
+| `inset` | `--bg-canvas` | `--border-default`, `var(--radius)` | border → `--border-hover` |
 
-- Migration of every `.profile-tabs__tab` / `.feed-tabs__tab` to `<Tabs>` — primitive shipped, call sites stay until each is touched.
-- Migration of every CSS-based card to `<Card>` — same.
-- Migration of every CSS-based popover to `<Popover>` — same.
-- Migration of skeleton CSS to `<Skeleton>` — same.
-- `CustomDomainModal` → `<AppDialog>`.
-- `<ResponsiveModal>` extraction from `FeedbackModal`.
-- A stylelint rule that flags `border-radius: 6px` and raw hex outside `tokens.css`.
+The feed card is the `row` pattern: no fill, a hairline below, generous vertical padding, byline, optional 1:1 image, serif title, three-line description, meta row.
 
-These are documented as follow-on work in `docs/design-consolidation/plan.md`.
+### 9.5 Avatar and IdentityRow
+
+- `<Avatar size="xs|sm|md|lg|xl|2xl">` (20 / 32 / 48 / 64 / 96 / 240). Always a circle. Fallback: `--color-surface-container-high` with initials from `getInitials()`.
+- `<IdentityRow did handle displayName avatarUrl href size loading>` is the one avatar + name + `@handle` byline. Primary line resolves `displayName` → `handle` → truncated DID, `font-medium` `--fg-primary`; the handle line shows only when a real handle exists, `--fg-muted`. Both truncate.
+
+### 9.6 Tabs, SegmentedControl, Pagination
+
+- `<Tabs>` / `<TabList>` / `<Tab>` / `<TabPanel>`: ARIA tablist with arrow keys. Active tab: `--fg-primary`, weight 600, underline indicator. Wrap panels in `<TabPanelTransition>` for the desktop slide.
+- `<SegmentedControl>`: active segment on `--bg-elevated` with `--shadow-sm`.
+- `<Pagination>`: Previous / "Page X of Y" / Next with `tabular-nums` and `aria-live="polite"`; returns `null` for one page. It is the explicit pager; `<LoadMoreSentinel>` is the infinite-scroll alternative. Pick one per surface.
+
+### 9.7 Popover, Tooltip
+
+- `<Popover>` + `<PopoverTrigger>` / `<PopoverContent>` / `<PopoverItem>` for menus: `role="menu"`, click-outside, Esc, focus restore. Floating level (§5).
+- A panel holding form controls (filters) is a `role="dialog"` wrapper with `useClickOutsideClose`. Those are the only two popover patterns.
+- `<Tooltip>` is suppressed on touch; never put essential information only in a tooltip.
+
+### 9.8 Dialogs
+
+All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, wrapping Tab trap, focus restore, backdrop-click close (suppressible with `disableBackdropClose`), `autoFocusFirst` / `initialFocusRef`. It is `position: fixed` in the top layer; don't make it relative.
+
+- Surface `--bg-overlay`, `--border-default`, `var(--radius)`, `--shadow-modal`, over `--scrim`. Max width 420px; full width below 800px.
+- Slots: `<AppDialogHeader title onClose? disabled?>` (always left-aligned; the old `center` prop is removed), `<AppDialogBody>` (the padded region; the dialog owns scroll). The consumer provides the footer. Omit `onClose` for `alertdialog` flows whose only exits are footer buttons.
+- `<ConfirmDialog>`, `<DeleteRecordDialog>`, `<FormDialog>` wrap it. `<ResponsiveDialog>` shows a dropdown or AppDialog at ≥ 800px and a bottom sheet below.
+
+**Dialog voice:**
+
+- The title is `font-headline text-h4` (serif), balanced, left-aligned, with the close control at the trailing edge. Sheets use the same title so `ResponsiveDialog` content doesn't change typeface at 800px.
+- An eyebrow above the title, if needed, uses `text-label`.
+- The title names the thing or the action ("Delete this activity?"), not "Confirm".
+- Body copy is `body-sm` `--fg-secondary`, one or two sentences that state the consequence.
+- The primary button repeats the verb ("Delete", "Save changes"), never "OK" / "Yes". The cancel button is `secondary` and says "Cancel".
+- Destructive confirmations use the `destructive` variant; irreversible deletes of named records use `<DeleteRecordDialog>` (type to confirm).
+
+### 9.9 Bottom sheet and drawer
+
+- `<BottomSheet>` (< 800px): fixed bottom, `--bg-elevated`, `var(--radius)` top corners, serif `text-h4` title, drag handle, swipe down to dismiss, swipe up to expand, max 70vh, safe-area padding, over `--scrim`. Used for the account switcher and mobile feedback.
+- `<Drawer>`: side panel (83.33% wide, max 320px), `--bg-elevated`, `--shadow-lg`, over `--scrim`. Used for the mobile hamburger menu.
+- Both lock body scroll via `use-body-scroll-lock` (which toggles `html` overflow; `scrollbar-gutter: stable` keeps the page from shifting).
+
+### 9.10 Feedback surfaces
+
+| Primitive | When |
+|---|---|
+| `<ErrorMessage title message onRetry>` | A section failed to load. Replaces the section in place. Error-tinted surface with an icon. |
+| `<Banner variant>` | Page-level degraded or info state that persists while it is true. |
+| `toast` | Transient result of an action. Errors that need action stay until dismissed; others auto-dismiss. |
+| `<EditBanner>` | Sticky edit-mode chrome (Cancel + Save) on profile, project and cert edit pages. |
+| `<ErrorBoundaryFallback>` | A render crash. |
+
+### 9.11 EmptyState and Skeleton
+
+- `<EmptyState variant="rich">`: centered optional icon (40px, 1.25 stroke), serif `text-h4` title, `--fg-muted` description, action slot. `variant="inline"`: one muted line, no icon or container; it replaces the old `*__empty` BEM hints. (`compact` is a back-compat alias of `inline`.)
+- `<Skeleton variant="line|box|circle|text">`: fill `--overlay-weak`, the one pulse recipe (§7.3; off under reduced motion), mirrors the final geometry (rectangles where text goes, circles where avatars go, same spacing). `aria-hidden`.
+
+### 9.12 Distinctive patterns
+
+- **Shapeshifting mobile navbar:** three modes (§4.2), switching instantly on route change.
+- **Bottom-sheet account switcher:** a sheet on mobile, a dropdown on desktop; reflects the acting identity (`useOrg().activeOrg`).
+- **Feed with evaluator filter:** tapping the active "For you" tab opens an inline filter panel; a non-default filter renames the tab "Custom" and the unfiltered state shows a caution banner.
+- **Profile hero:** full-bleed banner with the avatar overlapping downward; the navbar goes transparent over it.
+
+---
+
+## 10. Async states and copy
+
+### 10.1 Loading, empty, error
+
+| Situation | Pattern |
+|---|---|
+| List, feed or card content loading (expected < ~2s) | `<Skeleton>` mirroring the final geometry. It appears only after 200ms, so fast loads never flash. |
+| Whole-route auth or bootstrap | `<LoadingSpinner>` (Brandmark pulse), centered |
+| Action in progress | Button `loading`. Never a page spinner. |
+| Empty because the owner has made nothing yet | `<EmptyState variant="rich">` **with an action** (the CTA that creates the first item) |
+| Empty on someone else's profile | `<EmptyState>` with plain text, no action |
+| Empty because of a filter or search | `<EmptyState variant="inline">` plus a "Clear filters" action |
+| A section failed to load | `<ErrorMessage onRetry>` in place of the section |
+| Page-level degraded or info state | `<Banner>` |
+| An action failed or succeeded | `toast` |
+
+Don't gate the navbar on auth loading; render placeholders so the layout is stable.
+
+### 10.2 Error messages
+
+Errors are plain language a person can act on. Map failed responses through `toUserErrorMessage(status, message, fallback)` (`src/lib/utils/api.ts`): human-written 4xx messages pass through; expired sessions, rate limits, server errors and technical strings become a plain sentence ("Your session has expired. Sign in again to continue."). Never show status codes, stack traces, XRPC method names or raw upstream text. Say what happened and what to do next.
+
+### 10.3 UI copy
+
+- Sentence case everywhere: titles, buttons, labels, tabs.
+- Straight apostrophes and quotes (`'`, `"`) in UI strings; no curly quotes.
+- No emojis.
+- Buttons are verbs ("Save changes", "Endorse"). Empty states say what is missing and how to add it.
+
+---
+
+## 11. Landing page system
+
+The `/welcome` landing page has its own register, namespaced `lp-` in `src/app/styles/landing.css`, components in `src/components/landing/`. It shares the app's tokens but speaks differently: editorial, engraved, monochrome. Raw values are allowed in `landing.css` (hard rule 2); everything still flips in dark mode via the landing palette.
+
+### 11.1 Layout grammar
+
+- **One canvas, ruled sections.** Every section sits on `--color-off-white`; sections are separated by full-width 1px rules (`--color-light-gray`), not background tints. Content max width 1280px; section padding fluid via `clamp()`.
+- **One inversion.** The organizations band (`.lp-band`) is the page's single polarity flip: `--color-navy` surface, `--color-off-white` ink. In dark mode it flips the other way; the contrast event is the constant. It remaps `--band-rule`, `--btn-primary-bg/fg` and `--focus-ring` locally. Don't add a second inversion.
+- **Numbered items** (`.lp-item`): overline, mono registry numeral (`01`), serif title, sans body.
+- **Asymmetric splits** (`.lp-split`): sticky header left, rows right. Hairline-divided grids instead of cards.
+
+### 11.2 Landing type
+
+| Role | Font | Size | Weight | Leading | Tracking |
+|---|---|---|---|---|---|
+| Hero title | serif | `clamp(2.625rem, 1.5rem + 4.5vw, 4.75rem)` | 300 | 1.04 | -0.03em |
+| Section title (`.lp-h2`) | serif | `clamp(1.75rem, 1.25rem + 2vw, 2.75rem)` | 300 | 1.12 | -0.02em |
+| Item title (`.lp-item__title`) | serif | `clamp(1.25rem, 1.125rem + 0.5vw, 1.5rem)` | 400 | 1.25 | 0 |
+| Registry numeral | mono | 0.75rem | 500 | 1 | +0.08em |
+| Stats figure | mono | fluid `clamp()` | 500 | 1 | 0, `tabular-nums` |
+
+Fluid type is a landing-only exception to the fixed ramp.
+
+### 11.3 Guilloche and motion
+
+- **Guilloche** (`guilloche-art.tsx`): engine-turned ornament as inline SVG, one path per zone stamped as rotated/scaled `<use>` copies. Ink density does the shading: `currentColor` hairlines with `vector-effect="non-scaling-stroke"` at tiered opacities inside a wrapper set to `--color-navy`, so dark mode flips for free. No gradients, no images.
+- The hero plate SMIL-morphs between shapes sampled with matching point counts, sits in a scroll-scrubbed 3D rig, and renders a second time (own `idPrefix`, since SVG ids are document-global) in the closing section.
+- Wanderers are dash segments with comet-dot heads lapping the stamped outlines.
+- Rows fade up and holdings glyphs animate via CSS scroll-driven animations (`animation-timeline: view()`, behind `@supports`).
+- **Reduced motion needs three brakes:** the global backstop freezes CSS animations; scrubbed `view()` timelines ignore the duration trick and need explicit `animation: none`; SMIL needs `svg.pauseAnimations()` (done in `GuillocheArt`). Markup opacities are the finished state, so static rendering is correct.
+
+### 11.4 Other notes
+
+- Real `<button>` CTAs use `<Button>`. Link and modal CTAs styled as buttons use `.lp-btn` (+ `.lp-contact-btn`), which read the same `--btn-primary-*` tokens so the band inversion applies to both.
+- "Get in touch" opens the feedback modal's `contact` variant (`useFeedback().openFeedback("contact")`).
+
+---
+
+## 12. Enforcement
+
+Description alone hasn't stopped drift, so the hard rules are checked by machine.
+
+**Stylelint (CI, failing).** `npm run lint:css` (stylelint 16, config `stylelint.config.mjs`, CI step "Lint CSS" in the verify job) runs over `src/**/*.css`:
+
+| Rule | What passes |
+|---|---|
+| Colors | No hex, no `rgb()` / `rgba()` / `hsl()` / `hsla()` (or other color functions), no named colors. Use tokens. |
+| Shadows | `box-shadow` is `var(--shadow-*)`, a comma list of them, or `none`. |
+| Z-index | `var(--z-*)`, `calc(var(--z-*) ± n)`, `auto`, `0`. Local stacking uses `--z-local-raise`. |
+| Radius | `var(--radius)`, `var(--radius-pill)`, `999px`, `50%`, `0`, `inherit` (per corner too). |
+| Breakpoints | `min-width` 800 / 1100 / 1300 and `max-width` 799 / 1099 / 1299 only; `width` / `height` media features are disallowed. |
+
+`tokens.css` and `landing.css` are exempt from the color and shadow rules only; radius, z-index and breakpoints apply everywhere. Font size, letter-spacing and transition duration are documented (§3, §7) but not enforced.
+
+**Greps** (the `CLAUDE.md` first checks; all silent):
+
+```bash
+grep -rEn "border-radius:\s+(4|6|8|12|16|20)px" src/app/styles/
+grep -rEn "@media.*?\((max|min)-width:\s*(76[08]|64[80])px\)" src/app/styles/
+grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/
+grep -rn "signin-modal__backdrop" src/components/ | grep -v "ui/sign-in-modal.tsx\|ui/feedback-modal.tsx"
+grep -rEn "\[var\(--[a-z0-9-]+\)\]/[0-9]+" src/    # dead Tailwind opacity modifier on a var() color
+```
+
+Then `npm run lint:css`, `npx tsc --noEmit` and `npm run lint` (no change against main's baseline).
+
+---
+
+## 13. Agent prompt guide
+
+Prompts name tokens, not hex. Look values up in `tokens.css` if you need them.
+
+### 13.1 Example prompts
+
+**Feed card:** "`<Card variant="row">`: no fill, hairline `--border-subtle` below, 20px vertical padding (24 on desktop). `<IdentityRow size="sm">` byline. Optional 1:1 image at `var(--radius)`. Title serif 700 at `text-h4` (1.25rem on desktop), `--fg-primary`, balanced. Description `body-sm` `--fg-secondary`, three-line clamp, `text-wrap: pretty`. Meta row `text-ui` `--fg-muted` with dot separators, `tabular-nums` timestamps, compact badges."
+
+**Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.98)`. Disabled: sunken fill, muted text, default border. `loading` shows a spinner and sets `aria-busy`."
+
+**Settings card:** "`<Card variant="elevated">`, 24px padding. Eyebrow above in `text-label` `--fg-muted`. Fields with sentence-case `text-ui` 500 labels in `--fg-secondary`, 16px between fields."
+
+**Confirm dialog:** "`<ConfirmDialog>`: serif `text-h4` title naming the action, one sentence of consequence in `body-sm` `--fg-secondary`, `secondary` Cancel and a primary (or destructive) button that repeats the verb. Actions stack below 800px."
+
+**Bottom nav:** "Fixed bottom, `--bottom-nav-height` + safe area, opaque `--bg-elevated` with a `--border-subtle` top line. Five items, each a 24px icon over a short 0.6875rem / 500 mixed-case label, at least 44px tall. Active: `--fg-primary` and a heavier stroke (2.5). Inactive: `--fg-muted`. Press `scale(0.95)`."
+
+**Skeleton:** "`<Skeleton>` shapes mirroring the feed card: 1:1 box, 70% title line, full and 45% description lines, a row of small pills. Fill `--overlay-weak`, the shared `animate-skeleton` recipe."
+
+**Dark mode:** "Same structure; tokens flip on their own. Check that every text pair in the contrast table still holds and that floating surfaces are a step lighter than what's under them."
+
+### 13.2 Common mistakes
+
+- Copying hex values into components instead of tokens. Values change; tokens don't.
+- Using `--color-primary` / `--color-white` (invariant) where a theme-aware token is needed, or `--color-off-white` / `--color-mid-gray` (landing) inside an app primitive.
+- Putting a second column into the reading column. Wide layouts are explicit fullbleed opt-ins.
+- Shadows on cards. Use the border shift.
+- Filled icons, or active states shown by color alone.
+- Wide tracking on mixed-case text, or a font size off the ramp.
+- Naming a font weight outside the system (Inter 700) or one that isn't loaded (Noto Serif 500).
+- `ring-[var(--x)]/20` and similar opacity modifiers on `var()` colors.
+- A `hover:` style written in plain CSS without `(hover: hover)`.
+- Forgetting `onError` on images.
+- Using `--bg-raised` to mean "above". It's a tint.
+
+### 13.3 Iteration checklist
+
+1. Look in `src/components/ui/` first.
+2. Use tokens; never hard-code colors, shadows, z-index or radii.
+3. Mobile first; `@media (min-width: 800px)` for desktop.
+4. Pick sizes from the type ramp and spacing scale.
+5. Cover every state: hover, press, focus, selected, disabled, loading, empty, error.
+6. Toggle `data-theme="dark"` and check.
+7. Turn on reduced motion and check that nothing is lost.
+8. Run the §12 checks.
+
+---
+
+## 14. Token appendix
+
+Names only; values are in `tokens.css`.
+
+| Group | Tokens |
+|---|---|
+| Invariant | `--color-primary`, `--color-white` |
+| Accent | `--color-accent`, `--color-accent-hover`, `--accent-gold`, `--accent-gold-soft` |
+| Landing | `--color-navy`, `--color-off-white`, `--color-gray-100`, `--color-light-gray`, `--color-mid-gray`, `--color-dark-gray`, `--color-surface`, `--color-surface-container-low`, `--color-surface-container-high` |
+| Surfaces | `--bg-sunken`, `--bg-canvas`, `--bg-raised`, `--bg-elevated`, `--bg-overlay` |
+| Foregrounds | `--fg-primary`, `--fg-secondary`, `--fg-muted` |
+| Borders | `--border-subtle`, `--border-default`, `--border-hover`, `--border-control` |
+| Overlays | `--overlay-weak`, `--overlay-medium`, `--scrim`, `--scrim-pill`, `--scrim-pill-hover`, `--scrim-pill-ghost`, `--media-letterbox` |
+| Chrome | `--navbar-bg`, `--navbar-border`, `--sheet-bg`, `--navbar-height`, `--bottom-nav-height`, `--top-bar-row1`, `--top-bar-row2`, `--top-bar-total` |
+| Shadows | `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-modal`; rings and hairlines `--shadow-ring-{weak,medium,focus,error,elevated}`, `--shadow-outline-subtle`, `--shadow-inset-{subtle,hover,indicator}`, `--shadow-navbar-hairline` |
+| Utility (invariant) | `--mask-opaque` (mask-image fill), `--mix-shade` (`color-mix()` darkening partner), `--confetti-0`..`--confetti-9` (group-result confetti) |
+| Focus and selection | `--focus-ring`, `--selection-bg`, `--selection-fg` |
+| Status | `--color-error`, `--color-error-bg`, `--color-error-border`, `--color-error-ring`, `--color-success`, `--color-success-text`, `--color-success-bg`, `--color-warning`, `--color-warning-text`, `--color-warning-bg`, `--color-warning-border` |
+| Badges | `--badge-{success,warning,neutral,danger,accent}-{bg,fg,border}` (where defined), `--badge-count-bg`, `--badge-count-fg` |
+| Button | `--btn-primary-bg`, `--btn-primary-fg`, `--btn-primary-bg-hover`, `--opacity-disabled` |
+| Motion | `--duration-instant`, `--duration-fast`, `--duration-base`, `--duration-slow`, `--ease-out`, `--ease-emphasized`, `--ease-in-out`, `--transition-fast`, `--transition-base` |
+| Geometry | `--radius`, `--radius-pill`, `--measure`, `--control-h-compact`, `--control-h-sm`, `--control-h-md`, `--control-h-lg` |
+| Type | `--font-inter`, `--font-headline`, `--font-mono`, `--text-display`, `--text-h1`..`--text-h4`, `--text-body`, `--text-body-sm`, `--text-ui`, `--text-caption`, `--text-label`, `--text-micro`, `--tracking-label` |
+| Breakpoints | `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop` |
+| Z-index | §4.10 |
+
+---
+
+## 15. Changelog
+
+- **2026-10-22, Button sizes on the control-height scale.** Owner decision: Button `sm` / `md` / `lg` are 32 / 36 / 44 on desktop (`min-h-control-compact` / `-sm` / `-md`), `icon` is 36 on desktop to match `md`; all stay 44 below 800px. Replaces the padding-driven ~30 / 40 / 44 and the 40px icon square.
+- **2026-10-22, docs-to-code reconciliation.** Synced this file, `AGENTS.md` and `CLAUDE.md` with the shipped code. Motion: popover and toast enter at `--duration-fast`; tab panel is `--duration-base` + `--ease-emphasized`, 12px; tooltip has no fade; dialog has no exit animation; drawer and bottom-sheet exits documented; navbar hide uses `--transition-base`; `--ease-in-out` has no consumer; `--transition-slow` removed. Reduced motion: spinners keep turning (they are exempt from the backstop); dialog, toast, tab panel and popover keep 150ms fades. Button `sm` / `md` / `lg` documented at their current ~30 / 40 / 44px desktop heights, with the control-height scale marked not yet applied (owner decision pending); `icon-sm` documented. `--border-control` scoped to checkbox and switch-off (RadioGroup draws no circle). Bottom nav documented as opaque `--bg-elevated` with 0.6875rem / 500 mixed-case labels and a 2.5 active stroke. Skeleton fill is `--overlay-weak` (`--skeleton-bg` is not a defined token). Bottom sheet surface is `--bg-elevated`. Shadow hard rule reworded in all three files: elevation is `--shadow-sm/md/lg` + `--shadow-modal` (dialogs), rings and hairlines use the new `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. §12 now documents the shipped stylelint config (`npm run lint:css`), also added to the `CLAUDE.md` first checks. Avatar `xs` / `2xl`, Input `bare`, removed AppDialogHeader `center` prop, `--text-*` and `--control-h-*` tokens added to the appendix. AGENTS.md token lists updated (four border tokens, motion tokens, `--scrim`, `--z-feedback-trigger`).
+- **2026-10-22, polish pass** (`docs/polish-2026-10/design-md-proposals.md`). This document was rewritten as one body with `tokens.css` as the single numeric source. Added: type ramp with loaded weights (Noto Serif 600 now loaded; `ui`, `label`, `micro` steps), uppercase-only tracking, tabular numerals rule, text-wrap and measure, contrast table and badge fixes, `--border-control`, border tokens collapsed to four, `--bg-raised` redefined as a tint, `--bg-overlay`, one `--scrim`, translucent chrome derived from surfaces, interaction-state table, `hoverOnlyWhenSupported`, focus recipe and ring-color safety net, control heights and `icon-sm`, motion duration/easing tokens, reduced-motion rule, icon ladder, spacing rhythm, async-state matrix, dialog voice (serif titles), sentence-case field labels, stylelint. Removed stale content: retired rails, old dark palette, phantom tokens, the "spring overshoots" claim, the 768px iOS rule, the 4px / 16px radius exceptions.
+- **2026-06, landing redesign** (PR #165). `lp-` system, guilloche, landing dark mode.
+- **2026-05-28, design consolidation** (PR #108). Radius locked to 2px with no exceptions; landing dark mode; breakpoints 800/1100/1300 only; `<Card>`, `<Tabs>`, `<Skeleton>`, `<Popover>` primitives; `Button size="icon"`, `Input` sizes, `Badge` variants; z-index tokens; `AddOrgModal` and `MembershipSyncModal` moved to `<AppDialog>`. Audit: `docs/design-audit/component-audit.md`, `docs/design-audit/visual-divergence.md`. Plan and decision log: `docs/design-consolidation/plan.md`.

@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { X, CheckCircle, AlertCircle } from "lucide-react";
-import Tooltip from "@/components/ui/tooltip";
+import Button from "@/components/ui/button";
 
 /*
  * Shared toast system.
@@ -69,6 +69,8 @@ export interface ToastOptions {
 
 interface ToastRecord extends ToastOptions {
   id: string;
+  /** Set on dismiss; the item plays its exit transition, then is removed. */
+  leaving?: boolean;
 }
 
 interface ToastContextValue {
@@ -81,6 +83,9 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const DEFAULT_DURATION = 6000;
+// Exit transition length (opacity + 8px drop). The removal backstop waits a
+// little longer in case `transitionend` never fires (hidden tab, jsdom).
+const EXIT_MS = 150;
 
 /**
  * Access the toast API. Must be called from inside a <ToastProvider>.
@@ -98,9 +103,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   // Monotonic counter so ids are unique even within the same tick.
   const counter = useRef(0);
 
-  const dismiss = useCallback((id: string) => {
+  // Final removal, called once the exit transition has played.
+  const remove = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  // Dismiss marks the toast `leaving` so it can fade + drop out before it
+  // unmounts (otherwise it vanishes and the stack jumps). Reduced motion
+  // keeps the exit as a pure 150ms fade (no drop; see ToastItem).
+  const dismiss = useCallback(
+    (id: string) => {
+      setToasts((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, leaving: true } : t))
+      );
+    },
+    []
+  );
 
   const toast = useCallback((options: ToastOptions) => {
     const id = `toast-${counter.current++}`;
@@ -116,7 +134,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <Toaster toasts={toasts} onDismiss={dismiss} />
+      <Toaster toasts={toasts} onDismiss={dismiss} onRemove={remove} />
     </ToastContext.Provider>
   );
 }
@@ -129,9 +147,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 function Toaster({
   toasts,
   onDismiss,
+  onRemove,
 }: {
   toasts: ToastRecord[];
   onDismiss: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   // SSR portal guard: stay null until mounted on the client so the
@@ -143,18 +163,24 @@ function Toaster({
 
   return createPortal(
     <div
-      // Bottom-right stack on desktop; full-width pinned to the bottom on
-      // narrow viewports so it clears the bottom-nav comfortably.
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
+      // Bottom-right stack on desktop; full-width on narrow viewports,
+      // lifted by the bottom-nav height + safe-area inset so it clears the
+      // bar instead of covering it.
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch max-[799px]:bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
     >
       {/* Enter keyframe lives with the component (toast.tsx is the only file
-          this step owns; no global stylesheet edit). Each item carries
-          motion-reduce:animate-none, which compiles to a
-          prefers-reduced-motion media query, so the animation is disabled for
-          users who ask for reduced motion. */}
+          this step owns; no global stylesheet edit). Under reduced motion
+          each item swaps the rise for a 150ms opacity fade
+          (`motion-reduce-fade`, tokens.css), so it still announces itself
+          without movement. */}
       <style>{TOAST_KEYFRAMES}</style>
       {toasts.map((t) => (
-        <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
+        <ToastItem
+          key={t.id}
+          toast={t}
+          onDismiss={onDismiss}
+          onRemove={onRemove}
+        />
       ))}
     </div>,
     document.body
@@ -171,12 +197,15 @@ const TOAST_KEYFRAMES = `
 const variantChrome: Record<ToastVariant, string> = {
   default:
     "bg-[var(--bg-elevated)] text-[var(--fg-primary)] border-[var(--border-default)]",
+  // The tint tokens are translucent, so they're laid over the opaque
+  // elevated surface; on their own, whatever floats beneath the toast (the
+  // Feedback button) shows through.
   // Soft success tint; border stays neutral (no success-border token exists).
   success:
-    "bg-[var(--color-success-bg)] text-[var(--fg-primary)] border-[var(--border-default)]",
+    "bg-[var(--bg-elevated)] [background-image:linear-gradient(var(--color-success-bg),var(--color-success-bg))] text-[var(--fg-primary)] border-[var(--border-default)]",
   // Subtle error tint that flips in dark mode via the error-surface tokens.
   error:
-    "bg-[var(--color-error-bg)] text-[var(--fg-primary)] border-[var(--color-error-border)]",
+    "bg-[var(--bg-elevated)] [background-image:linear-gradient(var(--color-error-bg),var(--color-error-bg))] text-[var(--fg-primary)] border-[var(--color-error-border)]",
 };
 
 const variantIcon: Record<ToastVariant, React.ReactNode> = {
@@ -198,12 +227,15 @@ const variantIcon: Record<ToastVariant, React.ReactNode> = {
 function ToastItem({
   toast,
   onDismiss,
+  onRemove,
 }: {
   toast: ToastRecord;
   onDismiss: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const {
     id,
+    leaving = false,
     title,
     description,
     variant = "default",
@@ -240,25 +272,42 @@ function ToastItem({
   );
 
   useEffect(() => {
-    if (!autoDismiss) return;
+    if (!autoDismiss || leaving) return;
     remainingRef.current = duration;
     startTimer(duration);
     return clearTimer;
-  }, [autoDismiss, duration, startTimer, clearTimer]);
+  }, [autoDismiss, leaving, duration, startTimer, clearTimer]);
+
+  // Exit: remove on transitionend, with a timeout backstop for when the
+  // event never arrives (background tab, no layout in tests).
+  useEffect(() => {
+    if (!leaving) return;
+    const backstop = setTimeout(() => onRemove(id), EXIT_MS + 100);
+    return () => clearTimeout(backstop);
+  }, [leaving, id, onRemove]);
+
+  const handleTransitionEnd = useCallback(
+    (e: React.TransitionEvent<HTMLDivElement>) => {
+      if (leaving && e.target === e.currentTarget && e.propertyName === "opacity") {
+        onRemove(id);
+      }
+    },
+    [leaving, id, onRemove]
+  );
 
   const pause = useCallback(() => {
-    if (!autoDismiss || timerRef.current === null) return;
+    if (!autoDismiss || leaving || timerRef.current === null) return;
     remainingRef.current = Math.max(
       0,
       remainingRef.current - (Date.now() - startedRef.current)
     );
     clearTimer();
-  }, [autoDismiss, clearTimer]);
+  }, [autoDismiss, leaving, clearTimer]);
 
   const resume = useCallback(() => {
-    if (!autoDismiss || timerRef.current !== null) return;
+    if (!autoDismiss || leaving || timerRef.current !== null) return;
     startTimer(remainingRef.current);
-  }, [autoDismiss, startTimer]);
+  }, [autoDismiss, leaving, startTimer]);
 
   const handleAction = useCallback(() => {
     action?.onClick();
@@ -278,7 +327,16 @@ function ToastItem({
       onMouseLeave={resume}
       onFocus={pause}
       onBlur={resume}
-      className={`pointer-events-auto flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] animate-[toast-in_150ms_ease-out] motion-reduce:animate-none ${variantChrome[variant]}`}
+      onTransitionEnd={handleTransitionEnd}
+      // While leaving, the toast is inert: out of the a11y tree, unfocusable
+      // and click-through. Unlike aria-hidden, inert is allowed on a subtree
+      // that still holds focus (the dismiss button that was just pressed).
+      inert={leaving || undefined}
+      className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
+        leaving
+          ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-fast ease-out motion-reduce:translate-y-0 motion-reduce-fade"
+          : "pointer-events-auto animate-[toast-in_var(--duration-fast)_var(--ease-out)] motion-reduce:animate-[modalFadeIn_var(--duration-fast)_var(--ease-out)] motion-reduce-fade"
+      } ${variantChrome[variant]}`}
     >
       {variantIcon[variant]}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -295,21 +353,23 @@ function ToastItem({
         <button
           type="button"
           onClick={handleAction}
-          className="shrink-0 self-center rounded px-2 py-1 text-xs font-semibold text-[var(--fg-primary)] underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
+          className="shrink-0 self-center rounded px-2 py-1 text-xs font-semibold text-[var(--fg-primary)] underline-offset-2 transition-colors duration-fast hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
         >
           {action.label}
         </button>
       )}
-      <Tooltip label="Dismiss notification">
-        <button
-          type="button"
-          onClick={() => onDismiss(id)}
-          aria-label="Dismiss notification"
-          className="-mr-1 shrink-0 self-start rounded p-1 text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </Tooltip>
+      {/* Compact dismiss: 32px visual, 44px hit area (size="icon-sm"). The
+          negative margins let it overhang the padding instead of growing
+          the toast. */}
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onDismiss(id)}
+        aria-label="Dismiss notification"
+        className="-my-1.5 -mr-1.5 shrink-0 self-start"
+      >
+        <X size={16} strokeWidth={1.75} aria-hidden="true" />
+      </Button>
     </div>
   );
 }

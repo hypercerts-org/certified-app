@@ -38,6 +38,7 @@ import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { countGraphemes } from "@/lib/utils/graphemes"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
 /**
  * `/project/[did]/[rkey]/edit` — full-page project editor. Mirrors
@@ -118,6 +119,15 @@ export default function ProjectEditRoute({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Unsaved-changes guard. "Dirty" = the author has touched a field
+  // (typing anywhere in the article, or an item / location / banner
+  // change) — seeding from the loaded record doesn't count.
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const markInteracted = () => setHasInteracted(true)
+  const isDirty =
+    !isSubmitting && (hasInteracted || !!pendingBannerBlob || bannerRemoved)
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
 
   /** Captured at seed time — the swap-record baseline. */
   const [mountSnapshot, setMountSnapshot] = useState<{
@@ -500,7 +510,9 @@ export default function ProjectEditRoute({
           const res = await authFetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: CollectionValue
@@ -547,6 +559,7 @@ export default function ProjectEditRoute({
   }
 
   const handleCancel = () => {
+    if (!confirmDiscard()) return
     if (did && rkey) {
       router.push(
         recordUrl(did, "project", rkey),
@@ -577,7 +590,10 @@ export default function ProjectEditRoute({
         // 1280px `.project-detail--wide` content area.
         className="edit-banner--project"
       />
-      <article className="project-detail-page project-detail--wide create-project">
+      <article
+        className="project-detail-page project-detail--wide create-project"
+        onInput={markInteracted}
+      >
         <div className="project-detail">
           <div
             className={
@@ -617,6 +633,7 @@ export default function ProjectEditRoute({
                 type="text"
                 className="cert-detail__title-input"
                 aria-label="Title"
+                aria-describedby="edit-project-title-counter"
                 placeholder="Title for your project"
                 value={title}
                 maxLength={TITLE_MAX * 4}
@@ -631,7 +648,7 @@ export default function ProjectEditRoute({
                       ? " create-cert__counter--under"
                       : ""
                 }`}
-                aria-live="polite"
+                id="edit-project-title-counter"
               >
                 {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
               </p>
@@ -645,6 +662,7 @@ export default function ProjectEditRoute({
                 value={shortDescription}
                 placeholder="A short description (one or two lines)…"
                 aria-label="Short description"
+                aria-describedby="edit-project-short-desc-counter"
                 onChange={(e) => setShortDescription(e.target.value)}
                 rows={3}
               />
@@ -652,7 +670,7 @@ export default function ProjectEditRoute({
                 className={`create-cert__counter${
                   shortDescOver ? " create-cert__counter--over" : ""
                 }`}
-                aria-live="polite"
+                id="edit-project-short-desc-counter"
               >
                 {shortDescCount}/{SHORT_DESC_MAX}
               </p>
@@ -689,7 +707,7 @@ export default function ProjectEditRoute({
                     size={14}
                     strokeWidth={1.75}
                     aria-hidden
-                    style={{ flexShrink: 0, color: "var(--fg-muted)" }}
+                    className="shrink-0 text-[var(--fg-muted)]"
                   />
                   <span className="create-project__cert-title">
                     {location.name}
@@ -698,7 +716,10 @@ export default function ProjectEditRoute({
                     type="button"
                     className="create-project__cert-remove"
                     aria-label={`Remove ${location.name}`}
-                    onClick={() => setLocation(null)}
+                    onClick={() => {
+                      markInteracted()
+                      setLocation(null)
+                    }}
                   >
                     <X size={14} strokeWidth={2} aria-hidden />
                   </button>
@@ -739,9 +760,10 @@ export default function ProjectEditRoute({
                       type="button"
                       className="create-project__cert-remove"
                       aria-label={`Remove ${c.title || c.uri}`}
-                      onClick={() =>
+                      onClick={() => {
+                        markInteracted()
                         setItems((rows) => rows.filter((r) => r.uri !== c.uri))
-                      }
+                      }}
                     >
                       <X size={14} strokeWidth={2} aria-hidden />
                     </button>
@@ -811,6 +833,7 @@ export default function ProjectEditRoute({
           targetDid={activeOrg ? activeOrg.groupDid : sessionDid}
           onClose={() => setIsLocationDialogOpen(false)}
           onPick={(added) => {
+            markInteracted()
             setLocation(added)
             setIsLocationDialogOpen(false)
           }}

@@ -244,7 +244,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0;

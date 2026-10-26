@@ -19,6 +19,7 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { formatTimePeriod } from "@/lib/utils/format-date"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import { getInitials } from "@/lib/utils/initials"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
@@ -62,13 +63,14 @@ function FeedCardHead({
   createdAt: string
 }) {
   const { info: lookup } = useAuthorInfo(actor)
-  const actorName =
-    lookup?.displayName ||
-    actorProfile.displayName ||
-    lookup?.handle ||
-    actorProfile.handle ||
-    actor.slice(0, 16)
+  const actorDisplayName = lookup?.displayName || actorProfile.displayName || null
   const actorHandle = lookup?.handle || actorProfile.handle || null
+  // No display name → the @handle takes the name slot and the separate
+  // handle row is dropped, so the handle never shows twice.
+  const actorName =
+    actorDisplayName ||
+    (actorHandle ? `@${actorHandle}` : null) ||
+    actor.slice(0, 16)
   const actorAvatar =
     lookup?.avatarUrl ||
     buildAvatarUrlFromCid(actorProfile.did, actorProfile.avatarCid)
@@ -94,20 +96,21 @@ function FeedCardHead({
       </Link>
       <div className="home-feed__card-head-meta">
         {/* Row 1: display name + relative time pinned right. The
-            @handle gets its own second row below the name. */}
+            @handle gets its own second row below the name (only when
+            there is a display name to sit under). */}
         <p className="home-feed__byline">
-          <Link href={profileHref} className="home-feed__actor">
+          <Link href={profileHref} className="home-feed__actor" dir="auto">
             {actorName}
           </Link>
           <time
             className="home-feed__time"
             dateTime={createdAt}
-            title={createdAt}
+            title={formatAbsoluteDateTime(createdAt)}
           >
             {formatRelativeTime(createdAt)}
           </time>
         </p>
-        {actorHandle ? (
+        {actorDisplayName && actorHandle ? (
           <p className="home-feed__handle">@{actorHandle}</p>
         ) : null}
         <p className="home-feed__sentence">{action}</p>
@@ -262,7 +265,7 @@ function EndorsementGroupSummary({
       {othersCount > 0 ? (
         <>
           {" "}
-          and {othersCount} {othersCount === 1 ? "other" : "others"}
+          and {othersCount.toLocaleString()} {othersCount === 1 ? "other" : "others"}
         </>
       ) : null}
     </>
@@ -353,7 +356,7 @@ function CertTargetSentence({
 function CertTargetName({ did, rkey }: { did: string; rkey: string }) {
   const { activity } = useActivity(did || null, rkey || null)
   const title =
-    typeof activity?.value.title === "string" && activity.value.title.length > 0
+    typeof activity?.value.title === "string" && activity.value.title.trim().length > 0
       ? activity.value.title
       : null
   return <>{title ?? "an activity"}</>
@@ -409,7 +412,7 @@ function TargetSentence({
 function ProjectTargetName({ did, rkey }: { did: string; rkey: string }) {
   const { project } = useProject(did || null, rkey || null)
   const title =
-    typeof project?.value.title === "string" && project.value.title.length > 0
+    typeof project?.value.title === "string" && project.value.title.trim().length > 0
       ? project.value.title
       : typeof project?.value.name === "string" && project.value.name.length > 0
         ? project.value.name
@@ -527,7 +530,7 @@ export function CertPreview({
     ? recordUrl(parsed.did, "activity", parsed.rkey)
     : null
   const title =
-    typeof record.value.title === "string" && record.value.title.length > 0
+    typeof record.value.title === "string" && record.value.title.trim().length > 0
       ? record.value.title
       : "Untitled activity"
   const description =
@@ -558,8 +561,8 @@ export function CertPreview({
         period,
         locationCount > 0 ? (
           <>
-            <MapPin size={11} strokeWidth={1.75} aria-hidden />
-            {`${locationCount} location${locationCount === 1 ? "" : "s"}`}
+            <MapPin size={12} strokeWidth={2} aria-hidden />
+            {`${locationCount.toLocaleString()} location${locationCount === 1 ? "" : "s"}`}
           </>
         ) : null,
       ].filter((m): m is NonNullable<typeof m> => m !== null && m !== undefined)}
@@ -621,7 +624,7 @@ function CollectionPreview({
       imageUrl={imageUrl}
       description={description}
       meta={[
-        itemCount > 0 ? `${itemCount} ${itemNoun}` : null,
+        itemCount > 0 ? `${itemCount.toLocaleString()} ${itemNoun}` : null,
       ].filter((s): s is string => !!s)}
     />
   )
@@ -717,14 +720,14 @@ function PreviewCard({
           {/* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob card image URL; next/image remotePatterns limited to **.certified.app */}
           <img
             src={imageUrl}
-            alt={title ? `Image for ${title}` : ""}
+            alt=""
             loading="lazy"
             onError={hideBrokenCardImage}
           />
         </span>
       ) : null}
       <span className="home-feed__card-title-row">
-        <span className="home-feed__card-title">{title}</span>
+        <span className="home-feed__card-title" dir="auto">{title}</span>
         {tags?.map((t) => (
           <Badge key={t.key} variant="tag" shape="square" tone={t.tone}>
             {t.label}
@@ -732,7 +735,7 @@ function PreviewCard({
         ))}
       </span>
       {description ? (
-        <span className="home-feed__card-desc">{description}</span>
+        <span className="home-feed__card-desc" dir="auto">{description}</span>
       ) : null}
       {meta.length > 0 ? (
         <span className="home-feed__card-meta">

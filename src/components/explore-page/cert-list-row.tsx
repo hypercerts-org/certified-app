@@ -59,7 +59,7 @@ function CertListRow({
           className="cert-list-row__img-fallback"
         />
       }
-      title={value.title}
+      title={value.title?.trim() || "Untitled activity"}
       metaItems={metaItems}
       authorDid={showByline ? did : null}
       timestampIso={

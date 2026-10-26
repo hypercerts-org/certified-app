@@ -94,11 +94,11 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   const handleSave = async () => {
     const trimmed = newHandle.trim().toLowerCase();
     if (!trimmed) {
-      setError("Username cannot be empty.");
+      setError("Handle cannot be empty.");
       return;
     }
     if (trimmed.length < 3 || trimmed.length > 18) {
-      setError("Username must be 3-18 characters.");
+      setError("Handle must be 3-18 characters.");
       return;
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(trimmed) && trimmed.length > 2) {
@@ -111,11 +111,11 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
   const handleSaveCertified = async () => {
     const sub = subdomainValue.toLowerCase().trim();
     if (!sub) {
-      setError("Username cannot be empty.");
+      setError("Handle cannot be empty.");
       return;
     }
     if (sub.length < 3 || sub.length > 18) {
-      setError("Username must be 3-18 characters.");
+      setError("Handle must be 3-18 characters.");
       return;
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(sub) && sub.length > 2) {
@@ -154,12 +154,12 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
         const data = await res.json().catch(() => ({}));
         const msg = (data as { error?: string; message?: string }).message
           || (data as { error?: string }).error
-          || res.statusText;
+          || "Couldn't change your handle. Try again.";
         if (msg.includes("already") || msg.includes("taken")) {
-          throw new Error("This username is already taken. Try another one.");
+          throw new Error("This handle is already taken. Try another one.");
         }
         if (msg.includes("slur") || msg.includes("reserved")) {
-          throw new Error("This username is not available.");
+          throw new Error("This handle is not available.");
         }
         throw new Error(msg);
       }
@@ -167,7 +167,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
       clearSessionCache();
       window.location.reload();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to update username.";
+      const msg = err instanceof Error ? err.message : "Couldn't change your handle. Try again.";
       setError(msg);
     } finally {
       setIsSaving(false);
@@ -183,11 +183,16 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {/* Inline edit for certs handle */}
           {isEditing && (
             <div className="username-card__form">
-              <label className="username-card__form-label" htmlFor="username-input">{groupDid ? "Handle" : "Username"}</label>
+              <label className="username-card__form-label" htmlFor="username-input">Handle</label>
               <div className="username-card__subdomain-row">
                 <input
                   id="username-input"
                   type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  aria-describedby={error ? "username-hint username-error" : "username-hint"}
+                  aria-invalid={error ? true : undefined}
                   className="username-card__subdomain-input"
                   value={newHandle}
                   onChange={(e) => setNewHandle(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))}
@@ -196,9 +201,9 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
                 />
                 <span className="username-card__subdomain-suffix">.{pdsHostname}</span>
               </div>
-              <p className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
+              <p id="username-hint" className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
               {error && (
-                <p className="username-card__error" role="alert">{error}</p>
+                <p id="username-error" className="username-card__error" role="alert">{error}</p>
               )}
               <div className="username-card__actions">
                 <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
@@ -214,11 +219,16 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
           {/* Subdomain picker for switching back to certs */}
           {isChoosingCertified && (
             <div className="username-card__form">
-              <label className="username-card__form-label" htmlFor="certs-username-input">Choose a Certified username</label>
+              <label className="username-card__form-label" htmlFor="certs-username-input">Choose a Certified handle</label>
               <div className="username-card__subdomain-row">
                 <input
                   id="certs-username-input"
                   type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoCapitalize="none"
+                  aria-describedby={error ? "certs-username-hint certs-username-error" : "certs-username-hint"}
+                  aria-invalid={error ? true : undefined}
                   className="username-card__subdomain-input"
                   value={subdomainValue}
                   onChange={(e) => setSubdomainValue(e.target.value.replace(/[^a-zA-Z0-9-]/g, ""))}
@@ -227,9 +237,9 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
                 />
                 <span className="username-card__subdomain-suffix">.{pdsHostname}</span>
               </div>
-              <p className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
+              <p id="certs-username-hint" className="username-card__subdomain-hint">3-18 characters. Letters, numbers, and hyphens only.</p>
               {error && (
-                <p className="username-card__error" role="alert">{error}</p>
+                <p id="certs-username-error" className="username-card__error" role="alert">{error}</p>
               )}
               <div className="username-card__actions">
                 <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSaving}>
@@ -246,7 +256,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
               domain-switch buttons). The custom-domain buttons are gated
               OFF in group context (groupDid set): that flow writes the
               handle via the personal XRPC updateHandle endpoint, which is
-              wrong for a group repo. The "Use a Certified username"
+              wrong for a group repo. The "Use a Certified handle"
               button is kept — it routes through the group-aware path. */}
           {!showingForm && (
             <div className="settings-field">
@@ -262,10 +272,10 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
                   <CopyPill
                     value={handle}
                     display={`@${handle}`}
-                    label="username"
+                    label="handle"
                   />
                 ) : (
-                  <span className="settings-field__value">@...</span>
+                  <span className="settings-field__value">@…</span>
                 )}
               </span>
               {isCertifiedHandle && (
@@ -307,7 +317,7 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
                         type="button"
                       >
                         <AtSign size={14} aria-hidden="true" />
-                        Use a Certified username
+                        Use a Certified handle
                       </button>
                     </>
                   )}

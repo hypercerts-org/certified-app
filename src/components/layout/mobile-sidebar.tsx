@@ -168,6 +168,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 key={link.href}
                 href={link.href!}
                 className={`mobile-sidebar__link ${isActive ? "mobile-sidebar__link--active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
                 onClick={onClose}
               >
                 <link.icon size={20} strokeWidth={isActive ? 2 : 1.5} />

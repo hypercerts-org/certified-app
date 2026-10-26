@@ -28,7 +28,7 @@ export default function DsaPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
-        <div className="prose max-w-none space-y-8">
+        <div className="legal-prose space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About this page</h2>
             <p>
@@ -62,7 +62,7 @@ export default function DsaPage() {
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -84,7 +84,7 @@ export default function DsaPage() {
               <br />
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -101,7 +101,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -130,7 +130,7 @@ export default function DsaPage() {
             <p className="mt-2">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -198,7 +198,7 @@ export default function DsaPage() {
             </h2>
             <p>
               As described in the{" "}
-              <Link href="/terms" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/terms" className="legal-link">
                 Terms of Service
               </Link>
               , the Hypercerts Foundation may restrict access to content or suspend accounts in
@@ -262,7 +262,7 @@ export default function DsaPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>

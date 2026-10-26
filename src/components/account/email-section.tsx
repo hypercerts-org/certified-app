@@ -224,7 +224,16 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   if (state === "form") {
     return (
       <div className="dash-card">
-        <div className="password-section--form">
+        {/* A real <form> so Enter submits; noValidate keeps our own
+            validation messages in charge. */}
+        <form
+          className="password-section--form"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+        >
           <p className="password-section__hint">
             {tokenRequired
               ? `We sent a confirmation code to ${currentEmail}. Enter it with your new email address.`
@@ -267,7 +276,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
             </Banner>
           )}
           <div className="password-section__actions">
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
             <Button
@@ -279,7 +288,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
               Cancel
             </Button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -287,7 +296,14 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   if (state === "confirm") {
     return (
       <div className="dash-card">
-        <div className="password-section--form">
+        <form
+          className="password-section--form"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleConfirm();
+          }}
+        >
           <p className="password-section__hint">
             Your email is now <strong>{currentEmail}</strong>, but it isn&rsquo;t
             confirmed yet. Enter the code we sent there to confirm it. Until you
@@ -310,18 +326,18 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
             </Banner>
           )}
           <div className="password-section__actions">
-            <Button size="sm" onClick={handleConfirm} disabled={saving}>
+            <Button size="sm" type="submit" disabled={saving}>
               {saving ? "Confirming…" : "Confirm email"}
             </Button>
-            <button
-              type="button"
-              className="username-card__domain-btn"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => void startConfirmation()}
               disabled={saving}
             >
               <RefreshCw size={14} aria-hidden="true" />
               Resend code
-            </button>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -331,7 +347,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
               Use a different email
             </Button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -368,7 +384,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         </Banner>
       )}
       {state === "success" && (
-        <p className="password-section__status password-section__status--success">
+        <p className="password-section__status password-section__status--success" role="status">
           Email confirmed.
         </p>
       )}

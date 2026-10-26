@@ -33,6 +33,11 @@ export interface EmptyStateProps {
    * present) and CTA slot follow inline so the whole hint reads as one line.
    */
   variant?: "rich" | "inline" | "compact";
+  /**
+   * Heading level for the `"rich"` title (default 3). Set it to fit the
+   * surrounding outline, e.g. 1 when the empty state IS the page (404).
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 /**
@@ -50,7 +55,9 @@ export default function EmptyState({
   children,
   className = "",
   variant = "rich",
+  headingLevel = 3,
 }: EmptyStateProps) {
+  const Heading = `h${headingLevel}` as const;
   if (variant === "inline" || variant === "compact") {
     // Truly minimal: icon-less, single-line, muted. Mirrors the inline
     // `*__empty` hints (text-sm + --fg-muted, zero margin, no centering, no
@@ -84,14 +91,14 @@ export default function EmptyState({
           className="mb-4 text-[var(--fg-muted)] opacity-50"
           aria-hidden="true"
         >
-          <Icon size={40} strokeWidth={1.2} />
+          <Icon size={40} strokeWidth={1.25} />
         </div>
       )}
-      <h3 className="mb-2 font-headline text-[1.125rem] font-semibold text-[var(--fg-primary)]">
+      <Heading className="mb-2 font-headline text-h4 text-[var(--fg-primary)]">
         {title}
-      </h3>
+      </Heading>
       {description && (
-        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-[var(--fg-muted)]">
+        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-pretty text-[var(--fg-muted)]">
           {description}
         </p>
       )}

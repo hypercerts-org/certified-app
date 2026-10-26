@@ -7,7 +7,7 @@ import AppDialog, { AppDialogHeader } from "./app-dialog"
 import { DIALOG_FOOTER_ACTIONS_CLASS } from "./form-dialog"
 
 interface DeleteRecordDialogProps {
-  /** Modal title — e.g. "Delete this cert" / "Delete this project". */
+  /** Modal title — e.g. "Delete activity?" / "Delete project?". */
   readonly title: string
   /** The exact display name the user has to type before Delete
    *  enables. Compared case-sensitively against the input, trimmed. */

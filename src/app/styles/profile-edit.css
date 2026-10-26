@@ -86,10 +86,10 @@
   left: 16px;
   bottom: -36px;
   padding: 4px;
-  background: var(--bg-default);
+  background: var(--bg-canvas);
   border-radius: 999px;
   line-height: 0;
-  box-shadow: 0 0 0 1px var(--border-subtle);
+  box-shadow: var(--shadow-outline-subtle);
 }
 
 /* ------------------------------------------------------------------------
@@ -167,6 +167,18 @@
   min-width: 0;
 }
 
+/* "Additional URLs" groups its rows in a fieldset; drop the UA chrome. */
+fieldset.pe__field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+fieldset.pe__field > legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
 .pe__label {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.8125rem;
@@ -182,7 +194,6 @@
   font-size: 0.6875rem;
   font-weight: 400;
   color: var(--fg-muted);
-  letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -238,29 +249,6 @@
   color: var(--fg-primary);
 }
 
-.pe__url-add {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-  padding: 6px 8px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-secondary, var(--fg-primary));
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.pe__url-add:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
 .pe__url-empty {
   font-size: 0.8125rem;
   color: var(--fg-muted);
@@ -297,7 +285,7 @@
      with the fields above. */
   margin: 24px -32px 0;
   padding: 12px 32px;
-  background: var(--bg-default);
+  background: var(--navbar-bg);
   border-top: 1px solid var(--border-subtle);
   /* A subtle blur so content scrolling under the footer doesn't read as
      hard-cut. Falls back to the solid bg when backdrop-filter is unsupported. */
@@ -311,51 +299,6 @@
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-}
-
-.pe__action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: var(--radius);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast),
-    opacity var(--transition-fast);
-  gap: 8px;
-}
-
-.pe__action-btn--ghost {
-  background: transparent;
-  border: 1px solid var(--border-default);
-  color: var(--fg-secondary, var(--fg-primary));
-}
-
-.pe__action-btn--ghost:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.pe__action-btn--primary {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-  border: 1px solid var(--btn-primary-bg);
-}
-
-.pe__action-btn--primary:hover:not(:disabled) {
-  opacity: 0.92;
-}
-
-.pe__action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* ------------------------------------------------------------------------
@@ -395,6 +338,12 @@
 
   .pe__url-row > :nth-child(3) {
     grid-area: remove;
+  }
+
+  /* The column gutter is 16px below 800px (components.css), not 32px. */
+  .pe__footer {
+    margin: 24px -16px 0;
+    padding: 12px 16px;
   }
 
   .pe__footer-inner {

@@ -17,15 +17,14 @@
 .workspace__eyebrow {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
 }
 
+/* Type comes from `font-headline text-h2` on the element. */
 .workspace__title {
   margin: 4px 0 6px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
   color: var(--fg-primary);
 }
 
@@ -61,10 +60,9 @@
   color: var(--fg-primary);
 }
 
+/* Type comes from `font-headline text-h4` on the element. */
 .wks-pane__heading {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
 }
 
 .wks-pane__lede {
@@ -218,7 +216,8 @@
 .wks-notion__section-label {
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
   padding: 0 8px 4px;
 }

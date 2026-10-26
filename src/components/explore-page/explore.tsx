@@ -20,7 +20,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import EmptyState from "@/components/ui/empty-state"
 import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import CertListRow from "./cert-list-row"
@@ -451,21 +453,16 @@ function ExploreMain({
                 />
               )}
               <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
-                <Tooltip label="Sort">
-                  <PopoverTrigger>
-                    <button
-                      type="button"
-                      className="explore__chrome-btn explore__chrome-btn--icon"
-                      aria-label="Sort"
-                    >
-                      <ArrowUpDown
-                        size={13}
-                        strokeWidth={1.75}
-                        aria-hidden
-                      />
-                    </button>
-                  </PopoverTrigger>
-                </Tooltip>
+                <PopoverTrigger>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="explore__chrome-btn--icon"
+                    aria-label="Sort"
+                  >
+                    <ArrowUpDown size={14} strokeWidth={1.75} aria-hidden />
+                  </Button>
+                </PopoverTrigger>
                 <PopoverContent align="end">
                   {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
                     (s) => (
@@ -480,14 +477,13 @@ function ExploreMain({
                     ),
                   )}
                   <hr className="popover__divider" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="popover__reset-btn"
+                  <PopoverItem
+                    className="popover__item--quiet"
                     onClick={onResetSort}
                     disabled={sort === "newest"}
                   >
                     Reset to default
-                  </button>
+                  </PopoverItem>
                 </PopoverContent>
               </UiPopover>
 
@@ -618,6 +614,7 @@ function ExploreFilterSidebar({
             <button
               type="button"
               className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+              aria-current={activeFilter === f.key ? "true" : undefined}
               data-filter-key={f.key}
               onClick={onFilterClick}
             >
@@ -636,6 +633,7 @@ function ExploreFilterSidebar({
                 <button
                   type="button"
                   className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
+                  aria-current={activeFilter === f.key ? "true" : undefined}
                   data-filter-key={f.key}
                   onClick={onFilterClick}
                 >
@@ -916,6 +914,8 @@ function ExploreAllBlocks() {
               title="Activities"
               icon={CertIcon}
               isLoading={activities.isLoading}
+              error={activities.error}
+              onRetry={activities.refetch}
               isEmpty={activityItems.length === 0}
               onShowAll={() => setShow("activities")}
             >
@@ -935,6 +935,8 @@ function ExploreAllBlocks() {
               title="Projects"
               icon={FolderGit2}
               isLoading={projects.isLoading}
+              error={projects.error}
+              onRetry={projects.refetch}
               isEmpty={projectItems.length === 0}
               onShowAll={() => setShow("projects")}
             >
@@ -951,6 +953,8 @@ function ExploreAllBlocks() {
               title="Accounts"
               icon={Users}
               isLoading={accounts.isLoading}
+              error={accounts.error}
+              onRetry={accounts.refetch}
               isEmpty={accountItems.length === 0}
               onShowAll={() => setShow("accounts")}
             >
@@ -967,6 +971,8 @@ function ExploreAllBlocks() {
               title="Funding"
               icon={HandCoins}
               isLoading={funding.isLoading}
+              error={funding.error}
+              onRetry={funding.refetch}
               isEmpty={fundingItems.length === 0}
               onShowAll={() => setShow("funding")}
             >
@@ -1074,8 +1080,6 @@ function AllCategoryPills({
             <button
               type="button"
               className="explore__category-pill explore__category-pill--active"
-              aria-haspopup="listbox"
-              aria-expanded={categoryOpen}
             >
               {active.label}
               <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
@@ -1097,16 +1101,15 @@ function AllCategoryPills({
             {otherCategories.length > 0 && (
               <hr className="popover__divider" aria-hidden="true" />
             )}
-            <button
-              type="button"
-              className="popover__reset-btn"
+            <PopoverItem
+              className="popover__item--quiet"
               onClick={() => {
                 setShow("all")
                 setCategoryOpen(false)
               }}
             >
               Show all
-            </button>
+            </PopoverItem>
           </PopoverContent>
         </UiPopover>
 
@@ -1118,8 +1121,6 @@ function AllCategoryPills({
                 <button
                   type="button"
                   className={`explore__category-pill${activeSub.key !== "all" ? " explore__category-pill--active" : ""}`}
-                  aria-haspopup="listbox"
-                  aria-expanded={subOpen}
                 >
                   {activeSub.label}
                   <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
@@ -1141,16 +1142,15 @@ function AllCategoryPills({
                 {activeSub.key !== "all" && (
                   <>
                     <hr className="popover__divider" aria-hidden="true" />
-                    <button
-                      type="button"
-                      className="popover__reset-btn"
+                    <PopoverItem
+                      className="popover__item--quiet"
                       onClick={() => {
                         onSubChange!("all")
                         setSubOpen(false)
                       }}
                     >
                       Show all
-                    </button>
+                    </PopoverItem>
                   </>
                 )}
               </PopoverContent>
@@ -1203,7 +1203,7 @@ function AllCategoryDropdown({
               display:contents and so has no rect for the spotlight to find. */}
           <button type="button" className="explore__sub-dropdown-trigger" data-tour="explore-category">
             <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
           </button>
         </PopoverTrigger>
       </Tooltip>
@@ -1234,6 +1234,8 @@ function AllSection({
   icon: Icon,
   isLoading,
   isEmpty,
+  error = false,
+  onRetry,
   onShowAll,
   children,
 }: {
@@ -1241,6 +1243,9 @@ function AllSection({
   icon: SectionIcon
   isLoading: boolean
   isEmpty: boolean
+  /** The block's fetch failed: show a retry instead of "No … found". */
+  error?: boolean
+  onRetry?: () => void
   /** Collapses the All view to this single category. The "Show all"
    *  control renders in the section header (matching the project
    *  detail page's "See all →" affordance) only when there's content
@@ -1255,14 +1260,14 @@ function AllSection({
           <Icon size={14} strokeWidth={1.75} aria-hidden />
           {title}
         </h2>
-        {!isLoading && !isEmpty ? (
+        {!isLoading && !isEmpty && !error ? (
           <button
             type="button"
             className="explore__all-section-action"
             onClick={onShowAll}
           >
             Show all
-            <ChevronRight size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -1270,6 +1275,17 @@ function AllSection({
         <div className="explore__all-loading">
           <LoadingSpinner size="sm" />
         </div>
+      ) : error ? (
+        <EmptyState
+          variant="inline"
+          title={`Couldn't load ${title.toLowerCase()}.`}
+        >
+          {onRetry ? (
+            <Button variant="ghost" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          ) : null}
+        </EmptyState>
       ) : isEmpty ? (
         <p className="explore__all-empty">No {title.toLowerCase()} found</p>
       ) : (
@@ -1380,7 +1396,7 @@ function EndorsementDegreeBar({
           role="status"
           aria-live="polite"
         >
-          Building your endorsement graph — results in a moment.
+          Building your endorsement network — results in a moment.
         </p>
       ) : null}
     </div>
@@ -1399,7 +1415,6 @@ function LoadMoreSentinel({
       onLoadMore={onLoadMore}
       isLoading={isLoading}
       className="explore__load-more"
-      buttonClassName="explore__load-more-btn"
     />
   )
 }
@@ -1437,7 +1452,7 @@ function SubPrefixDropdown({
         <PopoverTrigger>
           <button type="button" className="explore__sub-dropdown-trigger">
             <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={13} strokeWidth={1.75} aria-hidden />
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
           </button>
         </PopoverTrigger>
       </Tooltip>

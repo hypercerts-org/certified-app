@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useId } from "react"
+import React, { useId, useState } from "react"
 import { useBskyPosts, type BskyPost } from "@/hooks/use-bsky-posts"
 import { formatRelativeTime } from "@/lib/atproto/activity"
+import { formatShortDate } from "@/lib/utils/format-date"
 import { rkeyFromUri } from "@/lib/urls"
+import Button from "@/components/ui/button"
 import RichText from "./rich-text"
 
 const DEFAULT_ACTOR = "certified.app"
@@ -29,20 +31,40 @@ export default function NewsSection({
   actor = DEFAULT_ACTOR,
   heading = "News",
 }: NewsSectionProps = {}) {
-  const { posts, hasMore, isLoading, isLoadingMore, error, loadMore } =
-    useBskyPosts(actor)
   const headingId = useId()
+  // Bumping the key remounts the feed, which re-runs useBskyPosts' initial
+  // fetch: the "Try again" path for a failed load.
+  const [attempt, setAttempt] = useState(0)
 
   return (
     <section className="right-rail__section" aria-labelledby={headingId}>
       <h2 id={headingId} className="right-rail__heading">
         {heading}
       </h2>
+      <NewsFeed
+        key={attempt}
+        actor={actor}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
+    </section>
+  )
+}
 
+function NewsFeed({ actor, onRetry }: { actor: string; onRetry: () => void }) {
+  const { posts, hasMore, isLoading, isLoadingMore, error, loadMore } =
+    useBskyPosts(actor)
+
+  return (
+    <>
       {isLoading && posts.length === 0 ? (
         <p className="right-rail__empty">Loading…</p>
       ) : error && posts.length === 0 ? (
-        <p className="right-rail__empty">Couldn&apos;t load posts.</p>
+        <>
+          <p className="right-rail__empty">Couldn&apos;t load posts.</p>
+          <Button variant="ghost" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </>
       ) : posts.length === 0 ? (
         <p className="right-rail__empty">No posts yet.</p>
       ) : (
@@ -66,7 +88,7 @@ export default function NewsSection({
           ) : null}
         </>
       )}
-    </section>
+    </>
   )
 }
 
@@ -126,7 +148,10 @@ function NewsPost({ post }: { post: BskyPost }) {
         rel="noopener noreferrer"
         className="news__time-link"
       >
-        <time dateTime={post.record.createdAt}>
+        <time
+          dateTime={post.record.createdAt}
+          title={formatShortDate(post.record.createdAt)}
+        >
           {formatRelativeTime(post.record.createdAt)}
         </time>
       </a>

@@ -251,7 +251,11 @@ export default function ActivityEditRoute({
       signal: controller.signal,
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`listRecords failed: ${res.status}`)
+        if (!res.ok) {
+          throw new Error(
+            "Couldn't load the rights options. Reload the page to try again.",
+          )
+        }
         const body = (await res.json()) as {
           records?: Array<{
             uri: string
@@ -276,7 +280,9 @@ export default function ActivityEditRoute({
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
         setRightsLoadError(
-          err instanceof Error ? err.message : "Failed to load rights",
+          err instanceof Error
+            ? err.message
+            : "Couldn't load the rights options. Reload the page to try again.",
         )
       })
       .finally(() => {
@@ -513,7 +519,7 @@ export default function ActivityEditRoute({
             <EmptyState
               icon={PenLine}
               title="Can't edit right now"
-              description="We couldn't reach this record's home server, so we only have a partial copy. Try again once it's reachable to avoid losing details."
+              description="We couldn't load the full activity, so editing now could lose details. Try again in a minute."
             />
           </div>
         </div>
@@ -742,7 +748,9 @@ export default function ActivityEditRoute({
           const res = await fetch(
             `/api/xrpc/com/atproto/repo/getRecord?${qs.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: ClaimActivity
@@ -857,7 +865,7 @@ export default function ActivityEditRoute({
           <dl className="cert-detail__meta">
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
+                <Calendar size={12} strokeWidth={2} aria-hidden />
                 Time period
               </dt>
               <dd className="cert-detail__meta-value">
@@ -893,7 +901,7 @@ export default function ActivityEditRoute({
 
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
-                <Target size={11} strokeWidth={2} aria-hidden />
+                <Target size={12} strokeWidth={2} aria-hidden />
                 Work scope
               </dt>
               <dd className="cert-detail__meta-value">
@@ -911,7 +919,7 @@ export default function ActivityEditRoute({
 
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
-                <MapPin size={11} strokeWidth={2} aria-hidden />
+                <MapPin size={12} strokeWidth={2} aria-hidden />
                 Locations
                 {locations.length > 0 ? (
                   <span className="cert-detail__meta-count">
@@ -960,7 +968,7 @@ export default function ActivityEditRoute({
 
             <div className="cert-detail__meta-row">
               <dt className="cert-detail__meta-label">
-                <FileText size={11} strokeWidth={2} aria-hidden />
+                <FileText size={12} strokeWidth={2} aria-hidden />
                 Rights
               </dt>
               <dd className="cert-detail__meta-value">
@@ -1207,7 +1215,7 @@ export default function ActivityEditRoute({
                           className="create-cert__contrib-error"
                           role="alert"
                         >
-                          Use a DID (did:plc:…) or a handle (alice.bsky.social).
+                          Use a handle like alice.bsky.social.
                         </p>
                       ) : identityDuplicate ? (
                         <p

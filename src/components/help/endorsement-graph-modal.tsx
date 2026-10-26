@@ -16,8 +16,8 @@ export default function EndorsementGraphModal({
   onClose: () => void;
 }) {
   return (
-    <AppDialog ariaLabel="Endorsement graph" maxWidth="96vw" onClose={onClose}>
-      <AppDialogHeader title="Endorsement graph" onClose={onClose} />
+    <AppDialog ariaLabel="Endorsement network" maxWidth="96vw" onClose={onClose}>
+      <AppDialogHeader title="Endorsement network" onClose={onClose} />
       {/* `.viz` carries its own 16px gutter, so zero the body padding. */}
       <div className="endorsement-graph-modal__body">
         <Visualization />

@@ -45,6 +45,8 @@ interface ReceivedGridProps {
   total: number
   isLoading: boolean
   error: string | null
+  /** Re-runs the load; shows a "Try again" button on error. */
+  onRetry?: () => void
   viewerIsOwner: boolean
   viewerDid: string | null
   /** Group DID when acting AS this group — accept/reject responses route
@@ -60,11 +62,30 @@ interface ReceivedGridProps {
   onAfterWrite: () => void | Promise<void>
 }
 
+/** Shared load-error state for the four endorsement views. The hook's
+ *  error text is technical, so it stays out of the UI. */
+function LoadError({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <EmptyState
+      icon={Inbox}
+      title="Couldn't load endorsements"
+      description="Something went wrong on our side. Try again in a moment."
+    >
+      {onRetry ? (
+        <Button variant="secondary" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      ) : null}
+    </EmptyState>
+  )
+}
+
 export function ReceivedGrid({
   visible,
   total,
   isLoading,
   error,
+  onRetry,
   viewerIsOwner,
   viewerDid,
   targetDid,
@@ -83,11 +104,7 @@ export function ReceivedGrid({
   if (error) {
     return (
       <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={Inbox}
-          title="Couldn’t load endorsements"
-          description={error}
-        />
+        <LoadError onRetry={onRetry} />
       </div>
     )
   }
@@ -194,6 +211,8 @@ interface GivenGridProps {
   total: number
   isLoading: boolean
   error: string | null
+  /** Re-runs the load; shows a "Try again" button on error. */
+  onRetry?: () => void
   /** True when the profile being viewed is the signed-in user's
    *  own profile — i.e. the cards represent endorsements THEY
    *  issued. Controls whether the per-card revoke `×` renders. */
@@ -210,6 +229,7 @@ export function GivenGrid({
   total,
   isLoading,
   error,
+  onRetry,
   viewerIsOwner,
   viewerDid,
   targetDid,
@@ -225,11 +245,7 @@ export function GivenGrid({
   if (error) {
     return (
       <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={Inbox}
-          title="Couldn’t load endorsements"
-          description={error}
-        />
+        <LoadError onRetry={onRetry} />
       </div>
     )
   }
@@ -367,7 +383,7 @@ function RevokeGivenButton({
         <ConfirmDialog
           title={`Revoke endorsement of ${subjectDisplay}?`}
           message="Your endorsement will be removed from this profile. You can endorse them again later."
-          confirmLabel="Revoke"
+          confirmLabel="Revoke endorsement"
           cancelLabel="Keep endorsement"
           confirmVariant="destructive"
           isConfirming={isRevoking}
@@ -495,6 +511,7 @@ export function GivenList({
   total,
   isLoading,
   error,
+  onRetry,
   viewerIsOwner,
   viewerDid,
   targetDid,
@@ -507,6 +524,8 @@ export function GivenList({
   total: number
   isLoading: boolean
   error: string | null
+  /** Re-runs the load; shows a "Try again" button on error. */
+  onRetry?: () => void
   viewerIsOwner: boolean
   viewerDid: string | null
   targetDid?: string
@@ -524,7 +543,7 @@ export function GivenList({
   }
   if (error) {
     return (
-      <EmptyState icon={Inbox} title="Couldn’t load endorsements" description={error} />
+      <LoadError onRetry={onRetry} />
     )
   }
   if (visible.length === 0) {
@@ -621,6 +640,7 @@ export function ReceivedList({
   total,
   isLoading,
   error,
+  onRetry,
   responseFilter,
   viewerIsOwner,
   viewerDid,
@@ -636,6 +656,8 @@ export function ReceivedList({
   total: number
   isLoading: boolean
   error: string | null
+  /** Re-runs the load; shows a "Try again" button on error. */
+  onRetry?: () => void
   responseFilter: ResponseFilterKey
   viewerIsOwner: boolean
   viewerDid: string | null
@@ -656,7 +678,7 @@ export function ReceivedList({
   }
   if (error) {
     return (
-      <EmptyState icon={Inbox} title="Couldn’t load endorsements" description={error} />
+      <LoadError onRetry={onRetry} />
     )
   }
   if (visible.length === 0) {

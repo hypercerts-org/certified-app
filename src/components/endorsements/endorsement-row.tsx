@@ -1,8 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 import EndorsementSubjectRow, {
   type EndorsementSubjectRowClasses,
 } from "@/components/endorsements/endorsement-subject-row"
@@ -64,17 +63,17 @@ export default function EndorsementRow({
         classes={ROW_CLASSES}
         trailing={
           onRevoke ? (
-            <Tooltip label="Revoke endorsement">
-              <button
-                type="button"
-                className="endorsement-row__revoke"
-                onClick={onRevoke}
-                disabled={isRevoking}
-                aria-label={`Revoke endorsement of ${displayName}`}
-              >
-                {isRevoking ? <LoadingSpinner size="sm" /> : <X size={16} />}
-              </button>
-            </Tooltip>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="endorsement-row__revoke"
+              onClick={onRevoke}
+              loading={isRevoking}
+              aria-label={`Revoke endorsement of ${displayName}`}
+              tooltip="Revoke endorsement"
+            >
+              <X size={16} aria-hidden />
+            </Button>
           ) : null
         }
       />

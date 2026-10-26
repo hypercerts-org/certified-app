@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { parseAtUri, recordUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -23,7 +23,10 @@ import {
 import type { HypercertsLargeImage } from "@/lib/atproto/types"
 import { usePageTitle } from "@/lib/navbar-context"
 import { countGraphemes } from "@/lib/utils/graphemes"
+import { isEmptyLongDescription } from "@/lib/leaflet/guards"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -102,6 +105,18 @@ export default function CreateProjectPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isDirty =
+    !isSubmitting &&
+    (title.trim() !== "" ||
+      shortDescription.trim() !== "" ||
+      !isEmptyLongDescription(description) ||
+      items.length > 0 ||
+      !!location ||
+      !!pendingBannerBlob)
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const shortDescRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     return () => {
@@ -190,8 +205,8 @@ export default function CreateProjectPage() {
           <div className="dashboard__main">
             <EmptyState
               icon={FolderGit2}
-              title="Sign in to create"
-              description="You need to be signed in to create a project."
+              title="Sign in to create a project"
+              description="Projects are published under your Certified account."
             />
           </div>
         </div>
@@ -202,10 +217,25 @@ export default function CreateProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!did) return
+    // Publish stays enabled so a click always explains itself: name the
+    // unmet rule and focus its field.
     const trimT = countGraphemes(title.trim())
-    if (trimT < TITLE_MIN) return
-    if (titleCount > TITLE_MAX) return
-    if (shortDescCount > SHORT_DESC_MAX) return
+    if (trimT < TITLE_MIN || titleCount > TITLE_MAX) {
+      setError(
+        trimT < TITLE_MIN
+          ? `The title needs at least ${TITLE_MIN} characters.`
+          : `The title must be ${TITLE_MAX} characters or fewer.`,
+      )
+      titleInputRef.current?.focus()
+      return
+    }
+    if (shortDescCount > SHORT_DESC_MAX) {
+      setError(
+        `The short description must be ${SHORT_DESC_MAX} characters or fewer.`,
+      )
+      shortDescRef.current?.focus()
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -274,7 +304,13 @@ export default function CreateProjectPage() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || `Failed: ${res.status}`)
+        throw new Error(
+          toUserErrorMessage(
+            res.status,
+            data.error,
+            "Couldn't publish your project. Your draft is still here; try again",
+          ),
+        )
       }
 
       const uri: unknown = data?.uri
@@ -296,11 +332,6 @@ export default function CreateProjectPage() {
   const titleUnder = trimmedTitleCount > 0 && trimmedTitleCount < TITLE_MIN
   const titleOver = titleCount > TITLE_MAX
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
-  const canSubmit =
-    trimmedTitleCount >= TITLE_MIN &&
-    titleCount <= TITLE_MAX &&
-    shortDescCount <= SHORT_DESC_MAX &&
-    !isSubmitting
 
   return (
     <form onSubmit={handleSubmit}>
@@ -342,8 +373,10 @@ export default function CreateProjectPage() {
             <div className="create-cert__input-with-counter">
               <input
                 type="text"
+                ref={titleInputRef}
                 className="cert-detail__title-input"
                 aria-label="Title"
+                aria-describedby="new-project-title-counter"
                 placeholder="Title for your project"
                 value={title}
                 maxLength={TITLE_MAX * 4}
@@ -358,7 +391,7 @@ export default function CreateProjectPage() {
                       ? " create-cert__counter--under"
                       : ""
                 }`}
-                aria-live="polite"
+                id="new-project-title-counter"
               >
                 {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
               </p>
@@ -368,7 +401,9 @@ export default function CreateProjectPage() {
           <section className="cert-detail__section">
             <div className="create-cert__input-with-counter">
               <textarea
+                ref={shortDescRef}
                 className="cert-detail__short-desc-input"
+                aria-describedby="new-project-short-desc-counter"
                 value={shortDescription}
                 placeholder="A short description (one or two lines)…"
                 aria-label="Short description"
@@ -379,7 +414,7 @@ export default function CreateProjectPage() {
                 className={`create-cert__counter${
                   shortDescOver ? " create-cert__counter--over" : ""
                 }`}
-                aria-live="polite"
+                id="new-project-short-desc-counter"
               >
                 {shortDescCount}/{SHORT_DESC_MAX}
               </p>
@@ -416,7 +451,7 @@ export default function CreateProjectPage() {
                     size={14}
                     strokeWidth={1.75}
                     aria-hidden
-                    style={{ flexShrink: 0, color: "var(--fg-muted)" }}
+                    className="shrink-0 text-[var(--fg-muted)]"
                   />
                   <span className="create-project__cert-title">
                     {location.name}
@@ -555,6 +590,7 @@ export default function CreateProjectPage() {
               type="button"
               variant="ghost"
               onClick={() => {
+                if (!confirmDiscard()) return
                 if (arrivedFromInApp) router.back()
                 else router.push("/")
               }}
@@ -566,7 +602,7 @@ export default function CreateProjectPage() {
               type="submit"
               variant="primary"
               loading={isSubmitting}
-              disabled={!canSubmit}
+              disabled={isSubmitting}
             >
               {isSubmitting ? "Publishing…" : "Publish project"}
             </Button>

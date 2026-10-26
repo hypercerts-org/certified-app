@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Button from "@/components/ui/button"
+import Textarea from "@/components/ui/textarea"
 import { FundingPartySlot } from "@/components/explore-page/funding-receipt-parts"
 import {
   buildConfirmationRecord,
@@ -12,6 +13,7 @@ import {
 import { addOptimisticConfirmation } from "@/lib/atproto/funding-confirmed-store"
 import type { FundingRole } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
+import { formatAmount } from "@/components/explore-page/format-display"
 
 /**
  * Confirm an existing funding payment. Rendered *in place* inside the receipt
@@ -111,8 +113,8 @@ export default function ConfirmFundingContent({
         </div>
         <div className="funding-form__summary-row">
           <span className="funding-form__summary-label">Amount</span>
-          <span className="funding-form__summary-value">
-            {receipt.amount}
+          <span className="funding-form__summary-value tabular-nums">
+            {receipt.amount ? formatAmount(receipt.amount) : null}
             {receipt.currency ? ` ${receipt.currency}` : ""}
           </span>
         </div>
@@ -123,9 +125,11 @@ export default function ConfirmFundingContent({
         <label className="funding-form__label" htmlFor="confirm-notes">
           Note <span className="funding-form__optional">(optional)</span>
         </label>
-        <textarea
+        <Textarea
+          flush
+          size="sm"
           id="confirm-notes"
-          className="funding-form__input funding-form__textarea"
+          className="resize-y text-base md:text-sm"
           placeholder="Any context for your confirmation"
           value={notes}
           disabled={submitting}

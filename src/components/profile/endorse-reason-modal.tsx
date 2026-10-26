@@ -156,7 +156,6 @@ export default function EndorseReasonModal({
               className={`endorse-reason-modal__counter${
                 remaining <= 25 ? " endorse-reason-modal__counter--warn" : ""
               }`}
-              aria-live="polite"
             >
               {remaining} character{remaining === 1 ? "" : "s"} left
             </span>

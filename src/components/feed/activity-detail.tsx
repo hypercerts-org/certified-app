@@ -14,13 +14,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
+import { toUserErrorMessage } from "@/lib/utils/api"
 import {
+  AlignLeft,
   Calendar,
   ChevronDown,
+  ChevronRight,
+  Coins,
   FileText,
   MapPin,
   Plus,
   RefreshCw,
+  ScrollText,
   Target,
   Users,
 } from "lucide-react"
@@ -67,6 +72,7 @@ import {
   SlimTabHeadline,
   CertHeadlineColumns,
 } from "./cert-detail-parts"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import {
   contributorKey,
   contributionRoleText,
@@ -408,35 +414,34 @@ export default function ActivityDetail({
   const fundingRecordInFlight =
     pendingFundingUri !== null || fundingRecordPollTimedOut
   const fundingRecordedNote = pendingFundingUri ? (
-    <p className="cert-detail__short-desc funding-form__recorded-note">
+    <p
+      role="status"
+      className="cert-detail__short-desc funding-form__recorded-note"
+    >
       Recording your funding — it will appear here shortly…
       <RefreshCw
         size={14}
         strokeWidth={2}
         aria-hidden
-        className="animate-spin motion-reduce:animate-none ml-1.5 inline-block align-middle"
+        className="animate-spin ml-1.5 inline-block align-middle"
       />
     </p>
   ) : fundingRecordPollTimedOut ? (
-    <p className="cert-detail__short-desc funding-form__recorded-note">
+    <p
+      role="status"
+      className="cert-detail__short-desc funding-form__recorded-note"
+    >
       Funding recorded. It is taking longer than usual to appear.
-      <button
-        type="button"
-        className="funding-form__recorded-refresh"
+      <Button
+        size="icon"
+        variant="ghost"
         aria-label="Refresh the funding list"
-        aria-busy={fundingLoading}
-        disabled={fundingLoading}
+        loading={fundingLoading}
+        className="ml-1.5 align-middle"
         onClick={() => refetchFunding()}
       >
-        <RefreshCw
-          size={14}
-          strokeWidth={2}
-          aria-hidden
-          className={
-            fundingLoading ? "animate-spin motion-reduce:animate-none" : undefined
-          }
-        />
-      </button>
+        <RefreshCw size={14} strokeWidth={2} aria-hidden />
+      </Button>
     </p>
   ) : null
   const { activeOrg, groups, switchOrg } = useOrg()
@@ -700,8 +705,11 @@ export default function ActivityDetail({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(
-          (data as { error?: string }).error ||
-            `Delete failed: ${res.status}`,
+          toUserErrorMessage(
+            res.status,
+            (data as { error?: string }).error,
+            "Couldn't delete this activity. Try again",
+          ),
         )
       }
       // Redirect away from the deleted cert. We use a hard
@@ -718,7 +726,9 @@ export default function ActivityDetail({
       }
     } catch (err) {
       setDeleteError(
-        err instanceof Error ? err.message : "Delete failed",
+        err instanceof Error
+          ? err.message
+          : "Couldn't delete this activity. Try again.",
       )
       setIsDeleting(false)
     }
@@ -870,7 +880,9 @@ export default function ActivityDetail({
           const res = await fetch(
             `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
           )
-          if (!res.ok) throw new Error(`Re-read failed (${res.status})`)
+          if (!res.ok) throw new Error(
+              "Saved, but couldn't refresh the page. Reload to see your changes.",
+            )
           const data = (await res.json()) as {
             cid: string
             value: ClaimActivity
@@ -1004,7 +1016,7 @@ export default function ActivityDetail({
           <time
             className="cert-detail__eyebrow-date"
             dateTime={value.createdAt}
-            title={value.createdAt}
+            title={formatAbsoluteDateTime(value.createdAt)}
           >
             {createdAbsolute}
           </time>
@@ -1033,7 +1045,9 @@ export default function ActivityDetail({
             }
           />
         ) : (
-          <h1 className="cert-detail__title">{effectiveValue.title}</h1>
+          <h2 className="cert-detail__title" dir="auto">
+            {effectiveValue.title?.trim() || "Untitled activity"}
+          </h2>
         )}
         {!editing && rkey ? (
           // Three-dot record menu — DESKTOP only, right-aligned on the title
@@ -1086,7 +1100,7 @@ export default function ActivityDetail({
   const slimHeadline = (
     <SlimTabHeadline
       did={did}
-      title={effectiveValue.title}
+      title={effectiveValue.title?.trim() || "Untitled activity"}
       isCreator={isCreator}
       editHref={editHref}
       editAsGroupLabel={
@@ -1109,7 +1123,10 @@ export default function ActivityDetail({
   // `descriptionReveal`).
   const summaryHead = (
     <div className="cert-detail__summary-head">
-      <span className="cert-detail__meta-label">Summary</span>
+      <span className="cert-detail__meta-label">
+        <AlignLeft size={12} strokeWidth={2} aria-hidden />
+        Summary
+      </span>
     </div>
   )
 
@@ -1132,7 +1149,7 @@ export default function ActivityDetail({
     ) : effectiveValue.shortDescription ? (
       <section className="cert-detail__section cert-detail__section--summary">
         {summaryHead}
-        <p className="cert-detail__short-desc">
+        <p className="cert-detail__short-desc" dir="auto">
           {effectiveValue.shortDescription}
         </p>
       </section>
@@ -1157,8 +1174,8 @@ export default function ActivityDetail({
       >
         {descriptionExpanded ? "Hide description" : "Read full description"}
         <ChevronDown
-          size={15}
-          strokeWidth={2}
+          size={16}
+          strokeWidth={1.75}
           aria-hidden
           className="cert-detail__desc-toggle-chevron"
         />
@@ -1173,7 +1190,10 @@ export default function ActivityDetail({
   const descriptionReveal = editing ? (
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
-        <h2 className="cert-detail__section-title">Description</h2>
+        <h2 className="cert-detail__section-title">
+          <ScrollText size={12} strokeWidth={2} aria-hidden />
+          Description
+        </h2>
       </div>
       <LeafletEditor
         value={drafts.description}
@@ -1190,7 +1210,10 @@ export default function ActivityDetail({
     <>
       <section className="cert-detail__section">
         <div className="cert-detail__section-header">
-          <h2 className="cert-detail__section-title">Description</h2>
+          <h2 className="cert-detail__section-title">
+          <ScrollText size={12} strokeWidth={2} aria-hidden />
+          Description
+        </h2>
         </div>
         <LeafletDocument value={effectiveValue.description} did={did} />
       </section>
@@ -1205,8 +1228,11 @@ export default function ActivityDetail({
   const contributorsSection = (
     <section className="cert-detail__section">
       <div className="cert-detail__section-header">
-        <h2 className="cert-detail__section-title">Contributors</h2>
-        <span className="cert-detail__section-count">{contributorCount}</span>
+        <h2 className="cert-detail__section-title">
+          <Users size={12} strokeWidth={2} aria-hidden />
+          Contributors
+          <span className="cert-detail__meta-count">{contributorCount}</span>
+        </h2>
       </div>
       {contributorCount > 0 ? (
         (() => {
@@ -1301,7 +1327,7 @@ export default function ActivityDetail({
           <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
             <dt className="cert-detail__meta-label">
               <span className="cert-detail__meta-label-text">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
+                <Calendar size={12} strokeWidth={2} aria-hidden />
                 Time period
               </span>
             </dt>
@@ -1350,7 +1376,7 @@ export default function ActivityDetail({
           {editing || workScopeLabel ? (
             <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
               <dt className="cert-detail__meta-label">
-                <Target size={11} strokeWidth={2} aria-hidden />
+                <Target size={12} strokeWidth={2} aria-hidden />
                 Work scope
               </dt>
               <dd className="cert-detail__meta-value">
@@ -1404,7 +1430,7 @@ export default function ActivityDetail({
                   <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
                     <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
                       <span className="cert-detail__meta-label-text">
-                        <Users size={11} strokeWidth={2} aria-hidden />
+                        <Users size={12} strokeWidth={2} aria-hidden />
                         Contributors
                         <span className="cert-detail__meta-count">
                           {contributorCount}
@@ -1416,7 +1442,8 @@ export default function ActivityDetail({
                           replace
                           className="cert-detail__section-see-all"
                         >
-                          See all →
+                          See all
+                          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
                         </TransitionLink>
                       ) : null}
                     </dt>
@@ -1454,7 +1481,7 @@ export default function ActivityDetail({
           {value.rights ? (
             <div className="cert-detail__meta-row cert-detail__meta-row--rights">
               <dt className="cert-detail__meta-label">
-                <FileText size={11} strokeWidth={2} aria-hidden />
+                <FileText size={12} strokeWidth={2} aria-hidden />
                 Rights
               </dt>
               <dd className="cert-detail__meta-value">
@@ -1527,12 +1554,15 @@ export default function ActivityDetail({
             {fundingReceipts.length > 0 || canRecordFunding ? (
               <section className="cert-detail__section">
                 <div className="cert-detail__section-header">
-                  <h2 className="cert-detail__section-title">Funding</h2>
-                  {fundingReceipts.length > 0 ? (
-                    <span className="cert-detail__section-count">
-                      {shownFundingCount}
-                    </span>
-                  ) : null}
+                  <h2 className="cert-detail__section-title">
+                    <Coins size={12} strokeWidth={2} aria-hidden />
+                    Funding
+                    {fundingReceipts.length > 0 ? (
+                      <span className="cert-detail__meta-count">
+                        {shownFundingCount}
+                      </span>
+                    ) : null}
+                  </h2>
                   <div className="cert-detail__section-actions">
                     {recordFundingControl}
                     {fundingReceipts.length > 0 ? confirmedByControl : null}
@@ -1542,7 +1572,8 @@ export default function ActivityDetail({
                         replace
                         className="cert-detail__section-see-all"
                       >
-                        See all →
+                        See all
+                        <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
                       </TransitionLink>
                     ) : null}
                   </div>
@@ -1590,7 +1621,7 @@ export default function ActivityDetail({
             {locations.length > 0 ? (
               <section className="cert-detail__section cert-detail__section--locations">
                 <span className="cert-detail__meta-label">
-                  <MapPin size={11} strokeWidth={2} aria-hidden />
+                  <MapPin size={12} strokeWidth={2} aria-hidden />
                   Locations
                   <span className="cert-detail__meta-count">
                     {locations.length}
@@ -1614,12 +1645,15 @@ export default function ActivityDetail({
         ) : activeTab === "funding" ? (
           <section className="cert-detail__section">
             <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Funding</h2>
-              {fundingReceipts.length > 0 ? (
-                <span className="cert-detail__section-count">
-                  {shownFundingCount}
-                </span>
-              ) : null}
+              <h2 className="cert-detail__section-title">
+                <Coins size={12} strokeWidth={2} aria-hidden />
+                Funding
+                {fundingReceipts.length > 0 ? (
+                  <span className="cert-detail__meta-count">
+                    {shownFundingCount}
+                  </span>
+                ) : null}
+              </h2>
               {recordFundingControl || fundingReceipts.length > 0 ? (
                 <div className="cert-detail__section-actions">
                   {recordFundingControl}
@@ -1675,7 +1709,7 @@ export default function ActivityDetail({
     </article>
     {deleteOpen ? (
       <DeleteRecordDialog
-        title="Delete this activity"
+        title="Delete activity?"
         recordName={effectiveValue.title || ""}
         recordTypeLabel="activity"
         isDeleting={isDeleting}

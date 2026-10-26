@@ -17,13 +17,25 @@ const EndorsementGraph = dynamic(
   () => import("@/components/visualization/endorsement-graph"),
   {
     ssr: false,
-    loading: () => (
-      <div className="viz__state">
-        <LoadingSpinner size="md" />
-      </div>
-    ),
+    loading: () => <GraphLoading />,
   },
 )
+
+// The network fetch can take several seconds, so pair the brandmark with a
+// visible status line. The spinner's own live region is hidden so the
+// message is announced once.
+function GraphLoading() {
+  return (
+    <div className="viz__state viz__state--loading">
+      <div aria-hidden="true">
+        <LoadingSpinner size="md" />
+      </div>
+      <p className="viz__state-text" role="status" aria-live="polite">
+        Loading endorsement network…
+      </p>
+    </div>
+  )
+}
 
 export default function Visualization() {
   const { graph, isLoading, error } = useEndorsementGraph()
@@ -44,12 +56,8 @@ export default function Visualization() {
   return (
     <div className="viz">
       <div className="viz__main">
-        <div className="viz__graph">
-          {isLoading && (
-            <div className="viz__state">
-              <LoadingSpinner size="md" />
-            </div>
-          )}
+        <div className="viz__graph" aria-busy={isLoading || undefined}>
+          {isLoading && <GraphLoading />}
 
           {!isLoading && error && (
             <div className="viz__state">

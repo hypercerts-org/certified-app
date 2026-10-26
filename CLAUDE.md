@@ -7,7 +7,7 @@ Claude Code reads this file at session start. The longer agent reference is `AGE
 1. **`border-radius` is `var(--radius)` (2 px), `999px` for pills, `50%` for circles.** Never `4`, `6`, `8`, `12`, `16`, `20` px. The sign-in modal is not an exception.
 2. **No raw hex / rgb / rgba** outside `src/app/styles/tokens.css` and `src/app/styles/landing.css`. Everywhere else uses tokens (`--bg-canvas`, `--fg-primary`, `--border-default`, …).
 3. **Breakpoints are 800 / 1100 / 1300 only.** "Below desktop" → `@media (max-width: 799px)`. Don't introduce 768 / 760 / 640.
-4. **Shadows are `var(--shadow-sm | --shadow-md | --shadow-lg)`.** No `box-shadow: 0 X Y rgba(...)`.
+4. **Elevation shadows are `var(--shadow-sm | --shadow-md | --shadow-lg)`, plus `var(--shadow-modal)` for dialogs only.** Rings and hairlines use the `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. Never a literal `box-shadow: 0 X Y rgba(...)`.
 5. **Z-index is a `--z-*` token.** No literal numbers.
 6. **Headings use the canonical scale + `font-headline`.** `text-h1`/`text-h2`/`text-h3`/`text-h4`. Never `text-xl` / `text-lg` / `text-2xl` for app headings.
 7. **Modals use `<AppDialog>`** (or `<ConfirmDialog>` / `<DeleteRecordDialog>` which wrap it). Never hand-roll a backdrop + `useFocusTrap`.
@@ -30,16 +30,19 @@ grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/
 # 4. No hand-rolled modal backdrops
 grep -rn "signin-modal__backdrop" src/components/ | grep -v "ui/sign-in-modal.tsx\|ui/feedback-modal.tsx"
 
-# 5. Type + lint must be clean
+# 5. Design-token stylelint (colors, shadows, z-index, radius, breakpoints)
+npm run lint:css
+
+# 6. Type + lint must be clean
 npx tsc --noEmit
 npm run lint
 ```
 
-All five should be silent (or, for lint, no change vs. main's baseline of 60 warnings).
+All six should be silent (or, for `npm run lint`, 0 problems; it must stay clean).
 
 ## Where to look
 
-- **Design rules:** `DESIGN.md` — read §14 first ("Rules at a glance" and the consolidation pass).
+- **Design rules:** `DESIGN.md` — read §0 "Rules at a glance" first; `tokens.css` is the single numeric source.
 - **Architecture / conventions / pitfalls:** `AGENTS.md`. The "Rules at a glance" callout in §0 mirrors this file's hard rules with more detail. §11 (CSS) and §12 (Component) have the full primitive catalog.
 - **Design audit + visual divergence sheet:** `docs/design-audit/component-audit.md`, `docs/design-audit/visual-divergence.md`, `docs/design-audit/divergence-sheet.html` (open in a browser).
 - **Implementation plan / decision log:** `docs/design-consolidation/plan.md`.

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   ExternalLink,
   File,
@@ -190,7 +191,8 @@ export default function ContextUpdates({
             scroll={false}
             className="context-updates__see-all"
           >
-            See all →
+            See all
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
           </TransitionLink>
         ) : null}
         {newButton}
@@ -343,7 +345,7 @@ function UpdateCard({
       ) : null}
       <header className="context-updates__item-head">
         {title ? (
-          <h3 className="context-updates__title">{title}</h3>
+          <h3 className="context-updates__title" dir="auto">{title}</h3>
         ) : null}
         {/* Date lives in the numbered row when a heading is shown. */}
         {!heading && createdLabel ? (
@@ -364,7 +366,7 @@ function UpdateCard({
                 aria-label="Edit update"
                 onClick={() => router.push(editHref)}
               >
-                <Pencil size={15} strokeWidth={1.75} aria-hidden />
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
               </Button>
             ) : null}
             {viewerDid ? (
@@ -375,7 +377,7 @@ function UpdateCard({
                 aria-label="Delete update"
                 onClick={() => setConfirmingDelete(true)}
               >
-                <Trash2 size={15} strokeWidth={1.75} aria-hidden />
+                <Trash2 size={16} strokeWidth={1.75} aria-hidden />
               </Button>
             ) : null}
           </span>
@@ -430,12 +432,12 @@ function UpdateCard({
 
       {confirmingDelete ? (
         <ConfirmDialog
-          title="Delete update"
+          title="Delete update?"
           message={
             deleteError ??
             "This update will be permanently removed. This can't be undone."
           }
-          confirmLabel="Delete"
+          confirmLabel="Delete update"
           confirmVariant="destructive"
           isConfirming={deleting}
           onCancel={() => {

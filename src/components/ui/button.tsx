@@ -1,8 +1,9 @@
 import React from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import Tooltip from "@/components/ui/tooltip";
 
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+type ButtonSize = "sm" | "md" | "lg" | "icon" | "icon-sm";
 
 // Icon-size requires aria-label so screen readers have something to read.
 // All other sizes accept children as the accessible label and aria-label is optional.
@@ -17,10 +18,19 @@ type ButtonBaseProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "chil
   // this is omitted, so every icon button explains itself on hover for free;
   // pass an explicit string to override or to add a tooltip to a text button.
   tooltip?: string;
+  // Link mode: pass `href` to render a Next <Link> with the identical button
+  // classes instead of a <button>. Use this rather than wrapping <Button> in
+  // <Link> (which nests interactive content: <a><button>). `target`, `rel`
+  // and `prefetch` are forwarded to the link; `disabled` renders an inert
+  // link (aria-disabled, no pointer events, removed from the tab order).
+  href?: string;
+  target?: string;
+  rel?: string;
+  prefetch?: boolean;
 };
 
 type IconButtonProps = ButtonBaseProps & {
-  size: "icon";
+  size: "icon" | "icon-sm";
   "aria-label": string;
   children: React.ReactNode;
 };
@@ -44,16 +54,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       type = "button",
       className = "",
       children,
+      href,
+      target,
+      rel,
+      prefetch,
       ...props
     },
     ref
   ) => {
     const baseStyles =
-      "rounded text-sm font-medium tracking-wider transition-all duration-150 focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale";
+      "rounded text-sm font-medium transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-fast ease-out focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale select-none [-webkit-touch-callout:none]";
 
     const variantStyles = {
       primary:
-        "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-none hover:opacity-90",
+        "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] border-none hover:bg-[var(--btn-primary-bg-hover)]",
       secondary:
         "bg-transparent text-[var(--fg-primary)] border border-[var(--border-default)] hover:border-[var(--border-hover)]",
       ghost:
@@ -62,17 +76,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-[var(--color-error-bg)] text-[var(--color-error)] border border-[var(--color-error-border)] hover:opacity-90",
     };
 
-    // Mobile tap targets: every size meets the 44px WCAG 2.5.5 minimum below
-    // 800px, then reverts to its compact desktop dimensions at `md` (= 800px,
-    // the canonical breakpoint). `min-h-11` (44px) wins over the smaller
-    // padding-driven height on mobile without touching the desktop look.
+    // Heights come from the control-height scale (--control-h-*), not from
+    // padding: sm 32 / md 36 / lg 44 on desktop. Below 800px (`md` = the
+    // canonical breakpoint) every size meets the 44px WCAG 2.5.5 minimum.
+    // `min-h` rather than `h` so a label that wraps grows instead of clipping;
+    // `py-1` only matters then.
     const sizeStyles: Record<ButtonSize, string> = {
-      sm: "py-1.5 px-4 text-xs min-h-11 md:min-h-0",
-      md: "py-2.5 px-6 text-sm min-h-11 md:min-h-0",
-      lg: "py-3 px-8 text-sm",
-      // 44 x 44 on mobile, 40 x 40 on desktop. Padding zeroed; the icon child
-      // sits in the centered flex slot.
-      icon: "h-11 w-11 md:h-10 md:w-10 p-0 text-sm",
+      sm: "py-1 px-4 text-xs min-h-control-md md:min-h-control-compact",
+      md: "py-1 px-6 text-sm min-h-control-md md:min-h-control-sm",
+      lg: "py-1 px-8 text-sm min-h-control-md",
+      // 44 x 44 on mobile, 36 x 36 on desktop (matches md). Padding zeroed;
+      // the icon child sits in the centered flex slot.
+      icon: "h-control-md w-11 md:h-control-sm md:w-9 p-0 text-sm",
+      // Compact icon button for dismiss / close controls (dialog, sheet,
+      // banner, toast): 32 x 32 visual, hit area expanded to 44 x 44 by a
+      // transparent ::after (inset -6px), so the tap target still meets
+      // the 44px rule without the chrome growing.
+      "icon-sm":
+        "relative h-control-compact w-8 p-0 text-sm after:absolute after:-inset-1.5 after:content-['']",
     };
 
     // Disabled treatment. Filled variants (primary / destructive) read as
@@ -95,10 +116,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // Active visual for toggle buttons. Only secondary/ghost have an "off" look
     // distinct enough that a pressed state reads as on; primary/destructive keep
     // their base styling.
+    // Selected is never colour alone: --overlay-medium plus a stroke change
+    // (secondary: border goes to --fg-primary) or a weight change (ghost).
     const pressedStyles: Partial<Record<NonNullable<ButtonProps["variant"]>, string>> = {
       secondary:
-        "bg-[var(--overlay-medium)] text-[var(--fg-primary)] border-[var(--border-hover)]",
-      ghost: "bg-[var(--overlay-medium)] text-[var(--fg-primary)]",
+        "bg-[var(--overlay-medium)] text-[var(--fg-primary)] border-[var(--fg-primary)]",
+      ghost: "bg-[var(--overlay-medium)] text-[var(--fg-primary)] font-semibold",
     };
     const activeStyles = pressed ? pressedStyles[variant] ?? "" : "";
 
@@ -106,7 +129,32 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // an explicit `tooltip` overrides that, and is the only source for the
     // (rare) text button that opts into a tooltip.
     const ariaLabel = (props as { "aria-label"?: string })["aria-label"];
-    const tooltipText = tooltip ?? (size === "icon" ? ariaLabel : undefined);
+    const isIcon = size === "icon" || size === "icon-sm";
+    const tooltipText = tooltip ?? (isIcon ? ariaLabel : undefined);
+
+    const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`;
+
+    if (href !== undefined) {
+      const inert = disabled || loading;
+      const link = (
+        <Link
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          target={target}
+          rel={rel}
+          prefetch={prefetch}
+          aria-disabled={inert || undefined}
+          aria-busy={loading || undefined}
+          tabIndex={inert ? -1 : undefined}
+          className={`${classes} ${inert ? "pointer-events-none" : ""}`}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        >
+          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {!(loading && isIcon) && children}
+        </Link>
+      );
+      return tooltipText ? <Tooltip label={tooltipText}>{link}</Tooltip> : link;
+    }
 
     const button = (
       <button
@@ -115,13 +163,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading}
         aria-pressed={pressed}
-        className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${activeStyles} ${disabledStyles} ${className}`}
+        className={classes}
         {...props}
       >
-        {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
-        {/* For icon-size, the 40x40 slot fits one glyph: while loading, show
+        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {/* For icon-size, the 36x36 slot fits one glyph: while loading, show
             only the spinner so it doesn't overlap the icon child. */}
-        {!(loading && size === "icon") && children}
+        {!(loading && isIcon) && children}
       </button>
     );
 

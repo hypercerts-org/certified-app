@@ -32,7 +32,13 @@ export default function BlueskySwitcherLayout({
 
   return (
     <div className="wks-blue">
-      <header className="wks-blue__head">
+      <header
+        className="wks-blue__head"
+        // Lab page: plain disclosure list (not role=menu); Escape closes it.
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) setOpen(false)
+        }}
+      >
         <button
           type="button"
           className="wks-blue__switcher"
@@ -52,11 +58,10 @@ export default function BlueskySwitcherLayout({
         </button>
 
         {open ? (
-          <ul className="wks-blue__menu" role="menu">
+          <ul className="wks-blue__menu">
             <li>
               <button
                 type="button"
-                role="menuitem"
                 className="wks-blue__menu-item"
                 onClick={() => {
                   onSetScope({ kind: "network" })
@@ -64,7 +69,7 @@ export default function BlueskySwitcherLayout({
                   setOpen(false)
                 }}
               >
-                <Globe size={13} strokeWidth={1.75} aria-hidden />
+                <Globe size={14} strokeWidth={1.75} aria-hidden />
                 Network
               </button>
             </li>
@@ -72,8 +77,7 @@ export default function BlueskySwitcherLayout({
               <li key={a.did}>
                 <button
                   type="button"
-                  role="menuitem"
-                  className="wks-blue__menu-item"
+                    className="wks-blue__menu-item"
                   onClick={() => {
                     onSetScope({ kind: "actor", did: a.did })
                     onSetLexicon(null)

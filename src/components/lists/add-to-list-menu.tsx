@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Copy, ListPlus, MoreVertical, Pencil, Share2, Trash2 } from "lucide-react"
+import { Copy, ListPlus, MoreVertical, Pencil, Plus, Share2, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import type { PageRecordEditActions } from "@/lib/navbar-context"
 import Button from "@/components/ui/button"
@@ -137,7 +137,7 @@ export default function AddToListMenu({
                     router.push(editActions.editHref)
                   }}
                 >
-                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
                 </PopoverItem>
               ) : editActions.editAsGroupLabel ? (
                 <PopoverItem
@@ -146,7 +146,7 @@ export default function AddToListMenu({
                     editActions.onEditAsGroup()
                   }}
                 >
-                  <Pencil size={13} strokeWidth={1.75} aria-hidden /> Edit as{" "}
+                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
                   {editActions.editAsGroupLabel}
                 </PopoverItem>
               ) : null}
@@ -157,7 +157,7 @@ export default function AddToListMenu({
                     editActions.onDelete()
                   }}
                 >
-                  <Trash2 size={13} strokeWidth={1.75} aria-hidden /> Delete
+                  <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
                 </PopoverItem>
               ) : null}
             </>
@@ -168,7 +168,7 @@ export default function AddToListMenu({
                 void copyShare(`${window.location.origin}${sharePath}`)
               }
             >
-              <Share2 size={13} strokeWidth={1.75} aria-hidden />
+              <Share2 size={14} strokeWidth={1.75} aria-hidden />
               {shareCopied ? "Link copied" : "Share"}
             </PopoverItem>
           ) : null}
@@ -181,11 +181,11 @@ export default function AddToListMenu({
               else openSignIn()
             }}
           >
-            <ListPlus size={13} strokeWidth={1.75} aria-hidden />
+            <ListPlus size={14} strokeWidth={1.75} aria-hidden />
             Add to list
           </PopoverItem>
           <PopoverItem onClick={() => void copyUri(targetUri)}>
-            <Copy size={13} strokeWidth={1.75} aria-hidden />
+            <Copy size={14} strokeWidth={1.75} aria-hidden />
             {uriCopied ? "Copied" : "Copy AT URI"}
           </PopoverItem>
         </PopoverContent>
@@ -374,7 +374,7 @@ function AddToListModal({
               const isBusy = busyRkey === list.rkey
               return (
                 <li key={list.rkey} className="add-to-list__row">
-                  <span className="add-to-list__row-title">{list.title}</span>
+                  <span className="add-to-list__row-title" dir="auto">{list.title}</span>
                   <Button
                     type="button"
                     variant={isIn ? "ghost" : "primary"}
@@ -404,6 +404,7 @@ function AddToListModal({
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="New list name"
+              aria-label="New list name"
               maxLength={120}
               disabled={busyRkey === "__new__"}
             />
@@ -432,14 +433,16 @@ function AddToListModal({
             </div>
           </form>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             className="add-to-list__create-btn"
             onClick={() => setCreating(true)}
             disabled={!!busyRkey}
           >
-            + Create a new list
-          </button>
+            <Plus size={14} aria-hidden />
+            Create a new list
+          </Button>
         )}
       </AppDialogBody>
     </AppDialog>

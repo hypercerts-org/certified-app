@@ -24,11 +24,12 @@ export default function HelpPage() {
     <div className="app-page legal-page">
       <PageTitle title="Help" />
       <div className="app-page__inner">
-        <div className="prose max-w-none space-y-8">
+        <h2 className="legal-page__title font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-8">
+          Help &amp; getting started
+        </h2>
+
+        <div className="legal-prose space-y-8">
           <section>
-            <h1 className="font-headline text-h1 text-[var(--fg-primary)] tracking-tight mb-4">
-              Help &amp; getting started
-            </h1>
             <p>
               Certified is a place to record and recognize real work and impact. You publish{" "}
               <strong>activities</strong>, group them into <strong>projects</strong>, organize as{" "}
@@ -38,7 +39,7 @@ export default function HelpPage() {
                 href="https://atproto.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 AT Protocol
               </a>

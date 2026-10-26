@@ -272,7 +272,6 @@ export default function EndorsePeopleModal({
                     ? " endorse-people-modal__reason-counter--warn"
                     : ""
                 }`}
-                aria-live="polite"
               >
                 {500 - note.length} character{500 - note.length === 1 ? "" : "s"} left
               </span>
@@ -290,7 +289,7 @@ export default function EndorsePeopleModal({
               ref={inputRef}
               type="search"
               className="endorse-people-modal__search-input"
-              placeholder="Search for someone on atproto…"
+              placeholder="Search by name or handle…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoComplete="off"

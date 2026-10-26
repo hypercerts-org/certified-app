@@ -46,7 +46,7 @@ describe("AppDialog", () => {
     // radius is var(--radius), never a raw px.)
     expect(dialog.tagName).toBe("DIALOG")
     expect(dialog.className).toContain("rounded-[var(--radius)]")
-    expect(dialog.className).toContain("bg-[var(--color-off-white)]")
+    expect(dialog.className).toContain("bg-[var(--bg-overlay)]")
     expect(dialog.className).not.toContain("signin-modal")
     expect(dialog.className).not.toContain("app-modal")
     expect(dialog.getAttribute("aria-label")).toBe("Test")

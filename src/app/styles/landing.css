@@ -219,7 +219,7 @@
 
 /* Counter-rotating layers give the engine-turned moire its slow
    shimmer (duration + direction set inline per layer); the global
-   reduced-motion kill-switch freezes them. */
+   reduced-motion rule in tokens.css runs them once to their end state. */
 .lp-guilloche__layer {
   transform-origin: 400px 400px;
   animation: lpSealRotate linear infinite;
@@ -359,30 +359,23 @@
   border-color: var(--color-mid-gray);
 }
 
-/* Light/dark switch — same pill surface as the sign-in button, sized to a
-   square icon target so it reads as a sibling control. */
-.lp-topbar__theme {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* Light/dark switch — a canonical <Button size="icon" variant="secondary">
+   re-skinned to the sign-in button's off-white surface and 34px square so
+   the two read as siblings. Scoped under .lp-topbar__actions so the skin
+   outranks the primitive's single-class utilities regardless of load order. */
+.lp-topbar__actions .lp-topbar__theme {
   width: 34px;
   height: 34px;
-  padding: 0;
   background: var(--color-off-white);
   border: 1px solid var(--color-light-gray);
-  border-radius: var(--radius);
   color: var(--color-mid-gray);
-  cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.lp-topbar__theme:hover {
-  color: var(--color-navy);
-  border-color: var(--color-mid-gray);
-}
-
-.lp-topbar__theme-icon {
-  display: inline-flex;
+@media (hover: hover) and (pointer: fine) {
+  .lp-topbar__actions .lp-topbar__theme:hover {
+    color: var(--color-navy);
+    border-color: var(--color-mid-gray);
+  }
 }
 
 /* Account variant: avatar + label, tighter left padding so the
@@ -394,6 +387,29 @@
 
 .lp-topbar__avatar {
   flex: none;
+}
+
+/* Touch sizes: on phones these fixed controls are the page's only chrome,
+   so lift them to the 44px tap target. */
+@media (max-width: 799px) {
+  .lp-topbar__btn {
+    height: 44px;
+  }
+
+  .lp-topbar__actions .lp-topbar__theme {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Legal pages (/terms, /privacy, /imprint, /dsa) also mount the app's mobile
+   navbar below 800px (it only steps aside on /welcome). Keep exactly one top
+   bar there: the navbar wins on phones, the landing chrome on desktop. */
+@media (max-width: 799px) {
+  .legal-page .lp-topbar,
+  .legal-page .lp-topbar__actions {
+    display: none;
+  }
 }
 
 /* ---------- Hero ---------- */
@@ -413,7 +429,7 @@
 .lp-hero__inner {
   width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .lp-hero__copy {
@@ -432,7 +448,8 @@
   width: min(52vw, 760px);
   aspect-ratio: 1;
   color: var(--color-navy);
-  z-index: 0;
+  /* No z-index: the transform already gives the art its own stacking
+     context, and .lp-hero__inner (--z-local-raise) paints above it. */
   pointer-events: none;
   animation: lpFadeIn 900ms cubic-bezier(0.16, 1, 0.3, 1) 150ms backwards;
 }
@@ -489,15 +506,34 @@
   }
 }
 
+/* Transform-only rise for the h1: it is the LCP element, so it must be
+   visible (opacity 1) from first paint; only its position settles. */
+@keyframes lpRiseIn {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 .lp-hero__reveal {
   opacity: 0;
-  animation: lpFadeUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: lpFadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.lp-hero__title.lp-hero__reveal {
+  opacity: 1;
+  animation-name: lpRiseIn;
+  /* `both` so it holds the 8px offset through its 60ms delay instead of
+     jumping down when the animation starts. */
+  animation-fill-mode: both;
 }
 
 .lp-hero__copy > .lp-hero__reveal:nth-child(1) { animation-delay: 0ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(2) { animation-delay: 100ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(3) { animation-delay: 200ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(4) { animation-delay: 300ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(2) { animation-delay: 60ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(3) { animation-delay: 120ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(4) { animation-delay: 180ms; }
 
 /* The global reduced-motion kill-switch (tokens.css) collapses these
    animations to 0.01ms; with `forwards` fill the elements land visible,
@@ -1196,7 +1232,7 @@
 
 .lp-band__inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
 }
 
 .lp-band__eyebrow {
@@ -1288,6 +1324,13 @@
 
 .lp-faq__item:first-child {
   border-top: 0;
+}
+
+/* Semantic heading around each trigger; neutral so the button's own type
+   (and not .legal-page h3) sets the look. */
+.lp-faq .lp-faq__q {
+  margin: 0;
+  letter-spacing: normal;
 }
 
 .lp-faq__btn {
@@ -1407,7 +1450,7 @@
 
 .lp-closing__inner {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-local-raise);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1444,30 +1487,24 @@
  * SHARED, NON-LANDING — used by app-wide surfaces. Do not remove with
  * landing iterations.
  *
- *  - modalFadeIn / modalSlideUp back AppDialog's animate-[modalSlideUp]
- *    and the feedback modal animations.
  *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
  *  - .app-page backs /about, /terms, /privacy, /dsa,
  *    /imprint, /help.
  *  - .welcome-footer wraps SiteFooter on /welcome (welcome/layout.tsx).
  * ========================================================================== */
 
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
+/* modalFadeIn / modalSlideUp (used below and by AppDialog) live in
+   components.css — the single app-wide definition. */
 
 /* ========== Feedback Modal ========== */
 .feedback-trigger {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: calc(var(--z-skip-nav) - 1);
+  /* Above page chrome (navbar, bottom nav) but below every overlay
+     (drawer + scrim, bottom sheet, modals), so an open overlay dims and
+     covers it instead of the button floating bright and clickable. */
+  z-index: var(--z-feedback-trigger);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1479,13 +1516,13 @@
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom 0.15s ease-out;
+  box-shadow: var(--shadow-md);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom var(--transition-fast);
 }
 
 .feedback-trigger:hover {
   background: var(--color-accent);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Small "Beta" chip — sized down and tucked in a translucent pill so the
@@ -1494,7 +1531,8 @@
 .feedback-trigger__beta {
   font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   line-height: 1;
   padding: 2px 5px;
@@ -1517,9 +1555,8 @@
   align-items: flex-end;
   justify-content: flex-end;
   padding: 20px;
-  background: var(--navy-overlay-70);
-  backdrop-filter: blur(8px);
-  animation: modalFadeIn 200ms ease-out;
+  background: var(--scrim);
+  animation: modalFadeIn var(--duration-base) var(--ease-out);
 }
 
 .feedback-modal {
@@ -1531,7 +1568,7 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-modal);
   border: 1px solid var(--border-default);
-  animation: modalSlideUp 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalSlideUp var(--duration-slow) var(--ease-emphasized);
 }
 
 .feedback-modal--expanded {
@@ -1612,7 +1649,7 @@
 }
 
 /* `.feedback-modal__textarea` / `.feedback-modal__input` are styled
-   in components.css with semantic tokens (--border-medium,
+   in components.css with semantic tokens (--border-default,
    --fg-primary, --bg-elevated) so they adapt to dark mode. */
 
 .feedback-modal__error {
@@ -1715,9 +1752,20 @@
 
 /* ========== App Pages (authenticated) ========== */
 .app-page {
+  background: var(--color-off-white);
+}
+
+/* Shell-less pages (/terms, /privacy, /imprint, /dsa) supply their own
+   offset for the fixed mobile navbar (--navbar-height is 0 on desktop).
+   Inside AppShell (/help) .app-shell__content already pads for the navbar
+   and the shell's footer follows the page, so neither rule applies there. */
+.app-page:not(.app-shell .app-page) {
   padding-top: var(--navbar-height);
   min-height: 100vh;
-  background: var(--color-off-white);
+}
+
+.app-shell .app-page {
+  min-height: 0;
 }
 
 .app-page__inner {
@@ -1768,7 +1816,7 @@
   }
 }
 
-.legal-page .prose section + section {
+.legal-page .legal-prose section + section {
   border-top: 1px solid var(--color-light-gray);
   padding-top: 2rem;
 }
@@ -1776,26 +1824,70 @@
 /* The FAQ accordion carries its own bottom hairline; on legal/help pages the
    `section + section` divider above already separates it from what follows,
    so drop the accordion's closing line to avoid a stacked double rule. */
-.legal-page .prose .lp-faq {
+.legal-page .legal-prose .lp-faq {
   border-bottom: 0;
 }
 
-.legal-page h1 {
+/* `.legal-page__title` is the page title on routes where the app chrome
+   owns the h1 (Help): an h2 that keeps the h1 treatment. */
+.legal-page h1,
+.legal-page .legal-page__title {
   color: var(--color-navy);
 }
 
-.legal-page h2,
+.legal-page h2:not(.legal-page__title),
 .legal-page h3 {
   color: var(--color-navy);
   font-weight: 300;
   letter-spacing: -0.025em;
 }
 
-.legal-page .prose p,
-.legal-page .prose li {
+.legal-page .legal-prose p,
+.legal-page .legal-prose li {
   color: var(--color-mid-gray);
 }
 
-.legal-page .prose strong {
+/* Inline links in legal/help copy (replaces a per-link Tailwind string). */
+.legal-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.legal-link:hover {
+  color: var(--color-accent-hover);
+}
+
+/* Compact in-page contents list under "Last updated" on Terms / Privacy.
+   Two columns from 800px so a 26-clause list stays short. */
+.legal-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.legal-toc li {
+  break-inside: avoid;
+}
+
+.legal-toc .legal-link {
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .legal-toc .legal-link:hover {
+    text-decoration: underline;
+  }
+}
+
+@media (min-width: 800px) {
+  .legal-toc ol {
+    columns: 2;
+    column-gap: 32px;
+  }
+}
+
+.legal-page .legal-prose strong {
   color: var(--color-navy);
 }

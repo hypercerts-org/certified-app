@@ -4,7 +4,6 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from "react"
 import { Check, ChevronRight, Copy, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
-import Tooltip from "@/components/ui/tooltip"
 import {
   FundingForActivity,
   FundingPartySlot,
@@ -28,6 +27,7 @@ import {
   markFundingDeleted,
 } from "@/lib/atproto/funding-confirmed-store"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatAbsoluteDateTime, formatAmount } from "./format-display"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 /** One identity's stance on a payment: whether it can confirm (and as what
@@ -252,7 +252,7 @@ export default function FundingReceiptDetailModal({
       maxWidth={460}
       onClose={onClose}
     >
-      <AppDialogHeader title="Funding receipt" onClose={onClose} center />
+      <AppDialogHeader title="Funding receipt" onClose={onClose} />
 
       <div className="px-5 pb-5 pt-4">
         {/* Grouped as a top-to-bottom narrative: who paid whom (Transfer),
@@ -269,7 +269,7 @@ export default function FundingReceiptDetailModal({
           <DetailRow label="Amount">
             {hasAmount ? (
               <span className="funding-receipt-detail__amount">
-                {receipt.amount}
+                {formatAmount(receipt.amount!)}
                 {receipt.currency ? (
                   <span className="funding-receipt-detail__currency">
                     {receipt.currency}
@@ -370,7 +370,7 @@ export default function FundingReceiptDetailModal({
           <div className="funding-receipt-detail__footer">
             <div className="funding-receipt-detail__delete-confirm">
               <span className="funding-receipt-detail__delete-prompt">
-                Delete this payment receipt?
+                Delete payment receipt?
               </span>
               <Button
                 variant="secondary"
@@ -386,7 +386,7 @@ export default function FundingReceiptDetailModal({
                 loading={deleting}
                 onClick={() => void handleDelete()}
               >
-                Delete
+                Delete receipt
               </Button>
             </div>
           </div>
@@ -548,12 +548,12 @@ export function EmptyValue() {
   return <span className="funding-receipt-detail__empty">—</span>
 }
 
-/** A timestamp shown as the YYYY-MM-DD calendar date with the full ISO
- *  string available on hover (and in the `<time>` dateTime). */
+/** A timestamp shown as the YYYY-MM-DD calendar date with the localized
+ *  date + time available on hover (and in the `<time>` dateTime). */
 export function DateValue({ iso }: { iso: string | null }) {
   if (!iso) return <EmptyValue />
   return (
-    <time dateTime={iso} title={iso}>
+    <time dateTime={iso} title={formatAbsoluteDateTime(iso)}>
       {formatShortDate(iso)}
     </time>
   )
@@ -593,20 +593,25 @@ export function CopyableValue({ value, label }: { value: string; label: string }
       <span className="funding-receipt-detail__mono" title={value}>
         {value}
       </span>
-      <Tooltip label={copied ? "Copied" : label}>
-        <button
-          type="button"
-          className="funding-receipt-detail__copy-btn"
-          onClick={() => copy(value)}
-          aria-label={copied ? "Copied" : label}
-        >
-          {copied ? (
-            <Check size={13} strokeWidth={2} aria-hidden />
-          ) : (
-            <Copy size={13} strokeWidth={1.75} aria-hidden />
-          )}
-        </button>
-      </Tooltip>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="funding-receipt-detail__copy-btn"
+        onClick={() => copy(value)}
+        aria-label={label}
+        tooltip={copied ? "Copied" : label}
+      >
+        {copied ? (
+          <Check size={14} strokeWidth={1.75} aria-hidden />
+        ) : (
+          <Copy size={14} strokeWidth={1.75} aria-hidden />
+        )}
+      </Button>
+      {/* The static aria-label keeps the button's name stable; this live
+          region announces the confirmation instead. */}
+      <span className="sr-only" role="status">
+        {copied ? "Copied" : ""}
+      </span>
     </span>
   )
 }

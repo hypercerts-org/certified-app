@@ -244,6 +244,46 @@ export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement
   children: React.ReactNode;
 }
 
+/*
+ * Enter motion for the panel: a 150ms (--duration-fast) fade + slight scale/drop out of the
+ * trigger's corner, driven by `@starting-style` so it plays on mount with no
+ * JS. No exit animation (the menu closes instantly). Uses the individual
+ * `scale` / `translate` properties rather than `transform` so it composes
+ * with the in-flow `align="center"` `-translate-x-1/2` utility. Reduced
+ * motion keeps the fade only. Rendered as a React 19 hoisted <style>
+ * (href + precedence), so it lands in <head> once however many panels open.
+ */
+const POPOVER_MOTION_CSS = `
+.popover-panel {
+  transform-origin: top left;
+  transition: opacity var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-emphasized), translate var(--duration-fast) var(--ease-emphasized);
+}
+.popover-panel[data-align="center"] { transform-origin: top center; }
+.popover-panel[data-align="end"] { transform-origin: top right; }
+.popover-panel[data-side="top"] { transform-origin: bottom left; }
+.popover-panel[data-side="top"][data-align="center"] { transform-origin: bottom center; }
+.popover-panel[data-side="top"][data-align="end"] { transform-origin: bottom right; }
+@starting-style {
+  .popover-panel { opacity: 0; scale: 0.97; translate: 0 -2px; }
+  .popover-panel[data-side="top"] { translate: 0 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover-panel { transition: opacity var(--duration-fast) var(--ease-out) !important; }
+  @starting-style {
+    .popover-panel,
+    .popover-panel[data-side="top"] { scale: none; translate: none; }
+  }
+}
+`;
+
+function PopoverMotionStyle() {
+  return (
+    <style href="ui-popover-motion" precedence="default">
+      {POPOVER_MOTION_CSS}
+    </style>
+  );
+}
+
 const alignClass: Record<PopoverAlign, string> = {
   start: "left-0",
   center: "left-1/2 -translate-x-1/2",
@@ -405,12 +445,13 @@ export function PopoverContent({
       const menu = contentRef.current;
       if (!trigger || !menu) return;
       const triggerRect = trigger.getBoundingClientRect();
-      const menuRect = menu.getBoundingClientRect();
-      const menuW = matchTriggerWidth ? triggerRect.width : menuRect.width;
+      // offsetWidth/Height ignore transforms, so the @starting-style
+      // entry scale doesn't shrink the measured size.
+      const menuW = matchTriggerWidth ? triggerRect.width : menu.offsetWidth;
       const { left, top } = computePortalCoords(
         triggerRect,
         menuW,
-        menuRect.height,
+        menu.offsetHeight,
         side,
         align,
         resolvedSideOffset,
@@ -503,7 +544,9 @@ export function PopoverContent({
         id={contentId}
         role={role}
         onKeyDown={handleKeyDown}
-        className={`z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${className}`}
+        data-side={side}
+        data-align={align}
+        className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${className}`}
         style={{
           position: "fixed",
           top: coords?.top ?? 0,
@@ -517,6 +560,7 @@ export function PopoverContent({
         }}
         {...props}
       >
+        <PopoverMotionStyle />
         {children}
       </div>,
       document.body,
@@ -530,10 +574,12 @@ export function PopoverContent({
       id={contentId}
       role={role}
       onKeyDown={handleKeyDown}
-      className={`absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
+      data-align={align}
+      className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}
       {...props}
     >
+      <PopoverMotionStyle />
       {children}
     </div>
   );

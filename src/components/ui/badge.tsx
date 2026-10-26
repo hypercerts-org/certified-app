@@ -46,7 +46,7 @@ const squareToneStyles: Record<
   string
 > = {
   neutral:
-    "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] border border-[var(--border-medium)]",
+    "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] border border-[var(--border-default)]",
   error:
     "bg-transparent text-[var(--color-error)] border border-[var(--color-error)]",
   // "warn" tags are error-toned by design (the draft/warn preview tag is red).
@@ -97,19 +97,19 @@ const config: Record<BadgeVariant, VariantConfig> = {
   // Neutral chips — tag (label), role (membership), count (numeric).
   tag: {
     styles:
-      "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] uppercase tracking-wider",
+      "bg-[var(--bg-sunken)] text-[var(--fg-secondary)] uppercase tracking-label [font-feature-settings:'case'_1]",
     icon: null,
     defaultCompact: true,
   },
   role: {
     styles:
-      "bg-[var(--bg-canvas)] text-[var(--fg-muted)] uppercase tracking-wider",
+      "bg-[var(--bg-canvas)] text-[var(--fg-muted)] uppercase tracking-label [font-feature-settings:'case'_1]",
     icon: null,
     defaultCompact: true,
   },
   count: {
     styles:
-      "bg-[var(--badge-count-bg)] text-[var(--badge-count-fg)] font-semibold",
+      "bg-[var(--badge-count-bg)] text-[var(--badge-count-fg)] font-semibold tabular-nums",
     icon: null,
     defaultCompact: true,
   },
@@ -164,7 +164,7 @@ const Badge: React.FC<BadgeProps> = ({
   const toneStyles = isSquare
     ? squarePalette
     : variant === "count" && tone === "neutral"
-      ? "bg-[var(--bg-sunken)] text-[var(--fg-muted)] font-semibold"
+      ? "bg-[var(--bg-sunken)] text-[var(--fg-muted)] font-semibold tabular-nums"
       : c.styles;
 
   // `count-bare` is chromeless: no pill, no border, no padding — just a number.
@@ -187,7 +187,7 @@ const Badge: React.FC<BadgeProps> = ({
   // Pills are 999px (one shape per semantic; rounded-full is reserved for circles).
   // Square tags use var(--radius) (2px) and pick up uppercase tracking like a tag.
   const shapeStyles = isSquare
-    ? "rounded-[var(--radius)] uppercase tracking-wider"
+    ? "rounded-[var(--radius)] uppercase tracking-label [font-feature-settings:'case'_1]"
     : "rounded-[999px]";
   const baseStyles = `${shapeStyles} inline-flex items-center gap-1.5 ${sizeStyles}`;
 

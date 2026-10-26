@@ -20,7 +20,7 @@ export default function EndorsementRowBadge({
   return (
     <span
       className={`endorsement-row-badge__degree endorsement-row-badge__degree--d${meta.degree}`}
-      title={`Reachable at degree ${meta.degree} through your endorsement graph.`}
+      title={`Reachable at degree ${meta.degree} through your endorsement network.`}
     >
       {DEGREE_LABEL[meta.degree]}
     </span>

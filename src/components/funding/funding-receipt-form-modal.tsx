@@ -3,6 +3,9 @@
 import { useId, useMemo, useState } from "react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
+import Textarea from "@/components/ui/textarea"
+import SegmentedControl from "@/components/ui/segmented-control"
 import { HydratedIdentityRow } from "@/components/explore-page/funding-receipt-parts"
 import FundingPartyField, {
   EMPTY_FUNDING_PARTY,
@@ -34,14 +37,33 @@ import type { FundingParty } from "@/lib/atproto/indexer"
 
 type Role = "recipient" | "sender" | "third-party"
 
+/** 16px below the 800px breakpoint (keeps iOS Safari from zooming on
+ *  focus), the compact 14px scale above it. */
+const FIELD_TEXT = "text-base md:text-sm"
+
 const TODAY = () => {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * Accepts "1000", "1 000", "1_000" and comma-grouped "1,000.50". A comma is
+ * only dropped when it is clearly a thousands separator: in "12,50" it is
+ * a decimal comma, so the value is left as-is and rejected rather than
+ * silently recorded as 1250.
+ */
+function normalizeAmount(raw: string): string {
+  const compact = raw.trim().replace(/[\s_]/g, "")
+  return /^\d{1,3}(,\d{3})+(\.\d+)?$/.test(compact)
+    ? compact.replace(/,/g, "")
+    : compact
+}
+
 function isPositiveAmount(raw: string): boolean {
-  const n = Number(raw.trim())
+  const normalized = normalizeAmount(raw)
+  if (normalized === "") return false
+  const n = Number(normalized)
   return Number.isFinite(n) && n > 0
 }
 
@@ -101,6 +123,9 @@ export default function FundingReceiptFormModal({
   const [notes, setNotes] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Show the amount's inline error only after the field is left (or a
+  // submit is attempted), not while the first digit is being typed.
+  const [amountTouched, setAmountTouched] = useState(false)
 
   const { from, to } = useMemo((): { from: FundingParty; to: FundingParty } => {
     const me: FundingParty = { kind: "account", did: writerDid }
@@ -111,18 +136,34 @@ export default function FundingReceiptFormModal({
     return { from: fromParty.party, to: toParty.party }
   }, [role, writerDid, activityAuthorDid, fromParty.party, toParty.party])
 
-  const canSubmit =
-    !submitting && to !== null && isPositiveAmount(amount) && currency.trim().length > 0
+  const amountValid = isPositiveAmount(amount)
+  const amountError =
+    amountTouched && !amountValid ? "Enter an amount greater than 0, using a dot for decimals, e.g. 1000 or 12.50." : null
 
   async function handleSubmit() {
-    if (!canSubmit || to === null) return
+    if (submitting) return
+    // Record stays enabled so a click explains what's missing instead of
+    // silently doing nothing.
+    if (!amountValid) {
+      setAmountTouched(true)
+      document.getElementById("funding-amount")?.focus()
+      return
+    }
+    if (to === null) {
+      setError("Choose who received the funds.")
+      return
+    }
+    if (currency.trim().length === 0) {
+      setError("Enter a currency, e.g. USDC.")
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       const record = buildFundingReceiptRecord({
         to,
         from: from ?? undefined,
-        amount: amount.trim(),
+        amount: normalizeAmount(amount),
         currency: currency.trim(),
         for: forActivity,
         occurredAt: occurredAt ? new Date(occurredAt).toISOString() : null,
@@ -174,20 +215,20 @@ export default function FundingReceiptFormModal({
           {roles.length > 1 ? (
             <fieldset className="funding-form__field" disabled={submitting}>
               <legend className="funding-form__label">Your role</legend>
-              <div className="funding-form__directions">
-                <RoleRadio
-                  value="sender"
-                  current={role}
-                  onSelect={setRole}
-                  label="I sent this"
-                />
-                <RoleRadio
-                  value="third-party"
-                  current={role}
-                  onSelect={setRole}
-                  label="Record for others"
-                />
-              </div>
+              <SegmentedControl
+                aria-label="Your role"
+                className="self-start"
+                value={role}
+                onValueChange={(v) => setRole(v as Role)}
+                options={[
+                  { value: "sender", label: "I sent this", disabled: submitting },
+                  {
+                    value: "third-party",
+                    label: "Record for others",
+                    disabled: submitting,
+                  },
+                ]}
+              />
             </fieldset>
           ) : (
             <p className="funding-form__confirm-lede">
@@ -243,20 +284,29 @@ export default function FundingReceiptFormModal({
               Amount
             </label>
             <div className="funding-form__amount-row">
-              <input
+              <Input
+                flush
+                size="sm"
                 id="funding-amount"
                 type="text"
                 inputMode="decimal"
-                className="funding-form__input funding-form__input--amount"
+                className={`min-w-0 flex-1 ${FIELD_TEXT}`}
                 placeholder="0.00"
                 value={amount}
                 disabled={submitting}
                 maxLength={50}
+                error={amountError ?? undefined}
+                aria-describedby={amountError ? "funding-amount-error" : undefined}
                 onChange={(e) => setAmount(e.target.value)}
+                onBlur={() => {
+                  if (amount.trim() !== "") setAmountTouched(true)
+                }}
               />
-              <input
+              <Input
+                flush
+                size="sm"
                 type="text"
-                className="funding-form__input funding-form__input--currency"
+                className={`!w-24 flex-none ${FIELD_TEXT}`}
                 aria-label="Currency"
                 list="funding-currencies"
                 placeholder="USDC"
@@ -272,6 +322,11 @@ export default function FundingReceiptFormModal({
                 <option value="ETH" />
               </datalist>
             </div>
+            {amountError ? (
+              <p id="funding-amount-error" className="funding-form__error" role="alert">
+                {amountError}
+              </p>
+            ) : null}
           </div>
 
           {/* When the payment happened. */}
@@ -279,10 +334,12 @@ export default function FundingReceiptFormModal({
             <label className="funding-form__label" htmlFor="funding-occurred">
               Date
             </label>
-            <input
+            <Input
+              flush
+              size="sm"
               id="funding-occurred"
               type="date"
-              className="funding-form__input"
+              className={FIELD_TEXT}
               value={occurredAt}
               disabled={submitting}
               onChange={(e) => setOccurredAt(e.target.value)}
@@ -309,9 +366,11 @@ export default function FundingReceiptFormModal({
             </button>
             {advancedOpen ? (
               <div className="funding-form__advanced">
-                <input
+                <Input
+                  flush
+                  size="sm"
                   type="text"
-                  className="funding-form__input"
+                  className={FIELD_TEXT}
                   aria-label="Payment rail"
                   placeholder="Payment rail (e.g. onchain, bank_transfer)"
                   value={paymentRail}
@@ -319,9 +378,11 @@ export default function FundingReceiptFormModal({
                   maxLength={50}
                   onChange={(e) => setPaymentRail(e.target.value)}
                 />
-                <input
+                <Input
+                  flush
+                  size="sm"
                   type="text"
-                  className="funding-form__input"
+                  className={FIELD_TEXT}
                   aria-label="Payment network"
                   placeholder="Network (e.g. base, ethereum)"
                   value={paymentNetwork}
@@ -329,9 +390,11 @@ export default function FundingReceiptFormModal({
                   maxLength={50}
                   onChange={(e) => setPaymentNetwork(e.target.value)}
                 />
-                <input
+                <Input
+                  flush
+                  size="sm"
                   type="text"
-                  className="funding-form__input"
+                  className={FIELD_TEXT}
                   aria-label="Transaction ID"
                   placeholder="Transaction ID / reference"
                   value={transactionId}
@@ -348,9 +411,11 @@ export default function FundingReceiptFormModal({
             <label className="funding-form__label" htmlFor="funding-notes">
               Note <span className="funding-form__optional">(optional)</span>
             </label>
-            <textarea
+            <Textarea
+              flush
+              size="sm"
               id="funding-notes"
-              className="funding-form__input funding-form__textarea"
+              className={`resize-y ${FIELD_TEXT}`}
               placeholder="Any context for this payment"
               value={notes}
               disabled={submitting}
@@ -376,40 +441,12 @@ export default function FundingReceiptFormModal({
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
+            <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
               Record
             </Button>
           </div>
         </form>
       </AppDialogBody>
     </AppDialog>
-  )
-}
-
-function RoleRadio({
-  value,
-  current,
-  onSelect,
-  label,
-}: {
-  value: Role
-  current: Role
-  onSelect: (next: Role) => void
-  label: string
-}) {
-  return (
-    <label
-      className="funding-form__direction"
-      data-active={current === value ? "" : undefined}
-    >
-      <input
-        type="radio"
-        name="funding-role"
-        value={value}
-        checked={current === value}
-        onChange={() => onSelect(value)}
-      />
-      {label}
-    </label>
   )
 }

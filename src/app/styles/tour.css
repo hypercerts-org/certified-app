@@ -21,7 +21,7 @@
 .product-tour__panel {
   position: fixed;
   z-index: var(--z-tour-backdrop);
-  background: var(--modal-backdrop);
+  background: var(--scrim);
   pointer-events: auto;
 }
 
@@ -148,7 +148,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--border-default);
-  transition: background 150ms ease;
+  transition: background var(--transition-fast);
 }
 
 .product-tour__dot--active {
@@ -168,4 +168,47 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+/* ---------- Motion ----------
+   The dim layer fades in once when the tour starts (the wrapper persists
+   across steps, so it never re-fades). Each step's card is keyed by step
+   index and gets --enter once it has been measured and revealed, so the
+   short fade + 4px rise plays per step from its final position. Uses the
+   `translate` property (not `transform`) so it composes with the centered
+   card's translate(-50%, -50%). Panel top/left/size are never animated
+   (layout properties). */
+@keyframes product-tour-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes product-tour-card-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+.product-tour {
+  animation: product-tour-fade-in 200ms ease-out;
+}
+
+.product-tour__card--enter {
+  animation: product-tour-card-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-tour,
+  .product-tour__card--enter {
+    animation: none;
+  }
+}
+
+/* The arrow-key tip is meaningless without a keyboard. */
+@media (hover: none), (pointer: coarse) {
+  .product-tour__kbd-hint {
+    display: none;
+  }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
+import { useCallback, useId, useMemo } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Filter as FilterIcon } from "lucide-react"
 import {
@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import Tooltip from "@/components/ui/tooltip"
+import Button from "@/components/ui/button"
 
 /** Sentinel slug for the "no label yet" checkbox that sits at the
  *  end of every labeler popover. Backed by an `includeLabels` /
@@ -268,60 +268,69 @@ export function QualityFilterPopover({
 }) {
   const filtered =
     (showCertSection && !q.qualityIsDefault) || !q.orgQualityIsDefault
+  const certHeadingId = useId()
+  const orgHeadingId = useId()
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
-      <Tooltip label="Filter by quality">
-        <PopoverTrigger>
-          <button
-            type="button"
-            className={`explore__chrome-btn explore__chrome-btn--icon${
-              filtered ? " explore__chrome-btn--active" : ""
-            }`}
-            aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
-          >
-            <FilterIcon size={13} strokeWidth={1.75} aria-hidden />
-          </button>
-        </PopoverTrigger>
-      </Tooltip>
-      <PopoverContent align="end">
+      <PopoverTrigger>
+        <Button
+          size="icon"
+          variant="secondary"
+          pressed={filtered}
+          tooltip="Filter by quality"
+          className="explore__chrome-btn--icon"
+          aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
+        >
+          <FilterIcon size={14} strokeWidth={1.75} aria-hidden />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" role="group" aria-label="Quality filter">
         {showCertSection ? (
           <>
-            <p className="popover__section-heading">Activity quality</p>
-            {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
-              <div key={tier} className="popover__item popover__item--check">
+            <div role="group" aria-labelledby={certHeadingId}>
+              <p id={certHeadingId} className="popover__section-heading">
+                Activity quality
+              </p>
+              {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
+                <div key={tier} className="popover__item popover__item--check">
+                  <Checkbox
+                    label={HYPERLABEL_DISPLAY_LABELS[tier]}
+                    checked={q.qualityIncluded.has(tier)}
+                    onChange={() => q.onQualityToggle(tier)}
+                  />
+                </div>
+              ))}
+              <div className="popover__item popover__item--check">
                 <Checkbox
-                  label={HYPERLABEL_DISPLAY_LABELS[tier]}
-                  checked={q.qualityIncluded.has(tier)}
-                  onChange={() => q.onQualityToggle(tier)}
+                  label={UNLABELED_LABEL}
+                  checked={q.qualityIncluded.has(UNLABELED_SLUG)}
+                  onChange={() => q.onQualityToggle(UNLABELED_SLUG)}
                 />
               </div>
-            ))}
-            <div className="popover__item popover__item--check">
-              <Checkbox
-                label={UNLABELED_LABEL}
-                checked={q.qualityIncluded.has(UNLABELED_SLUG)}
-                onChange={() => q.onQualityToggle(UNLABELED_SLUG)}
-              />
             </div>
             <hr className="popover__divider" aria-hidden="true" />
           </>
         ) : null}
-        <p className="popover__section-heading">Account quality</p>
-        {ORG_TIER_SLUGS.map((slug) => (
-          <div key={slug} className="popover__item popover__item--check">
+        <div role="group" aria-labelledby={orgHeadingId}>
+          <p id={orgHeadingId} className="popover__section-heading">
+            Account quality
+          </p>
+          {ORG_TIER_SLUGS.map((slug) => (
+            <div key={slug} className="popover__item popover__item--check">
+              <Checkbox
+                label={ORG_TIER_DISPLAY_LABEL[slug]}
+                checked={q.orgQualityIncluded.has(slug)}
+                onChange={() => q.onOrgQualityToggle(slug)}
+              />
+            </div>
+          ))}
+          <div className="popover__item popover__item--check">
             <Checkbox
-              label={ORG_TIER_DISPLAY_LABEL[slug]}
-              checked={q.orgQualityIncluded.has(slug)}
-              onChange={() => q.onOrgQualityToggle(slug)}
+              label={UNLABELED_LABEL}
+              checked={q.orgQualityIncluded.has(UNLABELED_SLUG)}
+              onChange={() => q.onOrgQualityToggle(UNLABELED_SLUG)}
             />
           </div>
-        ))}
-        <div className="popover__item popover__item--check">
-          <Checkbox
-            label={UNLABELED_LABEL}
-            checked={q.orgQualityIncluded.has(UNLABELED_SLUG)}
-            onChange={() => q.onOrgQualityToggle(UNLABELED_SLUG)}
-          />
         </div>
         <hr className="popover__divider" aria-hidden="true" />
         <button

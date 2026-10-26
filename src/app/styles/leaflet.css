@@ -242,7 +242,7 @@ ol.leaflet-doc__list {
    inputs keeps the form's focus rhythm consistent. */
 .leaflet-editor__content:focus-within {
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .leaflet-editor__surface {
@@ -411,11 +411,10 @@ ol.leaflet-doc__list {
 }
 
 .link-dialog__label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--fg-muted);
-  text-transform: uppercase;
+  /* Field label: sentence case, `ui` step (DESIGN.md §4 Inputs). */
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
 }
 
 .link-dialog__input {
@@ -433,7 +432,14 @@ ol.leaflet-doc__list {
 .link-dialog__input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
+}
+
+/* 16px below desktop so iOS Safari doesn't zoom the page on focus. */
+@media (max-width: 799px) {
+  .link-dialog__input {
+    font-size: 16px;
+  }
 }
 
 .link-dialog__hint {

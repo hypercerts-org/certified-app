@@ -71,7 +71,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 12px 0 0;
@@ -85,6 +86,10 @@
   letter-spacing: -0.01em;
   margin: 12px 0 2px;
   line-height: 1.15;
+  /* A long unbroken name, or the `@handle` fallback, must wrap inside
+     a phone viewport instead of pushing the page wide. */
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* When the eyebrow is present, tighten the top margin on the name so
@@ -102,12 +107,19 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.profile-hero__handle-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Inline tag shown next to the handle when the profile's PDS is
    Bluesky-hosted, so visitors recognise the data origin. Quiet
    styling — small pill, muted border. */
 .profile-hero__pds-tag {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
@@ -132,6 +144,7 @@
 .profile-hero__count-value {
   font-weight: 600;
   color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-hero__count-label {
@@ -145,6 +158,7 @@
   color: var(--fg-secondary);
   white-space: pre-wrap;
   word-break: break-word;
+  text-wrap: pretty;
 }
 
 /* Pronouns + social-graph strip. Mobile-only (this whole header is hidden at
@@ -234,14 +248,53 @@
 .profile-tabs {
   display: flex;
   gap: 0;
-  border-top: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   padding: 0 16px;
   margin-top: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  /* Keep a swipe at the strip's end from starting a browser back-swipe. */
+  overscroll-behavior-x: contain;
+  /* Light snap so a flick settles on a tab edge, not mid-label. */
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 16px;
+  /* Edge fade: hints that the strip scrolls when a tab is cut off at
+     either side. The left fade only covers the 16px gutter at rest. */
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      var(--mask-opaque) 16px,
+      var(--mask-opaque) calc(100% - 32px),
+      transparent
+    ),
+    linear-gradient(
+      to bottom,
+      var(--mask-opaque) 1px,
+      transparent 1px,
+      transparent calc(100% - 1px),
+      var(--mask-opaque) calc(100% - 1px)
+    );
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent,
+      var(--mask-opaque) 16px,
+      var(--mask-opaque) calc(100% - 32px),
+      transparent
+    ),
+    /* Second layer keeps the 1px top/bottom borders unfaded (the layers
+       add, so the hairlines stay full-width under the edge fade). */
+    linear-gradient(
+      to bottom,
+      var(--mask-opaque) 1px,
+      transparent 1px,
+      transparent calc(100% - 1px),
+      var(--mask-opaque) calc(100% - 1px)
+    );
 }
 
 /* The in-page tab strip is mobile-only — on desktop the top bar's row 2
@@ -271,10 +324,13 @@
   position: relative;
   transition: color var(--transition-fast);
   white-space: nowrap;
+  scroll-snap-align: start;
 }
 
-.profile-tabs__tab:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .profile-tabs__tab:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .profile-tabs__tab--active {
@@ -358,7 +414,8 @@
   flex-shrink: 0;
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -512,7 +569,7 @@
     min-height: 0;
     padding: 0;
     gap: 0;
-    border: 1px solid var(--border-medium);
+    border: 1px solid var(--border-default);
     border-radius: var(--radius);
     background: transparent;
     color: var(--fg-primary);

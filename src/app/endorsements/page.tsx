@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Plus, Award } from "lucide-react"
+import { Plus, Award, Inbox } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
@@ -20,9 +20,12 @@ import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Avatar from "@/components/ui/avatar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ErrorMessage from "@/components/ui/error-message"
+import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
 import Skeleton from "@/components/ui/skeleton"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import { deriveIdentity } from "@/lib/utils/identity"
 
 type TabKey = "received" | "given"
@@ -34,6 +37,30 @@ interface GivenEndorsementsListProps {
   readonly revokeError: string | null
   readonly revokingRkey: string | null
   readonly onRevoke: (rkey: string) => void
+  readonly onRetry: () => void
+  /** Opens the New-endorsement panel; the empty state's action. */
+  readonly onNew: () => void
+}
+
+/** Placeholder rows shown while an endorsement list loads — same
+ *  avatar + name/handle shape as `.endorsement-row`, so the list
+ *  doesn't jump when the real rows land. */
+function EndorsementRowsSkeleton() {
+  return (
+    <ul className="endorsements-list" aria-busy="true" aria-label="Loading endorsements">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <li key={i} className="endorsement-row" aria-hidden>
+          <div className="endorsement-row__main">
+            <Skeleton circle width={48} height={48} />
+            <div className="endorsement-row__meta gap-1.5">
+              <Skeleton variant="line" width={160} height={14} />
+              <Skeleton variant="line" width={110} height={12} />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function GivenEndorsementsList({
@@ -43,14 +70,14 @@ function GivenEndorsementsList({
   revokeError,
   revokingRkey,
   onRevoke,
+  onRetry,
+  onNew,
 }: GivenEndorsementsListProps) {
   if (isLoading) {
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <div className="endorsements-loading">
-          <LoadingSpinner size="md" />
-        </div>
+        <EndorsementRowsSkeleton />
       </>
     )
   }
@@ -59,7 +86,11 @@ function GivenEndorsementsList({
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <ErrorMessage message={error} />
+        <ErrorMessage
+          title="Couldn't load endorsements"
+          message="Something went wrong on our side. Try again in a moment."
+          onRetry={onRetry}
+        />
       </>
     )
   }
@@ -68,10 +99,16 @@ function GivenEndorsementsList({
     return (
       <>
         {revokeError ? <ErrorMessage message={revokeError} /> : null}
-        <p className="endorsements-empty">
-          You haven&apos;t endorsed anyone yet. Use the New button above to
-          vouch for someone&apos;s work.
-        </p>
+        <EmptyState
+          icon={Award}
+          title="You haven't endorsed anyone yet"
+          description="Endorse someone to vouch for their work."
+        >
+          <Button variant="secondary" size="sm" onClick={onNew}>
+            <Plus size={16} aria-hidden />
+            Endorse someone
+          </Button>
+        </EmptyState>
       </>
     )
   }
@@ -118,7 +155,7 @@ function ReceivedRow({
   } = deriveIdentity(info, endorsement.issuerDid)
 
   return (
-    <li className="endorsement-row">
+    <li className="endorsement-row endorsement-row--received">
       <Link href={href} className="endorsement-row__main">
         {isLoading && !info ? (
           <Skeleton circle animate={false} width={48} height={48} />
@@ -126,17 +163,17 @@ function ReceivedRow({
           <Avatar size="md" src={info?.avatarUrl || undefined} alt="" fallbackInitials={initials} />
         )}
         <div className="endorsement-row__meta">
-          <span className="endorsement-row__name">{displayName}</span>
+          <span className="endorsement-row__name" dir="auto">{displayName}</span>
           {handle ? <span className="endorsement-row__handle">@{handle}</span> : null}
           {endorsement.note ? (
-            <span className="endorsement-row__note">{endorsement.note}</span>
+            <span className="endorsement-row__note" dir="auto">{endorsement.note}</span>
           ) : null}
         </div>
       </Link>
       <time
         dateTime={endorsement.createdAt}
         className="endorsement-row__date"
-        title={new Date(endorsement.createdAt).toLocaleString()}
+        title={formatAbsoluteDateTime(endorsement.createdAt)}
       >
         {formatShortDate(endorsement.createdAt)}
       </time>
@@ -160,25 +197,34 @@ function ReceivedEndorsementsList() {
   // otherwise an already-rejected endorsement vanishes with no UI to
   // un-reject it. §22.21 privacy is preserved: foreign viewers never
   // reach this surface, so they never see rejected awards.
-  const { endorsements, isLoading, error } = useReceivedEndorsements(did, {
+  const { endorsements, isLoading, error, refetch } = useReceivedEndorsements(did, {
     includeRejected: true,
   })
   const ownStates = useOwnResponseStates()
 
   if (isLoading) {
+    return <EndorsementRowsSkeleton />
+  }
+  if (error) {
     return (
-      <div className="endorsements-loading">
-        <LoadingSpinner size="md" />
-      </div>
+      <ErrorMessage
+        title="Couldn't load endorsements"
+        message="Something went wrong on our side. Try again in a moment."
+        onRetry={refetch}
+      />
     )
   }
-  if (error) return <ErrorMessage message={error} />
   if (endorsements.length === 0) {
     return (
-      <p className="endorsements-empty">
-        You haven&apos;t received any endorsements yet. When someone vouches
-        for your work, it&apos;ll appear here for you to accept or decline.
-      </p>
+      <EmptyState
+        icon={Inbox}
+        title="No endorsements received yet"
+        description="When someone vouches for your work, it'll appear here for you to accept or decline."
+      >
+        <Button href="/explore?show=accounts" variant="secondary" size="sm">
+          Find people on Explore
+        </Button>
+      </EmptyState>
     )
   }
 
@@ -368,16 +414,16 @@ export default function EndorsementsPage() {
               </TabList>
 
               {activeTab === "given" && !isPanelOpen ? (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="endorsements-new-btn"
                   onClick={() => setIsPanelOpen(true)}
                   disabled={!did}
-                  aria-label="New endorsement"
                 >
-                  <Plus size={16} />
-                  <span>New</span>
-                </button>
+                  <Plus size={16} aria-hidden />
+                  New
+                </Button>
               ) : null}
             </div>
 
@@ -404,6 +450,8 @@ export default function EndorsementsPage() {
                 revokeError={revokeError}
                 revokingRkey={revokingRkey}
                 onRevoke={setConfirmRkey}
+                onRetry={refetch}
+                onNew={() => setIsPanelOpen(true)}
               />
             </TabPanel>
           </Tabs>
@@ -412,10 +460,10 @@ export default function EndorsementsPage() {
 
 
       {confirmRkey ? (
-        <ConfirmDialog
-          title="Revoke endorsement"
-          message="Do you really want to delete this endorsement?"
-          confirmLabel="Revoke"
+        <RevokeEndorsementDialog
+          subjectDid={
+            endorsements.find((e) => e.rkey === confirmRkey)?.subjectDid ?? null
+          }
           isConfirming={revokingRkey === confirmRkey}
           onCancel={() => {
             if (revokingRkey === confirmRkey) return
@@ -425,5 +473,32 @@ export default function EndorsementsPage() {
         />
       ) : null}
     </div>
+  )
+}
+
+/** Revoke confirmation that names the endorsed account. */
+function RevokeEndorsementDialog({
+  subjectDid,
+  isConfirming,
+  onCancel,
+  onConfirm,
+}: {
+  subjectDid: string | null
+  isConfirming: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const { info } = useAuthorInfo(subjectDid)
+  const { displayName } = deriveIdentity(info, subjectDid ?? "")
+  const name = subjectDid ? displayName : "this account"
+  return (
+    <ConfirmDialog
+      title="Revoke endorsement?"
+      message={`Revoke your endorsement of ${name}? You can endorse them again later.`}
+      confirmLabel="Revoke endorsement"
+      isConfirming={isConfirming}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   )
 }

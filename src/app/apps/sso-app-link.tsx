@@ -14,12 +14,10 @@ import { useSession } from "@/hooks/use-session"
 export default function SsoAppLink({
   url,
   ssoHandleUrl,
-  ariaLabel,
   children,
 }: {
   url: string
   ssoHandleUrl?: string
-  ariaLabel: string
   children: React.ReactNode
 }) {
   const { handle } = useSession()
@@ -32,9 +30,10 @@ export default function SsoAppLink({
       target="_blank"
       rel="noopener noreferrer"
       className="apps-store__tile"
-      aria-label={ariaLabel}
     >
       {children}
+      {/* The tile's visible text (name, tag, description) is its name. */}
+      <span className="sr-only"> (opens in new tab)</span>
     </a>
   )
 }

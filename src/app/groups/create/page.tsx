@@ -28,6 +28,7 @@ import {
   uploadOrgBlob,
 } from "@/lib/groups/api"
 import Button from "@/components/ui/button"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -100,6 +101,21 @@ export default function CreateGroupPage() {
   const [nameError, setNameError] = useState("")
   const [handleError, setHandleError] = useState("")
   const [emailError, setEmailError] = useState("")
+
+  const isDirty =
+    !isCreating &&
+    ([
+      displayName,
+      handle,
+      shortDescription,
+      website,
+      email,
+      organizationType,
+      foundedDate,
+    ].some((v) => v.trim() !== "") ||
+      !!avatarFile ||
+      !!bannerFile)
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     return () => {
@@ -207,7 +223,17 @@ export default function CreateGroupPage() {
     const nameValid = validateName(displayName)
     const handleValid = validateHandle(handle)
     const emailValid = validateEmail(email)
-    if (!nameValid || !handleValid || !emailValid) return
+    if (!nameValid || !handleValid || !emailValid) {
+      // Submit stays enabled; the validators above paint the inline
+      // errors, so move focus to the first field that needs attention.
+      const firstInvalid = !nameValid
+        ? "create-group-name"
+        : !handleValid
+          ? "create-group-handle"
+          : "create-group-email"
+      document.getElementById(firstInvalid)?.focus()
+      return
+    }
 
     setConfirmOpen(true)
   }
@@ -393,15 +419,6 @@ export default function CreateGroupPage() {
     )
   }
 
-  const canSubmit =
-    !!displayName.trim() &&
-    !!handle.trim() &&
-    !!email.trim() &&
-    !nameError &&
-    !handleError &&
-    !emailError &&
-    !isCreating
-
   return (
     <form onSubmit={handleSubmit}>
       <article className="project-detail-page project-detail--wide create-project create-group">
@@ -417,7 +434,7 @@ export default function CreateGroupPage() {
           <div className="create-group__identity-row">
             <div className="create-group__identity-col">
               <span className="project-detail__meta-label">
-                <Users size={11} strokeWidth={2} aria-hidden />
+                <Users size={12} strokeWidth={2} aria-hidden />
                 Avatar
               </span>
               <div
@@ -455,7 +472,7 @@ export default function CreateGroupPage() {
 
             <div className="create-group__identity-col">
               <span className="project-detail__meta-label">
-                <ImageIcon size={11} strokeWidth={2} aria-hidden />
+                <ImageIcon size={12} strokeWidth={2} aria-hidden />
                 Banner
               </span>
               <div
@@ -496,8 +513,13 @@ export default function CreateGroupPage() {
             <div className="create-cert__input-with-counter">
               <input
                 type="text"
+                id="create-group-name"
                 className="cert-detail__title-input"
                 aria-label="Display name"
+                aria-describedby={
+                  nameError ? "create-group-name-error" : "create-group-name-counter"
+                }
+                aria-invalid={!!nameError || undefined}
                 placeholder="Display name for your group"
                 value={displayName}
                 maxLength={64}
@@ -507,11 +529,12 @@ export default function CreateGroupPage() {
                 }}
                 autoFocus
               />
-              <p className="create-cert__counter" aria-live="polite">
+              <p className="create-cert__counter" id="create-group-name-counter">
                 {displayName.length}/64 · required
               </p>
               {nameError ? (
                 <p
+                  id="create-group-name-error"
                   className="create-cert__counter create-cert__counter--over"
                   role="alert"
                 >
@@ -523,7 +546,7 @@ export default function CreateGroupPage() {
 
           <section className="cert-detail__section create-group__about">
             <span className="project-detail__meta-label">
-              <FileText size={11} strokeWidth={2} aria-hidden />
+              <FileText size={12} strokeWidth={2} aria-hidden />
               About
             </span>
             <div className="create-cert__input-with-counter">
@@ -532,11 +555,12 @@ export default function CreateGroupPage() {
                 value={shortDescription}
                 placeholder="A short description of your group (optional)"
                 aria-label="Short description"
+                aria-describedby="create-group-desc-counter"
                 onChange={(e) => setShortDescription(e.target.value)}
                 rows={3}
                 maxLength={3000}
               />
-              <p className="create-cert__counter" aria-live="polite">
+              <p className="create-cert__counter" id="create-group-desc-counter">
                 {shortDescription.length}/3000
               </p>
             </div>
@@ -545,13 +569,23 @@ export default function CreateGroupPage() {
           <section className="project-detail__meta create-project__meta create-group__account">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <AtSign size={11} strokeWidth={2} aria-hidden />
+                <AtSign size={12} strokeWidth={2} aria-hidden />
                 Handle
               </span>
               <input
                 type="text"
                 className="cert-detail__meta-input create-cert__field--full"
+                id="create-group-handle"
                 aria-label="Handle"
+                aria-describedby={
+                  handleError
+                    ? "create-group-handle-hint create-group-handle-error"
+                    : "create-group-handle-hint"
+                }
+                aria-invalid={!!handleError || undefined}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="my-group"
                 value={handle}
                 maxLength={32}
@@ -565,14 +599,14 @@ export default function CreateGroupPage() {
                   if (handleError) validateHandle(cleaned)
                 }}
               />
-              <p className="create-group__field-hint">
+              <p className="create-group__field-hint" id="create-group-handle-hint">
                 How people find this group on Certified.
               </p>
               {handleError ? (
                 <p
-                  className="create-cert__contrib-error"
+                  id="create-group-handle-error"
+                  className="create-cert__contrib-error mt-1"
                   role="alert"
-                  style={{ marginTop: 4 }}
                 >
                   {handleError}
                 </p>
@@ -581,13 +615,22 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Mail size={11} strokeWidth={2} aria-hidden />
+                <Mail size={12} strokeWidth={2} aria-hidden />
                 Email
               </span>
               <input
                 type="email"
                 className="cert-detail__meta-input create-cert__field--full"
+                id="create-group-email"
                 aria-label="Group email"
+                aria-describedby={
+                  emailError
+                    ? "create-group-email-hint create-group-email-error"
+                    : "create-group-email-hint"
+                }
+                aria-invalid={!!emailError || undefined}
+                autoCapitalize="none"
+                spellCheck={false}
                 placeholder="group@example.com"
                 value={email}
                 maxLength={254}
@@ -598,14 +641,14 @@ export default function CreateGroupPage() {
                 }}
                 onBlur={(e) => validateEmail(e.target.value)}
               />
-              <p className="create-group__field-hint">
+              <p className="create-group__field-hint" id="create-group-email-hint">
                 Sign-in and recovery — use an address you control.
               </p>
               {emailError ? (
                 <p
-                  className="create-cert__contrib-error"
+                  id="create-group-email-error"
+                  className="create-cert__contrib-error mt-1"
                   role="alert"
-                  style={{ marginTop: 4 }}
                 >
                   {emailError}
                 </p>
@@ -616,7 +659,7 @@ export default function CreateGroupPage() {
           <section className="project-detail__meta create-project__meta">
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Globe size={11} strokeWidth={2} aria-hidden />
+                <Globe size={12} strokeWidth={2} aria-hidden />
                 Website
               </span>
               <input
@@ -633,7 +676,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Calendar size={11} strokeWidth={2} aria-hidden />
+                <Calendar size={12} strokeWidth={2} aria-hidden />
                 Founded
               </span>
               <input
@@ -647,7 +690,7 @@ export default function CreateGroupPage() {
 
             <div className="project-detail__meta-row">
               <span className="project-detail__meta-label">
-                <Building2 size={11} strokeWidth={2} aria-hidden />
+                <Building2 size={12} strokeWidth={2} aria-hidden />
                 Organization type
               </span>
               <input
@@ -671,7 +714,9 @@ export default function CreateGroupPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => router.push("/home")}
+              onClick={() => {
+                if (confirmDiscard()) router.push("/home")
+              }}
               disabled={isCreating}
             >
               Cancel
@@ -680,7 +725,7 @@ export default function CreateGroupPage() {
               type="submit"
               variant="primary"
               loading={isCreating}
-              disabled={!canSubmit}
+              disabled={isCreating}
             >
               {isCreating ? "Creating…" : "Create group"}
             </Button>

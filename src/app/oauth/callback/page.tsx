@@ -7,11 +7,10 @@ import { resolvePostSigninPath } from "@/lib/auth/post-signin"
 import { markTourPending } from "@/lib/tour/tour-sentinel"
 
 export default function OAuthCallbackPage() {
-  const [error, setError] = useState<string | null>(null)
-  // True when the failure is a recoverable sign-in interruption (ePDS
-  // clean-exit / user-denied / expired flow, #154) rather than a hard
-  // error — drives a "try again" affordance instead of a dead end.
-  const [canRetry, setCanRetry] = useState(false)
+  // The server's error string is technical (and logged below); the page
+  // always shows the same plain explanation plus a retry link, since every
+  // failure here is recovered by signing in again (#154).
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -26,7 +25,6 @@ export default function OAuthCallbackPage() {
           const data = await res
             .json()
             .catch(() => ({ error: "Callback failed" }))
-          if (!cancelled && data.retry) setCanRetry(true)
           throw new Error(data.error || "Authentication failed")
         }
 
@@ -58,7 +56,7 @@ export default function OAuthCallbackPage() {
       } catch (err) {
         if (cancelled) return
         console.error("OAuth callback error:", err)
-        setError(err instanceof Error ? err.message : "Authentication failed")
+        setFailed(true)
       }
     }
 
@@ -66,16 +64,19 @@ export default function OAuthCallbackPage() {
     return () => { cancelled = true }
   }, [])
 
-  if (error) {
+  if (failed) {
     return (
       <div className="loading-screen">
         <div className="loading-screen__inner">
-          <p className="loading-screen__error">{error}</p>
-          {canRetry ? (
-            <Link href="/welcome" className="loading-screen__link">
-              Try signing in again
-            </Link>
-          ) : null}
+          <h1 className="font-headline text-h3 text-[var(--fg-primary)] mb-2">
+            Sign-in didn&rsquo;t finish
+          </h1>
+          <p className="loading-screen__error">
+            Your session may have timed out. Try signing in again.
+          </p>
+          <Link href="/welcome" className="loading-screen__link">
+            Try signing in again
+          </Link>
           <Link href="/" className="loading-screen__link">
             Return to home
           </Link>

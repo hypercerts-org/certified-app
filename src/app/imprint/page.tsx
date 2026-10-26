@@ -28,7 +28,7 @@ export default function ImprintPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
 
-        <div className="prose max-w-none space-y-8">
+        <div className="legal-prose space-y-8">
           <section>
             <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">Service operator</h2>
             <p>
@@ -47,7 +47,7 @@ export default function ImprintPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -77,7 +77,7 @@ export default function ImprintPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -92,14 +92,14 @@ export default function ImprintPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
             </p>
             <p className="mt-4">
               Notice-and-action procedures for content reports are described on the{" "}
-              <Link href="/dsa" className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]">
+              <Link href="/dsa" className="legal-link">
                 DSA Compliance Page
               </Link>
               .

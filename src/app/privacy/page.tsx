@@ -27,9 +27,94 @@ export default function PrivacyPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
 
-        <div className="prose max-w-none space-y-8">
+        <nav aria-label="Contents" className="legal-toc mb-8">
+          <ol>
+            <li>
+              <a href="#introduction" className="legal-link">
+                1. Introduction
+              </a>
+            </li>
+            <li>
+              <a href="#data-controller" className="legal-link">
+                2. Data controller
+              </a>
+            </li>
+            <li>
+              <a href="#personal-data-we-process" className="legal-link">
+                3. Personal data we process
+              </a>
+            </li>
+            <li>
+              <a href="#how-we-use-personal-data" className="legal-link">
+                4. How we use personal data
+              </a>
+            </li>
+            <li>
+              <a href="#legal-basis-for-processing" className="legal-link">
+                5. Legal basis for processing
+              </a>
+            </li>
+            <li>
+              <a href="#data-storage-and-infrastructure" className="legal-link">
+                6. Data storage and infrastructure
+              </a>
+            </li>
+            <li>
+              <a href="#federated-network-architecture" className="legal-link">
+                7. Federated network architecture
+              </a>
+            </li>
+            <li>
+              <a href="#data-sharing" className="legal-link">
+                8. Data sharing
+              </a>
+            </li>
+            <li>
+              <a href="#cookies-and-tracking-technologies" className="legal-link">
+                9. Cookies and tracking technologies
+              </a>
+            </li>
+            <li>
+              <a href="#data-retention" className="legal-link">
+                10. Data retention
+              </a>
+            </li>
+            <li>
+              <a href="#security" className="legal-link">
+                11. Security
+              </a>
+            </li>
+            <li>
+              <a href="#childrens-data" className="legal-link">
+                12. Children&apos;s data
+              </a>
+            </li>
+            <li>
+              <a href="#your-rights" className="legal-link">
+                13. Your rights
+              </a>
+            </li>
+            <li>
+              <a href="#international-users" className="legal-link">
+                14. International users
+              </a>
+            </li>
+            <li>
+              <a href="#changes-to-this-policy" className="legal-link">
+                15. Changes to this policy
+              </a>
+            </li>
+            <li>
+              <a href="#contact" className="legal-link">
+                16. Contact
+              </a>
+            </li>
+          </ol>
+        </nav>
+
+        <div className="legal-prose space-y-8">
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. Introduction</h2>
+            <h2 id="introduction" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">1. Introduction</h2>
             <p>
               This Privacy Policy explains how the Hypercerts Foundation (&quot;Hypercerts
               Foundation&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) processes
@@ -60,7 +145,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">2. Data controller</h2>
+            <h2 id="data-controller" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">2. Data controller</h2>
             <p>
               For the purposes of the EU General Data Protection Regulation (GDPR), the data
               controller is:
@@ -80,7 +165,7 @@ export default function PrivacyPage() {
               Contact:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -111,7 +196,7 @@ export default function PrivacyPage() {
             <p className="mt-4">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -119,7 +204,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="personal-data-we-process" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               3. Personal data we process
             </h2>
             <p>
@@ -174,7 +259,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="how-we-use-personal-data" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               4. How we use personal data
             </h2>
             <p>
@@ -196,7 +281,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="legal-basis-for-processing" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               5. Legal basis for processing
             </h2>
             <p>
@@ -230,7 +315,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="data-storage-and-infrastructure" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               6. Data storage and infrastructure
             </h2>
             <p>
@@ -249,7 +334,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="federated-network-architecture" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               7. Federated network architecture
             </h2>
             <p>
@@ -278,7 +363,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">8. Data sharing</h2>
+            <h2 id="data-sharing" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">8. Data sharing</h2>
             <p>We do not sell personal data.</p>
             <p className="mt-4">
               Personal data may be shared only in limited circumstances, including:
@@ -307,7 +392,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="cookies-and-tracking-technologies" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               9. Cookies and tracking technologies
             </h2>
             <p>
@@ -343,7 +428,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">10. Data retention</h2>
+            <h2 id="data-retention" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">10. Data retention</h2>
             <p>
               We retain personal data only for as long as necessary to operate the services and
               fulfill legal obligations.
@@ -356,7 +441,7 @@ export default function PrivacyPage() {
               To delete your account, contact us at{" "}
               <a
                 href="mailto:support@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 support@hypercerts.org
               </a>
@@ -375,7 +460,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">11. Security</h2>
+            <h2 id="security" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">11. Security</h2>
             <p>
               We implement reasonable technical and organizational measures to protect the security
               of the services and the data stored on them.
@@ -388,7 +473,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="childrens-data" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               12. Children&apos;s data
             </h2>
             <p>
@@ -405,7 +490,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">13. Your rights</h2>
+            <h2 id="your-rights" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">13. Your rights</h2>
             <p>
               Where applicable under data protection laws such as the GDPR, individuals may have
               the right to:
@@ -428,7 +513,7 @@ export default function PrivacyPage() {
                 href="https://www.datenschutz-berlin.de"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 https://www.datenschutz-berlin.de
               </a>
@@ -438,7 +523,7 @@ export default function PrivacyPage() {
             <p className="mt-2">
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>
@@ -450,7 +535,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="international-users" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               14. International users
             </h2>
             <p>
@@ -465,7 +550,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="changes-to-this-policy" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               15. Changes to this policy
             </h2>
             <p>We may update this Privacy Policy from time to time.</p>
@@ -480,7 +565,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">16. Contact</h2>
+            <h2 id="contact" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">16. Contact</h2>
             <p>
               For privacy inquiries, data protection requests, or questions about this policy,
               contact:
@@ -500,7 +585,7 @@ export default function PrivacyPage() {
               Email:{" "}
               <a
                 href="mailto:legal@hypercerts.org"
-                className="text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]"
+                className="legal-link"
               >
                 legal@hypercerts.org
               </a>

@@ -511,6 +511,52 @@ function Toolbar({
   onEmbedClick,
   isUploadingImage,
 }: ToolbarProps) {
+  // Roving tabindex (WAI-ARIA toolbar pattern): the toolbar is a single
+  // tab stop; Left/Right/Home/End move between buttons. Tab indices are
+  // set on the DOM after each render because buttons appear/disable with
+  // editor state, and React never manages tabIndex on them.
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const rovingIdx = useRef(0)
+  const toolbarItems = () =>
+    Array.from(
+      toolbarRef.current?.querySelectorAll<HTMLButtonElement>(
+        ".leaflet-editor__btn:not(:disabled)",
+      ) ?? [],
+    )
+  useEffect(() => {
+    const items = toolbarItems()
+    if (rovingIdx.current >= items.length) rovingIdx.current = 0
+    items.forEach((b, i) => {
+      b.tabIndex = i === rovingIdx.current ? 0 : -1
+    })
+  })
+  const onToolbarKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = toolbarItems()
+    const current = items.indexOf(document.activeElement as HTMLButtonElement)
+    if (current < 0 || items.length === 0) return
+    let next = current
+    if (e.key === "ArrowRight") next = (current + 1) % items.length
+    else if (e.key === "ArrowLeft") next = (current - 1 + items.length) % items.length
+    else if (e.key === "Home") next = 0
+    else if (e.key === "End") next = items.length - 1
+    else return
+    e.preventDefault()
+    items[current].tabIndex = -1
+    items[next].tabIndex = 0
+    rovingIdx.current = next
+    items[next].focus()
+  }
+  // Clicking a button makes it the toolbar's tab stop too.
+  const onToolbarFocus = (e: React.FocusEvent<HTMLDivElement>) => {
+    const items = toolbarItems()
+    const idx = items.findIndex((b) => b === (e.target as EventTarget))
+    if (idx < 0 || idx === rovingIdx.current) return
+    items.forEach((b, i) => {
+      b.tabIndex = i === idx ? 0 : -1
+    })
+    rovingIdx.current = idx
+  }
+
   if (!editor) {
     return <div className="leaflet-editor__toolbar" aria-hidden />
   }
@@ -543,16 +589,19 @@ function Toolbar({
         }}
         disabled={disabled}
       >
-        <Icon size={15} strokeWidth={1.75} aria-hidden />
+        <Icon size={16} strokeWidth={1.75} aria-hidden />
       </button>
     </Tooltip>
   )
 
   return (
     <div
+      ref={toolbarRef}
       className="leaflet-editor__toolbar"
       role="toolbar"
       aria-label="Formatting"
+      onKeyDown={onToolbarKeyDown}
+      onFocus={onToolbarFocus}
     >
       {!minimal &&
         btn(

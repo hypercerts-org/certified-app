@@ -84,7 +84,7 @@ export default function Drawer({
       <div
         aria-hidden="true"
         onClick={onClose}
-        className={`fixed inset-0 z-[var(--z-portal-sheet)] bg-[var(--navy-overlay-30)] transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+        className={`fixed inset-0 z-[var(--z-portal-sheet)] bg-[var(--scrim)] transition-opacity duration-base ease-out motion-reduce:transition-none ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
@@ -101,7 +101,9 @@ export default function Drawer({
         // Same z-token as the backdrop; the panel follows it in DOM
         // order, so it stacks on top without needing a higher index
         // (mirrors the 60/61 split mobile-sidebar uses in raw CSS).
-        className={`fixed top-0 bottom-0 ${anchorClass} z-[var(--z-portal-sheet)] flex w-[83.33%] max-w-[320px] flex-col overflow-y-auto bg-[var(--bg-elevated)] shadow-[var(--shadow-lg)] transition-transform duration-300 ease-out motion-reduce:transition-none ${closedTransform}`}
+        // House spring curve; dismiss runs faster (200ms) than the 300ms
+        // open so closing never feels sluggish.
+        className={`fixed top-0 bottom-0 ${anchorClass} z-[var(--z-portal-sheet)] flex w-[83.33%] max-w-[320px] flex-col overflow-y-auto bg-[var(--bg-elevated)] shadow-[var(--shadow-lg)] transition-transform ease-emphasized ${open ? "duration-slow" : "duration-base"} motion-reduce:transition-none ${closedTransform}`}
       >
         {children}
       </aside>

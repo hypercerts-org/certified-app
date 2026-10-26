@@ -54,19 +54,19 @@ function ExploreUserCard({
           className="explore-user-card__avatar"
         />
         <div className="explore-user-card__id">
-          <h3 className="explore-user-card__name">{displayName}</h3>
+          <h3 className="explore-user-card__name" dir="auto">{displayName}</h3>
           {handle ? (
             <p className="explore-user-card__handle">@{handle}</p>
           ) : (
             <p className="explore-user-card__handle explore-user-card__handle--did">
-              <User size={11} strokeWidth={1.75} aria-hidden />
+              <User size={12} strokeWidth={2} aria-hidden />
               {truncateDid(actor.did)}
             </p>
           )}
         </div>
       </header>
       {description ? (
-        <p className="explore-user-card__desc">{description}</p>
+        <p className="explore-user-card__desc" dir="auto">{description}</p>
       ) : null}
     </Link>
   )

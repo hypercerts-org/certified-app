@@ -268,7 +268,7 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
         const out = await onImport(dids, { signal: controller.signal })
         setResult(out)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Sync failed")
+        setError(err instanceof Error ? err.message : "Couldn't import your follows. Try again.")
       } finally {
         setIsImporting(false)
         abortControllerRef.current = null
@@ -281,16 +281,16 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
     <div
       className="social-graph-sync__flow"
       role="region"
-      aria-label="Sync social graph"
+      aria-label={`Sync ${copy.source} follows to ${copy.target}`}
     >
       {/* The choose step needs no title — the pressed direction button above
           labels it; only select/result get a header. */}
       {result || step === "select" ? (
         <div className="social-graph-sync__flow-head">
           {step === "select" && !result ? (
-            <button
-              type="button"
-              className="social-graph-sync__modal-back"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 if (isImporting) return
                 setStep("choose")
@@ -300,7 +300,7 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
               disabled={isImporting}
             >
               <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-            </button>
+            </Button>
           ) : null}
           <h3 className="social-graph-sync__flow-title">
             {result ? "Sync complete" : `Select people to ${copy.verbLower}`}
@@ -373,7 +373,7 @@ function ChooseStep({
       <p className="social-graph-sync__modal-lede">
         You follow <strong>{candidateCount}</strong>{" "}
         {candidateCount === 1 ? "person" : "people"} on {copy.source} who you
-        don’t follow yet on {copy.target}.
+        don&apos;t follow yet on {copy.target}.
       </p>
 
       <div className="social-graph-sync__modal-choices">
@@ -537,7 +537,7 @@ function SelectStep({
         </span>
       </div>
 
-      <ul className="social-graph-sync__modal-list" role="listbox" aria-label={`${copy.source}-only follows`}>
+      <ul className="social-graph-sync__modal-list" aria-label={`${copy.source}-only follows`}>
         {pageDids.map((d) => (
           <CandidateRow
             key={d}
@@ -691,9 +691,7 @@ function ResultView({ copy, result, candidateCount, onClose }: ResultViewProps) 
           <summary>Show errors</summary>
           <ul>
             {result.errors.map((e) => (
-              <li key={e.subjectDid}>
-                <code>{e.subjectDid}</code> — {e.message}
-              </li>
+              <ResultErrorRow key={e.subjectDid} did={e.subjectDid} />
             ))}
           </ul>
         </details>
@@ -705,6 +703,19 @@ function ResultView({ copy, result, candidateCount, onClose }: ResultViewProps) 
         </Button>
       </div>
     </>
+  )
+}
+
+// Failed-import row: names the person by @handle (falls back to display
+// name) instead of the raw account ID, with a plain reason rather than
+// the technical error message.
+function ResultErrorRow({ did }: { did: string }) {
+  const { info } = useAuthorInfo(did)
+  const { displayName, handle } = deriveIdentity(info, did)
+  return (
+    <li>
+      {handle ? `@${handle}` : displayName}: couldn&rsquo;t import this follow.
+    </li>
   )
 }
 

@@ -66,9 +66,9 @@ function ExploreProjectCard({
         )}
       </div>
       <div className="explore-project-card__body">
-        <h3 className="explore-project-card__title">{title}</h3>
+        <h3 className="explore-project-card__title" dir="auto">{title}</h3>
         {shortDesc ? (
-          <p className="explore-project-card__desc">{shortDesc}</p>
+          <p className="explore-project-card__desc" dir="auto">{shortDesc}</p>
         ) : null}
         <div className="explore-project-card__meta">
           <span className="explore-project-card__count">

@@ -7,7 +7,7 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { clearSessionCache } from "@/hooks/use-session";
 import Button from "@/components/ui/button";
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog";
-import Tooltip from "@/components/ui/tooltip";
+import { toUserErrorMessage } from "@/lib/utils/api";
 
 interface CustomDomainModalProps {
   isOpen: boolean;
@@ -82,9 +82,11 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        // Classify only what the server said; the fallback must not match
+        // the DNS check, or every 5xx would read as "record not found".
         const errMsg = (data as { error?: string; message?: string }).message
           || (data as { error?: string }).error
-          || res.statusText;
+          || "";
 
         if (errMsg.includes("resolve") || errMsg.includes("DNS") || errMsg.includes("not found")) {
           throw new Error(
@@ -94,7 +96,9 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
         if (errMsg.includes("already") || errMsg.includes("taken")) {
           throw new Error("This domain is already in use by another account.");
         }
-        throw new Error(errMsg);
+        throw new Error(
+          toUserErrorMessage(res.status, errMsg || undefined, "Couldn't verify the domain"),
+        );
       }
 
       // Success
@@ -119,16 +123,14 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
 
   return (
     <AppDialog
-      ariaLabel="Use your own domain as your username"
+      ariaLabel="Use your own domain as your handle"
       className="domain-modal"
       maxWidth={480}
       onClose={onClose}
     >
       <AppDialogHeader
         title={
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-          >
+          <span className="inline-flex items-center gap-2">
             <Globe size={18} className="domain-modal__header-icon" aria-hidden />
             Use your own domain
           </span>
@@ -159,8 +161,8 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
           {step === "enter-domain" && (
             <>
               <p className="domain-modal__desc">
-                You can use a domain you own as your username. For example, if you own <strong>alice.com</strong>, your
-                username will become <strong>@alice.com</strong>.
+                You can use a domain you own as your handle. For example, if you own <strong>alice.com</strong>, your
+                handle will become <strong>@alice.com</strong>.
               </p>
               <label className="domain-modal__label" htmlFor="domain-input">
                 Domain
@@ -169,14 +171,19 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                 id="domain-input"
                 ref={inputRef}
                 type="text"
+                inputMode="url"
+                autoComplete="off"
+                spellCheck={false}
+                autoCapitalize="none"
+                aria-describedby="domain-hint"
                 className="domain-modal__input"
                 placeholder="example.com"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleContinue(); }}
               />
-              <p className="domain-modal__hint">
-                Enter the domain you want to use as your username. You must have access to its DNS settings.
+              <p id="domain-hint" className="domain-modal__hint">
+                Enter the domain you want to use as your handle. You must have access to its DNS settings.
               </p>
               <div className="domain-modal__actions">
                 <Button variant="ghost" size="sm" onClick={onClose} type="button">
@@ -210,38 +217,41 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   <div className="domain-modal__dns-label">Host</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span>{dnsHost}</span>
-                    <Tooltip label="Copy host">
-                      <button
-                        className="domain-modal__copy-btn"
-                        onClick={() => void copyHost(dnsHost)}
-                        aria-label="Copy host"
-                        type="button"
-                      >
-                        {hostCopied ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
-                    </Tooltip>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void copyHost(dnsHost)}
+                      aria-label="Copy host"
+                      type="button"
+                    >
+                      {hostCopied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                    </Button>
                   </div>
                 </div>
                 <div className="domain-modal__dns-row domain-modal__dns-row--last">
                   <div className="domain-modal__dns-label">Value</div>
                   <div className="domain-modal__dns-val domain-modal__dns-val--mono">
                     <span className="domain-modal__dns-val-break">{dnsValue}</span>
-                    <Tooltip label="Copy value">
-                      <button
-                        className="domain-modal__copy-btn"
-                        onClick={() => void copyValue(dnsValue)}
-                        aria-label="Copy value"
-                        type="button"
-                      >
-                        {valueCopied ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
-                    </Tooltip>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void copyValue(dnsValue)}
+                      aria-label="Copy value"
+                      type="button"
+                    >
+                      {valueCopied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                    </Button>
                   </div>
                 </div>
               </div>
 
+              {/* The icon swap is visual only; announce the copy too. */}
+              <span className="sr-only" aria-live="polite">
+                {hostCopied ? "Host copied" : valueCopied ? "Value copied" : ""}
+              </span>
+
               <div className="domain-modal__info-box">
-                <AlertCircle size={14} className="domain-modal__info-icon" />
+                <AlertCircle size={14} className="domain-modal__info-icon" aria-hidden />
                 <p>DNS changes can take a few minutes to propagate. If verification fails, wait a moment and try again.</p>
               </div>
 
@@ -273,7 +283,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
                   <CheckCircle2 size={40} className="domain-modal__success-icon" />
                   <h3 className="domain-modal__success-title">Domain verified!</h3>
                   <p className="domain-modal__success-desc">
-                    Your username is now <strong>@{domain}</strong>. The page will reload momentarily.
+                    Your handle is now <strong>@{domain}</strong>. The page will reload momentarily.
                   </p>
                 </div>
               ) : (
@@ -295,7 +305,7 @@ export default function CustomDomainModal({ isOpen, onClose, did }: CustomDomain
 
                   {verifyError && (
                     <div className="domain-modal__error" role="alert">
-                      <AlertCircle size={14} />
+                      <AlertCircle size={14} aria-hidden />
                       <p>{verifyError}</p>
                     </div>
                   )}

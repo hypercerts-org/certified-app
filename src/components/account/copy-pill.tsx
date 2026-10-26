@@ -24,23 +24,29 @@ export default function CopyPill({
 
   if (!value) return null;
 
+  // The value stays the button's visible (and read) text; success is
+  // announced through a polite live region, since aria-label changes on a
+  // focused button aren't announced.
   return (
-    <button
-      type="button"
-      className={`did-pill${inline ? " did-pill--inline" : ""}`}
-      onClick={() => void copy(value)}
-      aria-label={
-        copied ? `${label} copied to clipboard` : `Copy ${label} to clipboard`
-      }
-    >
-      <code className="did-pill__value">{display ?? value}</code>
-      <span className="did-pill__icon" aria-hidden>
-        {copied ? (
-          <Check size={14} strokeWidth={2} />
-        ) : (
-          <Copy size={14} strokeWidth={1.75} />
-        )}
+    <>
+      <button
+        type="button"
+        className={`did-pill${inline ? " did-pill--inline" : ""}`}
+        onClick={() => void copy(value)}
+      >
+        <span className="sr-only">Copy {label}: </span>
+        <code className="did-pill__value">{display ?? value}</code>
+        <span className="did-pill__icon" aria-hidden>
+          {copied ? (
+            <Check size={14} strokeWidth={2} />
+          ) : (
+            <Copy size={14} strokeWidth={1.75} />
+          )}
+        </span>
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? `Copied ${label} to clipboard` : ""}
       </span>
-    </button>
+    </>
   );
 }

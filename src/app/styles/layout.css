@@ -10,8 +10,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  /* 44x44 so the mobile-sidebar toggle meets the touch-target minimum;
+     .mobile-sidebar__theme's negative margins keep the glyph in place. */
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: transparent;
   border: none;
@@ -21,8 +23,10 @@
   transition: color var(--transition-fast);
 }
 
-.theme-toggle-cycle:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .theme-toggle-cycle:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .theme-toggle-cycle:focus {
@@ -144,7 +148,10 @@
   right: 0;
   z-index: var(--z-navbar);
   height: var(--navbar-height);
-  transition: background var(--transition-fast), backdrop-filter var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-base);
+  /* Only transform + shadow animate: the default <-> profile-overlay mode
+     switch is instantaneous (DESIGN.md §4), and transitioning
+     backdrop-filter re-runs the blur every frame. */
+  transition: transform var(--transition-base), box-shadow var(--transition-fast);
 }
 
 .navbar--hidden {
@@ -154,7 +161,7 @@
 .navbar--default {
   background: var(--navbar-bg);
   backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 var(--navbar-border);
+  box-shadow: var(--shadow-navbar-hairline);
 }
 
 /* Profile overlay: transparent navbar that floats over a full-bleed page
@@ -169,8 +176,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  /* 44px touch target: this bar only renders below 800px. */
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: 999px;
   background: var(--navy-overlay-30);
@@ -271,7 +279,8 @@
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-secondary);
   background: var(--bg-sunken);
   padding: 1px 6px;
@@ -314,7 +323,8 @@
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   text-decoration: none;
@@ -374,7 +384,7 @@
   right: 0;
   background: var(--sheet-bg);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-subtle);
   padding: 20px 32px;
   flex-direction: column;
   gap: 16px;
@@ -427,10 +437,9 @@
   margin: 0 auto;
   height: 100%;
   display: flex;
-  /* Center items vertically so the icon+label cluster sits in the
+  /* Center items vertically so each icon + label cluster sits in the
      middle of the 56px bar and the full row is a comfortable tap
-     target. (Previously flex-start left a strip at the bottom that
-     wasn't visually obvious as "tappable".) */
+     target. */
   align-items: center;
   justify-content: space-around;
 }
@@ -449,9 +458,15 @@
   background: none;
   color: var(--fg-muted);
   cursor: pointer;
-  transition: color var(--transition-fast);
+  /* Transform lives on the base rule so the :active press eases back on
+     release instead of snapping. */
+  transition: color var(--transition-fast), transform var(--transition-fast);
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  /* A long-press shouldn't select the label or open the iOS callout. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .bottom-nav__icon-wrap {
@@ -463,24 +478,31 @@
   justify-content: center;
 }
 
-.bottom-nav__item:hover {
-  color: var(--fg-primary);
+/* Gated so a tap doesn't leave a sticky hover colour that reads as a
+   second active item. */
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav__item:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .bottom-nav__item:active {
-  transform: scale(0.92);
-  transition: transform var(--transition-fast);
+  transform: scale(0.95);
 }
 
 .bottom-nav__item--active {
   color: var(--fg-primary);
 }
 
+/* Small label under each icon (matches .desktop-top-bar__icon-label) so
+   ambiguous glyphs like Apps / Home read on touch, where the tooltip is
+   suppressed. */
 .bottom-nav__label {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* Bottom nav is mobile-only chrome (<800px). On desktop the top bar /
@@ -553,8 +575,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .mobile-sidebar__theme {
   flex-shrink: 0;
-  margin-top: -12px;
-  margin-right: -16px;
+  /* Offsets the 44x44 hit area so the icon still sits where the old 36x36
+     box put it (4px extra per side). */
+  margin-top: -16px;
+  margin-right: -20px;
 }
 
 .mobile-sidebar__section {
@@ -604,21 +628,29 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .mobile-sidebar__section--legal {
-  padding: 16px 24px;
+  /* Vertical padding lives on the links (44px tap height) instead. */
+  padding: 2px 24px;
   font-size: 0.75rem;
 }
 
 .mobile-sidebar__legal-link {
+  /* 14px + 16px line + 14px = 44px tap height; the section's own vertical
+     padding shrank to match, so the row looks the same. */
+  display: inline-block;
+  padding: 14px 0;
+  line-height: 1rem;
   color: var(--fg-muted);
   text-decoration: none;
 }
 
-.mobile-sidebar__legal-link:hover {
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .mobile-sidebar__legal-link:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .mobile-sidebar__legal-sep {
-  color: var(--border-medium);
+  color: var(--border-default);
 }
 
 
@@ -719,6 +751,19 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 /* Note: the <800px reading gutter (16px horizontal + max-width:100%) is set
    in components.css's mobile block, which loads after this file and wins. */
+
+/* Browser-tab mobile (<800px, no PWA bottom nav): the floating Feedback
+   button (44px tall, 16px off the edge; lifts 12px above the footer) would
+   otherwise sit over the last rows of pages that zero the shell's bottom
+   padding (settings, cert detail). Reserve its height + gaps. Keyed on the
+   trigger itself, which unmounts whenever the PWA bottom nav shows, so that
+   case keeps its own padding. html + two classes outranks the per-page
+   `.app-shell:has(...) .app-shell__content` overrides. */
+@media (max-width: 799px) {
+  html:has(.feedback-trigger) .app-shell .app-shell__content {
+    padding-bottom: calc(44px + 32px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 /* Desktop: reading width narrows to 600px (matches bsky/x). The flanking
    rails (mounted in PR2) provide the lateral context the mobile column
@@ -996,6 +1041,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   opacity: 0.8;
 }
 
+/* The global --focus-ring is too low-contrast on the inverted bar; use the
+   bar's own foreground instead. */
+.acting-as-bar__switch:focus-visible {
+  outline: 2px solid var(--btn-primary-fg);
+  outline-offset: 2px;
+}
+
 /* Mobile: the bar is fixed so it's never tucked behind the fixed navbar.
    It sits just below the navbar while the navbar is shown, and slides to
    the very top when the navbar auto-hides on scroll. One row only — the
@@ -1009,10 +1061,22 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     z-index: var(--z-navbar);
     height: 44px;
     flex-wrap: nowrap;
-    transition: top var(--transition-base);
+    /* Follows the navbar's auto-hide with the same compositor-only
+       transform + timing as .navbar, so the two stay in sync on scroll. */
+    transition: transform var(--transition-base);
   }
   .acting-as-bar--nav-hidden {
-    top: 0;
+    transform: translateY(calc(-1 * var(--navbar-height)));
+  }
+  /* 44px touch target without growing the 28px outlined control: an
+     invisible hit area extends 8px above and below (filling the bar). */
+  .acting-as-bar__switch {
+    position: relative;
+  }
+  .acting-as-bar__switch::before {
+    content: "";
+    position: absolute;
+    inset: -8px 0;
   }
   .acting-as-bar__text {
     overflow: hidden;
@@ -1078,7 +1142,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
      labels (0.6875rem / 0.08em). */
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0 0 12px;
@@ -1201,7 +1266,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .news__rich-link {
   color: var(--fg-primary);
   text-decoration: underline;
-  text-decoration-color: var(--border-medium);
+  text-decoration-color: var(--border-default);
   text-underline-offset: 2px;
   transition: text-decoration-color var(--transition-fast);
 }
@@ -1351,7 +1416,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .people-search__item--highlighted {
   background: var(--overlay-weak);
-  box-shadow: inset 2px 0 0 var(--fg-primary);
+  box-shadow: var(--shadow-inset-indicator);
 }
 
 .people-search__item-info {
@@ -1442,7 +1507,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   pointer-events: none;
   user-select: none;
@@ -1467,7 +1533,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 .cert-search__item--highlighted {
   background: var(--overlay-weak);
-  box-shadow: inset 2px 0 0 var(--fg-primary);
+  box-shadow: var(--shadow-inset-indicator);
 }
 
 .cert-search__thumb {
@@ -1543,7 +1609,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     display: flex;
     flex-direction: column;
     background: var(--navbar-bg);
-    box-shadow: 0 1px 0 var(--navbar-border);
+    box-shadow: var(--shadow-navbar-hairline);
   }
 
   /* Placeholder rendered by the Suspense fallback while the real
@@ -1582,13 +1648,13 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    covers the case cleanly because row-chrome is always followed by
    row-tabs when row-tabs is present. */
 .desktop-top-bar__row--chrome:last-child {
-  border-bottom: 1px solid var(--border-medium);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .desktop-top-bar__row--tabs {
   height: var(--top-bar-row2);
   gap: 20px;
-  border-bottom: 1px solid var(--border-medium);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .desktop-top-bar__left {
@@ -1679,6 +1745,32 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-weight: 400;
 }
 
+/* Two-part breadcrumb ("handle / Settings"): when space runs out the
+   left segment (often a long handle) shrinks and ellipsizes first; the
+   separator and the right segment stay whole. */
+.desktop-top-bar__title--breadcrumb {
+  display: flex;
+  align-items: center;
+}
+
+.desktop-top-bar__title-part--left {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-top-bar__title--breadcrumb .desktop-top-bar__title-sep {
+  flex-shrink: 0;
+  /* Flex items drop leading/trailing spaces; keep the " / " padding. */
+  white-space: pre;
+}
+
+.desktop-top-bar__title-part--right {
+  flex-shrink: 0;
+}
+
 .desktop-top-bar__right {
   display: flex;
   align-items: center;
@@ -1722,9 +1814,26 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   white-space: nowrap;
 }
 
-.desktop-top-bar__icon-btn:hover {
-  background: var(--overlay-weak);
+@media (hover: hover) and (pointer: fine) {
+  .desktop-top-bar__icon-btn:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
+}
+
+/* Current section: same treatment as the bottom-nav active item (primary
+   colour + heavier stroke), keyed off the aria-current the component sets
+   from the pathname. */
+.desktop-top-bar__icon-btn[aria-current="page"] {
   color: var(--fg-primary);
+}
+
+.desktop-top-bar__icon-btn[aria-current="page"] svg {
+  stroke-width: 2.25;
+}
+
+.desktop-top-bar__icon-btn[aria-current="page"] .desktop-top-bar__icon-label {
+  font-weight: 600;
 }
 
 .desktop-top-bar__icon-btn:focus-visible {
@@ -1792,44 +1901,15 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 
 /* Hide the textual meta on narrower viewports so the trigger stays
    compact next to the search and icon-buttons. */
-@media (max-width: 1099.98px) {
+@media (max-width: 1099px) {
   .desktop-top-bar__switcher-meta {
     display: none;
   }
 }
 
-/* Icon-only "Sign in" affordance — uses the Certified signin
-   brandmark glyph. Padding kept for tap area; no border/fill. */
-.desktop-top-bar__signin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.desktop-top-bar__signin-btn:hover {
-  opacity: 0.85;
-}
-
-.desktop-top-bar__signin-btn:active {
-  transform: scale(0.97);
-}
-
-.desktop-top-bar__signin-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.desktop-top-bar__signin-img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
+/* The signed-out "Sign in" affordance is now a canonical
+   <Button variant="primary" size="sm"> (theme-aware); the old
+   .desktop-top-bar__signin-btn / __signin-img SVG-pill rules were removed. */
 
 /* Back affordance rendered in the row-2 slot on cert / project detail
    pages. Left-aligned, sits at the same height as the tab strip. */
@@ -1858,23 +1938,16 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   outline-offset: 2px;
 }
 
-/* "+" create-menu trigger wrapper — kept as a wrapper so the
-   open/close effects can anchor against a stable DOM node even
-   when the button itself re-renders. */
+/* "+" create-menu trigger wrapper (also the product tour's
+   `nav-create` spotlight target). */
 .desktop-top-bar__create-wrap {
   display: inline-flex;
 }
 
-/* Dropdown panel rendered via createPortal — elevated surface
-   treatment (border + --shadow-md) so the three shortcuts visually
-   read as the same "menu" family as the other portaled menus. */
+/* Item stack inside the <PopoverContent portal> panel. The surface
+   (elevated bg, border, radius, --shadow-md, z) comes from the
+   Popover primitive. */
 .desktop-top-bar__create-menu {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 6px;
-  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1892,10 +1965,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: background var(--transition-fast);
 }
 
+.desktop-top-bar__create-item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .desktop-top-bar__create-item:hover,
 .desktop-top-bar__create-item:focus-visible {
   background: var(--overlay-weak);
-  outline: none;
 }
 
 .desktop-top-bar__create-item > svg {
@@ -1985,8 +2062,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 .profile-sidebar__avatar {
-  /* The inner <Avatar> is sized via Tailwind override (!h-[240px]
-     !w-[240px]); this wrapper just provides the layout slot. */
+  /* The inner <Avatar> is sized via Tailwind override (!h-[160px]
+     !w-[160px]); this wrapper just provides the layout slot. */
   display: inline-flex;
 }
 
@@ -2008,11 +2085,21 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-primary);
   margin: 0;
   line-height: 1.2;
-  /* A display name with no spaces (e.g. a handle used as the name) can't
-     wrap — cut it off with an ellipsis rather than overflow. */
-  white-space: nowrap;
+  /* The page's main heading: wrap long names (breaking unspaced ones anywhere)
+     and clamp at three lines; the element carries a title attribute
+     with the full name for the clamped case. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Read-mode only: the edit-mode wrapper (a div holding the Input) keeps
+   block layout. */
+h2.profile-sidebar__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .profile-sidebar__handle {
@@ -2267,7 +2354,6 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-weight: 500;
   color: var(--fg-secondary);
   text-decoration: none;
-  letter-spacing: 0.02em;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -2290,7 +2376,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .profile-sidebar__section-title {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0;
@@ -2457,15 +2544,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.profile-overview__stat:hover {
-  border-color: var(--border-hover-soft);
-  background: var(--bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .profile-overview__stat:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-sunken);
+  }
 }
 
 .profile-overview__stat-label {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   /* Keep the uppercase letter-spaced label on one line so the tablet column
@@ -2477,15 +2567,18 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   min-width: 0;
 }
 
-.profile-overview__stat-split {
+/* Figures sit side by side, packed from the left; each one stacks its
+   descriptor ("created"/"received"/…) directly under the number. */
+.profile-overview__stat-figures {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 24px;
 }
 
-.profile-overview__stat-split--solo {
-  justify-content: flex-start;
+.profile-overview__stat-split {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .profile-overview__stat-value {
@@ -2520,6 +2613,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   color: var(--fg-secondary);
   margin: 0;
   white-space: pre-wrap;
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 /* About + side map. Falls back to a single column when no map is set
@@ -2716,7 +2811,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 .profile-overview__section-title {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-muted);
   margin: 0;
@@ -2952,6 +3048,14 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   padding: 8px 0;
 }
 
+/* Empty Recent activities + the owner-only "Create an activity" action. */
+.profile-overview__empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .profile-overview__digest {
   display: flex;
   flex-direction: column;
@@ -3035,6 +3139,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--fg-primary);
+  /* Long unbroken titles (URLs) wrap instead of spilling out of the row. */
+  overflow-wrap: anywhere;
 }
 
 .profile-overview__activity-desc {
@@ -3045,6 +3151,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .profile-overview__activity-meta {
@@ -3112,9 +3219,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    ============================================================ */
 
 .site-footer {
-  /* Matches the sidebar / row-2 dividers (--border-medium) so the
+  /* Matches the sidebar / row-2 dividers (--border-default) so the
      page-frame borders all read at the same visual weight. */
-  border-top: 1px solid var(--border-medium);
+  border-top: 1px solid var(--border-default);
   padding: 16px 32px 24px;
   margin-top: 48px;
   font-size: 0.75rem;
@@ -3158,12 +3265,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   gap: 8px;
 }
 
-/* Legal pages (about / terms / privacy / dsa / imprint) widen the
-   reading column compared to the default 600/720px app-shell cap.
-   Dense legal text benefits from longer line lengths; the inner
-   .app-page__inner's Tailwind max-w-3xl (768px) was already wider
-   than the outer 600/720 cap, so the actual cap was the OUTER one.
-   This bumps it to ~880px on both mobile and desktop. */
+/* Legal pages and /help widen the reading column past the default
+   600/720px app-shell cap (the inner .app-page__inner is max-w-3xl, so
+   the outer cap is the one that binds). Without this, /help renders
+   narrower than /terms and /privacy. */
 .app-shell:has(.legal-page) .app-shell__content {
   max-width: 880px;
 }
@@ -3185,6 +3290,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   .legal-page :is(h3, .text-h3) {
     font-size: 1.125rem;
     line-height: 1.35;
+  }
+  /* Help's page title is an h2 (the chrome owns the h1) styled as text-h1;
+     keep it on the h1 step rather than the h2 one above. */
+  .legal-page h2.legal-page__title {
+    font-size: 1.75rem;
+    line-height: 1.25;
   }
   /* Trim list indentation so deeply-nested items keep usable width on phones
      (Tailwind `pl-6` = 24px is generous for a ~300px column). */

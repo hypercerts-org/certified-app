@@ -128,9 +128,10 @@ export function AddEditContributorDialog({
     }
 
     // ATProto: resolve the handle/DID to a profile + canonical identity.
-    const id = handle.trim()
+    // The field asks for a handle; a pasted DID is still accepted silently.
+    const id = handle.trim().replace(/^@/, "")
     if (!isAtprotoIdentity(id)) {
-      setError("Enter a valid handle or DID")
+      setError("Enter a handle like alice.bsky.social.")
       return
     }
     setResolving(true)
@@ -179,7 +180,8 @@ export function AddEditContributorDialog({
 
       {mode === "atproto" && !isEdit ? (
         <Input
-          label="Handle or DID"
+          label="Handle"
+          helperText="e.g. alice.bsky.social"
           placeholder="alice.bsky.social"
           value={handle}
           onChange={(e) => setHandle(e.target.value)}

@@ -84,7 +84,7 @@ function Row({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-caption uppercase tracking-wider text-[var(--fg-muted)]">
+      <span className="text-caption uppercase tracking-label text-[var(--fg-muted)]">
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
@@ -344,7 +344,7 @@ export default function GalleryPage() {
                         <button
                           type="button"
                           aria-label="Open suggestions"
-                          className="inline-flex h-6 items-center rounded px-1.5 text-caption font-semibold uppercase tracking-wider text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
+                          className="inline-flex h-6 items-center rounded px-1.5 text-caption font-semibold uppercase tracking-label text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 motion-reduce:transition-none"
                         >
                           Go
                         </button>
@@ -1181,9 +1181,9 @@ export default function GalleryPage() {
 
       {confirmOpen && (
         <ConfirmDialog
-          title="Delete this record?"
+          title="Delete record?"
           message="This action can't be undone."
-          confirmLabel="Delete"
+          confirmLabel="Delete record"
           onCancel={() => setConfirmOpen(false)}
           onConfirm={() => setConfirmOpen(false)}
         />
@@ -1256,7 +1256,7 @@ export default function GalleryPage() {
 
       {deleteOpen && (
         <DeleteRecordDialog
-          title="Delete this cert"
+          title="Delete cert?"
           recordName="Climate Action 2026"
           recordTypeLabel="cert"
           onCancel={() => setDeleteOpen(false)}

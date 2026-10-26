@@ -281,7 +281,7 @@ export function Tab({
 
   // Underline classes are byte-for-byte identical to the pre-segmented Tab so
   // every existing call site renders unchanged.
-  const underlineClassName = `inline-flex items-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-150 motion-reduce:transition-none ${
+  const underlineClassName = `inline-flex items-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-fast motion-reduce:transition-none ${
     disabled
       ? "text-[var(--fg-muted)] border-transparent opacity-50 cursor-not-allowed"
       : isActive
@@ -291,7 +291,7 @@ export function Tab({
 
   // Segmented: the active tab is a raised pill (elevated bg + small shadow),
   // inactive tabs are flat within the sunken container.
-  const segmentedClassName = `inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded transition-colors duration-150 motion-reduce:transition-none ${
+  const segmentedClassName = `inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded transition-colors duration-fast motion-reduce:transition-none ${
     disabled
       ? "text-[var(--fg-muted)] opacity-50 cursor-not-allowed"
       : isActive

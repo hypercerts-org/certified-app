@@ -9,23 +9,25 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* Heading row matches the cert-detail section-header pattern
-   (Contributors, Description, etc.) so the Updates tab heading
-   reads at the same visual weight as the other sections on the
-   cert + project detail pages — small uppercase muted label,
-   baseline-aligned count pill. Drops the previous distinct
-   "h2 + icon" treatment that read as a different family. */
+/* Heading row matches the cert-detail section-label pattern
+   (Summary, Funding, Locations, …): a small muted icon, the uppercase
+   label and a bare count, 4px apart. The trailing "See all" / "New"
+   controls push right via their own auto margins. */
 .context-updates__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
-/* Icon kept in the DOM (renderers still mount it) but hidden so
-   the heading layout matches Contributors / Description / etc.
-   which carry no leading icon. */
+/* Rendered at 16px by the component; scaled to the 11px label-icon size
+   the sibling section labels use. */
 .context-updates__icon {
-  display: none;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  stroke-width: 2;
+  color: var(--fg-muted);
+  margin-right: -8px;
 }
 
 /* Identical to `.cert-detail__meta-label` (the Author / Date
@@ -40,7 +42,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   line-height: 1;
   display: inline-flex;
@@ -48,14 +51,13 @@
   margin: 0;
 }
 
+/* Bare count, same as `.cert-detail__meta-count`. */
 .context-updates__count {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  color: var(--fg-muted);
-  background: var(--overlay-weak);
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-feature-settings: 'tnum' 1;
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-left: -8px;
 }
 
 .context-updates__loading {
@@ -102,7 +104,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   line-height: 1;
 }
@@ -203,6 +206,9 @@
 }
 
 .context-updates__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 500;

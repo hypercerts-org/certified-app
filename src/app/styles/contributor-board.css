@@ -150,7 +150,11 @@
   pointer-events: none;
   transition: opacity var(--transition-base);
 }
-.contributor-tile:hover .contributor-tile__hover {
+/* Not gated to hover devices: on touch, a tap is the only way to reveal
+   the hover content. Keyboard focus reveals it too. */
+.contributor-tile:hover .contributor-tile__hover,
+.contributor-tile:focus-visible .contributor-tile__hover,
+.contributor-tile:focus-within .contributor-tile__hover {
   opacity: 1;
 }
 .contributor-tile__hover-img {

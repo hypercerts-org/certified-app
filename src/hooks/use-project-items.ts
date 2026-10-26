@@ -120,7 +120,7 @@ export function useProjectItems(items: unknown): {
           throw new Error(
             res.status === 404
               ? "Activity not found"
-              : `Failed to load activity (${res.status})`,
+              : "Couldn't load this activity. Try again.",
           )
         }
         const data = (await res.json()) as {

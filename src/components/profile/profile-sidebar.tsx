@@ -159,6 +159,7 @@ export default function ProfileSidebar({
   // `appCertifiedGraphFollow` connection with `subject.eq`.
   const viewedFollowing = useFollowing(did)
   const viewedFollowers = useFollowers(did)
+  const followerCount = viewedFollowers.count ?? viewedFollowers.entries.length
   // Received-endorsements count for THIS profile — drives the
   // "Endorsed by N" row below the followers strip. Default
   // (non-owner) call: rejected awards are filtered out for us by
@@ -213,10 +214,13 @@ export default function ProfileSidebar({
             : "profile-sidebar__avatar"
         }
       >
+        {/* 160px on desktop: the 240px `2xl` hero dominated the
+            296px column, so the slot overrides the primitive's size. */}
         <Avatar
           size="2xl"
           src={avatarUrl || undefined}
           fallbackInitials={initials}
+          className="!h-[160px] !w-[160px]"
         />
         {isEditing && hasInline ? (
           <AvatarEditOverlay
@@ -233,8 +237,11 @@ export default function ProfileSidebar({
           // scale (font/size/weight/leading cascade from
           // `.profile-sidebar__name`). `borderWeight="hover"` gives the
           // 1.5px --border-hover resting / --fg-primary + --overlay-weak focus
-          // chrome expected for an inline-edit field.
-          <h1 className="profile-sidebar__name">
+          // chrome expected for an inline-edit field. The heading itself
+          // stays a text-only sr-only h1 so assistive tech keeps a name.
+          <>
+          <h2 className="sr-only">{displayName}</h2>
+          <div className="profile-sidebar__name">
             <Input
               size="bare"
               flush
@@ -247,16 +254,19 @@ export default function ProfileSidebar({
               aria-label="Display name"
               onChange={(e) => onDraftChange?.("displayName", e.target.value)}
             />
-          </h1>
+          </div>
+          </>
         ) : (
-          <h1 className="profile-sidebar__name">{displayName}</h1>
+          <h2 className="profile-sidebar__name" dir="auto" title={displayName}>
+            {displayName}
+          </h2>
         )}
         {handle ? (
           <p className="profile-sidebar__handle">@{handle}</p>
         ) : null}
         <p className="profile-sidebar__did" title={did}>
           <span className="profile-sidebar__did-value">{did}</span>
-          <CopyButton value={did} label="Copy DID" />
+          <CopyButton value={did} label="Copy account ID" />
         </p>
       </div>
 
@@ -340,14 +350,14 @@ export default function ProfileSidebar({
         <Users size={16} strokeWidth={1.75} aria-hidden />
         <span>
           <span className="profile-sidebar__followers-count">
-            {formatGraphCount(viewedFollowers.count ?? viewedFollowers.entries.length)}
+            {formatGraphCount(followerCount)}
           </span>{" "}
           <Link
             href={`${basePath}?tab=followers`}
             scroll={false}
             className="profile-sidebar__followers-link"
           >
-            followers
+            {followerCount === 1 ? "follower" : "followers"}
           </Link>
         </span>
         <span aria-hidden className="profile-sidebar__followers-sep">·</span>
@@ -356,7 +366,7 @@ export default function ProfileSidebar({
             className="profile-sidebar__followers-count"
             title={
               viewedFollowing.truncated
-                ? "Hit the 10,000 follow display cap; the underlying repo has more."
+                ? "Showing the first 10,000 follows; this account has more."
                 : undefined
             }
           >
@@ -483,7 +493,7 @@ export default function ProfileSidebar({
               className="profile-sidebar__bsky-tag"
               rel="noopener noreferrer"
               target="_blank"
-              title="The profile information is imported from Bluesky"
+              title="Imported from Bluesky"
             >
               Bluesky profile
             </a>
@@ -647,9 +657,9 @@ function CopyButton({ value, label }: CopyButtonProps) {
         aria-label={copied ? "Copied" : label}
       >
         {copied ? (
-          <Check size={13} strokeWidth={2} aria-hidden />
+          <Check size={14} strokeWidth={1.75} aria-hidden />
         ) : (
-          <Copy size={13} strokeWidth={1.75} aria-hidden />
+          <Copy size={14} strokeWidth={1.75} aria-hidden />
         )}
       </button>
     </Tooltip>
@@ -663,7 +673,7 @@ interface AvatarEditOverlayProps {
 }
 
 /**
- * Click-to-upload overlay rendered on top of the existing 240×240
+ * Click-to-upload overlay rendered on top of the existing 160×160
  * <Avatar>. Keeps the avatar at the same position and size as
  * read-only mode — only adds an affordance on top.
  */

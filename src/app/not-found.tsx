@@ -1,24 +1,19 @@
-import Link from "next/link";
+import Button from "@/components/ui/button";
+import EmptyState from "@/components/ui/empty-state";
 
 // Note: Next.js does not support metadata exports in not-found.tsx.
 // 404 pages are not indexed by search engines by default.
 
 export default function NotFoundPage() {
   return (
-    <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Page not found</h1>
-      </div>
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          <div className="dash-card">
-            <p className="dash-card__desc">The page you&apos;re looking for doesn&apos;t exist.</p>
-            <Link href="/" className="dashboard__back-btn">
-              Go home
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+    <EmptyState
+      title="Page not found"
+      description="The page you're looking for doesn't exist."
+      headingLevel={1}
+    >
+      <Button variant="secondary" size="sm" href="/">
+        Go home
+      </Button>
+    </EmptyState>
   );
 }

@@ -6,6 +6,7 @@ import ActivityAuthor from "@/components/feed/activity-author"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import EndorsementRowBadge from "./endorsement-row-badge"
+import { formatAbsoluteDateTime } from "./format-display"
 
 /**
  * Presentational shell for the dense explore-page row used by both
@@ -28,8 +29,8 @@ import EndorsementRowBadge from "./endorsement-row-badge"
  * shell caring which is which.
  */
 export interface ExploreListRowProps {
-  /** Detail-page link; null skips the linked region (used when the
-   *  underlying URI couldn't be parsed). */
+  /** Detail-page link; null renders the same body without a link (used
+   *  when the underlying URI couldn't be parsed). */
   href: string | null
   /** Resolved image URL — null falls back to `fallbackIcon`. */
   thumbUrl: string | null
@@ -117,7 +118,9 @@ export default function ExploreListRow({
         )}
       </div>
       <div className="cert-list-row__body">
-        <h3 className="cert-list-row__title">{title}</h3>
+        <h3 className="cert-list-row__title" dir="auto">
+          {title}
+        </h3>
         {subtitle ? (
           <p className="cert-list-row__subtitle">{subtitle}</p>
         ) : null}
@@ -147,7 +150,9 @@ export default function ExploreListRow({
         <Link href={href} className="cert-list-row__link">
           {body}
         </Link>
-      ) : null}
+      ) : (
+        <div className="cert-list-row__link">{body}</div>
+      )}
 
       {compact ? null : (
         <>
@@ -163,9 +168,17 @@ export default function ExploreListRow({
               />
             ) : null}
           </div>
-          <time className="cert-list-row__time">
-            {timestampIso ? formatRelativeTime(timestampIso) : ""}
-          </time>
+          {timestampIso ? (
+            <time
+              className="cert-list-row__time"
+              dateTime={timestampIso}
+              title={formatAbsoluteDateTime(timestampIso)}
+            >
+              {formatRelativeTime(timestampIso)}
+            </time>
+          ) : (
+            <span className="cert-list-row__time" aria-hidden />
+          )}
         </>
       )}
     </article>

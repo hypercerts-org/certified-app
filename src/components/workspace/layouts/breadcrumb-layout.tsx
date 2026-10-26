@@ -26,7 +26,13 @@ export default function BreadcrumbLayout({
   const [openLevel, setOpenLevel] = useState<"scope" | "lexicon" | null>(null)
 
   return (
-    <div className="wks-breadcrumb">
+    <div
+      className="wks-breadcrumb"
+      // Lab page: plain disclosure lists (not role=menu); Escape closes them.
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && openLevel) setOpenLevel(null)
+      }}
+    >
       <nav
         className="wks-breadcrumb__bar"
         aria-label="Workspace hierarchy"
@@ -37,10 +43,11 @@ export default function BreadcrumbLayout({
           onClick={() =>
             setOpenLevel(openLevel === "scope" ? null : "scope")
           }
+          aria-expanded={openLevel === "scope"}
         >
           {scope.kind === "network" ? (
             <>
-              <Globe size={13} strokeWidth={1.75} aria-hidden />
+              <Globe size={14} strokeWidth={1.75} aria-hidden />
               Network
             </>
           ) : (
@@ -56,6 +63,7 @@ export default function BreadcrumbLayout({
             onClick={() =>
               setOpenLevel(openLevel === "lexicon" ? null : "lexicon")
             }
+            aria-expanded={openLevel === "lexicon"}
           >
             {lexicon ? WORKSPACE_LEXICON_LABEL[lexicon] : "All"}
             <ChevronRight size={12} strokeWidth={1.75} aria-hidden />
@@ -64,11 +72,10 @@ export default function BreadcrumbLayout({
       </nav>
 
       {openLevel === "scope" ? (
-        <ul className="wks-breadcrumb__menu" role="menu">
+        <ul className="wks-breadcrumb__menu">
           <li>
             <button
               type="button"
-              role="menuitem"
               className="wks-breadcrumb__menu-item"
               onClick={() => {
                 onSetScope({ kind: "network" })
@@ -76,7 +83,7 @@ export default function BreadcrumbLayout({
                 setOpenLevel(null)
               }}
             >
-              <Globe size={13} strokeWidth={1.75} aria-hidden />
+              <Globe size={14} strokeWidth={1.75} aria-hidden />
               Network
             </button>
           </li>
@@ -84,8 +91,7 @@ export default function BreadcrumbLayout({
             <li key={a.did}>
               <button
                 type="button"
-                role="menuitem"
-                className="wks-breadcrumb__menu-item"
+                  className="wks-breadcrumb__menu-item"
                 onClick={() => {
                   onSetScope({ kind: "actor", did: a.did })
                   onSetLexicon(null)
@@ -100,7 +106,7 @@ export default function BreadcrumbLayout({
       ) : null}
 
       {openLevel === "lexicon" && scope.kind === "actor" ? (
-        <ul className="wks-breadcrumb__menu" role="menu">
+        <ul className="wks-breadcrumb__menu">
           <li>
             <button
               type="button"

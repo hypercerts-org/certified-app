@@ -63,7 +63,7 @@
   bottom: 0;
   left: var(--explore-sidebar-width);
   width: 1px;
-  background: var(--border-medium);
+  background: var(--border-default);
   pointer-events: none;
 }
 
@@ -166,15 +166,14 @@
 
 .explore__filter--active,
 .explore__filter--active:hover {
-  /* The hover style on the generic filter dimmed the background
-     to bg-sunken while the active style inverts the text — producing
-     unreadable text mid-hover. Keep the fg-primary fill on hover when
-     the filter is already active. Text is --bg-canvas (not a fixed
-     white) so it inverts with the fg-primary fill: light in light mode,
-     dark in dark mode. A fixed white was white-on-white in dark mode,
-     where --fg-primary is itself near-white. */
-  background: var(--fg-primary);
-  color: var(--bg-canvas);
+  /* Subtle selected state shared with .sx-menu__item--active: an
+     --overlay-medium fill (one step past the --bg-sunken hover, and
+     theme-aware so it lifts rather than inverts in dark mode) with
+     --fg-primary text at 600. Held on hover so the selection doesn't
+     flicker back to the hover fill. */
+  background: var(--overlay-medium);
+  color: var(--fg-primary);
+  font-weight: 600;
 }
 
 /* ---------- Main pane ---------- */
@@ -269,38 +268,15 @@
   gap: 6px;
 }
 
-.explore__chrome-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  font-size: 0.85rem;
-  color: var(--fg-primary);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.explore__chrome-btn:hover {
-  background: var(--bg-sunken);
-}
-
-/* Icon-only chrome variant — square 32×32 on desktop, drops the
-   horizontal padding the label-bearing buttons need. */
-.explore__chrome-btn--icon {
+/* Icon-only chrome buttons (sort, quality filter, confirmed-by) are
+   <Button size="icon" variant="secondary">; this class only pins them to
+   the 32px chrome row height (the primitive's 40px would misalign with
+   the 32px search field and view toggle). Two-class selector so it wins
+   over the primitive's Tailwind size utilities. */
+.explore__chrome-actions .explore__chrome-btn--icon {
   width: 32px;
   height: 32px;
-  padding: 0;
-  justify-content: center;
-}
-
-/* Active state (non-default selection) — same fill-on-accent
-   pattern other "currently applied" filter buttons use. */
-.explore__chrome-btn--active {
-  border-color: var(--fg-primary);
-  background: var(--bg-sunken);
+  flex-shrink: 0;
 }
 
 /* Mobile-first chrome: search takes a full-width row of its own (the
@@ -328,26 +304,16 @@
     align-self: stretch;
     flex-shrink: 0;
   }
-  .explore__chrome-btn {
-    min-height: 44px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
   /* Mobile icon buttons (sort + filter): a deterministic square.
-     A fixed width/height (rather than aspect-ratio + align-self:stretch,
-     whose height-derived width under-sized the flex cluster and pushed
-     the filter button off the right edge) keeps the action cluster a
-     predictable size so `margin-left: auto` pins it flush to the right.
-     The 36px visual box is kept; the touch target is extended to 44px via
-     an out-of-flow pseudo-element below (so the cluster width is unchanged). */
-  .explore__chrome-btn--icon {
+     A fixed width/height keeps the action cluster a predictable size so
+     `margin-left: auto` pins it flush to the right. The 36px visual box
+     is kept; the touch target is extended to 44px via an out-of-flow
+     pseudo-element below (so the cluster width is unchanged). */
+  .explore__chrome-actions .explore__chrome-btn--icon {
     width: 36px;
     height: 36px;
     min-height: 0;
-    padding: 0;
     align-self: center;
-    aspect-ratio: auto;
-    flex-shrink: 0;
     position: relative;
   }
   /* Invisible >=44px touch target (WCAG 2.5.8) centered over the 36px box.
@@ -452,28 +418,6 @@
   padding: 24px 0;
 }
 
-.explore__load-more-btn {
-  padding: 8px 18px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.explore__load-more-btn:hover:not(:disabled) {
-  background: var(--bg-sunken);
-}
-
-.explore__load-more-btn:disabled {
-  color: var(--fg-secondary);
-  cursor: progress;
-}
-
 /* ---------- Popover content (quality filter) ----------
    The popover container, overlay, and menu chrome now come from the
    canonical <Popover> primitive (src/components/ui/popover.tsx). These
@@ -559,6 +503,20 @@
   cursor: default;
 }
 
+/* Quiet <PopoverItem> for the "Reset to default" / "Show all" actions in
+   role="menu" popovers — same muted look as .popover__reset-btn, but a
+   real menuitem so arrow-key roving reaches it. The [role] prefix lifts
+   specificity over the primitive's Tailwind text utilities. */
+[role="menu"] .popover__item--quiet {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+[role="menu"] .popover__item--quiet:disabled {
+  color: var(--fg-muted);
+}
+
 /* Inline reset on the endorsement-degree pill row (the degree
    control lives in the chrome strip, not a popover, so its reset
    sits adjacent to the pills rather than below them). */
@@ -610,7 +568,8 @@
   margin: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   text-transform: uppercase;
   color: var(--fg-secondary);
 }
@@ -667,7 +626,7 @@
   width: 1px;
   align-self: stretch;
   min-height: 20px;
-  background: var(--border-medium);
+  background: var(--border-default);
 }
 
 /* Inline variant of the degree bar — drops the standalone bar's block
@@ -736,6 +695,16 @@
   gap: 16px;
   padding: 10px 14px;
   transition: background var(--transition-fast);
+}
+
+/* 800-1099px: the sidebar eats into the content column, so the fixed
+   200px author column starved the title. Narrow the author/date
+   columns here; the author byline already truncates with an ellipsis. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .cert-list-row {
+    grid-template-columns: minmax(0, 1fr) 140px 76px;
+    gap: 12px;
+  }
 }
 
 .cert-list-row:hover {
@@ -1031,7 +1000,7 @@
   background: var(--bg-sunken);
   /* Subtle lift on hover — distinguishes the account cards from the
      flat cert/project cards so the kind switch is visually felt. */
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--fg-primary) 6%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 
 .explore-user-card__head {
@@ -1092,6 +1061,7 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Account list row ---------- */
@@ -1214,7 +1184,7 @@
      flexible "for" column via subgrid below.) `confirmed-by` holds the
      plain-text provenance summary (flexes, truncates). */
   grid-template-columns:
-    7rem minmax(0, 1fr) minmax(0, 1fr) 7rem minmax(0, 1fr);
+    7rem minmax(0, 1fr) minmax(0, 1fr) 9rem minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 12px 14px;
@@ -1225,8 +1195,12 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.funding-receipt-row:hover {
-  background: var(--bg-sunken);
+/* Hover wash only on hover-capable pointers, so a tap on a touch screen
+   (of any width) doesn't leave the row stuck in its hover state. */
+@media (hover: hover) {
+  .funding-receipt-row:hover {
+    background: var(--bg-sunken);
+  }
 }
 
 /* Clickable rows open the detail modal. Signal it with a pointer cursor;
@@ -1236,7 +1210,7 @@
   cursor: pointer;
 }
 
-.funding-receipt-row--interactive:focus-visible {
+.funding-receipt-row--interactive:has(.funding-receipt-row__open:focus-visible) {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
@@ -1251,7 +1225,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -1266,9 +1241,10 @@
   font-weight: 400;
   color: var(--fg-primary);
   font-variant-numeric: tabular-nums;
+  /* Never ellipsize: a clipped amount is wrong data. The track is a
+     fixed 9rem so separate row grids stay aligned; an extreme amount
+     overflows into the gap rather than being cut. */
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   /* Trailing column — flush right. */
   text-align: right;
 }
@@ -1345,7 +1321,11 @@
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-sunken);
-  display: block;
+  /* Centres the CertIcon fallback when there is no image. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-secondary);
 }
 
 .funding-receipt-row__activity-img img {
@@ -1366,6 +1346,7 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .funding-receipt-row__activity:hover .funding-receipt-row__activity-title {
@@ -1465,6 +1446,7 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* Explore funding list → a true table. The <ul> owns the column tracks
@@ -1545,10 +1527,7 @@
   .cert-detail__funding-list > li + li .funding-receipt-row {
     border-top: none;
   }
-  /* No hover wash on touch; a brief press state confirms the tap target. */
-  .funding-receipt-row:hover {
-    background: var(--bg-elevated);
-  }
+  /* A brief press state confirms the tap target (hover is gated above). */
   .funding-receipt-row--interactive:active {
     background: var(--bg-sunken);
   }
@@ -1588,7 +1567,8 @@
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
+    font-feature-settings: 'case' 1;
     color: var(--fg-muted);
   }
   /* The value side fills the remaining width and truncates internally. */
@@ -1673,6 +1653,7 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .explore-project-card__desc {
@@ -1685,6 +1666,7 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 .explore-project-card__meta {
@@ -1747,7 +1729,6 @@
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.02em;
   border: 1px solid transparent;
 }
 
@@ -1853,7 +1834,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   /* Nudge the label down so its cap-height sits on the value's first line. */
   padding-top: 3px;
@@ -1903,28 +1885,13 @@
   color: var(--fg-secondary);
 }
 
-.funding-receipt-detail__copy-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.funding-receipt-detail__copy-btn:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
-}
-
-.funding-receipt-detail__copy-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+/* <Button size="icon" variant="ghost">: compact 28px on desktop so it
+   sits on the mono value's line; the primitive's 44px applies on mobile.
+   Two-class selector so it wins over the primitive's size utilities. */
+@media (min-width: 800px) {
+  .funding-receipt-detail__copyable .funding-receipt-detail__copy-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
 }

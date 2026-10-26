@@ -55,6 +55,10 @@ import type {
 } from "@/lib/groups/types"
 import { authFetch } from "@/lib/auth/fetch"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeTime } from "@/lib/atproto/activity"
+import { useAuthorInfo } from "@/hooks/use-author-info"
+import { profileUrl } from "@/lib/urls"
+import Link from "next/link"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
 import Select from "@/components/ui/select"
@@ -108,7 +112,7 @@ const GROUPS: CategoryGroup[] = [
       },
       {
         key: "social-graph",
-        label: "Sync social graph",
+        label: "Import Bluesky follows",
         navLabel: "Social graph",
         description:
           "Compare this group's Certified follows with its Bluesky follows and import any that are missing.",
@@ -162,7 +166,7 @@ const DANGER_GROUP: CategoryGroup = {
       key: "danger",
       label: "Danger zone",
       description:
-        "Remove this group from Certified. This deletes the group's membership and settings from the service only — the underlying account and its records are left intact, and you can promote the account to a group again later.",
+        "Turn this group back into a regular account. The group features go away; the account and everything it published stay, and you can turn it into a group again later.",
       Icon: ShieldAlert,
     },
   ],
@@ -684,7 +688,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           <div className="sx-subsections">
             <div className="sx-subsection">
               <div className="sx-subsection__head">
-                <h3 className="sx-subsection__title">DID</h3>
+                <h3 className="sx-subsection__title">Account ID (DID)</h3>
                 <p className="sx-subsection__desc">
                   This group&apos;s permanent identifier. Unlike its @handle, it
                   never changes — apps and records reference it by this.
@@ -870,7 +874,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                 <h3 className="org-members__add-title">Add member</h3>
                 <HandleSearch
                   label=""
-                  placeholder="Search by handle or DID"
+                  placeholder="Search by name or handle"
                   onSelect={(selectedDid, selectedHandle) => {
                     if (!pendingMembers.some((m) => m.did === selectedDid)) {
                       setPendingMembers((prev) => [...prev, { did: selectedDid, handle: selectedHandle }])
@@ -1092,11 +1096,20 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   <dl className="org-audit__item-meta">
                     <div className="org-audit__detail-row">
                       <dt className="org-audit__detail-label">by</dt>
-                      <dd className="org-audit__detail-value">{entry.actorDid}</dd>
+                      <dd className="org-audit__detail-value">
+                        <AuditActor did={entry.actorDid} />
+                      </dd>
                     </div>
                     <div className="org-audit__detail-row">
                       <dt className="org-audit__detail-label">at</dt>
-                      <dd className="org-audit__detail-value">{new Date(entry.createdAt).toLocaleString()}</dd>
+                      <dd className="org-audit__detail-value">
+                        <time
+                          dateTime={entry.createdAt}
+                          title={new Date(entry.createdAt).toLocaleString()}
+                        >
+                          {formatRelativeTime(entry.createdAt) || entry.createdAt}
+                        </time>
+                      </dd>
                     </div>
                   </dl>
                   {(entry.collection || entry.rkey || (entry.detail && Object.keys(entry.detail).length > 0)) && (
@@ -1177,7 +1190,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   return (
     <div className="sx" data-view={active ? "detail" : "list"}>
-      <h1 className="sx__heading sr-only">Group settings</h1>
+      <h2 className="sx__heading sr-only">Group settings</h2>
 
       <div className="page-layout">
         <aside className="sx__menu">
@@ -1218,9 +1231,11 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
       {confirmRemove ? (
         <ConfirmDialog
-          title="Remove member"
-          message="Are you sure you want to remove this member from the group?"
-          confirmLabel="Remove"
+          title={`Remove @${
+            members.find((m) => m.did === confirmRemove)?.handle ?? confirmRemove
+          }?`}
+          message="They'll lose access to act as this group. You can add them again later."
+          confirmLabel="Remove member"
           onCancel={() => setConfirmRemove(null)}
           onConfirm={() => handleRemoveMember(confirmRemove)}
         />
@@ -1253,8 +1268,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
       {confirmDestroy ? (
         <ConfirmDialog
-          title="Remove group"
-          message={`Remove @${org.handle} from Certified? This deletes the group from the service only — the underlying account and its records remain. You can promote the account to a group again later.`}
+          title={`Turn @${org.handle} back into a regular account?`}
+          message="The group features go away. The account and everything it published stay."
           confirmLabel="Remove group"
           confirmPhrase={org.handle}
           isConfirming={destroying}
@@ -1283,5 +1298,17 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         />
       ) : null}
     </div>
+  )
+}
+
+/** Audit-log actor: the @handle (linked to the profile) once it resolves,
+ *  the raw DID until then; the DID is always in the title. */
+function AuditActor({ did }: { did: string }) {
+  const { info } = useAuthorInfo(did)
+  const handle = info?.handle
+  return (
+    <Link href={profileUrl(handle || did)} title={did} className="org-audit__actor">
+      {handle ? `@${handle}` : did}
+    </Link>
   )
 }

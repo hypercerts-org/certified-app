@@ -124,7 +124,7 @@
 }
 
 /* Left side of the bar: eyebrow above the title, stacked tight.
-   Takes the flexible width so the title can ellipsize when long
+   Takes the flexible width so a long title wraps
    without pushing the actions column off-screen. */
 .project-detail__head-title-group {
   display: flex;
@@ -141,7 +141,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
   line-height: 1.2;
 }
@@ -228,9 +229,10 @@
 /* ---------- Title (inside head-bar) ----------
 
    Sized to fit in the head-bar row alongside the byline; smaller
-   than the previous full-bleed hero title. Ellipsis-truncated when
-   space runs out so the byline + Edit cluster on the right keep
-   their footprint. */
+   than the previous full-bleed hero title. The page's main heading, so a long
+   title wraps (breaking unspaced words anywhere) and clamps at three
+   lines rather than truncating to one; the element's title attribute
+   carries the full text. */
 .project-detail__title {
   font-family: var(--font-headline), "Noto Serif", serif;
   font-size: 1.5rem;
@@ -240,13 +242,17 @@
   letter-spacing: -0.01em;
   margin: 0;
   /* Constrained by the parent `.project-detail__head-title-group`'s
-     flex 1; min-width:0 + ellipsis lets long titles truncate
+     flex 1; min-width:0 lets the title wrap within its column
      instead of pushing the actions cluster off-screen. */
   max-width: 100%;
   min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (min-width: 800px) {
@@ -256,9 +262,8 @@
 }
 
 /* Mobile: the Edit + Delete actions cluster starves the title's flex
-   basis in the single row, collapsing the nowrap+ellipsis title to a
-   single truncated letter. Stack the bar so the title gets the full
-   width above the actions, and let it wrap instead of ellipsizing. */
+   basis in the single row. Stack the bar so the title gets the full
+   width above the actions. */
 @media (max-width: 799px) {
   .project-detail__head-bar {
     flex-direction: column;
@@ -273,12 +278,6 @@
     margin-left: 0;
   }
 
-  .project-detail__title {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
-  }
 }
 
 /* ---------- Mobile byline (author) ---------- */
@@ -308,6 +307,25 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Desktop overview spacing: the Location section and the activities
+   preview get the normal 24px section gap from whatever precedes them,
+   so the Summary text never runs straight into the next eyebrow. The
+   details box (`.project-detail__meta`) already carries its own 32px
+   bottom margin, so a Location right after it adds none. Desktop only:
+   mobile reorders the overview and sets its own 24px gaps. */
+@media (min-width: 800px) {
+  .project-detail__location-section {
+    margin-top: 24px;
+  }
+  .project-detail__meta + .project-detail__location-section {
+    margin-top: 0;
+  }
+  .project-detail__summary + .project-detail__certs--preview,
+  .project-detail__location-section + .project-detail__certs--preview {
+    margin-top: 24px;
+  }
 }
 
 /* Mobile activities preview as full-width list rows (no card grid, no
@@ -375,7 +393,8 @@
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tracking-label);
+    font-feature-settings: 'case' 1;
     color: var(--fg-muted);
     line-height: 1;
   }
@@ -608,6 +627,8 @@
    width. */
 .project-detail__prose {
   margin: 0 0 28px;
+  max-width: var(--measure);
+  text-wrap: pretty;
 }
 
 /* Per-tab empty state — used when the Overview / Description tab
@@ -671,7 +692,8 @@
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
+  font-feature-settings: 'case' 1;
   color: var(--fg-muted);
 }
 
@@ -714,6 +736,16 @@
   letter-spacing: -0.005em;
 }
 
+/* Overview section headers (Summary, Activities) use the activity
+   page's eyebrow: `.cert-detail__section-title` (icon + uppercase label
+   + bare count), same as Location and Updates. Centre-aligned so the
+   small label lines up with the trailing "See all" link, and the same
+   12px label-to-content gap as `.cert-detail__section`. */
+.project-detail__section-head {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .project-detail__certs-count {
   font-size: 0.75rem;
   font-weight: 500;
@@ -723,10 +755,13 @@
   background: var(--overlay-weak);
 }
 
-/* Section-header action link ("Read full description →", "Show all
-   activities →"). Matches the Updates section's "See all →" exactly:
-   same size, weight, colour, and hover. */
+/* Section-header "See all" link with a trailing chevron icon. Matches
+   the Updates section's "See all" exactly: same size, weight, colour,
+   and hover. */
 .project-detail__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
   font-size: 0.75rem;
   font-weight: 500;
@@ -861,66 +896,6 @@
   );
 }
 
-.project-detail__edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  cursor: pointer;
-  flex: 0 0 auto;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.project-detail__edit-btn:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-}
-
-.project-detail__edit-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* Destructive sibling of the project Edit button — same height +
-   radius but icon-only and the hover paints the red tint. */
-.project-detail__delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.project-detail__delete-btn:hover {
-  background: var(--bg-sunken);
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.project-detail__delete-btn:focus-visible {
-  outline: 2px solid var(--color-error);
-  outline-offset: 2px;
-}
-
 /* Date created inline above the hero — mirrors the cert
    detail headline column treatment (small uppercase label + a
    slightly larger value, no card background). The label reuses
@@ -969,7 +944,7 @@
 .project-detail__title-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 .project-detail__lead-input {
@@ -995,7 +970,7 @@
 .project-detail__lead-input:focus {
   outline: none;
   border-color: var(--fg-primary);
-  box-shadow: 0 0 0 2px var(--overlay-weak);
+  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Description preserve banner — shown when the existing description
@@ -1020,57 +995,6 @@
   line-height: 1.45;
 }
 
-.project-detail__desc-preserve-cta {
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.project-detail__desc-preserve-cta:hover {
-  color: var(--fg-primary);
-  text-decoration: none;
-}
-
-/* "Add cert" button — sits at the end of the certs section header
-   when editing. `margin-left: auto` pushes it to the right edge of
-   the flex header next to the count chip. */
-.project-detail__add-cert-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  margin-left: auto;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1;
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.project-detail__add-cert-btn:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-}
-
-.project-detail__add-cert-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 /* Picker row — wraps the CertSearch input and a Cancel button so
    the user can dismiss without picking anything. The CertSearch
    itself is flex:1 so it fills the remaining width. */
@@ -1084,24 +1008,6 @@
 .project-detail__add-cert-picker .cert-search {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.project-detail__add-cert-cancel {
-  flex: 0 0 auto;
-  align-self: center;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.project-detail__add-cert-cancel:hover {
-  color: var(--fg-primary);
-  background: var(--overlay-weak);
 }
 
 .project-detail__certs-loading {
@@ -1165,7 +1071,11 @@
 .project-detail__cert-menu-btn[aria-expanded="true"] {
   background: var(--overlay-weak);
   color: var(--fg-primary);
-  outline: none;
+}
+
+.project-detail__cert-menu-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* The per-card ⋯ menu popover + items now render via the shared
@@ -1233,10 +1143,10 @@
 
 .create-group__avatar-tile--placeholder {
   /* Bump the dashed outline up from `--border-subtle` (4%) to
-     `--border-medium` (10%) and from 1px to 2px so the empty
+     `--border-default` (8%) and from 1px to 2px so the empty
      dropzone reads as a clear "tap to add" affordance rather than
      fading into the background. */
-  border: 2px dashed var(--border-medium);
+  border: 2px dashed var(--border-default);
   background: var(--bg-sunken);
 }
 

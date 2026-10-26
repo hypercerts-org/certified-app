@@ -157,9 +157,19 @@ export default function Tooltip({
 
   useEffect(() => () => clearTimer(), [clearTimer]);
 
+  // A trigger that has opened its own menu or popover (aria-expanded) keeps
+  // the bubble hidden; otherwise it sits over the first menu item.
+  const childProps = children.props as {
+    "aria-describedby"?: string;
+    "aria-expanded"?: boolean | "true" | "false";
+  };
+  const expanded =
+    childProps["aria-expanded"] === true || childProps["aria-expanded"] === "true";
+  const visible = open && !expanded;
+
   // Position when open; reposition on scroll/resize; hide on Esc.
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     const reposition = () => {
       const trigger = wrapRef.current;
       const bubble = bubbleRef.current;
@@ -181,14 +191,14 @@ export default function Tooltip({
       globalThis.removeEventListener("resize", reposition);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, side, hide]);
+  }, [visible, side, hide]);
 
   if (!label || !hoverCapable) return children;
 
   const trigger = cloneElement(children, {
-    "aria-describedby": open
-      ? `${(children.props as { "aria-describedby"?: string })["aria-describedby"] ?? ""} ${id}`.trim()
-      : (children.props as { "aria-describedby"?: string })["aria-describedby"],
+    "aria-describedby": visible
+      ? `${childProps["aria-describedby"] ?? ""} ${id}`.trim()
+      : childProps["aria-describedby"],
   } as Partial<React.HTMLAttributes<HTMLElement>>);
 
   return (
@@ -201,7 +211,7 @@ export default function Tooltip({
       onBlur={hide}
     >
       {trigger}
-      {open && mounted
+      {visible && mounted
         ? createPortal(
             <div
               ref={bubbleRef}

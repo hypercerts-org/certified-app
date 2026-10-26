@@ -478,8 +478,11 @@ export default function ProductTour() {
         in the meantime.
       */}
       <div
+        // Keyed per step so each step's card is a fresh element and its
+        // enter animation (added once measured/visible) replays.
+        key={stepIndex}
         ref={cardRef}
-        className={`product-tour__card${cardPlacementClass}`}
+        className={`product-tour__card${cardPlacementClass}${cardReady ? " product-tour__card--enter" : ""}`}
         style={cardStyle}
         role="dialog"
         aria-modal="true"

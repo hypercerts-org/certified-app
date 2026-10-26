@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import { AlertCircle } from "lucide-react";
 
 export type InputSize = "sm" | "md" | "lg" | "bare";
 export type InputVariant = "default" | "underline" | "inline-edit";
@@ -82,10 +83,10 @@ export interface InputProps
 }
 
 const sizeClasses: Record<InputSize, string> = {
-  // 36 / 44 / 56 — Tailwind's h-9 / h-11 / h-14.
-  sm: "h-9 px-3 text-sm",
-  md: "h-11 px-4 text-base md:text-sm",
-  lg: "h-14 px-5 text-base",
+  // 36 / 44 / 56 — the control-height scale (--control-h-sm/md/lg).
+  sm: "h-control-sm px-3 text-sm",
+  md: "h-control-md px-4 text-base md:text-sm",
+  lg: "h-control-lg px-5 text-base",
   // No fixed height, no text-size — typography cascades from the parent
   // (e.g. an H1 serif scale via `font:inherit`, or the create-form's
   // 1.375rem title rule). We still set the horizontal padding the
@@ -166,12 +167,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
     const baseChrome =
-      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-all duration-150 motion-reduce:transition-none";
+      "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none";
 
     // Muted fill + not-allowed cursor when disabled. Semantic tokens keep the
     // treatment correct in dark mode.
     const disabledChrome = disabled
-      ? "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[var(--bg-sunken)]"
+      ? "disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:bg-[var(--bg-sunken)]"
       : "";
 
     const variantChrome = (() => {
@@ -182,7 +183,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           return `border-0 border-b ${
             error
               ? "border-[var(--color-error-border)]"
-              : "border-[var(--border-medium)]"
+              : "border-[var(--border-default)]"
           } rounded-none bg-transparent focus:border-[var(--fg-primary)]`;
         case "inline-edit":
           // Slightly thicker border (1.5 px) signals "currently editable" —
@@ -205,13 +206,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             // `border` (1px) for default weight — byte-identical to the
             // pre-enhancement string; `border-[1.5px]` for hover weight.
             return borderWeight === "hover"
-              ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20"
-              : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20";
+              ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1"
+              : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
           }
           if (borderWeight === "hover") {
             return "border-[1.5px] border-[var(--border-hover)] rounded focus:border-[var(--fg-primary)] focus:ring-2 focus:ring-[var(--overlay-weak)]";
           }
-          return "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1 focus:ring-[var(--focus-ring)]/20";
+          return "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
       }
     })();
 
@@ -291,7 +292,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block mb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-[var(--color-mid-gray)] [font-feature-settings:'case'_1]"
+            className="block mb-1.5 text-ui font-medium text-[var(--fg-secondary)]"
           >
             {label}
           </label>
@@ -301,13 +302,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <p
             id={errorId}
             role="alert"
-            className="mt-1.5 text-xs text-[var(--color-error)]"
+            className="mt-1.5 flex items-start gap-1 text-caption text-[var(--color-error)]"
           >
-            {error}
+            <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+            <span>{error}</span>
           </p>
         )}
         {!error && helperText && (
-          <p id={helperId} className="mt-1.5 text-xs text-[var(--fg-muted)]">
+          <p id={helperId} className="mt-1.5 text-caption text-[var(--fg-muted)]">
             {helperText}
           </p>
         )}

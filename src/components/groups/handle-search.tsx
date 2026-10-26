@@ -6,6 +6,7 @@ import { authFetch } from "@/lib/auth/fetch"
 import Avatar from "@/components/ui/avatar"
 import Combobox from "@/components/ui/combobox"
 import Tooltip from "@/components/ui/tooltip"
+import { getInitials } from "@/lib/utils/initials"
 
 interface Actor {
   did: string
@@ -37,7 +38,7 @@ function looksLikeCompleteHandle(value: string): boolean {
 
 export default function HandleSearch({
   label = "Handle",
-  placeholder = "Search by handle...",
+  placeholder = "Search by handle…",
   onSelect,
 }: HandleSearchProps) {
   const [query, setQuery] = useState("")
@@ -218,7 +219,7 @@ export default function HandleSearch({
           <Loader2
             size={14}
             strokeWidth={2}
-            className="animate-spin motion-reduce:animate-none"
+            className="animate-spin"
             aria-hidden
           />
         ) : undefined,
@@ -265,10 +266,10 @@ export default function HandleSearch({
           <Avatar
             size="sm"
             src={actor.avatar || undefined}
-            fallbackInitials={(actor.displayName || actor.handle).slice(0, 2).toUpperCase()}
+            fallbackInitials={getInitials(actor.displayName, actor.handle).toUpperCase()}
           />
           <div className="handle-search__item-info">
-            <span className="handle-search__item-name">
+            <span className="handle-search__item-name" dir="auto">
               {actor.displayName || actor.handle}
             </span>
             <span className="handle-search__item-handle">

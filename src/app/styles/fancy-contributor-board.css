@@ -47,8 +47,8 @@
     linear-gradient(var(--border-subtle) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
   background-size: 44px 44px;
-  -webkit-mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
-  mask-image: radial-gradient(120% 120% at 50% 0%, black 35%, transparent 80%);
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 0%, var(--mask-opaque) 35%, transparent 80%);
+  mask-image: radial-gradient(120% 120% at 50% 0%, var(--mask-opaque) 35%, transparent 80%);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -100,7 +100,8 @@
   color: var(--fg-primary);
   text-decoration: none;
   box-shadow: var(--shadow-sm);
-  transform: translateZ(0);
+  /* No permanent translateZ(0) layer per tile — the hover transition
+     promotes the tile on demand. */
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
@@ -115,9 +116,11 @@
     opacity: 0;
     transform: translate3d(0, 10px, 0) scale(0.94);
   }
+  /* No transform in the end keyframe: with `forwards` fill it would pin
+     the tile's transform and override the hover lift. Ending on the
+     underlying value lets the hover rule apply after the entrance. */
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -127,15 +130,23 @@
 
 /* Hover lights the tile up: the gold accent is carried by the BORDER only;
    the interior glow + lift stay neutral. */
-.fancy-tile:hover {
-  border-color: var(--accent-gold);
-  box-shadow: var(--shadow-lg);
-  transform: translate3d(0, -3px, 0) scale(1.025);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover {
+    border-color: var(--accent-gold);
+    box-shadow: var(--shadow-lg);
+    transform: translate3d(0, -3px, 0) scale(1.025);
+  }
 }
 
 .fancy-tile:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
+}
+
+/* Keyboard focus reveals the weight badge the hover state shows. */
+.fancy-tile:focus-visible .fancy-tile__weight {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Diagonal sheen sweep — a soft highlight that glides across on hover. */
@@ -152,13 +163,15 @@
   transform: translateX(-60%);
   transition:
     opacity var(--transition-base),
-    transform 0.7s ease;
+    transform 400ms ease-out;
   pointer-events: none;
 }
 
-.fancy-tile:hover .fancy-tile__sheen {
-  opacity: 0.7;
-  transform: translateX(60%);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__sheen {
+    opacity: 0.7;
+    transform: translateX(60%);
+  }
 }
 
 /* Radial glow that blooms from the tile centre on hover — neutral, so the
@@ -176,8 +189,10 @@
   pointer-events: none;
 }
 
-.fancy-tile:hover .fancy-tile__glow {
-  opacity: 0.85;
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__glow {
+    opacity: 0.85;
+  }
 }
 
 /* Content wrapper is positioned, so it paints above the sheen/glow layers
@@ -203,7 +218,7 @@
   background: var(--bg-sunken);
   box-shadow:
     var(--shadow-sm),
-    inset 0 0 0 1px var(--border-subtle);
+    var(--shadow-inset-subtle);
   transition: box-shadow var(--transition-base);
 }
 
@@ -215,10 +230,12 @@
   border-radius: var(--radius);
 }
 
-.fancy-tile:hover .fancy-tile__media {
-  box-shadow:
-    var(--shadow-md),
-    inset 0 0 0 1px var(--border-hover);
+@media (hover: hover) and (pointer: fine) {
+  .fancy-tile:hover .fancy-tile__media {
+    box-shadow:
+      var(--shadow-md),
+      var(--shadow-inset-hover);
+  }
 }
 
 .fancy-tile__img {
@@ -270,6 +287,7 @@
   pointer-events: none;
 }
 
+/* Not gated to hover devices: a tap is how touch users see the weight. */
 .fancy-tile:hover .fancy-tile__weight {
   opacity: 1;
   transform: translateY(0);
