@@ -21,7 +21,13 @@ function walk(dir) {
       const source = readFileSync(path, "utf8")
       if (!broken.test(source)) continue
       const parent = basename(dirname(path))
-      writeFileSync(path, source.replace(broken, (_match, ext = "") => `from "../${parent}.defs${ext}"`))
+      writeFileSync(
+        path,
+        source.replace(
+          broken,
+          (_match, ext = "") => `from "../${parent}.defs${ext}"`,
+        ),
+      )
       fixed += 1
     }
   }

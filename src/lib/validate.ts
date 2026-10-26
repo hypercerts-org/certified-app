@@ -6,7 +6,9 @@ export function isDid(value: string): boolean {
 }
 
 export function isAtUri(value: string): boolean {
-  return /^at:\/\/did:(plc|web):[a-zA-Z0-9._:%-]+\/[a-zA-Z0-9.]+\/[a-zA-Z0-9._:~-]{1,512}$/.test(value)
+  return /^at:\/\/did:(plc|web):[a-zA-Z0-9._:%-]+\/[a-zA-Z0-9.]+\/[a-zA-Z0-9._:~-]{1,512}$/.test(
+    value,
+  )
 }
 
 export function cursorParam(value: string | null): string | undefined {

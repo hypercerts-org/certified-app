@@ -13,7 +13,9 @@ function queryFrom(value: string | string[] | undefined) {
   return query?.trim().slice(0, 100) ?? ""
 }
 
-async function Results({ searchParams }: Pick<PageProps<"/explore">, "searchParams">) {
+async function Results({
+  searchParams,
+}: Pick<PageProps<"/explore">, "searchParams">) {
   const query = queryFrom((await searchParams).q)
   const page = await listOrganizationsPage({ query: query || undefined })
   return (

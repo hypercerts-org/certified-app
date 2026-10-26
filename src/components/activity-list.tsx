@@ -8,7 +8,10 @@ import { useCursorPages } from "@/lib/use-cursor-pages"
 import { ActivityCardView } from "./cards"
 import { Button, EmptyState, ErrorMessage } from "./ui"
 
-export type ActivitySource = { kind: "all" } | { kind: "author"; did: string } | { kind: "project"; uri: string }
+export type ActivitySource =
+  | { kind: "all" }
+  | { kind: "author"; did: string }
+  | { kind: "project"; uri: string }
 
 function pageUrl(source: ActivitySource, cursor: string) {
   const params = new URLSearchParams({ cursor })
@@ -26,8 +29,14 @@ export function ActivityList({
   source: ActivitySource
   showAuthor?: boolean
 }) {
-  const nextPageUrl = useCallback((cursor: string) => pageUrl(source, cursor), [source])
-  const { items, hasMore, loading, error, loadMore } = useCursorPages(initial, nextPageUrl)
+  const nextPageUrl = useCallback(
+    (cursor: string) => pageUrl(source, cursor),
+    [source],
+  )
+  const { items, hasMore, loading, error, loadMore } = useCursorPages(
+    initial,
+    nextPageUrl,
+  )
 
   if (items.length === 0) return <EmptyState title="No activities yet" />
 
@@ -35,7 +44,11 @@ export function ActivityList({
     <div className="stack">
       <ul className="grid">
         {items.map((activity) => (
-          <ActivityCardView key={activity.uri} activity={activity} showAuthor={showAuthor} />
+          <ActivityCardView
+            key={activity.uri}
+            activity={activity}
+            showAuthor={showAuthor}
+          />
         ))}
       </ul>
       {error && <ErrorMessage live>{error}</ErrorMessage>}

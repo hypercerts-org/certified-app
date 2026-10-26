@@ -1,6 +1,11 @@
 import Link from "next/link"
 
-import type { ActivityCard, ActorCard, BadgeCard, ProjectCard } from "@/lib/hypercerts/views"
+import type {
+  ActivityCard,
+  ActorCard,
+  BadgeCard,
+  ProjectCard,
+} from "@/lib/hypercerts/views"
 
 import { Avatar, Badge, Card, Heading, IdentityRow, Text } from "./ui"
 
@@ -33,7 +38,13 @@ export function ActorCardView({ actor }: { actor: ActorCard }) {
   )
 }
 
-export function ActivityCardView({ activity, showAuthor }: { activity: ActivityCard; showAuthor: boolean }) {
+export function ActivityCardView({
+  activity,
+  showAuthor,
+}: {
+  activity: ActivityCard
+  showAuthor: boolean
+}) {
   return (
     <Card as="li" variant="panel" className="card">
       <Heading level={3} size="heading">
@@ -47,7 +58,11 @@ export function ActivityCardView({ activity, showAuthor }: { activity: ActivityC
       <div className="meta">
         {showAuthor && (
           <Link href={actorHref(activity.author.did)} className="meta-author">
-            <Avatar name={activity.author.displayName} src={activity.author.avatarUrl} size="sm" />
+            <Avatar
+              name={activity.author.displayName}
+              src={activity.author.avatarUrl}
+              size="sm"
+            />
             <Text as="span" size="micro">
               {activity.author.displayName}
             </Text>
@@ -91,7 +106,12 @@ export function BadgeCardView({ badge }: { badge: BadgeCard }) {
           {badge.title}
         </Text>
         {badge.response && (
-          <Badge variant={responseVariant[badge.response as keyof typeof responseVariant] ?? "neutral"}>
+          <Badge
+            variant={
+              responseVariant[badge.response as keyof typeof responseVariant] ??
+              "neutral"
+            }
+          >
             {badge.response}
           </Badge>
         )}

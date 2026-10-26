@@ -1,4 +1,8 @@
-import { listActivitiesPage, listBadgesReceived, listProjectsPage } from "@/lib/hypercerts/queries"
+import {
+  listActivitiesPage,
+  listBadgesReceived,
+  listProjectsPage,
+} from "@/lib/hypercerts/queries"
 import type { ActorDetail } from "@/lib/hypercerts/views"
 
 import { ActivityList } from "./activity-list"
@@ -9,7 +13,13 @@ import { Badge, EmptyState, Eyebrow, Skeleton, Text } from "./ui"
 // reorder tiles without the others knowing. That is the separability the
 // product definition asks for, at its simplest.
 
-export function Tile({ title, children }: { title: string; children: React.ReactNode }) {
+export function Tile({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
   return (
     <section className="tile">
       <Eyebrow as="p">{title}</Eyebrow>
@@ -70,7 +80,11 @@ export async function ActivitiesTile({ did }: { did: string }) {
   const page = await listActivitiesPage({ author: did, limit: 6 })
   return (
     <Tile title="Activities">
-      <ActivityList initial={page} source={{ kind: "author", did }} showAuthor={false} />
+      <ActivityList
+        initial={page}
+        source={{ kind: "author", did }}
+        showAuthor={false}
+      />
     </Tile>
   )
 }

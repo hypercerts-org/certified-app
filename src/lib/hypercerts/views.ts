@@ -62,7 +62,9 @@ export type BadgeCard = {
 type UnknownRecord = Record<string, unknown>
 
 function asRecord(value: unknown): UnknownRecord | null {
-  return value !== null && typeof value === "object" ? (value as UnknownRecord) : null
+  return value !== null && typeof value === "object"
+    ? (value as UnknownRecord)
+    : null
 }
 
 function asString(value: unknown): string | null {
@@ -71,7 +73,10 @@ function asString(value: unknown): string | null {
 
 // Dates are formatted once, on the server, with a fixed locale and time zone,
 // so server-rendered HTML and client hydration always agree.
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" })
+const dateFormat = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+})
 
 export function formatDate(value: unknown): string | null {
   const text = asString(value)
@@ -87,7 +92,8 @@ export function plainText(value: unknown): string | null {
   if (direct) return direct
   const record = asRecord(value)
   if (!record) return null
-  if (record.$type === "org.hypercerts.defs#descriptionString") return asString(record.value)
+  if (record.$type === "org.hypercerts.defs#descriptionString")
+    return asString(record.value)
   if (Array.isArray(record.blocks)) {
     const paragraphs = record.blocks
       .map((entry) => asString(asRecord(asRecord(entry)?.block)?.plaintext))
@@ -137,14 +143,19 @@ export function toActorCard(view: unknown): ActorCard {
 
 export function toActorDetail(view: unknown): ActorDetail {
   const card = toActorCard(view)
-  const organization = asRecord(asRecord(asRecord(view)?.organization)?.record) ?? {}
+  const organization =
+    asRecord(asRecord(asRecord(view)?.organization)?.record) ?? {}
   const urls = Array.isArray(organization.urls)
-    ? organization.urls.map((entry) => asString(asRecord(entry)?.url)).filter((url): url is string => url !== null)
+    ? organization.urls
+        .map((entry) => asString(asRecord(entry)?.url))
+        .filter((url): url is string => url !== null)
     : []
   return {
     ...card,
     organizationTypes: Array.isArray(organization.organizationType)
-      ? organization.organizationType.filter((type): type is string => typeof type === "string")
+      ? organization.organizationType.filter(
+          (type): type is string => typeof type === "string",
+        )
       : [],
     urls,
     longDescription: plainText(organization.longDescription),

@@ -41,7 +41,10 @@ const API_URL = process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts.dev"
 // missing its $type). With validation on, one such record fails the whole
 // page. The view mappers in ./views read fields defensively instead. Writes
 // should keep strict validation.
-const read = () => ({ signal: AbortSignal.timeout(8_000), validateResponse: false })
+const read = () => ({
+  signal: AbortSignal.timeout(8_000),
+  validateResponse: false,
+})
 
 // Public, indexed data: shared by every visitor, refreshed within about a minute.
 // Next.js uses the same profile for the prerendered page and its ISR upgrade.
@@ -59,14 +62,24 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache"
   publicData(`actor:${actor}`)
 
-  const profile = await xrpcSafe(API_URL, getProfile, { params: { actor: actor as l.AtIdentifierString }, ...read() })
+  const profile = await xrpcSafe(API_URL, getProfile, {
+    params: { actor: actor as l.AtIdentifierString },
+    ...read(),
+  })
   if (!profile.success) return null
 
   // getProfile accepts a handle or DID; getOrganization needs the DID and fails
   // for accounts without an organization record (people).
   const did = profile.body.profile.did
-  const organization = await xrpcSafe(API_URL, getOrganization, { params: { actor: did }, ...read() })
-  return toActorDetail(organization.success ? organization.body.actor : { did, profile: profile.body.profile })
+  const organization = await xrpcSafe(API_URL, getOrganization, {
+    params: { actor: did },
+    ...read(),
+  })
+  return toActorDetail(
+    organization.success
+      ? organization.body.actor
+      : { did, profile: profile.body.profile },
+  )
 }
 
 export async function listActivitiesPage(options: {
@@ -85,25 +98,42 @@ export async function listActivitiesPage(options: {
     },
     ...read(),
   })
-  return { items: body.activities.map(toActivityCard), cursor: body.cursor ?? null }
+  return {
+    items: body.activities.map(toActivityCard),
+    cursor: body.cursor ?? null,
+  }
 }
 
-export async function listProjectsPage(options: { author: string; cursor?: string }): Promise<Page<ProjectCard>> {
+export async function listProjectsPage(options: {
+  author: string
+  cursor?: string
+}): Promise<Page<ProjectCard>> {
   "use cache"
   publicData(`projects:${options.author}`)
 
   const { body } = await xrpc(API_URL, listCollections, {
-    params: { authors: [options.author as Did], types: ["project"], cursor: options.cursor, limit: 10 },
+    params: {
+      authors: [options.author as Did],
+      types: ["project"],
+      cursor: options.cursor,
+      limit: 10,
+    },
     ...read(),
   })
-  return { items: body.collections.map(toProjectCard), cursor: body.cursor ?? null }
+  return {
+    items: body.collections.map(toProjectCard),
+    cursor: body.cursor ?? null,
+  }
 }
 
 export async function getProject(uri: string): Promise<ProjectDetail | null> {
   "use cache"
   publicData(`project:${uri}`)
 
-  const result = await xrpcSafe(API_URL, getCollection, { params: { uri: uri as AtUri }, ...read() })
+  const result = await xrpcSafe(API_URL, getCollection, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  })
   return result.success ? toProjectDetail(result.body.collection) : null
 }
 
@@ -115,24 +145,36 @@ export async function listProjectActivitiesPage(options: {
   publicData(`project:${options.project}`)
 
   const { body } = await xrpc(API_URL, listCollectionItems, {
-    params: { collection: options.project as AtUri, cursor: options.cursor, limit: 10 },
+    params: {
+      collection: options.project as AtUri,
+      cursor: options.cursor,
+      limit: 10,
+    },
     ...read(),
   })
   // Collection items can reference activities, nested collections or other
   // records; the spike shows activities only.
   const activities = body.items
     .map((item) => item.record)
-    .filter((record) => (record as { $type?: string } | null)?.$type?.endsWith("#activityView"))
+    .filter((record) =>
+      (record as { $type?: string } | null)?.$type?.endsWith("#activityView"),
+    )
   return { items: activities.map(toActivityCard), cursor: body.cursor ?? null }
 }
 
-export async function listOrganizationsPage(options: { query?: string; cursor?: string }): Promise<Page<ActorCard>> {
+export async function listOrganizationsPage(options: {
+  query?: string
+  cursor?: string
+}): Promise<Page<ActorCard>> {
   "use cache"
   publicData("organizations")
 
   const params = { cursor: options.cursor, limit: 12 }
   const { body } = options.query
-    ? await xrpc(API_URL, searchOrganizations, { params: { ...params, search: options.query }, ...read() })
+    ? await xrpc(API_URL, searchOrganizations, {
+        params: { ...params, search: options.query },
+        ...read(),
+      })
     : await xrpc(API_URL, listOrganizations, { params, ...read() })
   return { items: body.actors.map(toActorCard), cursor: body.cursor ?? null }
 }

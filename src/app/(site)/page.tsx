@@ -19,8 +19,8 @@ export default function HomePage() {
           Organizations, projects and activities on the Hypercerts protocol
         </Heading>
         <Text>
-          A read-only slice of the rebuild, reading live data from the Hypercerts API. Nothing here writes to the
-          protocol.
+          A read-only slice of the rebuild, reading live data from the
+          Hypercerts API. Nothing here writes to the protocol.
         </Text>
       </div>
       <section className="tile">

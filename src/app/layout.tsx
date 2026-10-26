@@ -7,7 +7,8 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: { default: "Certified", template: "%s | Certified" },
-  description: "Organizations, projects and activities on the Hypercerts protocol.",
+  description:
+    "Organizations, projects and activities on the Hypercerts protocol.",
 }
 
 // Root layout shared by the site and the embeds: theme, design system and

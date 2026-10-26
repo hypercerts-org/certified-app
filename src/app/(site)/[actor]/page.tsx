@@ -1,7 +1,13 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
-import { AboutTile, ActivitiesTile, BadgesTile, ProjectsTile, TileSkeleton } from "@/components/tiles"
+import {
+  AboutTile,
+  ActivitiesTile,
+  BadgesTile,
+  ProjectsTile,
+  TileSkeleton,
+} from "@/components/tiles"
 import { Avatar, Heading, Skeleton, Text } from "@/components/ui"
 import { getActor } from "@/lib/hypercerts/queries"
 

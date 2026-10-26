@@ -11,7 +11,8 @@ npm install
 npm run dev        # generates lexicon bindings, then starts Next.js
 npm run build      # production build (also regenerates bindings)
 npm run typecheck
-npm run lint
+npm run lint       # Biome: lint, formatting and import order
+npm run format     # apply Biome's fixes and formatting
 ```
 
 Node 24 (see `.nvmrc`). The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.

@@ -6,7 +6,11 @@ import { ActivityList } from "@/components/activity-list"
 import { actorHref } from "@/components/cards"
 import { Tile, TileSkeleton } from "@/components/tiles"
 import { Avatar, Eyebrow, Heading, Skeleton, Text } from "@/components/ui"
-import { getActor, getProject, listProjectActivitiesPage } from "@/lib/hypercerts/queries"
+import {
+  getActor,
+  getProject,
+  listProjectActivitiesPage,
+} from "@/lib/hypercerts/queries"
 
 export async function generateStaticParams() {
   return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msind56wn22t" }]
@@ -21,7 +25,9 @@ async function ProjectActivities({ uri }: { uri: string }) {
   )
 }
 
-async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "params">) {
+async function Project({
+  params,
+}: Pick<PageProps<"/[actor]/project/[rkey]">, "params">) {
   const { actor: actorParam, rkey } = await params
   // The route accepts a handle or DID; the collection URI needs the DID.
   const actor = await getActor(decodeURIComponent(actorParam))
@@ -56,7 +62,9 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
   )
 }
 
-export default function ProjectPage(props: PageProps<"/[actor]/project/[rkey]">) {
+export default function ProjectPage(
+  props: PageProps<"/[actor]/project/[rkey]">,
+) {
   return (
     <div className="page">
       <Suspense fallback={<Skeleton variant="text" lines={6} />}>
