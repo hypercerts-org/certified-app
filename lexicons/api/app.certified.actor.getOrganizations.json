@@ -1,0 +1,59 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.getOrganizations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns an indexed organization sidecar and associated profile for each supplied actor DID. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["actors"],
+        "properties": {
+          "actors": {
+            "type": "array",
+            "description": "Actor DIDs to look up, supplied as repeated unbracketed query values.",
+            "minLength": 1,
+            "maxLength": 100,
+            "items": { "type": "string", "format": "did" }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "An actor DID or query parameter is invalid." },
+        { "name": "OrganizationQueryFailed", "description": "The indexed organization sidecars or associated profiles could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["organizations"],
+      "properties": {
+        "organizations": {
+          "type": "array",
+          "description": "One result per supplied actor occurrence, in request order.",
+          "items": { "type": "ref", "ref": "#organizationResult" }
+        }
+      }
+    },
+    "organizationResult": {
+      "type": "object",
+      "required": ["actor", "organization"],
+      "nullable": ["organization"],
+      "properties": {
+        "actor": {
+          "type": "string",
+          "format": "did",
+          "description": "Actor DID from the corresponding request occurrence."
+        },
+        "organization": {
+          "type": "ref",
+          "ref": "app.certified.actor.getOrganization#organizationActorView",
+          "description": "Hydrated actor view, or null when no indexed organization sidecar exists."
+        }
+      }
+    }
+  }
+}

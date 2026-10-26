@@ -1,0 +1,62 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.listOrganizations",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists actors with indexed organization sidecars matching the supplied filters. Filters combine with AND, and values within each array filter are ORed. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "organizationTypes": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact organizationType values; OR within this filter.",
+            "items": { "type": "string", "maxLength": 128 }
+          },
+          "visibility": {
+            "type": "string",
+            "description": "Exact visibility match; omission is unrestricted, but records with no visibility value do not match."
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort by a valid zoned createdAt, otherwise indexedAt, falling back to row creation time; URI breaks ties. Default desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Page size; default 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor bound to sortDirection; keep other parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter or scalar parameter is invalid or repeated, or an unsupported parameter was supplied." },
+        { "name": "OrganizationQueryFailed", "description": "The indexed organization sidecar or associated profile could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["actors"],
+      "properties": {
+        "actors": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "app.certified.actor.getOrganization#organizationActorView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when there is no next page."
+        }
+      }
+    }
+  }
+}

@@ -1,200 +1,23 @@
-import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
-import { Inter, Noto_Serif } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/lib/auth/auth-context";
-import { NavbarProvider } from "@/lib/navbar-context";
-import { ViewTransitionProvider } from "@/lib/view-transitions";
-import Navbar from "@/components/layout/navbar";
-import DesktopTopBar from "@/components/layout/desktop-top-bar";
-import { Providers } from "@/lib/providers";
-import AppShell from "@/components/layout/app-shell";
-import { OrgProvider } from "@/lib/groups/org-context";
-import { OnboardingProvider } from "@/lib/onboarding/onboarding-context";
-import OnboardingModal from "@/components/onboarding/onboarding-modal";
-import { TourProvider } from "@/lib/tour/tour-context";
-import ProductTour from "@/components/tour/product-tour";
-import FeedbackModal from "@/components/ui/feedback-modal";
-import FeedbackTrigger from "@/components/layout/feedback-trigger";
-import { FeedbackProvider } from "@/lib/feedback-context";
-import BottomNav from "@/components/layout/bottom-nav";
-import ActingAsBar from "@/components/layout/acting-as-bar";
-import PwaInstallGuard from "@/components/layout/pwa-install-guard";
-import { ToastProvider } from "@/components/ui/toast";
-import { Analytics } from "@vercel/analytics/next";
+import type { Metadata } from "next"
+import type { ReactNode } from "react"
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-inter",
-  display: "swap",
-});
+import { Providers } from "@/components/providers"
 
-const notoSerif = Noto_Serif({
-  subsets: ["latin"],
-  // 300 is the landing-page display weight (hero + section headlines);
-  // 400/700 are the app-wide heading weights.
-  weight: ["300", "400", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-headline",
-  display: "swap",
-});
+import "./globals.css"
 
 export const metadata: Metadata = {
-  title: {
-    default: "Certified",
-    template: "%s — Certified",
-  },
-  description: "Your identity, everywhere.",
-  metadataBase: new URL("https://certified.app"),
-  openGraph: {
-    title: "Certified",
-    description: "Your identity, everywhere.",
-    siteName: "Certified",
-    locale: "en_US",
-    type: "website",
-    images: [
-      {
-        url: "/assets/certs-hero-1200x630.png",
-        width: 1200,
-        height: 630,
-        alt: "Certified — One account. Your work. Recognized everywhere.",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    site: "@hypercerts",
-    creator: "@hypercerts",
-    images: ["/assets/certs-hero-1200x630.png"],
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Certified",
-  },
-};
+  title: { default: "Certified", template: "%s | Certified" },
+  description: "Organizations, projects and activities on the Hypercerts protocol.",
+}
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f9f9f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0d" },
-  ],
-  viewportFit: "cover",
-};
-
-const groupJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Hypercerts Foundation",
-  legalName: "Hypercerts Foundation",
-  url: "https://hypercerts.org",
-  logo: {
-    "@type": "ImageObject",
-    url: "https://certified.app/brand/brandmark/certified_brandmark_black_512.png",
-    width: 512,
-    height: 512,
-  },
-  description:
-    "A Delaware nonstock corporation that develops open infrastructure for the hypercerts ecosystem, operating the Certified identity platform.",
-  foundingDate: "2023-02-03",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "1209 Orange St.",
-    addressLocality: "Wilmington",
-    addressRegion: "DE",
-    postalCode: "19801",
-    addressCountry: "US",
-  },
-  contactPoint: {
-    "@type": "ContactPoint",
-    email: "legal@hypercerts.org",
-    contactType: "legal",
-  },
-  sameAs: [
-    "https://github.com/hypercerts-org",
-    "https://x.com/hypercerts",
-    "https://www.linkedin.com/company/hypercerts",
-    "https://bsky.app/profile/hypercerts.org",
-  ],
-};
-
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "Certified",
-  url: "https://certified.app",
-  description:
-    "Your profile, your work, and your supporters in one account — recognized on every app in the network. No passwords, no lock-in.",
-  publisher: {
-    "@type": "Organization",
-    name: "Hypercerts Foundation",
-    url: "https://hypercerts.org",
-  },
-  inLanguage: "en",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+// Root layout shared by the site and the embeds: theme, design system and
+// providers only. Site chrome lives in the (site) route group.
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(groupJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-      </head>
-      <body className={`${inter.variable} ${notoSerif.variable} min-h-screen flex flex-col`}>
-        <Providers>
-          {/* App-wide toast region. Mounted high in the tree so any
-              client component below can call useToast(); ToastProvider
-              renders its own portal-backed Toaster. */}
-          <ToastProvider>
-          <AuthProvider>
-            <OrgProvider>
-              <OnboardingProvider>
-              <TourProvider>
-              <NavbarProvider>
-                <FeedbackProvider>
-                <ViewTransitionProvider>
-                <a href="#main-content" className="skip-nav">Skip to main content</a>
-                <ActingAsBar />
-                <Navbar />
-                {/* Suspense is required because DesktopTopBar reads
-                    useSearchParams() to highlight the active profile tab.
-                    Without a boundary, statically-rendered pages (e.g.
-                    /dsa, /terms, /privacy) deopt and fail the build with
-                    missing-suspense-with-csr-bailout. */}
-                <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
-                  <DesktopTopBar />
-                </Suspense>
-                <main id="main-content" className="flex-1 flex flex-col">
-                  <AppShell>{children}</AppShell>
-                </main>
-                <BottomNav />
-                <PwaInstallGuard />
-                <FeedbackModal />
-                <FeedbackTrigger />
-                <OnboardingModal />
-                <ProductTour />
-                </ViewTransitionProvider>
-                </FeedbackProvider>
-              </NavbarProvider>
-              </TourProvider>
-              </OnboardingProvider>
-            </OrgProvider>
-          </AuthProvider>
-          </ToastProvider>
-        </Providers>
-        <Analytics />
+    <html lang="en" data-hc-theme="certified">
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
-  );
+  )
 }

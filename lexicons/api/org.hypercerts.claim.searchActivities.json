@@ -1,0 +1,82 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.searchActivities",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Searches indexed activities by a case-insensitive literal substring of title or shortDescription. Search and other filters combine with AND; values within each array filter combine with OR, and duplicate values are ignored. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["search"],
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Literal, case-insensitive substring of title or shortDescription; surrounding whitespace is trimmed, and blank input applies no text filter."
+          },
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Filter by activity repository-owner DID.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "hasOrganizationRecord": {
+            "type": "boolean",
+            "description": "Filter by whether the activity author has an app.certified.actor.organization/self record, regardless of profile presence."
+          },
+          "contributors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Filter by contributor DID, including inline identities and the exact referenced contributor-information version.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "involvedActors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Filter by activity repository-owner or contributor DID.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "uris": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Filter by exact activity AT-URI; results follow the selected sort order, not input order.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort by activity createdAt, then URI; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum activities per page; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor for the next page, bound to sortDirection. Keep all other query parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter, sort direction, page limit, cursor, or query parameter is invalid." },
+        { "name": "ActivityQueryFailed", "description": "The activity query or required hydration failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["activities"],
+      "properties": {
+        "activities": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.claim.getActivity#activityView" }
+        },
+        "cursor": { "type": "string", "description": "Next-page cursor; absent when pagination is complete." }
+      }
+    }
+  }
+}

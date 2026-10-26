@@ -1,0 +1,85 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.badge.searchBadgeDefinitions",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Searches badge definitions by title or description without authentication.",
+      "parameters": {
+        "type": "params",
+        "required": ["search"],
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Text matched against definition titles and descriptions."
+          },
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "DIDs of repositories that published the definitions.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "badgeTypes": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Exact badgeType values.",
+            "items": { "type": "string", "maxLength": 100 }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction for (createdAt, uri)."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum definitions returned."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from the previous page."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A parameter is invalid, repeated where scalar, or unknown." },
+        { "name": "BadgeDefinitionQueryFailed", "description": "The indexed badge definitions could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["badgeDefinitions"],
+      "properties": {
+        "badgeDefinitions": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "#badgeDefinitionView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when pagination is complete."
+        }
+      }
+    },
+    "badgeDefinitionView": {
+      "type": "object",
+      "description": "Indexed badge definition with its publisher actor.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "app.certified.badge.definition" }
+      }
+    }
+  }
+}

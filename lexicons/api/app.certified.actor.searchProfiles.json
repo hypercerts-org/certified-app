@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.actor.searchProfiles",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Searches indexed Certified profiles by text, optionally restricted to actor DIDs. Filters combine with AND; values in the actor array are ORed. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["search"],
+        "properties": {
+          "search": { "type": "string", "description": "Trimmed text is matched literally and case-insensitively as a substring in displayName or description. Blank text is unrestricted." },
+          "sortDirection": { "type": "string", "description": "Sort by a valid zoned createdAt, otherwise indexedAt, falling back to row creation time; URI breaks ties. Default desc.", "enum": ["asc", "desc"] },
+          "actors": { "type": "array", "description": "Actor DIDs to include; values are ORed and handles are not resolved.", "maxLength": 100, "items": { "type": "string", "format": "did" } },
+          "limit": { "type": "integer", "description": "Page size; default 25.", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "description": "Opaque cursor bound to sortDirection; keep parameters unchanged between pages. Pages are not a snapshot." }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter or pagination parameter is invalid, repeated where scalar, or unsupported." },
+        { "name": "ProfileQueryFailed", "description": "The indexed profiles could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["profiles"],
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.api.defs#profileView" }
+        },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when pagination is complete." }
+      }
+    }
+  }
+}

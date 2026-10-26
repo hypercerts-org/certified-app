@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.context.listAcknowledgements",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists public acknowledgements by publisher or subject; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher DIDs; OR within this filter.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "subjects": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Subject record AT-URIs; matching ignores CID.",
+            "items": { "type": "string", "format": "at-uri" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Sort direction for createdAt and URI; default desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum records per page."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque next-page cursor bound to sortDirection; keep other parameters unchanged."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "A filter value, sort direction, page bound, cursor, repeated scalar, or query parameter is invalid." },
+        { "name": "AcknowledgementQueryFailed", "description": "The acknowledgement or publisher lookup failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["acknowledgements"],
+      "properties": {
+        "acknowledgements": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.api.defs#acknowledgementView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Omitted when there is no next page."
+        }
+      }
+    }
+  }
+}

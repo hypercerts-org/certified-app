@@ -49,3 +49,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /core
+
+# generated lexicon bindings (npm run lexicons:build)
+/src/lexicons
+next-env.d.ts
+*.tsbuildinfo
+.env*.local
+.vercel

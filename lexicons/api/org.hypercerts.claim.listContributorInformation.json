@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.listContributorInformation",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Publicly lists indexed contributor-information records with an optional publisher-DID filter and stable createdAt ordering.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs; values use OR.",
+            "items": { "type": "string", "format": "did" }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Direction for (createdAt, uri); defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum records in the page; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor bound to sortDirection; keep other parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "An author DID, sort direction, page bound, cursor, repeated scalar, or query parameter is invalid." },
+        { "name": "ContributorInformationQueryFailed", "description": "The record query or required publisher hydration lookup failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["contributorInformation"],
+      "properties": {
+        "contributorInformation": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "org.hypercerts.claim.getContributorInformation#contributorInformationView" }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when there is no next page."
+        }
+      }
+    }
+  }
+}

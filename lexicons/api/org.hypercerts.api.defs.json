@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.api.defs",
+  "description": "Shared views for Hypercerts API read models.",
+  "defs": {
+    "profileView": {
+      "type": "object",
+      "description": "Profile record view preserving the full indexed record; indexedAt may be null when the index has no timestamp.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "record": { "type": "ref", "ref": "app.certified.actor.profile" }
+      }
+    },
+    "organizationView": {
+      "type": "object",
+      "description": "Raw organization sidecar record view preserving the full indexed record; indexedAt may be null when the index has no timestamp.",
+      "required": ["uri", "cid", "indexedAt", "did", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "record": { "type": "ref", "ref": "app.certified.actor.organization" }
+      }
+    },
+    "actorView": {
+      "type": "object",
+      "description": "Actor DID with nullable profile and raw organization sidecar views.",
+      "required": ["did", "profile", "organization"],
+      "nullable": ["profile", "organization"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "profile": { "type": "ref", "ref": "#profileView" },
+        "organization": { "type": "ref", "ref": "#organizationView" }
+      }
+    },
+    "acknowledgementView": {
+      "type": "object",
+      "description": "Acknowledgement record with its publisher actor.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "#actorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.context.acknowledgement" }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "app.certified.badge.getBadgeResponse",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Gets one badge response by AT-URI without authentication.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full AT-URI of the badge-response record."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or is not a badge-response AT-URI." },
+        { "name": "RecordNotFound", "description": "No indexed badge response exists at this AT-URI." },
+        { "name": "BadgeResponseQueryFailed", "description": "The indexed badge response could not be queried." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["badgeResponse"],
+      "properties": {
+        "badgeResponse": { "type": "ref", "ref": "#badgeResponseView" }
+      }
+    },
+    "badgeResponseView": {
+      "type": "object",
+      "description": "Raw badge response with its publisher actor.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "app.certified.badge.response" }
+      }
+    }
+  }
+}

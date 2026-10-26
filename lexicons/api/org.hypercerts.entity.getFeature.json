@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.entity.getFeature",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Looks up one indexed feature by exact AT-URI with author hydration; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full feature record AT-URI using a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or is not a feature record AT-URI." },
+        { "name": "RecordNotFound", "description": "No indexed feature exists at this AT-URI." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["feature"],
+      "properties": {
+        "feature": { "type": "ref", "ref": "org.hypercerts.entity.defs#featureView" }
+      }
+    }
+  }
+}

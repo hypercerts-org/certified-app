@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.vocab.listVocabTags",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists published vocabulary tags by optional publisher DIDs with stable cursor pagination; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs; values are ORed.",
+            "items": {
+              "type": "string",
+              "format": "did"
+            }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Direction for (createdAt, uri); default desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Page size from 1 to 100; default 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor; keep direction and filters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#output"
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "A filter value, page bound, cursor, repeated scalar, or query parameter is invalid."
+        },
+        {
+          "name": "VocabTagQueryFailed",
+          "description": "The indexed tags or required publisher lookups could not be queried; retry after checking the HappyView PostgreSQL service."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["vocabTags"],
+      "properties": {
+        "vocabTags": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "org.hypercerts.vocab.getVocabTag#vocabTagView"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when pagination is complete."
+        }
+      }
+    }
+  }
+}

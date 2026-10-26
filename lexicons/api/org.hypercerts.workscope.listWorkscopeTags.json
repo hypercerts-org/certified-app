@@ -1,0 +1,74 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.workscope.listWorkscopeTags",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed work-scope tags by publisher DID with stable timestamp-and-URI ordering; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher repository DIDs; repeat this key for OR matching, up to 100 values.",
+            "items": {
+              "type": "string",
+              "format": "did"
+            }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "default": "desc",
+            "description": "Sort direction for timestamp-and-URI ordering; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum page size from 1 to 100; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 8192,
+            "description": "Opaque cursor bound to sortDirection; keep other parameters unchanged between pages."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "A query parameter is invalid."
+        },
+        {
+          "name": "WorkscopeTagQueryFailed",
+          "description": "The record query or publisher hydration failed."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["workscopeTags"],
+      "properties": {
+        "workscopeTags": {
+          "type": "array",
+          "maxLength": 100,
+          "items": {
+            "type": "ref",
+            "ref": "org.hypercerts.workscope.getWorkscopeTag#workscopeTagView"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when no next page exists."
+        }
+      }
+    }
+  }
+}

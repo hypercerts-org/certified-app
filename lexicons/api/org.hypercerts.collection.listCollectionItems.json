@@ -1,0 +1,78 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.collection.listCollectionItems",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Resolves one collection's embedded items in source order, one level only. Each target must match the item's exact strong-reference URI+CID; nested collections are summaries, and unavailable versions or unsupported kinds return record null. Pagination follows the latest indexed collection at the same URI across pages, even after collection changes; no version-change error or restart is required. Item additions, removals, or reordering may cause skipped or repeated results. There is no sortDirection parameter. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["collection"],
+        "properties": {
+          "collection": { "type": "string", "format": "at-uri", "description": "Full collection record AT-URI using a DID authority." },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Maximum embedded items in the page; default 25." },
+          "cursor": { "type": "string", "description": "Opaque item-pagination cursor. Continue with the same collection URI; it is not bound to a collection version." }
+        }
+      },
+      "output": { "encoding": "application/json", "schema": { "type": "ref", "ref": "#output" } },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The collection AT-URI, page bound, cursor, or query parameters are invalid." },
+        { "name": "RecordNotFound", "description": "No indexed collection exists at this AT-URI." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "items": { "type": "array", "items": { "type": "ref", "ref": "#collectionItemView" } },
+        "cursor": { "type": "string", "description": "Opaque cursor for the next page; omitted when there is no next page." }
+      }
+    },
+    "collectionSummaryView": {
+      "type": "object",
+      "description": "Non-recursive summary of a collection item target.",
+      "required": ["uri", "cid", "did", "title"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "did": { "type": "string", "format": "did" },
+        "type": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 800, "maxGraphemes": 80 },
+        "shortDescription": { "type": "string", "maxLength": 3000, "maxGraphemes": 300 }
+      }
+    },
+    "featureView": {
+      "type": "object",
+      "description": "Feature record view with hydrated author actor; feature location, tag, and sameAs references remain unexpanded.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.collection.getCollection#collectionActorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.entity.feature" }
+      }
+    },
+    "collectionItemView": {
+      "type": "object",
+      "description": "One embedded collection item in source order, retaining its original strong reference and optional weight. Resolve only an exact URI+CID target one level deep; nested collections use a summary, and unavailable versions or unsupported kinds produce record null.",
+      "required": ["itemIdentifier", "record"],
+      "nullable": ["record"],
+      "properties": {
+        "itemIdentifier": { "type": "ref", "ref": "com.atproto.repo.strongRef" },
+        "itemWeight": { "type": "string", "maxLength": 100 },
+        "record": {
+          "type": "union",
+          "refs": [
+            "org.hypercerts.claim.getActivity#activityView",
+            "#collectionSummaryView",
+            "#featureView"
+          ],
+          "description": "Resolved ActivityView, CollectionSummaryView, or FeatureView using the item strong reference's exact URI+CID; otherwise null."
+        }
+      }
+    }
+  }
+}

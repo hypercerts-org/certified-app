@@ -1,0 +1,63 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.workscope.getWorkscopeTag",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Returns an indexed work-scope tag and its hydrated publisher for an exact AT-URI; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full work-scope-tag AT-URI using a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "The URI is invalid or is not a work-scope-tag AT-URI."
+        },
+        {
+          "name": "RecordNotFound",
+          "description": "No indexed work-scope tag exists at this AT-URI."
+        },
+        {
+          "name": "WorkscopeTagQueryFailed",
+          "description": "The record lookup or publisher hydration failed."
+        }
+      ]
+    },
+    "workscopeTagView": {
+      "type": "object",
+      "description": "Work-scope tag view with its hydrated publisher, unchanged record, and nullable index timestamp.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.workscope.tag" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["workscopeTag"],
+      "properties": {
+        "workscopeTag": {
+          "type": "ref",
+          "ref": "#workscopeTagView"
+        }
+      }
+    }
+  }
+}

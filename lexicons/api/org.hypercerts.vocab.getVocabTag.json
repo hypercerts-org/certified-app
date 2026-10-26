@@ -1,0 +1,66 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.vocab.getVocabTag",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Looks up one published vocabulary tag by full DID-authority AT-URI and returns its unchanged record with publisher details; authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full AT-URI of the vocabulary-tag record, using a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#output"
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "The URI is invalid, targets another collection, or query parameters are unsupported."
+        },
+        {
+          "name": "RecordNotFound",
+          "description": "No indexed vocabulary tag exists at this AT-URI."
+        },
+        {
+          "name": "VocabTagQueryFailed",
+          "description": "The indexed tag or required publisher lookup failed; retry after checking the HappyView PostgreSQL service."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["vocabTag"],
+      "properties": {
+        "vocabTag": {
+          "type": "ref",
+          "ref": "#vocabTagView"
+        }
+      }
+    },
+    "vocabTagView": {
+      "type": "object",
+      "description": "Vocabulary-tag record with its unchanged source and hydrated publisher actor.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.vocab.tag" }
+      }
+    }
+  }
+}

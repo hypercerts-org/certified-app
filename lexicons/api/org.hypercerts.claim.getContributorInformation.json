@@ -1,0 +1,54 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.getContributorInformation",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Publicly looks up one indexed contributor-information record by exact AT-URI and includes its publisher.",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Full contributor-information record AT-URI with a DID authority."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": { "type": "ref", "ref": "#output" }
+      },
+      "errors": [
+        { "name": "InvalidRequest", "description": "The URI is invalid or is not a contributor-information record AT-URI." },
+        { "name": "RecordNotFound", "description": "No indexed contributor-information record exists at this AT-URI." },
+        { "name": "ContributorInformationQueryFailed", "description": "The record or required publisher hydration lookup failed." }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["contributorInformation"],
+      "properties": {
+        "contributorInformation": {
+          "type": "ref",
+          "ref": "#contributorInformationView"
+        }
+      }
+    },
+    "contributorInformationView": {
+      "type": "object",
+      "description": "Contributor-information record with its full source payload and hydrated publishing actor.",
+      "required": ["uri", "cid", "indexedAt", "did", "author", "record"],
+      "nullable": ["indexedAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "cid": { "type": "string", "format": "cid" },
+        "indexedAt": { "type": "string", "format": "datetime" },
+        "did": { "type": "string", "format": "did" },
+        "author": { "type": "ref", "ref": "org.hypercerts.api.defs#actorView" },
+        "record": { "type": "ref", "ref": "org.hypercerts.claim.contributorInformation" }
+      }
+    }
+  }
+}

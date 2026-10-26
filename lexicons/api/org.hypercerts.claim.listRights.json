@@ -1,0 +1,69 @@
+{
+  "lexicon": 1,
+  "id": "org.hypercerts.claim.listRights",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Lists indexed rights records with an optional publisher-DID filter. Authentication is not required.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "authors": {
+            "type": "array",
+            "maxLength": 100,
+            "description": "Publisher DIDs; repeat the unbracketed key for multiple authors. Values use OR.",
+            "items": {
+              "type": "string",
+              "format": "did"
+            }
+          },
+          "sortDirection": {
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "description": "Direction for the (createdAt, uri) order; defaults to desc."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum records in the page; defaults to 25."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque cursor from a previous page; keep the sort direction unchanged."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "#output"
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidRequest",
+          "description": "An author, sort direction, page bound, cursor, repeated scalar, or query parameter is invalid."
+        }
+      ]
+    },
+    "output": {
+      "type": "object",
+      "required": ["rights"],
+      "properties": {
+        "rights": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "org.hypercerts.claim.getRights#rightsView"
+          }
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Opaque cursor for the next page; omitted when there is no next page."
+        }
+      }
+    }
+  }
+}
