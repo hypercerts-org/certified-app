@@ -50,7 +50,7 @@ yarn-error.log*
 next-env.d.ts
 /core
 
-# generated lexicon bindings (npm run lexicons:build)
+# generated lexicon bindings (pnpm lexicons:build)
 /src/lexicons
 next-env.d.ts
 *.tsbuildinfo

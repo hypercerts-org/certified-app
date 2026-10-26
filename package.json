@@ -2,21 +2,19 @@
   "name": "certified-app",
   "version": "2.0.0-alpha.0",
   "private": true,
+  "packageManager": "pnpm@12.12.1",
   "license": "MIT",
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "pnpm lexicons:build && next dev",
+    "build": "pnpm lexicons:build && next build",
     "start": "next start",
     "lint": "biome check",
     "format": "biome check --write",
-    "typecheck": "tsc --noEmit",
-    "lexicons:build": "lex build --lexicons ./lexicons --out ./src/lexicons --clear --import-ext \"\" && node scripts/fix-lex-imports.mjs src/lexicons",
-    "prebuild": "npm run lexicons:build",
-    "predev": "npm run lexicons:build",
-    "pretypecheck": "npm run lexicons:build"
+    "typecheck": "pnpm lexicons:build && tsc --noEmit",
+    "lexicons:build": "lex build --lexicons ./lexicons --out ./src/lexicons --clear --import-ext \"\" && node scripts/fix-lex-imports.mjs src/lexicons"
   },
   "dependencies": {
     "@atproto/lex": "0.4.2",

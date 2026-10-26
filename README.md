@@ -7,12 +7,12 @@ This first step is a **read-only spike**: public pages backed by live data from 
 ## Running it
 
 ```bash
-npm install
-npm run dev        # generates lexicon bindings, then starts Next.js
-npm run build      # production build (also regenerates bindings)
-npm run typecheck
-npm run lint       # Biome: lint, formatting and import order
-npm run format     # apply Biome's fixes and formatting
+pnpm install
+pnpm dev           # generates lexicon bindings, then starts Next.js
+pnpm build         # production build (also regenerates bindings)
+pnpm typecheck
+pnpm lint          # Biome: lint, formatting and import order
+pnpm format        # apply Biome's fixes and formatting
 ```
 
 Node 24 (see `.nvmrc`). The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
@@ -32,7 +32,7 @@ Node 24 (see `.nvmrc`). The API defaults to production, `https://api.hypercerts.
 
 - **Next.js 16 App Router with Cache Components.** Pages are Server Components. Public data is read through cached functions (`'use cache'`, one-minute revalidation). Dynamic routes render a static shell and are then cached per URL (ISR), so repeat visitors are served from the cache.
 - **One data module.** `src/lib/hypercerts/queries.ts` is the only code that talks to the API. It calls XRPC endpoints with [`@atproto/lex`](https://www.npmjs.com/package/@atproto/lex) and maps responses to plain view models (`src/lib/hypercerts/views.ts`). When the Hypercerts SDK ships its read layer, only that module should change.
-- **Generated bindings.** `lexicons/api/` holds the API's query lexicons, copied from [`hypercerts-org/api`](https://github.com/hypercerts-org/api) at `b2f89f0`. `lexicons/records/` holds the record lexicons from `@hypercerts-org/lexicon` 1.5.0, the version the API pins. `npm run lexicons:build` generates `src/lexicons/` (not committed).
+- **Generated bindings.** `lexicons/api/` holds the API's query lexicons, copied from [`hypercerts-org/api`](https://github.com/hypercerts-org/api) at `b2f89f0`. `lexicons/records/` holds the record lexicons from `@hypercerts-org/lexicon` 1.5.0, the version the API pins. `pnpm lexicons:build` generates `src/lexicons/` (not committed).
 - **Design system.** Components come from [`@hypercerts-org/ui-react`](https://github.com/hypercerts-org/hypercerts-design) with the Certified theme (`data-hc-theme="certified"`). `src/app/globals.css` adds layout only.
 - **Tiles.** Each tile in `src/components/tiles.tsx` fetches its own data and streams in behind its own Suspense boundary, so a page can show, hide or reorder tiles independently.
 - **Load more.** The first page is server-rendered; later pages come from the GET route handlers, which call the same cached functions and send `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. The client deduplicates by URI across pages.
