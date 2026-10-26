@@ -46,11 +46,9 @@ Known challenges and our current answers. These feed the architecture notes and 
 3. **Indexed records do not always match their lexicons.** Some production records carry a Leaflet `description` without its `$type`. With lex's default response validation, one such record fails the whole list request. Reads therefore skip response validation and map fields defensively; writes should validate strictly. Worth raising with the API team: should the API flag or exclude records that fail validation?
 4. **API views carry no handle.** Profile and actor views include the DID but not the handle, so routes use DIDs for now. Handle resolution needs an API field or a separate resolver.
 5. **Avatars are blob references.** They are served through the Bluesky CDN (`cdn.bsky.app`), which fetches from the account's PDS. This avoids resolving each DID's PDS but depends on Bluesky infrastructure.
-6. **`@hypercerts-org/ui-react` 0.2.0 had no `"use client"` boundary**, so Server Components could not import it directly. Fixed in 0.2.1 ([hypercerts-design#16](https://github.com/hypercerts-org/hypercerts-design/pull/16)); components are now imported from the package directly.
-7. **`@hypercerts-org/ui-react/base.css` 0.2.0 imported `tailwindcss/preflight.css`** without declaring `tailwindcss` as a dependency. Fixed in 0.2.1, which inlines the reset; `tailwindcss` is no longer installed here.
-8. **`'use cache'` is per-instance memory on serverless.** Shared caching for public pages comes from Cache Components' ISR and from CDN headers on the GET route handlers, not from `'use cache'` alone.
-9. **Not-found inside a streamed boundary returns HTTP 200.** An unknown account renders the not-found UI, but the status has already been sent. Acceptable for the spike; revisit before launch (for example, resolve the account before streaming).
-10. **Test data in production.** The network-wide activity list includes end-to-end test records. The current app filters these with quality labels; the API does not yet expose them for filtering here.
+6. **`'use cache'` is per-instance memory on serverless.** Shared caching for public pages comes from Cache Components' ISR and from CDN headers on the GET route handlers, not from `'use cache'` alone.
+7. **Not-found inside a streamed boundary returns HTTP 200.** An unknown account renders the not-found UI, but the status has already been sent. Acceptable for the spike; revisit before launch (for example, resolve the account before streaming).
+8. **Test data in production.** The network-wide activity list includes end-to-end test records. The current app filters these with quality labels; the API does not yet expose them for filtering here.
 
 ## Not verified yet
 
