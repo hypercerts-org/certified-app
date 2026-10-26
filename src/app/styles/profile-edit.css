@@ -340,6 +340,12 @@ fieldset.pe__field > legend {
     grid-area: remove;
   }
 
+  /* The column gutter is 16px below 800px (components.css), not 32px. */
+  .pe__footer {
+    margin: 24px -16px 0;
+    padding: 12px 16px;
+  }
+
   .pe__footer-inner {
     flex-direction: column-reverse;
     gap: 8px;

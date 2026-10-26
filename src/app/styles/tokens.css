@@ -322,6 +322,14 @@
   }
 }
 
+/* The bar also stays unmounted below 800px in a regular browser tab (it
+   only shows in the installed app; see bottom-nav-visibility.ts). Zero
+   the height whenever it isn't in the DOM, or consumers (edit-profile
+   footer, toast stack) float 56px above the viewport bottom. */
+:root:not(:has(.bottom-nav)) {
+  --bottom-nav-height: 0px;
+}
+
 /* ========== Dark theme ==========
    Overrides semantic tokens only. Invariant primitives
    (--color-primary, --color-white) are NOT overridden. */
