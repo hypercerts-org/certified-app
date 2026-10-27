@@ -672,7 +672,7 @@ Every hypercerts-lexicon record the app writes (`app.certified.*`, `org.hypercer
 
 | Environment | DID | Public `did:key` | Set on |
 |---|---|---|---|
-| staging | `did:web:staging.certified.app` | _not set yet_ | |
+| staging | `did:web:staging.certified.app` | `did:key:zQ3shkw7ytTFdJmn3epcWaqTXED3tZFu8SbsCwZBfGAWFA868` | 2026-10-27 |
 | production | `did:web:certified.app` | _not set yet_ | |
 
 Generate a key:
