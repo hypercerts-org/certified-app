@@ -135,6 +135,8 @@ Source: `.env.local.example` and `src/lib/utils/config.ts`.
 | `UPSTASH_REDIS_REST_URL` | yes | Upstash REST URL. |
 | `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash REST token. |
 | `ATPROTO_PRIVATE_KEY` | optional | EC P-256 private key. If set, the OAuth client switches to confidential (`private_key_jwt` with `ES256`) and exposes a JWKS at `/.well-known/jwks.json`. |
+| `CREATED_VIA_SIGNING_KEY` | optional | Hex secp256k1 private key for `#createdVia` record signatures (§16a). Sensitive. Set only for the `staging` branch and Production — never for all of Preview, never locally. Not the OAuth key. |
+| `CREATED_VIA_DID` | optional | Must equal `did:web:<PUBLIC_URL host>` (e.g. `did:web:certified.app`). Deliberately redundant with `PUBLIC_URL`: a drifted `PUBLIC_URL` stops signing instead of switching DIDs. |
 | `RESEND_API_KEY` | optional | Resend key for `/api/feedback`. |
 | `RESEND_FROM_EMAIL` | optional | Override "from" header. Defaults to `Certified <no-reply@certified.one>`. |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | optional | Adds WalletConnect connector to the wagmi config when set. |
@@ -236,6 +238,7 @@ Scoped providers (mounted only where used):
 | `/oauth/callback` | client | — | Receives the OAuth redirect. POSTs query string to `/api/auth/callback-handler`, then either `postMessage`s the parent window (iframe flow) or `window.location.replace("/")`. |
 | `/.well-known/oauth-client-metadata` | server | public | Generated from `getOAuthClient().clientMetadata` + extras (`brand_color`, `tos_uri`, etc.). Cached `public, max-age=600`. |
 | `/.well-known/jwks.json` | server | public | Generated from `getOAuthClient().jwks`. Cached `public, max-age=600`. |
+| `/.well-known/did.json` | server | public | did:web document for the record-signing key (§16a). 200 cached `public, max-age=300`; 404 (signing off) / 500 (bad key) are `no-store`. |
 | `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest` | server | public | See `src/app/sitemap.ts`, `robots.ts`, `manifest.ts`. |
 
 Permanent redirects (in `next.config.ts`):
@@ -340,6 +343,7 @@ Validates returned URLs to prevent protocol-injection (e.g. `javascript:`). Allo
 | `/api/feedback` | POST | yes | none | Resend email to `support@hypercerts.org`. Strips invisible Unicode from `message` and `email`. Validates email format. Sends a confirmation email to the user if they provided one. |
 | `/.well-known/oauth-client-metadata` | GET | n/a | none | OAuth client metadata. `Cache-Control: public, max-age=600`. |
 | `/.well-known/jwks.json` | GET | n/a | none | JWKS (only meaningful when `ATPROTO_PRIVATE_KEY` is set). |
+| `/.well-known/did.json` | GET | n/a | none | App DID document with the `#created-via` signing key (only when signing is configured, §16a). |
 
 ## 10. XRPC Proxy
 
@@ -642,6 +646,45 @@ ATTESTATION_TYPES = {
 
 This hook depends on `WagmiProvider`, so it only works under `/settings/wallet/`. If you want wallet linking elsewhere, lift the provider — but think hard before doing so (wagmi + viem are heavy).
 
+## 16a. Record Signing (createdVia)
+
+Every hypercerts-lexicon record the app writes (`app.certified.*`, `org.hypercerts.*`, `org.hyperboards.*`) carries an `app.certified.signature.defs#createdVia` entry in its `signatures` array (hypercerts-lexicon 1.6.0). `app.bsky.*` and `org.impactindexer.*` are left unsigned — a scope choice.
+
+**What it means:** an authenticated user wrote this version of the record through certified.app's server. It does **not** mean certified.app validated or endorses the content, and it says nothing about the other entries in `signatures` (they aren't covered by it). Any UI that surfaces it must say so.
+
+**Where it happens** (`signCreatedVia` in `src/lib/atproto/created-via.ts`, a `server-only` module):
+- Own-repo writes: the xrpc proxy's `createRecord` / `putRecord`, after the repo / allowlist / rate-limit checks.
+- Group writes: `groupServiceFetch` in `src/lib/groups/proxy-agent.ts`, after each route's field allowlist. Never POST records to CGS with a raw `fetch` — `src/app/api/__tests__/created-via-contract.test.ts` fails if you do.
+- First sign-in: the `app.certified.actor.profile` seed in the OAuth callback.
+- `applyWrites` isn't proxied. If it ever is, sign each create/update op's `value`.
+
+**Rules:**
+- Signing never blocks a write. On any failure (bad input, floats, signer error) the record goes out without a createdVia entry and `[created-via] sign failed` is logged.
+- An edit always replaces the old createdVia (any change outside `signatures` invalidates it). Other well-formed entries are kept on own-repo writes; group route allowlists drop `signatures` entirely, so group edits reset third-party signatures (accepted for now).
+- A client-sent `$sig` is never stored. A record whose `$type` names a different collection is passed through untouched, so the PDS still rejects it.
+- Every collection the app writes must be in exactly one of `SIGNED_COLLECTIONS` / `UNSIGNED_COLLECTIONS`; `created-via.test.ts` enforces it against the xrpc allowlist and the group routes.
+- Same-session `getRecord` / `listRecords` responses go through `lexToJson`, so `$bytes` survives an edit round trip instead of serializing as `{"0":..}`. Blob refs keep the shape `BlobRef.toJSON` always produced; a legacy `{cid, mimeType}` blob reads back as `size: -1`, which strict encoding rejects, so a record re-saved with one goes out unsigned (the app never writes legacy blobs).
+- Encode with `@atproto/lex-json` + `@atproto/lex-cbor`, never `@atproto/lexicon`'s `jsonToLex` (its `BlobRef` instances change the CID).
+
+**Keys and DIDs:** signing runs only when `CREATED_VIA_SIGNING_KEY`, `CREATED_VIA_DID` and an explicit **https** `PUBLIC_URL` are set and the DID equals `did:web:<PUBLIC_URL host>`; loopback and `*.vercel.app` hosts never sign. When it's off, each instance logs `[created-via] record signing disabled: <reason>` once and did.json returns 404 — check that line first when debugging a rollout. A malformed key logs `[created-via] invalid signing key` and did.json returns 500. Each environment has its own key (`did:web:staging.certified.app`, `did:web:certified.app`).
+
+`/.well-known/did.json` must be reachable **without authentication** (check Vercel Deployment Protection for the staging domain and add an exception if needed), and it — with every key that ever signed — must stay served for as long as signed records exist.
+
+| Environment | DID | Public `did:key` | Set on |
+|---|---|---|---|
+| staging | `did:web:staging.certified.app` | _not set yet_ | |
+| production | `did:web:certified.app` | _not set yet_ | |
+
+Generate a key:
+
+```bash
+node -e "import('@atproto/crypto').then(async ({ Secp256k1Keypair }) => { const k = await Secp256k1Keypair.create({ exportable: true }); console.log(Buffer.from(await k.export()).toString('hex')); console.log(k.did()) })"
+```
+
+First line is `CREATED_VIA_SIGNING_KEY`; second is the public `did:key` to record. Check a stored record with `node scripts/verify-created-via.mjs <at-uri>`.
+
+**Rotation** is future work: add `#created-via-2` and keep the old key in did.json. **If a key leaks:** remove the env var and redeploy. Signing stops and did.json 404s, so every past signature stops verifying — accept that loss, then publish a new key under `#created-via-2`. Never keep a leaked key published.
+
 ## 17. Security Rules
 
 These rules are mandatory. Treat any deviation as a regression.
@@ -802,7 +845,8 @@ certified-app/
     │   │           └── upload-blob/route.ts   # POST — 5MB image upload
     │   └── .well-known/
     │       ├── oauth-client-metadata/route.ts # OAuth client metadata
-    │       └── jwks.json/route.ts             # JWKS (when ATPROTO_PRIVATE_KEY set)
+    │       ├── jwks.json/route.ts             # JWKS (when ATPROTO_PRIVATE_KEY set)
+    │       └── did.json/route.ts              # did:web doc for #createdVia signing key
     │
     ├── components/
     │   ├── landing/

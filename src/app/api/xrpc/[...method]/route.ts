@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Agent } from "@atproto/api"
+import { Agent, BlobRef, lexToJson } from "@atproto/api"
 import type {
   ComAtprotoRepoCreateRecord,
   ComAtprotoRepoPutRecord,
@@ -18,6 +18,7 @@ import { resolvePdsUrl, invalidateDidDoc } from "@/lib/atproto/did"
 import { LIMIT_MIN, LIMIT_MAX } from "@/lib/utils/constants"
 import { redactSecrets, logSafe } from "@/lib/utils/log-safe"
 import { parseJsonBody } from "@/lib/utils/api"
+import { signCreatedVia } from "@/lib/atproto/created-via"
 import {
   checkAndIncrementWriteRate,
   RATE_LIMITED_WRITE_COLLECTIONS,
@@ -245,6 +246,34 @@ export function xrpcError(err: unknown): {
     message: rawMessage ? redactSecrets(rawMessage) : undefined,
   })
   return { status, message, code }
+}
+
+/**
+ * Same-session reads come back from the agent decoded to lex values
+ * (`$bytes` → `Uint8Array`), which `NextResponse.json` would serialize as
+ * `{"0":..}`. Edit flows spread read values back into writes, so convert to
+ * the JSON wire form first. Blob refs keep the typed shape `BlobRef.toJSON`
+ * always produced — legacy `{cid, mimeType}` blobs included — because client
+ * code reads `ref.$link`. Falls back to the raw data if conversion throws.
+ */
+function toJsonData(data: unknown, method: string): unknown {
+  try {
+    return lexToJson(blobRefsToIpld(data) as Parameters<typeof lexToJson>[0])
+  } catch (err) {
+    logSafe("[xrpc] lexToJson failed", err, { method })
+    return data
+  }
+}
+
+function blobRefsToIpld(value: unknown): unknown {
+  if (value instanceof BlobRef) return value.ipld()
+  if (Array.isArray(value)) return value.map(blobRefsToIpld)
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, blobRefsToIpld(v)]),
+    )
+  }
+  return value
 }
 
 /** Clamp and validate a limit query param. */
@@ -487,7 +516,7 @@ export async function GET(
         if (agent) {
           try {
             const result = await agent.com.atproto.repo.getRecord({ repo, collection, rkey, cid })
-            return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
+            return NextResponse.json(toJsonData(result.data, methodName), { headers: SAME_SESSION_NO_STORE_HEADERS })
           } catch (err) {
             logSafe("[xrpc] same-session read failed, falling back to public", err, { method: methodName })
           }
@@ -529,7 +558,7 @@ export async function GET(
               rkeyEnd,
               rkeyStart,
             })
-            return NextResponse.json(result.data, { headers: SAME_SESSION_LIST_HEADERS })
+            return NextResponse.json(toJsonData(result.data, methodName), { headers: SAME_SESSION_LIST_HEADERS })
           } catch (err) {
             logSafe("[xrpc] same-session read failed, falling back to public", err, { method: methodName })
           }
@@ -698,15 +727,17 @@ export async function POST(
 
     switch (methodName) {
       case "com.atproto.repo.createRecord": {
-        const result = await agent.com.atproto.repo.createRecord(
-          body as ComAtprotoRepoCreateRecord.InputSchema
-        )
+        // Repo, allowlist and rate-limit checks above have passed. Never
+        // throws; an unsignable record goes out unsigned.
+        const input = body as ComAtprotoRepoCreateRecord.InputSchema
+        input.record = await signCreatedVia(input.record, { collection: input.collection, repo: did })
+        const result = await agent.com.atproto.repo.createRecord(input)
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.putRecord": {
-        const result = await agent.com.atproto.repo.putRecord(
-          body as ComAtprotoRepoPutRecord.InputSchema
-        )
+        const input = body as ComAtprotoRepoPutRecord.InputSchema
+        input.record = await signCreatedVia(input.record, { collection: input.collection, repo: did })
+        const result = await agent.com.atproto.repo.putRecord(input)
         return NextResponse.json(result.data)
       }
       case "com.atproto.repo.deleteRecord": {
