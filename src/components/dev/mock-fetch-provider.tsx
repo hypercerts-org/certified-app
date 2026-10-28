@@ -28,7 +28,7 @@
  * removed on unmount.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   sessionResponse,
   getSessionResponse,
@@ -480,9 +480,19 @@ export default function MockFetchProvider({
     installMockFetch(profileScenario, scenario, managedScenario),
   )
 
+  // StrictMode (dev) runs every effect's cleanup and then its setup again
+  // right after mount, children before parents. Tearing down
+  // synchronously would leave the children's re-run fetches unmocked, so
+  // the restore is deferred and cancelled when this effect re-runs. A real
+  // unmount still restores the real fetch on the next tick.
+  const pendingTeardown = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    if (pendingTeardown.current !== null) {
+      clearTimeout(pendingTeardown.current)
+      pendingTeardown.current = null
+    }
     return () => {
-      teardown()
+      pendingTeardown.current = setTimeout(teardown, 0)
     }
   }, [teardown])
 
