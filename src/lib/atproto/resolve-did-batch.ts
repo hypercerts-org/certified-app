@@ -39,6 +39,9 @@ export interface ResolvedDidResult {
 const BATCH_WINDOW_MS = 16
 /** Mirror the server's per-request cap; larger sets chunk into N POSTs. */
 const MAX_BATCH = 50
+/** Chunks of one flush sent concurrently. The server charges its rate
+ *  limit per identity (600/min), so this changes speed, not volume. */
+const CHUNK_CONCURRENCY = 3
 /** Re-allow a failed identity after this long so views self-heal. */
 const NEGATIVE_TTL_MS = 30_000
 /** Pause flushing for this long after a 429, then resume. */
@@ -109,9 +112,24 @@ async function flush(): Promise<void> {
   // accumulate in a fresh queue and schedule their own flush.
   const drained = queue
   queue = []
+  const chunks: QueueEntry[][] = []
   for (let i = 0; i < drained.length; i += MAX_BATCH) {
-    await sendChunk(drained.slice(i, i + MAX_BATCH))
+    chunks.push(drained.slice(i, i + MAX_BATCH))
   }
+  // A few chunks in flight at once: each takes seconds server-side, so a
+  // large set (the endorsement graph resolves hundreds) would otherwise
+  // wait for every chunk in turn.
+  const worker = async () => {
+    for (let chunk = chunks.shift(); chunk; chunk = chunks.shift()) {
+      // A 429 on a parallel chunk: degrade the rest to fallbacks instead
+      // of sending into the cooldown. The negative TTL retries them later.
+      if (Date.now() < cooldownUntil) failChunk(chunk)
+      else await sendChunk(chunk)
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CHUNK_CONCURRENCY, chunks.length) }, worker),
+  )
 }
 
 async function sendChunk(chunk: QueueEntry[]): Promise<void> {

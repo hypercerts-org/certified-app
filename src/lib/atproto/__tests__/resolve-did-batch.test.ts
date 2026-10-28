@@ -126,6 +126,44 @@ describe("resolve-did batch coalescer", () => {
     expect(bodyOf(1).identities).toHaveLength(10)
   })
 
+  it("sends up to three chunks of one flush at a time", async () => {
+    const pending: ((r: Response) => void)[] = []
+    authFetch.mockImplementation(
+      () => new Promise<Response>((resolve) => pending.push(resolve)),
+    )
+    const ids = Array.from(
+      { length: 200 },
+      (_, i) => `did:plc:${i.toString().padStart(24, "0")}`,
+    )
+    const ps = ids.map((id) => loadResolvedProfile(id))
+    await vi.advanceTimersByTimeAsync(20)
+
+    // Four chunks of 50: three in flight, the fourth waits for a slot.
+    expect(authFetch).toHaveBeenCalledTimes(3)
+    pending[0](jsonResponse({ results: {} }))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(authFetch).toHaveBeenCalledTimes(4)
+
+    for (const resolve of pending.slice(1)) resolve(jsonResponse({ results: {} }))
+    await Promise.all(ps)
+  })
+
+  it("does not send queued chunks into a 429 cooldown", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse({ error: "x" }, 429))
+    authFetch.mockResolvedValue(jsonResponse({ results: {} }))
+    const ids = Array.from(
+      { length: 200 },
+      (_, i) => `did:plc:${i.toString().padStart(24, "0")}`,
+    )
+    const ps = ids.map((id) => loadResolvedProfile(id))
+    await vi.advanceTimersByTimeAsync(20)
+    const results = await Promise.all(ps)
+
+    // The fourth chunk degraded to null instead of being sent.
+    expect(authFetch).toHaveBeenCalledTimes(3)
+    expect(results.slice(150).every((r) => r === null)).toBe(true)
+  })
+
   it("defers the next batch until the 429 cooldown lapses", async () => {
     authFetch.mockResolvedValueOnce(jsonResponse({ error: "x" }, 429))
     const first = loadResolvedProfile("did:plc:a")
