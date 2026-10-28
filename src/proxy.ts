@@ -62,9 +62,15 @@ function withStrictCsp(req: NextRequest): NextResponse {
     frameAncestors: frameAncestorsFor(req.nextUrl.pathname),
   })
 
+  // Next.js takes the nonce from the request's CSP header. The request
+  // copy uses the enforced header name because on Vercel a
+  // `content-security-policy-report-only` request override never reaches
+  // the renderer (scripts shipped without nonces). Request headers are
+  // only input to Next.js; what the browser applies is the response
+  // header below, which stays report-only.
   const requestHeaders = new Headers(req.headers)
   requestHeaders.set("x-nonce", nonce)
-  requestHeaders.set("content-security-policy-report-only", policy)
+  requestHeaders.set("content-security-policy", policy)
 
   const res = NextResponse.next({ request: { headers: requestHeaders } })
   res.headers.set("Content-Security-Policy-Report-Only", policy)
