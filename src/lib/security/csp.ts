@@ -1,20 +1,23 @@
 /**
- * Content-Security-Policy builder: the single source for both policies
- * the app sends.
+ * Content-Security-Policy builder for the two policies `src/proxy.ts`
+ * sends on every page response, both carrying the same per-request nonce
+ * (TECH-803):
  *
- * - The enforced policy (`next.config.ts` headers) still allows
- *   `'unsafe-inline'` scripts. It is unchanged while the strict policy
- *   below runs in report-only mode (TECH-803).
- * - The strict policy (`src/proxy.ts`, per request) is the standard
- *   nonce-based "strict CSP": only scripts carrying this request's nonce
+ * - The enforced policy keeps the host allowlist for scripts and adds the
+ *   nonce. Browsers ignore `'unsafe-inline'` once a nonce is present, so
+ *   inline scripts and inline event handlers only run with the nonce.
+ * - The strict policy, sent report-only while it is rolled out, is the
+ *   standard nonce-based "strict CSP": only scripts carrying the nonce
  *   run, and `'strict-dynamic'` extends that trust to scripts they load
- *   (Next.js chunks, Vercel Analytics). `https:` and `'unsafe-inline'`
- *   are fallbacks for browsers without CSP3 support; browsers that
- *   understand nonces / `'strict-dynamic'` ignore both.
+ *   (Next.js chunks, Vercel Analytics) instead of trusting hosts.
+ *   `https:` and `'unsafe-inline'` are fallbacks for browsers without
+ *   CSP3 support; browsers that understand nonces ignore both.
  *
- * Next.js reads the nonce from the request's CSP header (enforced or
- * report-only) and stamps it on its own scripts, which is why the proxy
- * sets the policy on the request as well as the response.
+ * Next.js reads the nonce from the request's `content-security-policy`
+ * header and stamps it on its own scripts. On Vercel, response CSP
+ * headers also reach the renderer as request headers and take precedence,
+ * so every CSP a page response carries must contain the same nonce; that
+ * is why the CSP is not set in `next.config.ts` headers.
  *
  * Dev addendum: Next.js + React in dev mode use `eval()` for HMR /
  * source-map / debug callstacks, and the Next dev server's HMR WebSocket
@@ -35,19 +38,19 @@ export function frameAncestorsFor(pathname: string): string {
 }
 
 interface CspOptions {
+  nonce: string
   isDev: boolean
   frameAncestors: string
-}
-
-interface StrictCspOptions extends CspOptions {
-  nonce: string
 }
 
 /** Directives shared by both policies. `frame-src` allowlists the iframe
  *  sources we explicitly support: Vercel's preview comments overlay and
  *  the leaflet embed providers (YouTube + Vimeo). Without them, the
  *  embeds show YouTube's own "This content is blocked" message. */
-function sharedDirectives({ isDev, frameAncestors }: CspOptions): string[] {
+function sharedDirectives({
+  isDev,
+  frameAncestors,
+}: Omit<CspOptions, "nonce">): string[] {
   return [
     "default-src 'self'",
     "style-src 'self' 'unsafe-inline'",
@@ -61,10 +64,11 @@ function sharedDirectives({ isDev, frameAncestors }: CspOptions): string[] {
   ]
 }
 
-/** The currently enforced policy (host allowlist + `'unsafe-inline'`). */
+/** The enforced policy: host allowlist plus the nonce. `'unsafe-inline'`
+ *  only applies in browsers too old to understand nonces. */
 export function buildEnforcedCsp(options: CspOptions): string {
   const scriptSrc = [
-    "script-src 'self' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${options.nonce}' 'unsafe-inline'`,
     options.isDev ? "'unsafe-eval'" : null,
     "https://va.vercel-scripts.com https://vercel.live",
   ]
@@ -75,7 +79,7 @@ export function buildEnforcedCsp(options: CspOptions): string {
 }
 
 /** The nonce-based strict policy, sent report-only for now. */
-export function buildStrictCsp(options: StrictCspOptions): string {
+export function buildStrictCsp(options: CspOptions): string {
   const scriptSrc = [
     `script-src 'nonce-${options.nonce}' 'strict-dynamic'`,
     options.isDev ? "'unsafe-eval'" : null,

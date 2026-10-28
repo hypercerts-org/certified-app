@@ -2,13 +2,15 @@ import { test, expect } from "@playwright/test"
 import { gotoAndSettle } from "./helpers"
 
 /**
- * Strict CSP rollout (TECH-803).
+ * CSP (TECH-803).
  *
- * src/proxy.ts sends a nonce-based policy as
- * Content-Security-Policy-Report-Only. Report-only violations still fire
- * `securitypolicyviolation` events, so a route that would break once the
- * policy is enforced fails here first: an inline script without the
- * nonce, an injected handler, a script from an untrusted loader.
+ * src/proxy.ts sends two policies with one per-request nonce: the
+ * enforced policy (host allowlist + nonce) and the strict nonce-based
+ * policy as Content-Security-Policy-Report-Only. Violations of either
+ * fire `securitypolicyviolation` events, so a route that would break
+ * once the strict policy is enforced fails here first: an inline script
+ * without the nonce, an injected handler, a script from an untrusted
+ * loader.
  */
 
 const ROUTES = [
@@ -41,11 +43,15 @@ test.describe("strict CSP (report-only)", () => {
       })
 
       const response = await page.goto(route, { waitUntil: "networkidle" })
-      const policy = response?.headers()["content-security-policy-report-only"]
+      const headers = response?.headers() ?? {}
+      const policy = headers["content-security-policy-report-only"]
       expect(policy, "report-only policy header").toBeTruthy()
       const nonce = policy!.match(/'nonce-([^']+)'/)?.[1]
       expect(nonce, "policy carries a nonce").toBeTruthy()
       expect(policy).toContain("'strict-dynamic'")
+      // Next.js stamps whichever nonce the enforced header carries, so it
+      // must be the same one.
+      expect(headers["content-security-policy"]).toContain(`'nonce-${nonce}'`)
 
       await gotoAndSettle(page, route)
 
@@ -65,6 +71,21 @@ test.describe("strict CSP (report-only)", () => {
       expect(violations, `${route}: CSP violations`).toEqual([])
     })
   }
+
+  test("an injected inline handler is blocked", async ({ page }) => {
+    await gotoAndSettle(page, "/terms")
+    await page.evaluate(() => {
+      const div = document.createElement("div")
+      div.innerHTML = '<img src="x" onerror="window.__injectedRan = true">'
+      document.body.appendChild(div)
+    })
+    await page.waitForTimeout(500)
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __injectedRan?: boolean }).__injectedRan,
+      ),
+    ).toBeUndefined()
+  })
 
   test("a fresh nonce per request", async ({ request }) => {
     const nonceOf = async () =>
