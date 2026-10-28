@@ -116,9 +116,11 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
   return null
 }
 
-/** True when the embed URL points at a known-safe provider. The
- *  renderer falls back to a "this embed isn't supported" message
- *  rather than rendering an iframe to an arbitrary origin. */
+/** True when the embed URL is `https:` and points at a known-safe
+ *  provider. The renderer falls back to a "this embed isn't supported"
+ *  message rather than rendering an iframe to an arbitrary origin.
+ *  The protocol check matters: `javascript://www.youtube.com/...`
+ *  parses with an allowed hostname but must never reach `iframe src`. */
 const ALLOWED_EMBED_HOSTS = new Set([
   "youtube.com",
   "youtube-nocookie.com",
@@ -128,6 +130,7 @@ const ALLOWED_EMBED_HOSTS = new Set([
 export function isAllowedEmbedHost(url: string): boolean {
   try {
     const parsed = new URL(url)
+    if (parsed.protocol !== "https:") return false
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase()
     return ALLOWED_EMBED_HOSTS.has(host)
   } catch {

@@ -213,10 +213,9 @@ function renderIframe(block: IframeBlock, key: string): ReactNode {
   if (!url || !isAllowedEmbedHost(url)) {
     // Unsupported origin — surface a plain link rather than silently
     // dropping the block. Keeps the content discoverable without
-    // executing untrusted embeds. The href passes through safeHttpUrl
-    // so `javascript:`/`data:` URIs (which `isAllowedEmbedHost` doesn't
-    // catch — it only inspects `hostname`) render as text rather than
-    // a one-click XSS anchor.
+    // executing untrusted embeds. Rejected URLs include `javascript:` /
+    // `data:` URIs, so the href passes through safeHttpUrl and those
+    // render as text rather than a one-click XSS anchor.
     if (url) {
       const safe = safeHttpUrl(url)
       return (

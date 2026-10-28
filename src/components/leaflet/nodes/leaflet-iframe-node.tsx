@@ -51,8 +51,8 @@ function LeafletIframeNodeView({ node, selected }: NodeViewProps) {
     aspectHeight: number
   }
   if (!url || !isAllowedEmbedHost(url)) {
-    // safeHttpUrl drops `javascript:`/`data:` URIs that
-    // isAllowedEmbedHost lets fall through (it only inspects hostname).
+    // Rejected URLs include `javascript:`/`data:` URIs; safeHttpUrl
+    // keeps them out of the fallback link's href.
     const safe = url ? safeHttpUrl(url) : null
     return (
       <NodeViewWrapper
