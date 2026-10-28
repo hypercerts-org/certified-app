@@ -18,7 +18,7 @@ export type ActorCard = {
   isOrganization: boolean
 }
 
-export type ActorDetail = ActorCard & {
+export interface ActorDetail extends ActorCard {
   organizationTypes: string[]
   urls: string[]
   longDescription: string | null
@@ -44,7 +44,7 @@ export type ProjectCard = {
   itemCount: number
 }
 
-export type ProjectDetail = ProjectCard & {
+export interface ProjectDetail extends ProjectCard {
   description: string | null
   author: ActorCard
   createdAt: string | null
