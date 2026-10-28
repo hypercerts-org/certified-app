@@ -29,35 +29,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    const isProd = process.env.NODE_ENV === "production";
-
-    // `frame-src` allowlists the iframe sources we explicitly support:
-    // Vercel's preview comments overlay, the leaflet linearDocument embed
-    // providers (YouTube + Vimeo). Without these origins listed here, the
-    // rendered iframes show YouTube's "This content is blocked. Contact the
-    // site owner to fix the issue." in-frame message — which is YouTube
-    // itself reacting to being framed from a page whose CSP forbids it.
-    //
-    // Dev addendum: Next.js + React in dev mode use `eval()` for HMR /
-    // source-map / debug callstacks, and the Next dev server's HMR
-    // WebSocket runs on `ws://`. Without `'unsafe-eval'` and `ws:` in dev,
-    // client-side React never hydrates — every page renders SSR-only and
-    // useEffect-based data fetches (e.g. the /welcome network-stats tiles)
-    // stall on their loading placeholders. Production keeps the strict policy.
-    //
-    // `frame-ancestors` differs by route: everything defaults to `'none'`
-    // (no framing), but the public `/embed/*` routes are designed to be
-    // embedded on third-party sites (the contributor-board share-embed
-    // iframe), so they open it to `*`.
-    const scriptSrc = isProd
-      ? "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live"
-      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live";
-    const connectSrc = isProd
-      ? "connect-src 'self' https:"
-      : "connect-src 'self' https: ws: wss:";
-    const contentSecurityPolicy = (frameAncestors: string) =>
-      `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; ${connectSrc}; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors ${frameAncestors}; base-uri 'self'; form-action 'self'`;
-
+    // No Content-Security-Policy here: src/proxy.ts sends it per request
+    // with a nonce (src/lib/security/csp.ts, TECH-803). On Vercel these
+    // static headers also reach the page render as request headers, where
+    // a nonce-less CSP would stop Next.js from stamping its scripts.
     const commonHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -78,29 +53,28 @@ const nextConfig: NextConfig = {
     return [
       {
         // Every route EXCEPT `/embed/*`: lock framing down entirely with
-        // both X-Frame-Options: DENY and CSP frame-ancestors 'none'.
+        // X-Frame-Options: DENY (the proxy's CSP adds frame-ancestors 'none').
         source: "/((?!embed/).*)",
-        headers: [
-          ...commonHeaders,
-          { key: "X-Frame-Options", value: "DENY" },
-          {
-            key: "Content-Security-Policy",
-            value: contentSecurityPolicy("'none'"),
-          },
-        ],
+        headers: [...commonHeaders, { key: "X-Frame-Options", value: "DENY" }],
       },
       {
         // `/embed/*` is the public, framable embed surface (the
         // contributor-board iframe creators paste onto their own sites).
         // Omit X-Frame-Options entirely — it has no allowlist form, so any
-        // value would break cross-origin framing — and open CSP
+        // value would break cross-origin framing; the proxy's CSP opens
         // frame-ancestors so partner pages can embed it.
         source: "/embed/:path*",
+        headers: commonHeaders,
+      },
+      {
+        // API responses skip the proxy, so they get a static policy. They
+        // are data, never pages: nothing may load or run if one is opened
+        // directly.
+        source: "/api/:path*",
         headers: [
-          ...commonHeaders,
           {
             key: "Content-Security-Policy",
-            value: contentSecurityPolicy("*"),
+            value: "default-src 'none'; frame-ancestors 'none'",
           },
         ],
       },

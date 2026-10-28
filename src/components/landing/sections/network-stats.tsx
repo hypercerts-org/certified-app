@@ -8,8 +8,8 @@ import type { NetworkCounts } from "@/lib/atproto/indexer"
  * Five live network-wide counters on the /welcome landing page —
  * Users / Organizations / Projects / Activities / Endorsements.
  *
- * Counts arrive server-side via `initialCounts` (resolved during the
- * ISR render of the landing page); the client fetch through the
+ * Counts arrive server-side via `initialCounts` (resolved by the
+ * landing page's hourly data cache); the client fetch through the
  * /api/indexer proxy runs only as a fallback for fields the server
  * couldn't resolve, so the common anonymous visit costs zero count
  * RPCs. Cells render `—` while a fallback fetch is in flight and on

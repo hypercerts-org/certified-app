@@ -12,7 +12,7 @@ export interface FeaturedProfile {
 
 /**
  * "Explore" — three real profiles from the network as hairline-divided
- * rows. Resolution happens server-side in landing-page.tsx (ISR);
+ * rows. Resolution happens server-side in landing-page.tsx (cached hourly);
  * every field degrades to the curated fallback so a failed resolve
  * still renders a complete row.
  */

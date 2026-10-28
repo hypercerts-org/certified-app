@@ -2,11 +2,6 @@ import { Metadata } from "next";
 import LandingPage from "@/components/landing/landing-page";
 import { FAQ_ITEMS } from "@/components/landing/sections/faq-content";
 
-// ISR: the page embeds three server-resolved network profiles (the
-// Explore section); revalidate hourly so they stay fresh without a
-// per-request fetch.
-export const revalidate = 3600;
-
 export const metadata: Metadata = {
   // absolute: the root layout's "%s — Certified" template would
   // otherwise append a second "— Certified" to a title that already
