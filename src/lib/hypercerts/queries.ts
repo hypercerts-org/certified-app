@@ -6,19 +6,21 @@
 // ships its read layer, only the bodies of these functions should change.
 import "server-only"
 
-import { type l, xrpc, xrpcSafe } from "@atproto/lex"
+import { Client, type l } from "@atproto/lex"
 import { cacheLife, cacheTag } from "next/cache"
 
-import getOrganization from "@/lexicons/app/certified/actor/getOrganization"
-import getProfile from "@/lexicons/app/certified/actor/getProfile"
-import listOrganizations from "@/lexicons/app/certified/actor/listOrganizations"
-import searchOrganizations from "@/lexicons/app/certified/actor/searchOrganizations"
-import listBadgeAwards from "@/lexicons/app/certified/badge/listBadgeAwards"
-import listActivities from "@/lexicons/org/hypercerts/claim/listActivities"
-import getCollection from "@/lexicons/org/hypercerts/collection/getCollection"
-import listCollectionItems from "@/lexicons/org/hypercerts/collection/listCollectionItems"
-import listCollections from "@/lexicons/org/hypercerts/collection/listCollections"
-
+import {
+  type ActivityView,
+  getCollection,
+  getOrganization,
+  getProfile,
+  listActivities,
+  listBadgeAwards,
+  listCollectionItems,
+  listCollections,
+  listOrganizations,
+  searchOrganizations,
+} from "./api"
 import {
   type ActivityCard,
   type ActorCard,
@@ -35,16 +37,18 @@ import {
   toProjectDetail,
 } from "./views"
 
-const API_URL = process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts.dev"
 // Response validation is off for reads. Indexed records come from many authors,
-// and some do not match their lexicon (for example a Leaflet description
+// and some older ones do not match their lexicon (for example a description
 // missing its $type). With validation on, one such record fails the whole
-// page. The view mappers in ./views read fields defensively instead. Writes
+// response. Responses are still typed from the lexicons; the view mappers in
+// ./views stay defensive only where the data is known to diverge. Writes
 // should keep strict validation.
-const read = () => ({
-  signal: AbortSignal.timeout(8_000),
-  validateResponse: false,
-})
+const api = new Client(
+  process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts.dev",
+  { validateResponse: false },
+)
+
+const read = () => ({ signal: AbortSignal.timeout(8_000) })
 
 // Public, indexed data: shared by every visitor, refreshed within about a minute.
 // Next.js uses the same profile for the prerendered page and its ISR upgrade.
@@ -62,7 +66,7 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache"
   publicData(`actor:${actor}`)
 
-  const profile = await xrpcSafe(API_URL, getProfile, {
+  const profile = await api.xrpcSafe(getProfile, {
     params: { actor: actor as l.AtIdentifierString },
     ...read(),
   })
@@ -71,14 +75,14 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   // getProfile accepts a handle or DID; getOrganization needs the DID and fails
   // for accounts without an organization record (people).
   const did = profile.body.profile.did
-  const organization = await xrpcSafe(API_URL, getOrganization, {
+  const organization = await api.xrpcSafe(getOrganization, {
     params: { actor: did },
     ...read(),
   })
   return toActorDetail(
     organization.success
       ? organization.body.actor
-      : { did, profile: profile.body.profile },
+      : { did, profile: profile.body.profile, organization: null },
   )
 }
 
@@ -90,18 +94,16 @@ export async function listActivitiesPage(options: {
   "use cache"
   publicData(options.author ? `activities:${options.author}` : "activities")
 
-  const { body } = await xrpc(API_URL, listActivities, {
-    params: {
+  const { activities, cursor } = await api.call(
+    listActivities,
+    {
       authors: options.author ? [options.author as Did] : undefined,
       cursor: options.cursor,
       limit: options.limit ?? 10,
     },
-    ...read(),
-  })
-  return {
-    items: body.activities.map(toActivityCard),
-    cursor: body.cursor ?? null,
-  }
+    read(),
+  )
+  return { items: activities.map(toActivityCard), cursor: cursor ?? null }
 }
 
 export async function listProjectsPage(options: {
@@ -111,26 +113,24 @@ export async function listProjectsPage(options: {
   "use cache"
   publicData(`projects:${options.author}`)
 
-  const { body } = await xrpc(API_URL, listCollections, {
-    params: {
+  const { collections, cursor } = await api.call(
+    listCollections,
+    {
       authors: [options.author as Did],
       types: ["project"],
       cursor: options.cursor,
       limit: 10,
     },
-    ...read(),
-  })
-  return {
-    items: body.collections.map(toProjectCard),
-    cursor: body.cursor ?? null,
-  }
+    read(),
+  )
+  return { items: collections.map(toProjectCard), cursor: cursor ?? null }
 }
 
 export async function getProject(uri: string): Promise<ProjectDetail | null> {
   "use cache"
   publicData(`project:${uri}`)
 
-  const result = await xrpcSafe(API_URL, getCollection, {
+  const result = await api.xrpcSafe(getCollection, {
     params: { uri: uri as AtUri },
     ...read(),
   })
@@ -144,22 +144,24 @@ export async function listProjectActivitiesPage(options: {
   "use cache"
   publicData(`project:${options.project}`)
 
-  const { body } = await xrpc(API_URL, listCollectionItems, {
-    params: {
+  const { items, cursor } = await api.call(
+    listCollectionItems,
+    {
       collection: options.project as AtUri,
       cursor: options.cursor,
       limit: 10,
     },
-    ...read(),
-  })
+    read(),
+  )
   // Collection items can reference activities, nested collections or other
   // records; the spike shows activities only.
-  const activities = body.items
+  const activities = items
     .map((item) => item.record)
-    .filter((record) =>
-      (record as { $type?: string } | null)?.$type?.endsWith("#activityView"),
+    .filter(
+      (record): record is l.$Typed<ActivityView> =>
+        record?.$type === "org.hypercerts.claim.getActivity#activityView",
     )
-  return { items: activities.map(toActivityCard), cursor: body.cursor ?? null }
+  return { items: activities.map(toActivityCard), cursor: cursor ?? null }
 }
 
 export async function listOrganizationsPage(options: {
@@ -170,22 +172,24 @@ export async function listOrganizationsPage(options: {
   publicData("organizations")
 
   const params = { cursor: options.cursor, limit: 12 }
-  const { body } = options.query
-    ? await xrpc(API_URL, searchOrganizations, {
-        params: { ...params, search: options.query },
-        ...read(),
-      })
-    : await xrpc(API_URL, listOrganizations, { params, ...read() })
-  return { items: body.actors.map(toActorCard), cursor: body.cursor ?? null }
+  const { actors, cursor } = options.query
+    ? await api.call(
+        searchOrganizations,
+        { ...params, search: options.query },
+        read(),
+      )
+    : await api.call(listOrganizations, params, read())
+  return { items: actors.map(toActorCard), cursor: cursor ?? null }
 }
 
 export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
   "use cache"
   publicData(`badges:${did}`)
 
-  const { body } = await xrpc(API_URL, listBadgeAwards, {
-    params: { subjects: [did], limit: 20 },
-    ...read(),
-  })
-  return body.badgeAwards.map(toBadgeCard)
+  const { badgeAwards } = await api.call(
+    listBadgeAwards,
+    { subjects: [did], limit: 20 },
+    read(),
+  )
+  return badgeAwards.map(toBadgeCard)
 }

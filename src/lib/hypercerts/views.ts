@@ -5,6 +5,15 @@
 // these shapes, so swapping the data source (generated bindings today, the
 // Hypercerts SDK later) does not touch any component.
 
+import type {
+  ActivityView,
+  ActorView,
+  BadgeAwardView,
+  CollectionActorView,
+  CollectionView,
+  OrganizationActorView,
+} from "./api"
+
 export type Page<T> = {
   items: T[]
   cursor: string | null
@@ -126,91 +135,74 @@ export function rkeyOf(uri: string): string {
   return uri.split("/").pop() ?? uri
 }
 
-// Actor views differ slightly between endpoints but share did, profile and
-// organization, each wrapping the indexed record.
-export function toActorCard(view: unknown): ActorCard {
-  const actor = asRecord(view) ?? {}
-  const did = asString(actor.did) ?? "unknown"
-  const profile = asRecord(asRecord(actor.profile)?.record) ?? {}
+// The mappers take the typed API views. Where indexed data is known to diverge
+// from the lexicons (descriptions, blob references), they read defensively.
+type AnyActorView = ActorView | OrganizationActorView | CollectionActorView
+
+export function toActorCard(actor: AnyActorView): ActorCard {
+  const profile = actor.profile?.record
   return {
-    did,
-    displayName: asString(profile.displayName) ?? did,
-    description: asString(profile.description),
-    avatarUrl: avatarUrl(did, profile.avatar),
-    isOrganization: Boolean(asRecord(actor.organization)),
+    did: actor.did,
+    displayName: profile?.displayName || actor.did,
+    description: profile?.description || null,
+    avatarUrl: avatarUrl(actor.did, profile?.avatar),
+    isOrganization: Boolean(actor.organization),
   }
 }
 
-export function toActorDetail(view: unknown): ActorDetail {
-  const card = toActorCard(view)
-  const organization =
-    asRecord(asRecord(asRecord(view)?.organization)?.record) ?? {}
-  const urls = Array.isArray(organization.urls)
-    ? organization.urls
-        .map((entry) => asString(asRecord(entry)?.url))
-        .filter((url): url is string => url !== null)
-    : []
+export function toActorDetail(actor: AnyActorView): ActorDetail {
+  const organization = actor.organization?.record
   return {
-    ...card,
-    organizationTypes: Array.isArray(organization.organizationType)
-      ? organization.organizationType.filter(
-          (type): type is string => typeof type === "string",
-        )
-      : [],
-    urls,
-    longDescription: plainText(organization.longDescription),
-    foundedDate: formatDate(organization.foundedDate),
+    ...toActorCard(actor),
+    organizationTypes: organization?.organizationType ?? [],
+    urls: (organization?.urls ?? []).map((entry) => entry.url),
+    longDescription: plainText(organization?.longDescription),
+    foundedDate: formatDate(organization?.foundedDate),
   }
 }
 
-export function toActivityCard(view: unknown): ActivityCard {
-  const activity = asRecord(view) ?? {}
-  const record = asRecord(activity.record) ?? {}
+export function toActivityCard(activity: ActivityView): ActivityCard {
+  const { record } = activity
   return {
-    uri: asString(activity.uri) ?? "",
-    cid: asString(activity.cid) ?? "",
-    title: asString(record.title) ?? "Untitled activity",
-    summary: asString(record.shortDescription) ?? plainText(record.description),
+    uri: activity.uri,
+    cid: activity.cid,
+    title: record.title || "Untitled activity",
+    summary: record.shortDescription || plainText(record.description),
     author: toActorCard(activity.author),
     createdAt: formatDate(record.createdAt),
-    indexedAt: asString(activity.indexedAt),
+    indexedAt: activity.indexedAt,
   }
 }
 
-export function toProjectCard(view: unknown): ProjectCard {
-  const collection = asRecord(view) ?? {}
-  const record = asRecord(collection.record) ?? {}
-  const uri = asString(collection.uri) ?? ""
+export function toProjectCard(collection: CollectionView): ProjectCard {
+  const { record } = collection
   return {
-    uri,
-    rkey: rkeyOf(uri),
-    authorDid: asString(collection.did) ?? "",
-    title: asString(record.title) ?? "Untitled project",
-    summary: asString(record.shortDescription),
-    itemCount: Array.isArray(record.items) ? record.items.length : 0,
+    uri: collection.uri,
+    rkey: rkeyOf(collection.uri),
+    authorDid: collection.did,
+    title: record.title || "Untitled project",
+    summary: record.shortDescription || null,
+    itemCount: record.items?.length ?? 0,
   }
 }
 
-export function toProjectDetail(view: unknown): ProjectDetail {
-  const collection = asRecord(view) ?? {}
-  const record = asRecord(collection.record) ?? {}
+export function toProjectDetail(collection: CollectionView): ProjectDetail {
   return {
-    ...toProjectCard(view),
-    description: plainText(record.description),
+    ...toProjectCard(collection),
+    description: plainText(collection.record.description),
     author: toActorCard(collection.author),
-    createdAt: formatDate(record.createdAt),
+    createdAt: formatDate(collection.record.createdAt),
   }
 }
 
-export function toBadgeCard(view: unknown): BadgeCard {
-  const award = asRecord(view) ?? {}
-  const definition = asRecord(asRecord(award.badge)?.record) ?? {}
+export function toBadgeCard(award: BadgeAwardView): BadgeCard {
+  const definition = award.badge?.record
   return {
-    uri: asString(award.uri) ?? "",
-    title: asString(definition.title) ?? "Badge",
-    badgeType: asString(definition.badgeType),
+    uri: award.uri,
+    title: definition?.title || "Badge",
+    badgeType: definition?.badgeType ?? null,
     issuer: toActorCard(award.author),
-    response: asString(award.responseStatus),
-    createdAt: formatDate(asRecord(award.record)?.createdAt),
+    response: award.responseStatus,
+    createdAt: formatDate(award.record.createdAt),
   }
 }
