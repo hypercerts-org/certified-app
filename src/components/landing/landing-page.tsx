@@ -15,19 +15,18 @@ import ClosingCta from "@/components/landing/sections/closing-cta";
 import { CURATED_PROFILES } from "@/lib/constants/curated-profiles";
 import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core";
 import { fetchNetworkCountsServer } from "@/lib/atproto/network-counts-server";
+import { unstable_cache } from "next/cache";
 
 /**
- * The /welcome landing page. Server component: resolves the three
- * featured profiles for the Explore section AND the five network
- * counts for the stats strip at render time (the page is ISR'd — see
- * `revalidate` in src/app/welcome/page.tsx), so both sections ship
- * real network content with zero client fetches. Both helpers
- * swallow their own failures; the extra catches guard the page
- * against anything unexpected so a dead indexer or PDS can never
- * take the landing page down.
+ * The featured profiles and network counts, cached for an hour. Every
+ * page renders per request (the strict CSP nonce needs a request, see
+ * src/app/layout.tsx), so the page can't be ISR'd; caching the data keeps
+ * the landing page from hitting the PDS and indexer on every visit.
+ * `unstable_cache` because its replacement, `use cache`, requires Cache
+ * Components, whose static shells can't carry a per-request nonce.
  */
-export default async function LandingPage() {
-  const [profiles, counts] = await Promise.all([
+const loadLandingData = unstable_cache(
+  async () => Promise.all([
     Promise.all(
       CURATED_PROFILES.map(
         async (curated): Promise<FeaturedProfile> => {
@@ -43,7 +42,22 @@ export default async function LandingPage() {
       ),
     ),
     fetchNetworkCountsServer().catch(() => null),
-  ]);
+  ]),
+  ["landing-page-data"],
+  { revalidate: 3600 },
+);
+
+/**
+ * The /welcome landing page. Server component: resolves the three
+ * featured profiles for the Explore section AND the five network
+ * counts for the stats strip on the server (cached, see
+ * `loadLandingData`), so both sections ship real network content with
+ * zero client fetches. Both helpers swallow their own failures; the
+ * extra catches guard the page against anything unexpected so a dead
+ * indexer or PDS can never take the landing page down.
+ */
+export default async function LandingPage() {
+  const [profiles, counts] = await loadLandingData();
 
   return (
     <div className="lp">

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildEnforcedCsp } from "./src/lib/security/csp";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -29,34 +30,16 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    const isProd = process.env.NODE_ENV === "production";
+    const isDev = process.env.NODE_ENV !== "production";
 
-    // `frame-src` allowlists the iframe sources we explicitly support:
-    // Vercel's preview comments overlay, the leaflet linearDocument embed
-    // providers (YouTube + Vimeo). Without these origins listed here, the
-    // rendered iframes show YouTube's "This content is blocked. Contact the
-    // site owner to fix the issue." in-frame message — which is YouTube
-    // itself reacting to being framed from a page whose CSP forbids it.
-    //
-    // Dev addendum: Next.js + React in dev mode use `eval()` for HMR /
-    // source-map / debug callstacks, and the Next dev server's HMR
-    // WebSocket runs on `ws://`. Without `'unsafe-eval'` and `ws:` in dev,
-    // client-side React never hydrates — every page renders SSR-only and
-    // useEffect-based data fetches (e.g. the /welcome network-stats tiles)
-    // stall on their loading placeholders. Production keeps the strict policy.
-    //
-    // `frame-ancestors` differs by route: everything defaults to `'none'`
-    // (no framing), but the public `/embed/*` routes are designed to be
-    // embedded on third-party sites (the contributor-board share-embed
-    // iframe), so they open it to `*`.
-    const scriptSrc = isProd
-      ? "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live"
-      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live";
-    const connectSrc = isProd
-      ? "connect-src 'self' https:"
-      : "connect-src 'self' https: ws: wss:";
+    // The enforced CSP. Its directives live in src/lib/security/csp.ts,
+    // next to the strict nonce-based policy that src/proxy.ts sends as
+    // Content-Security-Policy-Report-Only while it is rolled out
+    // (TECH-803). `frame-ancestors` differs by route: everything defaults
+    // to `'none'` (no framing), but the public `/embed/*` routes are
+    // designed to be embedded on third-party sites, so they open it to `*`.
     const contentSecurityPolicy = (frameAncestors: string) =>
-      `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; ${connectSrc}; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors ${frameAncestors}; base-uri 'self'; form-action 'self'`;
+      buildEnforcedCsp({ isDev, frameAncestors });
 
     const commonHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
