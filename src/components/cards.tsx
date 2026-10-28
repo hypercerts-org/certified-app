@@ -11,6 +11,7 @@ import type {
   ActivityCard,
   ActorCard,
   BadgeCard,
+  NetworkMember,
   ProjectCard,
 } from "@/lib/hypercerts/views"
 
@@ -129,5 +130,37 @@ export function BadgeCardView({ badge }: { badge: BadgeCard }) {
         secondary={badge.createdAt ?? undefined}
       />
     </Card>
+  )
+}
+
+// One member of a network: an account or a project it awarded a badge to.
+export function NetworkMemberRow({ member }: { member: NetworkMember }) {
+  if (member.kind === "actor")
+    return (
+      <li>
+        <IdentityRow
+          size="sm"
+          name={member.actor.displayName}
+          avatarSrc={member.actor.avatarUrl}
+          href={actorHref(member.actor.did)}
+          secondary={member.actor.isOrganization ? "Organization" : "Person"}
+        />
+      </li>
+    )
+  if (member.kind === "project")
+    return (
+      <li>
+        <IdentityRow
+          size="sm"
+          name={member.project.title}
+          href={projectHref(member.project)}
+          secondary="Project"
+        />
+      </li>
+    )
+  return (
+    <li>
+      <IdentityRow size="sm" name={member.uri} secondary="Other record" />
+    </li>
   )
 }

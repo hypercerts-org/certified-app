@@ -6,7 +6,9 @@ export {
   default as getOrganization,
   type OrganizationActorView,
 } from "@/lexicons/app/certified/actor/getOrganization"
+export { default as getOrganizations } from "@/lexicons/app/certified/actor/getOrganizations"
 export { default as getProfile } from "@/lexicons/app/certified/actor/getProfile"
+export { default as getProfiles } from "@/lexicons/app/certified/actor/getProfiles"
 export { default as listOrganizations } from "@/lexicons/app/certified/actor/listOrganizations"
 export { default as searchOrganizations } from "@/lexicons/app/certified/actor/searchOrganizations"
 export type { BadgeAwardView } from "@/lexicons/app/certified/badge/getBadgeAward"

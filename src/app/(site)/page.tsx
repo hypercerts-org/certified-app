@@ -1,12 +1,53 @@
-import { Eyebrow, Heading, Text } from "@hypercerts-org/ui-react"
+import {
+  Avatar,
+  Button,
+  Card,
+  Eyebrow,
+  Heading,
+  Input,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react"
+import Form from "next/form"
+import Link from "next/link"
 import { Suspense } from "react"
-import { ActivityList } from "@/components/activity-list"
-import { TileSkeleton } from "@/components/tiles"
-import { listActivitiesPage } from "@/lib/hypercerts/queries"
+import { actorHref } from "@/components/cards"
+import { getActor, getNetwork } from "@/lib/hypercerts/queries"
 
-async function RecentActivities() {
-  const page = await listActivitiesPage({ limit: 9 })
-  return <ActivityList initial={page} source={{ kind: "all" }} />
+// Networks featured on the landing page. Chosen by hand: ranking by size would
+// put test accounts first, since some hold hundreds of awards.
+const FEATURED_NETWORKS = [
+  "did:plc:7ffezlhobzihdt3nbazysgvr", // Ma Earth
+  "did:plc:yjck2sybksyigp3zvbq7bfki", // GainForest
+  "did:plc:5yrzhewvp6qfjyblb3lph4a7", // Silvi
+  "did:plc:iqvh5yrqmibv2imh55hmzrfs", // Restor
+]
+
+async function NetworkCard({ did }: { did: string }) {
+  const [actor, network] = await Promise.all([getActor(did), getNetwork(did)])
+  if (!actor || !network) return null
+  return (
+    <Card as="li" variant="panel" className="card">
+      <Link href={actorHref(did)} className="network-card-name">
+        <Avatar name={actor.displayName} src={actor.avatarUrl} size="md" />
+        <Heading level={3} size="heading">
+          {actor.displayName}
+        </Heading>
+      </Link>
+      {actor.description && (
+        <Text size="body-sm" tone="muted" className="clamp">
+          {actor.description}
+        </Text>
+      )}
+      <Text size="micro" tone="muted">
+        {network.memberCount} members ·{" "}
+        {network.programmes
+          .slice(0, 3)
+          .map((programme) => programme.title)
+          .join(", ")}
+      </Text>
+    </Card>
+  )
 }
 
 export default function HomePage() {
@@ -15,18 +56,47 @@ export default function HomePage() {
       <div className="stack">
         <Eyebrow>certified.app v2 spike</Eyebrow>
         <Heading level={1} size="display-3">
-          Organizations, projects and activities on the Hypercerts protocol
+          See who does the work, and who stands behind it
         </Heading>
         <Text>
-          A read-only slice of the rebuild, reading live data from the
-          Hypercerts API. Nothing here writes to the protocol.
+          Funders, fellowships and communities recognize the organizations and
+          projects they work with. Each organization owns its own profile;
+          networks add their recognition to it.
         </Text>
       </div>
+
       <section className="tile">
-        <Eyebrow as="p">Recent activities</Eyebrow>
-        <Suspense fallback={<TileSkeleton title="Loading" />}>
-          <RecentActivities />
-        </Suspense>
+        <Eyebrow as="p">Find your organization</Eyebrow>
+        <Form action="/explore" className="find-form">
+          <Input
+            name="q"
+            type="search"
+            placeholder="Organization name"
+            aria-label="Organization name"
+            required
+          />
+          <Button type="submit" variant="primary">
+            Find
+          </Button>
+        </Form>
+      </section>
+
+      <section className="tile">
+        <Eyebrow as="p">Explore networks</Eyebrow>
+        <ul className="grid">
+          {FEATURED_NETWORKS.map((did) => (
+            <Suspense
+              key={did}
+              fallback={
+                <Card as="li" variant="panel" className="card">
+                  <Skeleton variant="text" lines={3} />
+                </Card>
+              }
+            >
+              <NetworkCard did={did} />
+            </Suspense>
+          ))}
+        </ul>
       </section>
     </div>
   )

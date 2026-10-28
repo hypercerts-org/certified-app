@@ -10,11 +10,13 @@ export type ActivitySource =
   | { kind: "all" }
   | { kind: "author"; did: string }
   | { kind: "project"; uri: string }
+  | { kind: "network"; did: string }
 
 function pageUrl(source: ActivitySource, cursor: string) {
   const params = new URLSearchParams({ cursor })
   if (source.kind === "author") params.set("author", source.did)
   if (source.kind === "project") params.set("project", source.uri)
+  if (source.kind === "network") params.set("network", source.did)
   return `/api/activities?${params}`
 }
 

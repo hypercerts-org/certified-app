@@ -59,6 +59,32 @@ export interface ProjectDetail extends ProjectCard {
   createdAt: string | null
 }
 
+// A network is what an organization's badge awards add up to: the accounts and
+// projects it has awarded, grouped by badge (a programme, round or status).
+export type NetworkMember =
+  | { kind: "actor"; actor: ActorCard }
+  | { kind: "project"; project: ProjectCard }
+  | { kind: "record"; uri: string }
+
+export type Programme = {
+  uri: string
+  title: string
+  badgeType: string | null
+  // Set when another account defined the badge this network awards.
+  definedBy: ActorCard | null
+  memberCount: number
+  members: NetworkMember[]
+}
+
+export type Network = {
+  did: string
+  awardCount: number
+  memberCount: number
+  // True when the network has more awards than the app reads (see queries).
+  truncated: boolean
+  programmes: Programme[]
+}
+
 export type BadgeCard = {
   uri: string
   title: string
@@ -129,6 +155,21 @@ export function avatarUrl(did: string, avatar: unknown): string | null {
   if (record.$type === "org.hypercerts.defs#uri") return asString(record.uri)
   const cid = blobCid(record.image)
   return cid ? `https://cdn.bsky.app/img/avatar/plain/${did}/${cid}@jpeg` : null
+}
+
+// A badge award's subject is an account (`{ did }`) or a record
+// (`{ uri, cid }`). Returns the DID or AT-URI, or null for anything else.
+export function awardSubject(subject: unknown): string | null {
+  const record = asRecord(subject)
+  return asString(record?.did) ?? asString(record?.uri)
+}
+
+export function didOf(uri: string): string {
+  return uri.split("/")[2] ?? uri
+}
+
+export function collectionOf(uri: string): string | null {
+  return uri.split("/")[3] ?? null
 }
 
 export function rkeyOf(uri: string): string {

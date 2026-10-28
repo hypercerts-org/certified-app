@@ -13,7 +13,9 @@ import {
   type ActivityView,
   getCollection,
   getOrganization,
+  getOrganizations,
   getProfile,
+  getProfiles,
   listActivities,
   listBadgeAwards,
   listCollectionItems,
@@ -25,7 +27,12 @@ import {
   type ActivityCard,
   type ActorCard,
   type ActorDetail,
+  awardSubject,
   type BadgeCard,
+  collectionOf,
+  didOf,
+  type Network,
+  type NetworkMember,
   type Page,
   type ProjectCard,
   type ProjectDetail,
@@ -192,4 +199,217 @@ export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
     read(),
   )
   return badgeAwards.map(toBadgeCard)
+}
+
+// Networks
+//
+// An organization forms a network by awarding badges: a funder, fellowship or
+// platform awards its badges to member accounts and projects. The API has no
+// endpoint for a network's size or programmes, so networkSource pages through
+// every award the account has issued, once per cache lifetime, and keeps a
+// plain summary. Large networks are cut off at MAX_NETWORK_AWARDS.
+const MAX_NETWORK_AWARDS = 2_000
+const MEMBERS_SHOWN = 8
+
+type NetworkSource = {
+  awards: { badge: string; subject: string }[]
+  definitions: Record<
+    string,
+    { title: string; badgeType: string | null; owner: string }
+  >
+  truncated: boolean
+}
+
+async function networkSource(did: string): Promise<NetworkSource> {
+  "use cache"
+  publicData(`network:${did}`)
+
+  const source: NetworkSource = {
+    awards: [],
+    definitions: {},
+    truncated: false,
+  }
+  let cursor: string | undefined
+  do {
+    const page = await api.call(
+      listBadgeAwards,
+      { authors: [did as Did], limit: 100, cursor },
+      read(),
+    )
+    for (const award of page.badgeAwards) {
+      const subject = awardSubject(award.record.subject)
+      const badge = award.record.badge.uri
+      if (!subject) continue
+      source.awards.push({ badge, subject })
+      source.definitions[badge] ??= {
+        title: award.badge?.record.title || "Untitled badge",
+        badgeType: award.badge?.record.badgeType ?? null,
+        owner: award.badge?.did ?? didOf(badge),
+      }
+    }
+    cursor = page.cursor
+  } while (cursor && source.awards.length < MAX_NETWORK_AWARDS)
+  source.truncated = Boolean(cursor)
+  return source
+}
+
+export async function isNetwork(did: string): Promise<boolean> {
+  "use cache"
+  publicData(`network:${did}`)
+
+  const { badgeAwards } = await api.call(
+    listBadgeAwards,
+    { authors: [did as Did], limit: 1 },
+    read(),
+  )
+  return badgeAwards.length > 0
+}
+
+function chunks<T>(items: T[], size = 100): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size))
+  return out
+}
+
+// Organizations come with their profile; accounts without an organization
+// record (people) need a second lookup for theirs.
+async function actorCards(dids: string[]): Promise<Map<string, ActorCard>> {
+  const cards = new Map<string, ActorCard>()
+  for (const batch of chunks(dids)) {
+    const { organizations } = await api.call(
+      getOrganizations,
+      { actors: batch as Did[] },
+      read(),
+    )
+    for (const result of organizations)
+      if (result.organization)
+        cards.set(result.actor, toActorCard(result.organization))
+    const people = batch.filter((did) => !cards.has(did))
+    if (people.length === 0) continue
+    const { profiles } = await api.call(
+      getProfiles,
+      { actors: people as Did[] },
+      read(),
+    )
+    for (const result of profiles)
+      cards.set(
+        result.actor,
+        toActorCard({
+          did: result.actor,
+          profile: result.profile,
+          organization: null,
+        }),
+      )
+  }
+  return cards
+}
+
+async function projectCards(uris: string[]): Promise<Map<string, ProjectCard>> {
+  const cards = new Map<string, ProjectCard>()
+  for (const batch of chunks(uris)) {
+    const { collections } = await api.call(
+      listCollections,
+      { uris: batch as AtUri[], limit: 100 },
+      read(),
+    )
+    for (const collection of collections)
+      cards.set(collection.uri, toProjectCard(collection))
+  }
+  return cards
+}
+
+export async function getNetwork(did: string): Promise<Network | null> {
+  "use cache"
+  publicData(`network:${did}`)
+
+  const source = await networkSource(did)
+  if (source.awards.length === 0) return null
+
+  const subjectsByBadge = new Map<string, Set<string>>()
+  for (const { badge, subject } of source.awards) {
+    const subjects = subjectsByBadge.get(badge) ?? new Set<string>()
+    subjects.add(subject)
+    subjectsByBadge.set(badge, subjects)
+  }
+  const grouped = [...subjectsByBadge].sort((a, b) => b[1].size - a[1].size)
+  const shown = grouped.flatMap(([, subjects]) =>
+    [...subjects].slice(0, MEMBERS_SHOWN),
+  )
+
+  const definers = Object.values(source.definitions)
+    .map((definition) => definition.owner)
+    .filter((owner) => owner !== did)
+  const actors = await actorCards([
+    ...new Set([...shown.filter((s) => s.startsWith("did:")), ...definers]),
+  ])
+  const projects = await projectCards(
+    shown.filter((s) => collectionOf(s) === "org.hypercerts.collection"),
+  )
+
+  const member = (subject: string): NetworkMember => {
+    const actor = actors.get(subject)
+    if (actor) return { kind: "actor", actor }
+    const project = projects.get(subject)
+    if (project) return { kind: "project", project }
+    return subject.startsWith("did:")
+      ? {
+          kind: "actor",
+          actor: toActorCard({
+            did: subject as Did,
+            profile: null,
+            organization: null,
+          }),
+        }
+      : { kind: "record", uri: subject }
+  }
+
+  return {
+    did,
+    awardCount: source.awards.length,
+    memberCount: new Set(source.awards.map((a) => a.subject)).size,
+    truncated: source.truncated,
+    programmes: grouped.map(([uri, subjects]) => {
+      const definition = source.definitions[uri]
+      return {
+        uri,
+        title: definition.title,
+        badgeType: definition.badgeType,
+        definedBy:
+          definition.owner === did
+            ? null
+            : (actors.get(definition.owner) ?? null),
+        memberCount: subjects.size,
+        members: [...subjects].slice(0, MEMBERS_SHOWN).map(member),
+      }
+    }),
+  }
+}
+
+// Recent activities by a network's members: accounts it awarded, and the
+// owners of projects it awarded. listActivities takes at most 100 authors, so
+// only the most recently awarded 100 members are included.
+export async function listNetworkActivitiesPage(options: {
+  network: string
+  cursor?: string
+}): Promise<Page<ActivityCard>> {
+  "use cache"
+  publicData(`network:${options.network}`)
+
+  const source = await networkSource(options.network)
+  const authors = [
+    ...new Set(
+      source.awards.map(({ subject }) =>
+        subject.startsWith("did:") ? subject : didOf(subject),
+      ),
+    ),
+  ].slice(0, 100)
+  if (authors.length === 0) return { items: [], cursor: null }
+
+  const { activities, cursor } = await api.call(
+    listActivities,
+    { authors: authors as Did[], cursor: options.cursor, limit: 6 },
+    read(),
+  )
+  return { items: activities.map(toActivityCard), cursor: cursor ?? null }
 }

@@ -6,13 +6,15 @@ import {
   Text,
 } from "@hypercerts-org/ui-react"
 import {
+  getNetwork,
   listActivitiesPage,
   listBadgesReceived,
+  listNetworkActivitiesPage,
   listProjectsPage,
 } from "@/lib/hypercerts/queries"
 import type { ActorDetail } from "@/lib/hypercerts/views"
 import { ActivityList } from "./activity-list"
-import { BadgeCardView, ProjectCardView } from "./cards"
+import { BadgeCardView, NetworkMemberRow, ProjectCardView } from "./cards"
 import { EmbedButton } from "./embed-button"
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
@@ -135,6 +137,67 @@ export async function BadgesTile({ did }: { did: string }) {
           ))}
         </ul>
       )}
+    </Tile>
+  )
+}
+
+// The accounts and projects an organization has awarded badges to, grouped by
+// badge. Each badge reads as a programme, round or status of the network.
+export async function NetworkTile({ did }: { did: string }) {
+  const network = await getNetwork(did)
+  if (!network) return null
+  return (
+    <Tile title="Network">
+      <Text size="body-sm" tone="muted">
+        {network.memberCount} members through {network.awardCount} badge awards
+        {network.truncated ? " (the most recent only)" : ""}
+      </Text>
+      {network.programmes.map((programme) => (
+        <div key={programme.uri} className="programme">
+          <div className="programme-header">
+            <Text as="span" tone="ink">
+              {programme.title}
+            </Text>
+            {programme.badgeType && (
+              <Badge variant="tag">{programme.badgeType}</Badge>
+            )}
+            <Text as="span" size="micro" tone="muted">
+              {programme.memberCount}{" "}
+              {programme.memberCount === 1 ? "member" : "members"}
+              {programme.definedBy &&
+                ` · badge defined by ${programme.definedBy.displayName}`}
+            </Text>
+          </div>
+          <ul className="members">
+            {programme.members.map((member) => (
+              <NetworkMemberRow
+                key={
+                  member.kind === "actor"
+                    ? member.actor.did
+                    : member.kind === "project"
+                      ? member.project.uri
+                      : member.uri
+                }
+                member={member}
+              />
+            ))}
+          </ul>
+          {programme.memberCount > programme.members.length && (
+            <Text size="micro" tone="muted">
+              and {programme.memberCount - programme.members.length} more
+            </Text>
+          )}
+        </div>
+      ))}
+    </Tile>
+  )
+}
+
+export async function NetworkActivitiesTile({ did }: { did: string }) {
+  const page = await listNetworkActivitiesPage({ network: did })
+  return (
+    <Tile title="Latest from the network">
+      <ActivityList initial={page} source={{ kind: "network", did }} />
     </Tile>
   )
 }
