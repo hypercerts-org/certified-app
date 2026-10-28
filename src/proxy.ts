@@ -6,8 +6,7 @@ import {
   profileUrl,
 } from "@/lib/urls"
 import {
-  buildEnforcedCsp,
-  buildStrictCsp,
+  buildCsp,
   frameAncestorsFor,
   generateNonce,
   reportingEndpointsHeader,
@@ -24,9 +23,8 @@ import {
  *    handle); any other collection (or a bare repo) falls back to the
  *    owner's profile.
  *
- * 2. CSP (TECH-803): every other page request gets a fresh nonce, the
- *    enforced policy with that nonce, and the strict nonce-based policy as
- *    Content-Security-Policy-Report-Only. The enforced policy is set on the
+ * 2. CSP (TECH-803): every other page request gets a fresh nonce and the
+ *    strict nonce-based policy carrying it. The policy is set on the
  *    request too, because Next.js reads the nonce from there and stamps it
  *    on its own scripts; `x-nonce` hands it to the root layout for the
  *    scripts Next.js doesn't own (next-themes).
@@ -57,23 +55,22 @@ function withStrictCsp(req: NextRequest): NextResponse {
     return NextResponse.next()
   }
 
-  const options = {
-    nonce: generateNonce(),
+  const nonce = generateNonce()
+  const csp = buildCsp({
+    nonce,
     isDev: process.env.NODE_ENV !== "production",
     frameAncestors: frameAncestorsFor(req.nextUrl.pathname),
-  }
-  const enforced = buildEnforcedCsp(options)
+  })
 
   // Next.js takes the nonce from the request's `content-security-policy`
-  // header. On Vercel the response CSP headers below also reach the
-  // renderer as request headers, so both carry the same nonce.
+  // header. On Vercel the response CSP header below also reaches the
+  // renderer as a request header, so it must be the same policy.
   const requestHeaders = new Headers(req.headers)
-  requestHeaders.set("x-nonce", options.nonce)
-  requestHeaders.set("content-security-policy", enforced)
+  requestHeaders.set("x-nonce", nonce)
+  requestHeaders.set("content-security-policy", csp)
 
   const res = NextResponse.next({ request: { headers: requestHeaders } })
-  res.headers.set("Content-Security-Policy", enforced)
-  res.headers.set("Content-Security-Policy-Report-Only", buildStrictCsp(options))
+  res.headers.set("Content-Security-Policy", csp)
   res.headers.set("Reporting-Endpoints", reportingEndpointsHeader())
   return res
 }
