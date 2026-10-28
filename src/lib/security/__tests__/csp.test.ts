@@ -8,18 +8,22 @@ import {
 } from "@/lib/security/csp"
 
 describe("buildEnforcedCsp", () => {
-  // The exact policies next.config.ts sent before the builder existed.
-  // The enforced policy must not change while the strict one is
+  // The policies next.config.ts enforced before TECH-803, plus the nonce
+  // in script-src. Nothing else may change while the strict policy is
   // report-only.
-  it("matches the previous production policy", () => {
-    expect(buildEnforcedCsp({ isDev: false, frameAncestors: "'none'" })).toBe(
-      "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  it("is the previous production policy plus the nonce", () => {
+    expect(
+      buildEnforcedCsp({ nonce: "N", isDev: false, frameAncestors: "'none'" }),
+    ).toBe(
+      "default-src 'self'; script-src 'self' 'nonce-N' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     )
   })
 
-  it("matches the previous dev policy", () => {
-    expect(buildEnforcedCsp({ isDev: true, frameAncestors: "*" })).toBe(
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors *; base-uri 'self'; form-action 'self'",
+  it("is the previous dev policy plus the nonce", () => {
+    expect(
+      buildEnforcedCsp({ nonce: "N", isDev: true, frameAncestors: "*" }),
+    ).toBe(
+      "default-src 'self'; script-src 'self' 'nonce-N' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors *; base-uri 'self'; form-action 'self'",
     )
   })
 })
@@ -67,7 +71,7 @@ describe("buildStrictCsp", () => {
       buildStrictCsp({ nonce: "n", isDev: false, frameAncestors: "*" }),
     )
     const enforced = directives(
-      buildEnforcedCsp({ isDev: false, frameAncestors: "*" }),
+      buildEnforcedCsp({ nonce: "n", isDev: false, frameAncestors: "*" }),
     )
     for (const name of [
       "default-src",

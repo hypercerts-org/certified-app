@@ -6,6 +6,7 @@ import {
   profileUrl,
 } from "@/lib/urls"
 import {
+  buildEnforcedCsp,
   buildStrictCsp,
   frameAncestorsFor,
   generateNonce,
@@ -23,11 +24,12 @@ import {
  *    handle); any other collection (or a bare repo) falls back to the
  *    owner's profile.
  *
- * 2. Strict CSP rollout (TECH-803): every other page request gets a fresh
- *    nonce and the nonce-based policy as Content-Security-Policy-Report-Only.
- *    The policy is set on the request too, because Next.js reads the nonce
- *    from there and stamps it on its own scripts; `x-nonce` hands it to the
- *    root layout for the scripts Next.js doesn't own (next-themes).
+ * 2. CSP (TECH-803): every other page request gets a fresh nonce, the
+ *    enforced policy with that nonce, and the strict nonce-based policy as
+ *    Content-Security-Policy-Report-Only. The enforced policy is set on the
+ *    request too, because Next.js reads the nonce from there and stamps it
+ *    on its own scripts; `x-nonce` hands it to the root layout for the
+ *    scripts Next.js doesn't own (next-themes).
  */
 export function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl
@@ -55,25 +57,23 @@ function withStrictCsp(req: NextRequest): NextResponse {
     return NextResponse.next()
   }
 
-  const nonce = generateNonce()
-  const policy = buildStrictCsp({
-    nonce,
+  const options = {
+    nonce: generateNonce(),
     isDev: process.env.NODE_ENV !== "production",
     frameAncestors: frameAncestorsFor(req.nextUrl.pathname),
-  })
+  }
+  const enforced = buildEnforcedCsp(options)
 
-  // Next.js takes the nonce from the request's CSP header. The request
-  // copy uses the enforced header name because on Vercel a
-  // `content-security-policy-report-only` request override never reaches
-  // the renderer (scripts shipped without nonces). Request headers are
-  // only input to Next.js; what the browser applies is the response
-  // header below, which stays report-only.
+  // Next.js takes the nonce from the request's `content-security-policy`
+  // header. On Vercel the response CSP headers below also reach the
+  // renderer as request headers, so both carry the same nonce.
   const requestHeaders = new Headers(req.headers)
-  requestHeaders.set("x-nonce", nonce)
-  requestHeaders.set("content-security-policy", policy)
+  requestHeaders.set("x-nonce", options.nonce)
+  requestHeaders.set("content-security-policy", enforced)
 
   const res = NextResponse.next({ request: { headers: requestHeaders } })
-  res.headers.set("Content-Security-Policy-Report-Only", policy)
+  res.headers.set("Content-Security-Policy", enforced)
+  res.headers.set("Content-Security-Policy-Report-Only", buildStrictCsp(options))
   res.headers.set("Reporting-Endpoints", reportingEndpointsHeader())
   return res
 }

@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { buildEnforcedCsp } from "./src/lib/security/csp";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -30,17 +29,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    const isDev = process.env.NODE_ENV !== "production";
-
-    // The enforced CSP. Its directives live in src/lib/security/csp.ts,
-    // next to the strict nonce-based policy that src/proxy.ts sends as
-    // Content-Security-Policy-Report-Only while it is rolled out
-    // (TECH-803). `frame-ancestors` differs by route: everything defaults
-    // to `'none'` (no framing), but the public `/embed/*` routes are
-    // designed to be embedded on third-party sites, so they open it to `*`.
-    const contentSecurityPolicy = (frameAncestors: string) =>
-      buildEnforcedCsp({ isDev, frameAncestors });
-
+    // No Content-Security-Policy here: src/proxy.ts sends it per request
+    // with a nonce (src/lib/security/csp.ts, TECH-803). On Vercel these
+    // static headers also reach the page render as request headers, where
+    // a nonce-less CSP would stop Next.js from stamping its scripts.
     const commonHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -61,29 +53,28 @@ const nextConfig: NextConfig = {
     return [
       {
         // Every route EXCEPT `/embed/*`: lock framing down entirely with
-        // both X-Frame-Options: DENY and CSP frame-ancestors 'none'.
+        // X-Frame-Options: DENY (the proxy's CSP adds frame-ancestors 'none').
         source: "/((?!embed/).*)",
-        headers: [
-          ...commonHeaders,
-          { key: "X-Frame-Options", value: "DENY" },
-          {
-            key: "Content-Security-Policy",
-            value: contentSecurityPolicy("'none'"),
-          },
-        ],
+        headers: [...commonHeaders, { key: "X-Frame-Options", value: "DENY" }],
       },
       {
         // `/embed/*` is the public, framable embed surface (the
         // contributor-board iframe creators paste onto their own sites).
         // Omit X-Frame-Options entirely — it has no allowlist form, so any
-        // value would break cross-origin framing — and open CSP
+        // value would break cross-origin framing; the proxy's CSP opens
         // frame-ancestors so partner pages can embed it.
         source: "/embed/:path*",
+        headers: commonHeaders,
+      },
+      {
+        // API responses skip the proxy, so they get a static policy. They
+        // are data, never pages: nothing may load or run if one is opened
+        // directly.
+        source: "/api/:path*",
         headers: [
-          ...commonHeaders,
           {
             key: "Content-Security-Policy",
-            value: contentSecurityPolicy("*"),
+            value: "default-src 'none'; frame-ancestors 'none'",
           },
         ],
       },
