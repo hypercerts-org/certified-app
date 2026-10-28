@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import { Inter, Noto_Serif } from "next/font/google";
 import "./globals.css";
@@ -137,11 +138,18 @@ const websiteJsonLd = {
   inLanguage: "en",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Per-request CSP nonce from src/proxy.ts (TECH-803). Reading request
+  // headers renders every route dynamically, which nonces require: a
+  // statically generated page has no request to take a nonce from.
+  // Next.js stamps the nonce on its own scripts; next-themes needs it
+  // passed in for its inline anti-flash script.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -155,7 +163,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${notoSerif.variable} min-h-screen flex flex-col`}>
-        <Providers>
+        <Providers nonce={nonce}>
           {/* App-wide toast region. Mounted high in the tree so any
               client component below can call useToast(); ToastProvider
               renders its own portal-backed Toaster. */}
