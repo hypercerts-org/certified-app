@@ -39,7 +39,9 @@ export function useOrgCreationLimit() {
 
   return {
     selfCreatedCount,
-    isChecking: isChecking || orgsLoading,
+    // With no signed-in DID there is nothing to check, even when the org
+    // list had already settled at mount and the key above never changed.
+    isChecking: orgsLoading || (!!did && isChecking),
     limitReached: selfCreatedCount !== null && selfCreatedCount >= MAX_SELF_CREATED_ORGS,
   }
 }
