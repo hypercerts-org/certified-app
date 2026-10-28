@@ -1,91 +1,29 @@
 import { describe, it, expect } from "vitest"
 import {
-  buildEnforcedCsp,
-  buildStrictCsp,
+  buildCsp,
   frameAncestorsFor,
   generateNonce,
   reportingEndpointsHeader,
 } from "@/lib/security/csp"
 
-describe("buildEnforcedCsp", () => {
-  // The policies next.config.ts enforced before TECH-803, plus the nonce
-  // in script-src. Nothing else may change while the strict policy is
-  // report-only.
-  it("is the previous production policy plus the nonce", () => {
+describe("buildCsp", () => {
+  // The previous allowlist policy, with script-src replaced by nonce +
+  // 'strict-dynamic' (CSP2 fallbacks after it), object-src 'none', and
+  // reporting. Every other directive is unchanged.
+  it("is the strict nonce-based policy in production", () => {
     expect(
-      buildEnforcedCsp({ nonce: "N", isDev: false, frameAncestors: "'none'" }),
+      buildCsp({ nonce: "N", isDev: false, frameAncestors: "'none'" }),
     ).toBe(
-      "default-src 'self'; script-src 'self' 'nonce-N' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; script-src 'nonce-N' 'strict-dynamic' https: 'unsafe-inline'; object-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; report-uri /api/csp-report; report-to csp-endpoint",
     )
-  })
-
-  it("is the previous dev policy plus the nonce", () => {
-    expect(
-      buildEnforcedCsp({ nonce: "N", isDev: true, frameAncestors: "*" }),
-    ).toBe(
-      "default-src 'self'; script-src 'self' 'nonce-N' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors *; base-uri 'self'; form-action 'self'",
-    )
-  })
-})
-
-describe("buildStrictCsp", () => {
-  const directives = (policy: string) =>
-    Object.fromEntries(
-      policy.split("; ").map((d) => {
-        const [name, ...values] = d.split(" ")
-        return [name, values]
-      }),
-    )
-
-  it("trusts scripts by nonce + strict-dynamic, with CSP2 fallbacks", () => {
-    const d = directives(
-      buildStrictCsp({ nonce: "abc123", isDev: false, frameAncestors: "'none'" }),
-    )
-    expect(d["script-src"]).toEqual([
-      "'nonce-abc123'",
-      "'strict-dynamic'",
-      "https:",
-      "'unsafe-inline'",
-    ])
-    expect(d["object-src"]).toEqual(["'none'"])
-    expect(d["frame-ancestors"]).toEqual(["'none'"])
-    expect(d["report-uri"]).toEqual(["/api/csp-report"])
-    expect(d["report-to"]).toEqual(["csp-endpoint"])
   })
 
   it("adds unsafe-eval and ws: only in dev", () => {
-    const prod = directives(
-      buildStrictCsp({ nonce: "n", isDev: false, frameAncestors: "'none'" }),
+    expect(
+      buildCsp({ nonce: "N", isDev: true, frameAncestors: "*" }),
+    ).toBe(
+      "default-src 'self'; script-src 'nonce-N' 'strict-dynamic' 'unsafe-eval' https: 'unsafe-inline'; object-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https: ws: wss:; frame-src 'self' https://vercel.live https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors *; base-uri 'self'; form-action 'self'; report-uri /api/csp-report; report-to csp-endpoint",
     )
-    const dev = directives(
-      buildStrictCsp({ nonce: "n", isDev: true, frameAncestors: "'none'" }),
-    )
-    expect(prod["script-src"]).not.toContain("'unsafe-eval'")
-    expect(dev["script-src"]).toContain("'unsafe-eval'")
-    expect(prod["connect-src"]).not.toContain("ws:")
-    expect(dev["connect-src"]).toContain("ws:")
-  })
-
-  it("keeps the shared directives of the enforced policy", () => {
-    const strict = directives(
-      buildStrictCsp({ nonce: "n", isDev: false, frameAncestors: "*" }),
-    )
-    const enforced = directives(
-      buildEnforcedCsp({ nonce: "n", isDev: false, frameAncestors: "*" }),
-    )
-    for (const name of [
-      "default-src",
-      "style-src",
-      "font-src",
-      "img-src",
-      "connect-src",
-      "frame-src",
-      "frame-ancestors",
-      "base-uri",
-      "form-action",
-    ]) {
-      expect(strict[name], name).toEqual(enforced[name])
-    }
   })
 })
 

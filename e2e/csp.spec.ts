@@ -4,13 +4,10 @@ import { gotoAndSettle } from "./helpers"
 /**
  * CSP (TECH-803).
  *
- * src/proxy.ts sends two policies with one per-request nonce: the
- * enforced policy (host allowlist + nonce) and the strict nonce-based
- * policy as Content-Security-Policy-Report-Only. Violations of either
- * fire `securitypolicyviolation` events, so a route that would break
- * once the strict policy is enforced fails here first: an inline script
- * without the nonce, an injected handler, a script from an untrusted
- * loader.
+ * src/proxy.ts enforces the strict nonce-based policy with a
+ * per-request nonce. Violations fire `securitypolicyviolation` events, so
+ * a route that something blocks fails here: an inline script without the
+ * nonce, an injected handler, a script from an untrusted loader.
  */
 
 const ROUTES = [
@@ -22,14 +19,23 @@ const ROUTES = [
   "/privacy",
   "/imprint",
   "/dsa",
+  // Without query params the callback page renders its error state.
+  "/oauth/callback",
+  // Framed by other sites; the board fetch fails for the fake record.
+  "/embed/board/did:plc:csptest/csptest",
   // Real production components under the mock harness: the editor and
-  // the profile surfaces.
+  // the signed-in surfaces.
   "/dev/preview/create",
+  "/dev/preview/activity-edit",
   "/dev/preview/profile",
+  "/dev/preview/profile-org",
+  "/dev/preview/profile-edit",
   "/dev/preview/feed",
+  "/dev/preview/settings",
+  "/dev/preview/workspace",
 ] as const
 
-test.describe("strict CSP (report-only)", () => {
+test.describe("strict CSP", () => {
   for (const route of ROUTES) {
     test(`${route} has no violations`, async ({ page }) => {
       await page.addInitScript(() => {
@@ -44,14 +50,11 @@ test.describe("strict CSP (report-only)", () => {
 
       const response = await page.goto(route, { waitUntil: "networkidle" })
       const headers = response?.headers() ?? {}
-      const policy = headers["content-security-policy-report-only"]
-      expect(policy, "report-only policy header").toBeTruthy()
-      const nonce = policy!.match(/'nonce-([^']+)'/)?.[1]
-      expect(nonce, "policy carries a nonce").toBeTruthy()
+      const policy = headers["content-security-policy"]
+      expect(policy, "policy header").toBeTruthy()
+      expect(policy).toMatch(/'nonce-[^']+'/)
       expect(policy).toContain("'strict-dynamic'")
-      // Next.js stamps whichever nonce the enforced header carries, so it
-      // must be the same one.
-      expect(headers["content-security-policy"]).toContain(`'nonce-${nonce}'`)
+      expect(headers["content-security-policy-report-only"]).toBeUndefined()
 
       await gotoAndSettle(page, route)
 
@@ -91,7 +94,7 @@ test.describe("strict CSP (report-only)", () => {
     const nonceOf = async () =>
       (await request.get("/terms"))
         .headers()
-        ["content-security-policy-report-only"]?.match(/'nonce-([^']+)'/)?.[1]
+        ["content-security-policy"]?.match(/'nonce-([^']+)'/)?.[1]
     const [a, b] = [await nonceOf(), await nonceOf()]
     expect(a).toBeTruthy()
     expect(a).not.toBe(b)
