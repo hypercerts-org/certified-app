@@ -105,6 +105,9 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         setSelfGroup(null)
         setActiveOrg(null)
         persistOrg(null)
+        // Nothing to load when signed out; without this, consumers that
+        // wait on `isLoading` (groups/create, groups/import) spin forever.
+        setIsLoading(false)
         return
       }
       setIsLoading(true)
