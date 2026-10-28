@@ -13,21 +13,29 @@ import {
 import type { ActorDetail } from "@/lib/hypercerts/views"
 import { ActivityList } from "./activity-list"
 import { BadgeCardView, ProjectCardView } from "./cards"
+import { EmbedButton } from "./embed-button"
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
 // reorder tiles without the others knowing. That is the separability the
 // product definition asks for, at its simplest.
 
+// A tile with an embed page passes its path, and gets an Embed button that
+// hands out the <iframe> code for it.
 export function Tile({
   title,
+  embedPath,
   children,
 }: {
   title: string
+  embedPath?: string
   children: React.ReactNode
 }) {
   return (
     <section className="tile">
-      <Eyebrow as="p">{title}</Eyebrow>
+      <div className="tile-header">
+        <Eyebrow as="p">{title}</Eyebrow>
+        {embedPath && <EmbedButton path={embedPath} title={title} />}
+      </div>
       {children}
     </section>
   )
@@ -84,7 +92,10 @@ export function AboutTile({ actor }: { actor: ActorDetail }) {
 export async function ActivitiesTile({ did }: { did: string }) {
   const page = await listActivitiesPage({ author: did, limit: 6 })
   return (
-    <Tile title="Activities">
+    <Tile
+      title="Activities"
+      embedPath={`/embed/activities?${new URLSearchParams({ author: did })}`}
+    >
       <ActivityList
         initial={page}
         source={{ kind: "author", did }}
