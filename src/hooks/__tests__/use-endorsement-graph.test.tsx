@@ -27,8 +27,11 @@ vi.mock("@/lib/atproto/workspace", () => ({
     }),
 }))
 
+/** Handle/avatar resolution; a test can swap in a pending one. */
+let loadResolvedProfile: (did: string) => Promise<unknown> = async () => null
+
 vi.mock("@/lib/atproto/resolve-did-batch", () => ({
-  loadResolvedProfile: async () => null,
+  loadResolvedProfile: (did: string) => loadResolvedProfile(did),
 }))
 
 // 120 endorsements between disjoint pairs -> 240 participant DIDs -> two
@@ -85,6 +88,7 @@ async function freshHook() {
 beforeEach(() => {
   actorCalls = []
   fetchCalls = []
+  loadResolvedProfile = async () => null
   stubIndexerFetch()
 })
 
@@ -154,5 +158,42 @@ describe("useEndorsementGraph — profile chunk resolution", () => {
     expect(graph?.nodes.find((n) => n.id === "did:plc:s119")?.displayName).toBe(
       "Name did:plc:s119",
     )
+  })
+})
+
+describe("useEndorsementGraph — handle resolution", () => {
+  it("shows the graph before handles resolve, then fills them in place", async () => {
+    // Hold every DID resolution until the test releases it.
+    let release: () => void = () => {}
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    loadResolvedProfile = async (did) => {
+      await gate
+      return { did, handle: `${did.slice(8)}.test`, avatar: null }
+    }
+
+    const useEndorsementGraph = await freshHook()
+    const { result } = renderHook(() => useEndorsementGraph())
+    await waitFor(() => expect(actorCalls).toHaveLength(3))
+    for (const call of actorCalls) {
+      call.resolve(call.dids.map((did) => ({ did, displayName: null, avatarUrl: null })))
+    }
+
+    // Drawn while every resolution is still pending.
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const early = result.current.graph!
+    expect(early.nodes).toHaveLength(EDGE_COUNT * 2)
+    const node = early.nodes.find((n) => n.id === "did:plc:s5")!
+    expect(node.handle).toBeNull()
+
+    release()
+    await waitFor(() => expect(result.current.graph).not.toBe(early))
+    const done = result.current.graph!
+    const filled = done.nodes.find((n) => n.id === "did:plc:s5")!
+    expect(filled.handle).toBe("s5.test")
+    // Same object: react-force-graph keeps the layout position on it.
+    expect(filled).toBe(node)
+    expect(done.nodes).not.toBe(early.nodes)
   })
 })
