@@ -41,8 +41,9 @@ async function whatIsMissing(pathname: string | null): Promise<Missing> {
   if (resolved.status === "missing") return { kind: "profile", actor: actor.value };
   if (resolved.status !== "found") return null;
 
+  // `/{actor}/{type}/{rkey}` and its edit / update children.
   const [, type, rkey] = segments;
-  if (segments.length === 3 && isRecordType(type) && rkey) {
+  if (segments.length >= 3 && isRecordType(type) && rkey) {
     const record = await lookupRecord(resolved.did, collectionForType(type), rkey);
     if (record === "missing") return { kind: "record", actor: actor.value, type };
   }
@@ -62,9 +63,26 @@ const RECORD_LABEL: Record<RecordType, string> = {
   project: "Project",
 };
 
+// Paths no route matches (`/{handle}/typo`) haven't run these lookups yet;
+// past this the page says the generic thing rather than keep a 404 waiting.
+const LOOKUP_BUDGET_MS = 3_000;
+
+async function withinBudget<T>(work: Promise<T>, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const budget = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), LOOKUP_BUDGET_MS);
+  });
+  try {
+    return await Promise.race([work, budget]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function NotFoundPage() {
   // Set by src/proxy.ts; the not-found page can't see route params.
-  const missing = await whatIsMissing((await headers()).get("x-pathname"));
+  const pathname = (await headers()).get("x-pathname");
+  const missing = await withinBudget(whatIsMissing(pathname), null);
 
   // Hides the pathname-derived profile tabs in the top bar.
   const marker = <NotFoundMarker />;

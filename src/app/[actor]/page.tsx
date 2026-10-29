@@ -32,6 +32,7 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import NotFoundMarker from "@/components/layout/not-found-marker"
 import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
@@ -457,12 +458,15 @@ export default function UserProfilePage() {
 
   if (profileError || !did) {
     return (
-      <EmptyState
-        icon={UserX}
-        title="Profile not found"
-        description={`We couldn't find a Certified profile for ${handleOrDid ? `@${handleOrDid}` : "this user"}.`}
-        className="pt-[120px]"
-      />
+      <>
+        <NotFoundMarker />
+        <EmptyState
+          icon={UserX}
+          title="Profile not found"
+          description={`We couldn't find a Certified profile for ${handleOrDid ? `@${handleOrDid}` : "this user"}.`}
+          className="pt-[120px]"
+        />
+      </>
     )
   }
 

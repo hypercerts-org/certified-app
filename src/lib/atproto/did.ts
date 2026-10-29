@@ -263,6 +263,16 @@ async function fetchDidDocument(did: string): Promise<DidDocument | null> {
 }
 
 /**
+ * A bare DNS hostname shaped like an atproto handle: no port, userinfo,
+ * path or percent-encoding, dotted labels, alphabetic TLD (so no IP
+ * literals). Checked before any handle is interpolated into a URL.
+ */
+export function isHandleSyntax(handle: string): boolean {
+  if (/[:@/%\s]/.test(handle)) return false
+  return /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(handle)
+}
+
+/**
  * Resolve a handle to its DID via the `.well-known/atproto-did` endpoint
  * on the handle's domain. This is the AT Protocol standard resolution
  * path and works for custom-domain handles that may not have a DNS TXT
@@ -280,7 +290,8 @@ export async function resolveHandleViaWellKnown(handle: string): Promise<string 
  * apart from "the lookup failed": the DID, "missing" on a definite answer
  * (not a hostname, the domain doesn't exist, 404/410, or a body that isn't
  * a DID), or undefined on anything else (timeout, 5xx, blocked URL).
- * Callers that turn absence into a 404 must only act on "missing".
+ * "missing" is about this endpoint only: a handle verified by DNS TXT can
+ * still exist, so a 404 needs the TXT record (and the appView) missing too.
  */
 export async function lookupHandleViaWellKnown(
   handle: string,
@@ -291,14 +302,7 @@ export async function lookupHandleViaWellKnown(
   // real dotted name with an alphabetic TLD — so an IP literal, host:port
   // or `10.0.0.5`-style value can never reach the fetch. Then run the
   // constructed URL through the SAME gate resolvePdsUrl uses.
-  if (/[:@/%\s]/.test(handle)) return "missing"
-  if (
-    !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(
-      handle,
-    )
-  ) {
-    return "missing"
-  }
+  if (!isHandleSyntax(handle)) return "missing"
 
   const url = `https://${handle}/.well-known/atproto-did`
   if (!isAllowedPdsUrl(url)) return undefined

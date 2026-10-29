@@ -840,6 +840,25 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
+/* Not-found pages (src/components/layout/not-found-marker.tsx): no tabs
+   for an actor or record that doesn't exist. The marker's span is in the
+   server HTML, so this applies before hydration (no flash of the strip);
+   the top bar drops the rows itself once hydrated. Row 2 only counts
+   toward `--top-bar-total` when a row other than the profile tabs (the
+   record back row) is still showing. */
+@media (min-width: 800px) {
+  html:has([data-not-found]) .desktop-top-bar__row--profile-tabs,
+  html:has([data-not-found]) .desktop-top-bar__row--tabs [role="tablist"] {
+    display: none;
+  }
+
+  html:has([data-not-found]):not(
+      :has(.desktop-top-bar__row--tabs:not(.desktop-top-bar__row--profile-tabs))
+    ) {
+    --top-bar-total: var(--top-bar-row1);
+  }
+}
+
 .app-shell--fullbleed .app-shell__content {
   max-width: none;
   padding-top: 0;

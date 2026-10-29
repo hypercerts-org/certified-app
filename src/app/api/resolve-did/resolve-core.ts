@@ -185,14 +185,61 @@ export async function lookupIndexerDidByHandle(
     // denormalised handle (what `search` matched) must exactly equal the
     // requested handle. Resolves the migrated-but-idle account; abstains
     // when the only matches were fuzzy (display name, etc.).
-    let unconfirmed = false
-    for (const did of candidates) {
-      const actor = await fetchIndexerActorProfile(did)
-      if (!actor) unconfirmed = true
-      const indexed = actor?.handle?.trim().toLowerCase()
-      if (indexed && indexed === wanted) return did
+    // Confirmed in parallel (one round trip, not up to five), first match
+    // in search order wins.
+    const actors = await Promise.all(candidates.map((did) => fetchIndexerActorProfile(did)))
+    const match = candidates.find(
+      (_, i) => actors[i]?.handle?.trim().toLowerCase() === wanted,
+    )
+    if (match) return match
+    return actors.some((actor) => !actor) ? undefined : null
+  } catch {
+    return undefined
+  }
+}
+
+// The record collections with a /{type} page, and their indexer fields.
+const INDEXER_RECORD_FIELD: Readonly<Record<string, string>> = {
+  "org.hypercerts.claim.activity": "orgHypercertsClaimActivity",
+  "org.hypercerts.collection": "orgHypercertsCollection",
+}
+
+/**
+ * Whether the indexer holds a copy of a record: true / false, or undefined
+ * when it couldn't answer (or the collection isn't indexed here). The
+ * record pages fall back to the indexer when the PDS misses (#184), so a
+ * server-side 404 needs the indexer's "no" as well.
+ */
+export async function lookupIndexerRecordExists(
+  uri: string,
+  collection: string,
+): Promise<boolean | undefined> {
+  const field = INDEXER_RECORD_FIELD[collection]
+  if (!field) return undefined
+  try {
+    const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+
+    const res = await fetch(UPSTREAM_INDEXER_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        operationName: "RecordExists",
+        query: `query RecordExists($uris:[String!]!){ ${field}(first:1, where:{uri:{in:$uris}}){ edges { node { uri } } } }`,
+        variables: { uris: [uri] },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return undefined
+    const data = (await res.json()) as {
+      data?: Record<string, { edges?: { node?: { uri?: string } | null }[] | null } | null>
+      errors?: unknown
     }
-    return unconfirmed ? undefined : null
+    if (data.errors) return undefined
+    const edges = data.data?.[field]?.edges
+    if (!Array.isArray(edges)) return undefined
+    return edges.some((edge) => edge?.node?.uri === uri)
   } catch {
     return undefined
   }

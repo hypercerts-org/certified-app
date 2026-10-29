@@ -49,6 +49,22 @@ describe("not-found page", () => {
     )
   })
 
+  it("a missing record's edit page is a missing record too", async () => {
+    lookupRecord.mockResolvedValue("missing")
+    expect(await renderAt("/alice.example.com/activity/3abc/edit")).toBe("Activity not found")
+  })
+
+  it("falls back to the generic page when the lookups run long", async () => {
+    vi.useFakeTimers()
+    lookupActor.mockReturnValue(new Promise(() => {}))
+    pathname.value = "/alice.example.com/typo"
+    const page = NotFoundPage()
+    await vi.advanceTimersByTimeAsync(3_000)
+    render(await page)
+    vi.useRealTimers()
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Page not found")
+  })
+
   it.each([
     ["a typo under a real profile", "/alice.example.com/typo", undefined],
     ["an actor that couldn't be looked up", "/alice.example.com/typo", { status: "unknown" }],

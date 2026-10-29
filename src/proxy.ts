@@ -69,7 +69,9 @@ function withStrictCsp(req: NextRequest): NextResponse {
   requestHeaders.set("x-nonce", nonce)
   requestHeaders.set("content-security-policy", csp)
   // For the root not-found page, which can't see route params: it names the
-  // missing profile when the path is one. Display-only.
+  // missing profile or record when the path is one. Not trusted: routes this
+  // matcher skips (/api) see the client's own value, which only changes what
+  // that client's 404 page says.
   requestHeaders.set("x-pathname", req.nextUrl.pathname)
 
   const res = NextResponse.next({ request: { headers: requestHeaders } })

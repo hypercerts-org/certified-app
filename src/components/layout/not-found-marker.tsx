@@ -41,7 +41,11 @@ function getServerSnapshot() {
   return false
 }
 
-/** Renders nothing; flags the route as not-found while mounted. */
+/**
+ * Flags the route as not-found while mounted. The hidden `data-not-found`
+ * span is in the server HTML, so CSS (layout.css) hides the tab rows before
+ * hydration; the hook takes over once the effect has run.
+ */
 export default function NotFoundMarker() {
   useEffect(() => {
     mountedMarkers += 1
@@ -51,7 +55,7 @@ export default function NotFoundMarker() {
       emit()
     }
   }, [])
-  return null
+  return <span hidden data-not-found="" />
 }
 
 /** True while a <NotFoundMarker /> is mounted (i.e. on a not-found page). */

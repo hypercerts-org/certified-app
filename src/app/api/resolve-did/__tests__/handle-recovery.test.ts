@@ -214,8 +214,55 @@ describe("lookupIndexerDidByHandle (strict, for 404 decisions)", () => {
     expect(await lookup("nobody.example.com")).toBeNull()
   })
 
+  it("is undefined when a candidate can't be confirmed", async () => {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      const { operationName } = parseBody(init)
+      if (operationName === "ResolveDidByHandle") {
+        return Promise.resolve(
+          jsonResponse({ data: { appCertifiedActorProfile: { edges: [{ node: { did: MIGRATED_DID } }] } } }),
+        )
+      }
+      return Promise.resolve(new Response("", { status: 503 }))
+    })
+    expect(await lookup(STALE_HANDLE)).toBeUndefined()
+  })
+
   it("is undefined when the indexer can't answer", async () => {
     mockFetch.mockResolvedValue(new Response("", { status: 503 }))
     expect(await lookup(STALE_HANDLE)).toBeUndefined()
+  })
+})
+
+describe("lookupIndexerRecordExists", () => {
+  const URI = `at://${MIGRATED_DID}/org.hypercerts.claim.activity/3abc`
+
+  async function exists(edges: unknown, status = 200) {
+    mockFetch.mockResolvedValue(
+      status === 200
+        ? jsonResponse({ data: { orgHypercertsClaimActivity: { edges } } })
+        : new Response("", { status }),
+    )
+    vi.resetModules()
+    const { lookupIndexerRecordExists } = await import("../resolve-core")
+    return lookupIndexerRecordExists(URI, "org.hypercerts.claim.activity")
+  }
+
+  it("is true when the indexer has the record", async () => {
+    expect(await exists([{ node: { uri: URI } }])).toBe(true)
+  })
+
+  it("is false when it doesn't", async () => {
+    expect(await exists([])).toBe(false)
+  })
+
+  it("is undefined when the indexer can't answer", async () => {
+    expect(await exists(null, 502)).toBeUndefined()
+  })
+
+  it("is undefined for a collection it doesn't index here", async () => {
+    vi.resetModules()
+    const { lookupIndexerRecordExists } = await import("../resolve-core")
+    expect(await lookupIndexerRecordExists(URI, "app.example.other")).toBeUndefined()
+    expect(indexerWasCalled()).toBe(false)
   })
 })

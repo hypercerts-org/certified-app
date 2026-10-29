@@ -228,9 +228,14 @@ export default function DesktopTopBar() {
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
+  // "My profile" links fall back to the DID while the handle loads, so a
+  // DID in the URL counts as own too.
+  const identityDid = activeOrg ? activeOrg.groupDid : did;
   const isOnOwnProfile =
-    !!identity.handle && !!profileHandleFromUrl &&
-    profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase();
+    !!profileHandleFromUrl &&
+    ((!!identity.handle &&
+      profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase()) ||
+      (!!identityDid && profileHandleFromUrl === identityDid));
   const visibleProfileTabs = useMemo(
     () =>
       PROFILE_TABS.filter((t) => {
@@ -571,7 +576,7 @@ export default function DesktopTopBar() {
 
       {showTabsRow ? (
         <div
-          className="desktop-top-bar__row desktop-top-bar__row--tabs"
+          className="desktop-top-bar__row desktop-top-bar__row--tabs desktop-top-bar__row--profile-tabs"
           data-tour="profile-tabs"
         >
           {/* Profile ?tab= strip — canonical <Tabs> (underline). onChange
