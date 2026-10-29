@@ -79,7 +79,10 @@ async function main(atUri) {
   const [, repo, collection, rkey] = match
 
   const repoDoc = await resolveDidDoc(repo)
-  const pds = repoDoc.service?.find((s) => s.id === "#atproto_pds")?.serviceEndpoint
+  // DID documents may reference the service by fragment or by full DID URL.
+  const pds = repoDoc.service?.find(
+    (s) => s.id === "#atproto_pds" || s.id === `${repo}#atproto_pds`,
+  )?.serviceEndpoint
   if (!pds) throw new Fail(`no #atproto_pds service for ${repo}`)
 
   const qs = new URLSearchParams({ repo, collection, rkey })

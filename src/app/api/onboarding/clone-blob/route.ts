@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Agent } from "@atproto/api"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { isSessionGone, sessionUnavailable } from "@/lib/auth/restore-error"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { parseJsonBody } from "@/lib/utils/api"
 import { logSafe } from "@/lib/utils/log-safe"
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
       oauthSession = await client.restore(did)
     } catch (err) {
       logSafe("[onboarding/clone-blob] oauth restore failed", err)
+      if (!(await isSessionGone(err, did))) return sessionUnavailable()
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }
