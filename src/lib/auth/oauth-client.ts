@@ -6,6 +6,7 @@ import {
   type OAuthLoopbackRedirectURI,
 } from "@atproto/oauth-types"
 import { RedisStateStore, RedisSessionStore } from "./stores"
+import { redisRequestLock } from "./request-lock"
 import { PUBLIC_URL_STRICT, DEFAULT_PDS_URL } from "@/lib/utils/config"
 
 export const PDS_URL = process.env.PDS_URL || DEFAULT_PDS_URL
@@ -116,6 +117,9 @@ export function getOAuthClient(): Promise<NodeOAuthClient> {
         clientMetadata,
         stateStore: new RedisStateStore(),
         sessionStore: new RedisSessionStore(),
+        // Only one instance may refresh a DID's rotating refresh token at a
+        // time; a parallel refresh replays it and revokes the session.
+        requestLock: redisRequestLock,
         handleResolver: PDS_URL,
         fetch: safeFetch,
         ...(keyset ? { keyset } : {}),
