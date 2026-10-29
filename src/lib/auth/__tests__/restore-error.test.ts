@@ -20,6 +20,7 @@ vi.mock("@/lib/auth/stores", () => ({
 
 import { isSessionGone } from "../restore-error"
 import { RequestLockTimeoutError } from "../request-lock"
+import { ResponseTooLargeError } from "../response-limit"
 
 const DID = "did:plc:alice"
 const missing = () =>
@@ -32,6 +33,13 @@ beforeEach(() => {
 describe("isSessionGone", () => {
   it("keeps the session on a request-lock timeout", async () => {
     expect(await isSessionGone(new RequestLockTimeoutError("lock"), DID)).toBe(false)
+  })
+
+  it("keeps the session when a response hits the size cap, whatever the origin says", async () => {
+    // The message names the origin; it must not pass for an auth failure.
+    const err = new ResponseTooLargeError("https://expired-revoked.example/oauth/token", 1)
+    expect(err.message).toMatch(/expired/)
+    expect(await isSessionGone(err, DID)).toBe(false)
   })
 
   it("keeps the session when the auth server's metadata can't be fetched", async () => {

@@ -10,9 +10,12 @@
  * starting a sign-in against a self-hosted PDS needs no account.
  *
  * Every such request goes through the client's `fetch` (safeFetch), so the
- * cap lives there. Real documents are a few KB. PDS XRPC traffic (`/xrpc/`)
- * is exempt: blobs and record listings are legitimately large, and those
- * responses are checked by lexicon validators, not zod.
+ * cap lives there. Real documents are a few KB. Authenticated XRPC calls to
+ * the user's PDS are exempt: blobs and record listings are legitimately
+ * large, and those responses are checked by lexicon validators, not zod.
+ * The path alone is not enough, because a hostile authorization server can
+ * publish a token or PAR endpoint under `/xrpc/`; those requests carry a
+ * DPoP proof but never an Authorization header, session calls always do.
  */
 
 /** Generous for metadata, DID documents and token responses (a few KB). */
@@ -25,16 +28,19 @@ export class ResponseTooLargeError extends Error {
   }
 }
 
-/** Whether a response from this URL gets the cap (everything except XRPC). */
-export function isSizeLimited(url: string): boolean {
-  return !new URL(url).pathname.startsWith("/xrpc/")
+/** Whether a request's response gets the cap: everything except
+ *  authenticated XRPC calls. */
+export function isSizeLimited(url: string, headers: Headers): boolean {
+  return !(new URL(url).pathname.startsWith("/xrpc/") && headers.has("authorization"))
 }
 
 /**
  * Returns `response` with its body limited to `maxBytes`. A larger declared
  * Content-Length fails at once; otherwise the body errors as soon as more
  * than `maxBytes` arrive, whatever the header said, and the upstream body is
- * cancelled.
+ * cancelled. Like atproto's own TransformedResponse, a wrapped body that is
+ * dropped unread is not cancelled by GC (the source stream is locked by the
+ * pipe); atproto cancels the bodies it doesn't read.
  */
 export function limitResponseSize(
   response: Response,

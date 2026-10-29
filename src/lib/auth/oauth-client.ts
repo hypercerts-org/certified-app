@@ -205,12 +205,14 @@ const forwardFetch: typeof fetch = async (input, init) => {
 /**
  * The OAuth client's fetch. Responses it validates with zod (metadata, DID
  * documents, PAR and token responses) are size-capped against the zod array
- * DoS (TECH-804, see response-limit.ts); PDS XRPC traffic is not. The cap is
- * chosen by the request URL, so a redirect can't move a response out of it.
+ * DoS (TECH-804, see response-limit.ts); authenticated XRPC calls to the PDS
+ * are not. The cap is chosen by the request, so a redirect can't move a
+ * response out of it.
  */
 export const safeFetch: typeof fetch = async (input, init) => {
   const url =
     input instanceof Request ? input.url : input instanceof URL ? input.href : String(input)
+  const headers = new Headers(input instanceof Request ? input.headers : init?.headers)
   const response = await forwardFetch(input, init)
-  return isSizeLimited(url) ? limitResponseSize(response, url) : response
+  return isSizeLimited(url, headers) ? limitResponseSize(response, url) : response
 }
