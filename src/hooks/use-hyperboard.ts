@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef, useLayoutEffect } from "react"
 import { buildAtUri } from "@/lib/urls"
 import { isDid } from "@/lib/utils/did"
 import { loadResolvedProfile } from "@/lib/atproto/resolve-did-batch"
@@ -81,7 +81,9 @@ export function useHyperboard(
   const idsSig = identitiesSignature(contributors)
   // Keep the latest contributors for the loader without making it a dep.
   const contributorsRef = useRef(contributors)
-  contributorsRef.current = contributors
+  useLayoutEffect(() => {
+    contributorsRef.current = contributors
+  })
 
   useEffect(() => {
     if (!authorDid || !rkey) {

@@ -188,7 +188,7 @@ export default function LocationPickerDialog({
     if (mode !== "new" || fieldMode !== "search") return
     const trimmed = name.trim()
     if (trimmed.length < 2) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced geocode keyed on the typed name: this clears now-stale suggestions when input drops below 2 chars and bails out when already empty; onChange/pick/map handlers don't cover every write path
+      // Intentional setState in effect (TECH-814): debounced geocode keyed on the typed name: this clears now-stale suggestions when input drops below 2 chars and bails out when already empty; onChange/pick/map handlers don't cover every write path
       setSuggestions([])
       return
     }

@@ -301,7 +301,7 @@ export default function ActivityEditRoute({
     if (seededRef.current) return
     if (!activity) return
     const v = activity.value
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap-record cid baseline after the async record load; re-running would clobber user edits. Long-term fix is a key-remount form child, tracked separately
+    // Intentional setState in effect (TECH-814): one-shot ref-guarded (seededRef) seeding of editable form state + swap-record cid baseline after the async record load; re-running would clobber user edits. Long-term fix is a key-remount form child, tracked separately
     setTitle(v.title ?? "")
     setShortDescription(v.shortDescription ?? "")
     setStartDate(
@@ -410,7 +410,7 @@ export default function ActivityEditRoute({
 
   // Clear save error whenever any field changes.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null, so cost is one render only while an error is showing
+    // Intentional setState in effect (TECH-814): deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null, so cost is one render only while an error is showing
     setError(null)
   }, [
     title,

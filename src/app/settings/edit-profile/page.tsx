@@ -171,6 +171,7 @@ export default function EditProfilePage() {
       // navbar avatar, useUserProfile on the destination page, blob
       // URLs) remounts with fresh data. A client-side push here used
       // to leave the navbar showing the old avatar for ~30s.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- deliberate hard reload, see above
       window.location.assign("/profile");
       return;
     } catch (error) {

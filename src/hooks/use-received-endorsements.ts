@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  useLayoutEffect,
 } from "react"
 import { postIndexer, type IndexerPostResult } from "@/lib/atproto/indexer"
 
@@ -371,7 +372,9 @@ export function useReceivedEndorsements(
   const [error, setError] = useState<string | null>(null)
 
   const profileDidRef = useRef(profileDid)
-  profileDidRef.current = profileDid
+  useLayoutEffect(() => {
+    profileDidRef.current = profileDid
+  })
 
   const doScan = useCallback(async (did: string, signal?: AbortSignal) => {
     const cached = cache.get(did)

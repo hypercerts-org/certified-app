@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 
 const STALE_TIME = 5 * 60 * 1000 // 5 minutes
@@ -83,7 +83,9 @@ export function useBlueskyFollows(did: string | null) {
   const [error, setError] = useState<string | null>(null)
 
   const didRef = useRef(did)
-  didRef.current = did
+  useLayoutEffect(() => {
+    didRef.current = did
+  })
 
   const doFetch = useCallback(
     async (targetDid: string | null, signal?: AbortSignal) => {

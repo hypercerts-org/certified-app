@@ -156,7 +156,7 @@ function Toaster({
   const [mounted, setMounted] = useState(false);
   // SSR portal guard: stay null until mounted on the client so the
   // document.body portal target exists and server/client markup match.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Intentional setState in effect (TECH-814).
   useEffect(() => setMounted(true), []);
 
   if (!mounted) return null;

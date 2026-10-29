@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
 import { TransitionLink } from "@/lib/view-transitions"
@@ -495,7 +495,10 @@ export default function ProjectDetail({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const handleDeleteConfirm = useCallback(async () => {
+  // Plain function, not useCallback: the dialog doesn't need a stable
+  // identity, and the manual deps didn't match what the React Compiler
+  // infers (react-hooks/preserve-manual-memoization).
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     setDeleteError(null)
     try {
@@ -545,7 +548,7 @@ export default function ProjectDetail({
       )
       setIsDeleting(false)
     }
-  }, [rkey, did, canEditAsActiveOrg, router])
+  }
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -883,9 +886,13 @@ export default function ProjectDetail({
   // (`activity-detail.tsx:357-364`) — refs (not deps) so the cleanup
   // only fires on unmount.
   const pendingImagePreviewUrlRef = useRef(pendingImagePreviewUrl)
-  pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  useLayoutEffect(() => {
+    pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  })
   const localImageUrlRef = useRef(localImageUrl)
-  localImageUrlRef.current = localImageUrl
+  useLayoutEffect(() => {
+    localImageUrlRef.current = localImageUrl
+  })
   useEffect(() => {
     return () => {
       const a = pendingImagePreviewUrlRef.current

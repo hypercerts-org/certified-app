@@ -25,7 +25,7 @@ function LandingThemeToggle() {
   useEffect(() => {
     // Canonical next-themes SSR guard: defer reading the resolved theme until
     // after mount so the server (default light) and client first paint agree.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Intentional setState in effect (TECH-814).
     setMounted(true);
   }, []);
 
