@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { parseActor, profileUrl } from "@/lib/urls"
+import { ownProfileUrl, parseActor } from "@/lib/urls"
 import {
   CERT_DETAIL_TABS,
   PROJECT_DETAIL_TABS,
@@ -24,6 +24,7 @@ import {
   User,
 } from "lucide-react";
 import SiteDrawer from "./site-drawer";
+import { useIsNotFound } from "./not-found-marker";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
@@ -151,11 +152,13 @@ export default function DesktopTopBar() {
       };
 
   // Profile shortcut target — mirrors the left rail. When acting as a
-  // group, identity.handle is the group handle, so "My profile" follows
-  // the active identity just like the avatar switcher does.
-  const profileHref = identity.handle
-    ? profileUrl(identity.handle)
-    : "/profile";
+  // group it targets the group's handle, so "My profile" follows the
+  // active identity just like the avatar switcher does.
+  const profileHref = ownProfileUrl({
+    activeGroup: activeOrg,
+    personalHandle: handle,
+    personalDid: did,
+  });
 
   // Routes rooted at an actor — `/{actor}` (profile) and
   // `/{actor}/{type}/{rkey}` (a record that belongs to that profile) — all
@@ -215,7 +218,13 @@ export default function DesktopTopBar() {
   // exception — it borrows the profile strip (locked to Overview, see
   // `isOnEditProfile`) so the chrome doesn't drop a row when you enter
   // edit mode.
-  const showTabsRow = isOnProfile || isOnEditProfile;
+  //
+  // A not-found page (e.g. "Profile not found" at `/{handle}`) keeps the
+  // pathname that would normally earn a tab strip, so the profile tabs and
+  // record-detail tabs are suppressed while `not-found.tsx` is mounted —
+  // there is no actor or record behind them. The Back button stays.
+  const isNotFound = useIsNotFound();
+  const showTabsRow = !isNotFound && (isOnProfile || isOnEditProfile);
   // Compare the URL handle slug to the signed-in user's handle to decide
   // whether to show own-only tabs (e.g. Settings). Activeorg switches the
   // "you" identity to the org, so we compare against `identity.handle`.
@@ -608,7 +617,7 @@ export default function DesktopTopBar() {
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
             Back
           </button>
-          {pathname && (isOnCertDetail || isOnProjectDetail) ? (() => {
+          {pathname && !isNotFound && (isOnCertDetail || isOnProjectDetail) ? (() => {
             const detailTabs = isOnCertDetail ? CERT_DETAIL_TABS : PROJECT_DETAIL_TABS
             const isOnSubRoute = pathname?.endsWith("/explore")
             // Compute the navigation target for a detail tab. Two flavors:

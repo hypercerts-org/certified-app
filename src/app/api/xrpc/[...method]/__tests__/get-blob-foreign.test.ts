@@ -121,3 +121,19 @@ describe("foreign-DID getBlob — Content-Length cap + fixed Cache-Control", () 
     fetchSpy.mockRestore()
   })
 })
+
+describe("foreign-DID getBlob — upstream errors", () => {
+  it.each([
+    [500, 502],
+    [503, 502],
+    [400, 404],
+    [404, 404],
+  ])("upstream %i answers %i", async (upstreamStatus, expected) => {
+    const { GET } = await import("../route")
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({ error: "InternalServerError" }, { status: upstreamStatus }),
+    )
+    const res = await GET(makeRequest(), { params })
+    expect(res.status).toBe(expected)
+  })
+})

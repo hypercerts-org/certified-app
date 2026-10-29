@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useId } from "react"
-import { profileUrl, recordUrl } from "@/lib/urls"
+import { ownProfileUrl, recordUrl } from "@/lib/urls"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FolderGit2, User, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import RowThumb from "@/components/ui/row-thumb"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
 import { useManagedProjects } from "@/hooks/use-managed-projects"
 import { useManagedActivities } from "@/hooks/use-managed-activities"
@@ -120,7 +121,9 @@ export default function Home() {
 // ---------------------------- Sidebar ---------------------------------------
 
 function HomeSidebar({ activeDid }: { activeDid: string }) {
-  const { groups, isLoading: groupsLoading } = useOrg()
+  const { activeOrg, groups, isLoading: groupsLoading } = useOrg()
+  const { did: personalDid } = useAuth()
+  const { handle: personalHandle } = useSession()
   // Aggregated across the viewer's managed identities (personal + every
   // group they own or admin), so group-owned projects/activities surface
   // here too, each tagged "by {group}". The managed hooks anchor on the
@@ -133,9 +136,14 @@ function HomeSidebar({ activeDid }: { activeDid: string }) {
   const previewProjects = projects.slice(0, SIDEBAR_PREVIEW_LIMIT)
   const previewCerts = certs.slice(0, SIDEBAR_PREVIEW_LIMIT)
 
-  // Profile detail accepts the DID under the [handle] slot, so
-  // "Show more" stays correct even before we've resolved the handle.
-  const profileBase = profileUrl(activeDid)
+  // Same target as the top bar's "My profile": the acting-as identity's
+  // handle URL, falling back to its DID (the profile route accepts either)
+  // so "Show more" stays correct before the handle has resolved.
+  const profileBase = ownProfileUrl({
+    activeGroup: activeOrg,
+    personalHandle,
+    personalDid,
+  })
   const profileTitleId = useId()
 
   return (

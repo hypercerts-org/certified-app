@@ -306,6 +306,15 @@ const PUBLIC_READ_METHODS = new Set<string>([
 // short cache rather than the same-session no-store/5s headers; that's an
 // exceptional path and a <=30s private cache is acceptable.
 
+/** An upstream PDS error as our status: its 5xx is a bad gateway on our
+ *  side (502), not our own failure; its 4xx passes through. */
+function upstreamErrorResponse(status: number): NextResponse {
+  return NextResponse.json(
+    { error: `Upstream PDS returned ${status}` },
+    { status: status >= 500 ? 502 : status },
+  )
+}
+
 async function proxyPublicGetRecord(
   methodName: string,
   repo: string,
@@ -325,10 +334,7 @@ async function proxyPublicGetRecord(
       { redirect: "error", signal: AbortSignal.timeout(10_000) }
     )
     if (!upstream.ok) {
-      return NextResponse.json(
-        { error: `Upstream PDS returned ${upstream.status}` },
-        { status: upstream.status }
-      )
+      return upstreamErrorResponse(upstream.status)
     }
     const data = await upstream.json()
     return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
@@ -384,10 +390,7 @@ async function proxyPublicListRecords(
           { headers: FOREIGN_READ_CACHE_HEADERS },
         )
       }
-      return NextResponse.json(
-        { error: `Upstream PDS returned ${upstream.status}` },
-        { status: upstream.status }
-      )
+      return upstreamErrorResponse(upstream.status)
     }
     const data = await upstream.json()
     return NextResponse.json(data, { headers: FOREIGN_READ_CACHE_HEADERS })
@@ -416,10 +419,12 @@ async function proxyPublicGetBlob(
       { redirect: "error", signal: AbortSignal.timeout(15_000) }
     )
     if (!upstream.ok) {
-      return NextResponse.json(
-        { error: `Upstream PDS returned ${upstream.status}` },
-        { status: upstream.status }
-      )
+      // A blob the PDS doesn't have (BlobNotFound arrives as 400) is a
+      // plain 404 for the <img> asking for it.
+      if (upstream.status === 400 || upstream.status === 404) {
+        return NextResponse.json({ error: "Blob not found" }, { status: 404 })
+      }
+      return upstreamErrorResponse(upstream.status)
     }
     // Short-circuit a *declared* oversize before streaming — cheap fast
     // path when the PDS is honest about a large body.

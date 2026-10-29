@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import { unstable_cache } from "next/cache"
 import { notFound } from "next/navigation"
-import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core"
-import { BSKY_APPVIEW, resolveHandle, resolveHandleViaWellKnown } from "@/lib/atproto/did"
-import { getRecordServer } from "@/lib/atproto/get-record-server"
+import { cache } from "react"
+import { buildProfilePayload, lookupIndexerDidByHandle } from "@/app/api/resolve-did/resolve-core"
+import { BSKY_APPVIEW, lookupHandleViaWellKnown, resolveHandle } from "@/lib/atproto/did"
+import { lookupRecordServer } from "@/lib/atproto/get-record-server"
 import { parseActor, profileUrl, recordUrl, type RecordType } from "@/lib/urls"
 
 // Generic share defaults. The per-page builders below only fall back to
@@ -27,11 +28,34 @@ const cachedProfilePayload = unstable_cache(
   { revalidate: OG_REVALIDATE_SECONDS },
 )
 
+type RecordValue = { uri: string; cid?: string; value: Record<string, unknown> }
+
+// Only found records are cached: the function throws otherwise, so a
+// missing or failed lookup is re-checked (uncached) by lookupRecord below
+// and never pinned for the revalidate window.
 const cachedRecord = unstable_cache(
-  (did: string, collection: string, rkey: string) =>
-    getRecordServer<Record<string, unknown>>(did, collection, rkey),
+  async (did: string, collection: string, rkey: string): Promise<RecordValue> => {
+    const record = await lookupRecordServer<Record<string, unknown>>(did, collection, rkey)
+    if (!record || record === "missing") throw new Error("record not found")
+    return record
+  },
   ["og-metadata:record"],
   { revalidate: OG_REVALIDATE_SECONDS },
+)
+
+/**
+ * A record for metadata and the not-found page: the record, "missing" on a
+ * definite RecordNotFound, or undefined when the lookup failed. Shared per
+ * request (React cache), so the not-found page reuses the layout's answer.
+ */
+export const lookupRecord = cache(
+  async (did: string, collection: string, rkey: string): Promise<RecordValue | "missing" | undefined> => {
+    try {
+      return await cachedRecord(did, collection, rkey)
+    } catch {
+      return lookupRecordServer<Record<string, unknown>>(did, collection, rkey)
+    }
+  },
 )
 
 /** Collapse whitespace and cap a description at OG-friendly length. */
@@ -81,7 +105,7 @@ function ogImageFromField(image: unknown, did: string): string | null {
   return null
 }
 
-type ActorLookup =
+export type ActorLookup =
   | { status: "found"; did: string; handle: string | null }
   | { status: "missing" }
   | { status: "unknown" }
@@ -128,12 +152,14 @@ async function resolveHandleStrict(handle: string): Promise<string | "missing" |
 }
 
 /**
- * Resolve an `[actor]` segment (handle or DID). "missing" only on a definite
- * signal (invalid segment, plc.directory 404, appView "Unable to resolve
- * handle" with no .well-known fallback), so a transient upstream failure
- * never turns a real profile into a 404.
+ * Resolve an `[actor]` segment (handle or DID). "missing" only when every
+ * step of the handle recovery chain (appView, .well-known, the indexer's
+ * record of migrated handles; the same chain resolveInputToDid walks)
+ * answers definitely, so a transient upstream failure never turns a real
+ * profile into a 404. Shared per request (React cache): the layouts and the
+ * not-found page ask the same question.
  */
-async function lookupActor(actorParam: string): Promise<ActorLookup> {
+export const lookupActor = cache(async (actorParam: string): Promise<ActorLookup> => {
   const actor = parseActor(actorParam)
   if (actor.kind === "invalid") return { status: "missing" }
   if (actor.kind === "did") {
@@ -147,10 +173,17 @@ async function lookupActor(actorParam: string): Promise<ActorLookup> {
     return { status: "found", did: viaAppview, handle: actor.value }
   }
   // Handles the appView doesn't know yet (e.g. self-hosted, not crawled).
-  const viaWellKnown = await resolveHandleViaWellKnown(actor.value)
-  if (viaWellKnown) return { status: "found", did: viaWellKnown, handle: actor.value }
-  return viaAppview === "missing" ? { status: "missing" } : { status: "unknown" }
-}
+  const viaWellKnown = await lookupHandleViaWellKnown(actor.value)
+  if (viaWellKnown && viaWellKnown !== "missing") {
+    return { status: "found", did: viaWellKnown, handle: actor.value }
+  }
+  // A migrated account's old handle: no longer resolves live, still indexed.
+  const viaIndexer = await lookupIndexerDidByHandle(actor.value)
+  if (viaIndexer) return { status: "found", did: viaIndexer, handle: actor.value }
+  return viaAppview === "missing" && viaWellKnown === "missing" && viaIndexer === null
+    ? { status: "missing" }
+    : { status: "unknown" }
+})
 
 /** Assemble a complete, self-contained Metadata object for a share target. */
 function buildShareMetadata(opts: {
@@ -234,7 +267,8 @@ export async function profileMetadata(actorParam: string): Promise<Metadata> {
  * Per-page Open Graph metadata for a record route
  * (`/[actor]/{activity|project}/{rkey}`). Fetches the record server-side and
  * surfaces its title, short description, and image. Returns `{}` (inherit the
- * root defaults) when the record can't be resolved.
+ * root defaults) when the record can't be resolved, and 404s when it or its
+ * actor definitely doesn't exist.
  */
 export async function recordMetadata(
   actorParam: string,
@@ -245,11 +279,12 @@ export async function recordMetadata(
   const resolved = await lookupActor(actorParam)
   if (resolved.status === "missing") notFound()
   if (resolved.status !== "found") return {}
+  const { did } = resolved
+  // A record that definitely doesn't exist answers 404 as well.
+  const record = await lookupRecord(did, collection, rkey)
+  if (record === "missing") notFound()
+  if (!record) return {}
   try {
-    const { did } = resolved
-
-    const record = await cachedRecord(did, collection, rkey)
-    if (!record) return {}
     const value = record.value
 
     const handle = resolved.handle ?? (await resolveHandle(did).catch(() => null)) ?? did

@@ -196,3 +196,26 @@ describe("resolveInputToDid — handle->DID recovery (#184)", () => {
     expect(indexerWasCalled()).toBe(false)
   })
 })
+
+describe("lookupIndexerDidByHandle (strict, for 404 decisions)", () => {
+  async function lookup(handle: string) {
+    vi.resetModules()
+    const { lookupIndexerDidByHandle } = await import("../resolve-core")
+    return lookupIndexerDidByHandle(handle)
+  }
+
+  it("recovers a migrated handle", async () => {
+    mockIndexer({ [STALE_HANDLE]: [MIGRATED_DID] }, { [MIGRATED_DID]: STALE_HANDLE })
+    expect(await lookup(STALE_HANDLE)).toBe(MIGRATED_DID)
+  })
+
+  it("is null when no indexed account has the handle", async () => {
+    mockIndexer({}, {})
+    expect(await lookup("nobody.example.com")).toBeNull()
+  })
+
+  it("is undefined when the indexer can't answer", async () => {
+    mockFetch.mockResolvedValue(new Response("", { status: 503 }))
+    expect(await lookup(STALE_HANDLE)).toBeUndefined()
+  })
+})

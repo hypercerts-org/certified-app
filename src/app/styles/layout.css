@@ -753,7 +753,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    in components.css's mobile block, which loads after this file and wins. */
 
 /* Browser-tab mobile (<800px, no PWA bottom nav): the floating Feedback
-   button (44px tall, 16px off the edge; lifts 12px above the footer) would
+   button (--feedback-trigger-height tall, --feedback-trigger-offset above
+   the safe-area inset; lifts 12px above the footer) would
    otherwise sit over the last rows of pages that zero the shell's bottom
    padding (settings, cert detail). Reserve its height + gaps. Keyed on the
    trigger itself, which unmounts whenever the PWA bottom nav shows, so that
@@ -761,7 +762,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    `.app-shell:has(...) .app-shell__content` overrides. */
 @media (max-width: 799px) {
   html:has(.feedback-trigger) .app-shell .app-shell__content {
-    padding-bottom: calc(44px + 32px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--feedback-trigger-height) + 2 * var(--feedback-trigger-offset) +
+        env(safe-area-inset-bottom, 0px)
+    );
   }
 }
 

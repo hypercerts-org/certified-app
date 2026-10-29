@@ -271,36 +271,53 @@ async function fetchDidDocument(did: string): Promise<DidDocument | null> {
  * See: https://atproto.com/specs/handle#handle-resolution
  */
 export async function resolveHandleViaWellKnown(handle: string): Promise<string | null> {
+  const result = await lookupHandleViaWellKnown(handle)
+  return result === "missing" ? null : (result ?? null)
+}
+
+/**
+ * `.well-known/atproto-did` lookup that keeps "this handle has no DID"
+ * apart from "the lookup failed": the DID, "missing" on a definite answer
+ * (not a hostname, the domain doesn't exist, 404/410, or a body that isn't
+ * a DID), or undefined on anything else (timeout, 5xx, blocked URL).
+ * Callers that turn absence into a 404 must only act on "missing".
+ */
+export async function lookupHandleViaWellKnown(
+  handle: string,
+): Promise<string | "missing" | undefined> {
   // Anti-SSRF: `handle` is fully client-controlled and is interpolated
   // into an outbound URL. Reject anything that isn't a bare DNS hostname
   // (no port / userinfo / path / percent-encoded chars), and require a
   // real dotted name with an alphabetic TLD — so an IP literal, host:port
   // or `10.0.0.5`-style value can never reach the fetch. Then run the
   // constructed URL through the SAME gate resolvePdsUrl uses.
-  if (/[:@/%\s]/.test(handle)) return null
+  if (/[:@/%\s]/.test(handle)) return "missing"
   if (
     !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(
       handle,
     )
   ) {
-    return null
+    return "missing"
   }
 
   const url = `https://${handle}/.well-known/atproto-did`
-  if (!isAllowedPdsUrl(url)) return null
+  if (!isAllowedPdsUrl(url)) return undefined
 
   try {
     const res = await fetchUntrusted(url, {
       redirect: "error",
       signal: AbortSignal.timeout(5_000),
     })
-    if (!res.ok) return null
+    if (res.status === 404 || res.status === 410) return "missing"
+    if (!res.ok) return undefined
     const text = (await res.text()).trim()
     // Must be a valid DID
     if (text.startsWith("did:")) return text
-    return null
-  } catch {
-    return null
+    return "missing"
+  } catch (err) {
+    // NXDOMAIN is a definite answer; other DNS / network trouble isn't.
+    const code = (err as { cause?: { code?: unknown } })?.cause?.code
+    return code === "ENOTFOUND" ? "missing" : undefined
   }
 }
 

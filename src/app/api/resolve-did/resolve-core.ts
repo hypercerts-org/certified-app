@@ -132,6 +132,17 @@ async function fetchIndexerActorProfile(
  * strictly additive and only runs after live resolution has failed.
  */
 async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
+  return (await lookupIndexerDidByHandle(handle)) ?? null
+}
+
+/**
+ * The indexer step of the handle recovery chain, keeping "no indexed
+ * account has this handle" (null) apart from "the indexer couldn't
+ * answer" (undefined), so a 404 is never built on a failed lookup.
+ */
+export async function lookupIndexerDidByHandle(
+  handle: string,
+): Promise<string | null | undefined> {
   const wanted = handle.trim().toLowerCase()
   if (!wanted) return null
   try {
@@ -149,7 +160,7 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
       }),
       signal: AbortSignal.timeout(8_000),
     })
-    if (!res.ok) return null
+    if (!res.ok) return undefined
     const data = (await res.json()) as {
       data?: {
         appCertifiedActorProfile?: {
@@ -158,7 +169,7 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
       }
       errors?: unknown
     }
-    if (data.errors) return null
+    if (data.errors) return undefined
 
     const edges = data.data?.appCertifiedActorProfile?.edges ?? []
     const candidates: string[] = []
@@ -174,14 +185,16 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
     // denormalised handle (what `search` matched) must exactly equal the
     // requested handle. Resolves the migrated-but-idle account; abstains
     // when the only matches were fuzzy (display name, etc.).
+    let unconfirmed = false
     for (const did of candidates) {
       const actor = await fetchIndexerActorProfile(did)
+      if (!actor) unconfirmed = true
       const indexed = actor?.handle?.trim().toLowerCase()
       if (indexed && indexed === wanted) return did
     }
-    return null
+    return unconfirmed ? undefined : null
   } catch {
-    return null
+    return undefined
   }
 }
 

@@ -122,6 +122,29 @@ export function profileUrl(actor: string): string {
   return `/${actor}`
 }
 
+/**
+ * The viewer's own-profile link ("My profile" / "Profile" shortcuts). It
+ * follows the identity the viewer is acting as: the active group when the
+ * account switcher is on one, the personal account otherwise. The handle is
+ * preferred so the link matches the URL the profile page canonicalises to;
+ * the DID is only used when no handle is known yet. Returns "/profile" (which
+ * redirects once the session resolves) when neither is available.
+ */
+export function ownProfileUrl({
+  activeGroup,
+  personalHandle,
+  personalDid,
+}: {
+  activeGroup?: { handle?: string | null; groupDid?: string | null } | null
+  personalHandle?: string | null
+  personalDid?: string | null
+}): string {
+  const actor = activeGroup
+    ? activeGroup.handle || activeGroup.groupDid
+    : personalHandle || personalDid
+  return actor ? profileUrl(actor) : "/profile"
+}
+
 /** In-app record link. `actor` is a handle (preferred) or a DID. */
 export function recordUrl(actor: string, type: RecordType, rkey: string): string {
   return `/${actor}/${type}/${rkey}`
