@@ -193,7 +193,12 @@ async function fetchAllAwards(
   return { nodes: out, truncated }
 }
 
-async function buildGraph(signal?: AbortSignal): Promise<EndorsementGraph> {
+async function buildGraph(
+  signal?: AbortSignal,
+  /** Called once with the complete graph before handles and avatars are
+   *  resolved; the returned graph has them filled in. */
+  onPartial?: (graph: EndorsementGraph) => void,
+): Promise<EndorsementGraph> {
   // One paginated scan per badge type; the two run concurrently.
   const [endorsementScan, awardScan] = await Promise.all([
     fetchAllAwards("endorsement", signal),
@@ -323,6 +328,30 @@ async function buildGraph(signal?: AbortSignal): Promise<EndorsementGraph> {
     return { source: e.source, target: e.target, kind: e.kind, mutual: reverse }
   })
 
+  const identity = (did: string): Pick<GraphNode, "handle" | "displayName" | "avatarUrl"> => {
+    const p = profiles.get(did)
+    const fb = fallback.get(did)
+    return {
+      // Handle only comes from the issuer join; keep it even when the
+      // actor-profile lookup missed this DID.
+      handle: p?.handle ?? handleByDid.get(did) ?? null,
+      displayName: p?.displayName ?? fb?.displayName ?? null,
+      avatarUrl: p?.avatarUrl ?? fb?.avatarUrl ?? null,
+    }
+  }
+  const nodes: GraphNode[] = [...allDids].map((did) => ({
+    id: did,
+    ...identity(did),
+    given: givenCount.get(did) ?? 0,
+    received: receivedCount.get(did) ?? 0,
+    mutual: mutualNeighbours.get(did)?.size ?? 0,
+  }))
+  const graph = { nodes, links, totalEndorsements, totalAwards, mutualPairs, truncated }
+
+  // Everything below only fills in handles and avatars, which takes
+  // several seconds on a large network, so the graph can be drawn now.
+  onPartial?.(graph)
+
   // The actor-profile index has no handle field and incomplete avatar
   // coverage, while the award join only carries handles for issuers. Fill
   // the gaps with the batched DID resolver (handle + displayName + avatar
@@ -353,23 +382,11 @@ async function buildGraph(signal?: AbortSignal): Promise<EndorsementGraph> {
     })
   }
 
-  const nodes: GraphNode[] = [...allDids].map((did) => {
-    const p = profiles.get(did)
-    const fb = fallback.get(did)
-    return {
-      id: did,
-      // Handle only comes from the issuer join; keep it even when the
-      // actor-profile lookup missed this DID.
-      handle: p?.handle ?? handleByDid.get(did) ?? null,
-      displayName: p?.displayName ?? fb?.displayName ?? null,
-      avatarUrl: p?.avatarUrl ?? fb?.avatarUrl ?? null,
-      given: givenCount.get(did) ?? 0,
-      received: receivedCount.get(did) ?? 0,
-      mutual: mutualNeighbours.get(did)?.size ?? 0,
-    }
-  })
-
-  return { nodes, links, totalEndorsements, totalAwards, mutualPairs, truncated }
+  // Update the drawn node objects in place: react-force-graph keeps each
+  // node's layout position on the object itself, so new objects would
+  // restart the layout. The new array still tells React the data changed.
+  for (const node of nodes) Object.assign(node, identity(node.id))
+  return { ...graph, nodes: [...nodes] }
 }
 
 // --------------------------------------------------------------------------
@@ -380,6 +397,10 @@ async function buildGraph(signal?: AbortSignal): Promise<EndorsementGraph> {
 const STALE_MS = 5 * 60 * 1000
 let cache: { data: EndorsementGraph; fetchedAt: number } | null = null
 let inFlight: Promise<EndorsementGraph> | null = null
+// The in-flight scan's graph before handle resolution, for mounts that
+// join the scan after it was emitted, plus the mounts waiting for it.
+let partial: EndorsementGraph | null = null
+const partialListeners = new Set<(graph: EndorsementGraph) => void>()
 
 export function useEndorsementGraph(): {
   graph: EndorsementGraph | null
@@ -404,18 +425,34 @@ export function useEndorsementGraph(): {
       }
       setIsLoading(true)
       setError(null)
+      // Draw the graph as soon as its structure is known; handles and
+      // avatars follow when the scan completes.
+      const showPartial = (data: EndorsementGraph) => {
+        if (cancelled) return
+        setGraph(data)
+        setIsLoading(false)
+      }
+      partialListeners.add(showPartial)
       try {
         // Coalesce concurrent mounts onto one network scan. The scan
         // itself isn't tied to a single component's signal so a remount
         // doesn't kill an in-flight fetch others are awaiting.
         if (!inFlight) {
-          inFlight = buildGraph().then((data) => {
+          inFlight = buildGraph(undefined, (data) => {
+            partial = data
+            for (const listener of partialListeners) listener(data)
+          }).then((data) => {
             cache = { data, fetchedAt: Date.now() }
             return data
           })
-          inFlight.finally(() => {
-            inFlight = null
-          })
+          inFlight
+            .finally(() => {
+              inFlight = null
+              partial = null
+            })
+            .catch(() => {})
+        } else if (partial) {
+          showPartial(partial)
         }
         const data = await inFlight
         if (cancelled || controller.signal.aborted) return
@@ -425,6 +462,7 @@ export function useEndorsementGraph(): {
         if (err instanceof DOMException && err.name === "AbortError") return
         setError(err instanceof Error ? err.message : "Failed to load endorsement graph")
       } finally {
+        partialListeners.delete(showPartial)
         if (!cancelled) setIsLoading(false)
       }
     }
