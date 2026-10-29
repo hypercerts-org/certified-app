@@ -1,4 +1,5 @@
 import { resolvePdsUrl } from "./did"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 /**
  * Fetch a single ATProto record server-side, unauthenticated, from the
@@ -21,7 +22,7 @@ export async function getRecordServer<T = Record<string, unknown>>(
     if (!targetPds) return null
 
     const params = new URLSearchParams({ repo: did, collection, rkey })
-    const res = await fetch(
+    const res = await guardedFetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
       { redirect: "error", signal: AbortSignal.timeout(8_000) },
     )

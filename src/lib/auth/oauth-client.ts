@@ -8,6 +8,7 @@ import {
 import { RedisStateStore, RedisSessionStore } from "./stores"
 import { redisRequestLock } from "./request-lock"
 import { isSizeLimited, limitResponseSize } from "./response-limit"
+import { guardedFetch } from "@/lib/security/ssrf"
 import { PUBLIC_URL_STRICT, DEFAULT_PDS_URL } from "@/lib/utils/config"
 
 export const PDS_URL = process.env.PDS_URL || DEFAULT_PDS_URL
@@ -187,7 +188,7 @@ const forwardFetch: typeof fetch = async (input, init) => {
       )
     }
 
-    return globalThis.fetch(input.url, {
+    return guardedFetch(input.url, {
       method: input.method,
       headers: input.headers,
       body: input.body ? buffer : undefined,
@@ -199,7 +200,7 @@ const forwardFetch: typeof fetch = async (input, init) => {
       cache: input.cache,
     })
   }
-  return globalThis.fetch(input, init)
+  return guardedFetch(input, init)
 }
 
 /**

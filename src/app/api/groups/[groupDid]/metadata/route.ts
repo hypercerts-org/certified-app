@@ -7,6 +7,7 @@ import { resolvePdsUrl } from "@/lib/atproto/did"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 const METADATA_FIELDS = [
   "organizationType",
@@ -48,7 +49,7 @@ export async function GET(
       return NextResponse.json({ error: "Could not resolve group PDS" }, { status: 404 })
     }
 
-    const res = await fetch(
+    const res = await guardedFetch(
       `${pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(groupDid)}&collection=${encodeURIComponent("app.certified.actor.organization")}&rkey=self`,
       { signal: AbortSignal.timeout(10_000) }
     )

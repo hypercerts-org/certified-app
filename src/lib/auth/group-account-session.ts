@@ -1,6 +1,7 @@
 import { resolvePdsUrl } from "@/lib/atproto/did"
 import { logSafe } from "@/lib/utils/log-safe"
 import { getRedis } from "./stores"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 /**
  * Transient **elevated session for a GROUP account**, unlocked by an
@@ -72,7 +73,7 @@ export async function establish(
     })
   }
 
-  const res = await fetch(`${pdsUrl}/xrpc/com.atproto.server.createSession`, {
+  const res = await guardedFetch(`${pdsUrl}/xrpc/com.atproto.server.createSession`, {
     method: "POST",
     redirect: "error",
     headers: { "Content-Type": "application/json" },
@@ -157,7 +158,7 @@ export async function end(callerDid: string, groupDid: string): Promise<void> {
   const session = await getElevated(callerDid, groupDid)
   if (session) {
     try {
-      await fetch(`${session.pdsUrl}/xrpc/com.atproto.server.deleteSession`, {
+      await guardedFetch(`${session.pdsUrl}/xrpc/com.atproto.server.deleteSession`, {
         method: "POST",
         redirect: "error",
         headers: { Authorization: `Bearer ${session.refreshJwt}` },
@@ -192,7 +193,7 @@ export async function callPds(
   }
   if (init?.body !== undefined) headers["Content-Type"] = "application/json"
 
-  const response = await fetch(`${session.pdsUrl}/xrpc/${nsid}`, {
+  const response = await guardedFetch(`${session.pdsUrl}/xrpc/${nsid}`, {
     method: init?.method ?? "GET",
     redirect: "error",
     headers,
