@@ -319,14 +319,9 @@ export default function PrivacyPage() {
               6. Data storage and infrastructure
             </h2>
             <p>
-              The infrastructure supporting certified.one Personal Data Servers is currently hosted
-              on cloud infrastructure located within the{" "}
+              The infrastructure supporting certified.app and certified.one Personal Data Servers is
+              currently hosted on cloud infrastructure located within the{" "}
               <strong>European Union</strong>.
-            </p>
-            <p className="mt-4">
-              The server functions of certified.app run in Frankfurt, Germany. Sign-in session and
-              authentication data for certified.app (such as session identifiers, OAuth tokens, and
-              rate-limiting counters) is stored in a database hosted in Frankfurt, Germany.
             </p>
             <p className="mt-4">
               Some operational service providers process limited data outside the European Union.
@@ -380,10 +375,7 @@ export default function PrivacyPage() {
                 <ul className="list-disc pl-6 mt-2 space-y-2">
                   <li>Vercel Inc. (web application hosting and anonymous web analytics)</li>
                   <li>Railway Corporation (application and database hosting infrastructure)</li>
-                  <li>
-                    Upstash, Inc. (storage of sign-in session, authentication, and rate-limiting data,
-                    hosted in Frankfurt, Germany)
-                  </li>
+                  <li>Upstash, Inc. (session and authentication data storage)</li>
                   <li>
                     Plus Five Five, Inc. (d/b/a Resend) (transactional email delivery for account,
                     security, and operational notifications)
