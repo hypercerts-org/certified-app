@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: October 29, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -319,8 +319,8 @@ export default function PrivacyPage() {
               6. Data storage and infrastructure
             </h2>
             <p>
-              The infrastructure supporting certified.one Personal Data Servers is currently hosted
-              on cloud infrastructure located within the{" "}
+              The infrastructure supporting certified.app and certified.one Personal Data Servers is
+              currently hosted on cloud infrastructure located within the{" "}
               <strong>European Union</strong>.
             </p>
             <p className="mt-4">
@@ -375,6 +375,7 @@ export default function PrivacyPage() {
                 <ul className="list-disc pl-6 mt-2 space-y-2">
                   <li>Vercel Inc. (web application hosting and anonymous web analytics)</li>
                   <li>Railway Corporation (application and database hosting infrastructure)</li>
+                  <li>Upstash, Inc. (session and authentication data storage)</li>
                   <li>
                     Plus Five Five, Inc. (d/b/a Resend) (transactional email delivery for account,
                     security, and operational notifications)
