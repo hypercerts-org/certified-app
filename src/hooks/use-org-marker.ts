@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { authFetch } from "@/lib/auth/fetch"
+import { getOrgMarkerRecord } from "@/lib/groups/org-marker-record"
 import { createBoundedCache } from "@/lib/utils/bounded-cache"
 import type { GroupMetadata, OrgUrlItem } from "@/lib/groups/types"
-
-const ORG_MARKER_COLLECTION = "app.certified.actor.organization"
 
 interface OrgMarkerResult {
   isOrg: boolean
@@ -56,58 +54,19 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
   const existing = inFlight.get(did)
   if (existing) return existing
 
-  const params = new URLSearchParams({
-    repo: did,
-    collection: ORG_MARKER_COLLECTION,
-    rkey: "self",
-  })
-
   const promise = (async (): Promise<OrgMarkerResult> => {
     try {
-      const res = await authFetch(
-        `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`
-      )
-      // Missing-record signal — the XRPC proxy surfaces the agent error
-      // as 400 with `{ error: "RecordNotFound" }`, not a plain 404. The
-      // foreign-PDS branch can still produce 404 directly. Treat both as
-      // "not an org" and cache the negative result.
-      if (res.status === 404 || res.status === 400) {
-        let isRecordNotFound = res.status === 404
-        if (res.status === 400) {
-          try {
-            const body = (await res.clone().json()) as { error?: string }
-            isRecordNotFound = body?.error === "RecordNotFound"
-          } catch {
-            // Body wasn't JSON; assume the 400 was for some other reason
-            // and don't cache.
-          }
-        }
-        if (isRecordNotFound) {
-          const result: OrgMarkerResult = {
-            isOrg: false,
-            additionalUrls: [],
-            urls: [],
-            marker: null,
-          }
-          cache.set(did, result)
-          return result
-        }
-      }
-      if (!res.ok) {
-        // Treat other failures as "unknown" — don't cache, allow retry on
-        // a later mount.
+      const value = await getOrgMarkerRecord(did)
+      // Lookup failed: unknown, so don't cache and let a later mount retry.
+      if (value === undefined) {
         return { isOrg: false, additionalUrls: [], urls: [], marker: null }
       }
-      const data = (await res.json()) as { value?: unknown }
-      const urls = extractUrls(data.value)
-      const marker = (data.value && typeof data.value === "object"
-        ? (data.value as GroupMetadata)
-        : null)
+      const urls = value ? extractUrls(value) : []
       const result: OrgMarkerResult = {
-        isOrg: true,
+        isOrg: value !== null,
         additionalUrls: urls.map((u) => u.url),
         urls,
-        marker,
+        marker: value,
       }
       cache.set(did, result)
       return result

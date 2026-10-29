@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { unstable_cache } from "next/cache"
+import { notFound } from "next/navigation"
 import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core"
-import { resolveHandle, resolveHandleToDid, resolveHandleViaWellKnown } from "@/lib/atproto/did"
+import { BSKY_APPVIEW, resolveHandle, resolveHandleViaWellKnown } from "@/lib/atproto/did"
 import { getRecordServer } from "@/lib/atproto/get-record-server"
 import { parseActor, profileUrl, recordUrl, type RecordType } from "@/lib/urls"
 
@@ -80,17 +81,75 @@ function ogImageFromField(image: unknown, did: string): string | null {
   return null
 }
 
-/** Resolve an `[actor]` segment (handle or DID) to a DID, best-effort. */
-async function actorToDid(actorParam: string): Promise<{ did: string; handle: string | null } | null> {
+type ActorLookup =
+  | { status: "found"; did: string; handle: string | null }
+  | { status: "missing" }
+  | { status: "unknown" }
+
+const LOOKUP_TIMEOUT_MS = 5_000
+
+/** A did:plc's existence per plc.directory: false only on a definite 404/410. */
+async function plcDidExists(did: string): Promise<boolean | undefined> {
+  try {
+    const res = await fetch(`https://plc.directory/${encodeURIComponent(did)}`, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    })
+    if (res.ok) return true
+    if (res.status === 404 || res.status === 410) return false
+  } catch {
+    // Network trouble: unknown.
+  }
+  return undefined
+}
+
+/** Handle → DID via the public appView: the DID, "missing" on its definite
+ *  "Unable to resolve handle", or undefined when the lookup failed. */
+async function resolveHandleStrict(handle: string): Promise<string | "missing" | undefined> {
+  try {
+    const res = await fetch(
+      `${BSKY_APPVIEW}/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`,
+      { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
+    )
+    if (res.ok) {
+      const data = (await res.json()) as { did?: unknown }
+      return typeof data.did === "string" && data.did.startsWith("did:") ? data.did : undefined
+    }
+    if (res.status === 400) {
+      const data = (await res.json().catch(() => ({}))) as { message?: unknown }
+      if (typeof data.message === "string" && /unable to resolve handle/i.test(data.message)) {
+        return "missing"
+      }
+    }
+  } catch {
+    // Network trouble: unknown.
+  }
+  return undefined
+}
+
+/**
+ * Resolve an `[actor]` segment (handle or DID). "missing" only on a definite
+ * signal (invalid segment, plc.directory 404, appView "Unable to resolve
+ * handle" with no .well-known fallback), so a transient upstream failure
+ * never turns a real profile into a 404.
+ */
+async function lookupActor(actorParam: string): Promise<ActorLookup> {
   const actor = parseActor(actorParam)
-  if (actor.kind === "invalid") return null
-  if (actor.kind === "did") return { did: actor.value, handle: null }
-  // handle → DID via the public appView, falling back to .well-known.
-  const did =
-    (await resolveHandleToDid(actor.value)) ??
-    (await resolveHandleViaWellKnown(actor.value))
-  if (!did) return null
-  return { did, handle: actor.value }
+  if (actor.kind === "invalid") return { status: "missing" }
+  if (actor.kind === "did") {
+    if (actor.value.startsWith("did:plc:") && (await plcDidExists(actor.value)) === false) {
+      return { status: "missing" }
+    }
+    return { status: "found", did: actor.value, handle: null }
+  }
+  const viaAppview = await resolveHandleStrict(actor.value)
+  if (viaAppview && viaAppview !== "missing") {
+    return { status: "found", did: viaAppview, handle: actor.value }
+  }
+  // Handles the appView doesn't know yet (e.g. self-hosted, not crawled).
+  const viaWellKnown = await resolveHandleViaWellKnown(actor.value)
+  if (viaWellKnown) return { status: "found", did: viaWellKnown, handle: actor.value }
+  return viaAppview === "missing" ? { status: "missing" } : { status: "unknown" }
 }
 
 /** Assemble a complete, self-contained Metadata object for a share target. */
@@ -107,7 +166,10 @@ function buildShareMetadata(opts: {
   // sets them (Next.js does not deep-merge them across segments), so each
   // builder returns the full object rather than a partial override.
   return {
-    title: opts.title,
+    // Absolute: record routes sit below the [actor] layout, whose plain
+    // string title stops the root "%s — Certified" template from reaching
+    // them. Social cards (below) keep the bare title.
+    title: { absolute: `${opts.title} — ${SITE_NAME}` },
     description: opts.description,
     openGraph: {
       title: opts.title,
@@ -137,10 +199,13 @@ function buildShareMetadata(opts: {
  * actor can't be resolved.
  */
 export async function profileMetadata(actorParam: string): Promise<Metadata> {
+  // A profile that doesn't exist answers 404 (crawlers wait for metadata;
+  // for streamed responses Next injects noindex), so made-up handles aren't
+  // indexed as soft 404s. Outside the try: notFound() throws.
+  const resolved = await lookupActor(actorParam)
+  if (resolved.status === "missing") notFound()
+  if (resolved.status !== "found") return {}
   try {
-    const resolved = await actorToDid(actorParam)
-    if (!resolved) return {}
-
     const profile = await cachedProfilePayload(resolved.did)
     const handle = profile.handle || resolved.handle || resolved.did
     const name = profile.displayName?.trim() || handle
@@ -177,9 +242,10 @@ export async function recordMetadata(
   collection: string,
   rkey: string,
 ): Promise<Metadata> {
+  const resolved = await lookupActor(actorParam)
+  if (resolved.status === "missing") notFound()
+  if (resolved.status !== "found") return {}
   try {
-    const resolved = await actorToDid(actorParam)
-    if (!resolved) return {}
     const { did } = resolved
 
     const record = await cachedRecord(did, collection, rkey)

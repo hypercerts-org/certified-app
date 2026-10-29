@@ -115,9 +115,11 @@ const Avatar: React.FC<AvatarProps> = ({
     );
   }
 
+  // The backdrop (transparent in light mode) keeps dark or transparent
+  // logos visible against the dark canvas; see --avatar-* in tokens.css.
   const borderStyles = bordered
-    ? "border-2 border-[var(--bg-elevated)]"
-    : "border border-[var(--border-subtle)]";
+    ? "border-2 border-[var(--bg-elevated)] bg-[var(--avatar-backdrop)]"
+    : "border border-[var(--avatar-ring)] bg-[var(--avatar-backdrop)]";
 
   return (
     <div
