@@ -11,6 +11,24 @@ interface DidDocument {
 const DID_FETCH_TIMEOUT_MS = 5000
 
 /**
+ * fetch for URLs taken from DID documents or handles. On the server the SSRF
+ * guard (src/lib/security/ssrf.ts, installed from src/instrumentation.ts)
+ * sits in this process-wide slot; this module is also bundled for the
+ * browser, where the slot is empty and plain fetch is right. On the server an
+ * empty slot fails closed: callers treat the rejection like any failed fetch.
+ */
+function fetchUntrusted(url: string, init?: RequestInit): Promise<Response> {
+  const guarded = (globalThis as Record<symbol, unknown>)[
+    Symbol.for("certified-app.guardedFetch")
+  ] as typeof fetch | undefined
+  if (guarded) return guarded(url, init)
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("SSRF guard not installed (src/instrumentation.ts)"))
+  }
+  return fetch(url, init)
+}
+
+/**
  * Parse a hostname as a loose IPv4 literal the way glibc `inet_aton`
  * (undici's resolver) does: 1-4 dot-separated parts, each decimal,
  * octal (leading `0`) or hex (leading `0x`), with the a / a.b / a.b.c /
@@ -202,7 +220,7 @@ async function fetchDidDocument(did: string): Promise<DidDocument | null> {
 
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await fetchUntrusted(url, {
         redirect: "error",
         signal: controller.signal,
       });
@@ -272,7 +290,7 @@ export async function resolveHandleViaWellKnown(handle: string): Promise<string 
   if (!isAllowedPdsUrl(url)) return null
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchUntrusted(url, {
       redirect: "error",
       signal: AbortSignal.timeout(5_000),
     })

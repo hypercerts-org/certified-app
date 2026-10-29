@@ -12,6 +12,7 @@ import {
   parseJsonBody,
   pickAllowedFields,
 } from "@/lib/utils/api"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 const PROJECT_COLLECTION = "org.hypercerts.collection"
 
@@ -198,7 +199,7 @@ export async function PUT(
           { status: 404 },
         )
       }
-      const existingRes = await fetch(
+      const existingRes = await guardedFetch(
         `${pdsUrl}/xrpc/com.atproto.repo.getRecord` +
           `?repo=${encodeURIComponent(groupDid)}` +
           `&collection=${encodeURIComponent(PROJECT_COLLECTION)}` +
