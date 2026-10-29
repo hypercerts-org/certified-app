@@ -2,6 +2,7 @@ import { Agent } from "@atproto/api"
 import type { LexiconDoc } from "@atproto/lexicon"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { isSessionGone, SessionUnavailableError } from "@/lib/auth/restore-error"
 import { getServiceAuthToken as mintServiceAuthToken } from "@/lib/atproto/service-auth"
 import { logSafe } from "@/lib/utils/log-safe"
 import { signCreatedVia } from "@/lib/atproto/created-via"
@@ -152,7 +153,11 @@ const GROUP_LEXICONS: LexiconDoc[] = [
 
 /**
  * Get an authenticated agent for the current user's PDS session.
- * Returns null if not authenticated.
+ * Returns null if not authenticated (or the session is really gone). Throws
+ * SessionUnavailableError (status 503) when the session exists but can't be
+ * restored right now, e.g. the auth server's metadata fetch failed: callers'
+ * catch blocks answer 503 through extractRouteError, so the user isn't
+ * signed out by a transient failure (TECH-807).
  */
 export async function getAuthenticatedAgent(): Promise<{
   agent: Agent
@@ -172,6 +177,7 @@ export async function getAuthenticatedAgent(): Promise<{
     // logs and operator can't tell user-reported "I got signed out"
     // events from real auth failures.
     logSafe("[proxy-agent] oauth restore failed", err)
+    if (!(await isSessionGone(err, did))) throw new SessionUnavailableError({ cause: err })
     await deleteSession()
     return null
   }

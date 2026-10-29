@@ -51,6 +51,17 @@ export async function isSessionGone(err: unknown, did: string): Promise<boolean>
   )
 }
 
+/** Thrown by helpers (e.g. getAuthenticatedAgent) when the session exists
+ *  but can't be restored right now. Route catch blocks pass `status` through
+ *  extractRouteError, so the client gets a 503, not a sign-out. */
+export class SessionUnavailableError extends Error {
+  readonly status = 503
+  constructor(options?: { cause?: unknown }) {
+    super("Session temporarily unavailable", options)
+    this.name = "SessionUnavailableError"
+  }
+}
+
 /** Response for a session that exists but can't be restored right now.
  *  Not 401: authFetch treats a 401 as signed out. */
 export function sessionUnavailable(): NextResponse {
