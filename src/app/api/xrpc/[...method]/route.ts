@@ -13,6 +13,7 @@ import type {
 } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { isSessionGone, sessionUnavailable } from "@/lib/auth/restore-error"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { resolvePdsUrl, invalidateDidDoc } from "@/lib/atproto/did"
 import { LIMIT_MIN, LIMIT_MAX } from "@/lib/utils/constants"
@@ -473,9 +474,11 @@ export async function GET(
     // trigger a token refresh, and the foreign-repo/blob branches below
     // never touch the agent (feeds fan out dozens of those per page).
     // Only the same-session branches and the auth-required methods pay
-    // for it. Restore failure keeps its semantics: log, drop the stale
-    // session cookie, and return null — same-session reads then fall
-    // back to the public proxy, auth-required methods 401.
+    // for it. On restore failure it logs and returns null — same-session
+    // reads then fall back to the public proxy. Only a session that is
+    // really gone drops the cookie and makes auth-required methods 401;
+    // a transient failure keeps it and they answer 503.
+    let restoreTransient = false
     const getAgent = async (): Promise<Agent | null> => {
       if (!did) return null
       try {
@@ -484,10 +487,15 @@ export async function GET(
         return new Agent(oauthSession)
       } catch (err) {
         logSafe("[xrpc] oauth restore failed", err, { method: methodName })
-        await deleteSession()
+        if (await isSessionGone(err, did)) await deleteSession()
+        else restoreTransient = true
         return null
       }
     }
+    const noAgentResponse = () =>
+      restoreTransient
+        ? sessionUnavailable()
+        : NextResponse.json({ error: "Session expired" }, { status: 401 })
 
     // Query params come as Record<string, string> from URLSearchParams.
     // AT Protocol SDK expects specific typed params — we validate the required
@@ -569,17 +577,13 @@ export async function GET(
         // Auth-required: a cookie whose session no longer restores must
         // still 401 (getAgent already dropped the stale cookie).
         const agent = await getAgent()
-        if (!agent) {
-          return NextResponse.json({ error: "Session expired" }, { status: 401 })
-        }
+        if (!agent) return noAgentResponse()
         const result = await agent.com.atproto.server.getSession()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
       case "com.atproto.server.listAppPasswords": {
         const agent = await getAgent()
-        if (!agent) {
-          return NextResponse.json({ error: "Session expired" }, { status: 401 })
-        }
+        if (!agent) return noAgentResponse()
         const result = await agent.com.atproto.server.listAppPasswords()
         return NextResponse.json(result.data, { headers: SAME_SESSION_NO_STORE_HEADERS })
       }
@@ -654,6 +658,7 @@ export async function POST(
       oauthSession = await client.restore(did)
     } catch (err) {
       logSafe("[xrpc] oauth restore failed", err, { method: methodName })
+      if (!(await isSessionGone(err, did))) return sessionUnavailable()
       await deleteSession()
       return NextResponse.json({ error: "Session expired" }, { status: 401 })
     }

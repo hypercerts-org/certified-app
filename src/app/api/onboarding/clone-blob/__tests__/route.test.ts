@@ -36,8 +36,10 @@ vi.mock("@atproto/api", () => ({
   },
 }))
 
+import { TokenRefreshError } from "@atproto/oauth-client-node"
 import { checkCsrf } from "@/lib/auth/csrf"
-import { getSessionDid } from "@/lib/auth/session"
+import { getSessionDid, deleteSession } from "@/lib/auth/session"
+import { getOAuthClient } from "@/lib/auth/oauth-client"
 
 const ALLOWED = "https://cdn.bsky.app/img/avatar/plain/did/cid@jpeg"
 
@@ -190,5 +192,36 @@ describe("clone-blob — gate", () => {
     const res = await post({})
     expect(res.status).toBe(400)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe("clone-blob — restore failures (TECH-807)", () => {
+  function restoreFails(err: Error) {
+    vi.mocked(getOAuthClient).mockResolvedValueOnce({
+      restore: vi.fn().mockRejectedValue(err),
+    } as unknown as Awaited<ReturnType<typeof getOAuthClient>>)
+  }
+
+  it("503s and keeps the session when restore fails transiently", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(imageResponse(new Uint8Array([1])))
+    vi.mocked(deleteSession).mockClear()
+    restoreFails(new Error("Failed to resolve OAuth server metadata for issuer: https://certified.one"))
+
+    const res = await post({ sourceUrl: ALLOWED })
+    expect(res.status).toBe(503)
+    expect(deleteSession).not.toHaveBeenCalled()
+    expect(uploadBlobMock).not.toHaveBeenCalled()
+  })
+
+  it("401s and deletes the session when it was revoked", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(imageResponse(new Uint8Array([1])))
+    vi.mocked(deleteSession).mockClear()
+    restoreFails(new TokenRefreshError("did:plc:alice", "The session was revoked"))
+
+    const res = await post({ sourceUrl: ALLOWED })
+    expect(res.status).toBe(401)
+    expect(deleteSession).toHaveBeenCalledTimes(1)
   })
 })
