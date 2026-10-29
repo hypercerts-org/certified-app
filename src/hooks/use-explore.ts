@@ -246,7 +246,7 @@ export function useExploreData(opts: {
     const generation = ++generationRef.current
     const controller = new AbortController()
     controllerRef.current = controller
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- generation-ref-guarded multi-input fetch pipeline; this sync setState is the keyed loading flip and a compare-prev key would have to composite ~15 filter inputs, duplicating the dep list for no behavior change
+    // Intentional setState in effect (TECH-814): generation-ref-guarded multi-input fetch pipeline; this sync setState is the keyed loading flip and a compare-prev key would have to composite ~15 filter inputs, duplicating the dep list for no behavior change
     setState({ ...EMPTY, isLoading: true })
 
     async function run() {

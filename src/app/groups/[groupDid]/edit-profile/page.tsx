@@ -178,6 +178,7 @@ export default function EditOrgProfilePage() {
       // Hard reload to the group profile so every cache layer (org
       // profile fetch, blob URLs on the hero) picks up the freshly-
       // saved record. /groups/<did> server-redirects to /profile/<handle>.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- deliberate hard reload, see above
       window.location.assign(`/groups/${encodeURIComponent(groupDid)}`)
       return
     } catch (err) {

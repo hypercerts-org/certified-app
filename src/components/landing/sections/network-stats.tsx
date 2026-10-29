@@ -154,7 +154,7 @@ function useCountUp(target: number | null, delayMs: number): number | null {
       "(prefers-reduced-motion: reduce)",
     ).matches
     if (reduced) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- rAF count-up animation driver; the sync setDisplay writes the terminal value for the prefers-reduced-motion and zero-delta cases — the effect IS the animation's external-system sync
+      // Intentional setState in effect (TECH-814): rAF count-up animation driver; the sync setDisplay writes the terminal value for the prefers-reduced-motion and zero-delta cases — the effect IS the animation's external-system sync
       setDisplay(target)
       fromRef.current = target
       return
