@@ -748,6 +748,7 @@ When adding a new public page: set `metadata.title`, `description`, `alternates.
 - **Quality gate:** `npm run lint && npx tsc --noEmit && npm test && npm run build` must all pass before pushing — CI runs exactly that on every PR (`.github/workflows/ci.yml`). See §27 for the test layout.
 - **OAuth URL precedence:** `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. Prefer an explicit `PUBLIC_URL` for stable production/staging callbacks. Generated Vercel origins are also accepted for same-origin CSRF requests. The selected metadata/JWKS endpoints must be public, and deployments that initiate and complete one OAuth flow must share compatible Redis state/session configuration. Distinct canonical OAuth origins should use separate Redis databases because saved OAuth session keys are DID-based and are not namespaced by `client_id`.
 - Don't commit secrets (`.env.local` is gitignored). `COOKIE_SECRET`, `UPSTASH_*`, `ATPROTO_PRIVATE_KEY`, `RESEND_API_KEY` live in Vercel envs.
+- **Region:** functions run in `fra1` (Frankfurt), next to the Upstash databases (production and staging, both eu-central-1) and the rest of our infrastructure (certified.one, the group service, the indexer). `vercel.json` sets it per deployment and overrides the project's dashboard default, which is also `fra1`; keep the two in step. Redis is on the hot path (session cookie lookup, the OAuth request lock, session store, rate limits), and from Vercel's default `iad1` every call crossed the Atlantic (~85 ms each). Keep new Redis-backed services in eu-central-1; don't add a `preferredRegion` that moves a route away from Redis.
 
 ## 20. File Map
 
@@ -756,6 +757,7 @@ certified-app/
 ├── AGENTS.md                           # Short pointer to README + this draft
 ├── README.md                           # Public README
 ├── next.config.ts                      # Headers, redirects, image remotePatterns, serverExternalPackages
+├── vercel.json                         # Function region (fra1, next to Upstash)
 ├── tsconfig.json                       # strict, paths { "@/*": ["./src/*"] }, ES2017, react-jsx
 ├── tailwind.config.ts                  # Theme: navy/accent/sky/deep colors, h1-h4, elevation shadows
 ├── eslint.config.mjs                   # next/core-web-vitals + next/typescript
