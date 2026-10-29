@@ -62,6 +62,43 @@ describe("SSRF guard contract", () => {
     expect(offenders).toEqual([])
   })
 
+  it("files that handle PDS / DID URLs fetch only fixed upstreams directly", () => {
+    // Catches what the check above can't see, e.g. `const url = `${pds}/…`;
+    // fetch(url)`: in any server file that touches PDS or DID-document
+    // values, a bare fetch must target a fixed UPPER_CASE upstream or a
+    // relative path. did.ts's browser fallback inside fetchUntrusted (the
+    // server fails closed there) is the one allowed exception.
+    const TOUCHES_PDS = /resolvePdsUrl|resolveDidDocument|fetchDidDocument|serviceEndpoint|pdsUrl|\.pds\b|getPds/
+    const FIXED_UPSTREAM = /^\s*`?\$?\{?\s*[A-Z][A-Z0-9_]+|^\s*[`"']\//
+    const ALLOWED = new Set(["src/lib/atproto/did.ts  url"])
+
+    const offenders: string[] = []
+    for (const file of collectServerSources(SRC_ROOT)) {
+      const source = readFileSync(file, "utf8")
+      if (!TOUCHES_PDS.test(source)) continue
+      const rel = relative(REPO_ROOT, file).split(sep).join("/")
+      for (const m of source.matchAll(/(?<![\w.])(?:globalThis\.)?fetch\(/g)) {
+        const arg = firstArgument(source, m.index! + m[0].length)
+        if (FIXED_UPSTREAM.test(arg) || ALLOWED.has(`${rel}  ${arg.trim()}`)) continue
+        const line = source.slice(0, m.index).split("\n").length
+        offenders.push(`${rel}:${line}  ${arg.trim()}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("no server code builds an atproto Agent on a service URL (its fetch isn't guarded)", () => {
+    const offenders: string[] = []
+    for (const file of collectServerSources(SRC_ROOT)) {
+      const source = readFileSync(file, "utf8")
+      for (const m of source.matchAll(/new (?:Atp)?Agent\(\s*\{[^}]*service/g)) {
+        const line = source.slice(0, m.index).split("\n").length
+        offenders.push(`${relative(REPO_ROOT, file).split(sep).join("/")}:${line}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
   it("the OAuth client forwards every request through the guard", () => {
     // Its URLs come from attacker-controlled metadata (PAR, token endpoints),
     // so the heuristic above can't see them; pin the file instead.

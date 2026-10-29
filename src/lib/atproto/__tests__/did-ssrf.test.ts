@@ -160,7 +160,7 @@ describe("did.ts uses the server's SSRF-guarded fetch when installed", () => {
     )
   })
 
-  it("falls back to plain fetch where no guard is installed (the browser)", async () => {
+  it("falls back to plain fetch where no guard is installed (the browser; the server fails closed, see did-guard-server.test.ts)", async () => {
     delete slot[SLOT]
     const plain = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("did:plc:abcdefghijklmnopqrstuvwx"))
 
