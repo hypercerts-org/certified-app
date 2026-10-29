@@ -4,8 +4,9 @@ import Button from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { parseActor, RESERVED_ROUTES } from "@/lib/urls";
 
-// Note: Next.js does not support metadata exports in not-found.tsx, so the
-// title is rendered here (React hoists <title> into <head>).
+// Note: Next.js does not support metadata exports in not-found.tsx. The
+// profile variant renders its own <title> (React hoists it into <head>);
+// on other paths the root default title already comes first in <head>.
 // 404 pages are not indexed by search engines by default.
 
 /** The actor a not-found path was looking for, if it's a profile route:
@@ -43,17 +44,14 @@ export default async function NotFoundPage() {
   }
 
   return (
-    <>
-      <title>Page not found — Certified</title>
-      <EmptyState
-        title="Page not found"
-        description="The page you're looking for doesn't exist."
-        headingLevel={1}
-      >
-        <Button variant="secondary" size="sm" href="/">
-          Go home
-        </Button>
-      </EmptyState>
-    </>
+    <EmptyState
+      title="Page not found"
+      description="The page you're looking for doesn't exist."
+      headingLevel={1}
+    >
+      <Button variant="secondary" size="sm" href="/">
+        Go home
+      </Button>
+    </EmptyState>
   );
 }
