@@ -3,6 +3,7 @@ import { FileQuestion, UserX } from "lucide-react";
 import Button from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import NotFoundMarker from "@/components/layout/not-found-marker";
+import { resolveHandle } from "@/lib/atproto/did";
 import { lookupActor, lookupRecord } from "@/lib/og-metadata";
 import {
   collectionForType,
@@ -45,7 +46,12 @@ async function whatIsMissing(pathname: string | null): Promise<Missing> {
   const [, type, rkey] = segments;
   if (segments.length >= 3 && isRecordType(type) && rkey) {
     const record = await lookupRecord(resolved.did, collectionForType(type), rkey);
-    if (record === "missing") return { kind: "record", actor: actor.value, type };
+    if (record === "missing") {
+      // A DID-addressed link still names the profile by its handle.
+      const handle =
+        resolved.handle ?? (await resolveHandle(resolved.did).catch(() => null));
+      return { kind: "record", actor: handle ?? actor.value, type };
+    }
   }
   return null;
 }
