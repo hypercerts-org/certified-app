@@ -51,18 +51,25 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const AUTHED = new Headers({ authorization: "DPoP token", dpop: "proof" })
+const PROOF_ONLY = new Headers({ dpop: "proof" })
+
 describe("isSizeLimited", () => {
   it.each([
-    ["https://evil.example/.well-known/oauth-authorization-server", true],
-    ["https://evil.example/.well-known/did.json", true],
-    ["https://evil.example/user/did.json", true],
-    ["https://plc.directory/did:plc:abc", true],
-    ["https://evil.example/oauth/par", true],
-    ["https://evil.example/oauth/token", true],
-    ["https://pds.example/xrpc/com.atproto.sync.getBlob?did=x&cid=y", false],
-    ["https://pds.example/xrpc/com.atproto.repo.listRecords", false],
-  ])("%s → %s", (url, expected) => {
-    expect(isSizeLimited(url)).toBe(expected)
+    ["https://evil.example/.well-known/oauth-authorization-server", PROOF_ONLY, true],
+    ["https://evil.example/.well-known/did.json", PROOF_ONLY, true],
+    ["https://plc.directory/did:plc:abc", PROOF_ONLY, true],
+    ["https://evil.example/oauth/par", PROOF_ONLY, true],
+    ["https://evil.example/oauth/token", PROOF_ONLY, true],
+    // A hostile authorization server can publish its token/PAR endpoint
+    // under /xrpc/; those requests carry a DPoP proof but no Authorization.
+    ["https://evil.example/xrpc/token", PROOF_ONLY, true],
+    ["https://evil.example/.well-known/xrpc-evil", AUTHED, true],
+    ["https://evil.example/xrpcfoo", AUTHED, true],
+    ["https://pds.example/xrpc/com.atproto.sync.getBlob?did=x&cid=y", AUTHED, false],
+    ["https://pds.example/xrpc/com.atproto.repo.listRecords", AUTHED, false],
+  ])("%s → %s", (url, headers, expected) => {
+    expect(isSizeLimited(url, headers)).toBe(expected)
   })
 })
 
@@ -111,8 +118,11 @@ describe("limitResponseSize", () => {
     )
   })
 
-  it("accepts a body of exactly the cap", async () => {
-    const { response } = streamed([new Uint8Array(MAX_OAUTH_RESPONSE_BYTES)])
+  it.each([
+    ["without", {}],
+    ["with", { "content-length": String(MAX_OAUTH_RESPONSE_BYTES) }],
+  ])("accepts a body of exactly the cap %s a Content-Length", async (_label, headers) => {
+    const { response } = streamed([new Uint8Array(MAX_OAUTH_RESPONSE_BYTES)], headers)
     const buf = await limitResponseSize(response, URL_META).arrayBuffer()
     expect(buf.byteLength).toBe(MAX_OAUTH_RESPONSE_BYTES)
   })
@@ -144,29 +154,93 @@ describe("safeFetch", () => {
     await expect(res.json()).rejects.toBeInstanceOf(ResponseTooLargeError)
   })
 
-  it("caps a token response requested with a Request (the DPoP path)", async () => {
-    mockFetch()
-    const req = new Request("https://evil.example/oauth/token", { method: "POST", body: "x=1" })
-    const res = await safeFetch(req)
-    await expect(res.text()).rejects.toBeInstanceOf(ResponseTooLargeError)
+  it.each(["https://evil.example/oauth/token", "https://evil.example/xrpc/token"])(
+    "caps a token response requested with a Request (the DPoP path): %s",
+    async (url) => {
+      mockFetch()
+      const req = new Request(url, { method: "POST", body: "x=1", headers: { dpop: "proof" } })
+      const res = await safeFetch(req)
+      await expect(res.text()).rejects.toBeInstanceOf(ResponseTooLargeError)
+    },
+  )
+
+  it("chooses the cap by the request, not the final response url", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      const { response } = streamed(bigArrayChunks(4 * MAX_OAUTH_RESPONSE_BYTES))
+      Object.defineProperty(response, "url", { value: "https://pds.example/xrpc/redirected" })
+      return response
+    })
+    const res = await safeFetch(URL_META, { headers: { authorization: "DPoP t" } })
+    await expect(res.json()).rejects.toBeInstanceOf(ResponseTooLargeError)
   })
 
-  it("does not cap PDS XRPC responses", async () => {
+  it("does not cap authenticated XRPC calls to the PDS", async () => {
     mockFetch()
     const res = await safeFetch(
-      new Request("https://pds.example/xrpc/com.atproto.sync.getBlob?did=x&cid=y"),
+      new Request("https://pds.example/xrpc/com.atproto.sync.getBlob?did=x&cid=y", {
+        headers: { authorization: "DPoP token", dpop: "proof" },
+      }),
     )
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(MAX_OAUTH_RESPONSE_BYTES)
   })
 })
 
+// The Next.js #90826 workaround safeFetch has always applied: a Request is
+// re-issued as (url, init) with its body buffered once.
+describe("safeFetch — Request forwarding", () => {
+  function okFetch() {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"))
+  }
+
+  it("re-issues a Request with a body as (url, init) with the body buffered", async () => {
+    const fetchSpy = okFetch()
+    await safeFetch(
+      new Request("https://pds.example/xrpc/com.atproto.repo.createRecord", {
+        method: "POST",
+        body: '{"a":1}',
+        headers: { authorization: "DPoP t", "content-type": "application/json" },
+      }),
+    )
+
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toBe("https://pds.example/xrpc/com.atproto.repo.createRecord")
+    expect(init?.method).toBe("POST")
+    expect(new TextDecoder().decode(init?.body as ArrayBuffer)).toBe('{"a":1}')
+    expect(new Headers(init?.headers).get("authorization")).toBe("DPoP t")
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it("forwards an empty-but-explicit POST body as 0 bytes", async () => {
+    const fetchSpy = okFetch()
+    await safeFetch(new Request("https://pds.example/xrpc/x", { method: "POST", body: "" }))
+    expect((fetchSpy.mock.calls[0][1]?.body as ArrayBuffer).byteLength).toBe(0)
+  })
+
+  it("names a Request body that can't be read", async () => {
+    okFetch()
+    const req = new Request("https://pds.example/xrpc/x", { method: "POST", body: "x" })
+    await req.text()
+    await expect(safeFetch(req)).rejects.toMatchObject({ name: "SafeFetchBodyReadError" })
+  })
+
+  it("warns outside production when init comes with a Request", async () => {
+    okFetch()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    await safeFetch(new Request("https://pds.example/xrpc/x"), {})
+    expect(warn).toHaveBeenCalledWith(
+      "[safeFetch] unexpected init alongside Request — body buffering may need revisit",
+    )
+  })
+})
+
 describe("end to end: atproto's did:web resolver behind safeFetch", () => {
   it("rejects an oversized DID document before zod sees it", async () => {
-    // The attack: a did:web host serves a document with a huge array of
-    // invalid entries. Without the cap zod would collect an issue per entry.
+    // The attack: a did:web host serves a valid JSON document with a huge
+    // array of invalid entries (numbers where zod expects strings). Without
+    // the cap it parses fine and zod collects an issue per entry.
     const head = enc.encode('{"id":"did:web:evil.example","alsoKnownAs":[')
     const { response, cancel } = streamed(
-      [head, ...bigArrayChunks(4 * MAX_OAUTH_RESPONSE_BYTES)],
+      [head, ...bigArrayChunks(4 * MAX_OAUTH_RESPONSE_BYTES), enc.encode("0]}")],
       { "content-type": "application/did+ld+json" },
     )
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response)

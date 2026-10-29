@@ -5,6 +5,7 @@ import {
   TokenRevokedError,
 } from "@atproto/oauth-client-node"
 import { RequestLockTimeoutError } from "./request-lock"
+import { ResponseTooLargeError } from "./response-limit"
 import { RedisSessionStore } from "./stores"
 
 // The client's CachedGetter swallows session-store read errors and treats
@@ -22,7 +23,9 @@ const MISSING_SESSION = "The session was deleted by another process"
  * a request-lock timeout signed the user out (TECH-807).
  */
 export async function isSessionGone(err: unknown, did: string): Promise<boolean> {
-  if (err instanceof RequestLockTimeoutError) return false
+  // Its message names the server's origin, which could match the message
+  // check below (e.g. https://expired.example).
+  if (err instanceof RequestLockTimeoutError || err instanceof ResponseTooLargeError) return false
 
   if (err instanceof TokenRefreshError && err.message === MISSING_SESSION) {
     try {

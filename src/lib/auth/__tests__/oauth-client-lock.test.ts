@@ -11,7 +11,7 @@ vi.mock("@/lib/auth/stores", () => ({
   RedisSessionStore: class {},
 }))
 
-import { getOAuthClient } from "../oauth-client"
+import { getOAuthClient, safeFetch } from "../oauth-client"
 import { redisRequestLock } from "../request-lock"
 
 describe("getOAuthClient", () => {
@@ -21,5 +21,11 @@ describe("getOAuthClient", () => {
     expect(NodeOAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({ requestLock: redisRequestLock }),
     )
+  })
+
+  it("gives the OAuth client the size-capped safeFetch (TECH-804)", async () => {
+    await getOAuthClient()
+
+    expect(NodeOAuthClient).toHaveBeenCalledWith(expect.objectContaining({ fetch: safeFetch }))
   })
 })
