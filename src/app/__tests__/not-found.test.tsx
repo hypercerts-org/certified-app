@@ -7,15 +7,17 @@ import { render, screen } from "@testing-library/react"
  * not "Profile not found" (Greptile on #267).
  */
 
-const { pathname, lookupActor, lookupRecord } = vi.hoisted(() => ({
+const { pathname, lookupActor, lookupRecord, resolveHandle } = vi.hoisted(() => ({
   pathname: { value: "" },
   lookupActor: vi.fn(),
   lookupRecord: vi.fn(),
+  resolveHandle: vi.fn(),
 }))
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-pathname": pathname.value }),
 }))
 vi.mock("@/lib/og-metadata", () => ({ lookupActor, lookupRecord }))
+vi.mock("@/lib/atproto/did", () => ({ resolveHandle }))
 
 import NotFoundPage from "../not-found"
 
@@ -28,6 +30,7 @@ async function renderAt(path: string) {
 beforeEach(() => {
   lookupActor.mockReset().mockResolvedValue({ status: "found", did: "did:plc:alice", handle: "alice.example.com" })
   lookupRecord.mockReset().mockResolvedValue({ uri: "", value: {} })
+  resolveHandle.mockReset().mockResolvedValue(null)
 })
 
 describe("not-found page", () => {
@@ -47,6 +50,24 @@ describe("not-found page", () => {
     expect(screen.getByRole("link", { name: "View @alice.example.com" }).getAttribute("href")).toBe(
       "/alice.example.com",
     )
+  })
+
+  it("a DID-addressed missing record links the profile by its handle", async () => {
+    lookupActor.mockResolvedValue({ status: "found", did: "did:plc:alice", handle: null })
+    lookupRecord.mockResolvedValue("missing")
+    resolveHandle.mockResolvedValue("alice.example.com")
+    await renderAt("/did:plc:alice/activity/3abc")
+    expect(screen.getByRole("link", { name: "View @alice.example.com" }).getAttribute("href")).toBe(
+      "/alice.example.com",
+    )
+  })
+
+  it("falls back to the DID when the handle can't be resolved", async () => {
+    lookupActor.mockResolvedValue({ status: "found", did: "did:plc:alice", handle: null })
+    lookupRecord.mockResolvedValue("missing")
+    resolveHandle.mockRejectedValue(new Error("down"))
+    await renderAt("/did:plc:alice/activity/3abc")
+    expect(screen.getByRole("link", { name: "View @did:plc:alice" })).toBeTruthy()
   })
 
   it("a missing record's edit page is a missing record too", async () => {
