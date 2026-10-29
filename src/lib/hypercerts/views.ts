@@ -59,30 +59,36 @@ export interface ProjectDetail extends ProjectCard {
   createdAt: string | null
 }
 
-// A network is what an organization's badge awards add up to: the accounts and
-// projects it has awarded, grouped by badge (a programme, round or status).
-export type NetworkMember =
+// Badge awards an account has issued, grouped by badge definition. These are
+// plain counts of award records: the app does not interpret what a badge
+// means, and three awards to one recipient count as three.
+export type AwardSubject =
   | { kind: "actor"; actor: ActorCard }
   | { kind: "project"; project: ProjectCard }
   | { kind: "record"; uri: string }
 
-export type Programme = {
+export type IssuedAward = {
+  uri: string
+  subject: AwardSubject
+}
+
+export type IssuedBadge = {
   uri: string
   title: string
   badgeType: string | null
-  // Set when another account defined the badge this network awards.
+  // Set when another account owns the badge definition.
   definedBy: ActorCard | null
-  memberCount: number
-  members: NetworkMember[]
+  awardCount: number
+  recentAwards: IssuedAward[]
 }
 
-export type Network = {
+export type AwardsIssued = {
   did: string
   awardCount: number
-  memberCount: number
-  // True when the network has more awards than the app reads (see queries).
+  // True when the account has issued more awards than the app reads (see
+  // queries).
   truncated: boolean
-  programmes: Programme[]
+  badges: IssuedBadge[]
 }
 
 export type BadgeCard = {

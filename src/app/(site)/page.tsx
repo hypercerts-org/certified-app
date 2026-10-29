@@ -12,23 +12,27 @@ import Form from "next/form"
 import Link from "next/link"
 import { Suspense } from "react"
 import { actorHref } from "@/components/cards"
-import { getActor, getNetwork } from "@/lib/hypercerts/queries"
+import { getActor, getAwardsIssued } from "@/lib/hypercerts/queries"
 
-// Networks featured on the landing page. Chosen by hand: ranking by size would
-// put test accounts first, since some hold hundreds of awards.
-const FEATURED_NETWORKS = [
+// Accounts featured on the landing page because they have issued badge awards.
+// Chosen by hand: ranking by award count would put test accounts first, since
+// some have issued hundreds of awards.
+const FEATURED_ISSUERS = [
   "did:plc:7ffezlhobzihdt3nbazysgvr", // Ma Earth
   "did:plc:yjck2sybksyigp3zvbq7bfki", // GainForest
   "did:plc:5yrzhewvp6qfjyblb3lph4a7", // Silvi
   "did:plc:iqvh5yrqmibv2imh55hmzrfs", // Restor
 ]
 
-async function NetworkCard({ did }: { did: string }) {
-  const [actor, network] = await Promise.all([getActor(did), getNetwork(did)])
-  if (!actor || !network) return null
+async function IssuerCard({ did }: { did: string }) {
+  const [actor, issued] = await Promise.all([
+    getActor(did),
+    getAwardsIssued(did),
+  ])
+  if (!actor || !issued) return null
   return (
     <Card as="li" variant="panel" className="card">
-      <Link href={actorHref(did)} className="network-card-name">
+      <Link href={actorHref(did)} className="issuer-card-name">
         <Avatar name={actor.displayName} src={actor.avatarUrl} size="md" />
         <Heading level={3} size="heading">
           {actor.displayName}
@@ -40,10 +44,10 @@ async function NetworkCard({ did }: { did: string }) {
         </Text>
       )}
       <Text size="micro" tone="muted">
-        {network.memberCount} members ·{" "}
-        {network.programmes
+        {issued.awardCount} badge awards ·{" "}
+        {issued.badges
           .slice(0, 3)
-          .map((programme) => programme.title)
+          .map((badge) => badge.title)
           .join(", ")}
       </Text>
     </Card>
@@ -56,12 +60,11 @@ export default function HomePage() {
       <div className="stack">
         <Eyebrow>certified.app v2 spike</Eyebrow>
         <Heading level={1} size="display-3">
-          See who does the work, and who stands behind it
+          See what organizations do, and the badges they award
         </Heading>
         <Text>
-          Funders, fellowships and communities recognize the organizations and
-          projects they work with. Each organization owns its own profile;
-          networks add their recognition to it.
+          Organizations publish their own profiles, activities and projects, and
+          award badges to other accounts and projects.
         </Text>
       </div>
 
@@ -82,9 +85,9 @@ export default function HomePage() {
       </section>
 
       <section className="tile">
-        <Eyebrow as="p">Explore networks</Eyebrow>
+        <Eyebrow as="p">Organizations that award badges</Eyebrow>
         <ul className="grid">
-          {FEATURED_NETWORKS.map((did) => (
+          {FEATURED_ISSUERS.map((did) => (
             <Suspense
               key={did}
               fallback={
@@ -93,7 +96,7 @@ export default function HomePage() {
                 </Card>
               }
             >
-              <NetworkCard did={did} />
+              <IssuerCard did={did} />
             </Suspense>
           ))}
         </ul>

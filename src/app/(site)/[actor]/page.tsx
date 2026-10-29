@@ -4,13 +4,12 @@ import { Suspense } from "react"
 import {
   AboutTile,
   ActivitiesTile,
+  BadgesAwardedTile,
   BadgesTile,
-  NetworkActivitiesTile,
-  NetworkTile,
   ProjectsTile,
   TileSkeleton,
 } from "@/components/tiles"
-import { getActor, isNetwork } from "@/lib/hypercerts/queries"
+import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries"
 
 // Prerender one known organization at build time; every other actor gets the
 // app shell first and is then rendered and cached per URL (ISR).
@@ -21,8 +20,7 @@ export async function generateStaticParams() {
 async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
   const actor = await getActor(decodeURIComponent((await params).actor))
   if (!actor) notFound()
-  // An account that has awarded badges is a network; its page leads with it.
-  const network = await isNetwork(actor.did)
+  const issuesAwards = await hasIssuedAwards(actor.did)
 
   return (
     <>
@@ -39,24 +37,17 @@ async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
       </header>
       <div className="tiles">
         <div className="page">
-          {network && (
-            <>
-              <Suspense fallback={<TileSkeleton title="Network" />}>
-                <NetworkTile did={actor.did} />
-              </Suspense>
-              <Suspense
-                fallback={<TileSkeleton title="Latest from the network" />}
-              >
-                <NetworkActivitiesTile did={actor.did} />
-              </Suspense>
-            </>
-          )}
           <Suspense fallback={<TileSkeleton title="Activities" />}>
             <ActivitiesTile did={actor.did} />
           </Suspense>
           <Suspense fallback={<TileSkeleton title="Projects" />}>
             <ProjectsTile did={actor.did} />
           </Suspense>
+          {issuesAwards && (
+            <Suspense fallback={<TileSkeleton title="Badges awarded" />}>
+              <BadgesAwardedTile did={actor.did} />
+            </Suspense>
+          )}
         </div>
         <div className="page">
           <AboutTile actor={actor} />

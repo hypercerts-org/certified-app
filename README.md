@@ -21,12 +21,12 @@ Node 24 (see `.nvmrc`). The API defaults to production, `https://api.hypercerts.
 
 | Route | What it shows |
 |---|---|
-| `/` | Landing page: find your organization, and explore a hand-picked set of networks |
+| `/` | Landing page: find your organization, and a hand-picked set of organizations that award badges |
 | `/explore` | Organizations, with search (`?q=`) and "load more" |
-| `/{did}` | An account's page built from tiles: Network and Latest from the network (for accounts that award badges), Activities, Projects, About, Badges received |
+| `/{did}` | An account's page built from tiles: Activities, Projects, Badges awarded (for accounts that have issued badge awards), About, Badges received |
 | `/{did}/project/{rkey}` | A project and the activities it contains |
 | `/embed/activities?author={did}` | The Activities tile as an embeddable page for an `<iframe>` |
-| `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author`, `project` or `network`) |
+| `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`) |
 
 ## How it is put together
 
@@ -48,19 +48,18 @@ Known challenges and our current answers. These feed the architecture notes and 
 5. **Avatars are blob references.** They are served through the Bluesky CDN (`cdn.bsky.app`), which fetches from the account's PDS. This avoids resolving each DID's PDS but depends on Bluesky infrastructure.
 6. **`'use cache'` is per-instance memory on serverless.** Shared caching for public pages comes from Cache Components' ISR and from CDN headers on the GET route handlers, not from `'use cache'` alone.
 7. **Not-found inside a streamed boundary returns HTTP 200.** An unknown account renders the not-found UI, but the status has already been sent. Acceptable for the spike; revisit before launch (for example, resolve the account before streaming).
-8. **Test data in production.** Activity lists include end-to-end test records, and a test account ("Karmas Test Org") is the second-largest badge issuer, awarding "Ma Earth Round 1" and "Round 2" to 766 accounts. The current app filters with quality labels; the API does not expose them for filtering here. The landing page therefore features a hand-picked list of networks rather than ranking by size.
+8. **Test data in production.** Activity lists include end-to-end test records, and a test account ("Karmas Test Org") is the second-largest badge issuer, awarding "Ma Earth Round 1" and "Round 2" to 766 accounts. The current app filters with quality labels; the API does not expose them for filtering here. The landing page therefore features a hand-picked list of issuers rather than ranking by award count.
 
-### Networks: what the badge data looks like
+### Badge awards: what the data looks like
 
-An account becomes a network by awarding badges; the Network tile groups its awards by badge definition. Building it surfaced these:
+The Badges awarded tile groups the awards an account has issued by badge definition and counts award records. It does not interpret what a badge means: a badge may mark a funding round, a verification, an endorsement or anything else, and that is for the issuer to say. Counts below are from 2026-10-29. Building the tile surfaced these:
 
-9. **No aggregate endpoint.** A network's size and programmes need every award it has issued. `getNetwork` pages through `listBadgeAwards` (GainForest: 11 requests, about 3 seconds uncached) and caps at 2,000 awards. An API method for per-badge counts would replace this.
-10. **The same programme, defined twice.** Ma Earth defines "Ma Earth Round 3" and awards it to 201 projects. GainForest defines its own "Ma Earth Round 3" (plus Rounds 1 and 2, and "Ma Earth") and awards it to 203 accounts. Nothing links the two definitions, so the app cannot tell they mean the same round.
-11. **Anyone can award someone else's badge.** Restor awards "RestorLife 2026 Finalists", a definition Ma Earth owns, and Ma Earth's definition sets no `allowedIssuers`. The tile shows "badge defined by Ma Earth" when the definer is not the issuer; whether an award outside `allowedIssuers` should count is undecided.
-12. **Members are accounts or projects.** An award's subject is a DID or a strong reference to a record (here, `org.hypercerts.collection` projects). A network's membership mixes organizations, people and projects; other record types would show as "Other record".
-13. **Badges are never answered.** Almost every award's response status is `unanswered`, so a network shows who it has recognized, not who agreed to be a member. This is the pending and claim question from the product spec.
-14. **Self-awards and leftovers.** GainForest awards its own "Ma Earth Round 2" badge to itself, and several definitions have never been awarded by their owner (Ma Earth's "Earth Repair Fund", "Verified by Ma Earth", a second "Trusted Evaluator").
-15. **Network activity covers 100 members.** `listActivities` accepts at most 100 authors, so "Latest from the network" reads the 100 most recently awarded members. GainForest has 827.
+9. **No count endpoint.** Counting an account's awards, or the awards per definition, needs every award it has issued. `getAwardsIssued` pages through `listBadgeAwards` (GainForest: 1,044 awards, 11 requests, about 3 seconds uncached) and caps at 2,000 awards. Proposed: `totalCount` on `listBadgeAwards` ([TECH-810](https://linear.app/hypercerts/issue/TECH-810)), and possibly a grouped count per definition later.
+10. **Definitions with the same title from different issuers.** Ma Earth's "Ma Earth Round 3" has 201 awards, all to records (`org.hypercerts.collection` projects). GainForest owns a separate definition with the same title, with 203 awards, all to accounts, plus definitions titled "Ma Earth", "Ma Earth Round 1" and "Ma Earth Round 2". The data has no link between definitions, so the app shows them as unrelated.
+11. **Awards of a definition owned by someone else.** Restor's 10 awards all use "RestorLife 2026 Finalists", and GainForest and Silvi award "Organization Endorsement"; Ma Earth owns both definitions, and neither sets `allowedIssuers`. The tile shows "badge defined by Ma Earth" when the owner is not the issuer. What a missing `allowedIssuers` means, and how to show awards from issuers outside it, is undecided.
+12. **Subjects are accounts or records.** An award's subject is a DID or a strong reference to a record. Some definitions are awarded only to accounts and others only to projects; the tile lists each subject as it is. Other record types show as "Other record".
+13. **Badges are not answered.** All 1,424 awards issued by these four accounts have response status `unanswered`. The data shows that an award exists, not whether the subject accepted it. This is the pending and claim question from the product spec.
+14. **Self-awards and unused definitions.** GainForest has one award of its own "Ma Earth Round 2" definition to itself, and several definitions have never been awarded by their owner (Ma Earth's "Earth Repair Fund", "Verified by Ma Earth", a second "Trusted Evaluator").
 
 ## Not verified yet
 

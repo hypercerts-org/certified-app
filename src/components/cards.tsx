@@ -10,8 +10,8 @@ import Link from "next/link"
 import type {
   ActivityCard,
   ActorCard,
+  AwardSubject,
   BadgeCard,
-  NetworkMember,
   ProjectCard,
 } from "@/lib/hypercerts/views"
 
@@ -133,34 +133,34 @@ export function BadgeCardView({ badge }: { badge: BadgeCard }) {
   )
 }
 
-// One member of a network: an account or a project it awarded a badge to.
-export function NetworkMemberRow({ member }: { member: NetworkMember }) {
-  if (member.kind === "actor")
+// The subject of one badge award: an account, a project or another record.
+export function AwardSubjectRow({ subject }: { subject: AwardSubject }) {
+  if (subject.kind === "actor")
     return (
       <li>
         <IdentityRow
           size="sm"
-          name={member.actor.displayName}
-          avatarSrc={member.actor.avatarUrl}
-          href={actorHref(member.actor.did)}
-          secondary={member.actor.isOrganization ? "Organization" : "Person"}
+          name={subject.actor.displayName}
+          avatarSrc={subject.actor.avatarUrl}
+          href={actorHref(subject.actor.did)}
+          secondary={subject.actor.isOrganization ? "Organization" : "Person"}
         />
       </li>
     )
-  if (member.kind === "project")
+  if (subject.kind === "project")
     return (
       <li>
         <IdentityRow
           size="sm"
-          name={member.project.title}
-          href={projectHref(member.project)}
+          name={subject.project.title}
+          href={projectHref(subject.project)}
           secondary="Project"
         />
       </li>
     )
   return (
     <li>
-      <IdentityRow size="sm" name={member.uri} secondary="Other record" />
+      <IdentityRow size="sm" name={subject.uri} secondary="Other record" />
     </li>
   )
 }

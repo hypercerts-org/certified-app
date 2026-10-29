@@ -6,15 +6,14 @@ import {
   Text,
 } from "@hypercerts-org/ui-react"
 import {
-  getNetwork,
+  getAwardsIssued,
   listActivitiesPage,
   listBadgesReceived,
-  listNetworkActivitiesPage,
   listProjectsPage,
 } from "@/lib/hypercerts/queries"
 import type { ActorDetail } from "@/lib/hypercerts/views"
 import { ActivityList } from "./activity-list"
-import { BadgeCardView, NetworkMemberRow, ProjectCardView } from "./cards"
+import { AwardSubjectRow, BadgeCardView, ProjectCardView } from "./cards"
 import { EmbedButton } from "./embed-button"
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
@@ -141,63 +140,43 @@ export async function BadgesTile({ did }: { did: string }) {
   )
 }
 
-// The accounts and projects an organization has awarded badges to, grouped by
-// badge. Each badge reads as a programme, round or status of the network.
-export async function NetworkTile({ did }: { did: string }) {
-  const network = await getNetwork(did)
-  if (!network) return null
+// Badge awards this account has issued, grouped by badge definition, with the
+// most recent recipients of each. Counts are award records; the tile does not
+// say what the badges mean.
+export async function BadgesAwardedTile({ did }: { did: string }) {
+  const issued = await getAwardsIssued(did)
+  if (!issued) return null
   return (
-    <Tile title="Network">
+    <Tile title="Badges awarded">
       <Text size="body-sm" tone="muted">
-        {network.memberCount} members through {network.awardCount} badge awards
-        {network.truncated ? " (the most recent only)" : ""}
+        {issued.awardCount} badge awards
+        {issued.truncated ? " (the most recent only)" : ""}
       </Text>
-      {network.programmes.map((programme) => (
-        <div key={programme.uri} className="programme">
-          <div className="programme-header">
+      {issued.badges.map((badge) => (
+        <div key={badge.uri} className="issued-badge">
+          <div className="issued-badge-header">
             <Text as="span" tone="ink">
-              {programme.title}
+              {badge.title}
             </Text>
-            {programme.badgeType && (
-              <Badge variant="tag">{programme.badgeType}</Badge>
-            )}
+            {badge.badgeType && <Badge variant="tag">{badge.badgeType}</Badge>}
             <Text as="span" size="micro" tone="muted">
-              {programme.memberCount}{" "}
-              {programme.memberCount === 1 ? "member" : "members"}
-              {programme.definedBy &&
-                ` · badge defined by ${programme.definedBy.displayName}`}
+              {badge.awardCount} {badge.awardCount === 1 ? "award" : "awards"}
+              {badge.definedBy &&
+                ` · badge defined by ${badge.definedBy.displayName}`}
             </Text>
           </div>
-          <ul className="members">
-            {programme.members.map((member) => (
-              <NetworkMemberRow
-                key={
-                  member.kind === "actor"
-                    ? member.actor.did
-                    : member.kind === "project"
-                      ? member.project.uri
-                      : member.uri
-                }
-                member={member}
-              />
+          <ul className="award-subjects">
+            {badge.recentAwards.map((award) => (
+              <AwardSubjectRow key={award.uri} subject={award.subject} />
             ))}
           </ul>
-          {programme.memberCount > programme.members.length && (
+          {badge.awardCount > badge.recentAwards.length && (
             <Text size="micro" tone="muted">
-              and {programme.memberCount - programme.members.length} more
+              and {badge.awardCount - badge.recentAwards.length} more awards
             </Text>
           )}
         </div>
       ))}
-    </Tile>
-  )
-}
-
-export async function NetworkActivitiesTile({ did }: { did: string }) {
-  const page = await listNetworkActivitiesPage({ network: did })
-  return (
-    <Tile title="Latest from the network">
-      <ActivityList initial={page} source={{ kind: "network", did }} />
     </Tile>
   )
 }

@@ -27,12 +27,12 @@ import {
   type ActivityCard,
   type ActorCard,
   type ActorDetail,
+  type AwardSubject,
+  type AwardsIssued,
   awardSubject,
   type BadgeCard,
   collectionOf,
   didOf,
-  type Network,
-  type NetworkMember,
   type Page,
   type ProjectCard,
   type ProjectDetail,
@@ -201,18 +201,19 @@ export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
   return badgeAwards.map(toBadgeCard)
 }
 
-// Networks
+// Badge awards issued
 //
-// An organization forms a network by awarding badges: a funder, fellowship or
-// platform awards its badges to member accounts and projects. The API has no
-// endpoint for a network's size or programmes, so networkSource pages through
-// every award the account has issued, once per cache lifetime, and keeps a
-// plain summary. Large networks are cut off at MAX_NETWORK_AWARDS.
-const MAX_NETWORK_AWARDS = 2_000
-const MEMBERS_SHOWN = 8
+// The API has no count for badge awards (proposed in TECH-810), so
+// issuedAwardsSource pages through every award the account has issued, once
+// per cache lifetime, and keeps a plain summary. Accounts with more than
+// MAX_ISSUED_AWARDS awards are cut off there. Counts are award records, with
+// no interpretation of what a badge means.
+const MAX_ISSUED_AWARDS = 2_000
+const RECENT_AWARDS_SHOWN = 8
 
-type NetworkSource = {
-  awards: { badge: string; subject: string }[]
+type IssuedAwardsSource = {
+  // Most recent first, as the API returns them.
+  awards: { uri: string; badge: string; subject: string }[]
   definitions: Record<
     string,
     { title: string; badgeType: string | null; owner: string }
@@ -220,11 +221,11 @@ type NetworkSource = {
   truncated: boolean
 }
 
-async function networkSource(did: string): Promise<NetworkSource> {
+async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
   "use cache"
-  publicData(`network:${did}`)
+  publicData(`awards-issued:${did}`)
 
-  const source: NetworkSource = {
+  const source: IssuedAwardsSource = {
     awards: [],
     definitions: {},
     truncated: false,
@@ -240,7 +241,7 @@ async function networkSource(did: string): Promise<NetworkSource> {
       const subject = awardSubject(award.record.subject)
       const badge = award.record.badge.uri
       if (!subject) continue
-      source.awards.push({ badge, subject })
+      source.awards.push({ uri: award.uri, badge, subject })
       source.definitions[badge] ??= {
         title: award.badge?.record.title || "Untitled badge",
         badgeType: award.badge?.record.badgeType ?? null,
@@ -248,14 +249,14 @@ async function networkSource(did: string): Promise<NetworkSource> {
       }
     }
     cursor = page.cursor
-  } while (cursor && source.awards.length < MAX_NETWORK_AWARDS)
+  } while (cursor && source.awards.length < MAX_ISSUED_AWARDS)
   source.truncated = Boolean(cursor)
   return source
 }
 
-export async function isNetwork(did: string): Promise<boolean> {
+export async function hasIssuedAwards(did: string): Promise<boolean> {
   "use cache"
-  publicData(`network:${did}`)
+  publicData(`awards-issued:${did}`)
 
   const { badgeAwards } = await api.call(
     listBadgeAwards,
@@ -319,22 +320,24 @@ async function projectCards(uris: string[]): Promise<Map<string, ProjectCard>> {
   return cards
 }
 
-export async function getNetwork(did: string): Promise<Network | null> {
+export async function getAwardsIssued(
+  did: string,
+): Promise<AwardsIssued | null> {
   "use cache"
-  publicData(`network:${did}`)
+  publicData(`awards-issued:${did}`)
 
-  const source = await networkSource(did)
+  const source = await issuedAwardsSource(did)
   if (source.awards.length === 0) return null
 
-  const subjectsByBadge = new Map<string, Set<string>>()
-  for (const { badge, subject } of source.awards) {
-    const subjects = subjectsByBadge.get(badge) ?? new Set<string>()
-    subjects.add(subject)
-    subjectsByBadge.set(badge, subjects)
+  const awardsByBadge = new Map<string, IssuedAwardsSource["awards"]>()
+  for (const award of source.awards) {
+    const awards = awardsByBadge.get(award.badge) ?? []
+    awards.push(award)
+    awardsByBadge.set(award.badge, awards)
   }
-  const grouped = [...subjectsByBadge].sort((a, b) => b[1].size - a[1].size)
-  const shown = grouped.flatMap(([, subjects]) =>
-    [...subjects].slice(0, MEMBERS_SHOWN),
+  const grouped = [...awardsByBadge].sort((a, b) => b[1].length - a[1].length)
+  const shown = grouped.flatMap(([, awards]) =>
+    awards.slice(0, RECENT_AWARDS_SHOWN).map((award) => award.subject),
   )
 
   const definers = Object.values(source.definitions)
@@ -343,11 +346,13 @@ export async function getNetwork(did: string): Promise<Network | null> {
   const actors = await actorCards([
     ...new Set([...shown.filter((s) => s.startsWith("did:")), ...definers]),
   ])
-  const projects = await projectCards(
-    shown.filter((s) => collectionOf(s) === "org.hypercerts.collection"),
-  )
+  const projects = await projectCards([
+    ...new Set(
+      shown.filter((s) => collectionOf(s) === "org.hypercerts.collection"),
+    ),
+  ])
 
-  const member = (subject: string): NetworkMember => {
+  const subjectView = (subject: string): AwardSubject => {
     const actor = actors.get(subject)
     if (actor) return { kind: "actor", actor }
     const project = projects.get(subject)
@@ -367,9 +372,8 @@ export async function getNetwork(did: string): Promise<Network | null> {
   return {
     did,
     awardCount: source.awards.length,
-    memberCount: new Set(source.awards.map((a) => a.subject)).size,
     truncated: source.truncated,
-    programmes: grouped.map(([uri, subjects]) => {
+    badges: grouped.map(([uri, awards]) => {
       const definition = source.definitions[uri]
       return {
         uri,
@@ -379,37 +383,12 @@ export async function getNetwork(did: string): Promise<Network | null> {
           definition.owner === did
             ? null
             : (actors.get(definition.owner) ?? null),
-        memberCount: subjects.size,
-        members: [...subjects].slice(0, MEMBERS_SHOWN).map(member),
+        awardCount: awards.length,
+        recentAwards: awards.slice(0, RECENT_AWARDS_SHOWN).map((award) => ({
+          uri: award.uri,
+          subject: subjectView(award.subject),
+        })),
       }
     }),
   }
-}
-
-// Recent activities by a network's members: accounts it awarded, and the
-// owners of projects it awarded. listActivities takes at most 100 authors, so
-// only the most recently awarded 100 members are included.
-export async function listNetworkActivitiesPage(options: {
-  network: string
-  cursor?: string
-}): Promise<Page<ActivityCard>> {
-  "use cache"
-  publicData(`network:${options.network}`)
-
-  const source = await networkSource(options.network)
-  const authors = [
-    ...new Set(
-      source.awards.map(({ subject }) =>
-        subject.startsWith("did:") ? subject : didOf(subject),
-      ),
-    ),
-  ].slice(0, 100)
-  if (authors.length === 0) return { items: [], cursor: null }
-
-  const { activities, cursor } = await api.call(
-    listActivities,
-    { authors: authors as Did[], cursor: options.cursor, limit: 6 },
-    read(),
-  )
-  return { items: activities.map(toActivityCard), cursor: cursor ?? null }
 }

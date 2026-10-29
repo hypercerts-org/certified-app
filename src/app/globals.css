@@ -137,7 +137,7 @@
   margin-top: 1rem;
 }
 
-.programme {
+.issued-badge {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -145,14 +145,14 @@
   border-top: 1px solid var(--hc-line-hairline);
 }
 
-.programme-header {
+.issued-badge-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
 
-.members {
+.award-subjects {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
   gap: 0.5rem 1rem;
@@ -171,7 +171,7 @@
   flex: 1;
 }
 
-.network-card-name {
+.issuer-card-name {
   display: flex;
   align-items: center;
   gap: 0.75rem;
