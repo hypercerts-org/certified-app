@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef, useLayoutEffect } from "react"
 import {
   appendManyToTypedList,
   appendToTypedList,
@@ -74,7 +74,9 @@ export function useTypedLists(
   const [isLoading, setIsLoading] = useState(!!did && enabled)
   const [error, setError] = useState<string | null>(null)
   const didRef = useRef(did)
-  didRef.current = did
+  useLayoutEffect(() => {
+    didRef.current = did
+  })
 
   const version = useSyncExternalStore(
     subscribeEndorsementListsVersion,

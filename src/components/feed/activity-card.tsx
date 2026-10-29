@@ -37,7 +37,7 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
   // case for `set-state-in-effect` (see eslint.config.mjs); the sibling
   // ActivityDetail effect isn't flagged, so suppress this one to match.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Intentional setState in effect (TECH-814).
     setImageFailed(false)
   }, [imageUrl])
 

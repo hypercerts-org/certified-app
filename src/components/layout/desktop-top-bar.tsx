@@ -257,12 +257,12 @@ export default function DesktopTopBar() {
   // Close the switcher on navigation. Positioning, click-outside and
   // Esc-to-close are owned by the <Popover> primitive.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- close switcher on route change (external router input); covers back/forward nav that no click handler sees; setState bails out when already closed
+    // Intentional setState in effect (TECH-814): close switcher on route change (external router input); covers back/forward nav that no click handler sees; setState bails out when already closed
     setSwitcherOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- close create-menu on route change; same rationale as the switcher close above
+    // Intentional setState in effect (TECH-814): close create-menu on route change; same rationale as the switcher close above
     setCreateOpen(false);
   }, [pathname]);
 

@@ -78,6 +78,16 @@ export interface LeafletEditorProps {
   onImageUpload?: (file: File) => Promise<UploadedBlob>
 }
 
+
+/** Tiptap extension storage is a mutable slot by design; writing it from a
+ *  module function keeps the mutation out of the component, where the React
+ *  Compiler treats the `useEditor` result as immutable. */
+function setImageStorageDid(editor: Editor, did: string | null) {
+  const storage = (editor.storage as unknown as Record<string, LeafletImageStorage>)
+    .leafletImage
+  if (storage) storage.did = did
+}
+
 export default function LeafletEditor({
   value,
   onChange,
@@ -195,11 +205,7 @@ export default function LeafletEditor({
   // node view can build a `getBlob` URL without needing access to
   // the editor's React context.
   useEffect(() => {
-    if (!editor) return
-    const storage = (
-      editor.storage as unknown as Record<string, LeafletImageStorage>
-    ).leafletImage
-    if (storage) storage.did = did ?? null
+    if (editor) setImageStorageDid(editor, did ?? null)
   }, [editor, did])
 
   const [linkDialog, setLinkDialog] = useState<{

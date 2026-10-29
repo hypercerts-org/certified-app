@@ -152,7 +152,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (!state.hasBlueskyProfile) return
     if (isOnboardingDismissed(did)) return
     if (autoPoppedDid === did) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- once-per-DID auto-popup decision fired when the async resolve-did gate data settles; the autoPoppedDid latch prevents re-fire and no user event exists to host this
+    // Intentional setState in effect (TECH-814): once-per-DID auto-popup decision fired when the async resolve-did gate data settles; the autoPoppedDid latch prevents re-fire and no user event exists to host this
     setAutoPoppedDid(did)
     setIsOpen(true)
   }, [

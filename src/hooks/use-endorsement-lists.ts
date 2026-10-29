@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useRef, useLayoutEffect } from "react"
 import {
   listAwards,
   createEndorsementAward,
@@ -147,7 +147,9 @@ export function useEndorsementLists(did: string | null): {
   const [isLoading, setIsLoading] = useState(!!did)
   const [error, setError] = useState<string | null>(null)
   const didRef = useRef(did)
-  didRef.current = did
+  useLayoutEffect(() => {
+    didRef.current = did
+  })
   // Mirror `lists` into a ref so the mutation callbacks can read the
   // CURRENT list set after their `await`, rather than the closure
   // snapshot captured at render time. Without this, a concurrent
@@ -155,7 +157,9 @@ export function useEndorsementLists(did: string | null): {
   // merge built from the pre-await snapshot. Keeps the callbacks off
   // the `lists` dep so they don't rebind on every list change.
   const listsRef = useRef(lists)
-  listsRef.current = lists
+  useLayoutEffect(() => {
+    listsRef.current = lists
+  })
 
   const doFetch = useCallback(
     async (targetDid: string | null, signal?: AbortSignal, force = false) => {

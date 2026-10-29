@@ -39,7 +39,7 @@ export default function ExploreSearchField({
   const lastWroteToUrlRef = useRef<string | null>(null)
   useEffect(() => {
     if (search === lastWroteToUrlRef.current) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional external-sync escape hatch: back/forward or a filter switch rewrites `?q=` and must overwrite the local draft; a render-time adjustment would need to read lastWroteToUrlRef during render (react-hooks/refs)
+    // Intentional setState in effect (TECH-814): intentional external-sync escape hatch: back/forward or a filter switch rewrites `?q=` and must overwrite the local draft; a render-time adjustment would need to read lastWroteToUrlRef during render (react-hooks/refs)
     setLocalQuery(search)
   }, [search])
   // Latest-prop mirrors for the debounce timer. The timeout callback

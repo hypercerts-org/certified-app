@@ -72,7 +72,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // Reset everything when the signed-in identity goes away.
   useEffect(() => {
     if (!isAuthenticated || !did) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset tour state on sign-out (external auth input); all three setStates bail out when already reset
+      // Intentional setState in effect (TECH-814): reset tour state on sign-out (external auth input); all three setStates bail out when already reset
       setIsActive(false)
       setStepIndex(0)
       setAutoCheckedDid(null)
@@ -87,7 +87,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !did) return
     if (activeOrg) return
     if (autoCheckedDid === did) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- once-per-DID auto-start decision (pending-flag check + clear) on auth/org settle; the autoCheckedDid latch prevents re-fire
+    // Intentional setState in effect (TECH-814): once-per-DID auto-start decision (pending-flag check + clear) on auth/org settle; the autoCheckedDid latch prevents re-fire
     setAutoCheckedDid(did)
     if (isTourPending(did) && !isTourCompleted(did)) {
       clearTourPending(did)

@@ -104,20 +104,22 @@ export default function UpdateForm({
   // gap. Same problem, and same fix, as `LeafletImageStorage.pendingBlobs`
   // in `components/leaflet/nodes/leaflet-image-node.tsx` (which covers
   // images placed in the rich-text body rather than attached as files).
-  //
-  // Safe to read during render because every write below is immediately
-  // followed by the `setContent` that renders the new chip.
-  const pendingPreviewsRef = useRef<Map<string, string>>(new Map())
+  // State, because render reads it; the ref below only tracks the URLs
+  // to free on unmount.
+  const [pendingPreviews, setPendingPreviews] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  )
+  const previewUrlsRef = useRef<Set<string>>(new Set())
 
   // Free the session's object URLs on unmount. Deliberately NOT freed in
   // `removeAttachment`: blobs are content-addressed, so attaching the
   // same image twice yields two entries sharing one CID — and one URL.
   // Revoking on the first removal would break the surviving chip.
   useEffect(() => {
-    const previews = pendingPreviewsRef.current
+    const urls = previewUrlsRef.current
     return () => {
-      for (const url of previews.values()) URL.revokeObjectURL(url)
-      previews.clear()
+      for (const url of urls) URL.revokeObjectURL(url)
+      urls.clear()
     }
   }, [])
 
@@ -159,7 +161,9 @@ export default function UpdateForm({
       // server typed as a non-image falls through to the file label.
       const resolved = resolveAttachment(entry)
       if (resolved?.kind === "image") {
-        pendingPreviewsRef.current.set(resolved.cid, URL.createObjectURL(file))
+        const url = URL.createObjectURL(file)
+        previewUrlsRef.current.add(url)
+        setPendingPreviews((prev) => new Map(prev).set(resolved.cid, url))
       }
       setContent((prev) => [...prev, entry])
     } catch (err) {
@@ -275,7 +279,7 @@ export default function UpdateForm({
               // references (edit mode).
               const imgUrl =
                 a.kind === "image"
-                  ? (pendingPreviewsRef.current.get(a.cid) ??
+                  ? (pendingPreviews.get(a.cid) ??
                     buildAvatarUrlFromCid(targetDid, a.cid))
                   : null
               return (

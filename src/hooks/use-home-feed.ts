@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
 import {
   fetchFollowerEvents,
   FollowerEventsError,
@@ -224,12 +224,16 @@ export function useHomeFeed(
 
   // Carry the latest set into the effect closure without re-running.
   const followedRef = useRef(followedDids)
-  followedRef.current = followedDids
+  useLayoutEffect(() => {
+    followedRef.current = followedDids
+  })
 
   // Snapshot of the latest state so callbacks (loadMore) see the
   // current cursor/loading flags without re-binding on every render.
   const stateRef = useRef(state)
-  stateRef.current = state
+  useLayoutEffect(() => {
+    stateRef.current = state
+  })
 
   // Holds the AbortController for the INVALID_CURSOR recovery load that
   // loadMore kicks off. Tracked here (rather than as a local in the
@@ -248,14 +252,14 @@ export function useHomeFeed(
   // Snapshot the filter so the existing load() / loadMore() callbacks
   // (which deliberately have empty deps for stability) can read the
   // latest value without re-binding.
-  const excludeCertLabelsRef = useRef<readonly string[] | undefined>(
-    excludeCertLabels,
-  )
-  excludeCertLabelsRef.current = excludeCertLabels
-  const includeCertLabelsRef = useRef<readonly string[] | undefined>(
-    includeCertLabels,
-  )
-  includeCertLabelsRef.current = includeCertLabels
+  const excludeCertLabelsRef = useRef<readonly string[] | undefined>(excludeCertLabels)
+  useLayoutEffect(() => {
+    excludeCertLabelsRef.current = excludeCertLabels
+  })
+  const includeCertLabelsRef = useRef<readonly string[] | undefined>(includeCertLabels)
+  useLayoutEffect(() => {
+    includeCertLabelsRef.current = includeCertLabels
+  })
 
   const load = useCallback(async (signal: AbortSignal) => {
     setState((prev) => ({ ...prev, ...EMPTY_STATE, isLoading: true }))

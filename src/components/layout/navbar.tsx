@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
 
   // Close dropdowns on navigation
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- close dropdown/switcher on route change (external router input); both setStates bail out when already false
+    // Intentional setState in effect (TECH-814): close dropdown/switcher on route change (external router input); both setStates bail out when already false
     setDropdownOpen(false);
     setSwitcherOpen(false);
   }, [pathname]);
@@ -85,7 +85,7 @@ const Navbar: React.FC = () => {
   // (the hamburger button and mobile sidebar unmount at ≥800px; leftover
   // `dropdownOpen` would re-open the drawer on resize back down).
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear sheet/sidebar state when crossing the 800px boundary (external matchMedia input); bails out when already false
+    // Intentional setState in effect (TECH-814): clear sheet/sidebar state when crossing the 800px boundary (external matchMedia input); bails out when already false
     setDropdownOpen(false);
     setSwitcherOpen(false);
   }, [isDesktop]);

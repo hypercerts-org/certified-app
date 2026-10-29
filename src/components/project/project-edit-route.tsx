@@ -156,7 +156,7 @@ export default function ProjectEditRoute({
     if (seededRef.current) return
     if (!project) return
     const v = project.value
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (seededRef) seeding of editable form state + swap baseline from the loaded project record; key-remount refactor tracked separately
+    // Intentional setState in effect (TECH-814): one-shot ref-guarded (seededRef) seeding of editable form state + swap baseline from the loaded project record; key-remount refactor tracked separately
     setTitle(asString(v.title) ?? "")
     setShortDescription(asString(v.shortDescription) ?? "")
     setDescription(
@@ -201,7 +201,7 @@ export default function ProjectEditRoute({
             ? r.record!.value.title.trim()
             : rkeyFromUri(r.record!.uri) || "(untitled activity)",
       }))
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot ref-guarded (itemsSeededRef) hydration of the editable items list once useProjectItems resolutions settle; re-running would stomp user reordering/removal
+    // Intentional setState in effect (TECH-814): one-shot ref-guarded (itemsSeededRef) hydration of the editable items list once useProjectItems resolutions settle; re-running would stomp user reordering/removal
     setItems(hydrated)
     itemsSeededRef.current = true
   }, [itemResolutions, itemsResolving, rawItems.length])
@@ -279,7 +279,7 @@ export default function ProjectEditRoute({
   const SHORT_DESC_MAX = 300
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null
+    // Intentional setState in effect (TECH-814): deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null
     setError(null)
   }, [
     title,

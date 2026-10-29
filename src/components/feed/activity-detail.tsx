@@ -4,8 +4,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
+  useRef,
+  useLayoutEffect,
 } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
 import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
@@ -968,9 +969,13 @@ export default function ActivityDetail({
   // including the save flow where one URL is *moved* from pending
   // to localImageUrl (revoking the URL we just promoted).
   const pendingImagePreviewUrlRef = useRef(pendingImagePreviewUrl)
-  pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  useLayoutEffect(() => {
+    pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
+  })
   const localImageUrlRef = useRef(localImageUrl)
-  localImageUrlRef.current = localImageUrl
+  useLayoutEffect(() => {
+    localImageUrlRef.current = localImageUrl
+  })
   useEffect(() => {
     return () => {
       const a = pendingImagePreviewUrlRef.current
