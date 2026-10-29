@@ -3,6 +3,7 @@ import { Agent, type ComAtprotoRepoPutRecord } from "@atproto/api"
 import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { createSession, deleteSession } from "@/lib/auth/session"
 import { logSafe } from "@/lib/utils/log-safe"
+import { signCreatedVia } from "@/lib/atproto/created-via"
 import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
 
@@ -143,10 +144,12 @@ async function ensureProfileRecords(
           // (collection, rkey), so a TOCTOU race or a misclassified error
           // can never clobber existing profile data.
           swapRecord: null,
-          record: {
-            $type: collection,
-            createdAt: now,
-          },
+          // Signed (#createdVia) for the Certified profile only;
+          // `app.bsky.actor.profile` is returned untouched.
+          record: await signCreatedVia(
+            { $type: collection, createdAt: now },
+            { collection, repo: did },
+          ),
         }
         await agent.com.atproto.repo.putRecord(input)
         if (collection === "app.certified.actor.profile") {

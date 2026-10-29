@@ -1,0 +1,29 @@
+{
+    "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.actor.profile/self",
+    "cid": "bafyreihmkky5jpvhacnmt2vwxzejm4exit677ao2z6mevdib7lqnyvizsq",
+    "value": {
+        "$type": "app.bsky.actor.profile",
+        "avatar": {
+            "ref": {
+                "$link": "bafkreihwihm6kpd6zuwhhlro75p5qks5qtrcu55jp3gddbfjsieiv7wuka"
+            },
+            "size": 256555,
+            "$type": "blob",
+            "mimeType": "image/jpeg"
+        },
+        "banner": {
+            "ref": {
+                "$link": "bafkreichzyovokfzmymz36p5jibbjrhsur6n7hjnzxrpbt5jaydp2szvna"
+            },
+            "size": 58042,
+            "$type": "blob",
+            "mimeType": "image/jpeg"
+        },
+        "pinnedPost": {
+            "cid": "bafyreicnt42y6vo6pfpvyro234ac4o6ijug6adwwrh7awflgrqlt4zibxq",
+            "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l"
+        },
+        "description": "official Bluesky account (check username\ud83d\udc46)\n\nBugs, feature requests, feedback: support@bsky.app",
+        "displayName": "Bluesky"
+    }
+}

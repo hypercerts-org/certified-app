@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
   getAuthenticatedAgent,
-  getServiceAuthToken,
+  groupServiceFetch,
 } from "@/lib/groups/proxy-agent"
-import { GROUP_SERVICE } from "@/lib/groups/constants"
 import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRecordRef, extractRouteError, parseJsonBody, pickAllowedFields } from "@/lib/utils/api"
@@ -117,15 +116,9 @@ export async function PUT(
           record,
         }
 
-    const token = await getServiceAuthToken(auth.agent, method)
-    const res = await fetch(`${GROUP_SERVICE}/xrpc/${method}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(requestBody),
-    })
+    // `groupServiceFetch` is the group #createdVia signing point — never
+    // bypass it with a raw fetch for record writes.
+    const res = await groupServiceFetch(auth.agent, method, { body: requestBody })
 
     if (!res.ok) {
       // Sanitize upstream 5xx — don't leak internal error details.
@@ -217,18 +210,8 @@ export async function DELETE(
     // group routes — the proxy-agent form fails to resolve the
     // `#certified_group_service` service entry (see the PUT handler).
     const method = "app.certified.group.repo.deleteRecord"
-    const token = await getServiceAuthToken(auth.agent, method)
-    const res = await fetch(`${GROUP_SERVICE}/xrpc/${method}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        repo: groupDid,
-        collection: ACTIVITY_COLLECTION,
-        rkey,
-      }),
+    const res = await groupServiceFetch(auth.agent, method, {
+      body: { repo: groupDid, collection: ACTIVITY_COLLECTION, rkey },
     })
 
     if (!res.ok) {

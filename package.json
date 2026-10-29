@@ -22,7 +22,11 @@
   },
   "dependencies": {
     "@atproto/api": "^0.13.20",
+    "@atproto/crypto": "^0.5.7",
     "@atproto/jwk-jose": "^0.1.11",
+    "@atproto/lex-cbor": "^0.1.7",
+    "@atproto/lex-data": "^0.1.8",
+    "@atproto/lex-json": "^0.1.7",
     "@atproto/oauth-client-node": "^0.3.17",
     "@tabler/icons-react": "3.44.0",
     "@tiptap/extension-link": "^3.32.0",
@@ -42,7 +46,8 @@
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.29.1",
     "react-leaflet": "^5.0.0",
-    "resend": "^6.35.0"
+    "resend": "^6.35.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

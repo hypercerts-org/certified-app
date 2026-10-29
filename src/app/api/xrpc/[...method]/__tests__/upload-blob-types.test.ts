@@ -41,6 +41,10 @@ vi.mock("@/lib/auth/rate-limit", () => ({
 }))
 vi.mock("@/lib/utils/ip", () => ({ clientIp: () => "test-ip" }))
 vi.mock("@atproto/api", () => ({
+  // The route converts same-session reads to JSON wire form; identity is
+  // enough for records without $bytes/CIDs.
+  lexToJson: (v: unknown) => v,
+  BlobRef: class {},
   Agent: class {
     com = { atproto: { repo: { uploadBlob } } }
   },

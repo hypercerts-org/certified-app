@@ -4,6 +4,7 @@ import { getOAuthClient } from "@/lib/auth/oauth-client"
 import { getSessionDid, deleteSession } from "@/lib/auth/session"
 import { getServiceAuthToken as mintServiceAuthToken } from "@/lib/atproto/service-auth"
 import { logSafe } from "@/lib/utils/log-safe"
+import { signCreatedVia } from "@/lib/atproto/created-via"
 import { GROUP_SERVICE, GROUP_SERVICE_DID } from "./constants"
 
 /**
@@ -261,8 +262,9 @@ export async function groupServiceFetch(
     const s = qs.toString()
     if (s) url += `?${s}`
   }
-  const hasBody = opts.body !== undefined
   const encoding = opts.encoding ?? "application/json"
+  const body = await signGroupRecordBody(nsid, encoding, opts.body)
+  const hasBody = body !== undefined
   return fetch(url, {
     method: hasBody ? "POST" : "GET",
     headers: {
@@ -273,12 +275,43 @@ export async function groupServiceFetch(
       ? {
           body:
             encoding === "application/json"
-              ? JSON.stringify(opts.body)
-              : (opts.body as BodyInit),
+              ? JSON.stringify(body)
+              : (body as BodyInit),
         }
       : {}),
     signal: AbortSignal.timeout(15_000),
   })
+}
+
+const GROUP_RECORD_WRITE_NSIDS = new Set([
+  "app.certified.group.repo.createRecord",
+  "app.certified.group.repo.putRecord",
+])
+
+/**
+ * The single signing point for group writes: every group route reaches CGS
+ * through {@link groupServiceFetch}, after its field allowlist has run. CGS
+ * forwards `record` to the group PDS unchanged. Returns a new body rather than
+ * mutating the caller's, or the caller's body itself when nothing was signed
+ * (anything that isn't a JSON create/put of a signed collection with a
+ * plain-object `record`).
+ */
+async function signGroupRecordBody(
+  nsid: string,
+  encoding: string,
+  body: unknown,
+): Promise<unknown> {
+  if (!GROUP_RECORD_WRITE_NSIDS.has(nsid) || encoding !== "application/json") return body
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return body
+  const input = body as { repo?: unknown; collection?: unknown; record?: unknown }
+  if (typeof input.record !== "object" || input.record === null || Array.isArray(input.record)) {
+    return body
+  }
+  const record = await signCreatedVia(input.record as Record<string, unknown>, {
+    collection: input.collection,
+    repo: input.repo,
+  })
+  return record === input.record ? body : { ...input, record }
 }
 
 /**

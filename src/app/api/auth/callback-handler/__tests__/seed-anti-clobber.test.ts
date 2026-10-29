@@ -60,6 +60,25 @@ vi.mock("@/lib/auth/rate-limit", () => ({
 
 vi.mock("@/lib/utils/ip", () => ({ clientIp: vi.fn(() => "127.0.0.1") }))
 
+// Real collection gate, stand-in signature: the seed must sign the Certified
+// profile (#createdVia) and leave the Bluesky profile untouched.
+const FAKE_CREATED_VIA = {
+  $type: "app.certified.signature.defs#createdVia",
+  key: "did:web:certified.app#created-via",
+  signature: { $bytes: "AQID" },
+}
+vi.mock("@/lib/atproto/created-via", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/atproto/created-via")>()
+  return {
+    ...actual,
+    signCreatedVia: vi.fn(async (record: object, opts: { collection: unknown }) =>
+      actual.shouldSign(opts.collection)
+        ? { ...record, signatures: [FAKE_CREATED_VIA] }
+        : record,
+    ),
+  }
+})
+
 const DID = "did:plc:seeduser000000000000000000"
 
 /** XRPCError-shaped genuine record-not-found: discriminator on `.error`. */
@@ -124,13 +143,24 @@ describe("auth callback — profile seeding (bsky discoverability + anti-clobber
       "app.certified.actor.profile",
     ])
 
-    // Every seed is create-if-absent (swapRecord: null) and createdAt-only.
+    // The Certified seed is signed for the user's own repo.
+    const { signCreatedVia } = await import("@/lib/atproto/created-via")
+    expect(signCreatedVia).toHaveBeenCalledWith(expect.anything(), {
+      collection: "app.certified.actor.profile",
+      repo: DID,
+    })
+
+    // Every seed is create-if-absent (swapRecord: null) and createdAt-only;
+    // only the Certified profile carries a #createdVia signature.
     for (const call of putRecord.mock.calls) {
       const input = call[0]
       expect(input.swapRecord).toBeNull()
       expect(input.record).toEqual({
         $type: input.collection,
         createdAt: expect.any(String),
+        ...(input.collection === "app.certified.actor.profile"
+          ? { signatures: [FAKE_CREATED_VIA] }
+          : {}),
       })
     }
   })
