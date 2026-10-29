@@ -7,6 +7,7 @@ import {
   getBlobRefLink,
 } from "./types";
 import { authFetch } from "@/lib/auth/fetch";
+import { createBoundedCache } from "@/lib/utils/bounded-cache";
 import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
 import { writeToRepo } from "@/lib/atproto/repo-write";
 import {
@@ -36,10 +37,50 @@ const ALLOWED_IMAGE_TYPES = [
  */
 export async function getProfile(
   did: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: { fresh?: boolean }
 ): Promise<CertifiedProfile | null> {
-  const res = await getProfileWithCid(did, signal);
+  const res = await getProfileWithCid(did, signal, options);
   return res ? res.value : null;
+}
+
+type ProfileRead = { value: CertifiedProfile; cid: string | null } | null;
+
+/**
+ * A page shows the same profile record in several places at once (navbar,
+ * top bar, mobile sidebar, the profile page's inline-edit base), and each
+ * read it on mount — four requests for one record on a profile view.
+ * Concurrent reads of a DID share one request, and a successful read is
+ * reused for a few seconds. `putProfile` drops the entry; callers that need
+ * the live record (the swap-conflict retry) pass `fresh`.
+ */
+const PROFILE_READ_REUSE_MS = 5_000;
+const profileReads = createBoundedCache<string, { at: number; read: Promise<ProfileRead> }>(200);
+
+function invalidateProfileRead(did: string): void {
+  profileReads.delete(did);
+}
+
+/** Resolve with `promise`, or reject with an AbortError once `signal`
+ *  aborts. Only the caller stops waiting: the shared request keeps going
+ *  for everyone else reading the same profile. */
+function untilAborted<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (v) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(v);
+      },
+      (e) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(e);
+      },
+    );
+  });
 }
 
 /**
@@ -56,11 +97,26 @@ export async function getProfile(
  */
 export async function getProfileWithCid(
   did: string,
-  signal?: AbortSignal
-): Promise<{ value: CertifiedProfile; cid: string | null } | null> {
+  signal?: AbortSignal,
+  options?: { fresh?: boolean }
+): Promise<ProfileRead> {
+  const hit = profileReads.get(did);
+  if (!options?.fresh && hit && Date.now() - hit.at < PROFILE_READ_REUSE_MS) {
+    return untilAborted(hit.read, signal);
+  }
+  const read = fetchProfileWithCid(did);
+  const entry = { at: Date.now(), read };
+  profileReads.set(did, entry);
+  // Don't reuse failures.
+  read.catch(() => {
+    if (profileReads.get(did) === entry) invalidateProfileRead(did);
+  });
+  return untilAborted(read, signal);
+}
+
+async function fetchProfileWithCid(did: string): Promise<ProfileRead> {
   const res = await authFetch(
     xrpcGetRecordPath({ repo: did, collection: COLLECTION, rkey: RKEY }),
-    { signal }
   );
   if (!res.ok) {
     if (res.status === 400 || res.status === 404) return null;
@@ -111,6 +167,20 @@ export async function putProfile(
 ): Promise<void> {
   const targetDid = options?.targetDid ?? did;
   const swap = options?.swapRecord;
+  // Whatever the outcome, a cached read of this record may now be stale.
+  try {
+    await putProfileRecord(did, targetDid, profile, swap);
+  } finally {
+    invalidateProfileRead(targetDid);
+  }
+}
+
+async function putProfileRecord(
+  did: string,
+  targetDid: string,
+  profile: CertifiedProfile,
+  swap: string | undefined
+): Promise<void> {
   // Group-profile save: BFF expects the bare profile record (no
   // $type wrapper — it adds collection/rkey/$type server-side). The
   // own-DID XRPC path needs the wrapped record.

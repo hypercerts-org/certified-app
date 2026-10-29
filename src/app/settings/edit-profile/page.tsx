@@ -14,6 +14,7 @@ import { authFetch } from "@/lib/auth/fetch";
 import { extractError, xrpcGetRecordPath } from "@/lib/utils/api";
 import { getInitials } from "@/lib/utils/initials";
 import { ORG_MARKER_COLLECTION } from "@/lib/groups/constants";
+import { getOrgMarkerRecord } from "@/lib/groups/org-marker-record";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import ProfileEditForm from "@/components/profile/profile-edit-form";
 import type { CertifiedProfile } from "@/lib/atproto/types";
@@ -35,20 +36,7 @@ async function fetchOwnOrgMarker(
   did: string,
   signal?: AbortSignal,
 ): Promise<GroupMetadata | null> {
-  const res = await authFetch(
-    xrpcGetRecordPath({
-      repo: did,
-      collection: ORG_MARKER_COLLECTION,
-      rkey: "self",
-    }),
-    { signal },
-  );
-  if (!res.ok) {
-    if (res.status === 400 || res.status === 404) return null;
-    return null;
-  }
-  const data = (await res.json()) as { value?: GroupMetadata };
-  return data.value ?? null;
+  return (await getOrgMarkerRecord(did, signal)) ?? null;
 }
 
 async function putOwnOrgMarker(

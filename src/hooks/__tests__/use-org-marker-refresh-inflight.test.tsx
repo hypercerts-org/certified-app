@@ -23,12 +23,15 @@ vi.mock("@/lib/auth/fetch", () => ({
 
 import { useOrgMarker } from "../use-org-marker"
 
-/** Build a minimal getRecord OK Response carrying an org marker value. */
+/** Build a minimal listRecords OK Response carrying an org marker value
+ *  (the hook reads the marker via listRecords, see org-marker-record.ts). */
 function okResponse(value: unknown): Response {
   return {
     status: 200,
     ok: true,
-    json: async () => ({ value }),
+    json: async () => ({
+      records: [{ uri: "at://did:x/app.certified.actor.organization/self", value }],
+    }),
     clone() {
       return this
     },

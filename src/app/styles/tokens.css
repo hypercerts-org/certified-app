@@ -84,6 +84,11 @@
   --border-subtle: rgba(0, 0, 0, 0.04);
   --border-default: rgba(0, 0, 0, 0.08);
   --border-hover: rgba(0, 0, 0, 0.15);
+  /* Image avatars: hairline + backdrop behind transparent logos. Light mode
+     keeps the plain subtle border; dark mode lifts both so dark or
+     transparent logos don't vanish into the canvas. */
+  --avatar-ring: var(--border-subtle);
+  --avatar-backdrop: transparent;
   --border-control: rgba(0, 0, 0, 0.45);
 
   /* Overlays */
@@ -363,6 +368,8 @@
   --border-subtle: rgba(255, 255, 255, 0.04);
   --border-default: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.18);
+  --avatar-ring: var(--border-hover);
+  --avatar-backdrop: var(--color-surface-container-high);
   /* 3.05:1 on --bg-elevated, 3.23:1 on --bg-canvas. */
   --border-control: rgba(255, 255, 255, 0.35);
 
