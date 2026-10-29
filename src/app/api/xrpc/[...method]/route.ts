@@ -31,6 +31,7 @@ import {
   ALLOWED_DOCUMENT_CONTENT_TYPES,
   isAttachmentUpload,
 } from "@/lib/atproto/blob-types"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 // INVARIANT: `app.bsky.actor.profile` must NEVER be added to this allowlist
 // (certified-app invariant) — writing it clobbers the user's Bluesky profile.
@@ -319,7 +320,7 @@ async function proxyPublicGetRecord(
   const params = new URLSearchParams({ repo, collection, rkey })
   if (cid) params.set("cid", cid)
   try {
-    const upstream = await fetch(
+    const upstream = await guardedFetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
       { redirect: "error", signal: AbortSignal.timeout(10_000) }
     )
@@ -367,7 +368,7 @@ async function proxyPublicListRecords(
   if (q.rkeyEnd) params.set("rkeyEnd", q.rkeyEnd)
   if (q.rkeyStart) params.set("rkeyStart", q.rkeyStart)
   try {
-    const upstream = await fetch(
+    const upstream = await guardedFetch(
       `${targetPds}/xrpc/com.atproto.repo.listRecords?${params.toString()}`,
       {
         redirect: "error",
@@ -410,7 +411,7 @@ async function proxyPublicGetBlob(
   }
   try {
     const params = new URLSearchParams({ did: blobDid, cid })
-    const upstream = await fetch(
+    const upstream = await guardedFetch(
       `${targetPds}/xrpc/com.atproto.sync.getBlob?${params.toString()}`,
       { redirect: "error", signal: AbortSignal.timeout(15_000) }
     )

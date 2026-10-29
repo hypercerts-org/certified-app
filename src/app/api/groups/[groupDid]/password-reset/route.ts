@@ -6,6 +6,7 @@ import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, parseJsonBody } from "@/lib/utils/api"
 import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
 import { logSafe } from "@/lib/utils/log-safe"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 /**
  * Group password reset (owner/admin), enter-email flow.
@@ -76,7 +77,7 @@ export async function POST(
     if (!email?.trim())
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
 
-    const res = await fetch(
+    const res = await guardedFetch(
       `${g.pds}/xrpc/com.atproto.server.requestPasswordReset`,
       {
         method: "POST",
@@ -119,7 +120,7 @@ export async function PUT(
         { status: 400 },
       )
 
-    const res = await fetch(`${g.pds}/xrpc/com.atproto.server.resetPassword`, {
+    const res = await guardedFetch(`${g.pds}/xrpc/com.atproto.server.resetPassword`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: token.trim(), password }),
@@ -136,7 +137,7 @@ export async function PUT(
     // group's email). So confirm the reset actually applied to THIS group:
     // log in as the group DID with the new password. If it doesn't work, a
     // different account was reset and the group's password is unchanged.
-    const verify = await fetch(
+    const verify = await guardedFetch(
       `${g.pds}/xrpc/com.atproto.server.createSession`,
       {
         method: "POST",
@@ -149,7 +150,7 @@ export async function PUT(
       try {
         const sess = (await verify.json()) as { refreshJwt?: string }
         if (sess.refreshJwt) {
-          await fetch(`${g.pds}/xrpc/com.atproto.server.deleteSession`, {
+          await guardedFetch(`${g.pds}/xrpc/com.atproto.server.deleteSession`, {
             method: "POST",
             headers: { Authorization: `Bearer ${sess.refreshJwt}` },
           })

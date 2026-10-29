@@ -9,6 +9,7 @@ import {
   buildAvatarUrlFromCid,
   buildBannerUrlFromCid,
 } from "@/lib/atproto/profile"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 /**
  * Shared DID/handle -> profile resolution, used by both the single-DID
@@ -264,7 +265,7 @@ async function getCertsProfile(did: string): Promise<{
       collection: CERTS_PROFILE_COLLECTION,
       rkey: CERTS_PROFILE_RKEY,
     })
-    const res = await fetch(
+    const res = await guardedFetch(
       `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
       { redirect: "error", signal: AbortSignal.timeout(8_000) }
     )

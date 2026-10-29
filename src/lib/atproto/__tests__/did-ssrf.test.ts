@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { isAllowedPdsUrl, resolveHandleViaWellKnown } from "../did"
+import { isAllowedPdsUrl, resolveHandleViaWellKnown, resolvePdsUrl } from "../did"
 
 /**
  * sec-ssrf-ip-filter-bypass + sec-ssrf-wellknown-handle: the SSRF gate
@@ -113,5 +113,58 @@ describe("resolveHandleViaWellKnown SSRF gate", () => {
     fetchMock.mockResolvedValueOnce({ ok: true, text: async () => "not-a-did" })
     const result = await resolveHandleViaWellKnown("alice.bsky.social")
     expect(result).toBeNull()
+  })
+})
+
+// TECH-811: the string gate above can't see what a hostname resolves to
+// (e.g. localtest.me → 127.0.0.1). On the server the connection-level guard
+// (src/lib/security/ssrf.ts) sits in a process-wide slot that did.ts looks up,
+// because did.ts is also bundled for the browser and can't import it.
+describe("did.ts uses the server's SSRF-guarded fetch when installed", () => {
+  const SLOT = Symbol.for("certified-app.guardedFetch")
+  const slot = globalThis as Record<symbol, unknown>
+  let saved: unknown
+
+  beforeEach(() => {
+    saved = slot[SLOT]
+  })
+  afterEach(() => {
+    slot[SLOT] = saved
+    vi.restoreAllMocks()
+  })
+
+  it("routes the .well-known handle lookup through the slot", async () => {
+    const guarded = vi.fn(async () => new Response("did:plc:abcdefghijklmnopqrstuvwx"))
+    const plain = vi.spyOn(globalThis, "fetch")
+    slot[SLOT] = guarded
+
+    expect(await resolveHandleViaWellKnown("alice.example.com")).toBe("did:plc:abcdefghijklmnopqrstuvwx")
+    expect(guarded).toHaveBeenCalledWith(
+      "https://alice.example.com/.well-known/atproto-did",
+      expect.objectContaining({ redirect: "error" }),
+    )
+    expect(plain).not.toHaveBeenCalled()
+  })
+
+  it("routes did:web document fetches through the slot", async () => {
+    const guarded = vi.fn(async () => Response.json({
+      id: "did:web:pds-host.example.com",
+      service: [{ id: "#atproto_pds", type: "AtprotoPersonalDataServer", serviceEndpoint: "https://pds-host.example.com" }],
+    }))
+    slot[SLOT] = guarded
+
+    expect(await resolvePdsUrl("did:web:pds-host.example.com")).toBe("https://pds-host.example.com")
+    expect(guarded).toHaveBeenCalledWith(
+      "https://pds-host.example.com/.well-known/did.json",
+      expect.objectContaining({ redirect: "error" }),
+    )
+  })
+
+  it("falls back to plain fetch where no guard is installed (the browser)", async () => {
+    delete slot[SLOT]
+    const plain = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("did:plc:abcdefghijklmnopqrstuvwx"))
+
+    await resolveHandleViaWellKnown("bob.example.com")
+    expect(plain).toHaveBeenCalledWith("https://bob.example.com/.well-known/atproto-did", expect.anything())
   })
 })

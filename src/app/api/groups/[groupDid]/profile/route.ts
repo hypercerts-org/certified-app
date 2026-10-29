@@ -8,6 +8,7 @@ import { checkCsrf } from "@/lib/auth/csrf"
 import { isValidDid } from "@/lib/utils/did"
 import { extractRouteError, pickAllowedFields, parseJsonBody } from "@/lib/utils/api"
 import { logSafe } from "@/lib/utils/log-safe"
+import { guardedFetch } from "@/lib/security/ssrf"
 
 const PROFILE_FIELDS = ["displayName", "description", "pronouns", "website", "avatar", "banner", "createdAt"] as const
 
@@ -60,7 +61,7 @@ export async function GET(
     }
 
     // Fetch directly from the group's PDS (unauthenticated — reads are public)
-    const res = await fetch(
+    const res = await guardedFetch(
       `${pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(groupDid)}&collection=${encodeURIComponent("app.certified.actor.profile")}&rkey=self`,
       { signal: AbortSignal.timeout(10_000) }
     )
