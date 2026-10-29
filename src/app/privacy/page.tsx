@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 11, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: October 29, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -324,6 +324,11 @@ export default function PrivacyPage() {
               <strong>European Union</strong>.
             </p>
             <p className="mt-4">
+              The server functions of certified.app run in Frankfurt, Germany. Sign-in session and
+              authentication data for certified.app (such as session identifiers, OAuth tokens, and
+              rate-limiting counters) is stored in a database hosted in Frankfurt, Germany.
+            </p>
+            <p className="mt-4">
               Some operational service providers process limited data outside the European Union.
               Specifically, transactional email delivery is handled by a US-based provider (see
               Section 8), and certain corporate operations of our hosting providers may take place
@@ -375,6 +380,10 @@ export default function PrivacyPage() {
                 <ul className="list-disc pl-6 mt-2 space-y-2">
                   <li>Vercel Inc. (web application hosting and anonymous web analytics)</li>
                   <li>Railway Corporation (application and database hosting infrastructure)</li>
+                  <li>
+                    Upstash, Inc. (storage of sign-in session, authentication, and rate-limiting data,
+                    hosted in Frankfurt, Germany)
+                  </li>
                   <li>
                     Plus Five Five, Inc. (d/b/a Resend) (transactional email delivery for account,
                     security, and operational notifications)
