@@ -7,6 +7,7 @@ import {
 } from "@atproto/oauth-types"
 import { RedisStateStore, RedisSessionStore } from "./stores"
 import { redisRequestLock } from "./request-lock"
+import { isSizeLimited, limitResponseSize } from "./response-limit"
 import { PUBLIC_URL_STRICT, DEFAULT_PDS_URL } from "@/lib/utils/config"
 
 export const PDS_URL = process.env.PDS_URL || DEFAULT_PDS_URL
@@ -147,7 +148,7 @@ export function getOAuthClient(): Promise<NodeOAuthClient> {
 // atproto Agent then constructs a Request whose body we buffer again here.
 // Peak transient memory ~12 MB; ~24 MB worst case on a nonce-retry. Well
 // under Vercel's 1 GB function memory.
-const safeFetch: typeof fetch = async (input, init) => {
+const forwardFetch: typeof fetch = async (input, init) => {
   if (input instanceof Request) {
     // Body handling:
     //   input.body === null   → no body was provided; pass `body: undefined`.
@@ -199,4 +200,19 @@ const safeFetch: typeof fetch = async (input, init) => {
     })
   }
   return globalThis.fetch(input, init)
+}
+
+/**
+ * The OAuth client's fetch. Responses it validates with zod (metadata, DID
+ * documents, PAR and token responses) are size-capped against the zod array
+ * DoS (TECH-804, see response-limit.ts); authenticated XRPC calls to the PDS
+ * are not. The cap is chosen by the request, so a redirect can't move a
+ * response out of it.
+ */
+export const safeFetch: typeof fetch = async (input, init) => {
+  const url =
+    input instanceof Request ? input.url : input instanceof URL ? input.href : String(input)
+  const headers = new Headers(input instanceof Request ? input.headers : init?.headers)
+  const response = await forwardFetch(input, init)
+  return isSizeLimited(url, headers) ? limitResponseSize(response, url) : response
 }
