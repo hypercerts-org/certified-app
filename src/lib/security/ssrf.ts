@@ -2,7 +2,16 @@ import "server-only"
 import dns from "node:dns"
 import { isIP } from "node:net"
 import ipaddr from "ipaddr.js"
-import { Agent, buildConnector } from "undici"
+import type { Agent as UndiciAgent, buildConnector as UndiciBuildConnector } from "undici"
+// Deep imports on purpose: undici's index (lib/global.js) installs its own
+// Agent as the process-wide fetch dispatcher on load, which would move every
+// fetch in the app (Upstash, Resend, ...) off Node's bundled undici. These
+// two modules don't touch it. Types come from the package index.
+import AgentImpl from "undici/lib/dispatcher/agent.js"
+import buildConnectorImpl from "undici/lib/core/connect.js"
+
+const Agent = AgentImpl as typeof UndiciAgent
+const buildConnector = buildConnectorImpl as typeof UndiciBuildConnector
 
 /**
  * SSRF guard for server-side fetches whose URL a visitor can choose
@@ -24,9 +33,14 @@ import { Agent, buildConnector } from "undici"
  * to fetch on a `Request` object, and Next's patched fetch rebuilds Request
  * inputs from a fixed field list that drops `dispatcher` (next
  * dist/server/lib/patch-fetch.js), so the guard would silently not apply.
- * We pass it on `init` instead, which Next forwards. The `undici` package
- * must stay on the major Node bundles (Node 24: undici 7); an undici 6 Agent
- * fails every request on newer Node.
+ * We pass it on `init` instead, which Next forwards.
+ *
+ * The Agent comes from the `undici` package and is handed to Node's bundled
+ * fetch. Production (Node 24) bundles undici 7, matching our dependency; an
+ * undici 6 Agent fails every request on newer Node, while our 7 also works on
+ * Node 26's undici 8. Re-verify on a Node major bump. The instrumentation and
+ * route bundles may each load a copy (two small pools; the slot below holds
+ * whichever loaded last).
  */
 
 export class SsrfBlockedError extends Error {
@@ -36,15 +50,20 @@ export class SsrfBlockedError extends Error {
   }
 }
 
+const GLOBAL_UNICAST_V6 = ipaddr.parseCIDR("2000::/3")
+
 /** Public unicast only. An IPv4-mapped IPv6 address is judged by the IPv4
- *  address it carries; NAT64, 6to4 and Teredo forms are refused outright. */
+ *  address it carries. Other IPv6 must also be global unicast (2000::/3):
+ *  ipaddr calls the IPv4-compatible block `::/96` (e.g. `::7f00:1`, which
+ *  the URL parser makes of `[::127.0.0.1]`) "unicast" too. NAT64, 6to4 and
+ *  Teredo forms are refused outright. */
 export function isPublicAddress(address: string): boolean {
   try {
-    let parsed = ipaddr.parse(address)
-    if (parsed.kind() === "ipv6" && (parsed as ipaddr.IPv6).isIPv4MappedAddress()) {
-      parsed = (parsed as ipaddr.IPv6).toIPv4Address()
-    }
-    return parsed.range() === "unicast"
+    const parsed = ipaddr.parse(address)
+    if (parsed.kind() === "ipv4") return parsed.range() === "unicast"
+    const v6 = parsed as ipaddr.IPv6
+    if (v6.isIPv4MappedAddress()) return v6.toIPv4Address().range() === "unicast"
+    return v6.range() === "unicast" && v6.match(GLOBAL_UNICAST_V6)
   } catch {
     return false
   }

@@ -20,9 +20,12 @@ describe("register()", () => {
 
     const { register } = await import("../instrumentation")
     await register()
+    // Read before importing the guard here: that import fills the slot too.
+    const installed = slot[SLOT]
+    expect(installed).toBeTypeOf("function")
 
     const { guardedFetch } = await import("../lib/security/ssrf")
-    expect(slot[SLOT]).toBe(guardedFetch)
+    expect(installed).toBe(guardedFetch)
   })
 
   it("does nothing in the edge runtime", async () => {

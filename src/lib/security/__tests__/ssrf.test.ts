@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from "vitest"
+import dns from "node:dns"
 import http from "node:http"
 import type { AddressInfo } from "node:net"
 import { Agent } from "undici"
@@ -76,6 +77,9 @@ describe("isPublicAddress", () => {
     ["fe80::1", false],
     ["fd00::1", false],
     ["::ffff:127.0.0.1", false],
+    // IPv4-compatible (::/96): what the URL parser makes of [::127.0.0.1]
+    ["::7f00:1", false],
+    ["::a9fe:a9fe", false],
     ["::ffff:169.254.169.254", false],
     ["64:ff9b::7f00:1", false],
     ["2002:7f00:1::", false],
@@ -111,15 +115,64 @@ describe("guarded dispatcher (real connections)", () => {
     expect(await res.text()).toBe("internal secret")
   })
 
-  it.each([
-    ["a literal IP", () => `http://127.0.0.2:${port}/`],
-    ["a hostname with a refused address", () => `http://localhost:${port}/`],
-  ])("re-checks every redirect hop: %s", async (_label, target) => {
+  it("re-checks a redirect hop to a literal IP", async () => {
     // Only the first server is allowed; the hop it redirects to is not.
     const onlyThisServer = createGuardedAgent((a) => a === "127.0.0.1")
+    const target = `http://127.0.0.2:${port}/`
     const cause = await blockedCause(
-      fetch(`http://127.0.0.1:${port}/redirect?to=${encodeURIComponent(target())}`, {
+      fetch(`http://127.0.0.1:${port}/redirect?to=${encodeURIComponent(target)}`, {
         dispatcher: onlyThisServer,
+      } as RequestInit),
+    )
+    expect(cause).toBeInstanceOf(SsrfBlockedError)
+  })
+})
+
+// Hostname cases with a stubbed resolver, so they don't depend on how the
+// machine resolves `localhost` (::1 on macOS; often 127.0.0.1 only on Linux CI).
+describe("guarded dispatcher, hostnames (stubbed DNS)", () => {
+  const RECORDS: Record<string, string[]> = {
+    "allowed.test": ["127.0.0.1"],
+    // A public-looking first answer must not hide a refused one.
+    "internal.test": ["127.0.0.1", "10.0.0.1"],
+  }
+  const onlyThisServer = () => createGuardedAgent((a) => a === "127.0.0.1")
+
+  function stubDns() {
+    vi.spyOn(dns, "lookup").mockImplementation(((
+      hostname: string,
+      options: dns.LookupOptions,
+      callback: (err: Error | null, addresses: dns.LookupAddress[]) => void,
+    ) => {
+      const addresses = (RECORDS[hostname] ?? []).map((address) => ({ address, family: 4 }))
+      callback(addresses.length ? null : new Error(`ENOTFOUND ${hostname}`), addresses)
+    }) as never)
+  }
+
+  it("connects to a hostname whose every address is allowed", async () => {
+    stubDns()
+    const before = connections
+    const res = await fetch(`http://allowed.test:${port}/`, { dispatcher: onlyThisServer() } as RequestInit)
+    expect(await res.text()).toBe("internal secret")
+    expect(connections).toBe(before + 1)
+  })
+
+  it("refuses a hostname when any one of its addresses is refused", async () => {
+    stubDns()
+    const before = connections
+    const cause = await blockedCause(
+      fetch(`http://internal.test:${port}/`, { dispatcher: onlyThisServer() } as RequestInit),
+    )
+    expect(cause).toBeInstanceOf(SsrfBlockedError)
+    expect(connections).toBe(before)
+  })
+
+  it("re-checks a redirect hop to a hostname", async () => {
+    stubDns()
+    const target = `http://internal.test:${port}/`
+    const cause = await blockedCause(
+      fetch(`http://allowed.test:${port}/redirect?to=${encodeURIComponent(target)}`, {
+        dispatcher: onlyThisServer(),
       } as RequestInit),
     )
     expect(cause).toBeInstanceOf(SsrfBlockedError)
