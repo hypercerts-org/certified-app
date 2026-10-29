@@ -85,6 +85,7 @@ function genericMessageFor(status: number): string {
   if (status === 404) return "Not found"
   if (status === 409) return "Conflict"
   if (status === 429) return "Too many requests"
+  if (status === 503) return "Temporarily unavailable"
   return "Internal server error"
 }
 
