@@ -4,7 +4,8 @@ import Button from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
 import { parseActor, RESERVED_ROUTES } from "@/lib/urls";
 
-// Note: Next.js does not support metadata exports in not-found.tsx.
+// Note: Next.js does not support metadata exports in not-found.tsx, so the
+// title is rendered here (React hoists <title> into <head>).
 // 404 pages are not indexed by search engines by default.
 
 /** The actor a not-found path was looking for, if it's a profile route:
@@ -24,29 +25,35 @@ export default async function NotFoundPage() {
 
   if (actor) {
     return (
-      <EmptyState
-        icon={UserX}
-        title="Profile not found"
-        description={`We couldn't find a Certified profile for @${actor}.`}
-        headingLevel={1}
-        className="pt-[120px]"
-      >
-        <Button variant="secondary" size="sm" href="/explore">
-          Explore profiles
-        </Button>
-      </EmptyState>
+      <>
+        <title>Profile not found — Certified</title>
+        <EmptyState
+          icon={UserX}
+          title="Profile not found"
+          description={`We couldn't find a Certified profile for @${actor}.`}
+          headingLevel={1}
+          className="pt-[120px]"
+        >
+          <Button variant="secondary" size="sm" href="/explore">
+            Explore profiles
+          </Button>
+        </EmptyState>
+      </>
     );
   }
 
   return (
-    <EmptyState
-      title="Page not found"
-      description="The page you're looking for doesn't exist."
-      headingLevel={1}
-    >
-      <Button variant="secondary" size="sm" href="/">
-        Go home
-      </Button>
-    </EmptyState>
+    <>
+      <title>Page not found — Certified</title>
+      <EmptyState
+        title="Page not found"
+        description="The page you're looking for doesn't exist."
+        headingLevel={1}
+      >
+        <Button variant="secondary" size="sm" href="/">
+          Go home
+        </Button>
+      </EmptyState>
+    </>
   );
 }
