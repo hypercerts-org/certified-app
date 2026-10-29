@@ -101,7 +101,7 @@ export function useProfile(): {
         if (options?.bypassCache) init.cache = "no-store"
         if (signal) init.signal = signal
         const [certResult, resolveResult] = await Promise.allSettled([
-          getProfile(did, signal),
+          getProfile(did, signal, { fresh: options?.bypassCache }),
           authFetch(
             `/api/resolve-did?did=${encodeURIComponent(did)}`,
             init

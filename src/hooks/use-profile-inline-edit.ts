@@ -750,7 +750,7 @@ export function useProfileInlineEdit(
         // and retry the write ONCE. A second failure bubbles to the
         // outer catch (which surfaces `saveError`). (judgment-006 / #71)
         if (!(err instanceof InvalidSwapError)) throw err
-        const fresh = await getProfileWithCid(sessionDid)
+        const fresh = await getProfileWithCid(sessionDid, undefined, { fresh: true })
         const freshSwapCid = fresh?.cid ?? null
         profileSwapCidRef.current = freshSwapCid
         await putProfile(sessionDid, next, {

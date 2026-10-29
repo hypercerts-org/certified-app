@@ -305,7 +305,7 @@ export async function resolveHandleViaWellKnown(handle: string): Promise<string 
 }
 
 /** Bluesky's public appView — unauthenticated handle resolution. */
-const BSKY_APPVIEW = "https://public.api.bsky.app"
+export const BSKY_APPVIEW = "https://public.api.bsky.app"
 
 /**
  * Resolve a handle (e.g. `alice.bsky.social`) to its DID via Bluesky's
