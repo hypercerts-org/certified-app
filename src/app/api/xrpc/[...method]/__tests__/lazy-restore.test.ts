@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { TokenRefreshError } from "@atproto/oauth-client-node"
 
 /**
  * Tests for the lazy OAuth-session restore in the XRPC proxy GET
@@ -13,8 +14,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  * Pinned here:
  *  - Foreign-repo listRecords / foreign-DID getBlob with a session
  *    cookie never call `getOAuthClient` at all.
- *  - getSession with a cookie whose restore fails still 401s AND
- *    still drops the stale session cookie (deleteSession).
+ *  - getSession with a cookie whose session is really gone still 401s
+ *    AND still drops the stale session cookie (deleteSession).
+ *  - A transient restore failure (auth-server metadata, Upstash, the
+ *    request lock) keeps the cookie: getSession answers 503, which
+ *    authFetch does not treat as signed out (TECH-807).
  *  - A same-repo read whose restore fails falls back to the public
  *    PDS read instead of 500/401 — degraded sessions must not break
  *    reading a user's own public records.
@@ -120,10 +124,10 @@ describe("lazy restore — foreign reads skip the OAuth session entirely", () =>
 })
 
 describe("lazy restore — auth-required methods still fail closed", () => {
-  it("getSession with a failed restore returns 401 and deletes the session", async () => {
+  it("getSession with a revoked session returns 401 and deletes the session", async () => {
     const { GET } = await import("../route")
     getOAuthClient.mockResolvedValue({
-      restore: vi.fn().mockRejectedValue(new Error("token refresh failed")),
+      restore: vi.fn().mockRejectedValue(new TokenRefreshError(OWN_DID, "The session was revoked")),
     })
 
     const res = await GET(
@@ -133,6 +137,23 @@ describe("lazy restore — auth-required methods still fail closed", () => {
 
     expect(res.status).toBe(401)
     expect(deleteSession).toHaveBeenCalledTimes(1)
+  })
+
+  it("getSession with a transient restore failure returns 503 and keeps the session", async () => {
+    const { GET } = await import("../route")
+    getOAuthClient.mockResolvedValue({
+      restore: vi.fn().mockRejectedValue(
+        new Error("Failed to resolve OAuth server metadata for issuer: https://certified.one"),
+      ),
+    })
+
+    const res = await GET(
+      makeRequest("com.atproto.server.getSession"),
+      makeParams("com.atproto.server.getSession"),
+    )
+
+    expect(res.status).toBe(503)
+    expect(deleteSession).not.toHaveBeenCalled()
   })
 
   it("getSession without a session cookie returns 401 without touching OAuth", async () => {
@@ -175,10 +196,50 @@ describe("lazy restore — same-repo reads degrade to the public proxy", () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ records })
     // Restore was attempted (same-repo branch wants the bound agent),
-    // failed, dropped the stale cookie, and degraded to the public read.
+    // failed transiently, kept the cookie, and degraded to the public read.
     expect(getOAuthClient).toHaveBeenCalledTimes(1)
-    expect(deleteSession).toHaveBeenCalledTimes(1)
+    expect(deleteSession).not.toHaveBeenCalled()
     expect(resolvePdsUrl).toHaveBeenCalledWith(OWN_DID)
     fetchSpy.mockRestore()
+  })
+})
+
+describe("writes — restore failures (TECH-807)", () => {
+  function makePostRequest(methodName: string, body: unknown) {
+    return {
+      nextUrl: new URL(`https://app.example/api/xrpc/${methodName}`),
+      json: async () => body,
+      headers: new Headers({ "content-type": "application/json" }),
+    } as unknown as Parameters<Awaited<typeof import("../route")>["POST"]>[0]
+  }
+  const write = () =>
+    makePostRequest("com.atproto.repo.createRecord", {
+      repo: OWN_DID,
+      collection: "org.hypercerts.collection",
+      record: {},
+    })
+
+  it("returns 503 and keeps the session when restore fails transiently", async () => {
+    const { POST } = await import("../route")
+    getOAuthClient.mockResolvedValue({
+      restore: vi.fn().mockRejectedValue(new Error("fetch failed")),
+    })
+
+    const res = await POST(write(), makeParams("com.atproto.repo.createRecord"))
+
+    expect(res.status).toBe(503)
+    expect(deleteSession).not.toHaveBeenCalled()
+  })
+
+  it("returns 401 and deletes the session when it was revoked", async () => {
+    const { POST } = await import("../route")
+    getOAuthClient.mockResolvedValue({
+      restore: vi.fn().mockRejectedValue(new TokenRefreshError(OWN_DID, "The session was revoked")),
+    })
+
+    const res = await POST(write(), makeParams("com.atproto.repo.createRecord"))
+
+    expect(res.status).toBe(401)
+    expect(deleteSession).toHaveBeenCalledTimes(1)
   })
 })
