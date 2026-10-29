@@ -1733,10 +1733,12 @@
 }
 
 @media (max-width: 799px) {
+  /* Rest above the home indicator on notched phones; the shell's
+     matching bottom padding lives in layout.css. */
   .feedback-trigger {
-    bottom: 16px;
-    right: 16px;
-    min-height: 44px;
+    bottom: calc(var(--feedback-trigger-offset) + env(safe-area-inset-bottom, 0px));
+    right: var(--feedback-trigger-offset);
+    min-height: var(--feedback-trigger-height);
     padding: 10px 16px;
     font-size: 0.8125rem;
   }

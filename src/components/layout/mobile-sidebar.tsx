@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { profileUrl } from "@/lib/urls"
+import { ownProfileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
@@ -62,12 +62,15 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     openFeedback();
   };
 
-  // Resolve the Profile link straight to /profile/<handle> when we know
-  // the handle, so clicking it skips the /profile redirect hop. When
-  // acting as a group, point at the group's profile.
-  const profileHref = displayHandle
-    ? profileUrl(displayHandle)
-    : "/profile";
+  // Resolve the Profile link straight to /<handle> when we know the
+  // handle, so clicking it skips the /profile redirect hop (DID only
+  // while the handle is unknown). When acting as a group, point at the
+  // group's profile.
+  const profileHref = ownProfileUrl({
+    activeGroup: activeOrg,
+    personalHandle: handle,
+    personalDid: did,
+  });
 
   // Signed-out viewers get the public destinations only — Explore,
   // Apps and Help. Everything else (Home, Profile, Settings, Feedback)

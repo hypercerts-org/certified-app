@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   profileUrl,
+  ownProfileUrl,
   recordUrl,
   parseActor,
   isDid,
@@ -150,5 +151,40 @@ describe("rkeyFromUri", () => {
 
   it("returns the input itself when there is no slash", () => {
     expect(rkeyFromUri("bare-rkey")).toBe("bare-rkey")
+  })
+})
+
+describe("ownProfileUrl", () => {
+  it("prefers the personal handle over the DID", () => {
+    expect(
+      ownProfileUrl({ personalHandle: "alice.eco", personalDid: "did:plc:abc" }),
+    ).toBe("/alice.eco")
+  })
+
+  it("falls back to the DID only while the handle is unknown", () => {
+    expect(ownProfileUrl({ personalHandle: null, personalDid: "did:plc:abc" })).toBe(
+      "/did:plc:abc",
+    )
+  })
+
+  it("follows the active group (handle first, then group DID)", () => {
+    expect(
+      ownProfileUrl({
+        activeGroup: { handle: "team.eco", groupDid: "did:plc:grp" },
+        personalHandle: "alice.eco",
+        personalDid: "did:plc:abc",
+      }),
+    ).toBe("/team.eco")
+    expect(
+      ownProfileUrl({
+        activeGroup: { handle: "", groupDid: "did:plc:grp" },
+        personalHandle: "alice.eco",
+        personalDid: "did:plc:abc",
+      }),
+    ).toBe("/did:plc:grp")
+  })
+
+  it("returns /profile when nothing is known yet", () => {
+    expect(ownProfileUrl({})).toBe("/profile")
   })
 })

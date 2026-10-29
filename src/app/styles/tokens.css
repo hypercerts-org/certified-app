@@ -281,6 +281,13 @@
      desktop. Zeroed at ≥800px below. */
   --bottom-nav-height: 56px;
 
+  /* Floating Feedback button (<800px, browser tab only): its tap-target
+     height and its resting gap from the viewport edge. The shell reserves
+     height + both gaps + the safe-area inset as bottom padding so the
+     last rows of a page can always scroll clear of the button. */
+  --feedback-trigger-height: 44px;
+  --feedback-trigger-offset: 16px;
+
   /* Desktop top bar (rendered ≥800px). Row 1 is chrome
      (brandmark + page title + search + icon buttons + switcher); row 2
      is the profile tabs strip, conditional on /profile/[handle]. The

@@ -1,9 +1,21 @@
 import type { Metadata } from "next"
 import { unstable_cache } from "next/cache"
 import { notFound } from "next/navigation"
-import { buildProfilePayload } from "@/app/api/resolve-did/resolve-core"
-import { BSKY_APPVIEW, resolveHandle, resolveHandleViaWellKnown } from "@/lib/atproto/did"
-import { getRecordServer } from "@/lib/atproto/get-record-server"
+import { Resolver } from "node:dns/promises"
+import { cache } from "react"
+import {
+  buildProfilePayload,
+  lookupIndexerDidByHandle,
+  lookupIndexerRecordExists,
+} from "@/app/api/resolve-did/resolve-core"
+import {
+  BSKY_APPVIEW,
+  invalidateDidDoc,
+  isHandleSyntax,
+  lookupHandleViaWellKnown,
+  resolveHandle,
+} from "@/lib/atproto/did"
+import { lookupRecordServer } from "@/lib/atproto/get-record-server"
 import { parseActor, profileUrl, recordUrl, type RecordType } from "@/lib/urls"
 
 // Generic share defaults. The per-page builders below only fall back to
@@ -27,11 +39,58 @@ const cachedProfilePayload = unstable_cache(
   { revalidate: OG_REVALIDATE_SECONDS },
 )
 
+type RecordValue = { uri: string; cid?: string; value: Record<string, unknown> }
+
+// Definite answers (found, missing) are cached for the revalidate window;
+// a failed lookup throws, so it is never pinned and the next request tries
+// again. Missing answers are cached too: crawlers re-request dead links, and
+// rkeys are new TIDs, so a record can't appear under a key that 404'd.
+class LookupFailed extends Error {}
+
+/**
+ * A PDS's RecordNotFound isn't the last word: our DID doc may be stale
+ * (cached for minutes after a migration), and the record pages fall back
+ * to the indexer's copy when the PDS misses (#184). So "missing" needs the
+ * PDS to say so again after re-resolving its DID doc, and the indexer to
+ * have no copy either.
+ */
+async function resolveRecord(
+  did: string,
+  collection: string,
+  rkey: string,
+): Promise<RecordValue | "missing" | undefined> {
+  const record = await lookupRecordServer<Record<string, unknown>>(did, collection, rkey)
+  if (record !== "missing") return record
+  invalidateDidDoc(did)
+  const retry = await lookupRecordServer<Record<string, unknown>>(did, collection, rkey)
+  if (retry !== "missing") return retry
+  const indexed = await lookupIndexerRecordExists(`at://${did}/${collection}/${rkey}`, collection)
+  return indexed === false ? "missing" : undefined
+}
+
 const cachedRecord = unstable_cache(
-  (did: string, collection: string, rkey: string) =>
-    getRecordServer<Record<string, unknown>>(did, collection, rkey),
+  async (did: string, collection: string, rkey: string): Promise<RecordValue | "missing"> => {
+    const record = await resolveRecord(did, collection, rkey)
+    if (!record) throw new LookupFailed("record lookup failed")
+    return record
+  },
   ["og-metadata:record"],
   { revalidate: OG_REVALIDATE_SECONDS },
+)
+
+/**
+ * A record for metadata and the not-found page: the record, "missing" on a
+ * definite RecordNotFound, or undefined when the lookup failed. Shared per
+ * request (React cache), so the not-found page reuses the layout's answer.
+ */
+export const lookupRecord = cache(
+  async (did: string, collection: string, rkey: string): Promise<RecordValue | "missing" | undefined> => {
+    try {
+      return await cachedRecord(did, collection, rkey)
+    } catch {
+      return undefined
+    }
+  },
 )
 
 /** Collapse whitespace and cap a description at OG-friendly length. */
@@ -81,7 +140,7 @@ function ogImageFromField(image: unknown, did: string): string | null {
   return null
 }
 
-type ActorLookup =
+export type ActorLookup =
   | { status: "found"; did: string; handle: string | null }
   | { status: "missing" }
   | { status: "unknown" }
@@ -127,13 +186,41 @@ async function resolveHandleStrict(handle: string): Promise<string | "missing" |
   return undefined
 }
 
+// Final labels of paths scanners and browsers probe (`/wp-login.php`,
+// `/sitemap.xml`, …). Not TLDs, so never a handle: answered without any
+// network call.
+const FILE_EXTENSIONS = new Set([
+  "asp", "aspx", "bak", "cfg", "cgi", "conf", "css", "env", "gif", "gz", "htm", "html",
+  "ico", "ini", "jpeg", "jpg", "js", "json", "jsp", "log", "map", "old", "php", "png",
+  "sql", "svg", "swp", "tar", "txt", "xml", "yaml", "yml",
+])
+
+const dnsResolver = new Resolver({ timeout: LOOKUP_TIMEOUT_MS, tries: 1 })
+
+/** Handle → DID via its `_atproto` DNS TXT record: the DID, "missing" when
+ *  the name or the record definitely doesn't exist, undefined otherwise. */
+async function lookupHandleViaDns(handle: string): Promise<string | "missing" | undefined> {
+  try {
+    const records = await dnsResolver.resolveTxt(`_atproto.${handle}`)
+    const did = records
+      .map((chunks) => chunks.join(""))
+      .find((text) => text.startsWith("did="))
+      ?.slice("did=".length)
+    return did?.startsWith("did:") ? did : "missing"
+  } catch (err) {
+    const code = (err as { code?: unknown })?.code
+    return code === "ENOTFOUND" || code === "ENODATA" ? "missing" : undefined
+  }
+}
+
 /**
- * Resolve an `[actor]` segment (handle or DID). "missing" only on a definite
- * signal (invalid segment, plc.directory 404, appView "Unable to resolve
- * handle" with no .well-known fallback), so a transient upstream failure
- * never turns a real profile into a 404.
+ * Resolve an `[actor]` segment (handle or DID). "missing" only when every
+ * way a handle can resolve answers definitely: the appView, the handle's
+ * own DNS TXT record and `.well-known` (atproto allows either), and the
+ * indexer's record of migrated handles (the chain resolveInputToDid walks).
+ * A transient upstream failure never turns a real profile into a 404.
  */
-async function lookupActor(actorParam: string): Promise<ActorLookup> {
+async function resolveActor(actorParam: string): Promise<ActorLookup> {
   const actor = parseActor(actorParam)
   if (actor.kind === "invalid") return { status: "missing" }
   if (actor.kind === "did") {
@@ -142,15 +229,55 @@ async function lookupActor(actorParam: string): Promise<ActorLookup> {
     }
     return { status: "found", did: actor.value, handle: null }
   }
+  const tld = actor.value.slice(actor.value.lastIndexOf(".") + 1).toLowerCase()
+  if (!isHandleSyntax(actor.value) || FILE_EXTENSIONS.has(tld)) return { status: "missing" }
+
   const viaAppview = await resolveHandleStrict(actor.value)
   if (viaAppview && viaAppview !== "missing") {
     return { status: "found", did: viaAppview, handle: actor.value }
   }
-  // Handles the appView doesn't know yet (e.g. self-hosted, not crawled).
-  const viaWellKnown = await resolveHandleViaWellKnown(actor.value)
-  if (viaWellKnown) return { status: "found", did: viaWellKnown, handle: actor.value }
-  return viaAppview === "missing" ? { status: "missing" } : { status: "unknown" }
+  // Handles the appView doesn't know (yet): checked the way atproto does,
+  // DNS TXT and .well-known. Either one alone proves nothing missing: a
+  // TXT-verified handle's site may 404 or serve HTML at .well-known.
+  const [viaDns, viaWellKnown] = await Promise.all([
+    lookupHandleViaDns(actor.value),
+    lookupHandleViaWellKnown(actor.value),
+  ])
+  for (const did of [viaDns, viaWellKnown]) {
+    if (did && did !== "missing") return { status: "found", did, handle: actor.value }
+  }
+  // The page renders as usual either way, so the indexer is only asked
+  // when everything else said "missing".
+  if (viaAppview !== "missing" || viaDns !== "missing" || viaWellKnown !== "missing") {
+    return { status: "unknown" }
+  }
+  // A migrated account's old handle: no longer resolves live, still indexed.
+  const viaIndexer = await lookupIndexerDidByHandle(actor.value)
+  if (viaIndexer) return { status: "found", did: viaIndexer, handle: actor.value }
+  return viaIndexer === null ? { status: "missing" } : { status: "unknown" }
 }
+
+// Definite answers are cached like records (above), so a crawler re-hitting
+// a dead handle costs one lookup per window; "unknown" is never cached.
+const cachedActor = unstable_cache(
+  async (actorParam: string): Promise<ActorLookup> => {
+    const result = await resolveActor(actorParam)
+    if (result.status === "unknown") throw new LookupFailed("actor lookup failed")
+    return result
+  },
+  ["og-metadata:actor"],
+  { revalidate: OG_REVALIDATE_SECONDS },
+)
+
+/** {@link resolveActor}, cached, and shared per request (React cache): the
+ *  layouts and the not-found page ask the same question. */
+export const lookupActor = cache(async (actorParam: string): Promise<ActorLookup> => {
+  try {
+    return await cachedActor(actorParam)
+  } catch {
+    return { status: "unknown" }
+  }
+})
 
 /** Assemble a complete, self-contained Metadata object for a share target. */
 function buildShareMetadata(opts: {
@@ -234,7 +361,8 @@ export async function profileMetadata(actorParam: string): Promise<Metadata> {
  * Per-page Open Graph metadata for a record route
  * (`/[actor]/{activity|project}/{rkey}`). Fetches the record server-side and
  * surfaces its title, short description, and image. Returns `{}` (inherit the
- * root defaults) when the record can't be resolved.
+ * root defaults) when the record can't be resolved, and 404s when it or its
+ * actor definitely doesn't exist.
  */
 export async function recordMetadata(
   actorParam: string,
@@ -245,11 +373,12 @@ export async function recordMetadata(
   const resolved = await lookupActor(actorParam)
   if (resolved.status === "missing") notFound()
   if (resolved.status !== "found") return {}
+  const { did } = resolved
+  // A record that definitely doesn't exist answers 404 as well.
+  const record = await lookupRecord(did, collection, rkey)
+  if (record === "missing") notFound()
+  if (!record) return {}
   try {
-    const { did } = resolved
-
-    const record = await cachedRecord(did, collection, rkey)
-    if (!record) return {}
     const value = record.value
 
     const handle = resolved.handle ?? (await resolveHandle(did).catch(() => null)) ?? did

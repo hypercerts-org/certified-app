@@ -20,7 +20,12 @@
    panel reads as an intentional "no banner" affordance rather than
    eating the same vertical real estate as a real banner. */
 .profile-hero__banner--empty {
-  height: 90px;
+  /* Mobile: the transparent overlay navbar's back button floats over the
+     top of the hero, and the avatar row lifts 48px into the banner. At
+     90px that put the avatar's top edge under the back button; sizing
+     the panel to navbar + lift keeps the avatar fully below the bar.
+     Desktop (no overlay navbar) resets to a plain 100px below. */
+  height: calc(var(--navbar-height) + 48px);
 }
 
 .profile-hero__banner-img {

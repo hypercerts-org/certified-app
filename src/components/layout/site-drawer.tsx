@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { profileUrl } from "@/lib/urls"
+import { ownProfileUrl } from "@/lib/urls"
 import { usePathname } from "next/navigation"
 import { Compass, HelpCircle, Home, LayoutGrid, Settings, User, X } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -31,7 +31,7 @@ export default function SiteDrawer({
   onClose: () => void
 }) {
   const pathname = usePathname()
-  const { isLoading, isAuthenticated } = useAuth()
+  const { isLoading, isAuthenticated, did: personalDid } = useAuth()
   const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
   // The "Profile" item — and any future identity-bound link added
@@ -39,17 +39,12 @@ export default function SiteDrawer({
   // *acting as*, not their personal identity. When the account
   // switcher is on a group, that's the group's handle; otherwise it
   // falls back to the personal handle. Matches the convention the
-  // desktop top bar and the mobile sidebar already use.
-  const activeHandle = activeOrg?.handle ?? personalHandle
-
-  // Profile target: active identity's profile when signed in (group's
-  // when acting as a group, personal otherwise); sign-in prompt
-  // otherwise. The label is "Profile", matching the mobile sidebar
-  // and the tour; the target follows the currently active identity.
-  const profileHref =
-    isAuthenticated && activeHandle
-      ? profileUrl(activeHandle)
-      : null
+  // desktop top bar and the mobile sidebar already use (shared via
+  // ownProfileUrl). Signed-out viewers get the sign-in prompt instead.
+  // The label is "Profile", matching the mobile sidebar and the tour.
+  const profileHref = isAuthenticated
+    ? ownProfileUrl({ activeGroup: activeOrg, personalHandle, personalDid })
+    : null
 
   const items: {
     key: string

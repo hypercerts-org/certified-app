@@ -39,3 +39,38 @@ export async function getRecordServer<T = Record<string, unknown>>(
     return null
   }
 }
+
+/**
+ * Like {@link getRecordServer}, but keeps a definitely missing record apart
+ * from a failed lookup: the record, "missing" when the PDS answers
+ * RecordNotFound, or undefined on anything else (unresolvable PDS, timeout,
+ * 5xx, a 404 from something that isn't the PDS). Callers that turn absence into a 404 only act on
+ * "missing".
+ */
+export async function lookupRecordServer<T = Record<string, unknown>>(
+  did: string,
+  collection: string,
+  rkey: string,
+): Promise<{ uri: string; cid?: string; value: T } | "missing" | undefined> {
+  try {
+    const targetPds = await resolvePdsUrl(did)
+    if (!targetPds) return undefined
+
+    const params = new URLSearchParams({ repo: did, collection, rkey })
+    const res = await guardedFetch(
+      `${targetPds}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
+      { redirect: "error", signal: AbortSignal.timeout(8_000) },
+    )
+    if (res.status === 400 || res.status === 404) {
+      const data = (await res.json().catch(() => ({}))) as { error?: unknown }
+      return data.error === "RecordNotFound" ? "missing" : undefined
+    }
+    if (!res.ok) return undefined
+
+    const data = (await res.json()) as { uri?: string; cid?: string; value?: T }
+    if (!data.value) return undefined
+    return { uri: data.uri ?? "", cid: data.cid, value: data.value }
+  } catch {
+    return undefined
+  }
+}

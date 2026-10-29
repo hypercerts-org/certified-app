@@ -10,26 +10,46 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
  *   plain title stopped the root template from reaching them).
  */
 
-const { resolveHandleViaWellKnown, notFound } = vi.hoisted(() => ({
-  resolveHandleViaWellKnown: vi.fn(),
+const {
+  lookupHandleViaWellKnown,
+  lookupIndexerDidByHandle,
+  lookupIndexerRecordExists,
+  lookupRecordServer,
+  resolveTxt,
+  notFound,
+} = vi.hoisted(() => ({
+  lookupHandleViaWellKnown: vi.fn(),
+  lookupIndexerDidByHandle: vi.fn(),
+  lookupIndexerRecordExists: vi.fn(),
+  lookupRecordServer: vi.fn(),
+  resolveTxt: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
   }),
 }))
+
+const dnsError = (code: string) => Object.assign(new Error(code), { code })
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }))
 vi.mock("next/navigation", () => ({ notFound }))
 vi.mock("@/lib/atproto/did", () => ({
   BSKY_APPVIEW: "https://appview.test",
   resolveHandle: vi.fn(async () => "alice.example.com"),
-  resolveHandleViaWellKnown,
+  lookupHandleViaWellKnown,
+  invalidateDidDoc: vi.fn(),
+  isHandleSyntax: (handle: string) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(handle),
+}))
+vi.mock("node:dns/promises", () => ({
+  Resolver: class {
+    resolveTxt = resolveTxt
+  },
 }))
 vi.mock("@/app/api/resolve-did/resolve-core", () => ({
   buildProfilePayload: vi.fn(async () => ({ handle: "alice.example.com", displayName: "Alice" })),
+  lookupIndexerDidByHandle,
+  lookupIndexerRecordExists,
 }))
-vi.mock("@/lib/atproto/get-record-server", () => ({
-  getRecordServer: vi.fn(async () => ({ value: { title: "Restore the river" } })),
-}))
+vi.mock("@/lib/atproto/get-record-server", () => ({ lookupRecordServer }))
 
 import { profileMetadata, recordMetadata } from "../og-metadata"
 
@@ -41,7 +61,11 @@ const unableToResolve = () =>
   Response.json({ error: "InvalidRequest", message: "Unable to resolve handle" }, { status: 400 })
 
 beforeEach(() => {
-  resolveHandleViaWellKnown.mockReset().mockResolvedValue(null)
+  lookupHandleViaWellKnown.mockReset().mockResolvedValue("missing")
+  lookupIndexerDidByHandle.mockReset().mockResolvedValue(null)
+  lookupIndexerRecordExists.mockReset().mockResolvedValue(false)
+  resolveTxt.mockReset().mockRejectedValue(dnsError("ENOTFOUND"))
+  lookupRecordServer.mockReset().mockResolvedValue({ uri: "", value: { title: "Restore the river" } })
   notFound.mockClear()
 })
 afterEach(() => {
@@ -68,10 +92,49 @@ describe("profileMetadata", () => {
 
   it("finds a handle via .well-known when the appView doesn't know it", async () => {
     mockFetch(unableToResolve)
-    resolveHandleViaWellKnown.mockResolvedValue("did:plc:alice")
+    lookupHandleViaWellKnown.mockResolvedValue("did:plc:alice")
     const meta = await profileMetadata("alice.example.com")
     expect(notFound).not.toHaveBeenCalled()
     expect(meta.title).toEqual({ absolute: "Alice (@alice.example.com) — Certified" })
+  })
+
+  it("finds a handle verified only by its DNS TXT record", async () => {
+    mockFetch(unableToResolve)
+    resolveTxt.mockResolvedValue([["did=did:plc:alice"]])
+    await profileMetadata("alice.example.com")
+    expect(notFound).not.toHaveBeenCalled()
+  })
+
+  it("never 404s when the DNS TXT lookup can't answer, and skips the indexer", async () => {
+    mockFetch(unableToResolve)
+    resolveTxt.mockRejectedValue(dnsError("ETIMEOUT"))
+    expect(await profileMetadata("alice.example.com")).toEqual({})
+    expect(notFound).not.toHaveBeenCalled()
+    expect(lookupIndexerDidByHandle).not.toHaveBeenCalled()
+  })
+
+  it("answers scanner paths without any lookup", async () => {
+    const fetchSpy = mockFetch(unableToResolve)
+    await expect(profileMetadata("wp-login.php")).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(resolveTxt).not.toHaveBeenCalled()
+  })
+
+  it("finds a migrated handle via the indexer before calling it missing", async () => {
+    mockFetch(unableToResolve)
+    lookupIndexerDidByHandle.mockResolvedValue("did:plc:alice")
+    await profileMetadata("old-handle.example.com")
+    expect(notFound).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [".well-known can't be reached", () => lookupHandleViaWellKnown.mockResolvedValue(undefined)],
+    ["the indexer can't answer", () => lookupIndexerDidByHandle.mockResolvedValue(undefined)],
+  ])("never 404s a handle when %s", async (_label, arrange) => {
+    mockFetch(unableToResolve)
+    arrange()
+    expect(await profileMetadata("alice.example.com")).toEqual({})
+    expect(notFound).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -96,6 +159,46 @@ describe("recordMetadata", () => {
     const meta = await recordMetadata("alice.example.com", "activity", "org.hypercerts.claim.activity", "3abc")
     expect(meta.title).toEqual({ absolute: "Restore the river — Certified" })
     expect(meta.openGraph?.title).toBe("Restore the river")
+  })
+
+  it("404s when the record definitely doesn't exist", async () => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer.mockResolvedValue("missing")
+    await expect(
+      recordMetadata("alice.example.com", "activity", "org.hypercerts.claim.activity", "gone"),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+
+  it.each([
+    ["the indexer still has a copy", true],
+    ["the indexer can't answer", undefined],
+  ])("keeps the page when the PDS misses but %s", async (_label, indexed) => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer.mockResolvedValue("missing")
+    lookupIndexerRecordExists.mockResolvedValue(indexed)
+    expect(
+      await recordMetadata("alice.example.com", "activity", "org.hypercerts.claim.activity", "3abc"),
+    ).toEqual({})
+    expect(notFound).not.toHaveBeenCalled()
+  })
+
+  it("re-asks the PDS after refreshing the DID doc before calling a record missing", async () => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer
+      .mockResolvedValueOnce("missing")
+      .mockResolvedValueOnce({ uri: "", value: { title: "Moved" } })
+    const meta = await recordMetadata("alice.example.com", "activity", "org.hypercerts.claim.activity", "3abc")
+    expect(meta.title).toEqual({ absolute: "Moved — Certified" })
+    expect(lookupRecordServer).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps the page when the record lookup fails", async () => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer.mockResolvedValue(undefined)
+    expect(
+      await recordMetadata("alice.example.com", "activity", "org.hypercerts.claim.activity", "3abc"),
+    ).toEqual({})
+    expect(notFound).not.toHaveBeenCalled()
   })
 
   it("404s when the record's actor doesn't exist", async () => {

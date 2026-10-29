@@ -8,6 +8,7 @@ import ActivityDetailRoute from "@/components/feed/activity-detail-route"
 import ProjectDetailRoute from "@/components/project/project-detail-route"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
+import NotFoundMarker from "@/components/layout/not-found-marker"
 import { FileQuestion } from "lucide-react"
 
 /**
@@ -58,16 +59,19 @@ export default function RecordDetailPage() {
 
   if (!type || actor.kind === "invalid") {
     return (
-      <EmptyState
-        icon={FileQuestion}
-        title="Not found"
-        description="This link doesn't point to an activity or project we can show."
-        className="pt-[120px]"
-      >
-        <Button href="/explore" variant="secondary" size="sm">
-          Go to Explore
-        </Button>
-      </EmptyState>
+      <>
+        <NotFoundMarker />
+        <EmptyState
+          icon={FileQuestion}
+          title="Not found"
+          description="This link doesn't point to an activity or project we can show."
+          className="pt-[120px]"
+        >
+          <Button href="/explore" variant="secondary" size="sm">
+            Go to Explore
+          </Button>
+        </EmptyState>
+      </>
     )
   }
 

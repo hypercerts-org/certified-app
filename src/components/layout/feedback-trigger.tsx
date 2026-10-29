@@ -20,12 +20,14 @@ export default function FeedbackTrigger() {
   const { isOpen, openFeedback } = useFeedback()
   const pathname = usePathname()
   const { isDesktop, isStandalone } = useLayoutBreakpoints()
-  const [bottomOffset, setBottomOffset] = useState(20)
+  // Pixel offset while lifted above the footer; null at rest, so the CSS
+  // resting position (which adds the mobile safe-area inset) applies.
+  const [bottomOffset, setBottomOffset] = useState<number | null>(null)
 
   const updatePosition = useCallback(() => {
     const footer = document.querySelector(".site-footer")
     if (!footer) {
-      setBottomOffset(20)
+      setBottomOffset(null)
       return
     }
     const rect = footer.getBoundingClientRect()
@@ -34,7 +36,7 @@ export default function FeedbackTrigger() {
     if (rect.top < window.innerHeight && rect.bottom > 0) {
       setBottomOffset(window.innerHeight - rect.top + 12)
     } else {
-      setBottomOffset(20)
+      setBottomOffset(null)
     }
   }, [])
 
@@ -84,7 +86,7 @@ export default function FeedbackTrigger() {
     <button
       type="button"
       className="feedback-trigger"
-      style={{ bottom: `${bottomOffset}px` }}
+      style={bottomOffset === null ? undefined : { bottom: `${bottomOffset}px` }}
       onClick={() => openFeedback()}
       aria-label="Share feedback"
     >

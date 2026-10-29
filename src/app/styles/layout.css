@@ -753,7 +753,8 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    in components.css's mobile block, which loads after this file and wins. */
 
 /* Browser-tab mobile (<800px, no PWA bottom nav): the floating Feedback
-   button (44px tall, 16px off the edge; lifts 12px above the footer) would
+   button (--feedback-trigger-height tall, --feedback-trigger-offset above
+   the safe-area inset; lifts 12px above the footer) would
    otherwise sit over the last rows of pages that zero the shell's bottom
    padding (settings, cert detail). Reserve its height + gaps. Keyed on the
    trigger itself, which unmounts whenever the PWA bottom nav shows, so that
@@ -761,7 +762,10 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    `.app-shell:has(...) .app-shell__content` overrides. */
 @media (max-width: 799px) {
   html:has(.feedback-trigger) .app-shell .app-shell__content {
-    padding-bottom: calc(44px + 32px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(
+      var(--feedback-trigger-height) + 2 * var(--feedback-trigger-offset) +
+        env(safe-area-inset-bottom, 0px)
+    );
   }
 }
 
@@ -833,6 +837,25 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 @media (min-width: 800px) {
   html:has(.desktop-top-bar__row--tabs) {
     --top-bar-total: calc(var(--top-bar-row1) + var(--top-bar-row2));
+  }
+}
+
+/* Not-found pages (src/components/layout/not-found-marker.tsx): no tabs
+   for an actor or record that doesn't exist. The marker's span is in the
+   server HTML, so this applies before hydration (no flash of the strip);
+   the top bar drops the rows itself once hydrated. Row 2 only counts
+   toward `--top-bar-total` when a row other than the profile tabs (the
+   record back row) is still showing. */
+@media (min-width: 800px) {
+  html:has([data-not-found]) .desktop-top-bar__row--profile-tabs,
+  html:has([data-not-found]) .desktop-top-bar__row--tabs [role="tablist"] {
+    display: none;
+  }
+
+  html:has([data-not-found]):not(
+      :has(.desktop-top-bar__row--tabs:not(.desktop-top-bar__row--profile-tabs))
+    ) {
+    --top-bar-total: var(--top-bar-row1);
   }
 }
 

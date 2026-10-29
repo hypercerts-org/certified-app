@@ -132,6 +132,17 @@ async function fetchIndexerActorProfile(
  * strictly additive and only runs after live resolution has failed.
  */
 async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
+  return (await lookupIndexerDidByHandle(handle)) ?? null
+}
+
+/**
+ * The indexer step of the handle recovery chain, keeping "no indexed
+ * account has this handle" (null) apart from "the indexer couldn't
+ * answer" (undefined), so a 404 is never built on a failed lookup.
+ */
+export async function lookupIndexerDidByHandle(
+  handle: string,
+): Promise<string | null | undefined> {
   const wanted = handle.trim().toLowerCase()
   if (!wanted) return null
   try {
@@ -149,7 +160,7 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
       }),
       signal: AbortSignal.timeout(8_000),
     })
-    if (!res.ok) return null
+    if (!res.ok) return undefined
     const data = (await res.json()) as {
       data?: {
         appCertifiedActorProfile?: {
@@ -158,7 +169,7 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
       }
       errors?: unknown
     }
-    if (data.errors) return null
+    if (data.errors) return undefined
 
     const edges = data.data?.appCertifiedActorProfile?.edges ?? []
     const candidates: string[] = []
@@ -174,14 +185,63 @@ async function fetchIndexerDidByHandle(handle: string): Promise<string | null> {
     // denormalised handle (what `search` matched) must exactly equal the
     // requested handle. Resolves the migrated-but-idle account; abstains
     // when the only matches were fuzzy (display name, etc.).
-    for (const did of candidates) {
-      const actor = await fetchIndexerActorProfile(did)
-      const indexed = actor?.handle?.trim().toLowerCase()
-      if (indexed && indexed === wanted) return did
-    }
-    return null
+    // Confirmed in parallel (one round trip, not up to five), first match
+    // in search order wins.
+    const actors = await Promise.all(candidates.map((did) => fetchIndexerActorProfile(did)))
+    const match = candidates.find(
+      (_, i) => actors[i]?.handle?.trim().toLowerCase() === wanted,
+    )
+    if (match) return match
+    return actors.some((actor) => !actor) ? undefined : null
   } catch {
-    return null
+    return undefined
+  }
+}
+
+// The record collections with a /{type} page, and their indexer fields.
+const INDEXER_RECORD_FIELD: Readonly<Record<string, string>> = {
+  "org.hypercerts.claim.activity": "orgHypercertsClaimActivity",
+  "org.hypercerts.collection": "orgHypercertsCollection",
+}
+
+/**
+ * Whether the indexer holds a copy of a record: true / false, or undefined
+ * when it couldn't answer (or the collection isn't indexed here). The
+ * record pages fall back to the indexer when the PDS misses (#184), so a
+ * server-side 404 needs the indexer's "no" as well.
+ */
+export async function lookupIndexerRecordExists(
+  uri: string,
+  collection: string,
+): Promise<boolean | undefined> {
+  const field = INDEXER_RECORD_FIELD[collection]
+  if (!field) return undefined
+  try {
+    const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+
+    const res = await fetch(UPSTREAM_INDEXER_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        operationName: "RecordExists",
+        query: `query RecordExists($uris:[String!]!){ ${field}(first:1, where:{uri:{in:$uris}}){ edges { node { uri } } } }`,
+        variables: { uris: [uri] },
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) return undefined
+    const data = (await res.json()) as {
+      data?: Record<string, { edges?: { node?: { uri?: string } | null }[] | null } | null>
+      errors?: unknown
+    }
+    if (data.errors) return undefined
+    const edges = data.data?.[field]?.edges
+    if (!Array.isArray(edges)) return undefined
+    return edges.some((edge) => edge?.node?.uri === uri)
+  } catch {
+    return undefined
   }
 }
 
