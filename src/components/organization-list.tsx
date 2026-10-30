@@ -6,20 +6,20 @@ import type { ActorCard, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 import { ActorCardView } from "./cards";
 
-type ActorItem = ActorCard & { uri: string };
+// Actors are identified by DID.
+const actorKey = (actor: ActorCard) => actor.did;
 
 export function OrganizationList({ initial, query }: { initial: Page<ActorCard>; query: string }) {
-  // useCursorPages deduplicates by `uri`; actors are identified by DID.
-  const initialItems: Page<ActorItem> = {
-    items: initial.items.map((actor) => ({ ...actor, uri: actor.did })),
-    cursor: initial.cursor,
-  };
   const nextPageUrl = useCallback(
     (cursor: string) =>
       `/api/organizations?${new URLSearchParams({ cursor, ...(query ? { q: query } : {}) })}`,
     [query],
   );
-  const { items, hasMore, loading, error, loadMore } = useCursorPages(initialItems, nextPageUrl);
+  const { items, hasMore, loading, error, loadMore } = useCursorPages(
+    initial,
+    nextPageUrl,
+    actorKey,
+  );
 
   if (items.length === 0) {
     return (

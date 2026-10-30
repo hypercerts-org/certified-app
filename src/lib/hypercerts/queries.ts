@@ -63,20 +63,24 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     params: { actor: actor as l.AtIdentifierString },
     ...read(),
   });
-  if (!profile.success) return null;
 
   // app.certified.actor.getProfile accepts a handle or DID; app.certified.actor.getOrganization needs the DID and fails
-  // for accounts without an organization record (people).
-  const did = profile.body.profile.did;
+  // for accounts without an organization record (people). An organization can
+  // exist without a profile, so a DID gets the organization lookup either way.
+  const did = profile.success
+    ? profile.body.profile.did
+    : actor.startsWith("did:")
+      ? (actor as Did)
+      : null;
+  if (!did) return null;
   const organization = await api.xrpcSafe(app.certified.actor.getOrganization, {
     params: { actor: did },
     ...read(),
   });
-  return toActorDetail(
-    organization.success
-      ? organization.body.actor
-      : { did, profile: profile.body.profile, organization: null },
-  );
+  if (organization.success) return toActorDetail(organization.body.actor);
+  return profile.success
+    ? toActorDetail({ did, profile: profile.body.profile, organization: null })
+    : null;
 }
 
 export async function listActivitiesPage(options: {

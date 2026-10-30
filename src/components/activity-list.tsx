@@ -18,6 +18,8 @@ function pageUrl(source: ActivitySource, cursor: string) {
   return `/api/activities?${params}`;
 }
 
+const activityKey = (activity: ActivityCard) => activity.uri;
+
 export function ActivityList({
   initial,
   source,
@@ -28,17 +30,26 @@ export function ActivityList({
   showAuthor?: boolean;
 }) {
   const nextPageUrl = useCallback((cursor: string) => pageUrl(source, cursor), [source]);
-  const { items, hasMore, loading, error, loadMore } = useCursorPages(initial, nextPageUrl);
+  const { items, hasMore, loading, error, loadMore } = useCursorPages(
+    initial,
+    nextPageUrl,
+    activityKey,
+  );
 
-  if (items.length === 0) return <EmptyState title="No activities yet" />;
+  // A project page can come back empty after filtering (collection items that
+  // are not activities) while later pages still hold activities, so the empty
+  // state waits for the last page.
+  if (items.length === 0 && !hasMore) return <EmptyState title="No activities yet" />;
 
   return (
     <div className="stack">
-      <ul className="grid">
-        {items.map((activity) => (
-          <ActivityCardView key={activity.uri} activity={activity} showAuthor={showAuthor} />
-        ))}
-      </ul>
+      {items.length > 0 && (
+        <ul className="grid">
+          {items.map((activity) => (
+            <ActivityCardView key={activity.uri} activity={activity} showAuthor={showAuthor} />
+          ))}
+        </ul>
+      )}
       {error && <ErrorMessage live>{error}</ErrorMessage>}
       {hasMore && (
         <Button variant="secondary" loading={loading} onClick={loadMore}>
