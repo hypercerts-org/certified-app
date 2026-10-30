@@ -2,61 +2,61 @@
 //
 // The API returns hydrated records whose blob references and union types are
 // awkward to pass across the server/client boundary. Pages and tiles only see
-// these shapes, so swapping the data source (generated bindings today, the
+// these shapes, so swapping the data source (@hypercerts-org/api today, the
 // Hypercerts SDK later) does not touch any component.
 
-import type {
-  ActivityView,
-  ActorView,
-  BadgeAwardView,
-  CollectionActorView,
-  CollectionView,
-  OrganizationActorView,
-} from "@hypercerts-org/api"
+import type { app, org } from "@hypercerts-org/api";
+
+type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
+type ActorView = org.hypercerts.api.defs.ActorView;
+type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
+type CollectionActorView = org.hypercerts.collection.getCollection.CollectionActorView;
+type CollectionView = org.hypercerts.collection.getCollection.CollectionView;
+type OrganizationActorView = app.certified.actor.getOrganization.OrganizationActorView;
 
 export type Page<T> = {
-  items: T[]
-  cursor: string | null
-}
+  items: T[];
+  cursor: string | null;
+};
 
 export type ActorCard = {
-  did: string
-  displayName: string
-  description: string | null
-  avatarUrl: string | null
-  isOrganization: boolean
-}
+  did: string;
+  displayName: string;
+  description: string | null;
+  avatarUrl: string | null;
+  isOrganization: boolean;
+};
 
 export interface ActorDetail extends ActorCard {
-  organizationTypes: string[]
-  urls: string[]
-  longDescription: string | null
-  foundedDate: string | null
+  organizationTypes: string[];
+  urls: string[];
+  longDescription: string | null;
+  foundedDate: string | null;
 }
 
 export type ActivityCard = {
-  uri: string
-  cid: string
-  title: string
-  summary: string | null
-  author: ActorCard
-  createdAt: string | null
-  indexedAt: string | null
-}
+  uri: string;
+  cid: string;
+  title: string;
+  summary: string | null;
+  author: ActorCard;
+  createdAt: string | null;
+  indexedAt: string | null;
+};
 
 export type ProjectCard = {
-  uri: string
-  rkey: string
-  authorDid: string
-  title: string
-  summary: string | null
-  itemCount: number
-}
+  uri: string;
+  rkey: string;
+  authorDid: string;
+  title: string;
+  summary: string | null;
+  itemCount: number;
+};
 
 export interface ProjectDetail extends ProjectCard {
-  description: string | null
-  author: ActorCard
-  createdAt: string | null
+  description: string | null;
+  author: ActorCard;
+  createdAt: string | null;
 }
 
 // Badge awards an account has issued, grouped by badge definition. These are
@@ -65,51 +65,49 @@ export interface ProjectDetail extends ProjectCard {
 export type AwardSubject =
   | { kind: "actor"; actor: ActorCard }
   | { kind: "project"; project: ProjectCard }
-  | { kind: "record"; uri: string }
+  | { kind: "record"; uri: string };
 
 export type IssuedAward = {
-  uri: string
-  subject: AwardSubject
-}
+  uri: string;
+  subject: AwardSubject;
+};
 
 export type IssuedBadge = {
-  uri: string
-  title: string
-  badgeType: string | null
+  uri: string;
+  title: string;
+  badgeType: string | null;
   // Set when another account owns the badge definition.
-  definedBy: ActorCard | null
-  awardCount: number
-  recentAwards: IssuedAward[]
-}
+  definedBy: ActorCard | null;
+  awardCount: number;
+  recentAwards: IssuedAward[];
+};
 
 export type AwardsIssued = {
-  did: string
-  awardCount: number
+  did: string;
+  awardCount: number;
   // True when the account has issued more awards than the app reads (see
   // queries).
-  truncated: boolean
-  badges: IssuedBadge[]
-}
+  truncated: boolean;
+  badges: IssuedBadge[];
+};
 
 export type BadgeCard = {
-  uri: string
-  title: string
-  badgeType: string | null
-  issuer: ActorCard
-  response: string | null
-  createdAt: string | null
-}
+  uri: string;
+  title: string;
+  badgeType: string | null;
+  issuer: ActorCard;
+  response: string | null;
+  createdAt: string | null;
+};
 
-type UnknownRecord = Record<string, unknown>
+type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {
-  return value !== null && typeof value === "object"
-    ? (value as UnknownRecord)
-    : null
+  return value !== null && typeof value === "object" ? (value as UnknownRecord) : null;
 }
 
 function asString(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 // Dates are formatted once, on the server, with a fixed locale and time zone,
@@ -117,99 +115,98 @@ function asString(value: unknown): string | null {
 const dateFormat = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeZone: "UTC",
-})
+});
 
 export function formatDate(value: unknown): string | null {
-  const text = asString(value)
-  if (!text) return null
-  const date = new Date(text)
-  return Number.isNaN(date.getTime()) ? null : dateFormat.format(date)
+  const text = asString(value);
+  if (!text) return null;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : dateFormat.format(date);
 }
 
 // Descriptions arrive as a plain string, an org.hypercerts.defs#descriptionString,
 // or a pub.leaflet.pages.linearDocument. The spike renders plain text only.
 export function plainText(value: unknown): string | null {
-  const direct = asString(value)
-  if (direct) return direct
-  const record = asRecord(value)
-  if (!record) return null
-  if (record.$type === "org.hypercerts.defs#descriptionString")
-    return asString(record.value)
+  const direct = asString(value);
+  if (direct) return direct;
+  const record = asRecord(value);
+  if (!record) return null;
+  if (record.$type === "org.hypercerts.defs#descriptionString") return asString(record.value);
   if (Array.isArray(record.blocks)) {
     const paragraphs = record.blocks
       .map((entry) => asString(asRecord(asRecord(entry)?.block)?.plaintext))
-      .filter((text): text is string => text !== null)
-    return paragraphs.length > 0 ? paragraphs.join("\n\n") : null
+      .filter((text): text is string => text !== null);
+    return paragraphs.length > 0 ? paragraphs.join("\n\n") : null;
   }
-  return null
+  return null;
 }
 
 function blobCid(image: unknown): string | null {
-  const ref = asRecord(image)?.ref
-  if (typeof ref === "string") return ref
-  const link = asRecord(ref)?.$link
-  if (typeof link === "string") return link
+  const ref = asRecord(image)?.ref;
+  if (typeof ref === "string") return ref;
+  const link = asRecord(ref)?.$link;
+  if (typeof link === "string") return link;
   // Parsed CID instances stringify to their base32 form.
-  return ref ? String(ref) : null
+  return ref ? String(ref) : null;
 }
 
 // Avatars are served through the Bluesky CDN, which fetches the blob from the
 // account's PDS. This avoids resolving every DID to its PDS in the spike.
 export function avatarUrl(did: string, avatar: unknown): string | null {
-  const record = asRecord(avatar)
-  if (!record) return null
-  if (record.$type === "org.hypercerts.defs#uri") return asString(record.uri)
-  const cid = blobCid(record.image)
-  return cid ? `https://cdn.bsky.app/img/avatar/plain/${did}/${cid}@jpeg` : null
+  const record = asRecord(avatar);
+  if (!record) return null;
+  if (record.$type === "org.hypercerts.defs#uri") return asString(record.uri);
+  const cid = blobCid(record.image);
+  return cid ? `https://cdn.bsky.app/img/avatar/plain/${did}/${cid}@jpeg` : null;
 }
 
 // A badge award's subject is an account (`{ did }`) or a record
 // (`{ uri, cid }`). Returns the DID or AT-URI, or null for anything else.
 export function awardSubject(subject: unknown): string | null {
-  const record = asRecord(subject)
-  return asString(record?.did) ?? asString(record?.uri)
+  const record = asRecord(subject);
+  return asString(record?.did) ?? asString(record?.uri);
 }
 
 export function didOf(uri: string): string {
-  return uri.split("/")[2] ?? uri
+  return uri.split("/")[2] ?? uri;
 }
 
 export function collectionOf(uri: string): string | null {
-  return uri.split("/")[3] ?? null
+  return uri.split("/")[3] ?? null;
 }
 
 export function rkeyOf(uri: string): string {
-  return uri.split("/").pop() ?? uri
+  return uri.split("/").pop() ?? uri;
 }
 
 // The mappers take the typed API views. Where indexed data is known to diverge
 // from the lexicons (descriptions, blob references), they read defensively.
-type AnyActorView = ActorView | OrganizationActorView | CollectionActorView
+type AnyActorView = ActorView | OrganizationActorView | CollectionActorView;
 
 export function toActorCard(actor: AnyActorView): ActorCard {
-  const profile = actor.profile?.record
+  const profile = actor.profile?.record;
   return {
     did: actor.did,
     displayName: profile?.displayName || actor.did,
     description: profile?.description || null,
     avatarUrl: avatarUrl(actor.did, profile?.avatar),
     isOrganization: Boolean(actor.organization),
-  }
+  };
 }
 
 export function toActorDetail(actor: AnyActorView): ActorDetail {
-  const organization = actor.organization?.record
+  const organization = actor.organization?.record;
   return {
     ...toActorCard(actor),
     organizationTypes: organization?.organizationType ?? [],
     urls: (organization?.urls ?? []).map((entry) => entry.url),
     longDescription: plainText(organization?.longDescription),
     foundedDate: formatDate(organization?.foundedDate),
-  }
+  };
 }
 
 export function toActivityCard(activity: ActivityView): ActivityCard {
-  const { record } = activity
+  const { record } = activity;
   return {
     uri: activity.uri,
     cid: activity.cid,
@@ -218,11 +215,11 @@ export function toActivityCard(activity: ActivityView): ActivityCard {
     author: toActorCard(activity.author),
     createdAt: formatDate(record.createdAt),
     indexedAt: activity.indexedAt,
-  }
+  };
 }
 
 export function toProjectCard(collection: CollectionView): ProjectCard {
-  const { record } = collection
+  const { record } = collection;
   return {
     uri: collection.uri,
     rkey: rkeyOf(collection.uri),
@@ -230,7 +227,7 @@ export function toProjectCard(collection: CollectionView): ProjectCard {
     title: record.title || "Untitled project",
     summary: record.shortDescription || null,
     itemCount: record.items?.length ?? 0,
-  }
+  };
 }
 
 export function toProjectDetail(collection: CollectionView): ProjectDetail {
@@ -239,11 +236,11 @@ export function toProjectDetail(collection: CollectionView): ProjectDetail {
     description: plainText(collection.record.description),
     author: toActorCard(collection.author),
     createdAt: formatDate(collection.record.createdAt),
-  }
+  };
 }
 
 export function toBadgeCard(award: BadgeAwardView): BadgeCard {
-  const definition = award.badge?.record
+  const definition = award.badge?.record;
   return {
     uri: award.uri,
     title: definition?.title || "Badge",
@@ -251,5 +248,5 @@ export function toBadgeCard(award: BadgeAwardView): BadgeCard {
     issuer: toActorCard(award.author),
     response: award.responseStatus,
     createdAt: formatDate(award.record.createdAt),
-  }
+  };
 }
