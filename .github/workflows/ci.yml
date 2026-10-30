@@ -2,39 +2,33 @@ name: CI
 
 on:
   pull_request:
-    branches:
-      - staging
-      - main
+  push:
+    branches: [v2, staging, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  verify:
+  checks:
+    name: Lint, format, typecheck and build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Installs the version pinned in package.json's packageManager field.
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      # Reads the pnpm version from the packageManager field in package.json.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: .nvmrc
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      # The script generates the lexicon bindings before running tsc.
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Build
-        run: pnpm build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm build
 
   # The previous app's unit and Playwright suites lived here. v2 has no tests
   # yet; add the jobs back as they arrive.

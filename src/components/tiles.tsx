@@ -1,20 +1,14 @@
-import {
-  Badge,
-  EmptyState,
-  Eyebrow,
-  Skeleton,
-  Text,
-} from "@hypercerts-org/ui-react"
+import { Badge, EmptyState, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import {
   getAwardsIssued,
   listActivitiesPage,
   listBadgesReceived,
   listProjectsPage,
-} from "@/lib/hypercerts/queries"
-import type { ActorDetail } from "@/lib/hypercerts/views"
-import { ActivityList } from "./activity-list"
-import { AwardSubjectRow, BadgeCardView, ProjectCardView } from "./cards"
-import { EmbedButton } from "./embed-button"
+} from "@/lib/hypercerts/queries";
+import type { ActorDetail } from "@/lib/hypercerts/views";
+import { ActivityList } from "./activity-list";
+import { AwardSubjectRow, BadgeCardView, ProjectCardView } from "./cards";
+import { EmbedButton } from "./embed-button";
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
 // reorder tiles without the others knowing. That is the separability the
@@ -27,9 +21,9 @@ export function Tile({
   embedPath,
   children,
 }: {
-  title: string
-  embedPath?: string
-  children: React.ReactNode
+  title: string;
+  embedPath?: string;
+  children: React.ReactNode;
 }) {
   return (
     <section className="tile">
@@ -39,7 +33,7 @@ export function Tile({
       </div>
       {children}
     </section>
-  )
+  );
 }
 
 export function TileSkeleton({ title }: { title: string }) {
@@ -47,11 +41,11 @@ export function TileSkeleton({ title }: { title: string }) {
     <Tile title={title}>
       <Skeleton variant="text" lines={3} />
     </Tile>
-  )
+  );
 }
 
 export function AboutTile({ actor }: { actor: ActorDetail }) {
-  const text = actor.longDescription ?? actor.description
+  const text = actor.longDescription ?? actor.description;
   return (
     <Tile title="About">
       {text ? (
@@ -87,27 +81,23 @@ export function AboutTile({ actor }: { actor: ActorDetail }) {
         </ul>
       )}
     </Tile>
-  )
+  );
 }
 
 export async function ActivitiesTile({ did }: { did: string }) {
-  const page = await listActivitiesPage({ author: did, limit: 6 })
+  const page = await listActivitiesPage({ author: did, limit: 6 });
   return (
     <Tile
       title="Activities"
       embedPath={`/embed/activities?${new URLSearchParams({ author: did })}`}
     >
-      <ActivityList
-        initial={page}
-        source={{ kind: "author", did }}
-        showAuthor={false}
-      />
+      <ActivityList initial={page} source={{ kind: "author", did }} showAuthor={false} />
     </Tile>
-  )
+  );
 }
 
 export async function ProjectsTile({ did }: { did: string }) {
-  const page = await listProjectsPage({ author: did })
+  const page = await listProjectsPage({ author: did });
   return (
     <Tile title="Projects">
       {page.items.length === 0 ? (
@@ -120,11 +110,11 @@ export async function ProjectsTile({ did }: { did: string }) {
         </ul>
       )}
     </Tile>
-  )
+  );
 }
 
 export async function BadgesTile({ did }: { did: string }) {
-  const badges = await listBadgesReceived(did)
+  const badges = await listBadgesReceived(did);
   return (
     <Tile title="Badges received">
       {badges.length === 0 ? (
@@ -137,15 +127,15 @@ export async function BadgesTile({ did }: { did: string }) {
         </ul>
       )}
     </Tile>
-  )
+  );
 }
 
 // Badge awards this account has issued, grouped by badge definition, with the
 // most recent recipients of each. Counts are award records; the tile does not
 // say what the badges mean.
 export async function BadgesAwardedTile({ did }: { did: string }) {
-  const issued = await getAwardsIssued(did)
-  if (!issued) return null
+  const issued = await getAwardsIssued(did);
+  if (!issued) return null;
   return (
     <Tile title="Badges awarded">
       <Text size="body-sm" tone="muted">
@@ -161,8 +151,7 @@ export async function BadgesAwardedTile({ did }: { did: string }) {
             {badge.badgeType && <Badge variant="tag">{badge.badgeType}</Badge>}
             <Text as="span" size="micro" tone="muted">
               {badge.awardCount} {badge.awardCount === 1 ? "award" : "awards"}
-              {badge.definedBy &&
-                ` · badge defined by ${badge.definedBy.displayName}`}
+              {badge.definedBy && ` · badge defined by ${badge.definedBy.displayName}`}
             </Text>
           </div>
           <ul className="award-subjects">
@@ -178,5 +167,5 @@ export async function BadgesAwardedTile({ did }: { did: string }) {
         </div>
       ))}
     </Tile>
-  )
+  );
 }

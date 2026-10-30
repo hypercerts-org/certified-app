@@ -1,7 +1,7 @@
-import { Container, Text } from "@hypercerts-org/ui-react"
-import Image from "next/image"
-import Link from "next/link"
-import type { ReactNode } from "react"
+import { Container, Text } from "@hypercerts-org/ui-react";
+import Image from "next/image";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -30,5 +30,5 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         {children}
       </Container>
     </>
-  )
+  );
 }

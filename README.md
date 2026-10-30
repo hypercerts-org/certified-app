@@ -8,25 +8,26 @@ This first step is a **read-only spike**: public pages backed by live data from 
 
 ```bash
 pnpm install
-pnpm dev           # generates lexicon bindings, then starts Next.js
-pnpm build         # production build (also regenerates bindings)
+pnpm dev           # starts Next.js
+pnpm build         # production build
 pnpm typecheck
-pnpm lint          # Biome: lint, formatting and import order
-pnpm format        # apply Biome's fixes and formatting
+pnpm lint          # Biome lint
+pnpm format:check  # Biome formatting, without changing files
+pnpm format        # apply Biome's formatting
 ```
 
-Node 24 (see `.nvmrc`). The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
+Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome with the same rules and formatting, pnpm, Node 24. The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
 
 ## What is here
 
-| Route | What it shows |
-|---|---|
-| `/` | Landing page: find your organization, and a hand-picked set of organizations that award badges |
-| `/explore` | Organizations, with search (`?q=`) and "load more" |
-| `/{did}` | An account's page built from tiles: Activities, Projects, Badges awarded (for accounts that have issued badge awards), About, Badges received |
-| `/{did}/project/{rkey}` | A project and the activities it contains |
-| `/embed/activities?author={did}` | The Activities tile as an embeddable page for an `<iframe>` |
-| `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`) |
+| Route                                   | What it shows                                                                                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                     | Landing page: find your organization, and a hand-picked set of organizations that award badges                                                |
+| `/explore`                              | Organizations, with search (`?q=`) and "load more"                                                                                            |
+| `/{did}`                                | An account's page built from tiles: Activities, Projects, Badges awarded (for accounts that have issued badge awards), About, Badges received |
+| `/{did}/project/{rkey}`                 | A project and the activities it contains                                                                                                      |
+| `/embed/activities?author={did}`        | The Activities tile as an embeddable page for an `<iframe>`                                                                                   |
+| `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`)                                       |
 
 ## How it is put together
 

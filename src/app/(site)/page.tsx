@@ -7,12 +7,12 @@ import {
   Input,
   Skeleton,
   Text,
-} from "@hypercerts-org/ui-react"
-import Form from "next/form"
-import Link from "next/link"
-import { Suspense } from "react"
-import { actorHref } from "@/components/cards"
-import { getActor, getAwardsIssued } from "@/lib/hypercerts/queries"
+} from "@hypercerts-org/ui-react";
+import Form from "next/form";
+import Link from "next/link";
+import { Suspense } from "react";
+import { actorHref } from "@/components/cards";
+import { getActor, getAwardsIssued } from "@/lib/hypercerts/queries";
 
 // Accounts featured on the landing page because they have issued badge awards.
 // Chosen by hand: ranking by award count would put test accounts first, since
@@ -22,14 +22,11 @@ const FEATURED_ISSUERS = [
   "did:plc:yjck2sybksyigp3zvbq7bfki", // GainForest
   "did:plc:5yrzhewvp6qfjyblb3lph4a7", // Silvi
   "did:plc:iqvh5yrqmibv2imh55hmzrfs", // Restor
-]
+];
 
 async function IssuerCard({ did }: { did: string }) {
-  const [actor, issued] = await Promise.all([
-    getActor(did),
-    getAwardsIssued(did),
-  ])
-  if (!actor || !issued) return null
+  const [actor, issued] = await Promise.all([getActor(did), getAwardsIssued(did)]);
+  if (!actor || !issued) return null;
   return (
     <Card as="li" variant="panel" className="card">
       <Link href={actorHref(did)} className="issuer-card-name">
@@ -51,7 +48,7 @@ async function IssuerCard({ did }: { did: string }) {
           .join(", ")}
       </Text>
     </Card>
-  )
+  );
 }
 
 export default function HomePage() {
@@ -63,8 +60,8 @@ export default function HomePage() {
           See what organizations do, and the badges they award
         </Heading>
         <Text>
-          Organizations publish their own profiles, activities and projects, and
-          award badges to other accounts and projects.
+          Organizations publish their own profiles, activities and projects, and award badges to
+          other accounts and projects.
         </Text>
       </div>
 
@@ -102,5 +99,5 @@ export default function HomePage() {
         </ul>
       </section>
     </div>
-  )
+  );
 }

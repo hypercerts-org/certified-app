@@ -1,37 +1,37 @@
-"use client"
+"use client";
 
-import { Button, Dialog, Text, Textarea } from "@hypercerts-org/ui-react"
-import { useState } from "react"
+import { Button, Dialog, Text, Textarea } from "@hypercerts-org/ui-react";
+import { useState } from "react";
 
 // Shows a copyable <iframe> snippet for a tile that has an embed page. The
 // snippet uses the origin the visitor is on, so it works the same on
 // localhost, a preview deployment or production. It is built when the dialog
 // opens, never during render, so server and client markup always match.
 export function EmbedButton({ path, title }: { path: string; title: string }) {
-  const [snippet, setSnippet] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const url = snippet ? new URL(path, window.location.origin).href : null
+  const [snippet, setSnippet] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const url = snippet ? new URL(path, window.location.origin).href : null;
 
   function open() {
-    const src = new URL(path, window.location.origin).href
+    const src = new URL(path, window.location.origin).href;
     setSnippet(
       `<iframe src="${src}" title="${title} on Certified" width="100%" height="520" style="border: 0" loading="lazy"></iframe>`,
-    )
-    setCopied(false)
+    );
+    setCopied(false);
   }
 
   async function copy() {
-    if (!snippet) return
+    if (!snippet) return;
     try {
-      await navigator.clipboard.writeText(snippet)
+      await navigator.clipboard.writeText(snippet);
     } catch {
       // The Clipboard API needs a secure context; plain HTTP (a dev server
       // reached over the network) falls back to copying the selected text.
-      const field = document.querySelector<HTMLTextAreaElement>(".embed-code")
-      field?.select()
-      if (!document.execCommand("copy")) return
+      const field = document.querySelector<HTMLTextAreaElement>(".embed-code");
+      field?.select();
+      if (!document.execCommand("copy")) return;
     }
-    setCopied(true)
+    setCopied(true);
   }
 
   return (
@@ -69,5 +69,5 @@ export function EmbedButton({ path, title }: { path: string; title: string }) {
         </div>
       </Dialog>
     </>
-  )
+  );
 }

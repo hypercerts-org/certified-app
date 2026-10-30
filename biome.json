@@ -9,13 +9,10 @@
     "includes": ["**", "!next-env.d.ts", "!vendor", "!public"]
   },
   "formatter": {
+    "enabled": true,
     "indentStyle": "space",
-    "indentWidth": 2
-  },
-  "javascript": {
-    "formatter": {
-      "semicolons": "asNeeded"
-    }
+    "indentWidth": 2,
+    "lineWidth": 100
   },
   "css": {
     "parser": {
@@ -23,8 +20,14 @@
     }
   },
   "linter": {
+    "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noMisusedPromises": "error",
+        "useAwaitThenable": "error"
+      }
     },
     "domains": {
       "next": "recommended",

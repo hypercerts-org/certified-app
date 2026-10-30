@@ -1,6 +1,6 @@
-import { Avatar, Heading, Skeleton, Text } from "@hypercerts-org/ui-react"
-import { notFound } from "next/navigation"
-import { Suspense } from "react"
+import { Avatar, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import {
   AboutTile,
   ActivitiesTile,
@@ -8,19 +8,19 @@ import {
   BadgesTile,
   ProjectsTile,
   TileSkeleton,
-} from "@/components/tiles"
-import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries"
+} from "@/components/tiles";
+import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries";
 
 // Prerender one known organization at build time; every other actor gets the
 // app shell first and is then rendered and cached per URL (ISR).
 export async function generateStaticParams() {
-  return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey" }]
+  return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey" }];
 }
 
 async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
-  const actor = await getActor(decodeURIComponent((await params).actor))
-  if (!actor) notFound()
-  const issuesAwards = await hasIssuedAwards(actor.did)
+  const actor = await getActor(decodeURIComponent((await params).actor));
+  if (!actor) notFound();
+  const issuesAwards = await hasIssuedAwards(actor.did);
 
   return (
     <>
@@ -57,7 +57,7 @@ async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 export default function ActorPage(props: PageProps<"/[actor]">) {
@@ -67,5 +67,5 @@ export default function ActorPage(props: PageProps<"/[actor]">) {
         <ActorProfile params={props.params} />
       </Suspense>
     </div>
-  )
+  );
 }

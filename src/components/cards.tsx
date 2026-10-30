@@ -1,29 +1,22 @@
-import {
-  Avatar,
-  Badge,
-  Card,
-  Heading,
-  IdentityRow,
-  Text,
-} from "@hypercerts-org/ui-react"
-import Link from "next/link"
+import { Avatar, Badge, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
+import Link from "next/link";
 import type {
   ActivityCard,
   ActorCard,
   AwardSubject,
   BadgeCard,
   ProjectCard,
-} from "@/lib/hypercerts/views"
+} from "@/lib/hypercerts/views";
 
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.
 
 export function actorHref(did: string) {
-  return `/${did}`
+  return `/${did}`;
 }
 
 export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
-  return `/${project.authorDid}/project/${project.rkey}`
+  return `/${project.authorDid}/project/${project.rkey}`;
 }
 
 export function ActorCardView({ actor }: { actor: ActorCard }) {
@@ -41,15 +34,15 @@ export function ActorCardView({ actor }: { actor: ActorCard }) {
         </Text>
       )}
     </Card>
-  )
+  );
 }
 
 export function ActivityCardView({
   activity,
   showAuthor,
 }: {
-  activity: ActivityCard
-  showAuthor: boolean
+  activity: ActivityCard;
+  showAuthor: boolean;
 }) {
   return (
     <Card as="li" variant="panel" className="card">
@@ -64,11 +57,7 @@ export function ActivityCardView({
       <div className="meta">
         {showAuthor && (
           <Link href={actorHref(activity.author.did)} className="meta-author">
-            <Avatar
-              name={activity.author.displayName}
-              src={activity.author.avatarUrl}
-              size="sm"
-            />
+            <Avatar name={activity.author.displayName} src={activity.author.avatarUrl} size="sm" />
             <Text as="span" size="micro">
               {activity.author.displayName}
             </Text>
@@ -81,7 +70,7 @@ export function ActivityCardView({
         )}
       </div>
     </Card>
-  )
+  );
 }
 
 export function ProjectCardView({ project }: { project: ProjectCard }) {
@@ -99,10 +88,10 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
         {project.itemCount === 1 ? "1 item" : `${project.itemCount} items`}
       </Text>
     </Card>
-  )
+  );
 }
 
-const responseVariant = { accepted: "success", rejected: "danger" } as const
+const responseVariant = { accepted: "success", rejected: "danger" } as const;
 
 export function BadgeCardView({ badge }: { badge: BadgeCard }) {
   return (
@@ -113,10 +102,7 @@ export function BadgeCardView({ badge }: { badge: BadgeCard }) {
         </Text>
         {badge.response && (
           <Badge
-            variant={
-              responseVariant[badge.response as keyof typeof responseVariant] ??
-              "neutral"
-            }
+            variant={responseVariant[badge.response as keyof typeof responseVariant] ?? "neutral"}
           >
             {badge.response}
           </Badge>
@@ -130,7 +116,7 @@ export function BadgeCardView({ badge }: { badge: BadgeCard }) {
         secondary={badge.createdAt ?? undefined}
       />
     </Card>
-  )
+  );
 }
 
 // The subject of one badge award: an account, a project or another record.
@@ -146,7 +132,7 @@ export function AwardSubjectRow({ subject }: { subject: AwardSubject }) {
           secondary={subject.actor.isOrganization ? "Organization" : "Person"}
         />
       </li>
-    )
+    );
   if (subject.kind === "project")
     return (
       <li>
@@ -157,10 +143,10 @@ export function AwardSubjectRow({ subject }: { subject: AwardSubject }) {
           secondary="Project"
         />
       </li>
-    )
+    );
   return (
     <li>
       <IdentityRow size="sm" name={subject.uri} secondary="Other record" />
     </li>
-  )
+  );
 }
