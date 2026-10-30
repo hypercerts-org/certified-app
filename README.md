@@ -16,7 +16,7 @@ pnpm format:check  # Biome formatting, without changing files
 pnpm format        # apply Biome's formatting
 ```
 
-Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome with the same rules and formatting, pnpm, Node 24. The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
+Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome with the same rules and formatting, pnpm, TypeScript 7, Node 24. The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
 
 ## What is here
 

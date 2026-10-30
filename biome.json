@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!next-env.d.ts", "!vendor", "!public"]
+    "includes": ["**", "!next-env.d.ts", "!vendor", "!public", "!pnpm-lock.yaml"]
   },
   "formatter": {
     "enabled": true,
