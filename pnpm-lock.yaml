@@ -397,7 +397,7 @@ packages:
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
 
   '@hypercerts-org/api@file:vendor/hypercerts-org-api-0.0.0.tgz':
-    resolution: {integrity: sha512-HJNCFCW53NSN6tyzHlrvsjyWgOESbwPxrjvH1Ngoozl+ZNeBs9r2Lcq9s5cumTnpEgiRw5nTgFFpgkNiB5K7vA==, tarball: file:vendor/hypercerts-org-api-0.0.0.tgz}
+    resolution: {integrity: sha512-m4E74JY3ehW5Z2jX8/ziaJvl03DIumVuI8BFCGFvkCx64iN7RkbtRnWrm9OADmXmJKWdwuXFtk3vX2ZefHtDCw==, tarball: file:vendor/hypercerts-org-api-0.0.0.tgz}
     version: 0.0.0
     engines: {node: '>=24'}
     peerDependencies:
