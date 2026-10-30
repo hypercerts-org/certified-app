@@ -12,7 +12,7 @@ import type {
   CollectionActorView,
   CollectionView,
   OrganizationActorView,
-} from "./api"
+} from "@hypercerts-org/api"
 
 export type Page<T> = {
   items: T[]

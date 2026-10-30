@@ -7,8 +7,6 @@
 import "server-only"
 
 import { Client, type l } from "@atproto/lex"
-import { cacheLife, cacheTag } from "next/cache"
-
 import {
   type ActivityView,
   getCollection,
@@ -22,7 +20,8 @@ import {
   listCollections,
   listOrganizations,
   searchOrganizations,
-} from "./api"
+} from "@hypercerts-org/api"
+import { cacheLife, cacheTag } from "next/cache"
 import {
   type ActivityCard,
   type ActorCard,

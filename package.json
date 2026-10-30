@@ -8,17 +8,18 @@
     "node": "24.x"
   },
   "scripts": {
-    "dev": "pnpm lexicons:build && next dev",
-    "build": "pnpm lexicons:build && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "postinstall": "pnpm lexicons:build && next typegen",
+    "postinstall": "next typegen",
     "lint": "biome check",
     "format": "biome check --write",
-    "typecheck": "pnpm lexicons:build && tsc --noEmit",
-    "lexicons:build": "lex build --lexicons ./lexicons --out ./src/lexicons --clear --import-ext \"\" && node scripts/fix-lex-imports.mjs src/lexicons"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@atproto/lex": "0.4.2",
+    "@hypercerts-org/api": "file:vendor/hypercerts-org-api-0.0.0.tgz",
+    "@hypercerts-org/lexicon": "file:vendor/hypercerts-org-lexicon-1.7.0.tgz",
     "@hypercerts-org/ui-react": "0.2.1",
     "next": "16.4.3",
     "react": "19.3.1",
