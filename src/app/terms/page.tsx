@@ -26,7 +26,7 @@ export default function TermsPage() {
           Terms of Service
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 3, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -188,8 +188,8 @@ export default function TermsPage() {
               ecosystem.
             </p>
             <p className="mt-4">
-              Certified is not a social media platform. We do not operate feeds, rank content,
-              recommend posts, or curate speech. Applications that display or process user data are
+              Certified is not a social media platform. We run feeds and label public profiles and
+              records for apps to use. Other applications that display or process user data are
               operated independently by third parties.
             </p>
           </section>
