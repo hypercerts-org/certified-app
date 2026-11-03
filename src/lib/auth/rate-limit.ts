@@ -192,9 +192,11 @@ export async function checkHttpRateLimit(
   // so the TTL is still set exactly once per window.
   if (count === cost) {
     // Set TTL once on first hit; +60s buffer so the bucket outlives
-    // the wall-clock window slightly. Don't await — fire and forget
-    // since the count is what we care about.
-    void redis.expire(key, limit.windowSec + 60).catch(() => undefined)
+    // the wall-clock window slightly. Await it: a serverless function can
+    // freeze before a fire-and-forget call lands, which would leave a key
+    // naming an IP or DID with no expiry. An error still doesn't fail the
+    // request, since the count is what we care about.
+    await redis.expire(key, limit.windowSec + 60).catch(() => undefined)
   }
 
   const allowed = count <= limit.max
