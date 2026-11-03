@@ -1893,3 +1893,33 @@
 .legal-page .legal-prose strong {
   color: var(--color-navy);
 }
+
+/* Two-column data table in legal copy (Privacy, section 10). */
+.legal-table-wrap {
+  overflow-x: auto;
+}
+
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.legal-table th,
+.legal-table td {
+  padding: 0.5rem 1rem 0.5rem 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-light-gray);
+  color: var(--color-mid-gray);
+}
+
+.legal-table th {
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.legal-table td:first-child {
+  width: 50%;
+}

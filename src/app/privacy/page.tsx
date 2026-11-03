@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: October 29, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 3, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -170,14 +170,6 @@ export default function PrivacyPage() {
                 legal@hypercerts.org
               </a>
             </p>
-            <p className="mt-4">
-              For data stored on Personal Data Servers, the Hypercerts Foundation acts as an{" "}
-              <strong>
-                infrastructure provider operating the server environment in which user-controlled
-                data is stored
-              </strong>
-              .
-            </p>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">EU representative</h3>
             <p>
@@ -263,7 +255,7 @@ export default function PrivacyPage() {
               4. How we use personal data
             </h2>
             <p>
-              We process personal data only where necessary for the operation of the services.
+              We process personal data where necessary for the operation of the services.
             </p>
             <p className="mt-4">This may include processing necessary to:</p>
             <ul className="list-disc pl-6 mt-2 space-y-2">
@@ -289,7 +281,10 @@ export default function PrivacyPage() {
             </p>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Contractual necessity</h3>
-            <p>Processing necessary to provide the services requested by the user.</p>
+            <p>
+              Processing necessary to provide the services requested by the user. You need an email
+              address to create an account.
+            </p>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Legitimate interests</h3>
             <p>Processing necessary to:</p>
@@ -298,6 +293,7 @@ export default function PrivacyPage() {
               <li>prevent abuse</li>
               <li>operate and improve infrastructure</li>
               <li>ensure reliable system performance</li>
+              <li>answer your messages, monitor email delivery and label public profiles and records</li>
             </ul>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">Legal obligations</h3>
@@ -325,11 +321,10 @@ export default function PrivacyPage() {
             </p>
             <p className="mt-4">
               Some operational service providers process limited data outside the European Union.
-              Specifically, transactional email delivery is handled by a US-based provider (see
+              For example, transactional email delivery is handled by a US-based provider (see
               Section 8), and certain corporate operations of our hosting providers may take place
-              in the United States. Where personal data is transferred outside the European Union,
-              transfers are protected by Standard Contractual Clauses (SCCs) approved by the
-              European Commission, in accordance with Article 46 GDPR.
+              in the United States. Transfers to providers acting on our behalf are protected by Standard Contractual Clauses (SCCs) approved by the
+              European Commission, in accordance with Article 46 GDPR. Ask us for a copy.
             </p>
           </section>
 
@@ -373,7 +368,7 @@ export default function PrivacyPage() {
                 with service providers that support the operation of the services and process data
                 on our behalf, including:
                 <ul className="list-disc pl-6 mt-2 space-y-2">
-                  <li>Vercel Inc. (web application hosting and anonymous web analytics)</li>
+                  <li>Vercel Inc. (web application hosting and web analytics)</li>
                   <li>Railway Corporation (application and database hosting infrastructure)</li>
                   <li>Upstash, Inc. (session and authentication data storage)</li>
                   <li>
@@ -382,6 +377,7 @@ export default function PrivacyPage() {
                   </li>
                 </ul>
               </li>
+              <li>with map, search, wallet and embedded video or image providers</li>
               <li>
                 with third-party services that users choose to connect to their accounts
               </li>
@@ -397,7 +393,7 @@ export default function PrivacyPage() {
               9. Cookies and tracking technologies
             </h2>
             <p>
-              certified.app uses only cookies that are strictly necessary for the operation of the
+              certified.app sets only cookies that are strictly necessary for the operation of the
               service, such as session management and authentication.
             </p>
             <p className="mt-4">
@@ -405,7 +401,7 @@ export default function PrivacyPage() {
               that track individual users across websites.
             </p>
             <p className="mt-4">
-              We use Vercel Web Analytics to collect aggregated usage data such as page views,
+              We use Vercel Web Analytics to collect usage data such as page views,
               referrer information, and general device or browser type. Vercel Web Analytics does
               not use cookies and does not store persistent identifiers in your browser. Instead,
               it derives an ephemeral session identifier by hashing request metadata (including the
@@ -430,33 +426,44 @@ export default function PrivacyPage() {
 
           <section>
             <h2 id="data-retention" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">10. Data retention</h2>
-            <p>
-              We retain personal data only for as long as necessary to operate the services and
-              fulfill legal obligations.
-            </p>
+            <div className="legal-table-wrap">
+              <table className="legal-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">How long</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td>Account data, records and files</td>
+                  <td>Until the account holding them is deleted</td>
+                </tr>
+                <tr>
+                  <td>Logs, security data and backups</td>
+                  <td>90 days</td>
+                </tr>
+                <tr>
+                  <td>Sign-in history and audit logs</td>
+                  <td>12 months (sign-in history: after last use)</td>
+                </tr>
+                <tr>
+                  <td>Web analytics page views, including profile URLs</td>
+                  <td>Set by Vercel, at least 12 months</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
             <p className="mt-4">
-              Retention periods may vary depending on the type of data and applicable legal
-              obligations.
-            </p>
-            <p className="mt-4">
-              To delete your account, contact us at{" "}
-              <a
-                href="mailto:support@hypercerts.org"
-                className="legal-link"
-              >
+              To delete your account, email{" "}
+              <a href="mailto:support@hypercerts.org" className="legal-link">
                 support@hypercerts.org
               </a>
-              . We will delete account-related data from our infrastructure
-              within a reasonable period, subject to:
-            </p>
-            <ul className="list-disc pl-6 mt-2 space-y-2">
-              <li>legal retention requirements</li>
-              <li>system backups</li>
-              <li>technical limitations related to federated data replication</li>
-            </ul>
-            <p className="mt-4">
-              As described above, data previously shared through the AT Protocol network may
-              continue to exist on third-party systems.
+              . We delete your account data, records and files within one month of confirming your
+              request, or tell you why not. Other data in this table, including backups, ends on the
+              schedule above. A legal duty or claim can extend these periods. Your account ID, past
+              and current handles and server addresses stay permanently public at plc.directory.
+              Your account ID and handle also stay in our network records.
             </p>
           </section>
 
@@ -532,6 +539,9 @@ export default function PrivacyPage() {
             <p className="mt-4">
               We will respond to requests within one month, or inform you if an extension is
               necessary in accordance with applicable law.
+            </p>
+            <p className="mt-4">
+              You can object at any time to processing based on our legitimate interests.
             </p>
           </section>
 

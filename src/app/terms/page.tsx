@@ -26,7 +26,7 @@ export default function TermsPage() {
           Terms of Service
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 3, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -175,8 +175,8 @@ export default function TermsPage() {
             <p className="mt-4">The Certified services consist of two components:</p>
             <ul className="list-disc pl-6 mt-2 space-y-2">
               <li>
-                <strong>certified.app</strong> – a web application used to create and manage AT
-                Protocol identities and configure related services.
+                <strong>certified.app</strong> – a web application used to create and manage AT Protocol identities, browse public
+                records and configure related services.
               </li>
               <li>
                 <strong>certified.one</strong> – infrastructure that operates AT Protocol Personal
@@ -188,9 +188,9 @@ export default function TermsPage() {
               ecosystem.
             </p>
             <p className="mt-4">
-              Certified is not a social media platform. We do not operate feeds, rank content,
-              recommend posts, or curate speech. Applications that display or process user data are
-              operated independently by third parties.
+              We run feeds and label public profiles and records. certified.app uses them to decide what
+              it shows by default, and other apps can use them too. Other applications
+              that display or process user data are operated independently by third parties.
             </p>
           </section>
 
@@ -279,7 +279,7 @@ export default function TermsPage() {
               &quot;owner&quot; does not by itself make a user responsible for content created by
               other users; however, content published under a shared account is attributed to that
               account, and those who control the account may share responsibility for its use.
-              Certified (operated by Hypercerts Foundation) provides hosting infrastructure only and
+              Certified (operated by Hypercerts Foundation) provides hosting infrastructure and
               is not the publisher of user content, but may remove or restrict content to comply
               with legal obligations or these Terms.
             </p>
