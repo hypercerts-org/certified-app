@@ -444,12 +444,8 @@ export default function PrivacyPage() {
                   <td>90 days</td>
                 </tr>
                 <tr>
-                  <td>Sign-in history, automated emails, email logs and audit logs</td>
+                  <td>Sign-in history and audit logs</td>
                   <td>12 months (sign-in history: after last use)</td>
-                </tr>
-                <tr>
-                  <td>Messages between us</td>
-                  <td>18 months</td>
                 </tr>
                 <tr>
                   <td>Web analytics page views, including profile URLs</td>
@@ -464,7 +460,7 @@ export default function PrivacyPage() {
                 support@hypercerts.org
               </a>
               . We delete your account data, records and files within one month of confirming your
-              request, or tell you why not. Everything else we hold, including backups, ends on the
+              request, or tell you why not. Other data in this table, including backups, ends on the
               schedule above. A legal duty or claim can extend these periods. Your account ID, past
               and current handles and server addresses stay permanently public at plc.directory.
               Your account ID and handle also stay in our network records.
