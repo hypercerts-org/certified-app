@@ -68,7 +68,7 @@ This branch (`v2`) is a clean-slate rebuild of certified.app; `main` and `stagin
 
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck` and `pnpm build` must pass.
 
-API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon/records`, installed from `vendor/` until they are on npm. Do not add local lexicon code generation.
+API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation.
 
 The block below is maintained by `next dev`. Leave it in place; edit only outside the markers.
 

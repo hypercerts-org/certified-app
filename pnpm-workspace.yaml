@@ -2,3 +2,8 @@
 # list each one explicitly. core-js only prints a funding notice.
 allowBuilds:
   core-js: false
+# Our own packages, published 2026-11-03, are newer than pnpm's minimum release
+# age. Remove these once that has passed, as for ui-react 0.2.1.
+minimumReleaseAgeExclude:
+  - "@hypercerts-org/api@0.1.0"
+  - "@hypercerts-org/lexicon@2.0.0"
