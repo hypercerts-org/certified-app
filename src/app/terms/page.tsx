@@ -188,9 +188,8 @@ export default function TermsPage() {
               ecosystem.
             </p>
             <p className="mt-4">
-              Certified is not a social media platform. We run feeds and label public profiles and
-              records for apps to use. Other applications that display or process user data are
-              operated independently by third parties.
+              We run feeds and label public profiles and records for apps to use. Other applications
+              that display or process user data are operated independently by third parties.
             </p>
           </section>
 
