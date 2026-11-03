@@ -26,7 +26,7 @@ export default function DsaPage() {
           Digital Services Act — Compliance Information
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 3, 2026</p>
 
         <div className="legal-prose space-y-8">
           <section>
@@ -221,9 +221,8 @@ export default function DsaPage() {
               Hypercerts Foundation.
             </p>
             <p className="mt-4">
-              The Hypercerts Foundation does not apply editorial content policies, operate
-              recommendation systems, or curate user content. Certified is infrastructure, not a
-              social media platform.
+              We run feeds and label public profiles and records. certified.app uses them to decide
+              what it shows by default, and other apps can use them too.
             </p>
           </section>
 
