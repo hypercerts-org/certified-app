@@ -7,11 +7,8 @@ import { signOut } from "@/lib/auth/actions";
 import { clearWriteStore } from "@/lib/writes/local-store";
 
 /**
- * Signs this browser out, first forgetting the saves it kept for reload
- * recovery and the account's cached reads, so the next person here sees
- * neither. (Saves are only ever shown to their own signed-in account, so a
- * session that ends some other way exposes nothing either.) `next` is where
- * to go afterwards (default: the home page).
+ * Signs this browser out, first forgetting its local saves and cached reads.
+ * `next` is where to go afterwards (default: the home page).
  */
 export function SignOutForm({ next, children }: { next?: string; children: ReactNode }) {
   const queryClient = useQueryClient();

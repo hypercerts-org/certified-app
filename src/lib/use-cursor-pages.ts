@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import type { Page } from "@/lib/hypercerts/views";
 
@@ -8,43 +8,43 @@ import type { Page } from "@/lib/hypercerts/views";
 // passed in; later pages come from a cacheable GET route handler. Items are
 // deduplicated by keyOf (a record URI or DID) because a page cached at one
 // moment and a later page fetched at another can overlap when new records are
-// indexed in between. keyOf must be stable, for example defined at module level.
+// indexed in between.
 export function useCursorPages<T>(
   initial: Page<T>,
   pageUrl: (cursor: string) => string,
   keyOf: (item: T) => string,
 ) {
-  const [items, setItems] = useState(initial.items);
-  const [cursor, setCursor] = useState(initial.cursor);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const inFlight = useRef<AbortController | null>(null);
-
-  const loadMore = useCallback(async () => {
-    if (!cursor || inFlight.current) return;
-    const controller = new AbortController();
-    inFlight.current = controller;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(pageUrl(cursor), {
-        signal: controller.signal,
-      });
+  const query = useInfiniteQuery({
+    queryKey: ["pages", pageUrl("")],
+    queryFn: async ({ pageParam, signal }) => {
+      const response = await fetch(pageUrl(pageParam), { signal });
       if (!response.ok) throw new Error(`Request failed (${response.status})`);
-      const page = (await response.json()) as Page<T>;
-      setItems((current) => {
-        const seen = new Set(current.map(keyOf));
-        return [...current, ...page.items.filter((item) => !seen.has(keyOf(item)))];
-      });
-      setCursor(page.cursor);
-    } catch (caught) {
-      if (!controller.signal.aborted)
-        setError(caught instanceof Error ? caught.message : "Could not load more");
-    } finally {
-      inFlight.current = null;
-      setLoading(false);
-    }
-  }, [cursor, pageUrl, keyOf]);
+      return (await response.json()) as Page<T>;
+    },
+    initialPageParam: "",
+    getNextPageParam: (last) => last.cursor ?? undefined,
+    // The server-rendered first page; pages loaded since are kept for back
+    // and forward navigation. Fixed timestamps: Next.js prerenders client
+    // components too, and reading the clock there drops them from the shell.
+    initialData: { pages: [initial], pageParams: [""] },
+    initialDataUpdatedAt: 0,
+    staleTime: "static",
+  });
 
-  return { items, hasMore: cursor !== null, loading, error, loadMore };
+  const seen = new Set<string>();
+  const items = query.data.pages
+    .flatMap((page) => page.items)
+    .filter((item) => {
+      const key = keyOf(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  return {
+    items,
+    hasMore: query.hasNextPage,
+    loading: query.isFetchingNextPage,
+    error: query.isFetchNextPageError ? query.error.message : null,
+    loadMore: () => void query.fetchNextPage(),
+  };
 }

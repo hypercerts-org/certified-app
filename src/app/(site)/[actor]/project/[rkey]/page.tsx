@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActivityList } from "@/components/activity-list";
 import { actorHref } from "@/components/cards";
-import { Tile, TileSkeleton } from "@/components/tiles";
+import { Tile } from "@/components/tile";
+import { TileSlot } from "@/components/tile-slot";
 import { getActor, getProject, listProjectActivitiesPage } from "@/lib/hypercerts/queries";
 
 export async function generateStaticParams() {
@@ -48,9 +49,9 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
           </Text>
         )}
       </div>
-      <Suspense fallback={<TileSkeleton title="Activities in this project" />}>
+      <TileSlot title="Activities in this project">
         <ProjectActivities uri={uri} />
-      </Suspense>
+      </TileSlot>
     </>
   );
 }

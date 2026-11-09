@@ -1,7 +1,7 @@
 "use server";
 
 import { getRecordSigner } from "@/lib/atproto/app-key";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { getOAuthSession, getUser, SessionUnavailableError } from "@/lib/auth/dal";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import {
@@ -17,16 +17,12 @@ export type SaveProfileResult =
   | {
       ok: false;
       /**
-       * Nothing was written, except for "unknown": the write was sent but its
-       * answer was lost, so the caller must read the profile to find out.
+       * Nothing was written, except perhaps for "unknown": the write was sent
+       * but its answer was lost, so only reading the profile can tell.
        */
       reason: "signed-out" | "conflict" | "invalid" | "unavailable" | "unknown";
       message: string;
     };
-
-function text(value: unknown, max: number): string | null {
-  return typeof value === "string" && value.length <= max ? value.trim() : null;
-}
 
 /**
  * Saves the signed-in user's display name and description to their own
@@ -38,13 +34,17 @@ export async function saveProfile(input: {
   fields: ProfileFields;
   expectedCid: string | null;
 }): Promise<SaveProfileResult> {
-  // Generous byte bounds; the lexicon's grapheme limits are checked on the
-  // record before it is signed.
-  const displayName = text(input?.fields?.displayName, 640);
-  const description = text(input?.fields?.description, 2560);
-  const expectedCid = input?.expectedCid === null ? null : text(input?.expectedCid, 128);
-  const badCid = input?.expectedCid !== null && expectedCid === null;
-  if (displayName === null || description === null || badCid) {
+  // The lexicon's byte limits, as a cheap bound before calling the PDS; the
+  // record is validated exactly before it is signed.
+  const { displayName, description } = input?.fields ?? {};
+  const expectedCid = input?.expectedCid;
+  if (
+    typeof displayName !== "string" ||
+    typeof description !== "string" ||
+    displayName.length > 640 ||
+    description.length > 2560 ||
+    (expectedCid !== null && typeof expectedCid !== "string")
+  ) {
     return { ok: false, reason: "invalid", message: "The profile could not be read." };
   }
 
@@ -55,7 +55,7 @@ export async function saveProfile(input: {
     }
     const saved = await updateOwnProfile(
       session,
-      { displayName, description },
+      { displayName: displayName.trim(), description: description.trim() },
       expectedCid,
       await getRecordSigner(),
     );
@@ -69,7 +69,11 @@ export async function saveProfile(input: {
       };
     }
     if (err instanceof WriteOutcomeUnknownError) {
-      return { ok: false, reason: "unknown", message: "Checking whether your profile was saved…" };
+      return {
+        ok: false,
+        reason: "unknown",
+        message: "We couldn't confirm whether your profile was saved. Reload to check.",
+      };
     }
     if (err instanceof InvalidRecordError) {
       return { ok: false, reason: "invalid", message: err.message };
@@ -84,11 +88,9 @@ export async function saveProfile(input: {
 }
 
 /**
- * The index now shows the user's saved profile: let the cached public pages
- * for the account refresh. Public cache invalidation follows verified
- * indexing, not the PDS write, so the client calls this once its index read
- * shows the saved version. Only the account itself may ask.
+ * The index has caught up with the user's save: expire the account's cached
+ * public pages, so the next request renders fresh. Only the account may ask.
  */
 export async function profileIndexed(did: string): Promise<void> {
-  if ((await getUser())?.did === did) revalidateTag(`actor:${did}`, "max");
+  if ((await getUser())?.did === did) updateTag(`actor:${did}`);
 }

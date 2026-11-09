@@ -6,21 +6,12 @@ import { SignInLink } from "@/components/sign-in-link";
 import { SignOutForm } from "@/components/sign-out-form";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
-import { ViewerSync } from "@/lib/writes/viewer";
 
 // The header's account area. Reads the session cookie, so the site layout
-// renders it behind a Suspense boundary and pages keep their cached shell. It
-// also tells the write overlay which account is signed in.
+// renders it behind a Suspense boundary and pages keep their cached shell.
 export async function UserMenu() {
   const user = await getUser();
-  if (!user) {
-    return (
-      <>
-        <ViewerSync did={null} />
-        <SignInLink />
-      </>
-    );
-  }
+  if (!user) return <SignInLink />;
 
   // An account that has never written a Certified profile has no API view.
   const actor = await getActor(user.did);
@@ -28,7 +19,6 @@ export async function UserMenu() {
   const profile = actor?.profile ?? { displayName: "", description: "" };
   return (
     <div className="user-menu">
-      <ViewerSync did={user.did} />
       <Link href={actorHref(user.did)} className="user-menu-account">
         <Avatar name={name} src={actor?.avatarUrl} size="sm" />
         <Text as="span" size="body-sm" tone="ink" className="user-menu-name">

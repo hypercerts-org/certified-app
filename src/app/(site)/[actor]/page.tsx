@@ -7,9 +7,9 @@ import {
   BadgesAwardedTile,
   BadgesTile,
   ProjectsTile,
-  TileSkeleton,
 } from "@/components/tiles";
 import { ProfileName } from "@/components/profile-text";
+import { TileSlot } from "@/components/tile-slot";
 import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries";
 
 // Prerender one known organization at build time; every other actor gets the
@@ -38,23 +38,23 @@ async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
       </header>
       <div className="tiles">
         <div className="page">
-          <Suspense fallback={<TileSkeleton title="Activities" />}>
+          <TileSlot title="Activities">
             <ActivitiesTile did={actor.did} />
-          </Suspense>
-          <Suspense fallback={<TileSkeleton title="Projects" />}>
+          </TileSlot>
+          <TileSlot title="Projects">
             <ProjectsTile did={actor.did} />
-          </Suspense>
+          </TileSlot>
           {issuesAwards && (
-            <Suspense fallback={<TileSkeleton title="Badges awarded" />}>
+            <TileSlot title="Badges awarded">
               <BadgesAwardedTile did={actor.did} />
-            </Suspense>
+            </TileSlot>
           )}
         </div>
         <div className="page">
           <AboutTile actor={actor} />
-          <Suspense fallback={<TileSkeleton title="Badges received" />}>
+          <TileSlot title="Badges received">
             <BadgesTile did={actor.did} />
-          </Suspense>
+          </TileSlot>
         </div>
       </div>
     </>

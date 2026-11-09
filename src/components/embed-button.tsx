@@ -8,30 +8,25 @@ import { useState } from "react";
 // localhost, a preview deployment or production. It is built when the dialog
 // opens, never during render, so server and client markup always match.
 export function EmbedButton({ path, title }: { path: string; title: string }) {
-  const [snippet, setSnippet] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const url = snippet ? new URL(path, window.location.origin).href : null;
+  const snippet = url
+    ? `<iframe src="${url}" title="${title} on Certified" width="100%" height="520" style="border: 0" loading="lazy"></iframe>`
+    : null;
 
   function open() {
-    const src = new URL(path, window.location.origin).href;
-    setSnippet(
-      `<iframe src="${src}" title="${title} on Certified" width="100%" height="520" style="border: 0" loading="lazy"></iframe>`,
-    );
+    setUrl(new URL(path, window.location.origin).href);
     setCopied(false);
   }
 
-  async function copy() {
-    if (!snippet) return;
-    try {
-      await navigator.clipboard.writeText(snippet);
-    } catch {
-      // The Clipboard API needs a secure context; plain HTTP (a dev server
-      // reached over the network) falls back to copying the selected text.
-      const field = document.querySelector<HTMLTextAreaElement>(".embed-code");
-      field?.select();
-      if (!document.execCommand("copy")) return;
-    }
-    setCopied(true);
+  function copy() {
+    // Without a secure context there is no Clipboard API; the code can still
+    // be copied from the field, which selects itself on focus.
+    if (snippet)
+      navigator.clipboard?.writeText(snippet).then(
+        () => setCopied(true),
+        () => {},
+      );
   }
 
   return (
@@ -41,7 +36,7 @@ export function EmbedButton({ path, title }: { path: string; title: string }) {
       </Button>
       <Dialog
         open={snippet !== null}
-        onClose={() => setSnippet(null)}
+        onClose={() => setUrl(null)}
         title={`Embed ${title}`}
         description="Paste this code into any web page to show this tile there."
         footer={

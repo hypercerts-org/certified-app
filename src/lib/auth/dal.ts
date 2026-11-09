@@ -4,6 +4,7 @@
 import "server-only";
 
 import { isExpectedSessionError, type OAuthSession } from "@atproto/oauth-client-node";
+import { connection } from "next/server";
 import { logError } from "@/lib/log";
 import { getOAuthClient } from "./oauth-client";
 import { endAppSession, readAppSession } from "./session";
@@ -11,11 +12,9 @@ import { endAppSession, readAppSession } from "./session";
 export type User = { did: string };
 
 /**
- * The signed-in account, or null. Reads the app session only, no PDS or
- * authorization server calls. A private cache keeps the result in the
- * browser, so a signed-in route gets a per-session shell that can be
- * prefetched; signing in or out changes the cookie, which clears it. Callers
- * read the request, so render them inside a Suspense boundary.
+ * The signed-in account, or null, from the app session alone. Cached privately
+ * per browser session; callers read the request, so render them inside a
+ * Suspense boundary.
  */
 export async function getUser(): Promise<User | null> {
   "use cache: private";
@@ -45,12 +44,9 @@ async function restore(did: string): Promise<OAuthSession | "gone"> {
 }
 
 /**
- * The signed-in user's OAuth session, for calls to their PDS from a Server
- * Action or Route Handler. Refreshes the tokens when they are about to expire.
- * When the OAuth session is gone (revoked, expired, or replaced by a broken
- * one) the app session ends too and this returns null; when it can't be
- * reached right now this throws SessionUnavailableError and the user stays
- * signed in.
+ * The signed-in user's OAuth session, for PDS calls from Server Actions and
+ * Route Handlers. A gone OAuth session ends the app session too (null); an
+ * unreachable one throws SessionUnavailableError and the user stays signed in.
  */
 export async function getOAuthSession(): Promise<OAuthSession | null> {
   const user = await getUser();
@@ -69,6 +65,8 @@ export async function getOAuthSession(): Promise<OAuthSession | null> {
 export async function readOAuthSession(): Promise<OAuthSession | "expired" | null> {
   const user = await getUser();
   if (!user) return null;
+  // Restoring may refresh tokens and take a lock: never during prerendering.
+  await connection();
   const session = await restore(user.did);
   return session === "gone" ? "expired" : session;
 }

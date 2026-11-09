@@ -8,15 +8,14 @@ import { useProfileDisplay } from "@/lib/writes/use-profile";
 // server rendered, or a save made here that the index hasn't caught up with.
 
 export function ProfileName({ did, rendered }: { did: string; rendered: ProfileFields }) {
-  const { fields } = useProfileDisplay(did, rendered);
-  return fields.displayName || did;
+  return useProfileDisplay(did, rendered).displayName || did;
 }
 
 export function ProfileDescription({ did, rendered }: { did: string; rendered: ProfileFields }) {
-  const { fields } = useProfileDisplay(did, rendered);
-  return fields.description ? (
+  const { description } = useProfileDisplay(did, rendered);
+  return description ? (
     <Text relaxed className="prewrap">
-      {fields.description}
+      {description}
     </Text>
   ) : (
     <Text tone="muted">No description yet.</Text>

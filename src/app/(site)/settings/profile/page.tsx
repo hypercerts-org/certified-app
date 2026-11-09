@@ -55,7 +55,7 @@ async function Editor() {
         ...profileFields(profile.value),
       }
     : null;
-  return <ProfileForm did={user.did} current={current} />;
+  return <ProfileForm current={current} />;
 }
 
 export default function EditProfilePage() {

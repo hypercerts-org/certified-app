@@ -4,7 +4,7 @@ import { oauthMode } from "@/lib/auth/config";
 import { logError } from "@/lib/log";
 
 // The app's did:web document, which publishes the keys behind its createdVia
-// record signatures, retired ones included. Local loopback development signs
+// record signatures. Local loopback development signs
 // with a did:key and has no document. Only a 200 is cacheable, so a fixed
 // misconfiguration doesn't linger.
 export async function GET() {
@@ -24,12 +24,14 @@ export async function GET() {
     {
       "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"],
       id: key.did,
-      verificationMethod: key.methods.map((method) => ({
-        id: method.id,
-        type: "Multikey",
-        controller: key.did,
-        publicKeyMultibase: method.publicKeyMultibase,
-      })),
+      verificationMethod: [
+        {
+          id: key.keyId,
+          type: "Multikey",
+          controller: key.did,
+          publicKeyMultibase: key.publicKeyMultibase,
+        },
+      ],
     },
     { headers: { "Cache-Control": "public, max-age=300" } },
   );

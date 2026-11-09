@@ -1,5 +1,5 @@
 import { ProfileDescription } from "@/components/profile-text";
-import { Badge, EmptyState, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Badge, EmptyState, Text } from "@hypercerts-org/ui-react";
 import {
   getAwardsIssued,
   listActivitiesPage,
@@ -9,41 +9,12 @@ import {
 import type { ActorDetail } from "@/lib/hypercerts/views";
 import { ActivityList } from "./activity-list";
 import { AwardSubjectRow, BadgeCardView, ProjectCardView } from "./cards";
-import { EmbedButton } from "./embed-button";
+import { Tile } from "./tile";
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
 // reorder tiles without the others knowing. That is the separability the
-// product definition asks for, at its simplest.
-
-// A tile with an embed page passes its path, and gets an Embed button that
-// hands out the <iframe> code for it.
-export function Tile({
-  title,
-  embedPath,
-  children,
-}: {
-  title: string;
-  embedPath?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="tile">
-      <div className="tile-header">
-        <Eyebrow as="p">{title}</Eyebrow>
-        {embedPath && <EmbedButton path={embedPath} title={title} />}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-export function TileSkeleton({ title }: { title: string }) {
-  return (
-    <Tile title={title}>
-      <Skeleton variant="text" lines={3} />
-    </Tile>
-  );
-}
+// product definition asks for, at its simplest. Pages place them in a
+// <TileSlot>, so a slow or failing tile never holds up the others.
 
 export function AboutTile({ actor }: { actor: ActorDetail }) {
   return (

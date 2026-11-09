@@ -208,3 +208,10 @@
 .profile-form {
   max-width: 36rem;
 }
+
+.profile-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

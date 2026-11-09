@@ -16,7 +16,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
                 alt="Certified"
                 width={99}
                 height={19}
-                priority
+                preload
               />
             </Link>
             <Link href="/explore">

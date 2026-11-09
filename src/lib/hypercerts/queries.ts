@@ -44,6 +44,16 @@ const api = new Client(process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts
 
 const read = () => ({ signal: AbortSignal.timeout(8_000) });
 
+/**
+ * Whether a failed read means the record doesn't exist. Any other failure is
+ * thrown, so an outage reaches an error boundary instead of being cached as a
+ * 404. The API currently reports a missing record as an HTTP 500 script_error
+ * naming RecordNotFound in its message; the check covers both forms.
+ */
+function notFound(failure: { error: string; message: string }): boolean {
+  return failure.error === "RecordNotFound" || failure.message.includes("RecordNotFound:");
+}
+
 // Public, indexed data: shared by every visitor, refreshed within about a minute.
 // Next.js uses the same profile for the prerendered page and its ISR upgrade.
 function publicData(...tags: string[]) {
@@ -65,6 +75,7 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     params: { actor: actor as l.AtIdentifierString },
     ...read(),
   });
+  if (!profile.success && !notFound(profile)) throw profile;
 
   // app.certified.actor.getProfile accepts a handle or DID; app.certified.actor.getOrganization needs the DID and fails
   // for accounts without an organization record (people). An organization can
@@ -80,6 +91,7 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     ...read(),
   });
   if (organization.success) return toActorDetail(organization.body.actor);
+  if (!notFound(organization)) throw organization;
   return profile.success
     ? toActorDetail({ did, profile: profile.body.profile, organization: null })
     : null;
@@ -96,7 +108,7 @@ export async function getIndexedProfile(did: string): Promise<ProfileVersion | n
     ...read(),
   });
   if (result.success) return toProfileVersion(result.body.profile);
-  if (result.error === "RecordNotFound") return null;
+  if (notFound(result)) return null;
   throw result;
 }
 
@@ -148,7 +160,9 @@ export async function getProject(uri: string): Promise<ProjectDetail | null> {
     params: { uri: uri as AtUri },
     ...read(),
   });
-  return result.success ? toProjectDetail(result.body.collection) : null;
+  if (result.success) return toProjectDetail(result.body.collection);
+  if (notFound(result)) return null;
+  throw result;
 }
 
 export async function listProjectActivitiesPage(options: {

@@ -1,72 +1,70 @@
-// The browser's record of its own writes, kept in IndexedDB so a save survives
-// a reload while the Hypercerts API's index catches up with the PDS.
-//
-// The PDS stays authoritative; this is a temporary presentation and recovery
-// layer. It holds only what display and recovery need (never credentials) and
-// is untrusted input to the server. IndexedDB is per origin, so rows are
-// isolated per deployment; within it every read is scoped to the signed-in
-// account and the repository written.
+// Saves the PDS has confirmed, kept in IndexedDB so a reload shows them until
+// the Hypercerts API's index catches up. Only public record content is stored.
 import { Dexie, type EntityTable } from "dexie";
-import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 
-type OperationBase = {
-  /** Local order of operations: the newest one wins. */
-  seq: number;
-  /** Correlates the intent, the acknowledgement and any recovery. */
-  id: string;
-  /** The signed-in account that wrote, and the repository written. */
-  actorDid: string;
-  repoDid: string;
-  submitted: ProfileFields;
-  /** The version the edit was based on, for compare-and-swap. */
-  expectedCid: string | null;
+export type SavedRecord<T = unknown> = {
+  /** The record's AT-URI. */
+  uri: string;
+  /** The version the PDS stored. */
+  cid: string;
+  /** Versions this browser's saves replaced since the index last caught up
+   *  (null: the record was created). The index showing one of them is lag. */
+  replaced: (string | null)[];
+  /** When the save was recorded: older index reads say nothing about it. */
+  savedAt: number;
+  value: T;
 };
 
-/**
- * submitting: sent, no answer yet (found later with no save running: never
- *   answered, so unknown).
- * unknown: the answer was lost; the PDS is read to find out (`checks` so far).
- * saved: the PDS stored `saved`. `indexed` records that the index has shown it
- *   at least once; the row then stays as a guard against a later stale read.
- * lost: the PDS never stored it; kept to tell the user until the next save.
- */
-export type ProfileOperation = OperationBase &
-  (
-    | { state: "submitting" }
-    | { state: "unknown"; checks: number }
-    | { state: "saved"; saved: ProfileVersion; indexed: boolean }
-    | { state: "lost" }
-  );
-
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
-export type NewProfileOperation = DistributiveOmit<ProfileOperation, "seq">;
-
 class WriteStore extends Dexie {
-  profileOperations!: EntityTable<ProfileOperation, "seq", NewProfileOperation>;
+  saved!: EntityTable<SavedRecord, "uri">;
 
   constructor() {
     super("certified-writes");
-    this.version(1).stores({ profileOperations: "++seq, [actorDid+repoDid]" });
+    this.version(1).stores({ saved: "uri" });
   }
 }
 
 let store: WriteStore | undefined;
+const db = () => (store ??= new WriteStore());
 
-/** The store, opened on first use in the browser. */
-export function writeStore(): WriteStore {
-  store ??= new WriteStore();
-  return store;
+/**
+ * The index has caught up once it shows the save, or a version none of the
+ * saves replaced: a later change (saves are compare-and-swap, so any other
+ * version came after them).
+ */
+export function indexCaughtUp(indexedCid: string | null, save: SavedRecord): boolean {
+  return indexedCid === save.cid || !save.replaced.includes(indexedCid);
 }
 
-/** The signed-in account's operations on one repository. */
-export function operationsFor(actorDid: string, repoDid: string): Promise<ProfileOperation[]> {
-  return writeStore()
-    .profileOperations.where("[actorDid+repoDid]")
-    .equals([actorDid, repoDid])
-    .toArray();
+export function getSave<T>(uri: string): Promise<SavedRecord<T> | undefined> {
+  return db().saved.get(uri) as Promise<SavedRecord<T> | undefined>;
 }
 
-/** Forgets every local write, so the next person on this browser sees none. */
+/** Records a save that replaced version `expectedCid`, on top of any earlier
+ *  save of the record the index hasn't caught up with. */
+export async function putSave<T>(
+  save: Omit<SavedRecord<T>, "replaced" | "savedAt">,
+  expectedCid: string | null,
+): Promise<void> {
+  const table = db().saved;
+  await db().transaction("rw", table, async () => {
+    const earlier = await table.get(save.uri);
+    const replaced = [...(earlier ? [...earlier.replaced, earlier.cid] : []), expectedCid];
+    await table.put({ ...save, replaced: [...new Set(replaced)], savedAt: Date.now() });
+  });
+}
+
+/** Forgets save `cid` of a record, unless a newer save has replaced it.
+ *  Returns how many rows were deleted (0 or 1). */
+export function forgetSave(uri: string, cid: string): Promise<number> {
+  return db()
+    .saved.where("uri")
+    .equals(uri)
+    .filter((save) => save.cid === cid)
+    .delete();
+}
+
+/** Forgets every save, so the next person on this browser sees none. */
 export async function clearWriteStore(): Promise<void> {
-  await writeStore().profileOperations.clear();
+  await db().saved.clear();
 }

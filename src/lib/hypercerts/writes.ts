@@ -1,10 +1,6 @@
-// Writes to the signed-in user's repository.
-//
-// Every write the app makes goes through these functions, the counterpart of
-// ./queries for reads. They take the caller's authenticated agent (an OAuth
-// session) and the app's record signer; callers authenticate and authorize.
-// When the Hypercerts SDK ships its write layer, only the bodies of these
-// functions should change.
+// Every write the app makes, the counterpart of ./queries for reads. Callers
+// authenticate and pass an OAuth session and the app's record signer. When the
+// Hypercerts SDK ships its write layer, only these bodies should change.
 import "server-only";
 
 import {
@@ -93,11 +89,9 @@ function writeFailure(err: unknown): Error {
 
 /**
  * Sets the profile's display name and description, keeping every other field
- * (images, links, other apps' fields) as stored, and signs the result: the
- * signature says the record was written through this app, not that the app
- * wrote every field. `expectedCid` is the version the user edited (null: no
- * profile yet); if the profile changed since, this throws WriteConflictError
- * instead of overwriting.
+ * as stored, and signs the result. `expectedCid` is the version the user
+ * edited (null: no profile yet); if the profile changed since, this throws
+ * WriteConflictError instead of overwriting.
  */
 export async function updateOwnProfile(
   agent: Agent & { did: string },
