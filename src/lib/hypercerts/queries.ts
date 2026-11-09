@@ -9,6 +9,7 @@ import "server-only";
 import { Client, type l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
+import { tags } from "./cache";
 import {
   type ActivityCard,
   type ActorCard,
@@ -48,7 +49,7 @@ const read = () => ({ signal: AbortSignal.timeout(8_000) });
  * Whether a failed read means the record doesn't exist. Any other failure is
  * thrown, so an outage reaches an error boundary instead of being cached as a
  * 404. The API currently reports a missing record as an HTTP 500 script_error
- * naming RecordNotFound in its message; the check covers both forms.
+ * naming RecordNotFound in its message (TECH-858); the check covers both forms.
  */
 function notFound(failure: { error: string; message: string }): boolean {
   return failure.error === "RecordNotFound" || failure.message.includes("RecordNotFound:");
@@ -56,9 +57,9 @@ function notFound(failure: { error: string; message: string }): boolean {
 
 // Public, indexed data: shared by every visitor, refreshed within about a minute.
 // Next.js uses the same profile for the prerendered page and its ISR upgrade.
-function publicData(...tags: string[]) {
-  cacheLife({ stale: 60, revalidate: 60, expire: 3600 });
-  cacheTag(...tags);
+function publicData(tag: string) {
+  cacheLife("public");
+  cacheTag(tag);
 }
 
 // Callers validate identifiers before they reach these functions (see
@@ -69,7 +70,7 @@ type AtUri = l.AtUriString;
 
 export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache";
-  publicData(`actor:${actor}`);
+  publicData(tags.actor(actor));
 
   const profile = await api.xrpcSafe(app.certified.actor.getProfile, {
     params: { actor: actor as l.AtIdentifierString },
@@ -118,7 +119,7 @@ export async function listActivitiesPage(options: {
   limit?: number;
 }): Promise<Page<ActivityCard>> {
   "use cache";
-  publicData(options.author ? `activities:${options.author}` : "activities");
+  publicData(tags.activities(options.author));
 
   const { activities, cursor } = await api.call(
     org.hypercerts.claim.listActivities,
@@ -137,7 +138,7 @@ export async function listProjectsPage(options: {
   cursor?: string;
 }): Promise<Page<ProjectCard>> {
   "use cache";
-  publicData(`projects:${options.author}`);
+  publicData(tags.projects(options.author));
 
   const { collections, cursor } = await api.call(
     org.hypercerts.collection.listCollections,
@@ -154,7 +155,7 @@ export async function listProjectsPage(options: {
 
 export async function getProject(uri: string): Promise<ProjectDetail | null> {
   "use cache";
-  publicData(`project:${uri}`);
+  publicData(tags.project(uri));
 
   const result = await api.xrpcSafe(org.hypercerts.collection.getCollection, {
     params: { uri: uri as AtUri },
@@ -170,7 +171,7 @@ export async function listProjectActivitiesPage(options: {
   cursor?: string;
 }): Promise<Page<ActivityCard>> {
   "use cache";
-  publicData(`project:${options.project}`);
+  publicData(tags.project(options.project));
 
   const { items, cursor } = await api.call(
     org.hypercerts.collection.listCollectionItems,
@@ -197,7 +198,7 @@ export async function listOrganizationsPage(options: {
   cursor?: string;
 }): Promise<Page<ActorCard>> {
   "use cache";
-  publicData("organizations");
+  publicData(tags.organizations());
 
   const params = { cursor: options.cursor, limit: 12 };
   const { actors, cursor } = options.query
@@ -212,7 +213,7 @@ export async function listOrganizationsPage(options: {
 
 export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
   "use cache";
-  publicData(`badges:${did}`);
+  publicData(tags.badges(did));
 
   const { badgeAwards } = await api.call(
     app.certified.badge.listBadgeAwards,
@@ -241,7 +242,7 @@ type IssuedAwardsSource = {
 
 async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
   "use cache";
-  publicData(`awards-issued:${did}`);
+  publicData(tags.awardsIssued(did));
 
   const source: IssuedAwardsSource = {
     awards: [],
@@ -274,7 +275,7 @@ async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
 
 export async function hasIssuedAwards(did: string): Promise<boolean> {
   "use cache";
-  publicData(`awards-issued:${did}`);
+  publicData(tags.awardsIssued(did));
 
   const { badgeAwards } = await api.call(
     app.certified.badge.listBadgeAwards,
@@ -337,7 +338,7 @@ async function projectCards(uris: string[]): Promise<Map<string, ProjectCard>> {
 
 export async function getAwardsIssued(did: string): Promise<AwardsIssued | null> {
   "use cache";
-  publicData(`awards-issued:${did}`);
+  publicData(tags.awardsIssued(did));
 
   const source = await issuedAwardsSource(did);
   if (source.awards.length === 0) return null;

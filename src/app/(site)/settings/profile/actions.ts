@@ -3,6 +3,7 @@
 import { getRecordSigner } from "@/lib/atproto/app-key";
 import { updateTag } from "next/cache";
 import { getOAuthSession, getUser, SessionUnavailableError } from "@/lib/auth/dal";
+import { tags } from "@/lib/hypercerts/cache";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import {
   InvalidRecordError,
@@ -92,5 +93,5 @@ export async function saveProfile(input: {
  * public pages, so the next request renders fresh. Only the account may ask.
  */
 export async function profileIndexed(did: string): Promise<void> {
-  if ((await getUser())?.did === did) updateTag(`actor:${did}`);
+  if ((await getUser())?.did === did) updateTag(tags.actor(did));
 }

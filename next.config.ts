@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // Public, indexed data (src/lib/hypercerts/queries.ts): fresh for a minute,
+  // revalidated in the background, dropped after an hour.
+  cacheLife: {
+    public: { stale: 60, revalidate: 60, expire: 3600 },
+  },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.bsky.app" }],
   },

@@ -1,4 +1,5 @@
 import { Avatar, Eyebrow, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -10,6 +11,16 @@ import { getActor, getProject, listProjectActivitiesPage } from "@/lib/hypercert
 
 export async function generateStaticParams() {
   return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msind56wn22t" }];
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[actor]/project/[rkey]">): Promise<Metadata> {
+  const { actor: actorParam, rkey } = await params;
+  const actor = await getActor(decodeURIComponent(actorParam));
+  const project =
+    actor && (await getProject(`at://${actor.did}/org.hypercerts.collection/${rkey}`));
+  return { title: project ? project.title : "Not found" };
 }
 
 async function ProjectActivities({ uri }: { uri: string }) {

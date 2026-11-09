@@ -85,6 +85,6 @@ Observed in the badge data, no action: definitions with the same title from diff
 - Deployment on Vercel and measured latency from the deployment region.
 - A real profile save against a PDS (the signer is unit-tested and the record round trip was checked against live profiles).
 - On a reload while a save is syncing, the server-rendered page shows the indexed name for a moment before the overlay restores the saved one.
-- The Hypercerts API answers HTTP 500 (`script_error … RecordNotFound`) for a profile it hasn't indexed, instead of a `RecordNotFound` error, so the overlay's index read fails until a first profile is indexed. To fix in the API.
+- The Hypercerts API answers HTTP 500 (`script_error`, with `RecordNotFound` in the message) for a record it hasn't indexed, instead of a `RecordNotFound` error. The app recognizes the message for now: [TECH-858](https://linear.app/hypercerts/issue/TECH-858).
 
 Checked 2026-11-09 against the dev server in headless Chromium, with the browser in Europe/Stockholm, America/Los_Angeles and Pacific/Auckland: no hydration warnings or page errors on `/`, `/explore`, `/explore?q=earth`, an organization page, a project page and the embed. "Load more" pages correctly (three rounds each) on Explore, search, an organization's Activities tile and the embed, including inside an iframe on another origin, where links open in a new tab.

@@ -1,26 +1,35 @@
 "use client";
 
 import { Button, Field, Input } from "@hypercerts-org/ui-react";
-import { useActionState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import { signIn } from "@/lib/auth/actions";
 
+const UNAVAILABLE = "Sign-in is unavailable right now. Please try again.";
+
 export function SignInForm({ returnTo, error }: { returnTo: string; error: string | null }) {
-  const [state, action, pending] = useActionState(signIn, { error, identifier: "" });
+  const [identifier, setIdentifier] = useState("");
+  // On success the action redirects to the authorization server, so the
+  // button keeps spinning until the browser leaves.
+  const start = useMutation({ mutationFn: signIn });
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!start.isPending) start.mutate({ identifier, returnTo });
+  }
 
   return (
-    <form action={action} className="stack sign-in-form">
-      <input type="hidden" name="returnTo" value={returnTo} />
+    <form onSubmit={submit} className="stack sign-in-form">
       <Field
         label="Email or handle"
         description="Use your email for a Certified account, or the handle of an account on Bluesky or another AT Protocol server."
-        error={state.error}
+        error={start.isError ? UNAVAILABLE : (start.data?.error ?? (start.isIdle ? error : null))}
       >
         {(field) => (
           <Input
             {...field}
-            // A form action resets the form to default values; keep what the
-            // visitor typed.
-            defaultValue={state.identifier}
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
             name="identifier"
             type="text"
             inputMode="email"
@@ -31,7 +40,7 @@ export function SignInForm({ returnTo, error }: { returnTo: string; error: strin
           />
         )}
       </Field>
-      <Button type="submit" loading={pending}>
+      <Button type="submit" loading={start.isPending}>
         Continue
       </Button>
     </form>

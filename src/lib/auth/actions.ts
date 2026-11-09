@@ -12,8 +12,6 @@ import { store } from "./redis";
 import { endAppSession } from "./session";
 import { beginSignIn } from "./sign-in-state";
 
-export type SignInState = { error: string | null; identifier: string };
-
 // A simple shape check only: Certified's sign-in page validates the address.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,15 +25,19 @@ async function allowSignIn(ip: string): Promise<boolean> {
 }
 
 /**
- * Starts sign-in and redirects to the account's authorization server. An email
- * address (or nothing) signs in with a Certified account; anything else is
- * treated as a handle or DID on any PDS.
+ * Starts sign-in and redirects to the account's authorization server, or
+ * returns why it couldn't. An email address (or nothing) signs in with a
+ * Certified account; anything else is treated as a handle or DID on any PDS.
  */
-export async function signIn(_previous: SignInState, form: FormData): Promise<SignInState> {
-  const identifier = String(form.get("identifier") ?? "").trim();
-  const input = identifier.replace(/^@/, "");
+export async function signIn(request: {
+  identifier: string;
+  returnTo: string;
+}): Promise<{ error: string }> {
+  const input = String(request?.identifier ?? "")
+    .trim()
+    .replace(/^@/, "");
   if (input.length > 254) {
-    return { identifier, error: "That is too long for an email address or handle." };
+    return { error: "That is too long for an email address or handle." };
   }
   const isHandle = input !== "" && !EMAIL.test(input);
 
@@ -43,10 +45,10 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
   try {
     const ip = ipAddress(await headers()) ?? "unknown";
     if (!(await allowSignIn(ip))) {
-      return { identifier, error: "Too many sign-in attempts. Please wait a minute." };
+      return { error: "Too many sign-in attempts. Please wait a minute." };
     }
     const client = await getOAuthClient();
-    const state = await beginSignIn(returnPath(form.get("returnTo")));
+    const state = await beginSignIn(returnPath(request?.returnTo));
     if (isHandle) {
       url = await client.authorize(input, { scope: OAUTH_SCOPE, state });
     } else {
@@ -60,10 +62,10 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
     // A handle that doesn't resolve to an account (or whose PDS has no OAuth
     // server) is the visitor's to fix; anything else is ours.
     if (isHandle && err instanceof OAuthResolverError) {
-      return { identifier, error: `We couldn't find an account for ${input}. Check the spelling.` };
+      return { error: `We couldn't find an account for ${input}. Check the spelling.` };
     }
     logError("[auth] authorize failed", err);
-    return { identifier, error: "Sign-in is unavailable right now. Please try again." };
+    return { error: "Sign-in is unavailable right now. Please try again." };
   }
   redirect(url.href);
 }

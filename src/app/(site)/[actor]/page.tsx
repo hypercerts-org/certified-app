@@ -1,4 +1,5 @@
 import { Avatar, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -16,6 +17,11 @@ import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries";
 // app shell first and is then rendered and cached per URL (ISR).
 export async function generateStaticParams() {
   return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey" }];
+}
+
+export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
+  const actor = await getActor(decodeURIComponent((await params).actor));
+  return { title: actor?.displayName ?? "Not found" };
 }
 
 async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
