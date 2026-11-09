@@ -48,7 +48,14 @@ async function Editor() {
     logError("[profile] read failed", err);
     return <Unavailable />;
   }
-  return <ProfileForm did={user.did} initial={profileFields(profile.value)} cid={profile.cid} />;
+  const current = profile.cid
+    ? {
+        uri: `at://${user.did}/app.certified.actor.profile/self`,
+        cid: profile.cid,
+        ...profileFields(profile.value),
+      }
+    : null;
+  return <ProfileForm did={user.did} current={current} />;
 }
 
 export default function EditProfilePage() {

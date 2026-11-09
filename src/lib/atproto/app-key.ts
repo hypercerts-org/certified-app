@@ -38,6 +38,11 @@ export type AppKey = {
 };
 
 function canonicalDid(): string {
+  // Also when a preview inherits production's PUBLIC_URL: branch code must not
+  // sign as the production app.
+  if (process.env.VERCEL_ENV === "preview") {
+    throw new Error("Preview deployments don't sign records.");
+  }
   const publicUrl = process.env.PUBLIC_URL?.trim();
   const configured = process.env.CREATED_VIA_DID?.trim();
   if (!publicUrl || !configured) {

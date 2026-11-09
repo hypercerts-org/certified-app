@@ -2,27 +2,31 @@
 
 import { Banner, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
 import { type FormEvent, useState } from "react";
-import type { ProfileFields } from "@/lib/hypercerts/views";
-import { type SaveOutcome, useProfileDisplay, useSaveProfile } from "@/lib/writes/use-profile";
+import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
+import {
+  dismissLost,
+  type SaveOutcome,
+  useProfileDisplay,
+  useSaveProfile,
+} from "@/lib/writes/use-profile";
+
+const NO_PROFILE: ProfileFields = { displayName: "", description: "" };
 
 /**
- * Edits the signed-in user's display name and description. `initial` and
- * `cid` are the profile as the PDS has it. Each save is based on the newest
- * version known here (the last save's, or the one loaded) and is refused if
- * the profile changed elsewhere in the meantime.
+ * Edits the signed-in user's display name and description. `current` is the
+ * profile as the PDS had it when the page was rendered (null: none yet). Each
+ * save is based on the newest version known here (the last save's, or the
+ * page's) and is refused if the profile changed elsewhere in the meantime.
  */
-export function ProfileForm({
-  did,
-  initial,
-  cid,
-}: {
-  did: string;
-  initial: ProfileFields;
-  cid: string | null;
-}) {
-  const [fields, setFields] = useState(initial);
+export function ProfileForm({ did, current }: { did: string; current: ProfileVersion | null }) {
+  const initial = current ?? NO_PROFILE;
+  const cid = current?.cid ?? null;
+  const [fields, setFields] = useState<ProfileFields>({
+    displayName: initial.displayName,
+    description: initial.description,
+  });
   const save = useSaveProfile(did);
-  const display = useProfileDisplay(did, initial, did);
+  const display = useProfileDisplay(did, initial, did, current);
   // While a save is running or its outcome is being checked, the version to
   // base the next one on isn't known yet.
   const busy = save.isPending || display.status === "saving" || display.status === "checking";
@@ -61,7 +65,12 @@ export function ProfileForm({
         Save
       </Button>
       {!save.isPending && (
-        <SaveStatus result={save.data} status={display.status} lost={display.lost} />
+        <SaveStatus
+          result={save.data}
+          status={display.status}
+          lost={display.lost}
+          onDismissLost={() => void dismissLost(did, did)}
+        />
       )}
     </form>
   );
@@ -71,14 +80,16 @@ function SaveStatus({
   result,
   status,
   lost,
+  onDismissLost,
 }: {
   result: SaveOutcome | undefined;
   status: ReturnType<typeof useProfileDisplay>["status"];
   lost: boolean;
+  onDismissLost: () => void;
 }) {
   if (lost) {
     return (
-      <Banner tone="danger" role="alert">
+      <Banner tone="danger" role="alert" onDismiss={onDismissLost}>
         Your last change wasn't saved. Please make it again.
       </Banner>
     );

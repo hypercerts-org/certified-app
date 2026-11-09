@@ -98,9 +98,11 @@ export function reconcileWithIndex(
   });
 }
 
+/** A reason to read the PDS: which operation it concerns, and a query key. */
+export type PdsQuestion = { opId: string; key: string };
+
 /**
- * Whether, and for which question, the PDS must be read; null when not. The
- * result names the question so each one gets its own fresh read.
+ * Whether, and about which operation, the PDS must be read; null when not.
  * - The newest save's outcome is unknown.
  * - The index shows a version that is neither the saved one nor (before it
  *   was ever indexed) the one the save replaced: a stale read, or a change
@@ -109,17 +111,18 @@ export function reconcileWithIndex(
 export function pdsQuestion(
   indexed: ProfileVersion | null | undefined,
   operations: ProfileOperation[],
-): string | null {
+): PdsQuestion | null {
   const op = newest(operations);
-  if (op?.state === "unknown") return `unknown:${op.id}:${op.checks}`;
+  if (op?.state === "unknown") return { opId: op.id, key: `unknown:${op.id}` };
   if (op?.state !== "saved" || indexed === undefined) return null;
   const shown = indexed?.cid ?? null;
   if (shown === op.saved.cid || (!op.indexed && shown === op.expectedCid)) return null;
-  return `superseded:${op.id}:${shown}`;
+  return { opId: op.id, key: `superseded:${op.id}:${shown}` };
 }
 
 /**
- * Settles the newest operation against the PDS's current version.
+ * Settles operation `opId` against the PDS's current version, if it is still
+ * the newest one (a save made since then has its own question).
  * - Unknown outcome. Compare-and-swap is the evidence: if the PDS still holds
  *   the version the save was based on, it hasn't been applied (re-read a few
  *   times, then lost; never retried). If it holds another version with the
@@ -131,9 +134,11 @@ export function pdsQuestion(
 export function resolveWithPds(
   pds: ProfileVersion | null,
   operations: ProfileOperation[],
+  opId: string,
 ): Change[] {
   const op = newest(operations);
-  if (op?.state === "unknown") {
+  if (op?.id !== opId) return [];
+  if (op.state === "unknown") {
     if ((pds?.cid ?? null) === op.expectedCid) {
       return op.checks + 1 < UNKNOWN_CHECKS
         ? [{ seq: op.seq, next: { ...op, checks: op.checks + 1 } }]
@@ -143,6 +148,27 @@ export function resolveWithPds(
       ? [{ seq: op.seq, next: { ...op, state: "saved", saved: pds, indexed: false } }]
       : [{ seq: op.seq, next: { ...op, state: "lost" } }];
   }
-  if (op?.state === "saved" && pds?.cid !== op.saved.cid) return [{ seq: op.seq, remove: true }];
+  if (op.state === "saved" && pds?.cid !== op.saved.cid) return [{ seq: op.seq, remove: true }];
   return [];
+}
+
+/**
+ * Settles the newest saved operation against a PDS read made when the page
+ * was rendered: if the PDS holds another version, the profile changed after
+ * that save (saves are compare-and-swap), so the row is outdated and the
+ * page's version is the one to edit.
+ */
+export function settleWithPageRead(
+  pds: ProfileVersion | null,
+  operations: ProfileOperation[],
+): Change[] {
+  const op = newest(operations);
+  return op?.state === "saved" && pds?.cid !== op.saved.cid ? [{ seq: op.seq, remove: true }] : [];
+}
+
+/** Operations whose outcome or indexing is still open: worth polling the index. */
+export function isPending(op: ProfileOperation): boolean {
+  return (
+    op.state === "submitting" || op.state === "unknown" || (op.state === "saved" && !op.indexed)
+  );
 }

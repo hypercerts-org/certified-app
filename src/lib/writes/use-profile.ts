@@ -8,6 +8,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useRef } from "react";
 import {
   profileIndexed,
   type SaveProfileResult,
@@ -22,11 +23,13 @@ import {
 } from "./local-store";
 import {
   type Change,
+  isPending,
   type ProfileDisplay,
   pdsQuestion,
   projectProfile,
   reconcileWithIndex,
   resolveWithPds,
+  settleWithPageRead,
 } from "./profile-overlay";
 import { useViewer } from "./viewer";
 
@@ -49,10 +52,19 @@ async function fetchJson<T>(url: string): Promise<T> {
 /** Saves to one repository run one at a time across this browser's tabs. */
 const lockName = (repoDid: string) => `certified-write:${repoDid}`;
 
-async function apply(changes: Change[]) {
-  if (changes.length === 0) return;
+/**
+ * Reads the operations, computes the changes and writes them in one IndexedDB
+ * transaction, so a save finishing in between can't be overwritten with a
+ * stale copy. Network calls happen before, never inside. Returns the changes.
+ */
+async function settle(
+  actor: string,
+  did: string,
+  compute: (operations: ProfileOperation[]) => Change[],
+): Promise<Change[]> {
   const table = writeStore().profileOperations;
-  await writeStore().transaction("rw", table, async () => {
+  return writeStore().transaction("rw", table, async () => {
+    const changes = compute(await operationsFor(actor, did));
     for (const change of changes) {
       if ("remove" in change) await table.delete(change.seq);
       // update(), unlike put(), does nothing if the row was cleared meanwhile.
@@ -61,26 +73,35 @@ async function apply(changes: Change[]) {
           Object.assign(op, change.next);
         });
     }
+    return changes;
   });
 }
 
 /**
  * A "submitting" row while no save holds the lock was never answered (the tab
- * closed or reloaded mid-save): its outcome is unknown. Without Web Locks a
- * running save can't be told apart, and the PDS check settles it either way.
+ * closed or reloaded mid-save): its outcome is unknown, for the PDS check to
+ * settle. Without Web Locks a running save can't be told apart; the check
+ * settles it either way.
  */
-async function markAbandoned(repoDid: string, operations: ProfileOperation[]) {
-  const abandoned = operations.filter((op) => op.state === "submitting");
-  if (abandoned.length === 0) return;
+async function markAbandoned(actor: string, did: string) {
   const mark = () =>
-    apply(
-      abandoned.map(
-        (op): Change => ({ seq: op.seq, next: { ...op, state: "unknown", checks: 0 } }),
-      ),
+    settle(actor, did, (operations) =>
+      operations
+        .filter((op) => op.state === "submitting")
+        .map((op): Change => ({ seq: op.seq, next: { ...op, state: "unknown", checks: 0 } })),
     );
   if (!navigator.locks) return mark();
-  await navigator.locks.request(lockName(repoDid), { ifAvailable: true }, (lock) =>
+  await navigator.locks.request(lockName(did), { ifAvailable: true }, (lock) =>
     lock ? mark() : undefined,
+  );
+}
+
+/** Forgets a lost save once the user has seen that it wasn't saved. */
+export function dismissLost(actor: string, did: string) {
+  return settle(actor, did, (operations) =>
+    operations
+      .filter((op) => op.state === "lost")
+      .map((op): Change => ({ seq: op.seq, remove: true })),
   );
 }
 
@@ -95,63 +116,76 @@ const NO_OPERATIONS: ProfileOperation[] = [];
  * The profile to display for `did`, given what the server rendered. Without
  * this account's own local saves it is exactly `rendered`, as it is while
  * IndexedDB and the signed-in account are being read, so the server and the
- * first client render agree. `viewer` overrides the account reported by the
- * header, where the caller already knows it.
+ * first client render agree.
+ * @param viewer the signed-in account, where the caller already knows it
+ *   (otherwise the one the header reports)
+ * @param pageRead the profile as the PDS had it when the page was rendered,
+ *   where the caller has it: rows it has moved past are settled at once
  */
 export function useProfileDisplay(
   did: string,
   rendered: ProfileFields,
   viewer?: string,
+  pageRead?: ProfileVersion | null,
 ): ProfileDisplay {
   const reported = useViewer();
   const actor = viewer ?? reported;
-  const operations =
-    useLiveQuery(
-      () =>
-        actor
-          ? operationsFor(actor, did).catch((err: unknown) => {
-              // Without IndexedDB (blocked site data) there is nothing to overlay.
-              if (process.env.NODE_ENV !== "production") console.warn("[overlay]", err);
-              return NO_OPERATIONS;
-            })
-          : NO_OPERATIONS,
-      [actor, did],
-    ) ?? NO_OPERATIONS;
-  const pending = operations.some((op) => op.state !== "saved" || !op.indexed);
+  const loaded = useLiveQuery(
+    () =>
+      actor
+        ? operationsFor(actor, did).catch((err: unknown) => {
+            // Without IndexedDB (blocked site data) there is nothing to overlay.
+            if (process.env.NODE_ENV !== "production") console.warn("[overlay]", err);
+            return NO_OPERATIONS;
+          })
+        : NO_OPERATIONS,
+    [actor, did],
+  );
+  const operations = loaded ?? NO_OPERATIONS;
+  const pending = operations.some(isPending);
+
+  const settledPageRead = useRef(false);
+  useEffect(() => {
+    if (!actor || !loaded || pageRead === undefined || settledPageRead.current) return;
+    settledPageRead.current = true;
+    void settle(actor, did, (ops) => settleWithPageRead(pageRead, ops)).catch(() => {});
+  }, [actor, did, loaded, pageRead]);
 
   const { data: indexed } = useQuery({
     queryKey: ["indexed-profile", actor, did],
     enabled: Boolean(actor) && operations.length > 0,
     queryFn: async () => {
+      if (!actor) return null;
+      // Before the index read, so an index outage can't hold up recovery.
+      await markAbandoned(actor, did);
       const version = await fetchJson<ProfileVersion | null>(`/api/profiles/${did}`);
-      if (actor) {
-        const current = await operationsFor(actor, did);
-        await markAbandoned(did, current);
-        const changes = reconcileWithIndex(version, current);
-        await apply(changes);
-        if (changes.some((c) => "next" in c && c.next.state === "saved" && c.next.indexed)) {
-          void profileIndexed(did);
-        }
+      const changes = await settle(actor, did, (ops) => reconcileWithIndex(version, ops));
+      if (changes.some((c) => "next" in c && c.next.state === "saved" && c.next.indexed)) {
+        void profileIndexed(did);
       }
       return version;
     },
     refetchInterval: (query) => (pending ? pollDelay(query.state.dataUpdateCount) : false),
+    // Settled: the guard row only needs an occasional ordinary read.
+    staleTime: pending ? 0 : 60_000,
   });
 
   const question = actor ? pdsQuestion(indexed, operations) : null;
-  // A save already checked once (and not yet applied) is re-read after a pause.
-  const recheck = operations.some((op) => op.state === "unknown" && op.checks > 0);
   useQuery({
-    queryKey: ["pds-profile", actor, did, question],
+    queryKey: ["pds-profile", actor, did, question?.key],
     enabled: question !== null,
     queryFn: async () => {
-      if (recheck) await new Promise((resolve) => setTimeout(resolve, 3_000));
       const version = await fetchJson<ProfileVersion | null>(
         `/api/me/profile?did=${encodeURIComponent(did)}`,
       );
-      if (actor) await apply(resolveWithPds(version, await operationsFor(actor, did)));
+      if (actor && question) {
+        await settle(actor, did, (ops) => resolveWithPds(version, ops, question.opId));
+      }
       return version;
     },
+    // An unanswered save is re-read until it settles (its question then
+    // changes); a superseded one needs a single read.
+    refetchInterval: question?.key.startsWith("unknown:") ? 3_000 : false,
     // Signed out or another account: retrying can't help. The check runs again
     // when the window regains focus.
     retry: (failures, error) => !(error instanceof HttpError && error.status < 500) && failures < 3,
