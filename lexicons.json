@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "resolvers": [
+    {
+      "type": "directory",
+      "path": "./vendor/cgs-lexicons",
+      "include": ["app.certified.group.*", "app.certified.groups.*"]
+    }
+  ],
+  "lexicons": [
+    "app.certified.group.repo.createRecord",
+    "app.certified.group.repo.putRecord",
+    "app.certified.groups.membership.list",
+    "com.atproto.server.getServiceAuth"
+  ],
+  "resolutions": {
+    "app.certified.group.repo.createRecord": {
+      "uri": "file://./vendor/cgs-lexicons/app/certified/group/repo/createRecord.json",
+      "cid": "bafyreihcitkfog56gh35okds33gt3itwbxxkxrze3npq6wytwnbtcz6mbq"
+    },
+    "app.certified.group.repo.putRecord": {
+      "uri": "file://./vendor/cgs-lexicons/app/certified/group/repo/putRecord.json",
+      "cid": "bafyreicmkrun76nzxq5lge5pc662zlu3k5jurnttmeyc6fuiftsflirkoy"
+    },
+    "app.certified.groups.membership.list": {
+      "uri": "file://./vendor/cgs-lexicons/app/certified/groups/membership/list.json",
+      "cid": "bafyreiehix26xrgnysrib24a53q6632uc5lkxamqr4jbwntxkadam6khh4"
+    },
+    "com.atproto.server.getServiceAuth": {
+      "uri": "at://did:plc:6msi3pj7krzih5qxqtryxlzw/com.atproto.lexicon.schema/com.atproto.server.getServiceAuth",
+      "cid": "bafyreiaw2itjl4tfvckxjkkmaeo4dvjzgh3iajov5ilxxsqfigqhqv3uei"
+    }
+  }
+}

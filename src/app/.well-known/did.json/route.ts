@@ -1,36 +1,38 @@
-import { NextResponse } from "next/server"
-import {
-  INVALID_KEY_MESSAGE,
-  getCreatedViaDidDocument,
-  getCreatedViaSigner,
-} from "@/lib/atproto/created-via"
+import { connection } from "next/server";
+import { getAppKey } from "@/lib/atproto/app-key";
+import { oauthMode } from "@/lib/auth/config";
+import { logError } from "@/lib/log";
 
-// Reads the signing env at request time; a build-time 404 must never be baked in.
-export const dynamic = "force-dynamic"
-
-/**
- * did:web document for the app's record-signing key (`#createdVia`
- * signatures). 404 while signing is disabled, 500 when the configured key is
- * malformed. Only the 200 is cacheable, so a cached 404 can't outlive the key
- * being set. Every key that ever signed must stay published here for as long
- * as its records exist — see AGENTS.md "Record signing (createdVia)".
- */
+// The app's did:web document, which publishes the keys behind its createdVia
+// record signatures. Local loopback development signs
+// with a did:key and has no document. Only a 200 is cacheable, so a fixed
+// misconfiguration doesn't linger.
 export async function GET() {
-  const signer = await getCreatedViaSigner()
-  if (signer.status === "invalid") console.error(INVALID_KEY_MESSAGE)
-  if (signer.status === "ready") {
-    return NextResponse.json(getCreatedViaDidDocument(signer), {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=300",
-      },
-    })
-  }
-  return NextResponse.json(
-    { error: signer.status === "invalid" ? "Signing key misconfigured" : "Not found" },
-    {
-      status: signer.status === "invalid" ? 500 : 404,
+  await connection();
+  if (oauthMode().kind === "loopback") return new Response("Not found", { status: 404 });
+  let key: Awaited<ReturnType<typeof getAppKey>>;
+  try {
+    key = await getAppKey();
+  } catch (err) {
+    logError("[did.json] signing key not configured", err);
+    return new Response("Signing key not configured", {
+      status: 500,
       headers: { "Cache-Control": "no-store" },
+    });
+  }
+  return Response.json(
+    {
+      "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/multikey/v1"],
+      id: key.did,
+      verificationMethod: [
+        {
+          id: key.keyId,
+          type: "Multikey",
+          controller: key.did,
+          publicKeyMultibase: key.publicKeyMultibase,
+        },
+      ],
     },
-  )
+    { headers: { "Cache-Control": "public, max-age=300" } },
+  );
 }

@@ -1,0 +1,4 @@
+# Dependencies whose install scripts may run. pnpm blocks them by default;
+# list each one explicitly. core-js only prints a funding notice.
+allowBuilds:
+  core-js: false

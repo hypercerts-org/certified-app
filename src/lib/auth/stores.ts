@@ -1,82 +1,45 @@
-import type { NodeSavedState, NodeSavedSession } from "@atproto/oauth-client-node"
-import { Redis } from "@upstash/redis"
+import "server-only";
 
-// Lazy singleton — created on first use so the module can be imported
-// without UPSTASH env vars being present at import time.
-let _redis: Redis | null = null
-function getRedis(): Redis {
-  if (!_redis) {
-    const url = process.env.UPSTASH_REDIS_REST_URL
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN
-    if (!url || !token) {
-      throw new Error(
-        "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables are required"
-      )
-    }
-    _redis = new Redis({ url, token })
-  }
-  return _redis
+import type {
+  NodeSavedSession,
+  NodeSavedSessionStore,
+  NodeSavedState,
+  NodeSavedStateStore,
+} from "@atproto/oauth-client-node";
+import { store } from "./redis";
+
+// The OAuth client's stores, as JSON strings in Redis.
+
+/** A JSON value under a key prefix, expiring `ttlSeconds` after each write. */
+function jsonStore<T>(prefix: string, ttlSeconds: number) {
+  return {
+    async get(key: string): Promise<T | undefined> {
+      const raw = await store((r) => r.get(prefix + key));
+      return raw ? (JSON.parse(raw) as T) : undefined;
+    },
+    async set(key: string, value: T): Promise<void> {
+      await store((r) =>
+        r.set(prefix + key, JSON.stringify(value), {
+          expiration: { type: "EX", value: ttlSeconds },
+        }),
+      );
+    },
+    async del(key: string): Promise<void> {
+      await store((r) => r.del(prefix + key));
+    },
+  };
 }
 
-const STATE_PREFIX = "oauth:state:"
-const SESSION_PREFIX = "oauth:session:"
+/** An authorization only has to survive the round trip to the server. */
+export const stateStore: NodeSavedStateStore = jsonStore<NodeSavedState>("oauth:state:", 10 * 60);
 
 /**
- * Redis-backed state store for OAuth authorization flow.
- * States are short-lived (10 min TTL) — they only need to survive
- * from authorize() to callback().
+ * Keyed by DID: the account's tokens and DPoP key. Every browser signed in to
+ * the account shares them; the client revokes the previous set when the
+ * account signs in again. Renewed on every token refresh, so only idle
+ * sessions expire.
  */
-export class RedisStateStore {
-  private readonly ttlSeconds: number
-
-  constructor(ttlSeconds: number = 600) {
-    this.ttlSeconds = ttlSeconds
-  }
-
-  async set(key: string, value: NodeSavedState): Promise<void> {
-    await getRedis().set(`${STATE_PREFIX}${key}`, JSON.stringify(value), {
-      ex: this.ttlSeconds,
-    })
-  }
-
-  async get(key: string): Promise<NodeSavedState | undefined> {
-    const data = await getRedis().get<string>(`${STATE_PREFIX}${key}`)
-    if (!data) return undefined
-    return typeof data === "string" ? JSON.parse(data) : data
-  }
-
-  async del(key: string): Promise<void> {
-    await getRedis().del(`${STATE_PREFIX}${key}`)
-  }
-}
-
-/**
- * Redis-backed session store for OAuth sessions (tokens, DPoP keys).
- * Sessions are long-lived (30 day TTL, refreshed on each set).
- */
-export class RedisSessionStore {
-  private readonly ttlSeconds: number
-
-  constructor(ttlSeconds: number = 60 * 60 * 24 * 30) {
-    this.ttlSeconds = ttlSeconds
-  }
-
-  async set(key: string, value: NodeSavedSession): Promise<void> {
-    await getRedis().set(`${SESSION_PREFIX}${key}`, JSON.stringify(value), {
-      ex: this.ttlSeconds,
-    })
-  }
-
-  async get(key: string): Promise<NodeSavedSession | undefined> {
-    const data = await getRedis().get<string>(`${SESSION_PREFIX}${key}`)
-    if (!data) return undefined
-    return typeof data === "string" ? JSON.parse(data) : data
-  }
-
-  async del(key: string): Promise<void> {
-    await getRedis().del(`${SESSION_PREFIX}${key}`)
-  }
-}
-
-// Re-export the Redis getter for use in session.ts
-export { getRedis }
+export const sessionStore: NodeSavedSessionStore = jsonStore<NodeSavedSession>(
+  "oauth:session:",
+  30 * 24 * 60 * 60,
+);

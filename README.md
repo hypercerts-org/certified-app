@@ -1,91 +1,104 @@
-# Certified
+# certified.app v2
 
-Certified is a passwordless identity platform built on [AT Protocol](https://atproto.com), operated by the [Hypercerts Foundation](https://hypercerts.org). It lets users create an account that works across partner applications with full data portability and no vendor lock-in.
+Work in progress: the rebuild of [certified.app](https://certified.app) as a reference implementation of the Hypercerts protocol and API. The current production app lives on `main` and `staging`; this branch (`v2`) starts from a clean slate.
 
-**Live:** [certified.app](https://certified.app)
+So far: public pages backed by live data from the [Hypercerts API](https://docs.hypercerts.org/reference/services/hypercerts-api), sign-in, and editing your own profile or an organization's (signed writes, organizations through the Certified Group Service).
 
-## Architecture
-
-- **certified.app** -- web application for creating and managing AT Protocol identities
-- **certified.one** -- ePDS (extended Personal Data Server) that hosts user data
-
-When a user signs up, they get an AT Protocol identity and a Personal Data Server hosted at certified.one. Their profile and data travel with them to any app that supports AT Protocol.
-
-### Tech stack
-
-- [Next.js](https://nextjs.org) (App Router) on [Vercel](https://vercel.com)
-- [AT Protocol](https://atproto.com) OAuth with `@atproto/oauth-client-node`
-- [Upstash Redis](https://upstash.com) for session and OAuth state persistence
-- [Tailwind CSS](https://tailwindcss.com) + custom CSS
-
-### Routing
-
-| Route | Description |
-|-------|-------------|
-| `/welcome` | Landing page (unauthenticated users redirected here from `/`) |
-| `/` | Profile dashboard (authenticated) |
-| `/settings` | Account settings |
-| `/connected-apps` | Manage connected applications |
-| `/groups` | Group management |
-| `/about` | About Certified and the Hypercerts Foundation |
-| `/terms` | Terms of Service |
-| `/privacy` | Privacy Policy |
-| `/dsa` | Digital Services Act compliance |
-
-Middleware redirects unauthenticated users from `/` to `/welcome`.
-
-## Getting started
-
-### Prerequisites
-
-- Node.js 18+
-- An [Upstash Redis](https://console.upstash.com) database (free tier works)
-
-### Setup
+## Running it
 
 ```bash
-# Clone the repository
-git clone https://github.com/hypercerts-org/certified-app.git
-cd certified-app
-
-# Install dependencies
-npm install
-
-# Copy environment variables
-cp .env.local.example .env.local
+pnpm install
+pnpm dev           # starts Next.js
+pnpm build         # production build
+pnpm typecheck
+pnpm lint          # Biome lint
+pnpm format:check  # Biome formatting, without changing files
+pnpm format        # apply Biome's formatting
+pnpm test          # unit tests (Vitest)
+pnpm lex:check     # the generated CGS bindings match lexicons.json
 ```
 
-Edit `.env.local` with your values:
+Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome with the same rules and formatting, pnpm, TypeScript 7, Node 24. The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_PDS_URL` | Yes | PDS / handle resolver URL (default: `https://certified.one`) |
-| `PUBLIC_URL` | Recommended in production | Canonical app origin used for OAuth metadata and callbacks |
-| `VERCEL_BRANCH_URL` | Vercel-provided fallback | Stable branch hostname used when `PUBLIC_URL` is absent |
-| `VERCEL_URL` | Vercel-provided fallback | Commit deployment hostname used when the first two values are absent |
-| `COOKIE_SECRET` | Production | Secret for signing session cookies (`openssl rand -hex 32`) |
-| `UPSTASH_REDIS_REST_URL` | Yes | Upstash Redis REST URL |
-| `UPSTASH_REDIS_REST_TOKEN` | Yes | Upstash Redis REST token |
-| `ATPROTO_PRIVATE_KEY` | No | EC private key for confidential client auth |
-| `RESEND_API_KEY` | No | Resend API key for feedback emails |
+### Signing in locally
 
-OAuth URL precedence is `PUBLIC_URL` → `VERCEL_BRANCH_URL` → `VERCEL_URL`. The Vercel variables are server-side hostname-only system values and do not need `NEXT_PUBLIC_` aliases. The selected metadata endpoint—and JWKS endpoint when confidential auth is enabled—must be publicly reachable by the authorization server, so Vercel Deployment Protection can prevent preview login. Deployments participating in one callback flow must share compatible Redis configuration; distinct canonical OAuth origins should use separate Redis databases because saved OAuth sessions are not namespaced by `client_id`.
+Sign-in needs Redis. `docker compose up -d` starts it on `127.0.0.1:6379`; copy the `REDIS_URL` and `PUBLIC_URL` lines from `.env.example` into `.env.local`. In production, `REDIS_URL` is any provider's connection string, for example from a Vercel Marketplace Redis integration. Without an https `PUBLIC_URL`, the app is an atproto loopback client: open it at `http://127.0.0.1:3000` (not `localhost`), because the authorization server redirects back there. From another machine, forward the port (`ssh -L 3000:127.0.0.1:3000 <host>`) and use the same URL.
 
-### Development
+Writing also needs `CREATED_VIA_SIGNING_KEY` (see `.env.example` for generating one); without it, saves fail rather than go out unsigned. `pnpm test` runs the unit tests.
 
-```bash
-npm run dev
-```
+## What is here
 
-Open [http://localhost:3000](http://localhost:3000).
+| Route                                   | What it shows                                                                                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                     | Landing page: find your organization, and a hand-picked set of organizations that award badges                                                |
+| `/explore`                              | Organizations, with search (`?q=`) and "load more"                                                                                            |
+| `/{did}`                                | An account's page built from tiles: Activities, Projects, Badges awarded (for accounts that have issued badge awards), About, Badges received |
+| `/{did}/project/{rkey}`                 | A project and the activities it contains                                                                                                      |
+| `/embed/activities?author={did}`        | The Activities tile as an embeddable page for an `<iframe>`                                                                                   |
+| `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`)                                       |
+| `/api/profiles/{did}`                   | A profile as the index has it right now, uncached, for the write overlay                                                                      |
+| `/{did}/edit`                           | Edit a profile's display name and description: your own, or an organization's you manage, signed by the app                                   |
+| `/settings/organizations`               | The organizations you belong to on the Certified Group Service, with your role                                                                |
+| `/sign-in`                              | Sign in with a Certified email address, or a handle on any AT Protocol server                                                                 |
+| `/oauth/callback`, `/.well-known/*`     | OAuth callback, client metadata and (for a confidential client) public keys                                                                   |
 
-### Build
+## Adapting this app
 
-```bash
-npm run build
-npm start
-```
+Certified-specific choices a copy for another Hypercerts app would change:
 
-## License
+- **Identity:** the OAuth `client_name` and logo (`src/lib/auth/oauth-client.ts`), the cookie names (`certified_session`, `certified_sign_in`), the IndexedDB database `certified-writes`, and wording such as "signed by certified.app" and "View on Certified".
+- **Services:** email sign-in through Certified's PDS (`CERTIFIED_PDS_URL`), organizations on the Certified Group Service (`CGS_URL`, and `CGS_DID` if the deployment sets its own service DID), and the app's `createdVia` signing key (`CREATED_VIA_SIGNING_KEY`), which names the app in every record it writes.
+- **Content:** the hand-picked issuers on the landing page (`FEATURED_ISSUERS` in `src/app/(site)/page.tsx`) and the prerendered sample account and project (`generateStaticParams` in the account and project pages).
+- **Hosting:** the sign-in rate limit keys on the client IP from `@vercel/functions` (`x-real-ip`). Behind another proxy, check that header is set, or every visitor shares one limit. Preview detection uses `VERCEL_ENV` and `*.vercel.app`.
 
-See [LICENSE](LICENSE) for details.
+## How it is put together
+
+- **Next.js 16 App Router with Cache Components.** Pages are Server Components. Public data is read through cached functions (`'use cache'`, one-minute revalidation). Dynamic routes render a static shell and are then cached per URL (ISR), so repeat visitors are served from the cache.
+- **One data module.** `src/lib/hypercerts/queries.ts` is the only code that talks to the API. It calls XRPC endpoints through an [`@atproto/lex`](https://www.npmjs.com/package/@atproto/lex) `Client`, which returns responses typed from the API's lexicons, and maps them to plain view models (`src/lib/hypercerts/views.ts`). Endpoint definitions and view types come from [`@hypercerts-org/api`](https://www.npmjs.com/package/@hypercerts-org/api), and the record types those views embed from [`@hypercerts-org/lexicon`](https://www.npmjs.com/package/@hypercerts-org/lexicon). When the Hypercerts SDK ships its read layer, only this module should change.
+- **Bindings.** Both packages are generated from the lexicons in their own repositories and installed from npm. Keep their versions in step: `@hypercerts-org/api` declares the `@hypercerts-org/lexicon` range its types are built against. The only bindings generated here are for the Certified Group Service, which doesn't publish its lexicons yet: `lexicons.json` installs them with `lex install` (CGS's from `vendor/cgs-lexicons/`, `com.atproto.server.getServiceAuth` from the network, each recorded with its CID, so a change shows in review) and `lex build` generates `src/lexicons/` (`pnpm lex:install`, `pnpm lex:build`). They go once CGS publishes a client package.
+- **Design system.** Components come from [`@hypercerts-org/ui-react`](https://github.com/hypercerts-org/hypercerts-design) with the Certified theme (`data-hc-theme="certified"`). `src/app/globals.css` adds layout only.
+- **Tiles.** Each tile in `src/components/tiles.tsx` fetches its own data and streams in behind its own Suspense boundary, so a page can show, hide or reorder tiles independently.
+- **Sign-in.** The server is the OAuth client (`@atproto/oauth-client-node`) and keeps each account's tokens in Redis (standard `redis` client), so it can later write and sign records for the user. The browser gets only a session cookie: a random token whose SHA-256 hash keys the session in Redis. `src/lib/auth/dal.ts` is the only way to ask who is signed in (`getUser()`, a private cache per the Next.js guide on authentication with Cache Components, no PDS calls) or to get a session for PDS calls (`getOAuthSession()`, Server Actions and Route Handlers only, refreshes tokens). Sign-in and sign-out are Server Actions; the callback is a Route Handler. The header's account area reads the session inside a Suspense boundary, so public pages keep their cached shell.
+- **Sign-in safeguards.**
+  - The OAuth client (PAR, PKCE, DPoP, issuer checks) and its outbound fetch (atproto's `safeFetchWrap`: no private addresses, size-capped responses) are atproto's own; the app adds stores, a lock and the session cookie.
+  - A sign-in is bound to the browser that started it: a nonce in a cookie must match the one in the OAuth state (RFC 9700 4.7), so nobody can sign a victim in to their own account with a callback link.
+  - A Redis lock serializes token refreshes across server instances, since a refresh token can be used once and a concurrent refresh would get the session revoked.
+  - Every Redis failure becomes `StoreUnavailableError`: a Redis outage fails requests but never signs anyone out.
+  - Starting a sign-in is limited to 10 per IP address per minute. Cookies are `__Host-` prefixed over https.
+  - Only `/embed/*` may be framed by other sites; every other route sends `frame-ancestors 'none'` and `X-Frame-Options: DENY` (`next.config.ts`).
+  - All browsers signed in to one account share its OAuth session; signing out revokes the tokens only when the last of them signs out.
+- **Writes.** `src/lib/hypercerts/writes.ts` is the only code that writes to a repository, the counterpart of `queries.ts`; when the Hypercerts SDK ships its write layer, only this module should change. A Server Action authenticates and writes to a `Repository`: the signed-in user's own, or an organization's they manage. It reads the current record from the repository's PDS (the index may lag), applies the change, validates it against the lexicon, signs it, and writes it with compare-and-swap on the version the user edited (a first profile is created, never overwritten). Outcomes are stored, refused (a 4xx answer: nothing written) or unknown (a 5xx or no answer: the user is asked to reload, since the edit page reads the PDS; never retried).
+- **Organizations.** Acting as an organization is a choice of repository, named in the URL (`/{did}/edit`), not a mode stored in the session, so tabs can't disagree about whom they write as. Organizations live on the Certified Group Service (CGS, `src/lib/cgs.ts`), which holds their credentials and checks each member's role. The app calls CGS directly, as its integration guide recommends, with a single-use service-auth token from the user's PDS per call (`aud` the CGS DID, `lxm` the method, the organization in `repo`). Admins and owners may edit an organization's profile here, and CGS records each write, with the user, in the organization's audit log. CGS itself only limits `app.bsky.actor.profile` to admins: for `app.certified.actor.profile` it checks membership and who authored the record, so until CGS treats it as a profile too, the admin rule holds in this app only. Reads come from the organization's own PDS, resolved and fetched through the OAuth client's SSRF-safe resolver. CGS's `putRecord` has no `swapRecord`, so for organizations the unchanged-version check happens when the record is read, just before the write.
+- **Record signing.** Every record the app writes carries an `app.certified.signature.defs#createdVia` signature, made by `src/lib/atproto/created-via.ts` with the SDK record-signing spec's `RecordSigner` contract. Deployed, the key is published in the app's `did:web` document at `/.well-known/did.json` (fragment `#created-via`, as on the current certified.app) under `did:web:<PUBLIC_URL host>`. Signing never runs on preview hosts, so writes fail there instead of producing signatures that later can't be verified. Locally the key is a `did:key`. Unit tests verify signatures with the lexicon README's own procedure and encoder, including after the JSON round trip to the PDS; after each write the stored CID is checked against the signed record.
+- **Saving and the write overlay.** A save is not optimistic: the form is disabled, with a spinner on Save, until the PDS confirms it. The browser then keeps what the PDS stored in IndexedDB (Dexie, `src/lib/write-overlay/local-store.ts`), keyed by record URI, and shows it until TanStack Query's polling of the index (backing off to 30 s), with a read made after the save, shows the save or a version none of this browser's saves replaced: a later change (saves are compare-and-swap). The row is then deleted and `updateTag` expires the account's cached pages, so the next render is fresh. Signing out clears the store. It covers the profile name and description on the account page and in the header, not account names in listings. This pattern (wait for the PDS, then overlay until indexed) is meant for every form on the site.
+- **Load more.** The first page is server-rendered; later pages come from the GET route handlers through TanStack Query's `useInfiniteQuery`, which call the same cached functions and send `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. The client deduplicates by URI across pages.
+
+## Spike findings
+
+Known challenges and our current answers. These feed the architecture notes and upstream issues.
+
+1. **`@atproto/lex` 0.4.2 generates broken imports** when a query lives under a record NSID (`org.hypercerts.collection.getCollection`, `app.certified.location.getLocation`): it emits `./.defs`. The workaround now lives in `@hypercerts-org/api`'s generator, not in the app. Reported upstream as [bluesky-social/atproto#5738](https://github.com/bluesky-social/atproto/issues/5738), with a fix ready.
+2. **Turbopack does not resolve the `.js` import specifiers** that `lex build` generates by default to `.ts` files. The API and record bindings are compiled JavaScript from npm, so this only affects the generated CGS bindings, which are built with `--import-ext ""` (extension-less imports, one of lex's own options).
+3. **Indexed records do not always match their lexicons.** About a quarter of indexed activities fail lexicon validation: plain-string descriptions, union values without `$type`. Most were invalid when written; about 119 were valid and broke when the lexicon changed. With lex's default response validation, one such record fails the whole list request, so reads skip response validation and the mappers in `src/lib/hypercerts/views.ts` read descriptions and blob references defensively; writes validate strictly. Proposed resolution (index-time validation, repair only what our lexicon changes broke): [TECH-791](https://linear.app/hypercerts/issue/TECH-791).
+4. **API views carry no handle.** Profile and actor views include the DID but not the handle, so routes use DIDs for now. Handle resolution needs an API field or a separate resolver.
+5. **Avatars are blob references.** They are served through the Bluesky CDN (`cdn.bsky.app`), which fetches from the account's PDS. This avoids resolving each DID's PDS but depends on Bluesky infrastructure.
+6. **`'use cache'` is per-instance memory on serverless.** Shared caching for public pages comes from Cache Components' ISR and from CDN headers on the GET route handlers, not from `'use cache'` alone.
+7. **Not-found inside a streamed boundary returns HTTP 200.** An unknown account renders the not-found UI, but the status has already been sent. Acceptable for the spike; revisit before launch (for example, resolve the account before streaming).
+8. **The app has to choose its slice of the data.** The network contains test records, odd definitions and anything else anyone publishes; that is normal on AT Protocol and not something this app tries to fix. A client shows only the data relevant to it. For example, a test account ("Karmas Test Org") is the second-largest badge issuer, so the landing page features a hand-picked list of issuers rather than ranking by award count. The current app also hides test records with quality labels, which the API does not expose for filtering. How v2 chooses its slice beyond hand-picked lists is not decided.
+
+### Badge awards
+
+The Badges awarded tile groups the awards an account has issued by badge definition and counts award records. It does not interpret what a badge means: `badgeType` and `description` are free text chosen by the issuer, and the meaning is theirs to state. Counts are from 2026-10-29.
+
+9. **No count endpoint.** Counting an account's awards, or the awards per definition, needs every award it has issued. `getAwardsIssued` pages through `listBadgeAwards` (GainForest: 1,044 awards, 11 requests, about 3 seconds uncached) and caps at 2,000 awards. Proposed: `totalCount` on `listBadgeAwards` ([TECH-810](https://linear.app/hypercerts/issue/TECH-810)), and possibly a grouped count per definition later.
+
+Observed in the badge data, no action: definitions with the same title from different issuers ("Ma Earth Round 3" is defined by both Ma Earth and GainForest); awards of definitions owned by someone else (allowed by design: the lexicon says that without `allowedIssuers`, anyone may issue a badge); subjects that are accounts or records; all 1,424 awards from the four featured issuers unanswered; one self-award and several unused definitions. These are network data, not obstacles to building the app; the app shows them as they are.
+
+## Not verified yet
+
+- Deployment on Vercel and measured latency from the deployment region.
+- An organization save against a live CGS deployment (the request shapes are unit-tested against CGS's documented contract; an own-profile save was verified on certified.one on November 9).
+- On a reload while a save is syncing, the server-rendered page shows the indexed name for a moment before the overlay restores the saved one.
+- The Hypercerts API answers HTTP 500 (`script_error`, with `RecordNotFound` in the message) for a record it hasn't indexed, instead of a `RecordNotFound` error. The app recognizes the message for now: [TECH-858](https://linear.app/hypercerts/issue/TECH-858).
+
+Checked 2026-11-09 against the dev server in headless Chromium, with the browser in Europe/Stockholm, America/Los_Angeles and Pacific/Auckland: no hydration warnings or page errors on `/`, `/explore`, `/explore?q=earth`, an organization page, a project page and the embed. "Load more" pages correctly (three rounds each) on Explore, search, an organization's Activities tile and the embed, including inside an iframe on another origin, where links open in a new tab.

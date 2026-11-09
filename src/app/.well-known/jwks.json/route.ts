@@ -1,12 +1,14 @@
-import { NextResponse } from "next/server"
-import { getOAuthClient } from "@/lib/auth/oauth-client"
+import { connection } from "next/server";
+import { getOAuthClient } from "@/lib/auth/oauth-client";
 
+// Public keys of a confidential OAuth client (OAUTH_PRIVATE_KEY set).
 export async function GET() {
-  const client = await getOAuthClient()
-  return NextResponse.json(client.jwks, {
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=600",
-    },
-  })
+  await connection();
+  const client = await getOAuthClient();
+  if (client.clientMetadata.token_endpoint_auth_method !== "private_key_jwt") {
+    return new Response("Not found", { status: 404 });
+  }
+  return Response.json(client.jwks, {
+    headers: { "Cache-Control": "public, max-age=300" },
+  });
 }
