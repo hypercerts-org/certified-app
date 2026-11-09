@@ -21,11 +21,13 @@ import {
   didOf,
   type Page,
   type ProjectCard,
+  type ProfileVersion,
   type ProjectDetail,
   toActivityCard,
   toActorCard,
   toActorDetail,
   toBadgeCard,
+  toProfileVersion,
   toProjectCard,
   toProjectDetail,
 } from "./views";
@@ -81,6 +83,21 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   return profile.success
     ? toActorDetail({ did, profile: profile.body.profile, organization: null })
     : null;
+}
+
+/**
+ * The indexed version of an account's profile, read past every cache. The
+ * write overlay compares its CID with what the user saved to tell whether the
+ * index has caught up; a cached answer could confirm nothing.
+ */
+export async function getIndexedProfile(did: string): Promise<ProfileVersion | null> {
+  const result = await api.xrpcSafe(app.certified.actor.getProfile, {
+    params: { actor: did as Did },
+    ...read(),
+  });
+  if (result.success) return toProfileVersion(result.body.profile);
+  if (result.error === "RecordNotFound") return null;
+  throw result;
 }
 
 export async function listActivitiesPage(options: {

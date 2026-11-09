@@ -31,28 +31,44 @@ export class SessionUnavailableError extends Error {
   }
 }
 
+/** Restores the user's OAuth session, or "gone" when it can no longer be used. */
+async function restore(did: string): Promise<OAuthSession | "gone"> {
+  try {
+    return await (await getOAuthClient()).restore(did);
+  } catch (err) {
+    // The client's own definition of an unusable session. Redis and network
+    // failures never match it: the stores wrap them in StoreUnavailableError.
+    if (isExpectedSessionError(err)) return "gone";
+    logError("[auth] restore failed", err, { did });
+    throw new SessionUnavailableError();
+  }
+}
+
 /**
- * The signed-in user's OAuth session, for calls to their PDS. Refreshes the
- * tokens when they are about to expire. When the OAuth session is gone
- * (revoked, expired, or replaced by a broken one) the app session ends too and
- * this returns null; when it can't be reached right now this throws
- * SessionUnavailableError and the user stays signed in. Only in Server Actions
- * and Route Handlers: ending a session is a mutation, never a side effect of
- * rendering.
+ * The signed-in user's OAuth session, for calls to their PDS from a Server
+ * Action or Route Handler. Refreshes the tokens when they are about to expire.
+ * When the OAuth session is gone (revoked, expired, or replaced by a broken
+ * one) the app session ends too and this returns null; when it can't be
+ * reached right now this throws SessionUnavailableError and the user stays
+ * signed in.
  */
 export async function getOAuthSession(): Promise<OAuthSession | null> {
   const user = await getUser();
   if (!user) return null;
-  try {
-    return await (await getOAuthClient()).restore(user.did);
-  } catch (err) {
-    // The client's own definition of an unusable session. Redis and network
-    // failures never match it: the stores wrap them in StoreUnavailableError.
-    if (isExpectedSessionError(err)) {
-      await endAppSession({ revokeIfLast: false });
-      return null;
-    }
-    logError("[auth] restore failed", err, { did: user.did });
-    throw new SessionUnavailableError();
-  }
+  const session = await restore(user.did);
+  if (session !== "gone") return session;
+  await endAppSession({ revokeIfLast: false });
+  return null;
+}
+
+/**
+ * The same for Server Components, which must not end sessions (a mutation is
+ * never a side effect of rendering): a gone OAuth session reads as "expired"
+ * and the page offers to sign in again.
+ */
+export async function readOAuthSession(): Promise<OAuthSession | "expired" | null> {
+  const user = await getUser();
+  if (!user) return null;
+  const session = await restore(user.did);
+  return session === "gone" ? "expired" : session;
 }

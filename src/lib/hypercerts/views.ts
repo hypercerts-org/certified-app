@@ -13,6 +13,22 @@ type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
 type CollectionActorView = org.hypercerts.collection.getCollection.CollectionActorView;
 type CollectionView = org.hypercerts.collection.getCollection.CollectionView;
 type OrganizationActorView = app.certified.actor.getOrganization.OrganizationActorView;
+type ProfileView = org.hypercerts.api.defs.ProfileView;
+
+/** The profile fields this app edits. */
+export type ProfileFields = { displayName: string; description: string };
+
+/** One version of an account's profile record: which version, and its fields. */
+export type ProfileVersion = ProfileFields & { uri: string; cid: string };
+
+export function toProfileVersion(view: ProfileView): ProfileVersion {
+  return {
+    uri: view.uri,
+    cid: view.cid,
+    displayName: view.record.displayName ?? "",
+    description: view.record.description ?? "",
+  };
+}
 
 export type Page<T> = {
   items: T[];
@@ -28,6 +44,8 @@ export type ActorCard = {
 };
 
 export interface ActorDetail extends ActorCard {
+  /** The profile record's own fields, without display fallbacks. */
+  profile: ProfileFields;
   organizationTypes: string[];
   urls: string[];
   longDescription: string | null;
@@ -196,8 +214,13 @@ export function toActorCard(actor: AnyActorView): ActorCard {
 
 export function toActorDetail(actor: AnyActorView): ActorDetail {
   const organization = actor.organization?.record;
+  const profile = actor.profile?.record;
   return {
     ...toActorCard(actor),
+    profile: {
+      displayName: profile?.displayName ?? "",
+      description: profile?.description ?? "",
+    },
     organizationTypes: organization?.organizationType ?? [],
     urls: (organization?.urls ?? []).map((entry) => entry.url),
     longDescription: plainText(organization?.longDescription),

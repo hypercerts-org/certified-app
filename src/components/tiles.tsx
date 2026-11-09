@@ -1,3 +1,4 @@
+import { ProfileDescription } from "@/components/profile-text";
 import { Badge, EmptyState, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import {
   getAwardsIssued,
@@ -45,15 +46,16 @@ export function TileSkeleton({ title }: { title: string }) {
 }
 
 export function AboutTile({ actor }: { actor: ActorDetail }) {
-  const text = actor.longDescription ?? actor.description;
   return (
     <Tile title="About">
-      {text ? (
+      {/* An organization's long description; otherwise the profile's own,
+          which the account may just have edited here. */}
+      {actor.longDescription ? (
         <Text relaxed className="prewrap">
-          {text}
+          {actor.longDescription}
         </Text>
       ) : (
-        <Text tone="muted">No description yet.</Text>
+        <ProfileDescription did={actor.did} rendered={actor.profile} />
       )}
       {(actor.organizationTypes.length > 0 || actor.foundedDate) && (
         <div className="meta">

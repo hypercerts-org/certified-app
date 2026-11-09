@@ -1,8 +1,9 @@
-import { Avatar, Button, Text } from "@hypercerts-org/ui-react";
+import { Avatar, Text } from "@hypercerts-org/ui-react";
 import Link from "next/link";
 import { actorHref } from "@/components/cards";
+import { ProfileName } from "@/components/profile-text";
 import { SignInLink } from "@/components/sign-in-link";
-import { signOut } from "@/lib/auth/actions";
+import { SignOutForm } from "@/components/sign-out-form";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
 
@@ -15,19 +16,21 @@ export async function UserMenu() {
   // An account that has never written a Certified profile has no API view.
   const actor = await getActor(user.did);
   const name = actor?.displayName ?? user.did;
+  const profile = actor?.profile ?? { displayName: "", description: "" };
   return (
     <div className="user-menu">
       <Link href={actorHref(user.did)} className="user-menu-account">
         <Avatar name={name} src={actor?.avatarUrl} size="sm" />
         <Text as="span" size="body-sm" tone="ink" className="user-menu-name">
-          {name}
+          <ProfileName did={user.did} rendered={profile} />
         </Text>
       </Link>
-      <form action={signOut}>
-        <Button type="submit" variant="ghost" size="sm">
-          Sign out
-        </Button>
-      </form>
+      <Link href="/settings/profile">
+        <Text as="span" size="body-sm" tone="ink">
+          Edit profile
+        </Text>
+      </Link>
+      <SignOutForm>Sign out</SignOutForm>
     </div>
   );
 }

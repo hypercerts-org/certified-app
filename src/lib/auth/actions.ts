@@ -69,10 +69,11 @@ export async function signIn(_previous: SignInState, form: FormData): Promise<Si
 }
 
 /**
- * Signs this browser out. The account's OAuth tokens are shared by all its
- * browsers, so they are revoked only when this was the last one.
+ * Signs this browser out and goes to `next` (a path on this site, default
+ * the home page). The account's OAuth tokens are shared by all its browsers,
+ * so they are revoked only when this was the last one.
  */
-export async function signOut(): Promise<void> {
+export async function signOut(form?: FormData): Promise<void> {
   try {
     await endAppSession({ revokeIfLast: true });
   } catch (err) {
@@ -80,5 +81,5 @@ export async function signOut(): Promise<void> {
     // session record, which expires.
     logError("[auth] sign-out cleanup failed", err);
   }
-  redirect("/");
+  redirect(returnPath(form?.get("next")));
 }

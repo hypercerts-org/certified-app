@@ -9,6 +9,7 @@ import {
   ProjectsTile,
   TileSkeleton,
 } from "@/components/tiles";
+import { ProfileName } from "@/components/profile-text";
 import { getActor, hasIssuedAwards } from "@/lib/hypercerts/queries";
 
 // Prerender one known organization at build time; every other actor gets the
@@ -28,7 +29,7 @@ async function ActorProfile({ params }: Pick<PageProps<"/[actor]">, "params">) {
         <Avatar name={actor.displayName} src={actor.avatarUrl} size="lg" />
         <div>
           <Heading level={1} size="display-3">
-            {actor.displayName}
+            <ProfileName did={actor.did} rendered={actor.profile} />
           </Heading>
           <Text size="micro" tone="muted">
             {actor.isOrganization ? "Organization" : "Person"} · {actor.did}
