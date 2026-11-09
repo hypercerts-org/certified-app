@@ -1,7 +1,8 @@
 // Input validation for public query parameters. Route handlers and embeds
 // accept only bounded, well-formed values; nothing is passed upstream raw.
+import type { l } from "@atproto/lex";
 
-export function isDid(value: string): boolean {
+export function isDid(value: string): value is l.DidString {
   return /^did:(plc|web):[a-zA-Z0-9._:%-]{1,200}$/.test(value);
 }
 

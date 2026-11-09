@@ -7,7 +7,7 @@ import {
   profileIndexed,
   type SaveProfileResult,
   saveProfile,
-} from "@/app/(site)/settings/profile/actions";
+} from "@/app/(site)/[actor]/edit/actions";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import { forgetSave, getSave, indexCaughtUp, putSave } from "./local-store";
 
@@ -74,13 +74,17 @@ const UNKNOWN: SaveProfileResult = {
 };
 
 /**
- * Saves the signed-in user's profile and keeps what the PDS stored for
+ * Saves a profile (the user's own or an organization's) and keeps what the PDS stored for
  * display until the index catches up. Never retried automatically.
  */
 export function useSaveProfile() {
   return useMutation({
     retry: false,
-    mutationFn: async (input: { fields: ProfileFields; expectedCid: string | null }) => {
+    mutationFn: async (input: {
+      repo: string;
+      fields: ProfileFields;
+      expectedCid: string | null;
+    }) => {
       const result = await saveProfile(input).catch(() => UNKNOWN);
       if (result.ok) {
         const { uri, cid } = result.saved;

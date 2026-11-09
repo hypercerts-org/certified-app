@@ -172,6 +172,9 @@ importers:
       '@atproto/crypto':
         specifier: 0.5.7
         version: 0.5.7
+      '@atproto/did':
+        specifier: 0.5.6
+        version: 0.5.6
       '@atproto/lex':
         specifier: 0.4.2
         version: 0.4.2

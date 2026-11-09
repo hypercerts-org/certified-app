@@ -20,11 +20,14 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lex:install": "lex install",
+    "lex:build": "lex build --clear --index-file --import-ext \"\""
   },
   "dependencies": {
     "@atproto-labs/fetch-node": "0.4.5",
     "@atproto/crypto": "0.5.7",
+    "@atproto/did": "0.5.6",
     "@atproto/lex": "0.4.2",
     "@atproto/lex-cbor": "0.1.9",
     "@atproto/oauth-client-node": "0.5.16",

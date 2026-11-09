@@ -25,9 +25,14 @@ export async function UserMenu() {
           <ProfileName did={user.did} rendered={profile} />
         </Text>
       </Link>
-      <Link href="/settings/profile">
+      <Link href={`${actorHref(user.did)}/edit`}>
         <Text as="span" size="body-sm" tone="ink">
           Edit profile
+        </Text>
+      </Link>
+      <Link href="/settings/organizations">
+        <Text as="span" size="body-sm" tone="ink">
+          Organizations
         </Text>
       </Link>
       <SignOutForm>Sign out</SignOutForm>

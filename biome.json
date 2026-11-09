@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!next-env.d.ts", "!public", "!pnpm-lock.yaml"]
+    "includes": [
+      "**",
+      "!next-env.d.ts",
+      "!public",
+      "!pnpm-lock.yaml",
+      "!lexicons",
+      "!vendor/cgs-lexicons",
+      "!src/lexicons"
+    ]
   },
   "formatter": {
     "enabled": true,

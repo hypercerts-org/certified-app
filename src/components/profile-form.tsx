@@ -3,19 +3,19 @@
 import { Banner, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
 import { type FormEvent, useState } from "react";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
-import type { SaveProfileResult } from "@/app/(site)/settings/profile/actions";
+import type { SaveProfileResult } from "@/app/(site)/[actor]/edit/actions";
 import { useSaveProfile } from "@/lib/writes/use-profile";
 
 const NO_PROFILE: ProfileFields = { displayName: "", description: "" };
 
 /**
- * Edits the signed-in user's display name and description. `current` is the
- * profile as the PDS had it when the page was rendered (null: none yet). The
+ * Edits profile `did`'s display name and description: the signed-in user's
+ * own, or an organization's they manage. `current` is the profile as the PDS had it when the page was rendered (null: none yet). The
  * form is disabled while a save waits for the PDS to confirm it. Each save is
  * based on the newest version known here (the last save's, or the page's) and
  * is refused if the profile changed elsewhere in the meantime.
  */
-export function ProfileForm({ current }: { current: ProfileVersion | null }) {
+export function ProfileForm({ did, current }: { did: string; current: ProfileVersion | null }) {
   const initial = current ?? NO_PROFILE;
   const [fields, setFields] = useState<ProfileFields>({
     displayName: initial.displayName,
@@ -28,7 +28,7 @@ export function ProfileForm({ current }: { current: ProfileVersion | null }) {
     event.preventDefault();
     if (save.isPending) return;
     save.mutate(
-      { fields, expectedCid: baseCid },
+      { repo: did, fields, expectedCid: baseCid },
       { onSuccess: (result) => result.ok && setBaseCid(result.saved.cid) },
     );
   }
