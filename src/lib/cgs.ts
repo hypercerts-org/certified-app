@@ -6,7 +6,7 @@
 // the organization is named by `repo` in the call itself.
 import "server-only";
 
-import { Client, type l } from "@atproto/lex";
+import { Client, type l, XrpcError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app, com } from "@/lexicons";
 
@@ -18,8 +18,9 @@ if (
   // Service-auth tokens are bearer tokens: never send them in the clear.
   throw new Error("CGS_URL must use https (http only on a loopback address).");
 }
-// did:web of CGS's host, unless the deployment sets its own SERVICE_DID.
-const CGS_DID = process.env.CGS_DID || `did:web:${CGS_URL.host.replace(":", "%3A")}`;
+// The DID CGS gives itself unless its deployment sets SERVICE_DID: did:web
+// of its hostname, without a port (CGS src/config.ts). Tokens must match it.
+const CGS_DID = process.env.CGS_DID || `did:web:${CGS_URL.hostname}`;
 
 /** Unauthenticated: each call passes its own token (see cgsAuth). */
 export const cgs = new Client({
@@ -39,7 +40,9 @@ export const cgs = new Client({
 /** The user's PDS didn't mint a service-auth token, so CGS was never called. */
 export class CgsAuthError extends Error {
   constructor(cause: unknown) {
-    super("Could not get a service-auth token for CGS", { cause });
+    // The PDS's error name (never a token) says why: auth, scope, rate limit.
+    const code = cause instanceof XrpcError ? `: ${cause.error}` : "";
+    super(`Could not get a service-auth token for CGS${code}`, { cause });
     this.name = "CgsAuthError";
   }
 }

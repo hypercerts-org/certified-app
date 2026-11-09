@@ -175,8 +175,8 @@ function writeFailure(err: unknown): unknown {
 /**
  * Sets the profile's display name and description, keeping every other field
  * as stored, and signs the result. `expectedCid` is the version the user
- * edited (null: no profile yet); if the profile changed since, this throws
- * WriteConflictError instead of overwriting.
+ * edited (null: no profile yet); if the profile changed since, this throws a
+ * WriteError with reason "conflict" instead of overwriting.
  */
 export async function updateProfile(
   repo: Repository,

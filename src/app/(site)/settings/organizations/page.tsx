@@ -14,7 +14,7 @@ import { signInHref } from "@/lib/validate";
 export const metadata: Metadata = { title: "Your organizations" };
 
 const HERE = "/settings/organizations";
-const ROLE_LABEL = { member: "Member", admin: "Admin", owner: "Owner" } as const;
+const ROLE_LABEL: Record<string, string> = { member: "Member", admin: "Admin", owner: "Owner" };
 
 async function OrganizationRow({ membership }: { membership: Membership }) {
   const actor = await getActor(membership.groupDid);
@@ -24,7 +24,7 @@ async function OrganizationRow({ membership }: { membership: Membership }) {
         name={actor?.displayName ?? membership.groupDid}
         avatarSrc={actor?.avatarUrl}
         href={actorHref(membership.groupDid)}
-        secondary={ROLE_LABEL[membership.role as keyof typeof ROLE_LABEL] ?? membership.role}
+        secondary={ROLE_LABEL[membership.role] ?? membership.role}
       />
       {manages(membership) && (
         <Link href={`${actorHref(membership.groupDid)}/edit`}>

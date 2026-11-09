@@ -74,7 +74,9 @@ describe("CGS calls", () => {
 
   it("reports a token the PDS refused as CgsAuthError, without calling CGS", async () => {
     const { session, minted } = fakeSession({ refuse: true });
-    await expect(listMemberships(session)).rejects.toBeInstanceOf(CgsAuthError);
+    const err = await listMemberships(session).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(CgsAuthError);
+    expect((err as Error).message).toContain("AuthRequired");
     expect(minted).toHaveLength(1);
     expect(requests).toHaveLength(0);
   });

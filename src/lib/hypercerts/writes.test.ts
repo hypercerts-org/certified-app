@@ -59,7 +59,7 @@ const failureOf = (promise: Promise<unknown>) =>
 
 describe("organization writes through CGS", () => {
   const requests: Request[] = [];
-  let cgsAnswer: () => Response;
+  let cgsAnswer: () => Response | Promise<Response>;
 
   beforeEach(() => {
     requests.length = 0;
@@ -74,7 +74,12 @@ describe("organization writes through CGS", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("reads the organization's PDS and writes through CGS with repo and a putRecord token", async () => {
-    const repo = await organizationRepository(fakeSession(), org);
+    const minted: URL[] = [];
+    const session = fakeSession((url) => {
+      minted.push(url);
+      return Response.json({ token: "token" });
+    });
+    const repo = await organizationRepository(session, org);
     expect(await updateProfile(repo, NEW, CURRENT_CID, sign)).toMatchObject({
       cid: "bafynew",
       displayName: "New",
@@ -85,6 +90,9 @@ describe("organization writes through CGS", () => {
     expect(new URL(read.url).searchParams.get("repo")).toBe(org);
     expect(write.url).toBe("https://groups.certified.app/xrpc/app.certified.group.repo.putRecord");
     expect(write.headers.get("authorization")).toBe("Bearer token");
+    expect(minted.map((url) => url.searchParams.get("lxm"))).toEqual([
+      "app.certified.group.repo.putRecord",
+    ]);
     expect(await write.json()).toMatchObject({
       repo: org,
       collection: "app.certified.actor.profile",
@@ -109,6 +117,20 @@ describe("organization writes through CGS", () => {
 
   it("reports a 5xx from CGS as an unknown outcome, never as a refusal", async () => {
     cgsAnswer = () => Response.json({ error: "UpstreamFailure" }, { status: 502 });
+    const repo = await organizationRepository(fakeSession(), org);
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
+  });
+
+  it("reports a write that got no answer as an unknown outcome", async () => {
+    cgsAnswer = () => Promise.reject(new TypeError("fetch failed"));
+    const repo = await organizationRepository(fakeSession(), org);
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
+  });
+
+  it("reports a success answer it can't read as an unknown outcome", async () => {
+    cgsAnswer = () => new Response("<html>gateway</html>", { status: 200 });
     const repo = await organizationRepository(fakeSession(), org);
     const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
