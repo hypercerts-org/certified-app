@@ -2,10 +2,10 @@
 
 import { Button, Field, Input } from "@hypercerts-org/ui-react";
 import { useActionState } from "react";
-import { type SignInState, signIn } from "@/lib/auth/actions";
+import { signIn } from "@/lib/auth/actions";
 
 export function SignInForm({ returnTo, error }: { returnTo: string; error: string | null }) {
-  const [state, action, pending] = useActionState<SignInState, FormData>(signIn, { error });
+  const [state, action, pending] = useActionState(signIn, { error, identifier: "" });
 
   return (
     <form action={action} className="stack sign-in-form">
@@ -18,6 +18,9 @@ export function SignInForm({ returnTo, error }: { returnTo: string; error: strin
         {(field) => (
           <Input
             {...field}
+            // A form action resets the form to default values; keep what the
+            // visitor typed.
+            defaultValue={state.identifier}
             name="identifier"
             type="text"
             inputMode="email"

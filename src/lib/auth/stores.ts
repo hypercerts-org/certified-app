@@ -6,39 +6,40 @@ import type {
   NodeSavedState,
   NodeSavedStateStore,
 } from "@atproto/oauth-client-node";
-import { redis } from "./redis";
+import { store } from "./redis";
 
-// The OAuth client's stores. Values are JSON; Upstash serializes them.
+// The OAuth client's stores, as JSON strings in Redis.
 
-const STATE_PREFIX = "oauth:state:";
-const SESSION_PREFIX = "oauth:session:";
+/** A JSON value under a key prefix, expiring `ttlSeconds` after each write. */
+function jsonStore<T>(prefix: string, ttlSeconds: number) {
+  return {
+    async get(key: string): Promise<T | undefined> {
+      const raw = await store((r) => r.get(prefix + key));
+      return raw ? (JSON.parse(raw) as T) : undefined;
+    },
+    async set(key: string, value: T): Promise<void> {
+      await store((r) =>
+        r.set(prefix + key, JSON.stringify(value), {
+          expiration: { type: "EX", value: ttlSeconds },
+        }),
+      );
+    },
+    async del(key: string): Promise<void> {
+      await store((r) => r.del(prefix + key));
+    },
+  };
+}
 
 /** An authorization only has to survive the round trip to the server. */
-const STATE_TTL_SECONDS = 10 * 60;
-/** Renewed on every token refresh, so only idle sessions expire. */
-export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const stateStore: NodeSavedStateStore = jsonStore<NodeSavedState>("oauth:state:", 10 * 60);
 
-export const stateStore: NodeSavedStateStore = {
-  async get(key) {
-    return (await redis().get<NodeSavedState>(STATE_PREFIX + key)) ?? undefined;
-  },
-  async set(key, value) {
-    await redis().set(STATE_PREFIX + key, value, { ex: STATE_TTL_SECONDS });
-  },
-  async del(key) {
-    await redis().del(STATE_PREFIX + key);
-  },
-};
-
-/** Keyed by DID: the user's tokens and DPoP key, one set per account. */
-export const sessionStore: NodeSavedSessionStore = {
-  async get(did) {
-    return (await redis().get<NodeSavedSession>(SESSION_PREFIX + did)) ?? undefined;
-  },
-  async set(did, value) {
-    await redis().set(SESSION_PREFIX + did, value, { ex: SESSION_TTL_SECONDS });
-  },
-  async del(did) {
-    await redis().del(SESSION_PREFIX + did);
-  },
-};
+/**
+ * Keyed by DID: the account's tokens and DPoP key. Every browser signed in to
+ * the account shares them; the client revokes the previous set when the
+ * account signs in again. Renewed on every token refresh, so only idle
+ * sessions expire.
+ */
+export const sessionStore: NodeSavedSessionStore = jsonStore<NodeSavedSession>(
+  "oauth:session:",
+  30 * 24 * 60 * 60,
+);

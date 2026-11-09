@@ -1,21 +1,10 @@
-# Local Redis for sign-in, behind Upstash's REST adapter so the app uses the
-# same @upstash/redis client as in production. Development only.
+# Local Redis for sign-in. Development only.
 #
 #   docker compose up -d
 #
-# Then in .env.local:
-#   UPSTASH_REDIS_REST_URL=http://localhost:8079
-#   UPSTASH_REDIS_REST_TOKEN=local-dev-token
+# Then in .env.local: REDIS_URL=redis://127.0.0.1:6379
 services:
   redis:
     image: redis:7-alpine
-  redis-http:
-    image: hiett/serverless-redis-http:latest
     ports:
-      - "127.0.0.1:8079:80"
-    environment:
-      SRH_MODE: env
-      SRH_TOKEN: local-dev-token
-      SRH_CONNECTION_STRING: redis://redis:6379
-    depends_on:
-      - redis
+      - "127.0.0.1:6379:6379"

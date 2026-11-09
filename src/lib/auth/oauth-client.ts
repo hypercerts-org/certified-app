@@ -17,6 +17,12 @@ import { sessionStore, stateStore } from "./stores";
 // redirect hop) and responses are size-capped: the client validates metadata
 // and token responses with zod 3, which has no fix for large-array memory
 // exhaustion (GHSA-mrhx-c7xc-m3w5, TECH-804).
+//
+// The same fetch carries the session's calls to the user's PDS, so its
+// defaults apply there too: 512 KB responses, 10 second timeout, standard
+// ports only. Revisit them when the app uploads or reads blobs.
+// allowImplicitRedirect is needed because the client passes Request objects;
+// redirects are still checked hop by hop.
 const fetch = safeFetchWrap({ allowImplicitRedirect: true });
 
 function webClientMetadata(publicUrl: string, confidential: boolean): OAuthClientMetadataInput {

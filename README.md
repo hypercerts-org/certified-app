@@ -20,7 +20,7 @@ Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome wit
 
 ### Signing in locally
 
-Sign-in needs Redis. `docker compose up -d` starts Redis behind Upstash's REST adapter on `127.0.0.1:8079`; copy the Redis and `PUBLIC_URL` lines from `.env.example` into `.env.local`. Without an https `PUBLIC_URL`, the app is an atproto loopback client: open it at `http://127.0.0.1:3000` (not `localhost`), because the authorization server redirects back there. From another machine, forward the port (`ssh -L 3000:127.0.0.1:3000 <host>`) and use the same URL.
+Sign-in needs Redis. `docker compose up -d` starts it on `127.0.0.1:6379`; copy the `REDIS_URL` and `PUBLIC_URL` lines from `.env.example` into `.env.local`. In production, `REDIS_URL` is any provider's connection string, for example from a Vercel Marketplace Redis integration. Without an https `PUBLIC_URL`, the app is an atproto loopback client: open it at `http://127.0.0.1:3000` (not `localhost`), because the authorization server redirects back there. From another machine, forward the port (`ssh -L 3000:127.0.0.1:3000 <host>`) and use the same URL.
 
 ## What is here
 
@@ -42,8 +42,14 @@ Sign-in needs Redis. `docker compose up -d` starts Redis behind Upstash's REST a
 - **No local bindings.** Both packages are generated from the lexicons in their own repositories and installed from npm; the app generates nothing. Keep their versions in step: `@hypercerts-org/api` declares the `@hypercerts-org/lexicon` range its types are built against.
 - **Design system.** Components come from [`@hypercerts-org/ui-react`](https://github.com/hypercerts-org/hypercerts-design) with the Certified theme (`data-hc-theme="certified"`). `src/app/globals.css` adds layout only.
 - **Tiles.** Each tile in `src/components/tiles.tsx` fetches its own data and streams in behind its own Suspense boundary, so a page can show, hide or reorder tiles independently.
-- **Sign-in.** The server is the OAuth client (`@atproto/oauth-client-node`) and keeps each account's tokens in Redis, so it can later write and sign records for the user. The browser gets only a session cookie: a random token whose SHA-256 hash keys the session in Redis. `src/lib/auth/dal.ts` is the only way to ask who is signed in (`getUser()`, cheap, no network) or to get a session for PDS calls (`getOAuthSession()`, refreshes tokens). Sign-in and sign-out are Server Actions; the callback is a Route Handler. The header's account area reads the cookie inside a Suspense boundary, so public pages keep their cached shell.
-- **Sign-in safeguards.** A Redis lock serializes token refreshes across server instances, since a refresh token can be used once and a concurrent refresh would get the session revoked. The OAuth client fetches through atproto's `safeFetchWrap`: visitors choose which servers it contacts, so private addresses are refused and responses are size-capped. A failed restore signs the user out only when the session is really gone, not on a network or Redis error. Signing out ends this browser's session only: all browsers signed in to one account share its OAuth session.
+- **Sign-in.** The server is the OAuth client (`@atproto/oauth-client-node`) and keeps each account's tokens in Redis (standard `redis` client), so it can later write and sign records for the user. The browser gets only a session cookie: a random token whose SHA-256 hash keys the session in Redis. `src/lib/auth/dal.ts` is the only way to ask who is signed in (`getUser()`, a private cache per the Next.js guide on authentication with Cache Components, no PDS calls) or to get a session for PDS calls (`getOAuthSession()`, Server Actions and Route Handlers only, refreshes tokens). Sign-in and sign-out are Server Actions; the callback is a Route Handler. The header's account area reads the session inside a Suspense boundary, so public pages keep their cached shell.
+- **Sign-in safeguards.**
+  - The OAuth client (PAR, PKCE, DPoP, issuer checks) and its outbound fetch (atproto's `safeFetchWrap`: no private addresses, size-capped responses) are atproto's own; the app adds stores, a lock and the session cookie.
+  - A sign-in is bound to the browser that started it: a nonce in a cookie must match the one in the OAuth state (RFC 9700 4.7), so nobody can sign a victim in to their own account with a callback link.
+  - A Redis lock serializes token refreshes across server instances, since a refresh token can be used once and a concurrent refresh would get the session revoked.
+  - Every Redis failure becomes `StoreUnavailableError`: a Redis outage fails requests but never signs anyone out.
+  - Starting a sign-in is limited to 10 per IP address per minute. Cookies are `__Host-` prefixed over https.
+  - All browsers signed in to one account share its OAuth session; signing out revokes the tokens only when the last of them signs out.
 - **Load more.** The first page is server-rendered; later pages come from the GET route handlers, which call the same cached functions and send `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. The client deduplicates by URI across pages.
 
 ## Spike findings

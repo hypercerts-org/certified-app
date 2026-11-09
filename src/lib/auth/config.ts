@@ -23,19 +23,38 @@ export type OAuthMode =
   | { kind: "web"; publicUrl: string }
   | { kind: "loopback"; redirectUri: `http://127.0.0.1:${number}${string}` };
 
+/**
+ * The origin is part of the OAuth client_id, and sessions are bound to it, so
+ * production must name its canonical origin. Vercel preview deployments use
+ * their branch URL, which stays the same across a branch's deployments.
+ */
 function publicUrl(): string | undefined {
   const explicit = process.env.PUBLIC_URL?.replace(/\/+$/, "");
   if (explicit) return explicit;
-  const vercelHost = process.env.VERCEL_BRANCH_URL ?? process.env.VERCEL_URL;
-  return vercelHost ? `https://${vercelHost}` : undefined;
+  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_BRANCH_URL) {
+    return `https://${process.env.VERCEL_BRANCH_URL}`;
+  }
+  return undefined;
 }
 
 export function oauthMode(): OAuthMode {
   const url = publicUrl();
   if (url?.startsWith("https://")) return { kind: "web", publicUrl: url };
   if (process.env.NODE_ENV === "production") {
-    throw new Error("OAuth needs an https PUBLIC_URL (or VERCEL_URL) in production.");
+    throw new Error("OAuth needs an https PUBLIC_URL in production.");
   }
   const port = Number(url ? new URL(url).port : "") || 3000;
   return { kind: "loopback", redirectUri: `http://127.0.0.1:${port}${CALLBACK_PATH}` };
+}
+
+/**
+ * Cookie name and flags. Over https the name gets the `__Host-` prefix, so the
+ * browser only accepts it as Secure, host-only and for the whole site.
+ */
+export function cookieOptions(name: string) {
+  const secure = oauthMode().kind === "web";
+  return {
+    name: secure ? `__Host-${name}` : name,
+    options: { httpOnly: true, secure, sameSite: "lax", path: "/" } as const,
+  };
 }
