@@ -78,9 +78,10 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   });
   if (!profile.success && !notFound(profile)) throw profile;
 
-  // app.certified.actor.getProfile accepts a handle or DID; app.certified.actor.getOrganization needs the DID and fails
-  // for accounts without an organization record (people). An organization can
-  // exist without a profile, so a DID gets the organization lookup either way.
+  // getProfile accepts a handle or DID; getOrganization needs the DID and
+  // fails for accounts without an organization record (people). An
+  // organization can exist without a profile, so a DID gets the organization
+  // lookup either way.
   const did = profile.success
     ? profile.body.profile.did
     : actor.startsWith("did:")
@@ -114,20 +115,16 @@ export async function getIndexedProfile(did: string): Promise<ProfileVersion | n
 }
 
 export async function listActivitiesPage(options: {
-  author?: string;
+  author: string;
   cursor?: string;
-  limit?: number;
+  limit: number;
 }): Promise<Page<ActivityCard>> {
   "use cache";
   publicData(tags.activities(options.author));
 
   const { activities, cursor } = await api.call(
     org.hypercerts.claim.listActivities,
-    {
-      authors: options.author ? [options.author as Did] : undefined,
-      cursor: options.cursor,
-      limit: options.limit ?? 10,
-    },
+    { authors: [options.author as Did], cursor: options.cursor, limit: options.limit },
     read(),
   );
   return { items: activities.map(toActivityCard), cursor: cursor ?? null };

@@ -6,15 +6,12 @@ import type { ActivityCard, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 import { ActivityCardView } from "./cards";
 
-export type ActivitySource =
-  | { kind: "all" }
-  | { kind: "author"; did: string }
-  | { kind: "project"; uri: string };
+export type ActivitySource = { kind: "author"; did: string } | { kind: "project"; uri: string };
 
 function pageUrl(source: ActivitySource, cursor: string) {
   const params = new URLSearchParams({ cursor });
   if (source.kind === "author") params.set("author", source.did);
-  if (source.kind === "project") params.set("project", source.uri);
+  else params.set("project", source.uri);
   return `/api/activities?${params}`;
 }
 

@@ -21,6 +21,9 @@ export type ProfileFields = { displayName: string; description: string };
 /** One version of an account's profile record: which version, and its fields. */
 export type ProfileVersion = ProfileFields & { uri: string; cid: string };
 
+/** The AT-URI of an account's profile record (app.certified.actor.profile). */
+export const profileUri = (did: string) => `at://${did}/app.certified.actor.profile/self`;
+
 export function toProfileVersion(view: ProfileView): ProfileVersion {
   return {
     uri: view.uri,

@@ -3,15 +3,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect } from "react";
-import {
-  profileIndexed,
-  type SaveProfileResult,
-  saveProfile,
-} from "@/app/(site)/[actor]/edit/actions";
-import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
+import { profileIndexed, type SaveProfileResult, saveProfile } from "@/lib/hypercerts/actions";
+import { type ProfileFields, type ProfileVersion, profileUri } from "@/lib/hypercerts/views";
 import { forgetSave, getSave, indexCaughtUp, putSave } from "./local-store";
-
-const profileUri = (did: string) => `at://${did}/app.certified.actor.profile/self`;
 
 const fieldsOf = ({ displayName, description }: ProfileFields): ProfileFields => ({
   displayName,
@@ -70,7 +64,7 @@ export function useProfileDisplay(did: string, rendered: ProfileFields): Profile
 const UNKNOWN: SaveProfileResult = {
   ok: false,
   reason: "unknown",
-  message: "We couldn't confirm whether your profile was saved. Reload to check.",
+  message: "We couldn't confirm whether the profile was saved. Reload to check.",
 };
 
 /**

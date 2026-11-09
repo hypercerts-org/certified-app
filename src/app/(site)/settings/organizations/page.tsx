@@ -4,11 +4,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { actorHref } from "@/components/cards";
-import { SignOutForm } from "@/components/sign-out-form";
+import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { listMemberships, type Membership, manages } from "@/lib/cgs";
 import { getActor } from "@/lib/hypercerts/queries";
 import { logError } from "@/lib/log";
+import { signInHref } from "@/lib/validate";
 
 export const metadata: Metadata = { title: "Your organizations" };
 
@@ -23,7 +24,7 @@ async function OrganizationRow({ membership }: { membership: Membership }) {
         name={actor?.displayName ?? membership.groupDid}
         avatarSrc={actor?.avatarUrl}
         href={actorHref(membership.groupDid)}
-        secondary={ROLE_LABEL[membership.role] ?? membership.role}
+        secondary={ROLE_LABEL[membership.role as keyof typeof ROLE_LABEL] ?? membership.role}
       />
       {manages(membership) && (
         <Link href={`${actorHref(membership.groupDid)}/edit`}>
@@ -37,18 +38,15 @@ async function OrganizationRow({ membership }: { membership: Membership }) {
 }
 
 async function Organizations() {
-  if (!(await getUser())) redirect(`/sign-in?returnTo=${encodeURIComponent(HERE)}`);
+  if (!(await getUser())) redirect(signInHref(HERE));
   let memberships: Membership[];
   try {
     const session = await readOAuthSession();
     if (session === null || session === "expired") {
       return (
-        <div className="stack">
-          <Text>Your sign-in has expired. Sign in again to see your organizations.</Text>
-          <SignOutForm next={`/sign-in?returnTo=${encodeURIComponent(HERE)}`}>
-            Sign in again
-          </SignOutForm>
-        </div>
+        <SignInAgain path={HERE}>
+          Your sign-in has expired. Sign in again to see your organizations.
+        </SignInAgain>
       );
     }
     memberships = await listMemberships(session);
@@ -80,7 +78,7 @@ export default function OrganizationsPage() {
         </Heading>
         <Text tone="muted">
           Organizations you belong to on the Certified Group Service. Admins and owners can edit an
-          organization's profile; each change is checked against their role and recorded in the
+          organization's profile here; each change is recorded, with who made it, in the
           organization's audit log.
         </Text>
       </div>

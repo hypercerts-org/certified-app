@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-// TanStack Query runs the write overlay's index and PDS checks. As in the
-// Next.js guide: a new client per server render, one client in the browser.
+// TanStack Query: "load more" lists, the write overlay's index polling and
+// the forms' mutations. As in the Next.js guide: a new client per server
+// render, one client in the browser.
 let browserQueryClient: QueryClient | undefined;
 function getQueryClient() {
   if (typeof window === "undefined") return new QueryClient();

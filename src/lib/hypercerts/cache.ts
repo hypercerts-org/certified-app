@@ -3,7 +3,7 @@
 // cacheLife profile in next.config.ts.
 export const tags = {
   actor: (did: string) => `actor:${did}`,
-  activities: (author?: string) => (author ? `activities:${author}` : "activities"),
+  activities: (author: string) => `activities:${author}`,
   projects: (author: string) => `projects:${author}`,
   project: (uri: string) => `project:${uri}`,
   organizations: () => "organizations",

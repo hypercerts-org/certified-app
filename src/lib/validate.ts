@@ -24,3 +24,8 @@ export function returnPath(value: unknown): string {
   if (typeof value !== "string" || value.length > 512) return "/";
   return /^\/(?![/\\])[^\s\\]*$/.test(value) ? value : "/";
 }
+
+/** The sign-in page, returning to `path` afterwards. */
+export function signInHref(path: string): string {
+  return `/sign-in?returnTo=${encodeURIComponent(path)}`;
+}

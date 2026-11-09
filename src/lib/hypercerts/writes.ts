@@ -9,6 +9,7 @@ import {
   currentDatetimeString,
   type l,
   type LexMap,
+  XrpcError,
   XrpcResponseError,
 } from "@atproto/lex";
 import { cidForLex } from "@atproto/lex-cbor";
@@ -16,48 +17,33 @@ import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@hypercerts-org/lexicon";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
-import { CgsAuthError, canManage, cgs, cgsAuth } from "@/lib/cgs";
+import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
 import { app as cgsLexicons } from "@/lexicons";
 import { logError } from "@/lib/log";
-import type { ProfileFields, ProfileVersion } from "./views";
+import { type ProfileFields, type ProfileVersion, profileUri } from "./views";
 
 const profile = app.certified.actor.profile;
 
-/** The record changed since the caller read it (compare-and-swap failed). */
-export class WriteConflictError extends Error {
-  constructor() {
-    super("The record changed since it was read");
-    this.name = "WriteConflictError";
-  }
-}
-
-/** The repository refused the caller's role (CGS answered 403). */
-export class WriteForbiddenError extends Error {
-  constructor() {
-    super("Not allowed to write this record");
-    this.name = "WriteForbiddenError";
-  }
-}
-
 /**
- * The write was sent but no answer came back (timeout, dropped connection):
- * it may or may not have been stored. Never retry blindly; read the record to
- * find out.
+ * Why a write failed. "unknown": it was sent but no answer came back
+ * (timeout, dropped connection, 5xx), so it may or may not have been stored;
+ * never retry blindly, read the record to find out. Every other reason means
+ * nothing was written.
  */
-export class WriteOutcomeUnknownError extends Error {
-  constructor() {
-    super("The write's outcome is unknown");
-    this.name = "WriteOutcomeUnknownError";
+export type WriteFailure = "conflict" | "forbidden" | "invalid" | "unknown";
+
+/** A refused write, or one whose outcome is unknown. For "invalid", `message` is safe to show. */
+export class WriteError extends Error {
+  constructor(
+    readonly reason: WriteFailure,
+    message: string,
+  ) {
+    super(message);
+    this.name = "WriteError";
   }
 }
 
-/** The record would not match its lexicon. `message` is safe to show. */
-export class InvalidRecordError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidRecordError";
-  }
-}
+const conflict = () => new WriteError("conflict", "The record changed since it was read");
 
 type TypedRecord = LexMap & { $type: l.NsidString };
 type StoredRecord = { uri: string; cid: string };
@@ -70,7 +56,10 @@ type StoredRecord = { uri: string; cid: string };
 export type Repository = {
   did: l.DidString;
   getRecord(collection: l.NsidString, rkey: string): Promise<{ cid: string; value: LexMap } | null>;
-  /** Replaces the record if it is still version `swapRecord`. */
+  /**
+   * Replaces the record if it is still version `swapRecord`, where the
+   * repository can check that (CGS can't yet: its putRecord has no swapRecord).
+   */
   putRecord(record: TypedRecord, rkey: string, swapRecord: string): Promise<StoredRecord>;
   /** Creates the record; fails if one exists. */
   createRecord(record: TypedRecord, rkey: string): Promise<StoredRecord>;
@@ -122,19 +111,19 @@ export async function organizationRepository(
   return {
     did,
     getRecord: (collection, rkey) => getRecordFrom(pds, did, collection, rkey),
-    // CGS's putRecord has no swapRecord, so for organizations the check that
-    // the record is unchanged happens when it is read, just before the write.
+    // No swapRecord (see Repository): the version is checked when the record
+    // is read, just before the write.
     putRecord: async (record, rkey) =>
       cgs.call(
         putRecord,
         { repo: did, collection: record.$type, rkey, record },
-        { headers: await cgsAuth(session, putRecord.$lxm) },
+        { headers: await cgsAuth(session, putRecord) },
       ),
     createRecord: async (record, rkey) =>
       cgs.call(
         createRecord,
         { repo: did, collection: record.$type, rkey, record },
-        { headers: await cgsAuth(session, createRecord.$lxm) },
+        { headers: await cgsAuth(session, createRecord) },
       ),
   };
 }
@@ -147,8 +136,8 @@ export async function editableRepository(
   session: OAuthSession,
   did: l.DidString,
 ): Promise<Repository | null> {
-  if (did === session.did) return ownRepository(session);
-  return (await canManage(session, did)) ? organizationRepository(session, did) : null;
+  if (!(await canEdit(session, did))) return null;
+  return did === session.did ? ownRepository(session) : organizationRepository(session, did);
 }
 
 /** The profile fields this app edits, as they appear on a record. */
@@ -167,22 +156,20 @@ export async function getProfile(repo: Repository): Promise<ProfileVersion | nul
     : null;
 }
 
-const profileUri = (did: string) => `at://${did}/${profile.$type}/self`;
-
 /**
  * A failed write's meaning. Only a 4xx answer proves nothing was stored; a
  * 5xx (from the PDS, CGS or a proxy in front of them) or no answer at all
- * leaves the outcome unknown. A service-auth token that couldn't be minted
- * means the write was never sent.
+ * leaves the outcome unknown. Errors raised before sending (such as
+ * CgsAuthError, no service-auth token) pass through as they are.
  */
-function writeFailure(err: unknown): Error {
-  if (err instanceof CgsAuthError) return err;
-  if (err instanceof XrpcResponseError && err.status < 500) {
-    if (err.error === "InvalidSwap") return new WriteConflictError();
-    if (err.status === 403) return new WriteForbiddenError();
-    return err;
+function writeFailure(err: unknown): unknown {
+  if (!(err instanceof XrpcError)) return err;
+  if (!(err instanceof XrpcResponseError) || err.status >= 500) {
+    return new WriteError("unknown", "The write's outcome is unknown");
   }
-  return new WriteOutcomeUnknownError();
+  if (err.error === "InvalidSwap") return conflict();
+  if (err.status === 403) return new WriteError("forbidden", "Not allowed to write this record");
+  return err;
 }
 
 /**
@@ -198,7 +185,7 @@ export async function updateProfile(
   sign: RecordSigner,
 ): Promise<ProfileVersion> {
   const current = await repo.getRecord(profile.$type, "self");
-  if ((current?.cid ?? null) !== expectedCid) throw new WriteConflictError();
+  if ((current?.cid ?? null) !== expectedCid) throw conflict();
 
   const record: LexMap = {
     ...current?.value,
@@ -210,7 +197,7 @@ export async function updateProfile(
     else delete record[name];
   }
   const checked = profile.$safeValidate(record);
-  if (!checked.success) throw new InvalidRecordError(checked.reason.message);
+  if (!checked.success) throw new WriteError("invalid", checked.reason.message);
 
   const signed = await sign(checked.value, { repositoryDid: repo.did });
   let stored: StoredRecord;
@@ -224,7 +211,7 @@ export async function updateProfile(
     const failure = writeFailure(err);
     if (!current && failure instanceof XrpcResponseError) {
       // The create was refused: most likely a profile now exists.
-      if (await repo.getRecord(profile.$type, "self")) throw new WriteConflictError();
+      if (await repo.getRecord(profile.$type, "self")) throw conflict();
     }
     throw failure;
   }

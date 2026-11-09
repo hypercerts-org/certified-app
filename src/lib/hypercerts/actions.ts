@@ -1,21 +1,16 @@
 "use server";
 
-import { getRecordSigner } from "@/lib/atproto/app-key";
 import { updateTag } from "next/cache";
+import { getRecordSigner } from "@/lib/atproto/app-key";
 import { getOAuthSession, getUser, SessionUnavailableError } from "@/lib/auth/dal";
-import { canManage } from "@/lib/cgs";
+import { canEdit } from "@/lib/cgs";
 import { tags } from "@/lib/hypercerts/cache";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
-import {
-  editableRepository,
-  InvalidRecordError,
-  updateProfile,
-  WriteConflictError,
-  WriteForbiddenError,
-  WriteOutcomeUnknownError,
-} from "@/lib/hypercerts/writes";
+import { editableRepository, updateProfile, WriteError } from "@/lib/hypercerts/writes";
 import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
+
+type SaveFailure = "signed-out" | "unavailable" | WriteError["reason"];
 
 export type SaveProfileResult =
   | { ok: true; saved: ProfileVersion }
@@ -25,15 +20,25 @@ export type SaveProfileResult =
        * Nothing was written, except perhaps for "unknown": the write was sent
        * but its answer was lost, so only reading the profile can tell.
        */
-      reason: "signed-out" | "forbidden" | "conflict" | "invalid" | "unavailable" | "unknown";
+      reason: SaveFailure;
       message: string;
     };
 
-const FORBIDDEN: SaveProfileResult = {
-  ok: false,
-  reason: "forbidden",
-  message: "You can't edit this profile. Only its own account and an organization's admins can.",
+const MESSAGES: Record<SaveFailure, string> = {
+  "signed-out": "Sign in again to save this profile.",
+  forbidden:
+    "You can't edit this profile. Only the account itself and an organization's admins and owners can.",
+  conflict: "The profile was changed somewhere else. Reload to see the latest version.",
+  invalid: "The profile could not be saved as entered.",
+  unknown: "We couldn't confirm whether the profile was saved. Reload to check.",
+  unavailable: "The profile could not be saved right now. Please try again.",
 };
+
+const failure = (reason: SaveFailure, message = MESSAGES[reason]): SaveProfileResult => ({
+  ok: false,
+  reason,
+  message,
+});
 
 /**
  * Saves the display name and description of profile `repo`: the signed-in
@@ -60,16 +65,14 @@ export async function saveProfile(input: {
     description.length > 2560 ||
     (expectedCid !== null && typeof expectedCid !== "string")
   ) {
-    return { ok: false, reason: "invalid", message: "The profile could not be read." };
+    return failure("invalid");
   }
 
   try {
     const session = await getOAuthSession();
-    if (!session) {
-      return { ok: false, reason: "signed-out", message: "Sign in again to save your profile." };
-    }
+    if (!session) return failure("signed-out");
     const repository = await editableRepository(session, repo);
-    if (!repository) return FORBIDDEN;
+    if (!repository) return failure("forbidden");
     const saved = await updateProfile(
       repository,
       { displayName: displayName.trim(), description: description.trim() },
@@ -78,30 +81,11 @@ export async function saveProfile(input: {
     );
     return { ok: true, saved };
   } catch (err) {
-    if (err instanceof WriteConflictError) {
-      return {
-        ok: false,
-        reason: "conflict",
-        message: "The profile was changed somewhere else. Reload to see the latest version.",
-      };
-    }
-    if (err instanceof WriteForbiddenError) return FORBIDDEN;
-    if (err instanceof WriteOutcomeUnknownError) {
-      return {
-        ok: false,
-        reason: "unknown",
-        message: "We couldn't confirm whether the profile was saved. Reload to check.",
-      };
-    }
-    if (err instanceof InvalidRecordError) {
-      return { ok: false, reason: "invalid", message: err.message };
+    if (err instanceof WriteError) {
+      return err.reason === "invalid" ? failure("invalid", err.message) : failure(err.reason);
     }
     if (!(err instanceof SessionUnavailableError)) logError("[profile] save failed", err);
-    return {
-      ok: false,
-      reason: "unavailable",
-      message: "The profile could not be saved right now. Please try again.",
-    };
+    return failure("unavailable");
   }
 }
 
@@ -112,11 +96,16 @@ export async function saveProfile(input: {
  */
 export async function profileIndexed(did: string): Promise<void> {
   if (typeof did !== "string" || !isDid(did)) return;
-  const user = await getUser();
-  if (!user) return;
-  if (user.did !== did) {
-    const session = await getOAuthSession();
-    if (!session || !(await canManage(session, did))) return;
+  try {
+    const user = await getUser();
+    if (!user) return;
+    if (user.did !== did) {
+      const session = await getOAuthSession();
+      if (!session || !(await canEdit(session, did))) return;
+    }
+    updateTag(tags.actor(did));
+  } catch (err) {
+    // Errors can carry upstream requests and tokens: only logError strips them.
+    if (!(err instanceof SessionUnavailableError)) logError("[profile] cache refresh failed", err);
   }
-  updateTag(tags.actor(did));
 }

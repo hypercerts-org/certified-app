@@ -68,9 +68,9 @@ This branch (`v2`) is a clean-slate rebuild of certified.app; `main` and `stagin
 
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `pnpm build` must pass.
 
-API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods are installed and generated with `lex install` and `lex build` (`lexicons.json`, `vendor/cgs-lexicons/`, `src/lexicons/`, never edited by hand).
+API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods (and `com.atproto.server.getServiceAuth`, which calling it needs) are installed and generated with `lex install` and `lex build` (`lexicons.json`, `vendor/cgs-lexicons/`, `src/lexicons/`, never edited by hand).
 
-Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`, `getOAuthSession()`), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Redis; see the README's "Signing in locally".
+Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`; `getOAuthSession()` in Server Actions and Route Handlers; `readOAuthSession()` in Server Components), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Redis; see the README's "Signing in locally".
 
 Write to repositories only through `src/lib/hypercerts/writes.ts` (an organization's through CGS, `src/lib/cgs.ts`), from Server Actions that authenticate first, and sign every record with the app's `createdVia` signer (`getRecordSigner()`). Writes must report an unknown outcome as unknown, never as a failure, and are never retried automatically.
 

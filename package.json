@@ -22,7 +22,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lex:install": "lex install",
-    "lex:build": "lex build --clear --index-file --import-ext \"\""
+    "lex:build": "lex build --clear --index-file --import-ext \"\"",
+    "lex:check": "lex install --ci && pnpm lex:build && git diff --exit-code lexicons src/lexicons"
   },
   "dependencies": {
     "@atproto-labs/fetch-node": "0.4.5",
