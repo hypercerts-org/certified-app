@@ -14,3 +14,12 @@ export function isAtUri(value: string): boolean {
 export function cursorParam(value: string | null): string | undefined {
   return value && value.length <= 512 ? value : undefined;
 }
+
+/**
+ * A path on this site to return to after sign-in, or "/". Rejects anything a
+ * browser could resolve to another origin (`//host`, `/\host`, schemes).
+ */
+export function returnPath(value: unknown): string {
+  if (typeof value !== "string" || value.length > 512) return "/";
+  return /^\/(?![/\\])[^\s\\]*$/.test(value) ? value : "/";
+}

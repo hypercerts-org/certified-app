@@ -2,7 +2,7 @@
 
 Work in progress: the rebuild of [certified.app](https://certified.app) as a reference implementation of the Hypercerts protocol and API. The current production app lives on `main` and `staging`; this branch (`v2`) starts from a clean slate.
 
-This first step is a **read-only spike**: public pages backed by live data from the [Hypercerts API](https://docs.hypercerts.org/reference/services/hypercerts-api). Nothing here signs in or writes to the protocol yet.
+So far: public pages backed by live data from the [Hypercerts API](https://docs.hypercerts.org/reference/services/hypercerts-api), and sign-in. Nothing writes to the protocol yet.
 
 ## Running it
 
@@ -18,6 +18,10 @@ pnpm format        # apply Biome's formatting
 
 Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome with the same rules and formatting, pnpm, TypeScript 7, Node 24. The API defaults to production, `https://api.hypercerts.dev`; set `HYPERCERTS_API_URL` to use another deployment.
 
+### Signing in locally
+
+Sign-in needs Redis. `docker compose up -d` starts Redis behind Upstash's REST adapter on `127.0.0.1:8079`; copy the Redis and `PUBLIC_URL` lines from `.env.example` into `.env.local`. Without an https `PUBLIC_URL`, the app is an atproto loopback client: open it at `http://127.0.0.1:3000` (not `localhost`), because the authorization server redirects back there. From another machine, forward the port (`ssh -L 3000:127.0.0.1:3000 <host>`) and use the same URL.
+
 ## What is here
 
 | Route                                   | What it shows                                                                                                                                 |
@@ -28,6 +32,8 @@ Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome wit
 | `/{did}/project/{rkey}`                 | A project and the activities it contains                                                                                                      |
 | `/embed/activities?author={did}`        | The Activities tile as an embeddable page for an `<iframe>`                                                                                   |
 | `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`)                                       |
+| `/sign-in`                              | Sign in with a Certified email address, or a handle on any AT Protocol server                                                                 |
+| `/oauth/callback`, `/.well-known/*`     | OAuth callback, client metadata and (for a confidential client) public keys                                                                   |
 
 ## How it is put together
 
@@ -36,6 +42,8 @@ Node 24 (see `.nvmrc`). Tooling follows the Hypercerts SDK repository: Biome wit
 - **No local bindings.** Both packages are generated from the lexicons in their own repositories and installed from npm; the app generates nothing. Keep their versions in step: `@hypercerts-org/api` declares the `@hypercerts-org/lexicon` range its types are built against.
 - **Design system.** Components come from [`@hypercerts-org/ui-react`](https://github.com/hypercerts-org/hypercerts-design) with the Certified theme (`data-hc-theme="certified"`). `src/app/globals.css` adds layout only.
 - **Tiles.** Each tile in `src/components/tiles.tsx` fetches its own data and streams in behind its own Suspense boundary, so a page can show, hide or reorder tiles independently.
+- **Sign-in.** The server is the OAuth client (`@atproto/oauth-client-node`) and keeps each account's tokens in Redis, so it can later write and sign records for the user. The browser gets only a session cookie: a random token whose SHA-256 hash keys the session in Redis. `src/lib/auth/dal.ts` is the only way to ask who is signed in (`getUser()`, cheap, no network) or to get a session for PDS calls (`getOAuthSession()`, refreshes tokens). Sign-in and sign-out are Server Actions; the callback is a Route Handler. The header's account area reads the cookie inside a Suspense boundary, so public pages keep their cached shell.
+- **Sign-in safeguards.** A Redis lock serializes token refreshes across server instances, since a refresh token can be used once and a concurrent refresh would get the session revoked. The OAuth client fetches through atproto's `safeFetchWrap`: visitors choose which servers it contacts, so private addresses are refused and responses are size-capped. A failed restore signs the user out only when the session is really gone, not on a network or Redis error. Signing out ends this browser's session only: all browsers signed in to one account share its OAuth session.
 - **Load more.** The first page is server-rendered; later pages come from the GET route handlers, which call the same cached functions and send `Cache-Control: public, s-maxage=60, stale-while-revalidate=600`. The client deduplicates by URI across pages.
 
 ## Spike findings

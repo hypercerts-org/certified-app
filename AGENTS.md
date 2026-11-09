@@ -70,6 +70,8 @@ Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm 
 
 API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation.
 
+Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`, `getOAuthSession()`), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Redis; see the README's "Signing in locally".
+
 The block below is maintained by `next dev`. Leave it in place; edit only outside the markers.
 
 <!-- BEGIN:nextjs-agent-rules -->

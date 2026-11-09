@@ -1,7 +1,8 @@
 import { Container, Text } from "@hypercerts-org/ui-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
+import { UserMenu } from "@/components/user-menu";
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -23,6 +24,10 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
                 Explore
               </Text>
             </Link>
+            {/* Per-visitor, so it streams in after the cached page shell. */}
+            <Suspense fallback={<div className="user-menu" />}>
+              <UserMenu />
+            </Suspense>
           </nav>
         </Container>
       </header>

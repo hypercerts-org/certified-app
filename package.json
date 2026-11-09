@@ -22,13 +22,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@atproto-labs/fetch-node": "0.4.5",
     "@atproto/lex": "0.4.2",
+    "@atproto/oauth-client-node": "0.5.16",
     "@hypercerts-org/api": "0.1.0",
     "@hypercerts-org/lexicon": "2.0.1",
     "@hypercerts-org/ui-react": "0.2.1",
+    "@upstash/redis": "1.41.0",
     "next": "16.4.3",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
