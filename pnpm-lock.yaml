@@ -171,10 +171,10 @@ importers:
         version: 0.4.2
       '@hypercerts-org/api':
         specifier: 0.1.0
-        version: 0.1.0(@atproto/lex@0.4.2)(@hypercerts-org/lexicon@2.0.0(@atproto/lex@0.4.2))
+        version: 0.1.0(@atproto/lex@0.4.2)(@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.2))
       '@hypercerts-org/lexicon':
-        specifier: 2.0.0
-        version: 2.0.0(@atproto/lex@0.4.2)
+        specifier: 2.0.1
+        version: 2.0.1(@atproto/lex@0.4.2)
       '@hypercerts-org/ui-react':
         specifier: 0.2.1
         version: 0.2.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -403,8 +403,8 @@ packages:
       '@atproto/lex': ^0.4.2
       '@hypercerts-org/lexicon': ^2.0.0
 
-  '@hypercerts-org/lexicon@2.0.0':
-    resolution: {integrity: sha512-5R0QCP1iGf+kcK8RM5LfveeE26FdnocUMevwp9D/hJsZCHYTmSbAKRgF5rDnFBh/ckxYO4W1d8wZJij5TKE9Zw==}
+  '@hypercerts-org/lexicon@2.0.1':
+    resolution: {integrity: sha512-o0k1eNzc3Eta4FGYN6+8xngSu82yig8sYAT3QBqRtBO4wIQPfqkAWteAZDnz9hHtowj8wG5uZ4kvGvWhnjRiVw==}
     engines: {node: '>=22'}
     peerDependencies:
       '@atproto/lex': ^0.4.2
@@ -1345,12 +1345,12 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@hypercerts-org/api@0.1.0(@atproto/lex@0.4.2)(@hypercerts-org/lexicon@2.0.0(@atproto/lex@0.4.2))':
+  '@hypercerts-org/api@0.1.0(@atproto/lex@0.4.2)(@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.2))':
     dependencies:
       '@atproto/lex': 0.4.2
-      '@hypercerts-org/lexicon': 2.0.0(@atproto/lex@0.4.2)
+      '@hypercerts-org/lexicon': 2.0.1(@atproto/lex@0.4.2)
 
-  '@hypercerts-org/lexicon@2.0.0(@atproto/lex@0.4.2)':
+  '@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.2)':
     dependencies:
       '@atproto/lex': 0.4.2
       '@atproto/lexicon': 0.6.2

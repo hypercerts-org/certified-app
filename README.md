@@ -61,5 +61,7 @@ Observed in the badge data, no action: definitions with the same title from diff
 
 ## Not verified yet
 
-- Browser runs so far are headless Chromium screenshots of the main pages and the embed in a local HTML page; hydration warnings and "load more" have not been exercised systematically.
 - Deployment on Vercel and measured latency from the deployment region.
+- Route-specific framing headers. The embed works in a cross-origin iframe because no route sends `X-Frame-Options` or CSP `frame-ancestors`; every other page can be framed too. Restrict framing to `/embed/*` before sign-in arrives.
+
+Checked 2026-11-09 against the dev server in headless Chromium, with the browser in Europe/Stockholm, America/Los_Angeles and Pacific/Auckland: no hydration warnings or page errors on `/`, `/explore`, `/explore?q=earth`, an organization page, a project page and the embed. "Load more" pages correctly (three rounds each) on Explore, search, an organization's Activities tile and the embed, including inside an iframe on another origin, where links open in a new tab.
