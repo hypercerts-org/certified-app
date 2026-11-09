@@ -14,7 +14,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
                 src="/brand/wordmark/certified_wordmark_black.svg"
                 alt="Certified"
                 width={99}
-                height={20}
+                height={19}
                 priority
               />
             </Link>
