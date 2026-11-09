@@ -1,7 +1,8 @@
 "use server";
 
 import { getRecordSigner } from "@/lib/atproto/app-key";
-import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
+import { revalidateTag } from "next/cache";
+import { getOAuthSession, getUser, SessionUnavailableError } from "@/lib/auth/dal";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import {
   InvalidRecordError,
@@ -80,4 +81,14 @@ export async function saveProfile(input: {
       message: "Your profile could not be saved right now. Please try again.",
     };
   }
+}
+
+/**
+ * The index now shows the user's saved profile: let the cached public pages
+ * for the account refresh. Public cache invalidation follows verified
+ * indexing, not the PDS write, so the client calls this once its index read
+ * shows the saved version. Only the account itself may ask.
+ */
+export async function profileIndexed(did: string): Promise<void> {
+  if ((await getUser())?.did === did) revalidateTag(`actor:${did}`, "max");
 }

@@ -3,12 +3,13 @@
 import { Banner, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
 import { type FormEvent, useState } from "react";
 import type { ProfileFields } from "@/lib/hypercerts/views";
-import { useProfileDisplay, useSaveProfile } from "@/lib/writes/use-profile";
+import { type SaveOutcome, useProfileDisplay, useSaveProfile } from "@/lib/writes/use-profile";
 
 /**
  * Edits the signed-in user's display name and description. `initial` and
- * `cid` are the profile as the PDS has it; each save is based on that version
- * and refused if the profile changed elsewhere in the meantime.
+ * `cid` are the profile as the PDS has it. Each save is based on the newest
+ * version known here (the last save's, or the one loaded) and is refused if
+ * the profile changed elsewhere in the meantime.
  */
 export function ProfileForm({
   did,
@@ -20,17 +21,15 @@ export function ProfileForm({
   cid: string | null;
 }) {
   const [fields, setFields] = useState(initial);
-  const [expectedCid, setExpectedCid] = useState(cid);
   const save = useSaveProfile(did);
-  const display = useProfileDisplay(did, initial);
-  const result = save.data;
+  const display = useProfileDisplay(did, initial, did);
+  // While a save is running or its outcome is being checked, the version to
+  // base the next one on isn't known yet.
+  const busy = save.isPending || display.status === "saving" || display.status === "checking";
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    save.mutate(
-      { fields, expectedCid },
-      { onSuccess: (outcome) => outcome.ok && setExpectedCid(outcome.saved.cid) },
-    );
+    if (!busy) save.mutate({ fields, expectedCid: display.savedCid ?? cid });
   }
 
   const set = (name: keyof ProfileFields) => (value: string) =>
@@ -58,15 +57,12 @@ export function ProfileForm({
           />
         )}
       </Field>
-      <Button type="submit" loading={save.isPending}>
+      <Button type="submit" loading={save.isPending} disabled={busy}>
         Save
       </Button>
-      <SaveStatus
-        result={result}
-        status={display.status}
-        lost={display.lost}
-        pending={save.isPending}
-      />
+      {!save.isPending && (
+        <SaveStatus result={save.data} status={display.status} lost={display.lost} />
+      )}
     </form>
   );
 }
@@ -75,14 +71,11 @@ function SaveStatus({
   result,
   status,
   lost,
-  pending,
 }: {
-  result: ReturnType<typeof useSaveProfile>["data"];
+  result: SaveOutcome | undefined;
   status: ReturnType<typeof useProfileDisplay>["status"];
   lost: boolean;
-  pending: boolean;
 }) {
-  if (pending) return null;
   if (lost) {
     return (
       <Banner tone="danger" role="alert">
@@ -98,6 +91,14 @@ function SaveStatus({
     return (
       <Banner tone={result.reason === "unknown" ? "info" : "danger"} role="alert">
         {result.message}
+      </Banner>
+    );
+  }
+  if (!result.durable) {
+    return (
+      <Banner tone="warning" role="status">
+        Saved. This browser couldn't keep a copy, so until your public profile updates a reload may
+        briefly show the previous version.
       </Banner>
     );
   }

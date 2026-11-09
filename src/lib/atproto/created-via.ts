@@ -14,7 +14,7 @@ export const CREATED_VIA = "app.certified.signature.defs#createdVia";
 
 type Signature = List[number];
 
-export type SignableRecord = { $type: string; signatures?: List };
+export type SignableRecord = { $type: string; signatures?: List; $sig?: unknown };
 // An intersection, not Omit<T, "signatures">: Omit drops every known key of a
 // type with an index signature, such as a generic LexMap record.
 export type SignedRecord<T> = T & { signatures: List };
@@ -37,13 +37,16 @@ function isCreatedVia(entry: Signature): boolean {
 
 /**
  * Returns a signer that attaches this application's `createdVia` signature,
- * replacing any earlier one and keeping other signatures. The record must be
- * in the lex data model (blob links as CIDs, bytes as Uint8Array), exactly as
- * it will be written: any later change to it invalidates the signature.
+ * replacing any earlier one, keeping other signatures and dropping any stored
+ * `$sig`. The record must be in the lex data model (blob links as CIDs, bytes
+ * as Uint8Array), exactly as it will be written: any later change to it
+ * invalidates the signature.
  */
 export function createCreatedViaSigner({ key, sign }: CreatedViaSignerOptions): RecordSigner {
   return async (record, { repositoryDid }) => {
-    const { signatures = [], ...unsigned } = record;
+    // `$sig` exists only while computing the CID and is never stored; a record
+    // that already carries one would otherwise keep an unsigned copy of it.
+    const { signatures = [], $sig: _stored, ...unsigned } = record;
     const entry = { $type: CREATED_VIA, key } as const;
     const cid = await cidForLex({ ...unsigned, $sig: { ...entry, repository: repositoryDid } });
     const signature = await sign(cid.bytes);

@@ -3,6 +3,7 @@
 // tools (@ipld/dag-cbor and multiformats), not the signer's @atproto/lex-cbor,
 // so an encoding difference between the two would fail the test.
 import { Secp256k1Keypair, verifySignature } from "@atproto/crypto";
+import { lexParse, lexStringify } from "@atproto/lex";
 import * as dagCbor from "@ipld/dag-cbor";
 import { CID } from "multiformats/cid";
 import { sha256 } from "multiformats/hashes/sha2";
@@ -88,5 +89,25 @@ describe("createCreatedViaSigner", () => {
     const input = makeProfile();
     await signer(input, { repositoryDid: repository });
     expect(input).toEqual(makeProfile());
+  });
+
+  it("still verifies after the JSON round trip a record takes to the PDS", async () => {
+    // The client sends lex JSON ($link, $bytes); the PDS decodes it back to the
+    // data model and stores that. Signature bytes ride along as $bytes.
+    const { didKey, signer } = await setup();
+    const signed = await signer(profile, { repositoryDid: repository });
+    const stored = lexParse(lexStringify(signed)) as typeof signed;
+    expect(stored.signatures[0]).toMatchObject({ signature: expect.any(Uint8Array) });
+    expect(await verify(stored, didKey, repository)).toBe(true);
+  });
+
+  it("drops a stored $sig instead of keeping an unsigned copy of it", async () => {
+    const { didKey, signer } = await setup();
+    const signed = await signer(
+      { ...profile, $sig: { $type: CREATED_VIA, key: "did:key:zForged", repository } },
+      { repositoryDid: repository },
+    );
+    expect("$sig" in signed).toBe(false);
+    expect(await verify(signed, didKey, repository)).toBe(true);
   });
 });

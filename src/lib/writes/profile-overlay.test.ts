@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { ProfileVersion } from "@/lib/hypercerts/views";
 import type { ProfileOperation } from "./local-store";
 import {
-  needsPdsCheck,
+  pdsQuestion,
   projectProfile,
   reconcileWithIndex,
   resolveWithPds,
+  UNKNOWN_CHECKS,
 } from "./profile-overlay";
 
 const did = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";
@@ -16,38 +17,43 @@ const version = (cid: string, displayName: string): ProfileVersion => ({
   displayName,
   description: "",
 });
-const base = { actorDid: did, repoDid: did, expectedCid: "bafyold" };
-const submitting = (seq: number, displayName: string): ProfileOperation => ({
-  ...base,
+const base = (seq: number, displayName: string) => ({
   seq,
   id: `op${seq}`,
+  actorDid: did,
+  repoDid: did,
+  expectedCid: "bafyold",
+  submitted: { displayName, description: "" },
+});
+const submitting = (seq: number, name: string): ProfileOperation => ({
+  ...base(seq, name),
   state: "submitting",
-  submitted: { displayName, description: "" },
 });
-const unknown = (seq: number, displayName: string): ProfileOperation => ({
-  ...submitting(seq, displayName),
+const unknown = (seq: number, name: string, checks = 0): ProfileOperation => ({
+  ...base(seq, name),
   state: "unknown",
+  checks,
 });
-const saved = (
-  seq: number,
-  cid: string,
-  displayName: string,
-  indexed = false,
-): ProfileOperation => ({
-  ...base,
-  seq,
-  id: `op${seq}`,
+const lost = (seq: number, name: string): ProfileOperation => ({
+  ...base(seq, name),
+  state: "lost",
+});
+const saved = (seq: number, cid: string, name: string, indexed = false): ProfileOperation => ({
+  ...base(seq, name),
   state: "saved",
-  submitted: { displayName, description: "" },
-  saved: version(cid, displayName),
+  saved: version(cid, name),
   indexed,
 });
 
 const rendered = { displayName: "Old name", description: "" };
 
 describe("projectProfile", () => {
-  it("shows the rendered profile when this browser has no writes", () => {
-    expect(projectProfile(rendered, undefined, [])).toEqual({ fields: rendered, status: null });
+  it("shows the rendered profile when there are no local saves", () => {
+    expect(projectProfile(rendered, undefined, [])).toMatchObject({
+      fields: rendered,
+      status: null,
+      lost: false,
+    });
   });
 
   it("shows a save immediately, before the PDS answers", () => {
@@ -61,14 +67,18 @@ describe("projectProfile", () => {
     const display = projectProfile(rendered, version("bafyold", "Old name"), [
       saved(1, "bafynew", "New"),
     ]);
-    expect(display).toMatchObject({ fields: { displayName: "New" }, status: "syncing" });
+    expect(display).toMatchObject({
+      fields: { displayName: "New" },
+      status: "syncing",
+      savedCid: "bafynew",
+    });
   });
 
   it("hands off to the index once it shows the saved version", () => {
     const display = projectProfile(rendered, version("bafynew", "New"), [
       saved(1, "bafynew", "New"),
     ]);
-    expect(display).toEqual({ fields: { displayName: "New", description: "" }, status: null });
+    expect(display).toMatchObject({ fields: { displayName: "New" }, status: null });
   });
 
   it("does not let a stale read revert a value the index already showed", () => {
@@ -85,57 +95,100 @@ describe("projectProfile", () => {
     ]);
     expect(display.fields.displayName).toBe("Second");
   });
+
+  it("shows the index and reports a lost save", () => {
+    const display = projectProfile(rendered, version("bafyold", "Old name"), [lost(1, "New")]);
+    expect(display).toMatchObject({ fields: { displayName: "Old name" }, lost: true });
+  });
 });
 
 describe("reconcileWithIndex", () => {
   it("marks a saved version indexed when the index shows its exact CID", () => {
-    expect(reconcileWithIndex(version("bafynew", "New"), [saved(1, "bafynew", "New")])).toEqual([
-      { seq: 1, set: { indexed: true } },
+    const op = saved(1, "bafynew", "New");
+    expect(reconcileWithIndex(version("bafynew", "New"), [op])).toEqual([
+      { seq: 1, next: { ...op, indexed: true } },
     ]);
   });
 
-  it("does not confirm on the record alone: an update needs the CID", () => {
+  it("does not confirm on the fields alone: an update needs the CID", () => {
     expect(reconcileWithIndex(version("bafyold", "New"), [saved(1, "bafynew", "New")])).toEqual([]);
   });
 
   it("drops operations older than the newest saved one", () => {
-    const changes = reconcileWithIndex(null, [unknown(1, "A"), saved(2, "bafyb", "B")]);
-    expect(changes).toEqual([{ seq: 1, remove: true }]);
+    expect(reconcileWithIndex(null, [unknown(1, "A"), saved(2, "bafyb", "B")])).toEqual([
+      { seq: 1, remove: true },
+    ]);
+  });
+
+  it("keeps a saved version that a later lost save didn't replace", () => {
+    const ops = [saved(1, "bafya", "A"), lost(2, "B")];
+    expect(reconcileWithIndex(null, ops)).toEqual([]);
+    expect(projectProfile(rendered, undefined, ops)).toMatchObject({
+      lost: true,
+      savedCid: "bafya",
+    });
   });
 });
 
-describe("PDS checks", () => {
-  it("are needed for an unknown outcome", () => {
-    expect(needsPdsCheck(undefined, [unknown(1, "New")])).toBe(true);
+describe("pdsQuestion", () => {
+  it("asks about an unknown outcome, freshly for every check", () => {
+    expect(pdsQuestion(undefined, [unknown(1, "New")])).toBe("unknown:op1:0");
+    expect(pdsQuestion(undefined, [unknown(1, "New", 1)])).toBe("unknown:op1:1");
   });
 
-  it("are needed when the index later shows another version than the saved one", () => {
-    const ops = [saved(1, "bafynew", "New", true)];
-    expect(needsPdsCheck(version("bafynew", "New"), ops)).toBe(false);
-    expect(needsPdsCheck(version("bafyother", "Other"), ops)).toBe(true);
+  it("does not ask while the index merely lags behind the save", () => {
+    expect(pdsQuestion(version("bafyold", "Old"), [saved(1, "bafynew", "New")])).toBeNull();
+    expect(pdsQuestion(version("bafynew", "New"), [saved(1, "bafynew", "New")])).toBeNull();
   });
 
-  it("settle an unknown outcome as saved when the PDS holds what was submitted", () => {
-    expect(resolveWithPds(version("bafynew", "New"), undefined, [unknown(1, "New")])).toEqual([
-      { seq: 1, set: { state: "saved", saved: version("bafynew", "New"), indexed: false } },
+  it("asks when the index shows a third version, before or after indexing", () => {
+    expect(pdsQuestion(version("bafyother", "X"), [saved(1, "bafynew", "New")])).toBe(
+      "superseded:op1:bafyother",
+    );
+    expect(pdsQuestion(version("bafyold", "Old"), [saved(1, "bafynew", "New", true)])).toBe(
+      "superseded:op1:bafyold",
+    );
+  });
+});
+
+describe("resolveWithPds", () => {
+  it("settles an unknown outcome as saved when the PDS moved to the submitted fields", () => {
+    const op = unknown(1, "New");
+    expect(resolveWithPds(version("bafynew", "New"), [op])).toEqual([
+      { seq: 1, next: { ...op, state: "saved", saved: version("bafynew", "New"), indexed: false } },
     ]);
   });
 
-  it("settle an unknown outcome as lost otherwise, without retrying", () => {
-    expect(resolveWithPds(version("bafyold", "Old"), undefined, [unknown(1, "New")])).toEqual([
-      { seq: 1, remove: true, lost: true },
+  it("re-reads while the PDS still holds the version the save was based on", () => {
+    const op = unknown(1, "New");
+    expect(resolveWithPds(version("bafyold", "Old"), [op])).toEqual([
+      { seq: 1, next: { ...op, checks: 1 } },
     ]);
   });
 
-  it("keep the guard when the PDS still holds the saved version (stale index)", () => {
-    const ops = [saved(1, "bafynew", "New", true)];
-    expect(resolveWithPds(version("bafynew", "New"), version("bafyold", "Old"), ops)).toEqual([]);
+  it("declares the save lost after the last re-read, without retrying it", () => {
+    const op = unknown(1, "New", UNKNOWN_CHECKS - 1);
+    expect(resolveWithPds(version("bafyold", "Old"), [op])).toEqual([
+      { seq: 1, next: { ...op, state: "lost" } },
+    ]);
   });
 
-  it("drop the guard when the profile was changed elsewhere", () => {
-    const ops = [saved(1, "bafynew", "New", true)];
-    expect(
-      resolveWithPds(version("bafyother", "Other"), version("bafyother", "Other"), ops),
-    ).toEqual([{ seq: 1, remove: true }]);
+  it("declares the save lost when the profile changed elsewhere", () => {
+    const op = unknown(1, "New");
+    expect(resolveWithPds(version("bafyother", "Other"), [op])).toEqual([
+      { seq: 1, next: { ...op, state: "lost" } },
+    ]);
+  });
+
+  it("keeps the saved row when the PDS still holds it (stale index)", () => {
+    expect(resolveWithPds(version("bafynew", "New"), [saved(1, "bafynew", "New", true)])).toEqual(
+      [],
+    );
+  });
+
+  it("gives way to the index when the profile was changed elsewhere", () => {
+    expect(resolveWithPds(version("bafyother", "Other"), [saved(1, "bafynew", "New")])).toEqual([
+      { seq: 1, remove: true },
+    ]);
   });
 });
