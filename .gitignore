@@ -31,7 +31,6 @@
 # misc
 .DS_Store
 *.pem
-.beads/.beads-credential-key
 
 # debug
 npm-debug.log*

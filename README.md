@@ -88,4 +88,14 @@ npm start
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+Licensed under the [Apache License, Version 2.0](LICENSE). Section 4 of the license sets the conditions for redistribution; under section 4(d), a modified version you distribute must include the attribution notices from the [NOTICE](NOTICE) file that pertain to it.
+
+Versions from before the change to Apache-2.0 were licensed under MIT. The [NOTICE](NOTICE) file keeps the MIT terms for that earlier code.
+
+Some agent skills are copied from other projects and keep their licenses:
+
+- `animation-performance`, `apple-design`, `break-ui`, `emil-design-eng`, `find-animation-opportunities`, `improve-animations`, `mobile-native` and `review-animations` in `.claude/skills/` come from [emilkowalski/skills](https://github.com/emilkowalski/skills), under MIT.
+- `react-best-practices`, `react-view-transitions`, `web-design-guidelines` and `writing-guidelines` in `.claude/skills/` come from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), under MIT.
+- `impeccable` in `.agents/skills/` comes from [pbakaus/impeccable](https://github.com/pbakaus/impeccable), under Apache-2.0. It bundles a build of [modern-screenshot](https://github.com/qq15725/modern-screenshot), under MIT. Its `NOTICE.md` and `scripts/modern-screenshot.umd.js.LICENSE.txt` were added here by hand. `npx skills update` replaces the folder, so add them back after an update.
+
+The licenses don't cover the logos and wordmarks in this repository, such as the Certified brandmark and wordmark and the partner logos. They belong to their owners.
