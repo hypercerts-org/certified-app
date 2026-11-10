@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Brandmark from "./brandmark"
 import Button from "./button"
-import Checkbox from "./checkbox"
 import Input from "./input"
 
 interface SignInModalProps {
@@ -29,7 +28,6 @@ export default function SignInModal({
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
   const [inputValue, setInputValue] = useState("")
-  const [rememberMe, setRememberMe] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Reset state when the modal opens. Backdrop/Esc/focus-trap/scroll-lock
@@ -84,8 +82,8 @@ export default function SignInModal({
   const heading = isCertified ? "Your email" : "Your handle"
   const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
   const switchLabel = isCertified
-    ? "Or sign in with Bluesky or another AT Protocol account"
-    : "Or sign in with Certified"
+    ? "Sign in with the Atmosphere"
+    : "Sign in with your email"
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
@@ -120,54 +118,56 @@ export default function SignInModal({
             error={error ?? undefined}
           />
 
-          <div className="mt-4">
-            <Checkbox
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              label="Remember me on this device"
-            />
-          </div>
-
+          {/* Continue is the normal next step, so it stays the filled
+              primary button even while the field is empty (the field's
+              `required` stops an empty submit). */}
           <Button
             type="submit"
             size="lg"
             loading={isSubmitting}
-            disabled={isSubmitting || !inputValue.trim()}
+            disabled={isSubmitting}
             className="mt-4 w-full"
           >
             {submitLabel}
           </Button>
 
-          {/* Google sign-in goes through the Certified ePDS, so it only
-              belongs on the Certified (email) view, not the AT Protocol one. */}
-          {isCertified && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              disabled={isSubmitting}
-              onClick={() => void handleGoogle()}
-              className="mt-2 w-full gap-2.5"
-            >
-              {/* Google's current gradient "G" (g-logo.png from Google's
-                  branding page), at the 20px size and 10px gap its
-                  guidelines set for a web button. The file is 200x204, so
-                  object-contain keeps the aspect ratio. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/signin/google_g.png"
-                alt=""
-                width={20}
-                height={20}
-                className="shrink-0 object-contain"
-              />
-              Continue with Google
-            </Button>
-          )}
+          {/* The alternatives: Google and the other sign-in view share one
+              outline style, below an "or" rule, so neither competes with
+              Continue. */}
+          <div className="my-4 flex items-center gap-3 text-xs text-[var(--fg-muted)]">
+            <span aria-hidden="true" className="h-px flex-1 bg-[var(--border-default)]" />
+            or
+            <span aria-hidden="true" className="h-px flex-1 bg-[var(--border-default)]" />
+          </div>
 
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
+            size="lg"
+            disabled={isSubmitting}
+            onClick={() => void handleGoogle()}
+            className="w-full gap-2.5"
+          >
+            {/* Google's current gradient "G" (g-logo.png from Google's
+                branding page), at the 20px size and 10px gap its
+                guidelines set for a web button. The file is 200x204, so
+                object-contain keeps the aspect ratio. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/signin/google_g.png"
+              alt=""
+              width={20}
+              height={20}
+              className="shrink-0 object-contain"
+            />
+            Continue with Google
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            disabled={isSubmitting}
             onClick={() => {
               setView(isCertified ? "atproto" : "certified")
               setInputValue("")
