@@ -95,23 +95,11 @@
   }
 }
 
-.loading-screen__error {
-  font-size: 0.8125rem;
-  color: var(--color-error);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  margin-bottom: 16px;
-}
-
-/* Mobile: bump the error text to a readable 16px and keep the inner box off
-   the viewport edge. (The retry action is a <Button>, which already meets the
-   44px tap target.) */
+/* Mobile: keep the inner box off the viewport edge. */
 @media (max-width: 799px) {
   .loading-screen__inner {
     padding-left: 24px;
     padding-right: 24px;
-  }
-  .loading-screen__error {
-    font-size: 1rem;
   }
 }
 

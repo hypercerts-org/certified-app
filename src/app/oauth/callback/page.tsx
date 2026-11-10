@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Brandmark from "@/components/ui/brandmark"
 import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
 import { resolvePostSigninPath } from "@/lib/auth/post-signin"
 import { markTourPending } from "@/lib/tour/tour-sentinel"
 
@@ -10,7 +11,7 @@ type Failure = "cancelled" | "other"
 
 export default function OAuthCallbackPage() {
   // The server's error string is technical (and logged below); the page
-  // shows a plain explanation plus a retry link, since every failure here
+  // shows a plain explanation plus a way back home, since every failure here
   // is recovered by signing in again (#154). The one case worth naming is
   // a cancel: the authorization server returns `error=access_denied` when
   // the user cancels (for example at Google's account chooser) or denies
@@ -71,29 +72,24 @@ export default function OAuthCallbackPage() {
   }, [])
 
   if (failure) {
+    // Same shape as the 404 and error-boundary pages: the EmptyState
+    // primitive (h1, muted description) with one small secondary action.
+    // "/" lands a signed-out visitor on /welcome, where they can sign in.
     return (
-      <div className="loading-screen">
-        <div className="loading-screen__inner">
-          <h1 className="font-headline text-h3 text-[var(--fg-primary)] mb-2">
-            {failure === "cancelled" ? "Sign-in cancelled" : "Sign-in didn’t finish"}
-          </h1>
-          {/* A cancel isn't an error, so it drops the error red. */}
-          <p
-            className={
-              failure === "cancelled"
-                ? "loading-screen__error !text-[var(--fg-secondary)]"
-                : "loading-screen__error"
-            }
-          >
-            {failure === "cancelled"
-              ? "You cancelled signing in. You can try again whenever you like."
-              : "Your session may have timed out. Try signing in again."}
-          </p>
-          {/* One action: signed out, "/" lands on /welcome anyway, so a
-              separate "Return to home" link went to the same place. */}
-          <Button href="/welcome">Try signing in again</Button>
-        </div>
-      </div>
+      <EmptyState
+        title={failure === "cancelled" ? "Sign-in cancelled" : "Sign-in didn’t finish"}
+        description={
+          failure === "cancelled"
+            ? "You can sign in again any time."
+            : "Your session may have timed out. Please sign in again."
+        }
+        headingLevel={1}
+        className="pt-[120px]"
+      >
+        <Button variant="secondary" size="sm" href="/">
+          Go back home
+        </Button>
+      </EmptyState>
     )
   }
 
