@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
-import { Mail } from "lucide-react"
+import React, { useEffect, useId, useRef, useState } from "react"
+import { AlertCircle, Mail } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Brandmark from "./brandmark"
 import Button from "./button"
@@ -9,8 +9,15 @@ import Input from "./input"
 
 interface SignInModalProps {
   isOpen: boolean
+  /** An error about what the user typed; shown on the email/handle field. */
   error: string | null
+  /** An error about the form as a whole (Google sign-in that didn't start);
+   *  shown under the sign-in buttons. */
+  formError: string | null
   onClose: () => void
+  /** Called when the user switches sign-in method, so an error from the
+   *  other method doesn't stay on screen. */
+  onClearErrors: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
   onSubmitGoogle: () => Promise<void>
@@ -21,37 +28,51 @@ type ModalView = "certified" | "atproto"
 export default function SignInModal({
   isOpen,
   error,
+  formError,
   onClose,
+  onClearErrors,
   onSubmitEmail,
   onSubmitHandle,
   onSubmitGoogle,
 }: SignInModalProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const googleRef = useRef<HTMLButtonElement>(null)
+  const formErrorId = useId()
   const [view, setView] = useState<ModalView>("certified")
   const [inputValue, setInputValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Reset state when the modal opens. Backdrop/Esc/focus-trap/scroll-lock
-  // are all owned by <AppDialog> now; we only manage the form state here.
+  // Backdrop/Esc/focus-trap/scroll-lock are all owned by <AppDialog>; we
+  // only manage the form state here. The component stays mounted while
+  // closed, so the view and typed value survive the context closing the
+  // modal for a sign-in attempt and reopening it when that fails: the user
+  // lands back where they were, with the error on the right field. They're
+  // reset in handleClose, when the user closes the modal.
   useEffect(() => {
-    if (isOpen) {
-      setView("certified")
-      setInputValue("")
-      setIsSubmitting(false)
-      requestAnimationFrame(() => inputRef.current?.focus())
-    }
+    if (isOpen) setIsSubmitting(false)
   }, [isOpen])
 
-  // Focus input when switching views.
+  // Focus on open and on switching views: the field, or the Google button
+  // when Google sign-in just failed to start, so the error (linked to the
+  // button) is read with it and Enter retries.
   useEffect(() => {
-    if (isOpen) {
-      requestAnimationFrame(() => inputRef.current?.focus())
-    }
-  }, [view, isOpen])
+    if (!isOpen) return
+    const target = formError ? googleRef : inputRef
+    requestAnimationFrame(() => target.current?.focus())
+  }, [view, isOpen, formError])
 
   // <AppDialog> calls showModal() on mount and has no `open` prop, so gate
   // the mount here to match the previous isOpen-driven render.
   if (!isOpen) return null
+
+  // The user closed the modal (Esc, backdrop or X), so the next open
+  // starts fresh on the email view. Closing it to start a sign-in doesn't
+  // come through here.
+  const handleClose = () => {
+    setView("certified")
+    setInputValue("")
+    onClose()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,8 +111,8 @@ export default function SignInModal({
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
-    <AppDialog ariaLabel="Sign in" onClose={onClose}>
-      <AppDialogHeader title="" bare onClose={onClose} />
+    <AppDialog ariaLabel="Sign in" onClose={handleClose}>
+      <AppDialogHeader title="" bare onClose={handleClose} />
 
       <AppDialogBody>
         <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[799px]:mb-6">
@@ -151,6 +172,7 @@ export default function SignInModal({
             onClick={() => {
               setView(isCertified ? "atproto" : "certified")
               setInputValue("")
+              onClearErrors()
             }}
             className="w-full gap-2.5"
           >
@@ -170,11 +192,13 @@ export default function SignInModal({
           </Button>
 
           <Button
+            ref={googleRef}
             type="button"
             variant="secondary"
             size="lg"
             disabled={isSubmitting}
             onClick={() => void handleGoogle()}
+            aria-describedby={formError ? formErrorId : undefined}
             className="mt-2 w-full gap-2.5"
           >
             {/* Google's current gradient "G" (g-logo.png from Google's
@@ -191,6 +215,19 @@ export default function SignInModal({
             />
             Sign in with Google
           </Button>
+
+          {/* Same look as the field error in <Input>, under the button
+              that failed. */}
+          {formError && (
+            <p
+              id={formErrorId}
+              role="alert"
+              className="mt-1.5 flex items-start gap-1 text-caption text-[var(--color-error)]"
+            >
+              <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+              <span>{formError}</span>
+            </p>
+          )}
         </form>
 
         <div
