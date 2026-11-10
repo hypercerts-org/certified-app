@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import Brandmark from "@/components/ui/brandmark"
+import Button from "@/components/ui/button"
 import { resolvePostSigninPath } from "@/lib/auth/post-signin"
 import { markTourPending } from "@/lib/tour/tour-sentinel"
 
@@ -89,12 +89,9 @@ export default function OAuthCallbackPage() {
               ? "You cancelled signing in. You can try again whenever you like."
               : "Your session may have timed out. Try signing in again."}
           </p>
-          <Link href="/welcome" className="loading-screen__link">
-            Try signing in again
-          </Link>
-          <Link href="/" className="loading-screen__link">
-            Return to home
-          </Link>
+          {/* One action: signed out, "/" lands on /welcome anyway, so a
+              separate "Return to home" link went to the same place. */}
+          <Button href="/welcome">Try signing in again</Button>
         </div>
       </div>
     )

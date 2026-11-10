@@ -102,27 +102,9 @@
   margin-bottom: 16px;
 }
 
-.loading-screen__link {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.loading-screen__link:hover {
-  color: var(--fg-primary);
-}
-
-.loading-screen__link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-  color: var(--fg-primary);
-}
-
-/* Mobile: bump the error text + return link to a readable 16px, give the link
-   a 44px tap target, and keep the inner box off the viewport edge. */
+/* Mobile: bump the error text to a readable 16px and keep the inner box off
+   the viewport edge. (The retry action is a <Button>, which already meets the
+   44px tap target.) */
 @media (max-width: 799px) {
   .loading-screen__inner {
     padding-left: 24px;
@@ -130,13 +112,6 @@
   }
   .loading-screen__error {
     font-size: 1rem;
-  }
-  .loading-screen__link {
-    font-size: 1rem;
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 12px;
   }
 }
 
