@@ -73,7 +73,7 @@ describe("Google sign-in start failure", () => {
     expect(result.current.isModalOpen).toBe(true);
     expect(modal.props?.error).toBeNull();
     expect(modal.props?.formError).toBe(
-      "Couldn't start Google sign-in. Try again, or continue with your email.",
+      "Couldn't start Google sign-in. Try again, or sign in another way.",
     );
 
     act(() => modal.props?.onClearErrors());

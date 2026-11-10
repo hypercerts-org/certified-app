@@ -190,7 +190,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleSwitchProvider);
   }, [handleLoginResponse]);
 
-  // Every new sign-in attempt, and closing the modal, starts from no error.
+  // Every new sign-in attempt starts from no error, as do closing the modal
+  // and switching sign-in method in it.
   const clearErrors = useCallback(() => {
     setError(null);
     setFormError(null);
@@ -328,7 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // failed" or a raw "Failed to fetch" wouldn't say that it was Google
       // sign-in that didn't start. It's a form error: nothing the user
       // typed is wrong, so the email field mustn't be marked invalid.
-      setFormError("Couldn't start Google sign-in. Try again, or continue with your email.");
+      setFormError("Couldn't start Google sign-in. Try again, or sign in another way.");
       setIsModalOpen(true);
     }
   }, [handleLoginResponse, clearErrors]);
