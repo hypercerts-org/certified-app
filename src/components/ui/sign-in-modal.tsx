@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { AtSign, Mail } from "lucide-react"
+import { Mail } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Brandmark from "./brandmark"
 import Button from "./button"
@@ -83,10 +83,10 @@ export default function SignInModal({
   const heading = isCertified ? "Your email" : "Your handle"
   const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
   // Worded and laid out in parallel with "Sign in with Google": same
-  // pattern, a 20px monochrome icon in the logo's place. The Atmosphere has
-  // no agreed logo yet, so it uses a plain "@" (the handle symbol).
+  // pattern, a 20px mark in the logo's place. The Atmosphere has no agreed
+  // logo yet, so it uses the blue "@" from atproto.com's favicon, as is
+  // (48px is the largest published size). Email gets the mail icon.
   const switchLabel = isCertified ? "Sign in with Atmosphere" : "Sign in with email"
-  const SwitchIcon = isCertified ? AtSign : Mail
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
@@ -154,7 +154,18 @@ export default function SignInModal({
             }}
             className="w-full gap-2.5"
           >
-            <SwitchIcon size={20} aria-hidden="true" className="shrink-0" />
+            {isCertified ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/brand/signin/atproto_at.png"
+                alt=""
+                width={20}
+                height={20}
+                className="shrink-0"
+              />
+            ) : (
+              <Mail size={20} aria-hidden="true" className="shrink-0" />
+            )}
             {switchLabel}
           </Button>
 
