@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "epds-login": {
+      "source": "hypercerts-org/ePDS",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/epds-login/SKILL.md",
+      "computedHash": "296a32e1640c44d76b25c38da9942bdf1997543481af632e0c9ec68bd1335922"
+    },
     "hypercerts": {
       "source": "hypercerts-org/skills",
       "sourceType": "github",
