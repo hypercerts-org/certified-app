@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
-import { Mail } from "lucide-react"
+import { AlertCircle, Mail } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Brandmark from "./brandmark"
 import Button from "./button"
@@ -9,8 +9,15 @@ import Input from "./input"
 
 interface SignInModalProps {
   isOpen: boolean
+  /** An error about what the user typed; shown on the email/handle field. */
   error: string | null
+  /** An error about the form as a whole (Google sign-in that didn't start);
+   *  shown under the sign-in buttons. */
+  formError: string | null
   onClose: () => void
+  /** Called when the user switches sign-in method, so an error from the
+   *  other method doesn't stay on screen. */
+  onClearErrors: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
   onSubmitGoogle: () => Promise<void>
@@ -21,7 +28,9 @@ type ModalView = "certified" | "atproto"
 export default function SignInModal({
   isOpen,
   error,
+  formError,
   onClose,
+  onClearErrors,
   onSubmitEmail,
   onSubmitHandle,
   onSubmitGoogle,
@@ -151,6 +160,7 @@ export default function SignInModal({
             onClick={() => {
               setView(isCertified ? "atproto" : "certified")
               setInputValue("")
+              onClearErrors()
             }}
             className="w-full gap-2.5"
           >
@@ -191,6 +201,18 @@ export default function SignInModal({
             />
             Sign in with Google
           </Button>
+
+          {/* Same look as the field error in <Input>, under the button
+              that failed. */}
+          {formError && (
+            <p
+              role="alert"
+              className="mt-2 flex items-start gap-1 text-caption text-[var(--color-error)]"
+            >
+              <AlertCircle size={12} strokeWidth={2} className="mt-[0.15rem] shrink-0" aria-hidden />
+              <span>{formError}</span>
+            </p>
+          )}
         </form>
 
         <div

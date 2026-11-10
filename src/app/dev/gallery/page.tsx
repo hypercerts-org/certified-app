@@ -1269,7 +1269,9 @@ export default function GalleryPage() {
       <SignInModal
         isOpen={signInOpen}
         error={null}
+        formError={null}
         onClose={() => setSignInOpen(false)}
+        onClearErrors={() => {}}
         onSubmitEmail={async () => setSignInOpen(false)}
         onSubmitHandle={async () => setSignInOpen(false)}
         onSubmitGoogle={async () => setSignInOpen(false)}

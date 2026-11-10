@@ -45,6 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [did, setDid] = useState<string | null>(null);
   const [pdsUrl, setPdsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A sign-in failure that isn't about what the user typed (Google sign-in
+  // that didn't start). The modal shows it under its buttons instead of on
+  // the email or handle field, which `error` marks invalid.
+  const [formError, setFormError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRedirectingToProvider, setIsRedirectingToProvider] = useState(false);
 
@@ -186,6 +190,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("message", handleSwitchProvider);
   }, [handleLoginResponse]);
 
+  // Every new sign-in attempt, and closing the modal, starts from no error.
+  const clearErrors = useCallback(() => {
+    setError(null);
+    setFormError(null);
+  }, []);
+
   // Silent-default OAuth bounce: POST to /api/auth/login with no email
   // or handle. The server calls client.authorize(PDS_URL, ...) without
   // a login_hint, so the PDS's authorization server can return a code
@@ -195,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // still type an email or handle by hand.
   const submitDefault = useCallback(async () => {
     try {
-      setError(null);
+      clearErrors();
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
       const res = await fetch("/api/auth/login", {
@@ -210,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
       setIsModalOpen(true);
     }
-  }, [handleLoginResponse]);
+  }, [handleLoginResponse, clearErrors]);
 
   const openSignIn = useCallback(async () => {
     // Stash the current pathname + handle so the post-signin handler
@@ -228,19 +238,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // contradict the label for users with no existing PDS session.
   const openSignInModal = useCallback(() => {
     recordPreSigninLocation(peekSessionHandle());
-    setError(null);
+    clearErrors();
     setIsModalOpen(true);
-  }, []);
+  }, [clearErrors]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setError(null);
-  }, []);
+    clearErrors();
+  }, [clearErrors]);
 
   // Flow 1: Submit email — calls /api/auth/login with mode "email" and redirects
   const submitEmail = useCallback(async (email: string) => {
     try {
-      setError(null);
+      clearErrors();
       // Show loading overlay immediately while we fetch the auth URL
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
@@ -269,12 +279,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsModalOpen(true);
       setError(err instanceof Error ? err.message : "Failed to sign in");
     }
-  }, []);
+  }, [clearErrors]);
 
   // ATProto handle sign-in: calls /api/auth/login with mode "handle" and redirects
   const submitHandle = useCallback(async (handle: string) => {
     try {
-      setError(null);
+      clearErrors();
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
 
@@ -294,14 +304,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       setIsModalOpen(true);
     }
-  }, [handleLoginResponse]);
+  }, [handleLoginResponse, clearErrors]);
 
   // Google sign-in: calls /api/auth/login with mode "google". The returned
   // URL sends the browser to the Certified ePDS, which redirects straight on
   // to Google; the user comes back through the usual /oauth/callback.
   const submitGoogle = useCallback(async () => {
     try {
-      setError(null);
+      clearErrors();
       setIsRedirectingToProvider(true);
       setIsModalOpen(false);
 
@@ -314,13 +324,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Google sign-in error:", err);
       setIsRedirectingToProvider(false);
-      // One fixed message: the server's generic "Authentication failed" or
-      // a raw "Failed to fetch" would show under the email field without
-      // saying that it was Google sign-in that didn't start.
-      setError("Couldn't start Google sign-in. Try again, or continue with your email.");
+      // One fixed message, since the server's generic "Authentication
+      // failed" or a raw "Failed to fetch" wouldn't say that it was Google
+      // sign-in that didn't start. It's a form error: nothing the user
+      // typed is wrong, so the email field mustn't be marked invalid.
+      setFormError("Couldn't start Google sign-in. Try again, or continue with your email.");
       setIsModalOpen(true);
     }
-  }, [handleLoginResponse]);
+  }, [handleLoginResponse, clearErrors]);
 
   const signOut = useCallback(async () => {
     // Clear local state immediately (optimistic sign-out).
@@ -382,7 +393,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       <SignInModal
         isOpen={isModalOpen}
         error={error}
+        formError={formError}
         onClose={closeModal}
+        onClearErrors={clearErrors}
         onSubmitEmail={submitEmail}
         onSubmitHandle={submitHandle}
         onSubmitGoogle={submitGoogle}
