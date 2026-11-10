@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
+import { AtSign, Mail } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Brandmark from "./brandmark"
 import Button from "./button"
@@ -81,9 +82,11 @@ export default function SignInModal({
 
   const heading = isCertified ? "Your email" : "Your handle"
   const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
-  const switchLabel = isCertified
-    ? "Sign in with the Atmosphere"
-    : "Sign in with your email"
+  // Worded and laid out in parallel with "Sign in with Google": same
+  // pattern, a 20px monochrome icon in the logo's place. The Atmosphere has
+  // no agreed logo yet, so it uses a plain "@" (the handle symbol).
+  const switchLabel = isCertified ? "Sign in with Atmosphere" : "Sign in with email"
+  const SwitchIcon = isCertified ? AtSign : Mail
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
@@ -160,7 +163,7 @@ export default function SignInModal({
               height={20}
               className="shrink-0 object-contain"
             />
-            Continue with Google
+            Sign in with Google
           </Button>
 
           <Button
@@ -172,8 +175,9 @@ export default function SignInModal({
               setView(isCertified ? "atproto" : "certified")
               setInputValue("")
             }}
-            className="mt-2 w-full"
+            className="mt-2 w-full gap-2.5"
           >
+            <SwitchIcon size={20} aria-hidden="true" className="shrink-0" />
             {switchLabel}
           </Button>
         </form>

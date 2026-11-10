@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest"
 
 /**
  * The ePDS reads these extension fields from our published client metadata.
- * Dropping one fails silently: without `epds_social_providers` the "Continue
+ * Dropping one fails silently: without `epds_social_providers` the "Sign in
  * with Google" button just lands on the ePDS login page, and without
  * `epds_handle_login_url` the ePDS hides its AT Protocol hand-off. So pin them.
  */
