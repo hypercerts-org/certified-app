@@ -88,4 +88,8 @@ npm start
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+Licensed under the [Apache License, Version 2.0](LICENSE). If you redistribute this code or a modified version of it, keep the [NOTICE](NOTICE) file and include its text, as section 4(d) of the license requires.
+
+Versions released before November 2026 were licensed under MIT. The [NOTICE](NOTICE) file keeps the MIT terms for that earlier code.
+
+The licenses cover the code. They don't cover the logos in this repository, which belong to their owners.
