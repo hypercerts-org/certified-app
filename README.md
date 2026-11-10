@@ -88,8 +88,14 @@ npm start
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE). If you redistribute this code or a modified version of it, keep the [NOTICE](NOTICE) file and include its text, as section 4(d) of the license requires.
+Licensed under the [Apache License, Version 2.0](LICENSE). If you redistribute this code or a modified version of it, include the attribution notices from the [NOTICE](NOTICE) file, as section 4(d) of the license requires.
 
-Versions released before November 2026 were licensed under MIT. The [NOTICE](NOTICE) file keeps the MIT terms for that earlier code.
+Versions from before the change to Apache-2.0 were licensed under MIT. The [NOTICE](NOTICE) file keeps the MIT terms for that earlier code.
 
-The licenses cover the code. They don't cover the logos in this repository, which belong to their owners.
+Some agent skills are copied from other projects and keep their licenses:
+
+- `animation-performance`, `apple-design`, `break-ui`, `emil-design-eng`, `find-animation-opportunities`, `improve-animations`, `mobile-native` and `review-animations` in `.claude/skills/` come from [emilkowalski/skills](https://github.com/emilkowalski/skills), under MIT.
+- `react-best-practices`, `react-view-transitions`, `web-design-guidelines` and `writing-guidelines` in `.claude/skills/` come from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), under MIT.
+- `impeccable` in `.agents/skills/` comes from [pbakaus/impeccable](https://github.com/pbakaus/impeccable), under Apache-2.0. It bundles a build of [modern-screenshot](https://github.com/qq15725/modern-screenshot), under MIT.
+
+The licenses don't cover the logos and wordmarks in this repository, such as the Certified brandmark and wordmark and the partner logos. They belong to their owners.
