@@ -44,6 +44,12 @@ export async function GET() {
     // src/app/api/auth/login/route.ts resolves the handle to its PDS
     // and starts a fresh OAuth flow.
     epds_handle_login_url: `${origin}/api/auth/login`,
+    // Opt in to ePDS Google sign-in. The ePDS login page then shows a
+    // "Sign in with Google" button, and the `epds_social_provider=google`
+    // URL parameter that /api/auth/login adds for our own Google button
+    // takes effect. Without this entry ePDS ignores that parameter.
+    // Only works when the ePDS operator has configured Google.
+    epds_social_providers: ["google"],
     // Browser-tab icon for trusted-client auth/consent pages (ePDS
     // emits a <link rel="icon"> from this). SVG so it stays crisp at any
     // tab size. No `favicon_url_dark` yet — the current brandmark has no

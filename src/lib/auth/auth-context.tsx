@@ -91,6 +91,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [refreshSession]);
 
+  // Back from the provider (most often Google's account chooser, which the
+  // ePDS redirects to without a page of its own) can restore this page from
+  // the back/forward cache with the redirect overlay still up. Clear it.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setIsRedirectingToProvider(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   // Listen for postMessage from iframe callback (oauth-callback-complete)
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
@@ -285,6 +296,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [handleLoginResponse]);
 
+  // Google sign-in: calls /api/auth/login with mode "google". The returned
+  // URL sends the browser to the Certified ePDS, which redirects straight on
+  // to Google; the user comes back through the usual /oauth/callback.
+  const submitGoogle = useCallback(async () => {
+    try {
+      setError(null);
+      setIsRedirectingToProvider(true);
+      setIsModalOpen(false);
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "google" }),
+      });
+      await handleLoginResponse(res);
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      setIsRedirectingToProvider(false);
+      // One fixed message: the server's generic "Authentication failed" or
+      // a raw "Failed to fetch" would show under the email field without
+      // saying that it was Google sign-in that didn't start.
+      setError("Couldn't start Google sign-in. Try again, or continue with your email.");
+      setIsModalOpen(true);
+    }
+  }, [handleLoginResponse]);
+
   const signOut = useCallback(async () => {
     // Clear local state immediately (optimistic sign-out).
     // Server-side session cleanup is best-effort; the client should always
@@ -334,8 +371,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     closeModal,
     submitEmail,
     submitHandle,
+    submitGoogle,
     signOut,
-  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInModal, closeModal, submitEmail, submitHandle, signOut]);
+  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInModal, closeModal, submitEmail, submitHandle, submitGoogle, signOut]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -347,6 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         onClose={closeModal}
         onSubmitEmail={submitEmail}
         onSubmitHandle={submitHandle}
+        onSubmitGoogle={submitGoogle}
       />
     </AuthContext.Provider>
   );

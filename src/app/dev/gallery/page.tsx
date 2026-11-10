@@ -1272,6 +1272,7 @@ export default function GalleryPage() {
         onClose={() => setSignInOpen(false)}
         onSubmitEmail={async () => setSignInOpen(false)}
         onSubmitHandle={async () => setSignInOpen(false)}
+        onSubmitGoogle={async () => setSignInOpen(false)}
       />
 
       {/* FeedbackModal is mounted globally by the root layout and driven by

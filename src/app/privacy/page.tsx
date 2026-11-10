@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: October 29, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 10, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -223,6 +223,24 @@ export default function PrivacyPage() {
             </ul>
 
             <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
+              Signing in with Google
+            </h3>
+            <p>
+              Signing in with Google is optional. You can always sign in with a one-time code sent
+              to your email address instead. If you choose to sign in with Google, Google shares
+              the following with us:
+            </p>
+            <ul className="list-disc pl-6 mt-2 space-y-2">
+              <li>your email address, and whether Google has verified it</li>
+              <li>your name and profile picture</li>
+              <li>an identifier for your Google account</li>
+            </ul>
+            <p className="mt-4">
+              We use your verified email address to sign you in to the Certified account for that
+              address, or to create one if none exists. We do not receive your Google password.
+            </p>
+
+            <h3 className="font-headline text-h3 text-[var(--fg-primary)] mt-6 mb-3">
               Data stored on Personal Data Servers
             </h3>
             <p>
@@ -384,6 +402,20 @@ export default function PrivacyPage() {
               </li>
               <li>
                 with third-party services that users choose to connect to their accounts
+              </li>
+              <li>
+                with Google LLC, if you choose to sign in with Google. Google then learns that you
+                are signing in to Certified. Google processes this as an independent controller
+                under its own{" "}
+                <a
+                  href="https://policies.google.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="legal-link"
+                >
+                  privacy policy
+                </a>
+                .
               </li>
               <li>where required by law or legal process</li>
               <li>

@@ -28,6 +28,9 @@ export interface AuthState {
   submitEmail: (email: string) => Promise<void>;
   /** Submit ATProto handle — calls /api/auth/login with mode "handle" */
   submitHandle: (handle: string) => Promise<void>;
+  /** Sign in with Google via the Certified ePDS — calls /api/auth/login
+   *  with mode "google"; ePDS redirects straight to Google */
+  submitGoogle: () => Promise<void>;
   /** Sign out — calls /api/auth/logout and clears local state */
   signOut: () => Promise<void>;
 }
