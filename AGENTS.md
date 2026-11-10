@@ -271,10 +271,11 @@ Permanent redirects (in `next.config.ts`):
 - **CSRF** — `src/lib/auth/csrf.ts` rejects requests missing both `Origin` and `Referer`, then requires the parsed source origin to be in the exact configured set (`PUBLIC_URL`, `VERCEL_BRANCH_URL`, `VERCEL_URL`) and equal the request destination origin. This supports Vercel aliases without making deployments cross-origin peers. `null`, malformed, wildcard, and lookalike origins return 403; localhost/127.0.0.1 equivalence exists only outside production.
 - **authFetch** — `src/lib/auth/fetch.ts` wraps `fetch` and calls a registered `onUnauthorized()` listener on 401. `AuthProvider` registers this listener to clear `isAuthenticated`/`did`/`pdsUrl` and surface "Your session has expired."
 
-### Sign-in (email or handle)
+### Sign-in (email, handle, or Google)
 
-1. UI submits to `POST /api/auth/login` with `{ input, mode: "email" | "handle", prompt? }`.
+1. UI submits to `POST /api/auth/login` with `{ input, mode: "email" | "handle", prompt? }`, or `{ mode: "google" }` from the modal's "Continue with Google" button.
 2. Server CSRF-checks, sanitizes input (`sanitizeEmail` / `sanitizeHandle`), then calls `client.authorize(...)`. For `mode: "email"` it points at `PDS_URL` and adds `login_hint`. For `mode: "handle"` it calls `client.authorize(input, …)` and falls back to `https://` + input if the bare input fails.
+   For `mode: "google"` it calls `client.authorize(PDS_URL, …)` and adds `epds_social_provider=google` to the returned URL (never the PAR body), so the ePDS sends the browser straight to Google. The user returns through the usual callback with the ePDS account for their Google email. This needs `epds_social_providers: ["google"]` in the client metadata (`src/app/.well-known/oauth-client-metadata/route.ts`) and Google configured by the ePDS operator; otherwise ePDS ignores the parameter and the user gets a plain sign-in (its login page, or its account chooser when the browser already has an ePDS session). It never works in loopback dev mode, because the ePDS can't fetch loopback client metadata: test Google sign-in on staging. Google accepts only Gmail addresses and a Workspace organisation's primary domain; for any other address, and when the user cancels at Google, ePDS returns the user to its own login page to use an email code instead.
 3. Returns `{ url }`. The client `safeRedirect()`s — only `https:` URLs are allowed (and `http:` in dev). This intentionally allows cross-origin since OAuth bounces to external authorization servers.
 4. The PDS UI may post a `switch-provider` message back to the modal (used when an existing user enters a handle on the wrong PDS). `AuthProvider` listens for it and re-runs the handle login flow.
 
@@ -304,7 +305,7 @@ Validates returned URLs to prevent protocol-injection (e.g. `javascript:`). Allo
 
 | Route | Method | CSRF | Auth | Description |
 |---|---|---|---|---|
-| `/api/auth/login` | POST | yes | none | Build authorization URL for email or handle login. Sanitizes input. Returns `{ url }`. |
+| `/api/auth/login` | POST | yes | none | Build authorization URL for email, handle, default (no hint) or Google login. Sanitizes input. Returns `{ url }`. |
 | `/api/auth/callback-handler` | GET | n/a | none | Server-side OAuth code exchange. Invalidates old session, creates new one, seeds profile records. |
 | `/api/auth/session` | GET | n/a | cookie | Returns `{ did }` or `{ did: null }`. Calls `client.restore(did)` to detect upstream invalidation. |
 | `/api/auth/logout` | POST | yes | cookie | Calls upstream `signOut`, deletes Redis session and cookie. |
@@ -509,7 +510,7 @@ Group-creation limit hook is at `src/lib/groups/use-org-limit.ts` (`useOrgCreati
 
 ## 14. State Management
 
-- **Auth state:** `AuthProvider` in `src/lib/auth/auth-context.tsx`. Holds `isLoading`, `isAuthenticated`, `did`, `pdsUrl`, `error`, `isModalOpen`, `isRedirectingToProvider`, plus actions `openSignIn`, `closeModal`, `submitEmail`, `submitHandle`, `signOut`. Also owns the `SignInModal` and `ProviderRedirectOverlay` components.
+- **Auth state:** `AuthProvider` in `src/lib/auth/auth-context.tsx`. Holds `isLoading`, `isAuthenticated`, `did`, `pdsUrl`, `error`, `isModalOpen`, `isRedirectingToProvider`, plus actions `openSignIn`, `closeModal`, `submitEmail`, `submitHandle`, `submitGoogle`, `signOut`. Also owns the `SignInModal` and `ProviderRedirectOverlay` components.
 - **Active group:** `OrgProvider` in `src/lib/groups/org-context.tsx`. Persists the active org to `localStorage` under key `certified_active_org`. Initializes synchronously on first render (`getInitialOrg`) so the navbar avatar doesn't flicker. Refetches groups on auth change. When the auth state turns to "logged out", the active org is cleared.
 - **Navbar variant:** `NavbarProvider` (`src/lib/navbar-context.tsx`). Two variants: `default` (opaque) and `transparent` (used on `/welcome`).
 - **Wagmi:** scoped to `/settings/wallet/layout.tsx`. Mounts `WagmiProvider` with `config` from `src/lib/wagmi.ts` (chains: mainnet, base, optimism, arbitrum; connectors: injected, coinbaseWallet smart-wallet-only, walletConnect when `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is set; `ssr: true`).

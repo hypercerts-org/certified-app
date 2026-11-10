@@ -13,6 +13,7 @@ interface SignInModalProps {
   onClose: () => void
   onSubmitEmail: (email: string) => Promise<void>
   onSubmitHandle: (handle: string) => Promise<void>
+  onSubmitGoogle: () => Promise<void>
 }
 
 type ModalView = "certified" | "atproto"
@@ -23,6 +24,7 @@ export default function SignInModal({
   onClose,
   onSubmitEmail,
   onSubmitHandle,
+  onSubmitGoogle,
 }: SignInModalProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<ModalView>("certified")
@@ -62,6 +64,16 @@ export default function SignInModal({
       } else {
         await onSubmitHandle(inputValue.trim())
       }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogle = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onSubmitGoogle()
     } finally {
       setIsSubmitting(false)
     }
@@ -125,6 +137,33 @@ export default function SignInModal({
           >
             {submitLabel}
           </Button>
+
+          {/* Google sign-in goes through the Certified ePDS, so it only
+              belongs on the Certified (email) view, not the AT Protocol one. */}
+          {isCertified && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              disabled={isSubmitting}
+              onClick={() => void handleGoogle()}
+              className="mt-2 w-full gap-2.5"
+            >
+              {/* Google's current gradient "G" (g-logo.png from Google's
+                  branding page), at the 20px size and 10px gap its
+                  guidelines set for a web button. The file is 200x204, so
+                  object-contain keeps the aspect ratio. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/signin/google_g.png"
+                alt=""
+                width={20}
+                height={20}
+                className="shrink-0 object-contain"
+              />
+              Continue with Google
+            </Button>
+          )}
 
           <Button
             type="button"

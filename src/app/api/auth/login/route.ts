@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
     if (!parsed.ok) return parsed.response
     const { input: rawInput, mode, prompt } = (parsed.body ?? {}) as {
       input?: string
-      mode?: "email" | "handle" | "default"
+      mode?: "email" | "handle" | "default" | "google"
       prompt?: "login" | "create"
     }
 
-    if (mode !== "email" && mode !== "handle" && mode !== "default") {
+    if (mode !== "email" && mode !== "handle" && mode !== "default" && mode !== "google") {
       return NextResponse.json({ error: "Invalid mode" }, { status: 400 })
     }
 
@@ -90,6 +90,27 @@ export async function POST(request: NextRequest) {
       // silently ignored and the account chooser still shows. Mirror it onto
       // the URL so forcing a fresh sign-in actually engages. (epds-login skill)
       if (safePrompt) url.searchParams.set("prompt", safePrompt)
+      return NextResponse.json({ url: url.href })
+    }
+
+    // Google sign-in: authorize against the Certified ePDS, then add
+    // `epds_social_provider=google` so ePDS sends the browser straight to
+    // Google instead of showing its own login page. Like `login_hint`, it
+    // goes on the returned URL only, never in PAR. The user comes back
+    // through the usual /oauth/callback with the ePDS account for their
+    // Google email. No `prompt` mirroring: choosing Google already skips
+    // reuse of an existing ePDS browser session. ePDS ignores the
+    // parameter unless our client metadata lists "google" in
+    // `epds_social_providers` and the operator has enabled it; the user
+    // then gets a plain sign-in (its login page, or its account chooser
+    // when the browser already has an ePDS session). Never works in
+    // loopback dev mode: the ePDS can't fetch that metadata.
+    // (epds-login skill, "Google Sign-In")
+    if (mode === "google") {
+      const url = await client.authorize(PDS_URL, {
+        scope: "atproto transition:generic identity:handle account:email",
+      })
+      url.searchParams.set("epds_social_provider", "google")
       return NextResponse.json({ url: url.href })
     }
 
