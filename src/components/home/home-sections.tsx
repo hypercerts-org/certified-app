@@ -9,7 +9,6 @@ import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
 import CertIcon from "@/components/ui/cert-icon"
-import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import RowThumb from "@/components/ui/row-thumb"
 import Skeleton from "@/components/ui/skeleton"
@@ -176,16 +175,6 @@ export function HomeRecords({
   }, [created, projects])
 
   const listsLoading = projectsLoading || activitiesLoading
-  // "Nothing published" only when the lists AND the counts agree: the list
-  // hooks swallow fetch errors, so an empty list next to non-zero counts
-  // means a failed fetch, not an empty account.
-  const isEmpty =
-    !listsLoading &&
-    latest.length === 0 &&
-    !countsLoading &&
-    !counts.certs &&
-    !counts.projects &&
-    !counts.lists
 
   return (
     <HomeBlock
@@ -223,22 +212,12 @@ export function HomeRecords({
       </ul>
 
       {/* Wait for both lists so the newest-first rows don't reshuffle
-          when the second fetch lands. */}
+          when the second fetch lands. Nothing published yet: the zeros on
+          the tiles say it, so no extra line. */}
       {listsLoading ? (
         <div className="home-block__loading">
           <LoadingSpinner size="sm" />
         </div>
-      ) : isEmpty ? (
-        <EmptyState
-          variant="compact"
-          title="Nothing published yet."
-          description={
-            canCreate
-              ? "Activities and projects you publish, here or in another app, are kept on this account."
-              : "Activities and projects published for this account will show here."
-          }
-          className="home-block__empty"
-        />
       ) : latest.length > 0 ? (
         <>
           <h3 className="home-block__subhead">Latest</h3>

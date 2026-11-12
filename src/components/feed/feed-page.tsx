@@ -11,13 +11,19 @@ import { useFollowing } from "@/hooks/use-following"
 import { usePageTitle } from "@/lib/navbar-context"
 import { ownProfileUrl } from "@/lib/urls"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
+import Card from "@/components/ui/card"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import HomeFeed from "@/components/home/home-feed"
+import NewsSection from "@/components/right-rail/news-section"
+
+/** DID of the account whose Bluesky posts fill "News from Certified". */
+const NEWS_ACTOR_DID = "did:plc:apun3uo5jqm34pxzqq6on754"
 
 /**
- * `/feed` — what the accounts and groups you follow have published lately:
- * a header that says whose feed this is (with the following count and a way
- * to find more accounts), then the follow-graph feed with its filters.
+ * `/feed` — what is new in the network: activities, projects and
+ * endorsements from accounts the viewer follows plus accounts endorsed by
+ * the evaluators picked in the filters. At 1100px and wider the filters
+ * sit on the left and "News from Certified" on the right (see HomeFeed).
  * Follows the account the viewer is acting as, like /home.
  */
 export default function FeedPage() {
@@ -53,38 +59,48 @@ export default function FeedPage() {
   })
   const showCount = !following.isLoading && !following.error
 
+  const header = (
+    <header className="feed-page__header" data-tour="feed">
+      <h2 className="feed-page__title font-headline text-h2">Latest from the network</h2>
+      <p className="feed-page__intro">
+        New activities, projects and endorsements from accounts{" "}
+        {activeOrg ? "this group follows" : "you follow"}, and from accounts
+        endorsed by the evaluators you pick in the filters.
+      </p>
+      <div className="feed-page__meta">
+        {showCount ? (
+          <Link
+            href={`${profileBase}?tab=followers&sub=following`}
+            className="feed-page__meta-link"
+          >
+            Following{" "}
+            <span className="feed-page__count">
+              {formatGraphCount(following.count, following.truncated)}
+            </span>
+          </Link>
+        ) : null}
+        <Link href="/explore" className="feed-page__meta-link">
+          <Compass size={14} strokeWidth={1.75} aria-hidden />
+          Find accounts to follow
+        </Link>
+      </div>
+    </header>
+  )
+
   return (
     <div className="feed-page">
-      <header className="feed-page__header">
-        <h2 className="feed-page__title font-headline text-h2">From accounts you follow</h2>
-        <p className="feed-page__intro">
-          New activities, projects and endorsements from the accounts and
-          groups {activeOrg ? "this group follows" : "you follow"}.
-        </p>
-        <div className="feed-page__meta">
-          {showCount ? (
-            <Link
-              href={`${profileBase}?tab=followers&sub=following`}
-              className="feed-page__meta-link"
-            >
-              Following{" "}
-              <span className="feed-page__count">
-                {formatGraphCount(following.count, following.truncated)}
-              </span>
-            </Link>
-          ) : null}
-          <Link href="/explore" className="feed-page__meta-link">
-            <Compass size={14} strokeWidth={1.75} aria-hidden />
-            Find accounts to follow
-          </Link>
-        </div>
-      </header>
-
       {/* Keyed on the account so switching account starts a fresh feed
           instead of showing the previous account's items while it loads. */}
-      <div className="feed-page__feed" data-tour="feed">
-        <HomeFeed key={activeDid} activeDid={activeDid} />
-      </div>
+      <HomeFeed
+        key={activeDid}
+        activeDid={activeDid}
+        header={header}
+        news={
+          <Card unpadded className="feed-page__news">
+            <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
+          </Card>
+        }
+      />
     </div>
   )
 }

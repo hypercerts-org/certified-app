@@ -12,6 +12,7 @@ import {
 import { ChevronDown, Inbox, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
+import Card from "@/components/ui/card"
 import Checkbox from "@/components/ui/checkbox"
 import EmptyState from "@/components/ui/empty-state"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -97,13 +98,24 @@ const MAX_AUTO_LOADS = 25
  * to the byline-only treatment since the sentence already names both
  * ends of the action.
  *
- * A `<header>` above the list carries the "Feed" heading on the
- * left and a per-tier filter popover (Hyperlabel quality tiers) on
- * the right. Bottom of the list hosts an IntersectionObserver
- * sentinel that calls `useHomeFeed`'s `loadMore` when it enters
- * the viewport.
+ * Layout (the /feed page): at 1100px and wider, three columns: the
+ * filters in a sticky box on the left, the page header + list in the
+ * middle and `news` on the right. Below 1100px it is one column and the
+ * filters sit behind the "For you" disclosure above the list. The list
+ * ends in an IntersectionObserver sentinel that calls `useHomeFeed`'s
+ * `loadMore` when it enters the viewport.
  */
-export default function HomeFeed({ activeDid }: { activeDid: string }) {
+export default function HomeFeed({
+  activeDid,
+  header,
+  news,
+}: {
+  activeDid: string
+  /** Page header rendered at the top of the middle column. */
+  header?: React.ReactNode
+  /** Right-column content at 1100px and wider (hidden below). */
+  news?: React.ReactNode
+}) {
   // Home feed reads ONLY the Certified follow graph
   // (`app.certified.graph.follow`). Viewers who want their Bluesky
   // follows reflected here run the social-graph sync in Settings,
@@ -152,6 +164,8 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
   // clicking the active tab toggles the disclosure).
   const [filterOpen, setFilterOpen] = useState(false)
   const filterPanelId = useId()
+  const sidebarPanelId = useId()
+  const sidebarTitleId = useId()
   const filterWrapRef = useRef<HTMLDivElement>(null)
   useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
   useEffect(() => {
@@ -243,59 +257,89 @@ export default function HomeFeed({ activeDid }: { activeDid: string }) {
     setCustomEvaluators(null)
   }
 
+  const filterPanelProps = {
+    evaluatorDids,
+    selectedEvaluators,
+    onEvaluatorsChange: handleEvaluatorsChange,
+    includedTiers,
+    onTiersChange: setIncludedTiers,
+    includedOrgTiers,
+    onOrgTiersChange: setIncludedOrgTiers,
+    isDefault: isDefaultFilters,
+    onReset: resetFilters,
+  }
+
+  // DOM order is main, filters, news (main content first for keyboard
+  // and screen-reader users); the grid areas put the filters on the left.
   return (
-    <>
-      {/* certs.social-style tab strip. One tab for now ("For you");
-          clicking the active tab toggles the inline filter panel. */}
-      <div ref={filterWrapRef}>
-        {/* A disclosure, not a tab: the button shows/hides the inline
-            filter panel below (aria-controls). */}
-        <div className="feed-tabs">
-          <div className="feed-tabs__tab-wrapper">
-            <button
-              type="button"
-              className="feed-tabs__tab feed-tabs__tab--active"
-              aria-expanded={filterOpen}
-              aria-controls={filterPanelId}
-              onClick={() => setFilterOpen((v) => !v)}
-            >
-              {isDefaultFilters ? "For you" : "Custom"}
-              <ChevronDown
-                size={14}
-                aria-hidden
-                className={`feed-tabs__chevron${filterOpen ? " feed-tabs__chevron--open" : ""}`}
-              />
-            </button>
+    <div className="feed-layout">
+      <div className="feed-layout__main">
+        {header}
+        {/* Below 1100px: certs.social-style tab strip. One tab for now
+            ("For you"); clicking the active tab toggles the inline filter
+            panel. Hidden at 1100px and wider, where the filters have their
+            own column. */}
+        <div ref={filterWrapRef} className="feed-layout__disclosure">
+          {/* A disclosure, not a tab: the button shows/hides the inline
+              filter panel below (aria-controls). */}
+          <div className="feed-tabs">
+            <div className="feed-tabs__tab-wrapper">
+              <button
+                type="button"
+                className="feed-tabs__tab feed-tabs__tab--active"
+                aria-expanded={filterOpen}
+                aria-controls={filterPanelId}
+                onClick={() => setFilterOpen((v) => !v)}
+              >
+                {isDefaultFilters ? "For you" : "Custom"}
+                <ChevronDown
+                  size={14}
+                  aria-hidden
+                  className={`feed-tabs__chevron${filterOpen ? " feed-tabs__chevron--open" : ""}`}
+                />
+              </button>
+            </div>
           </div>
+          {filterOpen ? (
+            <FeedFilterPanel id={filterPanelId} {...filterPanelProps} />
+          ) : null}
         </div>
-        {filterOpen ? (
-          <FeedFilterPanel
-            id={filterPanelId}
-            evaluatorDids={evaluatorDids}
-            selectedEvaluators={selectedEvaluators}
-            onEvaluatorsChange={handleEvaluatorsChange}
-            includedTiers={includedTiers}
-            onTiersChange={setIncludedTiers}
-            includedOrgTiers={includedOrgTiers}
-            onOrgTiersChange={setIncludedOrgTiers}
-            isDefault={isDefaultFilters}
-            onReset={resetFilters}
+        <div className="feed-layout__list">
+          <HomeFeedBody
+            followsLoading={followsLoading}
+            followsError={!!followsError}
+            onRetryFollows={refetchFollows}
+            followedCount={effectiveFollows.size}
+            isLoading={isLoading}
+            error={error}
+            events={events}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            loadMore={loadMore}
           />
-        ) : null}
+        </div>
       </div>
-      <HomeFeedBody
-        followsLoading={followsLoading}
-        followsError={!!followsError}
-        onRetryFollows={refetchFollows}
-        followedCount={effectiveFollows.size}
-        isLoading={isLoading}
-        error={error}
-        events={events}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
-        loadMore={loadMore}
-      />
-    </>
+
+      {/* 1100px and wider: the same filters, always open. */}
+      <div className="feed-layout__filters">
+        <Card unpadded className="feed-layout__box">
+          <h2 id={sidebarTitleId} className="feed-layout__box-title font-headline text-h4">
+            Filters
+            {isDefaultFilters ? null : (
+              <span className="feed-layout__box-state">Custom</span>
+            )}
+          </h2>
+          <FeedFilterPanel
+            id={sidebarPanelId}
+            labelledBy={sidebarTitleId}
+            className="feed-evaluator-panel--sidebar"
+            {...filterPanelProps}
+          />
+        </Card>
+      </div>
+
+      {news ? <div className="feed-layout__news">{news}</div> : null}
+    </div>
   )
 }
 
@@ -505,6 +549,8 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
  */
 function FeedFilterPanel({
   id,
+  labelledBy,
+  className,
   evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
@@ -516,6 +562,9 @@ function FeedFilterPanel({
   onReset,
 }: {
   id: string
+  /** Id of a visible title that names the panel; falls back to a label. */
+  labelledBy?: string
+  className?: string
   evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
@@ -536,9 +585,10 @@ function FeedFilterPanel({
   return (
     <div
       id={id}
-      className="feed-evaluator-panel"
+      className={className ? `feed-evaluator-panel ${className}` : "feed-evaluator-panel"}
       role="region"
-      aria-label="Feed filters"
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : "Feed filters"}
     >
       {/* Each checkbox group is a <fieldset> so its heading (the
           <legend>) is announced when focus moves into the group. */}

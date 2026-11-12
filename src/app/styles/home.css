@@ -155,10 +155,20 @@
   color: var(--fg-muted);
 }
 
+/* SmartLink renders its icon and the link as siblings; Tailwind's
+   preflight makes the svg a block, so lay them out as one row. */
 .home-account__website {
-  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
+  margin-top: 8px;
   font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.home-account__website > svg {
+  flex-shrink: 0;
 }
 
 .home-account__actions {

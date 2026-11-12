@@ -21,7 +21,7 @@ export interface EmptyStateProps {
    * - `"rich"` (default): the centered block with optional icon, headline
    *   title, description, and CTA slot. Use for full-section placeholders.
    * - `"inline"`: the truly minimal single-line hint for the ~12 inline
-   *   `*__empty` slots (`home-block__empty`, `org-list__empty`,
+   *   `*__empty` slots (`org-list__empty`,
    *   `right-rail__empty`, …). One muted line of text — no icon, no headline
    *   weight, no container, zero margin. This is the canonical replacement for
    *   those one-off BEM classes.

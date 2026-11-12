@@ -101,7 +101,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/feed",
     anchor: "feed",
     title: "Your feed",
-    body: "Your feed shows recent activities, projects, and endorsements from the accounts and groups you follow. The more you follow, the richer it gets.",
+    body: "Your feed shows new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
     placement: "right",
   },
 

@@ -1520,8 +1520,20 @@
 }
 
 /* ---------- /feed page ----------
-   A column page (the shell's 600px reading width): a header saying whose
-   feed this is, then the feed's own filter strip and cards (home.css). */
+   Page-frame page (layout.css lifts the shell's 600px cap on desktop).
+   Below 1100px: one 600px column; the filters sit behind the "For you"
+   disclosure. From 1100px: filters | feed | news, the feed column capped
+   at 600px and the filters box sticky under the top bar. */
+
+.feed-page {
+  padding: 8px 0 32px;
+}
+
+@media (min-width: 800px) {
+  .feed-page {
+    padding: 24px 24px 64px;
+  }
+}
 
 .feed-page__loading {
   display: flex;
@@ -1530,11 +1542,109 @@
   min-height: 50vh;
 }
 
+.feed-layout {
+  max-width: 600px;
+  margin-inline: auto;
+}
+
+.feed-layout__main {
+  min-width: 0;
+}
+
+.feed-layout__filters,
+.feed-layout__news {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .feed-layout {
+    display: grid;
+    grid-template-areas: "filters main news";
+    grid-template-columns: 220px minmax(0, 600px) 280px;
+    justify-content: center;
+    align-items: start;
+    gap: 24px;
+    max-width: none;
+  }
+
+  .feed-layout__main {
+    grid-area: main;
+  }
+
+  .feed-layout__filters {
+    grid-area: filters;
+    display: block;
+    position: sticky;
+    top: calc(var(--top-bar-total) + 24px);
+    max-height: calc(100vh - var(--top-bar-total) - 48px);
+    overflow-y: auto;
+  }
+
+  .feed-layout__news {
+    grid-area: news;
+    display: block;
+    min-width: 0;
+  }
+
+  /* The filters have their own column, so the "For you" strip goes; the
+     list takes over the strip's dividing rule. */
+  .feed-layout__disclosure {
+    display: none;
+  }
+
+  .feed-layout__list {
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+@media (min-width: 1300px) {
+  .feed-layout {
+    grid-template-columns: 240px minmax(0, 600px) 300px;
+    gap: 32px;
+  }
+}
+
+/* Filters box (1100px and wider). */
+.feed-layout__box-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 16px 16px 0;
+  color: var(--fg-primary);
+}
+
+.feed-layout__box-state {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--fg-muted);
+}
+
+/* Same panel as the mobile disclosure, minus its strip chrome. */
+.feed-evaluator-panel--sidebar {
+  padding: 4px 16px 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.feed-page__news {
+  padding: 16px;
+}
+
 .feed-page__header {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 8px 0 24px;
+}
+
+@media (min-width: 800px) {
+  .feed-page__header {
+    padding-top: 0;
+  }
 }
 
 .feed-page__title {
