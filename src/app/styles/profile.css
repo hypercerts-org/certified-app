@@ -564,7 +564,7 @@
    tech). Scoped under `.profile-page` so it overrides the Button
    primitive's filled "primary" variant (single-class utilities). */
 @media (max-width: 799px) {
-  .profile-new-record-btn__label {
+  .profile-page .profile-new-record-btn__label {
     display: none;
   }
   .profile-page .profile-new-record-btn {

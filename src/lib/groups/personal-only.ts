@@ -13,13 +13,17 @@
  *                      account switcher.
  *   - "endorsements" : the underlying record lives in the personal
  *                      repo only; no group analogue exists.
+ *   - "records"      : the /records manager writes through the XRPC
+ *                      proxy (session repo only), and lists have no group
+ *                      write path at all.
  */
-export type PersonalOnlyRoute = "create" | "groups" | "endorsements"
+export type PersonalOnlyRoute = "create" | "groups" | "endorsements" | "records"
 
 const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = [
   "create",
   "groups",
   "endorsements",
+  "records",
 ]
 
 /**
@@ -53,5 +57,6 @@ export function pathnameToPersonalOnlyRoute(
   if (pathname === "/endorsements" || pathname.startsWith("/endorsements/")) {
     return "endorsements"
   }
+  if (pathname === "/records" || pathname.startsWith("/records/")) return "records"
   return null
 }

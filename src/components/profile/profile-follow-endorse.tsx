@@ -126,10 +126,14 @@ interface FollowButtonProps {
   /** Fired after a successful deleteFollow. Caller does the optimistic
    *  state update mirroring `onFollowed`. */
   onUnfollowed: () => void
+  /** Name of the account, for the accessible name ("Follow Ada") when
+   *  many follow buttons share a list. */
+  subjectName?: string
 }
 
 export function FollowButton({
   viewerDid,
+  subjectName,
   subjectDid,
   targetDid,
   isFollowing,
@@ -180,6 +184,9 @@ export function FollowButton({
       onClick={handleClick}
       disabled={disabled}
       aria-pressed={isFollowing}
+      aria-label={
+        subjectName ? `${isFollowing ? "Following" : "Follow"} ${subjectName}` : undefined
+      }
     >
       {isFollowing ? (
         <Check size={14} strokeWidth={1.75} aria-hidden />

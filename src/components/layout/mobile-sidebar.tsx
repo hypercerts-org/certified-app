@@ -4,11 +4,12 @@ import { useEffect } from "react";
 import { ownProfileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Newspaper, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
+import { Home, Library, Newspaper, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
+import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { useFeedback } from "@/lib/feedback-context";
 import Avatar from "@/components/ui/avatar";
@@ -81,6 +82,10 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         { href: "/feed", label: "Feed", icon: Newspaper },
         { href: "/explore", label: "Explore", icon: Search },
         { href: "/apps", label: "Apps", icon: LayoutGrid },
+        // Records: personal account only (see personal-only.ts).
+        ...(isRouteVisibleToActor("records", !!activeOrg)
+          ? [{ href: "/records", label: "Records", icon: Library }]
+          : []),
         { href: profileHref, label: "Profile", icon: User },
         { href: "/settings", label: "Settings", icon: Settings },
         { key: "feedback", label: "Feedback", icon: MessageSquare, onClick: handleFeedbackClick },

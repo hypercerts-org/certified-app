@@ -18,6 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/home",
           "/feed",
+          "/records",
           "/explore",
           "/activity",
           "/activity/*",

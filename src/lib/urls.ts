@@ -63,6 +63,7 @@ export function typeForCollection(collection: string): RecordType | null {
 export const RESERVED_ROUTES: ReadonlySet<string> = new Set([
   "home",
   "feed",
+  "records",
   "welcome",
   "create",
   "explore",

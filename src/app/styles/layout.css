@@ -741,7 +741,7 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
   }
 }
 
-/* ========== Page-frame layout (shared by /home, /explore and /feed) ==========
+/* ========== Page-frame layout (/home, /explore, /feed, /records) ==========
    Pages that span the viewport edge-to-edge and set their own width:
    /explore with its sidebar/main divider, /home with its account
    column (home.css). They drop the shell's reading-column width
@@ -755,15 +755,15 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
    when introducing another page that wants this layout. Per-page
    styling (sidebar width, grid columns, divider color) stays in
    the per-page CSS file. */
-.app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page)) .app-shell__grid {
+.app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page)) .app-shell__grid {
   max-width: none;
 }
 
 @media (min-width: 800px) {
-  .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page)) .app-shell__grid {
+  .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page)) .app-shell__grid {
     grid-template-columns: 1fr;
   }
-  .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page)) .app-shell__content {
+  .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page)) .app-shell__content {
     max-width: none;
     padding-top: var(--navbar-height);
     padding-bottom: 0;
@@ -772,12 +772,12 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
     display: flex;
     flex-direction: column;
   }
-  :is(.home-page, .explore-page, .feed-page) {
+  :is(.home-page, .explore-page, .feed-page, .records-page) {
     flex: 1;
   }
   /* Footer carries margin-top: 48px elsewhere; collapse it so the
      sidebar/main divider meets the footer border flush. */
-  html:is(:has(.home-page), :has(.explore-page), :has(.feed-page)) .site-footer {
+  html:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page)) .site-footer {
     margin-top: 0;
   }
 }

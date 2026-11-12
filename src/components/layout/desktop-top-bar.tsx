@@ -18,6 +18,7 @@ import {
   HelpCircle,
   Home,
   LayoutGrid,
+  Library,
   Menu,
   Newspaper,
   Plus,
@@ -34,6 +35,7 @@ import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { routeForActorSwitch } from "@/lib/groups/navigation";
+import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
 import Avatar from "@/components/ui/avatar";
 import Button from "@/components/ui/button";
 import { getInitials } from "@/lib/utils/initials";
@@ -478,6 +480,20 @@ export default function DesktopTopBar() {
             <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
             <span className="desktop-top-bar__icon-label">Apps</span>
           </Link>
+
+          {/* Records manager: personal account only (see personal-only.ts). */}
+          {isAuthenticated && isRouteVisibleToActor("records", !!activeOrg) ? (
+            <Link
+              href="/records"
+              className="desktop-top-bar__icon-btn"
+              aria-label="Records"
+              aria-current={currentIf(isUnder("/records"))}
+              data-tour="nav-records"
+            >
+              <Library size={20} strokeWidth={1.5} aria-hidden />
+              <span className="desktop-top-bar__icon-label">Records</span>
+            </Link>
+          ) : null}
 
           {isAuthenticated ? (
             <Link
