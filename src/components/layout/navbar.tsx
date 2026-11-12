@@ -36,6 +36,7 @@ const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 // shows a back arrow.
 const ROOT_PATHS = new Set<string>([
   "/home",
+  "/feed",
   "/explore",
   "/apps",
   "/profile",

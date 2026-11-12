@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight, FolderGit2, Plus } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
+import Card from "@/components/ui/card"
 import CertIcon from "@/components/ui/cert-icon"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -31,6 +32,8 @@ import { getInitials } from "@/lib/utils/initials"
 const LATEST_RECORDS = 4
 const LATEST_ENDORSEMENTS = 3
 const GROUP_PREVIEW = 5
+/** Apps shown on home; the rest are one click away under "All apps". */
+const HOME_APPS = CONNECTED_APPS.slice(0, 4)
 
 // ---------------------------- Shared shell ----------------------------------
 
@@ -186,8 +189,8 @@ export function HomeRecords({
 
   return (
     <HomeBlock
-      title="Records"
-      description="What this account has published, here and in other apps."
+      title="Your records"
+      description="What you have published, here or in other apps."
       tour="home-records"
       action={
         canCreate ? (
@@ -298,7 +301,7 @@ export function HomeReceived({
   return (
     <HomeBlock
       title="From others"
-      description="Endorsements and follows that other accounts have given this one."
+      description="Endorsements and follows that others have given you."
       tour="home-received"
       action={endorsements.length > LATEST_ENDORSEMENTS ? <SeeAll href={endorsementsHref} /> : null}
     >
@@ -317,16 +320,12 @@ export function HomeReceived({
         />
       </ul>
 
+      {/* No endorsements yet: the zero on the tile says it; no extra line. */}
       {isLoading && preview.length === 0 ? (
         <div className="home-block__loading">
           <LoadingSpinner size="sm" />
         </div>
-      ) : preview.length === 0 ? (
-        <p className="home-block__note">
-          No endorsements yet. When another account endorses this one, it
-          shows here and on the profile.
-        </p>
-      ) : (
+      ) : preview.length === 0 ? null : (
         <>
           <h3 className="home-block__subhead">Latest endorsements</h3>
           {/* Reuses the profile Overview's endorsement rows and styles. */}
@@ -352,7 +351,7 @@ export function HomeApps() {
       action={<SeeAll href="/apps" label="All apps" />}
     >
       <ul className="home-apps">
-        {CONNECTED_APPS.map((app) => (
+        {HOME_APPS.map((app) => (
           <li key={app.name}>
             <SsoAppLink
               url={app.url}
@@ -386,57 +385,67 @@ export function HomeApps() {
 
 // -------------------------------- Groups ------------------------------------
 
-/** The groups the signed-in person belongs to. Personal account only:
- *  while acting as a group the list would be the person's, not the group's. */
+/**
+ * The groups the signed-in person belongs to, as a box under the account
+ * card, with "New group" in its corner. Personal account only: while acting
+ * as a group the list would be the person's, not the group's.
+ */
 export function HomeGroups({ profileBase }: { profileBase: string }) {
   const { groups, isLoading } = useOrg()
-  if (isLoading || groups.length === 0) return null
+  const titleId = useId()
   const preview = groups.slice(0, GROUP_PREVIEW)
   return (
-    <HomeBlock
-      title="Your groups"
-      description="Switch to a group from the account menu to act for it."
-      action={groups.length > GROUP_PREVIEW ? <SeeAll href={`${profileBase}?tab=groups`} /> : null}
+    <Card
+      as="section"
+      unpadded
+      className="home-groups-card"
+      aria-labelledby={titleId}
+      data-tour="home-groups"
     >
-      <ul className="home-groups">
-        {preview.map((g) => {
-          const label = g.displayName || g.handle || "Group"
-          return (
-            <li key={g.groupDid}>
-              <Link
-                href={`/groups/${encodeURIComponent(g.groupDid)}`}
-                className="home-group"
-              >
-                <Avatar
-                  size="sm"
-                  src={g.avatarUrl}
-                  alt=""
-                  fallbackInitials={getInitials(g.displayName ?? g.handle, g.handle)}
-                />
-                <span className="home-group__name" dir="auto">{label}</span>
-                <Badge variant="role">{g.role}</Badge>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-    </HomeBlock>
-  )
-}
-
-// --------------------------------- Feed -------------------------------------
-
-/** Wraps the follow-graph feed so it sits on the page as one section among
- *  the others, under its own heading. */
-export function HomeFeedBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <HomeBlock
-      title="From accounts you follow"
-      description="New activities, projects and endorsements from accounts and groups you follow."
-      className="home-block--feed"
-      tour="home-feed"
-    >
-      {children}
-    </HomeBlock>
+      <div className="home-groups-card__head">
+        <h2 id={titleId} className="home-groups-card__title font-headline text-h4">
+          Your groups
+        </h2>
+        <Button href="/groups/create" variant="ghost" size="sm">
+          <Plus size={14} aria-hidden />
+          New group
+        </Button>
+      </div>
+      {isLoading && groups.length === 0 ? (
+        <div className="home-groups-card__loading">
+          <LoadingSpinner size="sm" />
+        </div>
+      ) : groups.length === 0 ? (
+        <p className="home-groups-card__empty">You&apos;re not in any groups yet.</p>
+      ) : (
+        <ul className="home-groups">
+          {preview.map((g) => {
+            const label = g.displayName || g.handle || "Group"
+            return (
+              <li key={g.groupDid}>
+                <Link
+                  href={`/groups/${encodeURIComponent(g.groupDid)}`}
+                  className="home-group"
+                >
+                  <Avatar
+                    size="sm"
+                    src={g.avatarUrl}
+                    alt=""
+                    fallbackInitials={getInitials(g.displayName ?? g.handle, g.handle)}
+                  />
+                  <span className="home-group__name" dir="auto">{label}</span>
+                  <Badge variant="role">{g.role}</Badge>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {groups.length > GROUP_PREVIEW ? (
+        <div className="home-groups-card__more">
+          <SeeAll href={`${profileBase}?tab=groups`} label={`All ${groups.length} groups`} />
+        </div>
+      ) : null}
+    </Card>
   )
 }

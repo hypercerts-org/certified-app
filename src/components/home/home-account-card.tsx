@@ -1,7 +1,6 @@
 "use client"
 
 import { useId, useState } from "react"
-import Link from "next/link"
 import { Pencil } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
@@ -32,9 +31,10 @@ export default function HomeAccountCard({
   const nameId = useId()
   const idHeadingId = useId()
 
-  // A banner that fails to load falls back to the plain fill rather than
-  // the browser's broken-image glyph. Reset when the URL changes (e.g. the
-  // viewer switches account) using the adjust-state-during-render pattern.
+  // No banner (or one that fails to load) means no banner strip at all: the
+  // card starts with the avatar instead of an empty grey band. Reset the
+  // failure flag when the URL changes, using the adjust-state-during-render
+  // pattern.
   const [bannerFailed, setBannerFailed] = useState(false)
   const [prevBannerUrl, setPrevBannerUrl] = useState(bannerUrl)
   if (prevBannerUrl !== bannerUrl) {
@@ -55,12 +55,6 @@ export default function HomeAccountCard({
     : canManageGroup
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : null
-  // Where the handle (and, for a person, the custom domain) is changed.
-  const settingsHref = !isGroup
-    ? "/settings"
-    : canManageGroup
-      ? `/groups/${encodeURIComponent(did)}/settings`
-      : null
 
   const realName = profile?.displayName || activeGroup?.displayName || null
   const displayName = realName || (handle ? `@${handle}` : "Your account")
@@ -71,17 +65,13 @@ export default function HomeAccountCard({
     <Card
       as="section"
       unpadded
-      className="home-account"
+      className={showBanner ? "home-account" : "home-account home-account--no-banner"}
       aria-labelledby={nameId}
       data-tour="home-account"
     >
-      <div
-        className={
-          showBanner ? "home-account__banner" : "home-account__banner home-account__banner--empty"
-        }
-      >
-        {showBanner ? (
-          // eslint-disable-next-line @next/next/no-img-element
+      {showBanner ? (
+        <div className="home-account__banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerUrl!}
             alt=""
@@ -89,8 +79,8 @@ export default function HomeAccountCard({
             loading="lazy"
             onError={() => setBannerFailed(true)}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="home-account__body">
         <div className="home-account__avatar">
@@ -156,8 +146,8 @@ export default function HomeAccountCard({
         <h3 id={idHeadingId} className="home-account__id-title">ID</h3>
         <p className="home-account__id-note">
           {isGroup
-            ? "Identifies this group's account wherever its records appear."
-            : "Identifies your account. Apps use it to sign you in."}
+            ? "Identifies this group's account in every app."
+            : "Identifies your account in every app."}
         </p>
         <dl className="home-account__id-list">
           {handle ? (
@@ -175,11 +165,6 @@ export default function HomeAccountCard({
             </dd>
           </div>
         </dl>
-        {settingsHref ? (
-          <Link href={settingsHref} className="home-account__id-link">
-            {isGroup ? "Group settings" : "Change your handle in settings"}
-          </Link>
-        ) : null}
       </div>
     </Card>
   )

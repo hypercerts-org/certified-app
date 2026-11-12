@@ -19,6 +19,7 @@ import {
   Home,
   LayoutGrid,
   Menu,
+  Newspaper,
   Plus,
   Settings,
   User,
@@ -451,6 +452,19 @@ export default function DesktopTopBar() {
             >
               <Home size={20} strokeWidth={1.5} aria-hidden />
               <span className="desktop-top-bar__icon-label">Home</span>
+            </Link>
+          ) : null}
+
+          {isAuthenticated ? (
+            <Link
+              href="/feed"
+              className="desktop-top-bar__icon-btn"
+              aria-label="Feed"
+              aria-current={currentIf(pathname === "/feed")}
+              data-tour="nav-feed"
+            >
+              <Newspaper size={20} strokeWidth={1.5} aria-hidden />
+              <span className="desktop-top-bar__icon-label">Feed</span>
             </Link>
           ) : null}
 

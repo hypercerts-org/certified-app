@@ -1,7 +1,8 @@
 /* ---------- /home page ----------
    The signed-in home is about the account: an account card (profile + ID)
-   beside the account's sections (records, endorsements and follows from
-   others, apps, groups), with the follow feed as the last section.
+   and a "Your groups" box beside the account's sections (records,
+   endorsements and follows from others, apps). The follow feed lives on
+   /feed; its card styles stay in this file (.home-feed*).
 
    The page-frame shell rules in layout.css
    (`:is(:has(.home-page), :has(.explore-page))`) zero the desktop shell
@@ -58,18 +59,6 @@
   }
 }
 
-/* The news panel only fits beside the sections; in one column it would
-   push the account's own sections down, so it is left out there. */
-.home__news {
-  display: none;
-}
-
-@media (min-width: 1100px) {
-  .home__news {
-    display: block;
-  }
-}
-
 /* ---------- Account card ---------- */
 
 /* Surface, border and radius come from <Card>; clip the banner to it. */
@@ -101,6 +90,16 @@
   align-self: flex-start;
   margin-top: -32px;
   margin-bottom: 8px;
+}
+
+/* No banner: no grey band either. The card starts with the avatar on the
+   card surface, with the card's own top padding. */
+.home-account--no-banner .home-account__body {
+  padding-top: 20px;
+}
+
+.home-account--no-banner .home-account__avatar {
+  margin-top: 0;
 }
 
 .home-account__eyebrow,
@@ -210,21 +209,6 @@
   margin: 0;
 }
 
-.home-account__id-link {
-  align-self: flex-start;
-  margin-top: 4px;
-  font-size: var(--text-ui);
-  color: var(--fg-secondary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .home-account__id-link:hover {
-    color: var(--fg-primary);
-  }
-}
-
 /* ---------- Sections ---------- */
 
 .home-block {
@@ -254,8 +238,7 @@
   text-wrap: balance;
 }
 
-.home-block__desc,
-.home-block__note {
+.home-block__desc {
   max-width: var(--measure);
   margin: 0;
   font-size: var(--text-body-sm);
@@ -502,11 +485,46 @@
   color: var(--fg-muted);
 }
 
-/* The feed keeps its 600px reading width inside the wider main column. */
-@media (min-width: 800px) {
-  .home-block--feed {
-    max-width: 600px;
-  }
+/* ---------- Your groups (box under the account card) ---------- */
+
+.home-groups-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 12px 20px;
+}
+
+.home-groups-card__title {
+  margin: 0;
+  color: var(--fg-primary);
+}
+
+.home-groups-card__loading {
+  display: flex;
+  padding: 0 20px 16px;
+}
+
+.home-groups-card__empty {
+  margin: 0;
+  padding: 0 20px 20px;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+/* Rows run edge to edge inside the box; the box's border closes the list. */
+.home-groups-card .home-groups > li:last-child {
+  border-bottom: 0;
+}
+
+.home-groups-card .home-group {
+  padding-inline: 20px;
+}
+
+.home-groups-card__more {
+  padding: 4px 20px 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { ownProfileUrl } from "@/lib/urls"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
+import { Home, Newspaper, Search, MessageSquare, User, Settings, LayoutGrid, HelpCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
@@ -78,6 +78,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const navLinks = isAuthenticated
     ? [
         { href: "/home", label: "Home", icon: Home },
+        { href: "/feed", label: "Feed", icon: Newspaper },
         { href: "/explore", label: "Explore", icon: Search },
         { href: "/apps", label: "Apps", icon: LayoutGrid },
         { href: profileHref, label: "Profile", icon: User },

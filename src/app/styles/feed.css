@@ -1518,3 +1518,68 @@
 .feed__hint p {
   margin: 0;
 }
+
+/* ---------- /feed page ----------
+   A column page (the shell's 600px reading width): a header saying whose
+   feed this is, then the feed's own filter strip and cards (home.css). */
+
+.feed-page__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.feed-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 24px;
+}
+
+.feed-page__title {
+  margin: 0;
+  color: var(--fg-primary);
+  text-wrap: balance;
+}
+
+.feed-page__intro {
+  max-width: var(--measure);
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.feed-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+.feed-page__meta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feed-page__meta-link:hover {
+    color: var(--fg-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.feed-page__count {
+  font-weight: 600;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}

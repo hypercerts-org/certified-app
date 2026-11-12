@@ -9,40 +9,31 @@ import { useActorWorkspaceCounts } from "@/hooks/use-workspace"
 import { usePageTitle } from "@/lib/navbar-context"
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only"
 import { ownProfileUrl } from "@/lib/urls"
-import Card from "@/components/ui/card"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import HomeFeed from "@/components/home/home-feed"
 import HomeAccountCard from "@/components/home/home-account-card"
 import {
   HomeApps,
-  HomeFeedBlock,
   HomeGroups,
   HomeReceived,
   HomeRecords,
 } from "@/components/home/home-sections"
-import NewsSection from "@/components/right-rail/news-section"
-
-/** DID of the actor whose Bluesky timeline powers the home page's
- *  "News from Certified" panel. Hard-coded — the source of truth lives in
- *  this component because the home page is its only consumer. */
-const NEWS_ACTOR_DID = "did:plc:apun3uo5jqm34pxzqq6on754"
 
 /**
- * Signed-in home: the account first, the feed last.
+ * Signed-in home: the account and what it holds. The follow feed has its
+ * own page, /feed.
  *
  *   ≥ 1100px                                 < 1100px (one column)
  *   ┌──────────────┐ ┌──────────────────┐    account card
- *   │ account card │ │ Records          │    Records
- *   │  profile     │ │ From others      │    From others
- *   │  ID          │ │ Apps             │    Apps
- *   ├──────────────┤ │ Your groups      │    Your groups
- *   │ news         │ │ From accounts    │    From accounts you follow
- *   └──────────────┘ │  you follow      │
- *                    └──────────────────┘
+ *   │ account card │ │ Your records     │    Your groups
+ *   │  profile     │ │ From others      │    Your records
+ *   │  ID          │ │ Apps             │    From others
+ *   ├──────────────┤ └──────────────────┘    Apps
+ *   │ Your groups  │
+ *   └──────────────┘
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the account switcher. "Your groups" is
- * the one personal-only section.
+ * personal-only.
  */
 export default function Home() {
   usePageTitle("Home")
@@ -97,10 +88,7 @@ export default function Home() {
       <div className="home__layout" key={activeDid}>
         <div className="home__aside">
           <HomeAccountCard did={activeDid} activeGroup={activeOrg ?? null} />
-          {/* NewsSection renders its own named <section>. */}
-          <Card className="home__news">
-            <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
-          </Card>
+          {activeOrg ? null : <HomeGroups profileBase={profileBase} />}
         </div>
 
         <div className="home__main">
@@ -118,10 +106,6 @@ export default function Home() {
             countsLoading={countsLoading}
           />
           <HomeApps />
-          {activeOrg ? null : <HomeGroups profileBase={profileBase} />}
-          <HomeFeedBlock>
-            <HomeFeed activeDid={activeDid} />
-          </HomeFeedBlock>
         </div>
       </div>
     </div>

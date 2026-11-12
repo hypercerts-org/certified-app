@@ -91,7 +91,17 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: "home-account",
     title: "Your account",
-    body: "Your profile and your ID. The ID identifies your account, and apps use it to sign you in. The rest of the page shows your records, endorsements, apps and the feed from accounts you follow.",
+    body: "Your profile and your ID. The ID identifies your account in every app. The rest of the page shows your records, the endorsements and follows others have given you, and apps you can use.",
+    placement: "right",
+  },
+
+  // ---- Feed ----------------------------------------------------------
+  {
+    id: "feed",
+    navigateTo: "/feed",
+    anchor: "feed",
+    title: "Your feed",
+    body: "Your feed shows recent activities, projects, and endorsements from the accounts and groups you follow. The more you follow, the richer it gets.",
     placement: "right",
   },
 
