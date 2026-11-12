@@ -272,20 +272,133 @@
   text-overflow: ellipsis;
 }
 
-/* Name over handle in one column next to the avatar. */
-.feed-evaluators__who {
-  display: flex;
-  flex-direction: column;
+/* Trusted-evaluator row: checkbox, then avatar + name as one button that
+   opens a profile preview. The checkbox keeps its own (unlabelled) box, so
+   it doesn't stretch like the label rows above; its invisible input grows
+   to a 32px hit area (44px tall on touch) without covering the button. */
+.feed-evaluators__row--evaluator > div {
+  flex: 0 0 auto;
+}
+
+.feed-evaluators__row--evaluator > span {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.feed-evaluators__handle {
-  font-family: var(--font-inter), system-ui, sans-serif;
+.feed-evaluators__row--evaluator input[type="checkbox"] {
+  inset: -8px;
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-width: 799px) {
+  .feed-evaluators__row--evaluator input[type="checkbox"] {
+    top: -14px;
+    height: 44px;
+  }
+}
+
+.feed-evaluators__person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 0 -4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feed-evaluators__person:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feed-evaluators__person:hover .feed-evaluators__name {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+/* Profile preview in the evaluator popover. */
+.evaluator-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 288px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+}
+
+.evaluator-preview__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.evaluator-preview__who {
+  min-width: 0;
+}
+
+.evaluator-preview__name {
+  margin: 0;
+  font-size: var(--text-h4);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.evaluator-preview__handle {
+  margin: 0;
+  font-size: var(--text-ui);
   color: var(--fg-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.evaluator-preview__bio {
+  display: -webkit-box;
+  margin: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.evaluator-preview__stats {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+}
+
+/* Value above its label. */
+.evaluator-preview__stat {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.evaluator-preview__stat dt {
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+}
+
+.evaluator-preview__stat dd {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .feed-evaluators__separator {

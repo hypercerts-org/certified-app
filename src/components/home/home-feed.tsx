@@ -14,6 +14,7 @@ import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
 import Checkbox from "@/components/ui/checkbox"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import EmptyState from "@/components/ui/empty-state"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -35,6 +36,7 @@ import {
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
+import EvaluatorPreview from "./evaluator-preview"
 import HomeFeedSkeleton from "./home-feed-skeleton"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
 
@@ -329,6 +331,7 @@ export default function HomeFeed({
             id={sidebarPanelId}
             labelledBy={sidebarTitleId}
             className="feed-evaluator-panel--sidebar"
+            previewInPortal
             {...filterPanelProps}
           />
         </Card>
@@ -547,6 +550,7 @@ function FeedFilterPanel({
   id,
   labelledBy,
   className,
+  previewInPortal = false,
   evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
@@ -561,6 +565,10 @@ function FeedFilterPanel({
   /** Id of a visible title that names the panel; falls back to a label. */
   labelledBy?: string
   className?: string
+  /** Portal the evaluator previews (the desktop filter box scrolls and
+   *  would clip them). The mobile disclosure keeps them inline so a click
+   *  in the preview counts as inside the panel and doesn't close it. */
+  previewInPortal?: boolean
   evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
@@ -597,6 +605,7 @@ function FeedFilterPanel({
             <EvaluatorRow
               key={did}
               did={did}
+              previewInPortal={previewInPortal}
               checked={selectedEvaluators.has(did)}
               onToggle={() =>
                 onEvaluatorsChange(toggled(selectedEvaluators, did))
@@ -679,33 +688,42 @@ function FilterCheckRow({
 }
 
 /**
- * One trusted-evaluator row — checkbox + avatar + display name +
- * @handle, the whole row a click-to-toggle label (certs.social's
- * EvaluatorCheckbox layout). Selecting an evaluator pulls every DID
- * they've endorsed into the effective follow set, so the feed shows
- * transitively-vouched activity.
+ * One trusted-evaluator row: a checkbox, then the evaluator's avatar and
+ * display name. The checkbox includes or leaves out the accounts they
+ * endorse (selecting an evaluator pulls every DID they've endorsed into the
+ * effective follow set, so the feed shows transitively-vouched activity).
+ * The avatar and name open a short profile preview with a link to the full
+ * profile.
  */
 function EvaluatorRow({
   did,
   checked,
   onToggle,
+  previewInPortal,
 }: {
   did: string
   checked: boolean
   onToggle: () => void
+  previewInPortal: boolean
 }) {
   const { info } = useAuthorInfo(did)
   const label =
     info?.displayName ||
     (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
   return (
-    <div className="feed-evaluators__row">
+    <div className="feed-evaluators__row feed-evaluators__row--evaluator">
       <Checkbox
         checked={checked}
         onChange={onToggle}
         aria-label={`Include endorsements by ${label}`}
-        label={
-          <>
+      />
+      <Popover>
+        <PopoverTrigger>
+          <button
+            type="button"
+            className="feed-evaluators__person"
+            aria-label={`Show profile preview: ${label}`}
+          >
             {info?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -719,16 +737,19 @@ function EvaluatorRow({
             ) : (
               <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
             )}
-            {/* Name over handle, so both fit the narrow filter column. */}
-            <span className="feed-evaluators__who">
-              <span className="feed-evaluators__name" dir="auto">{label}</span>
-              {info?.displayName && info?.handle ? (
-                <span className="feed-evaluators__handle">@{info.handle}</span>
-              ) : null}
-            </span>
-          </>
-        }
-      />
+            <span className="feed-evaluators__name" dir="auto">{label}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          portal={previewInPortal}
+          role="group"
+          align="start"
+          minWidth={288}
+          aria-label={`Profile preview: ${label}`}
+        >
+          <EvaluatorPreview did={did} />
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
