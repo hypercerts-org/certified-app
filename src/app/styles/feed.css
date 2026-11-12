@@ -1724,25 +1724,12 @@
   }
 }
 
-/* Filters box (1100px and wider): same padding and header style
-   (.right-rail__heading) as the News from Certified box opposite. */
+/* Filters box (1100px and wider): same padding, header style and spacing
+   as the News from Certified box opposite (.right-rail__heading: label
+   type, 12px under it). Sections are split by a hairline with room on
+   both sides. */
 .feed-layout__box {
   padding: 16px;
-}
-
-.feed-layout__box-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.feed-layout__box-state {
-  font-size: var(--text-caption);
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  font-feature-settings: normal;
 }
 
 /* Same panel as the mobile disclosure, minus its strip chrome. */
@@ -1750,6 +1737,23 @@
   padding: 0;
   border-bottom: 0;
   background: transparent;
+}
+
+.feed-evaluator-panel--sidebar .feed-evaluator-panel__heading,
+.feed-evaluator-panel--sidebar .feed-evaluators__group:first-child > .feed-evaluator-panel__heading {
+  margin: 0 0 12px;
+}
+
+.feed-evaluator-panel--sidebar .feed-evaluators__list {
+  gap: 8px;
+}
+
+.feed-evaluator-panel--sidebar .feed-evaluators__separator {
+  margin: 20px 0;
+}
+
+.feed-evaluator-panel--sidebar .feed-evaluator-panel__reset {
+  margin: 0;
 }
 
 /* "Trusted endorsers": the group label doubles as a button that explains

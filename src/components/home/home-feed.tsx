@@ -164,7 +164,6 @@ export default function HomeFeed({
   const [filterOpen, setFilterOpen] = useState(false)
   const filterPanelId = useId()
   const sidebarPanelId = useId()
-  const sidebarTitleId = useId()
   const filterWrapRef = useRef<HTMLDivElement>(null)
   useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
   useEffect(() => {
@@ -321,17 +320,10 @@ export default function HomeFeed({
       {/* 1100px and wider: the same filters, always open. */}
       <div className="feed-layout__filters">
         <Card unpadded className="feed-layout__box">
-          {/* Same header style as "News from Certified" on the right, so the
-              two side boxes read as a pair. */}
-          <h2 id={sidebarTitleId} className="right-rail__heading feed-layout__box-title">
-            Filters
-            {isDefaultFilters ? null : (
-              <span className="feed-layout__box-state">Custom</span>
-            )}
-          </h2>
+          {/* No box title: "Trusted endorsers" leads, styled like the
+              "News from Certified" header in the box opposite. */}
           <FeedFilterPanel
             id={sidebarPanelId}
-            labelledBy={sidebarTitleId}
             className="feed-evaluator-panel--sidebar"
             previewInPortal
             {...filterPanelProps}
