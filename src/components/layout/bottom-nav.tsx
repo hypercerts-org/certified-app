@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Newspaper, Search, PlusCircle, MessageSquare } from "lucide-react";
+import { Home as HomeIcon, LayoutGrid, Search, PlusCircle, MessageSquare } from "lucide-react";
 import { useFeedback } from "@/lib/feedback-context";
 import { useOrg } from "@/lib/groups/org-context";
 import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
@@ -37,7 +37,7 @@ export default function BottomNav() {
   // Destinations are real links (long-press / open-in-new-tab / prefetch);
   // only Feedback, which opens a modal, stays a button.
   const links = [
-    { key: "home", label: "Home", icon: Newspaper, href: "/home", onClick: handleHomeClick, active: isHome, tour: "nav-home" },
+    { key: "home", label: "Home", icon: HomeIcon, href: "/home", onClick: handleHomeClick, active: isHome, tour: "nav-home" },
     { key: "explore", label: "Explore", icon: Search, href: "/explore", onClick: undefined, active: pathname === "/explore", tour: undefined },
     ...(showCreate
       ? [{ key: "create", label: "Create", icon: PlusCircle, href: "/create", onClick: undefined, active: pathname === "/create", tour: "nav-create" }]

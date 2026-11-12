@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react"
 /** Row thumbnail: the record image, or the type icon when there is no
  *  image or it fails to load (so a broken blob never leaves an empty
  *  grey tile). Decorative — the row's label already names the link.
- *  `className` owns the tile size and chrome (e.g. `home-row__thumb`). */
+ *  `className` owns the tile size and chrome (e.g. `home-record__thumb`). */
 export default function RowThumb({
   src,
   icon,

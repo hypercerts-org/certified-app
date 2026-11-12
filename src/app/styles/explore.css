@@ -38,8 +38,7 @@
 
 .explore-page {
   position: relative;
-  /* Fluid sidebar width clamped to 256–296px, matching /home's
-     .home-page var so the two surfaces line up at every viewport. */
+  /* Fluid sidebar width clamped to 256–296px. */
   --explore-sidebar-width: clamp(256px, 22vw, 296px);
 }
 

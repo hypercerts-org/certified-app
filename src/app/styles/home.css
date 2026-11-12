@@ -1,212 +1,512 @@
 /* ---------- /home page ----------
-   Page-frame layout lives in layout.css under the
-   `:is(:has(.home-page), :has(.explore-page))` selector — those
-   rules zero the shell padding and stretch the page to fill the
-   100vh shell so the sidebar/main divider reaches the footer.
-   This file owns home-specific styling only. */
+   The signed-in home is about the account: an account card (profile + ID)
+   beside the account's sections (records, endorsements and follows from
+   others, apps, groups), with the follow feed as the last section.
+
+   The page-frame shell rules in layout.css
+   (`:is(:has(.home-page), :has(.explore-page))`) zero the desktop shell
+   padding and lift the 600px reading cap; this file sets the page's own
+   width and gutters. Below 800px the shell's 16px gutter applies. */
 
 .home-page {
-  padding: 24px 16px 64px;
-  position: relative;
+  padding: 8px 0 32px;
 }
 
 @media (min-width: 800px) {
   .home-page {
-    padding: 0;
+    padding: 32px 24px 64px;
   }
 }
 
-/* Left pane width: fluid between 256px (min) and 296px (max),
-   scaling with viewport via clamp(). Same expression on /home and
-   /explore so the two surfaces feel consistent. Below 760px the
-   layout collapses to a single column (the var is unused there).
-   Variable lives on `.home-page` (not `.home__layout`) so the
-   page-frame `::before` divider can read it too — custom properties
-   only cascade DOWN, and the divider is on the parent. */
-.home-page {
-  --home-sidebar-width: clamp(256px, 22vw, 296px);
-}
-
+/* One column (account card first) until 1100px, then the card moves into
+   a left column beside the sections. */
 .home__layout {
-  display: grid;
-  grid-template-columns: var(--home-sidebar-width) 1fr;
-  gap: 0;
-  align-items: start;
-}
-
-/* Vertical divider between the sidebar and the main pane —
-   matches /explore + /settings. Anchored on .home-page so it runs
-   from the page top to the footer border flush. */
-.home-page::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--home-sidebar-width);
-  width: 1px;
-  background: var(--border-default);
-  pointer-events: none;
-}
-
-@media (max-width: 799px) {
-  .home-page {
-    /* Mobile is the feed only — kill the page's outer side padding so
-       the feed governs its own gutters via .home__main below. */
-    padding: 0;
-  }
-  .home-page::before {
-    display: none;
-  }
-  .home__layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ---------- Sidebar ---------- */
-
-.home__sidebar {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  /* Extra breathing room on the left so the sidebar doesn't hug the
-     viewport edge — matches the inset the main pane reserves on the
-     right side of the page-frame divider. Top padding is shared
-     with /explore and /settings so the first line of text sits at
-     the same vertical position on every page-frame route. */
-  padding: 32px 16px 32px 28px;
+  gap: 32px;
+  max-width: 640px;
+  margin-inline: auto;
+}
+
+@media (min-width: 800px) {
+  .home__layout {
+    gap: 48px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .home__layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+    max-width: 1120px;
+  }
+}
+
+.home__aside,
+.home__main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
   min-width: 0;
 }
 
-@media (max-width: 799px) {
-  /* Mobile shows ONLY the feed. The sidebar is rendered unconditionally
-     in home.tsx; hide it here so the page collapses to a single
-     full-width feed column. The right news rail is already hidden below
-     1100px. This override sits AFTER the base `.home__sidebar` rule so
-     it wins on equal specificity (a @media block adds none). */
-  .home__sidebar {
-    display: none;
-    padding: 16px 12px 24px;
+@media (min-width: 800px) {
+  .home__main {
+    gap: 48px;
   }
 }
 
-.home-section {
+/* The news panel only fits beside the sections; in one column it would
+   push the account's own sections down, so it is left out there. */
+.home__news {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .home__news {
+    display: block;
+  }
+}
+
+/* ---------- Account card ---------- */
+
+/* Surface, border and radius come from <Card>; clip the banner to it. */
+.home-account {
+  overflow: hidden;
+}
+
+.home-account__banner {
+  height: 88px;
+  background: var(--bg-sunken);
+}
+
+.home-account__banner-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-account__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 20px 20px;
+}
+
+/* The avatar overlaps the banner, like the profile header. */
+.home-account__avatar {
+  align-self: flex-start;
+  margin-top: -32px;
+  margin-bottom: 8px;
+}
+
+.home-account__eyebrow,
+.home-account__id-title,
+.home-block__subhead {
+  margin: 0;
+  font-size: var(--text-label);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-feature-settings: 'case' 1;
+  color: var(--fg-muted);
+}
+
+.home-account__name {
+  margin: 0;
+  color: var(--fg-primary);
+  text-wrap: balance;
+}
+
+.home-account__name-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.home-account__handle,
+.home-account__pronouns {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.home-account__pronouns {
+  font-size: var(--text-caption);
+}
+
+.home-account__bio {
+  display: -webkit-box;
+  margin: 12px 0 0;
+  overflow: hidden;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.home-account__bio--empty {
+  color: var(--fg-muted);
+}
+
+.home-account__website {
+  margin-top: 8px;
+  min-width: 0;
+  font-size: var(--text-body-sm);
+}
+
+.home-account__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.home-account__id {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-account__id-note {
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
+.home-account__id-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 0;
+}
+
+.home-account__id-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 }
 
-.home-section__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px 4px;
+.home-account__id-label {
+  font-size: var(--text-ui);
+  font-weight: 500;
   color: var(--fg-secondary);
 }
 
-.home-section__title-link {
-  text-decoration: none;
-  color: inherit;
-  border-radius: var(--radius);
-  padding: 2px 6px;
-  margin: -2px -6px;
-  transition: background var(--transition-fast);
-}
-
-.home-section__title-link:hover {
-  background: var(--bg-sunken);
-  text-decoration: none;
-}
-
-.home-section__title-link:hover .home-section__title {
-  color: var(--fg-primary);
-}
-
-.home-section__title {
+.home-account__id-value {
+  min-width: 0;
   margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
+}
+
+.home-account__id-link {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
-  transition: color var(--transition-fast);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-/* Positioning only — colour / weight / tabular-nums come from the
-   <Badge variant="count-bare"> primitive this class is applied to. */
-.home-section__count {
-  margin-left: auto;
+@media (hover: hover) and (pointer: fine) {
+  .home-account__id-link:hover {
+    color: var(--fg-primary);
+  }
 }
 
-.home-section__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ---------- Sections ---------- */
+
+.home-block {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 16px;
+  min-width: 0;
 }
 
-.home-row {
+.home-block__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.home-block__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-block__title {
+  margin: 0;
+  color: var(--fg-primary);
+  text-wrap: balance;
+}
+
+.home-block__desc,
+.home-block__note {
+  max-width: var(--measure);
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
+.home-block__action {
+  flex-shrink: 0;
+}
+
+.home-block__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-block__see-all:hover {
+    color: var(--fg-primary);
+  }
+}
+
+.home-block__subhead {
+  margin-top: 8px;
+}
+
+.home-block__loading {
+  display: flex;
+  padding: 8px 0;
+}
+
+/* Count tiles: one per kind, each linking to the full list. */
+.home-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-count {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-count:hover {
+    border-color: var(--border-hover);
+    background-color: var(--bg-sunken);
+  }
+}
+
+.home-count__value {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
+  min-height: 1.75rem;
+  font-family: var(--font-headline);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   color: var(--fg-primary);
-  text-decoration: none;
-  min-width: 0;
-  transition: background var(--transition-fast);
 }
 
-.home-row:hover {
-  background: var(--bg-sunken);
+.home-count__label {
+  font-size: var(--text-ui);
+  color: var(--fg-muted);
 }
 
-.home-row__thumb {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-sunken);
+/* Latest records and groups: hairline-separated rows. */
+.home-records,
+.home-groups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-records > li,
+.home-groups > li {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.home-record,
+.home-group {
   display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 4px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.home-group {
+  padding-block: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-record:hover,
+  .home-group:hover {
+    background-color: var(--overlay-weak);
+  }
+}
+
+.home-record__thumb {
+  display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
   color: var(--fg-secondary);
 }
 
-.home-row__thumb img {
+.home-record__thumb img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
-.home-row__thumb-icon {
-  color: var(--fg-secondary);
-}
-
-/* Column wrapping the label + optional "by {group}" byline so a
-   group-owned row reads as two stacked lines while a personal row stays
-   a single line. The thumb stays vertically centred against either. */
-.home-row__text {
+.home-record__text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
-.home-row__label {
-  font-size: 0.85rem;
-  color: var(--fg-primary);
-  line-height: 1.25;
+.home-record__title,
+.home-group__name {
   overflow: hidden;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--fg-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.home-group__name {
+  flex: 1;
   min-width: 0;
+}
+
+.home-record__meta {
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Apps: one per row on a phone, two across from 800px. */
+.home-apps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 800px) {
+  .home-apps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.home-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-app:hover {
+    border-color: var(--border-hover);
+  }
+}
+
+.home-app__logo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+}
+
+.home-app__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-app__name {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.home-app__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--fg-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.home-app__arrow {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+/* The feed keeps its 600px reading width inside the wider main column. */
+@media (min-width: 800px) {
+  .home-block--feed {
+    max-width: 600px;
+  }
 }
 
 /* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).
@@ -245,129 +545,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-}
-
-/* Padding/alignment only — text colour and size come from the
-   <EmptyState variant="inline"> primitive this class is applied to,
-   so the empty hint lines up with the 8px-inset list rows above it. */
-.home-section__empty {
-  padding: 2px 8px;
-}
-
-.home-section__loading {
-  display: flex;
-  align-items: center;
-  padding: 6px 8px;
-}
-
-.home-section__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-  padding: 4px 8px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-decoration: none;
-  border-radius: var(--radius);
-  align-self: flex-start;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.home-section__more:hover {
-  color: var(--fg-primary);
-  background: var(--bg-sunken);
-}
-
-/* ---------- Main pane ---------- */
-
-.home__main {
-  min-width: 0;
-  width: 100%;
-  padding: 20px 24px 32px;
-}
-
-@media (max-width: 799px) {
-  /* Zero the shell's 16px reading gutter for the home page — the feed
-     carries its own (small) gutter below, so cards run nearly
-     edge-to-edge like a native social timeline. Top padding drops to
-     the bare navbar offset: the "For you" tab strip sits right under
-     the bar (its buttons carry 14px internal padding of their own).
-     Specificity (three classes via :has) beats the components.css
-     mobile gutter rule. */
-  .app-shell:has(.home-page) .app-shell__content {
-    padding-top: var(--navbar-height);
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .home__main {
-    /* Just a small side gutter on a phone so the feed gets the room. */
-    padding: 0 8px 32px;
-  }
-}
-
-.home__split {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 32px;
-  align-items: start;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-/* News rail only shows at the canonical 1300px step. With the feed capped
-   at 600px (below) plus the 320px rail, gaps, and the left sidebar, there
-   isn't room for the rail below ~1300px — so below that the layout collapses
-   to a single feed column and the rail is hidden entirely (never squished,
-   never stacked under the feed). */
-@media (max-width: 1299px) {
-  .home__split {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-  .home__news {
-    display: none;
-  }
-}
-
-.home__feed {
-  min-width: 0;
-}
-
-/* Desktop: cap the feed at a 600px reading column and center it inside
-   its grid track (the feed column keeps its full 1fr width; the timeline
-   just sits centered within it). Applies in both the single-column band
-   (800–1299px, news rail hidden) and the two-column layout (≥1300px).
-
-   `width` (not just `max-width`) is deliberate: `margin-inline: auto`
-   on a grid item disables stretch, so a max-width-only column sizes to
-   its CONTENT (shrink-to-fit). That made the column — and the "For you"
-   tab strip / filter dropdown above it — visibly jump narrower for a
-   frame whenever a filter toggle refetched the feed and briefly rendered
-   narrower content. A definite width pins it to 600 regardless of
-   content; `max-width: 100%` keeps it from overflowing a narrower track. */
-@media (min-width: 800px) {
-  .home__feed {
-    width: 600px;
-    max-width: 100%;
-    margin-inline: auto;
-  }
-}
-
-.home__news {
-  min-width: 0;
-  /* Match the .right-rail surface used elsewhere — light card on
-     a darker canvas, with a thin border that reads as a panel
-     edge rather than competing with the page-frame dividers.
-     Scrolls with the page rather than sticking — the rail is a
-     side panel, not a persistent control surface, and pinning it
-     produced an awkward dead zone once the user had scrolled past
-     the news content. */
-  padding: 16px 18px 18px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
 }
 
 /* ---------- Activity feed (certs.social-style social cards) ----------
@@ -704,22 +881,11 @@ a.home-feed__card-body:hover .home-feed__card-title {
   min-height: 50vh;
 }
 
-.home__signed-out {
-  max-width: 480px;
-  margin: 64px auto;
-  padding: 0 16px;
-}
 
 /* The feed's tab strip + inline filter panel reuse the certs.social
    classes in feed.css (.feed-tabs, .feed-evaluator-panel,
    .feed-evaluators__*) — no home-specific chrome styles needed. */
 
-/* Mobile: comfortable tap height for the home sidebar/list rows. */
-@media (max-width: 799px) {
-  .home-row {
-    min-height: 44px;
-  }
-}
 
 /* ---------- Activity timeline load-more sentinel ---------- */
 

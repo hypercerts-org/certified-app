@@ -4,7 +4,7 @@ import { getSessionDid } from "@/lib/auth/session";
 /**
  * Root — `/`.
  *
- * Signed-in visitors land on `/home` (the activity feed). Signed-out
+ * Signed-in visitors land on `/home` (their account home). Signed-out
  * visitors land on `/welcome` (the marketing landing). Applies
  * uniformly across hosts — production (certified.app), redesign
  * (redesign.certified.app), and staging (staging.certified.app) all

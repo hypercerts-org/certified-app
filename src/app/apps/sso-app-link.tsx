@@ -14,10 +14,14 @@ import { useSession } from "@/hooks/use-session"
 export default function SsoAppLink({
   url,
   ssoHandleUrl,
+  className = "apps-store__tile",
   children,
 }: {
   url: string
   ssoHandleUrl?: string
+  /** Tile chrome. Defaults to the /apps directory tile; the signed-in
+   *  home passes its own compact row class. */
+  className?: string
   children: React.ReactNode
 }) {
   const { handle } = useSession()
@@ -29,7 +33,7 @@ export default function SsoAppLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="apps-store__tile"
+      className={className}
     >
       {children}
       {/* The tile's visible text (name, tag, description) is its name. */}

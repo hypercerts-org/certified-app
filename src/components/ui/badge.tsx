@@ -11,7 +11,7 @@ export type BadgeVariant =
   | "role"
   | "count"
   // Bare numeric count — muted number, NO background / border / padding.
-  // For right-aligned section counts (e.g. home-section__count).
+  // For right-aligned section counts (e.g. a sidebar section header).
   | "count-bare"
   // Quality labels (compact pill for activity feed).
   | "high-quality"

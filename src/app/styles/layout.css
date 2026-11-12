@@ -742,8 +742,9 @@ a.mobile-sidebar__profile:hover .mobile-sidebar__name {
 }
 
 /* ========== Page-frame layout (shared by /home + /explore) ==========
-   Pages that span the viewport edge-to-edge with their own
-   sidebar/main divider. They drop the shell's reading-column width
+   Pages that span the viewport edge-to-edge and set their own width:
+   /explore with its sidebar/main divider, /home with its account
+   column (home.css). They drop the shell's reading-column width
    caps, zero its lateral padding (the inner panes carry their own),
    and turn the content slot into a flex column so the page can
    stretch to fill the shell's reserved 100vh. Without the flex

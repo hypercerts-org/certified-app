@@ -1,12 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { profileUrl } from "@/lib/urls"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRight, MapPin, X } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
-import Avatar from "@/components/ui/avatar"
-import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Button from "@/components/ui/button"
 import BannerUpload from "@/components/profile/banner-upload"
@@ -18,12 +15,11 @@ import {
   type ForwardGeocodeResult,
 } from "@/lib/locations/geocode"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
-import { getInitials } from "@/lib/utils/initials"
-import { useReceivedEndorsements, type ReceivedEndorsement } from "@/hooks/use-received-endorsements"
+import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
+import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useUserProjects } from "@/hooks/use-user-projects"
-import { useAuthorInfo } from "@/hooks/use-author-info"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ActivityRecord, ClaimActivity } from "@/lib/atproto/activity-types"
@@ -543,64 +539,6 @@ function ActivityThumb({ value, did }: ActivityThumbProps) {
     >
       <CertIcon size={20} strokeWidth={1.25} />
     </span>
-  )
-}
-
-interface EndorsementPreviewRowProps {
-  readonly endorsement: ReceivedEndorsement
-}
-
-function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProps) {
-  // Prefer the indexer's denormalised issuer block (magic-indexer
-  // #96 — single-query received-endorsements), but only TRUST it
-  // wholesale when it's complete. The award `issuer` denormalisation
-  // can carry a handle WITHOUT a displayName or avatar (certified-only
-  // org accounts have no bsky-profile join), so gating the fetch on
-  // handle-presence alone left those rows with no avatar and a
-  // DID-slice initials placeholder. Skip the per-row useAuthorInfo
-  // fetch only when the indexer block is complete; otherwise resolve
-  // and fill the gaps. (null → useAuthorInfo short-circuits its fetch.)
-  const idxIssuer = endorsement.issuer
-  const indexerAvatar = buildAvatarUrlFromCid(
-    idxIssuer?.did ?? endorsement.issuerDid,
-    idxIssuer?.avatarCid,
-  )
-  const indexerComplete = !!(
-    idxIssuer?.handle &&
-    idxIssuer.displayName &&
-    indexerAvatar
-  )
-  const { info } = useAuthorInfo(indexerComplete ? null : endorsement.issuerDid)
-
-  const displayName =
-    idxIssuer?.displayName ||
-    info?.displayName ||
-    idxIssuer?.handle ||
-    info?.handle ||
-    endorsement.issuerDid
-  const handle = idxIssuer?.handle ?? info?.handle ?? null
-  const initials = getInitials(
-    idxIssuer?.displayName ?? info?.displayName,
-    handle ?? endorsement.issuerDid,
-  )
-  const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
-  const href = profileUrl(handle || endorsement.issuerDid)
-
-  return (
-    <li className="profile-overview__endorse-item">
-      <Link href={href} className="profile-overview__endorse-link">
-        <Avatar size="sm" src={avatarSrc} fallbackInitials={initials} />
-        <span className="profile-overview__endorse-meta">
-          <span className="profile-overview__endorse-name" dir="auto">{displayName}</span>
-          <span className="profile-overview__endorse-when">
-            {formatShortDate(endorsement.createdAt)}
-          </span>
-        </span>
-        {endorsement.note ? (
-          <span className="profile-overview__endorse-note">{endorsement.note}</span>
-        ) : null}
-      </Link>
-    </li>
   )
 }
 

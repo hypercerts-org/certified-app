@@ -24,7 +24,7 @@
  * Routes:
  *   /dev/preview/profile        — own individual profile
  *   /dev/preview/profile-org    — own organization profile
- *   /dev/preview/feed           — signed-in home feed
+ *   /dev/preview/feed           — signed-in home (account + feed)
  *   /dev/preview/settings       — settings panel
  *   /dev/preview/workspace      — workspace explorer
  *   /dev/preview/create         — cert/activity CREATE form

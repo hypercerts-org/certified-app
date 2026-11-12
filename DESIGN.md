@@ -69,7 +69,7 @@ Key characteristics:
 - `--radius: 2px` gives cards, buttons and dialogs a sharp, document-like edge.
 - Full dark mode via `data-theme="dark"`. Surfaces flip; the primary button inverts.
 - Mobile-native navigation: labeled bottom tab bar, bottom sheets with drag-to-dismiss, a translucent top navbar.
-- Feed-centric: home is a feed, not a dashboard.
+- Account-centric: the signed-in home shows the account first (profile, ID, records, what others gave it, apps). The social feed is one section near the end, not the page.
 
 ---
 
@@ -295,7 +295,7 @@ Write mobile first: base styles, then `@media (min-width: 800px)`. "Below deskto
 | Reading column, mobile | 720px max | `.app-shell__content` |
 | Reading column, desktop | 600px | Narrower on purpose; the column is editorial, not stretched |
 | Fullbleed pages | 1280px | Profile, settings, workspace, cert detail, project detail. Opt in with `.app-shell--fullbleed`. |
-| Page-frame pages | Edge to edge | Home and Explore carry their own sidebar/main split |
+| Page-frame pages | Edge to edge (shell) | Explore carries its own sidebar/main split. Home sets its own width: one 640px column, then a 320px account column beside the sections up to 1120px at ≥ 1100px |
 | Grid wrapper | 1300px | Ultra-wide screens get passive gutters |
 
 Multi-column layouts are explicit opt-ins on wide pages (the profile Overview is an intentional two-column layout). The reading column never gets a second column.
@@ -813,6 +813,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-12, account-centred home.** `/home` now leads with the account the viewer is acting as: an account card (profile and ID, with the handle and permanent ID click-to-copy), then Records, From others (endorsements, followers), Apps and Your groups, with the follow feed as the last section. The old sidebar ("My groups / projects / activities") and the feed-first layout are gone. The bottom-nav Home icon is a house instead of a newspaper.
 - **2026-10-22, Button sizes on the control-height scale.** Owner decision: Button `sm` / `md` / `lg` are 32 / 36 / 44 on desktop (`min-h-control-compact` / `-sm` / `-md`), `icon` is 36 on desktop to match `md`; all stay 44 below 800px. Replaces the padding-driven ~30 / 40 / 44 and the 40px icon square.
 - **2026-10-22, docs-to-code reconciliation.** Synced this file, `AGENTS.md` and `CLAUDE.md` with the shipped code. Motion: popover and toast enter at `--duration-fast`; tab panel is `--duration-base` + `--ease-emphasized`, 12px; tooltip has no fade; dialog has no exit animation; drawer and bottom-sheet exits documented; navbar hide uses `--transition-base`; `--ease-in-out` has no consumer; `--transition-slow` removed. Reduced motion: spinners keep turning (they are exempt from the backstop); dialog, toast, tab panel and popover keep 150ms fades. Button `sm` / `md` / `lg` documented at their current ~30 / 40 / 44px desktop heights, with the control-height scale marked not yet applied (owner decision pending); `icon-sm` documented. `--border-control` scoped to checkbox and switch-off (RadioGroup draws no circle). Bottom nav documented as opaque `--bg-elevated` with 0.6875rem / 500 mixed-case labels and a 2.5 active stroke. Skeleton fill is `--overlay-weak` (`--skeleton-bg` is not a defined token). Bottom sheet surface is `--bg-elevated`. Shadow hard rule reworded in all three files: elevation is `--shadow-sm/md/lg` + `--shadow-modal` (dialogs), rings and hairlines use the new `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. §12 now documents the shipped stylelint config (`npm run lint:css`), also added to the `CLAUDE.md` first checks. Avatar `xs` / `2xl`, Input `bare`, removed AppDialogHeader `center` prop, `--text-*` and `--control-h-*` tokens added to the appendix. AGENTS.md token lists updated (four border tokens, motion tokens, `--scrim`, `--z-feedback-trigger`).
 - **2026-10-22, polish pass** (`docs/polish-2026-10/design-md-proposals.md`). This document was rewritten as one body with `tokens.css` as the single numeric source. Added: type ramp with loaded weights (Noto Serif 600 now loaded; `ui`, `label`, `micro` steps), uppercase-only tracking, tabular numerals rule, text-wrap and measure, contrast table and badge fixes, `--border-control`, border tokens collapsed to four, `--bg-raised` redefined as a tint, `--bg-overlay`, one `--scrim`, translucent chrome derived from surfaces, interaction-state table, `hoverOnlyWhenSupported`, focus recipe and ring-color safety net, control heights and `icon-sm`, motion duration/easing tokens, reduced-motion rule, icon ladder, spacing rhythm, async-state matrix, dialog voice (serif titles), sentence-case field labels, stylelint. Removed stale content: retired rails, old dark palette, phantom tokens, the "spring overshoots" claim, the 768px iOS rule, the 4px / 16px radius exceptions.
