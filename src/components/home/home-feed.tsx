@@ -99,20 +99,17 @@ const MAX_AUTO_LOADS = 25
  * ends of the action.
  *
  * Layout (the /feed page): at 1100px and wider, three columns: the
- * filters in a sticky box on the left, the page header + list in the
- * middle and `news` on the right. Below 1100px it is one column and the
+ * filters in a sticky box on the left, the list in the middle and `news`
+ * on the right. Below 1100px it is one column and the
  * filters sit behind the "For you" disclosure above the list. The list
  * ends in an IntersectionObserver sentinel that calls `useHomeFeed`'s
  * `loadMore` when it enters the viewport.
  */
 export default function HomeFeed({
   activeDid,
-  header,
   news,
 }: {
   activeDid: string
-  /** Page header rendered at the top of the middle column. */
-  header?: React.ReactNode
   /** Right-column content at 1100px and wider (hidden below). */
   news?: React.ReactNode
 }) {
@@ -273,8 +270,7 @@ export default function HomeFeed({
   // and screen-reader users); the grid areas put the filters on the left.
   return (
     <div className="feed-layout">
-      <div className="feed-layout__main">
-        {header}
+      <div className="feed-layout__main" data-tour="feed">
         {/* Below 1100px: certs.social-style tab strip. One tab for now
             ("For you"); clicking the active tab toggles the inline filter
             panel. Hidden at 1100px and wider, where the filters have their
@@ -594,7 +590,7 @@ function FeedFilterPanel({
           <legend>) is announced when focus moves into the group. */}
       <fieldset className="feed-evaluators__group">
         <legend className="feed-evaluator-panel__heading">
-          Show activities from accounts that are endorsed by:
+          Show activities from accounts endorsed by:
         </legend>
         <div className="feed-evaluators__list">
           {evaluatorDids.map((did) => (
@@ -723,10 +719,13 @@ function EvaluatorRow({
             ) : (
               <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
             )}
-            <span className="feed-evaluators__name" dir="auto">{label}</span>
-            {info?.displayName && info?.handle ? (
-              <span className="feed-evaluators__handle">@{info.handle}</span>
-            ) : null}
+            {/* Name over handle, so both fit the narrow filter column. */}
+            <span className="feed-evaluators__who">
+              <span className="feed-evaluators__name" dir="auto">{label}</span>
+              {info?.displayName && info?.handle ? (
+                <span className="feed-evaluators__handle">@{info.handle}</span>
+              ) : null}
+            </span>
           </>
         }
       />

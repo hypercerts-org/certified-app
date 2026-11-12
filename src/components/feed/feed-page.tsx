@@ -1,16 +1,10 @@
 "use client"
 
 import { useEffect } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Compass } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
-import { useFollowing } from "@/hooks/use-following"
 import { usePageTitle } from "@/lib/navbar-context"
-import { ownProfileUrl } from "@/lib/urls"
-import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import Card from "@/components/ui/card"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import HomeFeed from "@/components/home/home-feed"
@@ -22,18 +16,17 @@ const NEWS_ACTOR_DID = "did:plc:apun3uo5jqm34pxzqq6on754"
 /**
  * `/feed` — what is new in the network: activities, projects and
  * endorsements from accounts the viewer follows plus accounts endorsed by
- * the evaluators picked in the filters. At 1100px and wider the filters
- * sit on the left and "News from Certified" on the right (see HomeFeed).
+ * the evaluators picked in the filters. The page starts with the feed; at
+ * 1100px and wider the filters sit on the left and "News from Certified"
+ * on the right (see HomeFeed).
  * Follows the account the viewer is acting as, like /home.
  */
 export default function FeedPage() {
   usePageTitle("Feed")
   const router = useRouter()
   const { isLoading: authLoading, isAuthenticated, did: personalDid } = useAuth()
-  const { handle: personalHandle } = useSession()
   const { activeOrg } = useOrg()
   const activeDid = activeOrg?.groupDid || personalDid
-  const following = useFollowing(activeDid ?? null)
 
   // Signed-in only, like /home: send signed-out visitors to the landing.
   useEffect(() => {
@@ -52,41 +45,6 @@ export default function FeedPage() {
     )
   }
 
-  const profileBase = ownProfileUrl({
-    activeGroup: activeOrg,
-    personalHandle,
-    personalDid,
-  })
-  const showCount = !following.isLoading && !following.error
-
-  const header = (
-    <header className="feed-page__header" data-tour="feed">
-      <h2 className="feed-page__title font-headline text-h2">Latest from the network</h2>
-      <p className="feed-page__intro">
-        New activities, projects and endorsements from accounts{" "}
-        {activeOrg ? "this group follows" : "you follow"}, and from accounts
-        endorsed by the evaluators you pick in the filters.
-      </p>
-      <div className="feed-page__meta">
-        {showCount ? (
-          <Link
-            href={`${profileBase}?tab=followers&sub=following`}
-            className="feed-page__meta-link"
-          >
-            Following{" "}
-            <span className="feed-page__count">
-              {formatGraphCount(following.count, following.truncated)}
-            </span>
-          </Link>
-        ) : null}
-        <Link href="/explore" className="feed-page__meta-link">
-          <Compass size={14} strokeWidth={1.75} aria-hidden />
-          Find accounts to follow
-        </Link>
-      </div>
-    </header>
-  )
-
   return (
     <div className="feed-page">
       {/* Keyed on the account so switching account starts a fresh feed
@@ -94,7 +52,6 @@ export default function FeedPage() {
       <HomeFeed
         key={activeDid}
         activeDid={activeDid}
-        header={header}
         news={
           <Card unpadded className="feed-page__news">
             <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
