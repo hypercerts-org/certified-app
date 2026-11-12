@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { ChevronDown, Inbox, Users } from "lucide-react"
+import { ChevronDown, Inbox, Info, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
@@ -321,7 +321,9 @@ export default function HomeFeed({
       {/* 1100px and wider: the same filters, always open. */}
       <div className="feed-layout__filters">
         <Card unpadded className="feed-layout__box">
-          <h2 id={sidebarTitleId} className="feed-layout__box-title font-headline text-h4">
+          {/* Same header style as "News from Certified" on the right, so the
+              two side boxes read as a pair. */}
+          <h2 id={sidebarTitleId} className="right-rail__heading feed-layout__box-title">
             Filters
             {isDefaultFilters ? null : (
               <span className="feed-layout__box-state">Custom</span>
@@ -598,7 +600,7 @@ function FeedFilterPanel({
           <legend>) is announced when focus moves into the group. */}
       <fieldset className="feed-evaluators__group">
         <legend className="feed-evaluator-panel__heading">
-          Show activities from accounts endorsed by:
+          <TrustedEndorsersInfo inPortal={previewInPortal} />
         </legend>
         <div className="feed-evaluators__list">
           {evaluatorDids.map((did) => (
@@ -664,6 +666,38 @@ function FeedFilterPanel({
         Reset to default
       </button>
     </div>
+  )
+}
+
+/**
+ * The "Trusted endorsers" group label, as a button that explains what the
+ * group does: the feed always has the accounts you follow, and each checked
+ * endorser adds the accounts it has endorsed.
+ */
+function TrustedEndorsersInfo({ inPortal }: { inPortal: boolean }) {
+  return (
+    <Popover>
+      <PopoverTrigger>
+        <button type="button" className="feed-evaluator-panel__info">
+          Trusted endorsers
+          <Info size={12} strokeWidth={2} aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        portal={inPortal}
+        role="group"
+        align="start"
+        minWidth={260}
+        aria-label="About trusted endorsers"
+      >
+        <p className="feed-evaluator-panel__info-text">
+          Your feed always shows what the accounts you follow publish. It also
+          shows activities from accounts these trusted organizations have
+          endorsed, so you see vetted work beyond the people you follow.
+          Uncheck an organization to leave out the accounts it endorsed.
+        </p>
+      </PopoverContent>
+    </Popover>
   )
 }
 
