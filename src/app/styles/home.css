@@ -102,7 +102,6 @@
   margin-top: 0;
 }
 
-.home-account__eyebrow,
 .home-account__id-title,
 .home-block__subhead {
   margin: 0;
@@ -128,15 +127,10 @@
   padding: 4px 0;
 }
 
-.home-account__handle,
 .home-account__pronouns {
   margin: 0;
-  font-size: var(--text-body-sm);
-  color: var(--fg-muted);
-}
-
-.home-account__pronouns {
   font-size: var(--text-caption);
+  color: var(--fg-muted);
 }
 
 .home-account__bio {

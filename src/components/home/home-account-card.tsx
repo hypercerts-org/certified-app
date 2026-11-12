@@ -56,8 +56,8 @@ export default function HomeAccountCard({
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : null
 
-  const realName = profile?.displayName || activeGroup?.displayName || null
-  const displayName = realName || (handle ? `@${handle}` : "Your account")
+  const displayName =
+    profile?.displayName || activeGroup?.displayName || (handle ? `@${handle}` : "Your account")
   const initials = getInitials(profile?.displayName ?? activeGroup?.displayName, handle ?? did)
   const profileHref = profileUrl(handle || did)
 
@@ -92,9 +92,6 @@ export default function HomeAccountCard({
           />
         </div>
 
-        <p className="home-account__eyebrow">
-          {isGroup ? "Group account" : "Your account"}
-        </p>
         {isLoading && !profile ? (
           <div className="home-account__name-skeleton">
             {/* Keeps the section named while the profile loads. */}
@@ -107,8 +104,7 @@ export default function HomeAccountCard({
             <h2 id={nameId} className="home-account__name font-headline text-h3" dir="auto">
               {displayName}
             </h2>
-            {/* Without a display name the heading already is the handle. */}
-            {handle && realName ? <p className="home-account__handle">@{handle}</p> : null}
+            {/* No handle line here: the ID section below shows it. */}
             {profile?.pronouns ? (
               <p className="home-account__pronouns">{profile.pronouns}</p>
             ) : null}
