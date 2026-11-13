@@ -1,509 +1,11 @@
-/* ---------- Profile endorsements tab ----------
-   Mirrors the Profile certs tab pattern: sub-tab strip on the left,
-   right-aligned toolbar (search + sort), then a responsive grid of
-   uniform-size cards. Class names are scoped with a `--v2` suffix so
-   the legacy `.profile-endorsements__*` rules in `feed.css` (still
-   used by other surfaces) keep working unchanged. */
-
-.profile-endorsements-v2 {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-endorsements-v2__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-endorsements-v2__controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  padding-bottom: 8px;
-}
-
-.profile-endorsements-v2__search {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.profile-endorsements-v2__search:focus-within {
-  border-color: var(--fg-primary);
-}
-
-.profile-endorsements-v2__search-icon {
-  color: var(--fg-muted);
-  flex-shrink: 0;
-}
-
-.profile-endorsements-v2__search-input {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  width: 200px;
-}
-
-.profile-endorsements-v2__search-input::placeholder {
-  color: var(--fg-muted);
-}
-
-.profile-endorsements-v2__search-input::-webkit-search-cancel-button {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-@media (max-width: 799px) {
-  /* Controls take their own full-width row; the search stretches to fill
-     it beside the buttons, and every control matches the compact 28px
-     toolbar height (same as the gallery/list view toggle beside them). */
-  .profile-endorsements-v2__controls {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-  .profile-endorsements-v2__search {
-    flex: 1 1 auto;
-    min-width: 0;
-    height: 28px;
-  }
-  .profile-endorsements-v2__search-input {
-    width: auto;
-    min-width: 0;
-    flex: 1 1 auto;
-    /* 16px keeps iOS Safari from zooming the page on focus. */
-    font-size: 16px;
-  }
-  /* Scoped under their containers so they beat the base `…__sort-btn`
-     / `…__endorse-add` rules declared LATER in this file (equal
-     specificity would otherwise let the taller base win). */
-  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
-  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add {
-    width: 28px;
-    height: 28px;
-  }
-  .endorsement-lists .endorsement-lists__sort-btn {
-    width: 30px;
-    height: 30px;
-  }
-  /* The compact 28/30px controls keep their visual size, but an invisible
-     ::before grows each tap area to 44px tall. Horizontally it only
-     reaches 4px out — half the 8px row gap — so neighbouring controls'
-     hit areas never overlap. The search pill is a <label>, so a tap on
-     its extended area still focuses the input. */
-  .profile-endorsements-v2__controls .profile-endorsements-v2__search,
-  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn,
-  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add,
-  .endorsement-lists .endorsement-lists__sort-btn,
-  /* Positioned so it paints above the pill's ::before hit area, keeping
-     caret placement, selection and paste on the input itself. */
-  .profile-endorsements-v2__controls .profile-endorsements-v2__search-input {
-    position: relative;
-  }
-  .profile-endorsements-v2__controls .profile-endorsements-v2__search::before,
-  .profile-endorsements-v2__controls .profile-endorsements-v2__sort-btn::before,
-  .profile-endorsements-v2__controls .profile-endorsements-v2__endorse-add::before {
-    content: "";
-    position: absolute;
-    inset: -8px -4px;
-  }
-  .endorsement-lists .endorsement-lists__sort-btn::before {
-    content: "";
-    position: absolute;
-    inset: -7px -4px;
-  }
-}
-
-.profile-endorsements-v2__sort-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.profile-endorsements-v2__sort-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.profile-endorsements-v2__sort-btn:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.profile-endorsements-v2__sort-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* "Endorse people" trigger — square button to the LEFT of the search
-   field, only rendered when the viewer owns the profile. Borrows the
-   sort button's shape so the toolbar stays visually consistent;
-   colour treatment is slightly more prominent (fg-primary icon) so
-   the additive affordance reads as the actionable element it is. */
-.profile-endorsements-v2__endorse-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.profile-endorsements-v2__endorse-add:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-}
-
-.profile-endorsements-v2__endorse-add:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.profile-endorsements-v2__sort-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 200px;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-popover);
-}
-
-.profile-endorsements-v2__sort-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.profile-endorsements-v2__sort-item:hover {
-  background: var(--overlay-weak);
-}
-
-.profile-endorsements-v2__sort-item-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  color: var(--fg-primary);
-  flex-shrink: 0;
-}
-
-/* ---------- Grid + cards ----------
-   Clean two-column card: avatar on the left, body on the right. Body
-   stacks a (name + handle) / date header row over an optional note.
-   The owner-only response menu floats top-right. */
-
-.profile-endorsements-v2__grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-}
-
-.profile-endorsements-v2__error {
-  color: var(--fg-muted);
-  font-size: 0.875rem;
-  margin: 16px 0;
-}
-
-.profile-endorsements-v2__loading {
-  display: flex;
-  justify-content: center;
-  padding: 32px 0;
-}
-
-.profile-endorsements-v2__card {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  transition: background var(--transition-fast), border-color var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-/* Hovering anywhere on the card tints the whole tile so the entire
-   card reads as a clickable target — the inner Link no longer
-   underlines the display name (that micro-affordance read as a
-   second focus point + competed with the card-level hover). */
-.profile-endorsements-v2__card:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow-sm);
-}
-
-.profile-endorsements-v2__card-link {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  flex: 1;
-  min-width: 0;
-  text-decoration: none;
-  color: inherit;
-}
-
-.profile-endorsements-v2__card-link:hover .profile-endorsements-v2__card-name {
-  text-decoration: none;
-}
-
-.profile-endorsements-v2__card-avatar-skel {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--overlay-weak);
-  flex-shrink: 0;
-}
-
-/* Card body — vertical stack: name (row 1), @handle (row 2), date
-   (row 3), optional list-name pill (row 4), optional note.
-   Tight `gap` so the four metadata rows read as a single block;
-   the note gets a larger gap above when present. */
-.profile-endorsements-v2__card-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.profile-endorsements-v2__card-name {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--fg-primary);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-endorsements-v2__card-handle {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-endorsements-v2__card-date {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  white-space: nowrap;
-  line-height: 1.25;
-}
-
-/* "From this list" tag — only rendered when the endorsement was
-   issued via a user-created list (not the default "Endorsement"
-   definition). Subtle pill so it sits below the date without
-   competing with the name/handle stack. */
-.profile-endorsements-v2__card-list {
-  align-self: flex-start;
-  margin-top: 2px;
-  padding: 1px 8px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-endorsements-v2__card-note {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--fg-secondary);
-  /* Larger top margin so the note feels separated from the metadata
-     rows above (name / @handle / date / list). */
-  margin: 6px 0 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  /* 3-line clamp keeps card heights uniform in the grid. */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Floating owner-action menu (kebab). Anchored to the top-right corner
-   of the card. When this slot is present we reserve right-padding on
-   the card-link so the date sits well clear of the kebab — a tight
-   8px gap visually reads as "overlap" even though it isn't, so we
-   reserve menu-width (28px) + visual buffer (12px). */
-.profile-endorsements-v2__card-menu {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: var(--z-local-raise);
-}
-
-.profile-endorsements-v2__card:has(.profile-endorsements-v2__card-menu)
-  .profile-endorsements-v2__card-link {
-  padding-right: 40px;
-}
-
-/* Revoke `×` rendered in the owner-only menu slot on Given cards.
-   Subtle by default — full-strength `--fg-muted` and no background
-   so it doesn't compete with the card's content — then bumps to
-   the destructive color on hover so the destructive intent reads
-   clearly the moment the cursor lands on it. */
-.profile-endorsements-v2__given-revoke {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.profile-endorsements-v2__given-revoke:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-default);
-  color: var(--color-error);
-}
-
-.profile-endorsements-v2__given-revoke:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* Grid columns: 2 cols at >=800px, 3 cols at >=1200px. Avatar + body
-   layout is already responsive (the body column collapses with
-   `min-width: 0`) so no per-breakpoint card overrides are needed. */
-@media (min-width: 800px) {
-  .profile-endorsements-v2__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-}
-
-@media (min-width: 1300px) {
-  .profile-endorsements-v2__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* Empty state inside the grid spans all columns so EmptyState's own
-   centering renders across the full pane. */
-.profile-endorsements-v2__grid > .empty-state {
-  grid-column: 1 / -1;
-  padding: 32px 0;
-}
-
-/* Top-right action button on the heading row (Endorse / Endorsed). */
-.profile-endorsements-v2__endorse-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.profile-endorsements-v2__endorse-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: transparent;
-  color: var(--fg-primary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.profile-endorsements-v2__endorse-btn:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  border-color: var(--fg-primary);
-}
-
-.profile-endorsements-v2__endorse-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.profile-endorsements-v2__endorse-btn--active {
-  background: var(--overlay-weak);
-  border-color: var(--fg-primary);
-  color: var(--fg-primary);
-}
-
-.profile-endorsements-v2__endorse-error {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--color-error);
-  margin-top: 4px;
-}
-
 /* ==================================================================
-   Lists section — sits ABOVE the Received/Given sub-tabs. GitHub-
-   stars-style: a header row with a count + sort + Create, and one
-   row per list. Clicking a row swaps the master view for an inline
-   detail view (header changes to a Back arrow + the list's name).
+   Endorsement lists (Records > Endorsements > Lists) and the endorse
+   dialogs. The profile's Endorsements tab renders its rows with the
+   shared .profile-people / .profile-person styles in profile.css.
+
+   Lists: a header row with a count + sort + New list, and one row per
+   list. Clicking a row swaps the master view for an inline detail view
+   (header changes to a Back arrow + the list's name).
    ================================================================== */
 
 .endorsement-lists {
@@ -542,26 +44,19 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  /* Matches `.profile-endorsements-v2__subtab` font treatment so
-     "Lists" reads at the same weight as "Received" / "Given". */
+  /* The section-heading role (SectionHeader's text-section). */
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.9375rem;
+  font-size: var(--text-section);
   font-weight: 600;
+  line-height: 1.4;
   color: var(--fg-primary);
 }
 
+/* A quiet count: muted tabular digits, like the profile's panels. */
 .endorsement-lists__title-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  padding: 1px 6px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
+  font-weight: 400;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .endorsement-lists__back {
@@ -634,7 +129,7 @@
    a list, so a single inline note keeps the section minimal. */
 .endorsement-lists__empty-inline {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-muted);
 }
 
@@ -681,14 +176,14 @@
 }
 
 .endorsement-lists__row-title {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   overflow-wrap: anywhere;
 }
 
 .endorsement-lists__row-desc {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -703,7 +198,7 @@
   align-items: center;
   gap: 12px;
   flex: 0 0 auto;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   white-space: nowrap;
 }
@@ -721,37 +216,22 @@
 
 .endorsement-lists__detail-desc {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
 }
 
 .endorsement-lists__detail-date {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
 }
 
 .endorsement-lists__detail-error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
-/* Owner-only help text under the Received toolbar explaining what
-   each response state means for the profile's public surface. */
-.profile-endorsements-v2__response-note {
-  margin: 0 0 8px;
-  padding: 8px 12px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-  line-height: 1.45;
-}
-
-/* Square `+` button to the LEFT of Edit on the list-detail toolbar.
-   Matches the `profile-endorsements-v2__endorse-add` visual weight
-   so the two affordances feel like the same control class. */
+/* Square `+` button to the LEFT of Edit on the list-detail toolbar. */
 .endorsement-lists__add-btn {
   display: inline-flex;
   align-items: center;
@@ -832,7 +312,7 @@
 }
 
 .endorsement-lists__item-name {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -841,7 +321,7 @@
 }
 
 .endorsement-lists__item-handle {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -849,7 +329,7 @@
 }
 
 .endorsement-lists__item-date {
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   color: var(--fg-muted);
   line-height: 1.3;
 }
@@ -896,7 +376,7 @@
 
 .endorsement-lists__item-note {
   margin: 4px 0 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
 }
 
@@ -910,14 +390,14 @@
 
 .endorsement-lists__revoke-copy {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   line-height: 1.5;
   color: var(--fg-secondary);
 }
 
 .endorsement-lists__revoke-error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -964,7 +444,7 @@
 .endorsement-lists__create-textarea {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -987,7 +467,7 @@
 
 .endorsement-lists__create-error {
   margin: 0 0 12px;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -1007,7 +487,7 @@
 
 .endorse-people-modal__subtitle {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-muted);
 }
 
@@ -1029,7 +509,7 @@
 }
 
 .endorse-people-modal__reason-hint {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   line-height: 1.45;
 }
@@ -1037,7 +517,7 @@
 .endorse-people-modal__reason-textarea {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -1056,7 +536,7 @@
 
 .endorse-people-modal__reason-counter {
   align-self: flex-end;
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   color: var(--fg-muted);
 }
 
@@ -1097,7 +577,7 @@
   border: none;
   outline: none;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
 }
 
@@ -1114,7 +594,7 @@
   margin: 0;
   padding: 16px 12px;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-muted);
 }
 
@@ -1181,7 +661,7 @@
 }
 
 .endorse-people-modal__result-name {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -1190,7 +670,7 @@
 }
 
 .endorse-people-modal__result-handle {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1199,7 +679,7 @@
 
 .endorse-people-modal__result-status {
   flex: 0 0 auto;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   font-weight: 500;
 }
@@ -1217,7 +697,7 @@
 }
 
 .endorse-people-modal__selected-title {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   letter-spacing: var(--tracking-label);
   font-feature-settings: 'case' 1;
@@ -1243,7 +723,7 @@
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
 }
 
 .endorse-people-modal__chip-name {
@@ -1256,7 +736,7 @@
 }
 
 .endorse-people-modal__chip-failed {
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   color: var(--color-error);
   font-weight: 600;
 }
@@ -1285,13 +765,13 @@
   align-items: center;
   gap: 4px;
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   color: var(--fg-muted);
 }
 
 .endorse-people-modal__error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -1322,7 +802,7 @@
 }
 
 .endorse-reason-modal__prompt {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
   line-height: 1.45;
 }
@@ -1331,7 +811,7 @@
    the org (endorser), the subject, and the operating admin. Subtle
    callout so the attribution is unmissable without shouting. */
 .endorse-reason-modal__acting-as {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   line-height: 1.45;
   color: var(--fg-secondary);
   background: var(--bg-raised);
@@ -1349,7 +829,7 @@
 .endorse-reason-modal__textarea {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -1381,7 +861,7 @@
    reads as a quiet metadata line, not a form label. */
 .endorse-reason-modal__counter {
   align-self: flex-end;
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   color: var(--fg-muted);
   line-height: 1;
 }
@@ -1393,7 +873,7 @@
 .endorse-reason-modal__select {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -1422,7 +902,7 @@
 
 .endorse-reason-modal__error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -1433,117 +913,3 @@
   margin-top: 4px;
 }
 
-/* ----------------------- List view + bulk select ----------------------- */
-
-/* View toggle (gallery | list) at the right end of the toolbar controls. */
-.profile-endorsements-v2__view-toggle {
-  flex: 0 0 auto;
-}
-
-/* Select-all + bulk-action strip above the list view (owner only). */
-.profile-endorsements-v2__bulk-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 4px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-endorsements-v2__bulk-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-endorsements-v2__bulk-error {
-  font-size: 0.75rem;
-  color: var(--color-error);
-}
-
-/* Compact list rows (vs the gallery card grid). */
-.profile-endorsements-v2__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-endorsements-v2__row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-endorsements-v2__row:hover {
-  background: var(--bg-sunken);
-}
-
-.profile-endorsements-v2__row[data-selected] {
-  background: var(--overlay-weak);
-}
-
-/* Rejected received endorsements read muted in the list. */
-.profile-endorsements-v2__row[data-state="rejected"]
-  .profile-endorsements-v2__row-name {
-  color: var(--fg-muted);
-  text-decoration: line-through;
-}
-
-.profile-endorsements-v2__row-check {
-  flex: 0 0 auto;
-}
-
-.profile-endorsements-v2__row-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.profile-endorsements-v2__row-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.profile-endorsements-v2__row-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-endorsements-v2__row-handle {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-endorsements-v2__row-note {
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-endorsements-v2__row-date {
-  flex: 0 0 auto;
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
-}

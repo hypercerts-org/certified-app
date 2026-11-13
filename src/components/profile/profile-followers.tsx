@@ -1,16 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import {
-  ArrowUpDown,
-  Check,
-  Inbox,
-  Search,
-  UserPlus,
-  Users,
-  X,
-} from "lucide-react"
+import { Inbox, SearchX, UserPlus, Users, X } from "lucide-react"
 import { useFollowers, type FollowerEntry } from "@/hooks/use-followers"
 import { useFollowing } from "@/hooks/use-following"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -18,16 +10,18 @@ import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { deriveIdentity } from "@/lib/utils/identity"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
+import { deleteFollow, type FollowRecord } from "@/lib/atproto/follow"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
-import { deleteFollow } from "@/lib/atproto/follow"
-import PersonCard from "@/components/profile/person-card"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import Badge from "@/components/ui/badge"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
-import Tooltip from "@/components/ui/tooltip"
-import type { FollowRecord } from "@/lib/atproto/follow"
+import ProfilePersonRow from "@/components/profile/profile-person-row"
+import {
+  PANEL_SEARCH_MIN,
+  PanelTools,
+  ProfileRowsSkeleton,
+  type SortOption,
+} from "@/components/profile/profile-panel"
 
 interface ProfileFollowersProps {
   /** DID of the profile being viewed. */
@@ -42,68 +36,43 @@ type SortKey =
   | "alpha-asc"
   | "alpha-desc"
 
-const FOLLOWERS_SORT_OPTIONS: { key: SortKey; label: string }[] = [
+const SORT_OPTIONS: SortOption<SortKey>[] = [
   { key: "created-desc", label: "Newest first" },
   { key: "created-asc", label: "Oldest first" },
-  { key: "alpha-asc", label: "Follower A → Z" },
-  { key: "alpha-desc", label: "Follower Z → A" },
-]
-
-const FOLLOWING_SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "created-desc", label: "Newest first" },
-  { key: "created-asc", label: "Oldest first" },
-  { key: "alpha-asc", label: "Followee A → Z" },
-  { key: "alpha-desc", label: "Followee Z → A" },
+  { key: "alpha-asc", label: "Name A to Z" },
+  { key: "alpha-desc", label: "Name Z to A" },
 ]
 
 /**
- * Followers tab on a user profile page. Mirrors `ProfileEndorsements`:
- * sub-tabs (Followers | Following) + right-aligned toolbar (search +
- * sort) + a uniform grid of person cards.
+ * Followers tab on a profile, as rows: Followers and Following sub-tabs
+ * (counts in the tabs), a search field and a sort menu once a list is
+ * long, and one row per account.
  *
  * Read paths:
- *   - Followers — indexer query for `app.certified.graph.follow`
- *     records with `subject == profileDid`.
- *   - Following — direct PDS listRecords on the profile's own repo's
- *     `app.certified.graph.follow` collection.
+ *   - Followers: indexer query for `app.certified.graph.follow` records
+ *     with `subject == profileDid`.
+ *   - Following: direct PDS listRecords on the profile's own repo.
  *
- * Sub-tab selection is URL-driven via the `sub` query param
- * (`?tab=followers&sub=following`). The sidebar follower / following
- * counts deep-link to the matching sub-tab; switching sub-tabs
- * `router.replace`s the URL so back-button navigation skips the
- * intra-tab toggles.
+ * The sub-tab lives in `?sub=` so the header's follower / following
+ * counts open the right list; switching `router.replace`s the URL.
  */
 export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   const followers = useFollowers(did)
   const following = useFollowing(did)
-  // Only the profile owner can revoke their own follows. We compare
-  // the signed-in viewer's DID to the profile's DID to decide
-  // whether the per-card × renders on the Following sub-tab.
+  // Only the profile's own account can unfollow from its Following list.
   const { did: viewerDid } = useAuth()
-  // When acting as a group, follow deletes must route to the group's
-  // repo via the BFF. The unfollow × only renders on the own-profile
-  // Following list (which, when delegating, is the group's profile), so
-  // the records being revoked live in the group's repo.
+  // Acting as a group: unfollows route to the group's repo via the BFF.
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
 
-  // Sub-tab is read from the URL (`?sub=followers|following`) so the
-  // sidebar counts can deep-link straight into the right list.
-  // Defaults to "followers" — receiving / being-followed is what most
-  // viewers care about when they land on the tab, same default as
-  // Endorsements' "Received".
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const subParam = searchParams?.get("sub")
-  const tab: SubTab = subParam === "following" ? "following" : "followers"
+  const tab: SubTab = searchParams?.get("sub") === "following" ? "following" : "followers"
   const setTab = useCallback(
     (next: SubTab) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
-      // Keep `tab=followers` (the outer profile tab) intact; only
-      // toggle the inner `sub` value. Default "followers" stays
-      // implicit in the URL — no `sub=followers` for the default so
-      // the URL stays short.
+      // Keep the outer `tab=followers`; "followers" stays implicit.
       if (next === "followers") params.delete("sub")
       else params.set("sub", next)
       const qs = params.toString()
@@ -116,165 +85,86 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
 
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
-  const [sortOpen, setSortOpen] = useState(false)
 
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
-
-  // DIDs to hydrate names for — follower DIDs on the Followers tab,
-  // subject DIDs (= followees) on the Following tab. Sort + search
-  // both read from the resolved name map.
+  // Names to search and sort by: followers, or the accounts followed.
   const dids = useMemo(() => {
     if (tab === "followers") {
       return Array.from(new Set(followers.entries.map((e) => e.followerDid)))
     }
     return Array.from(new Set(following.records.map((r) => r.value.subject)))
   }, [tab, followers.entries, following.records])
-
   const names = useAuthorNamesMap(dids)
 
-  const followersCountLabel = formatCount(followers.count ?? followers.entries.length)
-  const followingCountLabel = formatCount(following.count)
-
-  const sortOptions =
-    tab === "followers" ? FOLLOWERS_SORT_OPTIONS : FOLLOWING_SORT_OPTIONS
+  const followerCount = followers.count ?? followers.entries.length
+  const sourceLength =
+    tab === "followers" ? followers.entries.length : following.records.length
+  const showTools = sourceLength > PANEL_SEARCH_MIN || query.trim() !== ""
+  const clearSearch = () => setQuery("")
 
   return (
     <Tabs
       value={tab}
       onChange={(v) => setTab(v as SubTab)}
-      className="profile-endorsements-v2"
+      variant="segmented"
+      className="profile-panel"
     >
-      <div className="profile-endorsements-v2__toolbar">
-        {/* The .profile-endorsements-v2__toolbar already draws the strip's
-            shared bottom border, so drop TabList's own and pin it to the
-            toolbar's bottom edge. Count chips use the neutral Badge (muted
-            grey) to match the pre-migration pill. */}
-        <TabList
-          aria-label="Followers sections"
-          className="border-0 self-end"
-        >
-          <Tab value="followers">
+      <h2 className="sr-only">Followers and following</h2>
+      <div className="profile-panel__head">
+        <TabList aria-label="Followers sections">
+          <Tab
+            value="followers"
+            count={
+              followers.isLoading && followers.entries.length === 0
+                ? undefined
+                : followerCount
+            }
+          >
             Followers
-            {followersCountLabel ? (
-              <Badge variant="count" tone="neutral" compact>
-                {followersCountLabel}
-              </Badge>
-            ) : null}
           </Tab>
-          <Tab value="following">
+          <Tab
+            value="following"
+            count={
+              following.isLoading && following.count === 0 ? undefined : following.count
+            }
+          >
             Following
-            {followingCountLabel ? (
-              <Badge variant="count" tone="neutral" compact>
-                {followingCountLabel}
-              </Badge>
-            ) : null}
           </Tab>
         </TabList>
-
-        <div className="profile-endorsements-v2__controls">
-          <label className="profile-endorsements-v2__search">
-            <Search
-              size={16}
-              strokeWidth={1.75}
-              className="profile-endorsements-v2__search-icon"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search people"
-              aria-label="Search people"
-              className="profile-endorsements-v2__search-input"
-            />
-          </label>
-
-          <div className="profile-endorsements-v2__sort-wrap">
-            <Tooltip label="Sort">
-              <button
-                ref={sortBtnRef}
-                type="button"
-                className="profile-endorsements-v2__sort-btn"
-                onClick={() => setSortOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={sortOpen}
-                aria-label="Sort people"
-              >
-                <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
-            {sortOpen ? (
-              <div
-                ref={sortMenuRef}
-                className="profile-endorsements-v2__sort-menu"
-                role="menu"
-              >
-                {sortOptions.map((opt) => {
-                  const active = opt.key === sort
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className="profile-endorsements-v2__sort-item"
-                      onClick={() => {
-                        setSort(opt.key)
-                        setSortOpen(false)
-                      }}
-                    >
-                      <span className="profile-endorsements-v2__sort-item-check">
-                        {active ? <Check size={14} strokeWidth={2} aria-hidden /> : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
-          </div>
-        </div>
       </div>
 
+      {showTools ? (
+        <PanelTools
+          query={query}
+          onQueryChange={setQuery}
+          searchLabel="Search accounts"
+          sort={sort}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={setSort}
+          sortLabel="Sort accounts"
+        />
+      ) : null}
+
       <TabPanel value="followers">
-        <FollowersGrid
+        <FollowersList
           entries={followers.entries}
           isLoading={followers.isLoading}
           error={followers.error}
           onRetry={() => void followers.refetch()}
           query={query}
+          onClearSearch={clearSearch}
           sort={sort}
           names={names}
+          isOwnProfile={isOwnProfile}
         />
       </TabPanel>
       <TabPanel value="following">
-        <FollowingGrid
+        <FollowingList
           records={following.records}
           isLoading={following.isLoading}
           error={following.error}
           onRetry={() => void following.refetch()}
           query={query}
+          onClearSearch={clearSearch}
           sort={sort}
           names={names}
           canUnfollow={isOwnProfile}
@@ -287,174 +177,153 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   )
 }
 
-function formatCount(n: number | null | undefined): string | null {
-  if (n === null || n === undefined || n === 0) return null
-  return n.toLocaleString()
+function LoadError({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <EmptyState
+      icon={Inbox}
+      title={`Couldn't load ${what}`}
+      description="Something went wrong on our side. Try again in a moment."
+    >
+      <Button variant="secondary" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </EmptyState>
+  )
+}
+
+function NoMatches({ query, onClearSearch }: { query: string; onClearSearch: () => void }) {
+  return (
+    <EmptyState
+      icon={SearchX}
+      title="Nothing matches"
+      description={`No accounts match "${query.trim()}".`}
+    >
+      <Button variant="secondary" size="sm" onClick={onClearSearch}>
+        Clear search
+      </Button>
+    </EmptyState>
+  )
 }
 
 // ----------------------------- Followers -----------------------------
 
-interface FollowersGridProps {
-  entries: FollowerEntry[]
-  isLoading: boolean
-  error: string | null
-  onRetry: () => void
-  query: string
-  sort: SortKey
-  names: Map<string, string>
-}
-
-function FollowersGrid({
+function FollowersList({
   entries,
   isLoading,
   error,
   onRetry,
   query,
+  onClearSearch,
   sort,
   names,
-}: FollowersGridProps) {
+  isOwnProfile,
+}: {
+  entries: FollowerEntry[]
+  isLoading: boolean
+  error: string | null
+  onRetry: () => void
+  query: string
+  onClearSearch: () => void
+  sort: SortKey
+  names: Map<string, string>
+  isOwnProfile: boolean
+}) {
   const visible = useMemo(
     () => filterAndSortFollowers(entries, query, sort, names),
     [entries, query, sort, names],
   )
 
-  if (isLoading) {
+  if (isLoading && entries.length === 0) {
+    return <ProfileRowsSkeleton rows={4} shape="circle" />
+  }
+  if (error) return <LoadError what="followers" onRetry={onRetry} />
+  if (entries.length === 0) {
     return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
+      <EmptyState
+        icon={Users}
+        title="No followers yet"
+        description={
+          isOwnProfile
+            ? "Accounts that follow you show here."
+            : "Accounts that follow this one show here."
+        }
+      />
     )
   }
-  if (error) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={Inbox}
-          title="Couldn't load followers"
-          description="Something went wrong on our side. Try again in a moment."
-        >
-          <Button variant="secondary" size="sm" onClick={onRetry}>
-            Try again
-          </Button>
-        </EmptyState>
-      </div>
-    )
-  }
-  if (visible.length === 0) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={Users}
-          title={entries.length === 0 ? "No followers yet" : "No matches"}
-          description={
-            entries.length === 0
-              ? "People who follow this profile will appear here."
-              : "No followers match your search."
-          }
-        />
-      </div>
-    )
-  }
+  if (visible.length === 0) return <NoMatches query={query} onClearSearch={onClearSearch} />
   return (
-    <ul className="profile-endorsements-v2__grid">
+    <ul className="profile-people">
       {visible.map((e) => (
-        <FollowerCard key={e.uri} entry={e} />
+        <ProfilePersonRow key={e.uri} did={e.followerDid} since={e.createdAt} />
       ))}
     </ul>
   )
 }
 
-function FollowerCard({ entry }: { entry: FollowerEntry }) {
-  const { info, isLoading } = useAuthorInfo(entry.followerDid)
-  return (
-    <PersonCard
-      did={entry.followerDid}
-      info={info}
-      isLoadingInfo={isLoading}
-      createdAt={entry.createdAt}
-    />
-  )
-}
-
 // ----------------------------- Following -----------------------------
 
-interface FollowingGridProps {
-  records: FollowRecord[]
-  isLoading: boolean
-  error: string | null
-  onRetry: () => void
-  query: string
-  sort: SortKey
-  names: Map<string, string>
-  /** True when the profile owner is viewing their own Following list
-   *  — controls whether the per-card × renders. */
-  canUnfollow: boolean
-  viewerDid: string | null
-  /** When set (acting-as-group), unfollow writes route to the group's
-   *  repo via the BFF instead of the viewer's personal PDS. */
-  targetDid?: string
-  onAfterUnfollow: () => void | Promise<void>
-}
-
-function FollowingGrid({
+function FollowingList({
   records,
   isLoading,
   error,
   onRetry,
   query,
+  onClearSearch,
   sort,
   names,
   canUnfollow,
   viewerDid,
   targetDid,
   onAfterUnfollow,
-}: FollowingGridProps) {
+}: {
+  records: FollowRecord[]
+  isLoading: boolean
+  error: string | null
+  onRetry: () => void
+  query: string
+  onClearSearch: () => void
+  sort: SortKey
+  names: Map<string, string>
+  /** The profile's own account is viewing: each row can be unfollowed. */
+  canUnfollow: boolean
+  viewerDid: string | null
+  /** When set (acting as a group), unfollows write to the group's repo. */
+  targetDid?: string
+  onAfterUnfollow: () => void | Promise<void>
+}) {
   const visible = useMemo(
     () => filterAndSortFollowing(records, query, sort, names),
     [records, query, sort, names],
   )
 
-  if (isLoading) {
-    return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
+  if (isLoading && records.length === 0) {
+    return <ProfileRowsSkeleton rows={4} shape="circle" />
   }
-  if (error) {
+  if (error) return <LoadError what="follows" onRetry={onRetry} />
+  if (records.length === 0) {
     return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={Inbox}
-          title="Couldn't load follows"
-          description="Something went wrong on our side. Try again in a moment."
-        >
-          <Button variant="secondary" size="sm" onClick={onRetry}>
-            Try again
+      <EmptyState
+        icon={UserPlus}
+        title="Not following anyone yet"
+        description={
+          canUnfollow
+            ? "Accounts you follow show here."
+            : "Accounts this one follows show here."
+        }
+      >
+        {canUnfollow ? (
+          <Button href="/explore" variant="secondary" size="sm">
+            Find accounts
           </Button>
-        </EmptyState>
-      </div>
+        ) : null}
+      </EmptyState>
     )
   }
-  if (visible.length === 0) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={UserPlus}
-          title={records.length === 0 ? "Not following anyone yet" : "No matches"}
-          description={
-            records.length === 0
-              ? "People this profile follows will appear here."
-              : "No follows match your search."
-          }
-        />
-      </div>
-    )
-  }
+  if (visible.length === 0) return <NoMatches query={query} onClearSearch={onClearSearch} />
   return (
-    <ul className="profile-endorsements-v2__grid">
+    <ul className="profile-people">
       {visible.map((r) => (
-        <FollowingCard
+        <FollowingRow
           key={r.uri}
           record={r}
           canUnfollow={canUnfollow && !!viewerDid}
@@ -467,7 +336,7 @@ function FollowingGrid({
   )
 }
 
-function FollowingCard({
+function FollowingRow({
   record,
   canUnfollow,
   viewerDid,
@@ -480,22 +349,18 @@ function FollowingCard({
   targetDid?: string
   onAfterUnfollow: () => void | Promise<void>
 }) {
-  const { info, isLoading } = useAuthorInfo(record.value.subject)
+  const subject = record.value.subject
   return (
-    <PersonCard
-      did={record.value.subject}
-      info={info}
-      isLoadingInfo={isLoading}
-      createdAt={record.value.createdAt}
-      menu={
+    <ProfilePersonRow
+      did={subject}
+      since={record.value.createdAt}
+      trailing={
         canUnfollow && viewerDid ? (
           <UnfollowButton
             viewerDid={viewerDid}
             rkey={record.rkey}
             targetDid={targetDid}
-            subjectDisplay={
-              deriveIdentity(info, record.value.subject).displayName
-            }
+            subjectDid={subject}
             onAfterUnfollow={onAfterUnfollow}
           />
         ) : null
@@ -505,24 +370,25 @@ function FollowingCard({
 }
 
 /**
- * `×` revoke affordance shown on the owner's Following grid. Click →
- * ConfirmDialog → `deleteFollow` against the follow record's rkey,
- * then `onAfterUnfollow` re-pages the Following list so the row
+ * The unfollow control on the account's own Following rows: an icon
+ * button, a confirm dialog, then `deleteFollow` and a refetch so the row
  * drops.
  */
 function UnfollowButton({
   viewerDid,
   rkey,
   targetDid,
-  subjectDisplay,
+  subjectDid,
   onAfterUnfollow,
 }: {
   viewerDid: string
   rkey: string
   targetDid?: string
-  subjectDisplay: string
+  subjectDid: string
   onAfterUnfollow: () => void | Promise<void>
 }) {
+  const { info } = useAuthorInfo(subjectDid)
+  const { displayName: subjectDisplay } = deriveIdentity(info, subjectDid)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
 
@@ -542,22 +408,15 @@ function UnfollowButton({
 
   return (
     <>
-      <Tooltip label="Unfollow">
-        <button
-          type="button"
-          className="profile-endorsements-v2__given-revoke"
-          onClick={(e) => {
-            // The card's outer Link otherwise navigates to the
-            // subject's profile.
-            e.preventDefault()
-            e.stopPropagation()
-            setConfirmOpen(true)
-          }}
-          aria-label={`Unfollow ${subjectDisplay}`}
-        >
-          <X size={14} strokeWidth={2} aria-hidden />
-        </button>
-      </Tooltip>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="profile-person__action"
+        onClick={() => setConfirmOpen(true)}
+        aria-label={`Unfollow ${subjectDisplay}`}
+      >
+        <X size={16} strokeWidth={1.75} aria-hidden />
+      </Button>
       {confirmOpen ? (
         <ConfirmDialog
           title={`Unfollow ${subjectDisplay}?`}

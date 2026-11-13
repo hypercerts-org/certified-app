@@ -75,7 +75,7 @@
   padding: 16px 16px 44px;
   text-align: center;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   line-height: 1.4;
   color: var(--fg-muted);
   pointer-events: none;
@@ -112,7 +112,7 @@
   border-radius: 999px;
   padding: 6px 12px;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -168,7 +168,7 @@
 }
 
 .profile-banner-upload__error {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--color-error);
   margin: 0;
 }
@@ -188,7 +188,7 @@
   display: inline-flex;
   align-items: center;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
   background: var(--bg-elevated);
@@ -220,7 +220,7 @@
 
 .profile-overview__type-other-input {
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
@@ -240,7 +240,7 @@
 
 .profile-overview__location-input {
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);

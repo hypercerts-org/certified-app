@@ -1,7 +1,7 @@
 "use client"
 
 import { memo, useState } from "react"
-import { Inbox, ThumbsUp, X, type LucideIcon } from "lucide-react"
+import { Inbox, Plus, SearchX, ThumbsUp, X, type LucideIcon } from "lucide-react"
 import type { GivenEndorsement } from "@/hooks/use-endorsements"
 import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
@@ -14,17 +14,14 @@ import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
-import EndorsementSubjectRow, {
-  type EndorsementSubjectRowClasses,
-} from "@/components/endorsements/endorsement-subject-row"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import PersonCard from "@/components/profile/person-card"
-import Tooltip from "@/components/ui/tooltip"
+import EndorsementSubjectRow from "@/components/endorsements/endorsement-subject-row"
+import { ProfileRowsSkeleton } from "@/components/profile/profile-panel"
+import { PERSON_ROW_CLASSES } from "@/components/profile/profile-person-row"
 
 // Presentational views below ProfileEndorsements' fold: the Received /
-// Given grids and lists, their cards and rows, the bulk-action bar, and
-// the pure filter + sort helpers. All state lives in the parent — every
-// unit here receives data plus stable callbacks via props.
+// Given rows, the bulk-action bar, and the pure filter + sort helpers.
+// All state lives in the parent; every unit here receives data plus
+// stable callbacks via props. Records' Endorsements pane reuses GivenList.
 
 export type SortKey =
   | "created-desc"
@@ -34,36 +31,8 @@ export type SortKey =
 
 export type ResponseFilterKey = "hide-rejected" | "only-rejected" | "show-all"
 
-// ----------------------------- Received -----------------------------
-
-interface ReceivedGridProps {
-  /** Already filtered + sorted by the parent (`visibleReceived`); the
-   *  grid renders it directly instead of recomputing the sort. */
-  visible: ReceivedEndorsement[]
-  /** Size of the pre-search set — drives the "No endorsements yet" vs
-   *  "No matches" empty-state split. */
-  total: number
-  isLoading: boolean
-  error: string | null
-  /** Re-runs the load; shows a "Try again" button on error. */
-  onRetry?: () => void
-  viewerIsOwner: boolean
-  viewerDid: string | null
-  /** Group DID when acting AS this group — accept/reject responses route
-   *  to the group's repo. Undefined for personal responses. */
-  targetDid?: string
-  /** Active response filter — used by the empty-state copy so a
-   *  zero-results "Show only rejected" view says "No rejected
-   *  endorsements yet" instead of the generic "No endorsements
-   *  yet." */
-  responseFilter: ResponseFilterKey
-  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
-  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
-  onAfterWrite: () => void | Promise<void>
-}
-
-/** Shared load-error state for the four endorsement views. The hook's
- *  error text is technical, so it stays out of the UI. */
+/** Shared load-error state for the endorsement lists. The hook's error
+ *  text is technical, so it stays out of the UI. */
 function LoadError({ onRetry }: { onRetry?: () => void }) {
   return (
     <EmptyState
@@ -80,250 +49,36 @@ function LoadError({ onRetry }: { onRetry?: () => void }) {
   )
 }
 
-export function ReceivedGrid({
-  visible,
-  total,
-  isLoading,
-  error,
-  onRetry,
-  viewerIsOwner,
-  viewerDid,
-  targetDid,
-  responseFilter,
-  resolve,
-  allResponses,
-  onAfterWrite,
-}: ReceivedGridProps) {
-  if (isLoading) {
-    return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <LoadError onRetry={onRetry} />
-      </div>
-    )
-  }
-  if (visible.length === 0) {
-    // Three empty-state cases:
-    //   1. The "Show only rejected" filter is active with no matches
-    //      — phrase the empty state in terms of the filter so the
-    //      user knows nothing is missing, the filter just has no
-    //      hits yet.
-    //   2. There's a search query / sort filter but the pre-filter
-    //      set is non-empty — "No matches."
-    //   3. The user has zero endorsements total — the generic
-    //      "No endorsements yet" CTA.
-    const onlyRejectedActive = responseFilter === "only-rejected"
-    const title = onlyRejectedActive
-      ? "No rejected endorsements yet"
-      : total === 0
-        ? "No endorsements yet"
-        : "No matches"
-    const description = onlyRejectedActive
-      ? "Endorsements you reject will appear here."
-      : total === 0
-        ? "Endorsements from other people will appear here."
-        : "No endorsements match your search."
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState icon={ThumbsUp} title={title} description={description} />
-      </div>
-    )
-  }
-  return (
-    <ul className="profile-endorsements-v2__grid">
-      {visible.map((e) => (
-        <ReceivedCard
-          key={e.uri}
-          endorsement={e}
-          viewerIsOwner={viewerIsOwner}
-          viewerDid={viewerDid}
-          targetDid={targetDid}
-          resolve={resolve}
-          allResponses={allResponses}
-          onAfterWrite={onAfterWrite}
-        />
-      ))}
-    </ul>
-  )
-}
-
-const ReceivedCard = memo(function ReceivedCard({
-  endorsement,
-  viewerIsOwner,
-  viewerDid,
-  targetDid,
-  resolve,
-  allResponses,
-  onAfterWrite,
+/** "Nothing matches" for a search, naming it and offering to clear it. */
+function NoMatches({
+  query,
+  onClearSearch,
 }: {
-  endorsement: ReceivedEndorsement
-  viewerIsOwner: boolean
-  viewerDid: string | null
-  targetDid?: string
-  resolve: ReturnType<typeof useOwnResponseStates>["resolve"]
-  allResponses: ReturnType<typeof useOwnResponseStates>["responses"]
-  onAfterWrite: () => void | Promise<void>
+  query?: string
+  onClearSearch?: () => void
 }) {
-  const { info, isLoading } = useReceivedIssuerInfo(endorsement)
-
+  const q = query?.trim()
   return (
-    <PersonCard
-      did={endorsement.issuerDid}
-      info={info}
-      isLoadingInfo={isLoading}
-      createdAt={endorsement.createdAt}
-      note={endorsement.note}
-      listTitle={endorsement.listTitle}
-      menu={
-        viewerIsOwner ? (
-          <ResponseMenu
-            awardUri={endorsement.uri}
-            awardCid={endorsement.cid}
-            issuerDisplayName={
-              deriveIdentity(info, endorsement.issuerDid).displayName
-            }
-            ownerDid={viewerDid}
-            targetDid={targetDid}
-            state={resolve(endorsement.uri).state}
-            allResponses={allResponses}
-            onAfterWrite={onAfterWrite}
-          />
-        ) : null
+    <EmptyState
+      icon={SearchX}
+      title="Nothing matches"
+      description={
+        q ? `No endorsements match "${q}".` : "No endorsements match your search."
       }
-    />
-  )
-})
-
-// ------------------------------ Given -------------------------------
-
-interface GivenGridProps {
-  /** Already filtered + sorted by the parent (`visibleGiven`); the grid
-   *  renders it directly instead of recomputing the sort. */
-  visible: GivenEndorsement[]
-  /** Size of the pre-search set — drives the "No endorsements given yet"
-   *  vs "No matches" empty-state split. */
-  total: number
-  isLoading: boolean
-  error: string | null
-  /** Re-runs the load; shows a "Try again" button on error. */
-  onRetry?: () => void
-  /** True when the profile being viewed is the signed-in user's
-   *  own profile — i.e. the cards represent endorsements THEY
-   *  issued. Controls whether the per-card revoke `×` renders. */
-  viewerIsOwner: boolean
-  viewerDid: string | null
-  /** Group DID when the viewer is acting AS this group — revokes route
-   *  to the group repo. Undefined for personal revokes. */
-  targetDid?: string
-  onAfterRevoke: () => void | Promise<void>
-}
-
-export function GivenGrid({
-  visible,
-  total,
-  isLoading,
-  error,
-  onRetry,
-  viewerIsOwner,
-  viewerDid,
-  targetDid,
-  onAfterRevoke,
-}: GivenGridProps) {
-  if (isLoading) {
-    return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <LoadError onRetry={onRetry} />
-      </div>
-    )
-  }
-  if (visible.length === 0) {
-    return (
-      <div className="profile-endorsements-v2__grid">
-        <EmptyState
-          icon={ThumbsUp}
-          title={total === 0 ? "No endorsements given yet" : "No matches"}
-          description={
-            total === 0
-              ? "Endorsements this user gives to others will appear here."
-              : "No endorsements match your search."
-          }
-        />
-      </div>
-    )
-  }
-  return (
-    <ul className="profile-endorsements-v2__grid">
-      {visible.map((e) => (
-        <GivenCard
-          key={e.uri}
-          endorsement={e}
-          canRevoke={viewerIsOwner && !!viewerDid}
-          viewerDid={viewerDid}
-          targetDid={targetDid}
-          onAfterRevoke={onAfterRevoke}
-        />
-      ))}
-    </ul>
+    >
+      {onClearSearch ? (
+        <Button variant="secondary" size="sm" onClick={onClearSearch}>
+          Clear search
+        </Button>
+      ) : null}
+    </EmptyState>
   )
 }
-
-const GivenCard = memo(function GivenCard({
-  endorsement,
-  canRevoke,
-  viewerDid,
-  targetDid,
-  onAfterRevoke,
-}: {
-  endorsement: GivenEndorsement
-  canRevoke: boolean
-  viewerDid: string | null
-  targetDid?: string
-  onAfterRevoke: () => void | Promise<void>
-}) {
-  const { info, isLoading } = useAuthorInfo(endorsement.subjectDid)
-  return (
-    <PersonCard
-      did={endorsement.subjectDid}
-      info={info}
-      isLoadingInfo={isLoading}
-      createdAt={endorsement.createdAt}
-      note={endorsement.note}
-      listTitle={endorsement.listTitle}
-      menu={
-        canRevoke && viewerDid ? (
-          <RevokeGivenButton
-            viewerDid={viewerDid}
-            rkeys={endorsement.rkeys}
-            targetDid={targetDid}
-            subjectDisplay={
-              deriveIdentity(info, endorsement.subjectDid).displayName
-            }
-            onAfterRevoke={onAfterRevoke}
-          />
-        ) : null
-      }
-    />
-  )
-})
 
 /**
- * Small `×` revoke affordance shown on the owner's Given grid.
- * Click → ConfirmDialog ("Revoke endorsement?") → on confirm,
- * `deleteEndorsementAward` runs and the parent's `onAfterRevoke`
- * refetches the Given list so the card disappears.
+ * The owner's revoke control on a Given row: an icon button that opens a
+ * confirm dialog; on confirm every award for the recipient is deleted and
+ * the parent's `onAfterRevoke` refetches so the row disappears.
  */
 function RevokeGivenButton({
   viewerDid,
@@ -363,22 +118,15 @@ function RevokeGivenButton({
 
   return (
     <>
-      <Tooltip label="Revoke endorsement">
-        <button
-          type="button"
-          className="profile-endorsements-v2__given-revoke"
-          onClick={(e) => {
-            // PersonCard's outer Link otherwise catches the click and
-            // navigates to the subject's profile.
-            e.preventDefault()
-            e.stopPropagation()
-            setConfirmOpen(true)
-          }}
-          aria-label={`Revoke endorsement of ${subjectDisplay}`}
-        >
-          <X size={14} strokeWidth={2} aria-hidden />
-        </button>
-      </Tooltip>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="profile-person__action"
+        onClick={() => setConfirmOpen(true)}
+        aria-label={`Revoke endorsement of ${subjectDisplay}`}
+      >
+        <X size={16} strokeWidth={1.75} aria-hidden />
+      </Button>
       {confirmOpen ? (
         <ConfirmDialog
           title={`Revoke endorsement of ${subjectDisplay}?`}
@@ -392,7 +140,7 @@ function RevokeGivenButton({
         />
       ) : null}
       {error ? (
-        <span className="profile-endorsements-v2__endorse-error" role="alert">
+        <span className="profile-person__error" role="alert">
           {error}
         </span>
       ) : null}
@@ -400,14 +148,12 @@ function RevokeGivenButton({
   )
 }
 
-// ----------------------- List view + bulk select -----------------------
-
 /**
  * Compose the issuer's AuthorInfo from the indexer's denormalised block,
  * filling gaps via `useAuthorInfo`. The indexer's `issuer` join can carry
  * a handle WITHOUT a displayName/avatar (certified-only orgs have no
  * bsky-profile join), so we only skip the per-row resolve when the
- * indexer block is complete. Shared by the received card + list row.
+ * indexer block is complete.
  */
 function useReceivedIssuerInfo(endorsement: ReceivedEndorsement): {
   info: AuthorInfo | null
@@ -438,7 +184,7 @@ function useReceivedIssuerInfo(endorsement: ReceivedEndorsement): {
   return { info, isLoading }
 }
 
-/** Select-all + bulk-action strip shown above the list view for owners. */
+/** Select-all + bulk-action strip shown above the rows while selecting. */
 export function BulkBar({
   selectedCount,
   allSelected,
@@ -461,11 +207,7 @@ export function BulkBar({
   onAction: () => void
 }) {
   return (
-    <div
-      className="profile-endorsements-v2__bulk-bar"
-      role="toolbar"
-      aria-label="Bulk actions"
-    >
+    <div className="profile-panel__bulk-bar" role="toolbar" aria-label="Bulk actions">
       <Checkbox
         checked={allSelected}
         indeterminate={!allSelected && selectedCount > 0}
@@ -474,9 +216,9 @@ export function BulkBar({
         aria-label={allSelected ? "Deselect all" : "Select all"}
         label={selectedCount > 0 ? `${selectedCount} selected` : "Select all"}
       />
-      <div className="profile-endorsements-v2__bulk-actions">
+      <div className="profile-panel__bulk-actions">
         {error ? (
-          <span className="profile-endorsements-v2__bulk-error" role="alert">
+          <span className="profile-person__error" role="alert">
             {error}
           </span>
         ) : null}
@@ -486,25 +228,19 @@ export function BulkBar({
           onClick={onAction}
           disabled={selectedCount === 0 || busy}
         >
-          <ActionIcon size={14} strokeWidth={1.75} aria-hidden />
+          <ActionIcon size={16} strokeWidth={1.75} aria-hidden />
           {actionLabel}
           {selectedCount > 0 ? ` (${selectedCount})` : ""}
         </Button>
       </div>
+      <span className="sr-only" aria-live="polite">
+        {selectedCount > 0 ? `${selectedCount} selected` : ""}
+      </span>
     </div>
   )
 }
 
-/** BEM skin the shared subject row wears in the compact list view.
- *  Used by both Given and Received rows. */
-const V2_ROW_CLASSES: EndorsementSubjectRowClasses = {
-  main: "profile-endorsements-v2__row-main",
-  meta: "profile-endorsements-v2__row-text",
-  name: "profile-endorsements-v2__row-name",
-  handle: "profile-endorsements-v2__row-handle",
-  note: "profile-endorsements-v2__row-note",
-  date: "profile-endorsements-v2__row-date",
-}
+// ------------------------------ Given -------------------------------
 
 export function GivenList({
   visible,
@@ -519,56 +255,68 @@ export function GivenList({
   selected,
   onToggleOne,
   onAfterRevoke,
+  onEndorse,
+  query,
+  onClearSearch,
 }: {
   visible: GivenEndorsement[]
+  /** Size of the pre-search set: "No endorsements given yet" vs "Nothing
+   *  matches". */
   total: number
   isLoading: boolean
   error: string | null
   /** Re-runs the load; shows a "Try again" button on error. */
   onRetry?: () => void
+  /** The viewer is this account: the copy says "you" and rows can be
+   *  revoked. */
   viewerIsOwner: boolean
   viewerDid: string | null
+  /** Group DID when the viewer is acting as this group: revokes route to
+   *  the group repo. Undefined for personal revokes. */
   targetDid?: string
   selectable: boolean
   selected: Set<string>
   onToggleOne: (uri: string) => void
   onAfterRevoke: () => void | Promise<void>
+  /** Offers "Endorse someone" in the owner's empty state. */
+  onEndorse?: () => void
+  /** The active search, named by "Nothing matches". */
+  query?: string
+  onClearSearch?: () => void
 }) {
-  if (isLoading) {
-    return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <LoadError onRetry={onRetry} />
-    )
-  }
+  if (isLoading) return <ProfileRowsSkeleton rows={4} shape="circle" />
+  if (error) return <LoadError onRetry={onRetry} />
   if (visible.length === 0) {
+    if (total > 0) return <NoMatches query={query} onClearSearch={onClearSearch} />
     return (
       <EmptyState
         icon={ThumbsUp}
-        title={total === 0 ? "No endorsements given yet" : "No matches"}
+        title="No endorsements given yet"
         description={
-          total === 0
-            ? "Endorsements this user gives to others will appear here."
-            : "No endorsements match your search."
+          viewerIsOwner
+            ? "Accounts you endorse show here."
+            : "Accounts this account endorses show here."
         }
-      />
+      >
+        {viewerIsOwner && onEndorse ? (
+          <Button variant="secondary" size="sm" onClick={onEndorse}>
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            Endorse someone
+          </Button>
+        ) : null}
+      </EmptyState>
     )
   }
   return (
-    <ul className="profile-endorsements-v2__list">
+    <ul className="profile-people">
       {visible.map((e) => (
-        <GivenListRow
+        <GivenRow
           key={e.uri}
           endorsement={e}
           selectable={selectable}
           selected={selected.has(e.uri)}
           onToggleOne={onToggleOne}
-          canRevoke={viewerIsOwner && !!viewerDid}
+          canRevoke={viewerIsOwner && !!viewerDid && !selectable}
           viewerDid={viewerDid}
           targetDid={targetDid}
           onAfterRevoke={onAfterRevoke}
@@ -578,7 +326,7 @@ export function GivenList({
   )
 }
 
-const GivenListRow = memo(function GivenListRow({
+const GivenRow = memo(function GivenRow({
   endorsement,
   selectable,
   selected,
@@ -602,10 +350,10 @@ const GivenListRow = memo(function GivenListRow({
   // revoke confirm dialog match the visible display name.
   const { displayName: display } = deriveIdentity(info, endorsement.subjectDid)
   return (
-    <li className="profile-endorsements-v2__row" data-selected={selected || undefined}>
+    <li className="profile-person" data-selected={selected || undefined}>
       {selectable ? (
         <Checkbox
-          className="profile-endorsements-v2__row-check"
+          className="profile-person__check"
           checked={selected}
           onChange={() => onToggleOne(endorsement.uri)}
           aria-label={`Select endorsement of ${display}`}
@@ -618,7 +366,7 @@ const GivenListRow = memo(function GivenListRow({
         createdAt={endorsement.createdAt}
         note={endorsement.note}
         avatarSize="sm"
-        classes={V2_ROW_CLASSES}
+        classes={PERSON_ROW_CLASSES}
         trailing={
           canRevoke && viewerDid ? (
             <RevokeGivenButton
@@ -634,6 +382,8 @@ const GivenListRow = memo(function GivenListRow({
     </li>
   )
 })
+
+// ----------------------------- Received -----------------------------
 
 export function ReceivedList({
   visible,
@@ -651,6 +401,8 @@ export function ReceivedList({
   selected,
   onToggleOne,
   onAfterWrite,
+  query,
+  onClearSearch,
 }: {
   visible: ReceivedEndorsement[]
   total: number
@@ -659,6 +411,8 @@ export function ReceivedList({
   /** Re-runs the load; shows a "Try again" button on error. */
   onRetry?: () => void
   responseFilter: ResponseFilterKey
+  /** The viewer is this account: the copy says "you" and each row gets
+   *  the accept / reject menu. */
   viewerIsOwner: boolean
   viewerDid: string | null
   targetDid?: string
@@ -668,51 +422,44 @@ export function ReceivedList({
   selected: Set<string>
   onToggleOne: (uri: string) => void
   onAfterWrite: () => void | Promise<void>
+  query?: string
+  onClearSearch?: () => void
 }) {
-  if (isLoading) {
-    return (
-      <div className="profile-endorsements-v2__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <LoadError onRetry={onRetry} />
-    )
-  }
+  if (isLoading) return <ProfileRowsSkeleton rows={4} shape="circle" />
+  if (error) return <LoadError onRetry={onRetry} />
   if (visible.length === 0) {
-    const onlyRejectedActive = responseFilter === "only-rejected"
+    if (responseFilter === "only-rejected" && !query?.trim()) {
+      return (
+        <EmptyState
+          icon={ThumbsUp}
+          title="No rejected endorsements"
+          description="Endorsements you reject are hidden from your profile and listed here."
+        />
+      )
+    }
+    if (total > 0) return <NoMatches query={query} onClearSearch={onClearSearch} />
     return (
       <EmptyState
         icon={ThumbsUp}
-        title={
-          onlyRejectedActive
-            ? "No rejected endorsements yet"
-            : total === 0
-              ? "No endorsements yet"
-              : "No matches"
-        }
+        title="No endorsements yet"
         description={
-          onlyRejectedActive
-            ? "Endorsements you reject will appear here."
-            : total === 0
-              ? "Endorsements from other people will appear here."
-              : "No endorsements match your search."
+          viewerIsOwner
+            ? "When another account endorses you, it shows here."
+            : "When another account endorses this one, it shows here."
         }
       />
     )
   }
   return (
-    <ul className="profile-endorsements-v2__list">
+    <ul className="profile-people">
       {visible.map((e) => (
-        <ReceivedListRow
+        <ReceivedRow
           key={e.uri}
           endorsement={e}
           selectable={selectable}
           selected={selected.has(e.uri)}
           onToggleOne={onToggleOne}
-          viewerIsOwner={viewerIsOwner}
+          viewerIsOwner={viewerIsOwner && !selectable}
           viewerDid={viewerDid}
           targetDid={targetDid}
           resolve={resolve}
@@ -724,7 +471,7 @@ export function ReceivedList({
   )
 }
 
-const ReceivedListRow = memo(function ReceivedListRow({
+const ReceivedRow = memo(function ReceivedRow({
   endorsement,
   selectable,
   selected,
@@ -753,13 +500,13 @@ const ReceivedListRow = memo(function ReceivedListRow({
   const { displayName: display } = deriveIdentity(info, endorsement.issuerDid)
   return (
     <li
-      className="profile-endorsements-v2__row"
+      className="profile-person"
       data-selected={selected || undefined}
       data-state={resolve(endorsement.uri).state}
     >
       {selectable ? (
         <Checkbox
-          className="profile-endorsements-v2__row-check"
+          className="profile-person__check"
           checked={selected}
           onChange={() => onToggleOne(endorsement.uri)}
           aria-label={`Select endorsement from ${display}`}
@@ -772,7 +519,7 @@ const ReceivedListRow = memo(function ReceivedListRow({
         createdAt={endorsement.createdAt}
         note={endorsement.note}
         avatarSize="sm"
-        classes={V2_ROW_CLASSES}
+        classes={PERSON_ROW_CLASSES}
         trailing={
           viewerIsOwner ? (
             <ResponseMenu

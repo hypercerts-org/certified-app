@@ -6,6 +6,7 @@ import { CircleUser, Key, Palette, Share2, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
+import { profileEditUrl } from "@/components/profile/profile-edit-url"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import AppPasswordsSection from "@/components/settings/app-passwords-section"
@@ -139,7 +140,7 @@ export default function SettingsPanel() {
               label="Profile"
               description="Your name, picture, bio and links, as others see them."
             >
-              <Button variant="secondary" size="sm" href="/settings/edit-profile">
+              <Button variant="secondary" size="sm" href={profileEditUrl(handle || did || "")}>
                 Edit profile
               </Button>
             </SettingsRow>

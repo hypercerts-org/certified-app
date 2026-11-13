@@ -63,6 +63,7 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import { formatRelativeTime } from "@/lib/atproto/activity"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { profileUrl } from "@/lib/urls"
+import { profileEditUrl } from "@/components/profile/profile-edit-url"
 import Link from "next/link"
 import Button from "@/components/ui/button"
 import Badge from "@/components/ui/badge"
@@ -248,7 +249,7 @@ interface OrgSettingsProps {
 export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const { did, pdsUrl } = useAuth()
   const { email } = useSession()
-  const { switchOrg, refetchOrgs } = useOrg()
+  const { activeOrg, switchOrg, refetchOrgs } = useOrg()
   const router = useRouter()
   const isOwner = org.role === "owner"
   const isAdmin = org.role === "admin" || isOwner
@@ -585,8 +586,11 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   variant="secondary"
                   size="sm"
                   href={
-                    isSelfOwned
-                      ? "/settings/edit-profile"
+                    // The inline editor opens for the account itself: signed
+                    // in as the group, or acting as it. Otherwise the
+                    // group's own form.
+                    isSelfOwned || activeOrg?.groupDid === groupDid
+                      ? profileEditUrl(org.handle || groupDid)
                       : `/groups/${encodeURIComponent(groupDid)}/edit-profile`
                   }
                 >

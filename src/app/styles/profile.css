@@ -1,5 +1,5 @@
 /* ========== Public profile (src/app/[actor]/page.tsx) ==========
-   One layout for every width, inside <PageContainer width="wide">:
+   One layout for every width, inside <PageContainer width="default">:
    the owner bar (or the edit bar), the header, the section tabs, the
    active panel. Phones stack the same pieces in one column. */
 
@@ -38,22 +38,17 @@
   gap: 16px;
 }
 
+/* Text links like the app's others (SeeAllLink): secondary ink, primary
+   on hover, no underline. */
 .profile-owner-bar__link {
   position: relative;
   display: inline-flex;
   align-items: center;
   min-height: var(--control-h-compact);
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
   font-weight: 500;
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-decoration-color: var(--border-hover);
-  text-underline-offset: 3px;
-  cursor: pointer;
-  transition: text-decoration-color var(--transition-fast);
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
 }
 
 /* 44px touch target around the 32px link. */
@@ -65,7 +60,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .profile-owner-bar__link:hover {
-    text-decoration-color: currentColor;
+    color: var(--fg-primary);
   }
 }
 
@@ -78,10 +73,11 @@
 /* ---------- Edit bar and onboarding banner ---------- */
 
 /* While editing, Save / Cancel stay in reach: the bar pins below the top
-   bar (the section tabs give up their sticky slot meanwhile). */
+   chrome, under the acting-as bar when it shows (the section tabs give up
+   their sticky slot meanwhile). */
 .profile-page__edit-bar {
   position: sticky;
-  top: var(--navbar-height);
+  top: var(--chrome-top, var(--navbar-height));
   z-index: var(--z-rail-sticky);
   margin-bottom: 24px;
   padding: 8px 0;
@@ -573,6 +569,22 @@
   border-radius: var(--radius);
 }
 
+/* Phones: the trust-line links and the Permanent ID copy button are 44px
+   tall touch targets. */
+@media (max-width: 799px) {
+  .profile-trust__endorsed,
+  .profile-header__id {
+    min-height: var(--control-h-md);
+  }
+
+  .profile-trust__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    min-height: var(--control-h-md);
+  }
+}
+
 /* ---------- Section tabs ---------- */
 
 /* One underline strip on every width. It scrolls sideways when the tabs
@@ -592,9 +604,11 @@
   display: none;
 }
 
+/* Pinned below the top chrome: the top bar, plus the acting-as bar when
+   it shows. */
 .profile-tabs--sticky {
   position: sticky;
-  top: var(--navbar-height);
+  top: var(--chrome-top, var(--navbar-height));
   z-index: var(--z-rail-sticky);
 }
 
@@ -644,25 +658,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
 
 .profile-page__about {
   max-width: var(--measure);
-}
-
-/* A one-line pointer at the top of a panel ("Manage endorsements"). */
-.profile-panel-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 16px;
-  margin-bottom: 24px;
-  padding: 4px 12px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-}
-
-.profile-panel-note__text {
-  margin: 0;
-  font-size: var(--text-ui);
-  color: var(--fg-secondary);
 }
 
 /* ---------- Overview ---------- */
@@ -904,217 +899,244 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   font-variant-numeric: tabular-nums;
 }
 
-/* ========== Profile › Groups tab ========== */
-.profile-groups {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ---------- Tab panels ----------
+   Activities, Projects, Groups, Endorsements, Followers and Lists read
+   like the Overview: a section header (or sub-tabs), a search field and a
+   sort menu once a list is long, then rows on hairlines. */
+
+.profile-panel {
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
-.profile-groups__item {
-  border-bottom: 1px solid var(--border-subtle);
+/* The quiet count after a section title: muted tabular digits. */
+.profile-panel__count {
+  margin-left: 4px;
+  font-weight: 400;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-.profile-groups__item:last-child {
-  border-bottom: none;
+/* Sub-tabs on the left, one quiet action on the right. */
+.profile-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-width: 0;
 }
 
-.profile-groups__link {
+.profile-panel__head [role="tablist"] {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-panel__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.profile-panel__search {
+  flex: 1 1 240px;
+  max-width: 360px;
+  min-width: 0;
+}
+
+.profile-panel__menus {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 4px;
-  color: inherit;
-  text-decoration: none;
-  transition: background var(--transition-fast);
+  gap: 4px;
+  margin-left: auto;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .profile-groups__link:hover {
-    background: var(--overlay-weak);
+.profile-panel__more {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+/* Select-all and the bulk action, while selecting. */
+.profile-panel__bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-bottom: 8px;
+}
+
+.profile-panel__bulk-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sub-tab segments: 36px tall on phones (44px with the track). */
+@media (max-width: 799px) {
+  .profile-panel__head [role="tab"] {
+    min-height: var(--control-h-sm);
   }
 }
 
-.profile-groups__meta {
+/* A row's last line of facts ("Admin · @handle · Joined …", "3 activities",
+   "by …"). */
+.profile-row__meta {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- People rows (endorsements, followers, following) ---------- */
+
+.profile-people {
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.profile-groups__name {
-  font-size: var(--text-body-sm);
-  font-weight: 500;
-  color: var(--fg-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-groups__handle {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-groups__role {
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-}
-
-.profile-groups__loading {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-}
-
-
-/* ========== Profile › Projects tab ==========
-   Lists `org.hypercerts.collection` records with `type === "project"`
-   from the profile's PDS. Each row mirrors the GitHub repo-row look:
-   a leading folder/repo glyph, then title + description + meta. */
-.profile-projects {
-  list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-projects__item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-projects__item:first-child {
+  list-style: none;
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-projects__icon {
-  flex-shrink: 0;
-  display: inline-flex;
+.profile-person {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  color: var(--fg-secondary);
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.profile-projects__body {
-  flex: 1;
-  min-width: 0;
+.profile-person[data-selected] {
+  background: var(--overlay-weak);
+}
+
+.profile-person__check {
+  flex: 0 0 auto;
+}
+
+.profile-person__main {
   display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: var(--control-h-md);
+  padding: 4px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.profile-person__main:hover .profile-person__name {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.profile-person__main:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.profile-person__text {
+  display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
-.profile-projects__title {
-  font-size: 1rem;
-  font-weight: 600;
+.profile-person__name {
+  overflow: hidden;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.45;
   color: var(--fg-primary);
-  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.profile-projects__desc {
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  line-height: 1.4;
-  margin: 0;
-}
-
-.profile-projects__meta {
-  font-size: 0.75rem;
+.profile-person__handle {
+  overflow: hidden;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
-  margin: 4px 0 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.profile-projects__loading {
+.profile-person__note {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--fg-secondary);
+  overflow-wrap: anywhere;
+}
+
+.profile-person__date {
+  flex: 0 0 auto;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A rejected endorsement, listed for its owner: struck through. */
+.profile-person[data-state="rejected"] .profile-person__name {
+  color: var(--fg-muted);
+  text-decoration: line-through;
+}
+
+.profile-person__error {
+  font-size: var(--text-caption);
+  color: var(--color-error);
+}
+
+/* ---------- Group rows (Groups tab) ---------- */
+
+.profile-group-row {
+  align-items: center;
+}
+
+.profile-group-row__main {
   display: flex;
-  justify-content: center;
-  padding: 24px 0;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
 }
 
-/* Sub-tab strips inside a panel (Created / Contributed, Received / Given,
-   Followers / Following) read as pills on phones, so they don't look like
-   a second copy of the section tabs above. Scoped to the panel, so the
-   section tabs keep their underline. */
-@media (max-width: 799px) {
-  .profile-page__panel [role="tab"] {
-    padding: 4px 12px;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-pill);
-    background: var(--bg-elevated);
-    color: var(--fg-primary);
-    font-size: var(--text-caption);
-    font-weight: 500;
-    min-height: 32px;
-  }
-  .profile-page__panel [role="tab"][aria-selected="true"] {
-    background: var(--btn-primary-bg);
-    color: var(--btn-primary-fg);
-    border-color: var(--btn-primary-bg);
-  }
-  .profile-page__panel [role="tab"][aria-disabled="true"] {
-    opacity: var(--opacity-disabled);
+@media (hover: hover) and (pointer: fine) {
+  .profile-group-row__main:hover .profile-row__title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
-/* Profile Activities tab: when an activity has no image, show no
-   thumbnail at all rather than the grey CertIcon placeholder box. */
-.profile-certs .feed-card__image-wrap--placeholder {
-  display: none;
+.profile-group-row__main:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
-/* Desktop: pin the labelled "New X" CTA to the shared 30px toolbar-control
-   height so it lines up exactly with the search field and the sort / add
-   icon buttons (the Button primitive's `sm` size is padding-driven and
-   would otherwise render a couple of px shorter). Scoped under
-   `.profile-page` so it beats the Button primitive's single-class
-   utilities. */
-@media (min-width: 800px) {
-  .profile-page .profile-new-record-btn {
-    height: 30px;
-    min-height: 0;
-  }
-}
-
-/* "New activity / project / group" CTAs collapse to an icon-only plus on
-   mobile, styled IDENTICALLY to the Lists tab's create control: a 30px
-   bordered, transparent square with the plus in fg-primary. The visible
-   label is dropped (the button keeps its `aria-label` for assistive
-   tech). Scoped under `.profile-page` so it overrides the Button
-   primitive's filled "primary" variant (single-class utilities). */
-@media (max-width: 799px) {
-  .profile-page .profile-new-record-btn__label {
-    display: none;
-  }
-  .profile-page .profile-new-record-btn {
-    width: 30px;
-    height: 30px;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
-    gap: 0;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius);
-    background: transparent;
-    color: var(--fg-primary);
-  }
-  .profile-page .profile-new-record-btn:hover {
-    background: var(--bg-sunken);
-  }
+.profile-group-row__acting {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
 }

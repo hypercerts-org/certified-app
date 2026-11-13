@@ -299,14 +299,12 @@ export default function EndorsementLists({
           </div>
           {viewerIsOwner ? (
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
-              className="profile-new-record-btn"
-              aria-label="New list"
               onClick={() => setModalMode("create")}
             >
-              <Plus size={14} strokeWidth={1.75} aria-hidden />
-              <span className="profile-new-record-btn__label">New list</span>
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New list
             </Button>
           ) : null}
         </div>

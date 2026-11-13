@@ -1,14 +1,10 @@
 /* ========================================================================
-   Profile → Lists tab.
+   Profile → Lists tab (also Records → Lists).
 
-   Three stacked sections (certs / projects / accounts), each showing the
-   viewer's `list:*` collection records of that type. Section headings are
-   left-aligned, a + button is right-aligned on the same row, and the
-   list rows below click through to a detail view that shows the
-   underlying items + an Add-items modal.
-
-   Most of the chrome reuses tokens from profile-endorsements.css so the
-   surface reads as a sibling of the existing endorsement-lists UI.
+   Three stacked sections (activities / projects / accounts), each a
+   SectionHeader over the account's `list:*` records of that type as
+   rows on hairlines. A row opens the list's detail view: its items, and
+   for the owner add / edit / delete.
    ======================================================================== */
 
 .profile-lists {
@@ -16,12 +12,6 @@
   flex-direction: column;
   gap: 32px;
   padding: 0;
-}
-
-.profile-lists__loading {
-  display: flex;
-  justify-content: center;
-  padding: 48px 0;
 }
 
 /* ---------- Section ---------- */
@@ -32,62 +22,19 @@
   gap: 12px;
 }
 
-.profile-lists__section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.profile-lists__section-title {
-  margin: 0;
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.125rem;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  color: var(--fg-primary);
-}
-
-.profile-lists__create-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.profile-lists__create-btn:hover {
-  background: var(--bg-sunken);
-}
-
-.profile-lists__create-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-ring-focus);
-}
-
-.profile-lists__empty {
-  margin: 0;
-  padding: 12px 0;
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-}
-
 /* ---------- List summary rows ---------- */
 
 .profile-lists__rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-lists__rows > li {
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile-lists__row {
@@ -95,49 +42,63 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  min-height: var(--control-h-md);
+  padding: 12px 0;
+  border: 0;
   background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
+  color: var(--fg-primary);
+  font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-  color: var(--fg-primary);
 }
 
-.profile-lists__row:hover {
-  background: var(--bg-sunken);
-  border-color: var(--border-default);
+@media (hover: hover) and (pointer: fine) {
+  .profile-lists__row:hover .profile-lists__row-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.profile-lists__row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.profile-lists__row > svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
 }
 
 .profile-lists__row-body {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
 .profile-lists__row-title {
-  font-size: 0.9375rem;
+  overflow: hidden;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .profile-lists__row-desc {
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
   overflow: hidden;
+  font-size: var(--text-ui);
+  color: var(--fg-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .profile-lists__row-meta {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -145,59 +106,45 @@
 
 .profile-lists__detail-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   margin-bottom: 8px;
 }
 
-.profile-lists__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.profile-lists__back:hover {
-  background: var(--bg-sunken);
-}
-
+/* The list's name is a named thing: the serif title role. */
 .profile-lists__detail-title {
-  flex: 1;
-  margin: 0;
   display: flex;
+  flex: 1;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.25rem;
+  font-size: var(--text-h4);
   font-weight: 600;
   color: var(--fg-primary);
 }
 
 .profile-lists__detail-count {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: var(--text-ui);
+  font-weight: 400;
   color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .profile-lists__detail-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .profile-lists__detail-desc {
   margin: 0 0 12px;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
+  font-size: var(--text-body-sm);
   line-height: 1.5;
+  color: var(--fg-secondary);
 }
 
 /* ---------- Bulk-select toolbar ---------- */
@@ -216,7 +163,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   cursor: pointer;
   user-select: none;
@@ -296,7 +243,7 @@
 }
 
 .profile-lists__item-title {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -305,7 +252,7 @@
 }
 
 .profile-lists__item-subtitle {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -433,7 +380,7 @@
 }
 
 .profile-lists__create-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
 }
@@ -442,7 +389,7 @@
 .profile-lists__create-textarea {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -464,7 +411,7 @@
 
 .profile-lists__create-error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -534,7 +481,7 @@
   background: transparent;
   color: var(--fg-primary);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   /* Explicit normal weight — the kebab trigger lives inside meta
      labels (`.cert-detail__meta-label`, `font-weight: 600`) and
      similar uppercase-label contexts, which `font: inherit` was
@@ -566,7 +513,7 @@
 
 .add-to-list__empty {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
 }
 
@@ -593,7 +540,7 @@
 .add-to-list__row-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -602,7 +549,7 @@
 
 .add-to-list__error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -620,7 +567,7 @@
 .add-to-list__create-input {
   width: 100%;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -650,14 +597,14 @@
 
 .profile-lists__paste-help {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   line-height: 1.5;
   color: var(--fg-secondary);
 }
 
 .profile-lists__paste-nsid {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   padding: 1px 5px;
   border-radius: var(--radius);
   background: var(--bg-sunken);
@@ -668,7 +615,7 @@
   width: 100%;
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-primary);
   background: var(--bg-canvas);
   border: 1px solid var(--border-default);
@@ -699,7 +646,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
 }
 
 .profile-lists__paste-progress-label {
@@ -754,11 +701,11 @@
   column-gap: 10px;
   row-gap: 2px;
   padding: 6px 4px;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
 }
 
 .profile-lists__paste-status {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   color: var(--fg-muted);
 }
@@ -780,7 +727,7 @@
 
 .profile-lists__paste-uri {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -790,7 +737,7 @@
 
 .profile-lists__paste-message {
   grid-column: 2;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
 }
 
@@ -827,7 +774,7 @@
 .profile-lists__add-input {
   flex: 1;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   background: transparent;
   border: 0;
@@ -843,14 +790,14 @@
 .profile-lists__add-empty {
   margin: 0;
   padding: 8px 0;
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-muted);
   text-align: center;
 }
 
 .profile-lists__add-error {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--color-error);
 }
 
@@ -891,7 +838,7 @@
 }
 
 .profile-lists__add-title {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -900,7 +847,7 @@
 }
 
 .profile-lists__add-subtitle {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;

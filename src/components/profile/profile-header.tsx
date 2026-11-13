@@ -70,7 +70,8 @@ export interface ProfileHeaderProps {
   /** The viewer's current identity is this account: Edit profile + Share
    *  replace Follow / Endorse. */
   canEdit: boolean
-  /** Group settings, for an admin of this group who isn't acting as it. */
+  /** Group settings, for an admin of this group who isn't acting as it
+   *  (while acting as it, the owner bar links there). */
   settingsHref?: string
   onEditClick?: () => void
 
@@ -234,7 +235,7 @@ export default function ProfileHeader({
                   onClick={onEditClick}
                   data-tour="profile-edit"
                 >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                  <Pencil size={16} strokeWidth={1.75} aria-hidden />
                   Edit profile
                 </Button>
                 <ShareButton handle={handle} did={did} />
@@ -381,9 +382,9 @@ function ShareButton({ handle, did }: { handle: string | null; did: string }) {
         }
       >
         {copied ? (
-          <Check size={14} strokeWidth={1.75} aria-hidden />
+          <Check size={16} strokeWidth={1.75} aria-hidden />
         ) : (
-          <LinkIcon size={14} strokeWidth={1.75} aria-hidden />
+          <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
         )}
         {copied ? "Link copied" : "Share"}
       </Button>
@@ -394,22 +395,23 @@ function ShareButton({ handle, did }: { handle: string | null; did: string }) {
   )
 }
 
+/** The account's Permanent ID (its DID), click to copy. */
 function CopyIdButton({ did }: { did: string }) {
   const { copied, copy } = useCopyToClipboard()
   return (
-    <Tooltip label={copied ? "Copied" : "Copy ID"}>
+    <Tooltip label={copied ? "Copied" : "Copy Permanent ID"}>
       <button
         type="button"
         className="profile-header__id"
         onClick={() => void copy(did)}
-        aria-label={copied ? "ID copied" : `Copy ID ${did}`}
+        aria-label={copied ? "Permanent ID copied" : `Copy Permanent ID ${did}`}
       >
-        <span className="profile-header__id-label">ID</span>
+        <span className="profile-header__id-label">Permanent ID</span>
         <span className="profile-header__id-value">{did}</span>
         {copied ? (
-          <Check size={14} strokeWidth={1.75} aria-hidden />
+          <Check size={16} strokeWidth={1.75} aria-hidden />
         ) : (
-          <Copy size={14} strokeWidth={1.75} aria-hidden />
+          <Copy size={16} strokeWidth={1.75} aria-hidden />
         )}
       </button>
     </Tooltip>
@@ -587,7 +589,7 @@ function OrgUrlListEditor({
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
               >
-                <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
+                <ChevronUp size={16} strokeWidth={1.75} aria-hidden />
               </Button>
               <Button
                 variant="ghost"
@@ -596,7 +598,7 @@ function OrgUrlListEditor({
                 disabled={i === rows.length - 1}
                 onClick={() => move(i, 1)}
               >
-                <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+                <ChevronDown size={16} strokeWidth={1.75} aria-hidden />
               </Button>
               <Button
                 variant="ghost"
@@ -604,7 +606,7 @@ function OrgUrlListEditor({
                 aria-label={`Remove link ${i + 1}`}
                 onClick={() => remove(row.id)}
               >
-                <X size={14} strokeWidth={1.75} aria-hidden />
+                <X size={16} strokeWidth={1.75} aria-hidden />
               </Button>
             </li>
           ))}
@@ -616,7 +618,7 @@ function OrgUrlListEditor({
         className="self-start"
         onClick={() => onChange([...rows, newDraftUrlRow()])}
       >
-        <Plus size={14} strokeWidth={1.75} aria-hidden />
+        <Plus size={16} strokeWidth={1.75} aria-hidden />
         Add link
       </Button>
     </fieldset>

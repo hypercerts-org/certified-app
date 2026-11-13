@@ -20,8 +20,12 @@ import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
-import LoadingSpinner from "@/components/ui/loading-spinner"
+import SectionHeader from "@/components/ui/section-header"
 import Tooltip from "@/components/ui/tooltip"
+import {
+  PanelCount,
+  ProfileRowsSkeleton,
+} from "@/components/profile/profile-panel"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
@@ -43,10 +47,15 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { deriveIdentity } from "@/lib/utils/identity"
 
-const SECTIONS: { type: TypedListType; title: string; emptyHint: string }[] = [
-  { type: LIST_CERTS_TYPE, title: "Activities", emptyHint: "No activity lists yet." },
-  { type: LIST_PROJECTS_TYPE, title: "Projects", emptyHint: "No project lists yet." },
-  { type: LIST_ACCOUNTS_TYPE, title: "Accounts", emptyHint: "No account lists yet." },
+const SECTIONS: {
+  type: TypedListType
+  title: string
+  noun: string
+  emptyHint: string
+}[] = [
+  { type: LIST_CERTS_TYPE, title: "Activities", noun: "activity", emptyHint: "No activity lists yet." },
+  { type: LIST_PROJECTS_TYPE, title: "Projects", noun: "project", emptyHint: "No project lists yet." },
+  { type: LIST_ACCOUNTS_TYPE, title: "Accounts", noun: "account", emptyHint: "No account lists yet." },
 ]
 
 interface ProfileListsProps {
@@ -54,7 +63,23 @@ interface ProfileListsProps {
   viewerIsOwner: boolean
 }
 
-export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) {
+export default function ProfileLists(props: ProfileListsProps) {
+  // The lists hook exposes no refetch, so "Try again" remounts the body.
+  const [attempt, setAttempt] = useState(0)
+  return (
+    <ProfileListsBody
+      key={attempt}
+      {...props}
+      onRetry={() => setAttempt((n) => n + 1)}
+    />
+  )
+}
+
+function ProfileListsBody({
+  did,
+  viewerIsOwner,
+  onRetry,
+}: ProfileListsProps & { onRetry: () => void }) {
   const {
     byType,
     isLoading,
@@ -99,18 +124,18 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
     if (selectedRkey && !selected && !isLoading) setSelectedRkey(null, "replace")
   }, [selectedRkey, selected, isLoading, setSelectedRkey])
 
-  if (isLoading) {
-    return (
-      <div className="profile-lists__loading">
-        <LoadingSpinner size="md" />
-      </div>
-    )
-  }
+  if (isLoading) return <ProfileRowsSkeleton rows={3} />
   if (error) {
     return (
-      <div className="feed__warning" role="alert">
-        Could not load lists: {error}
-      </div>
+      <EmptyState
+        icon={ListIcon}
+        title="Couldn't load lists"
+        description="Something went wrong on our side. Try again in a moment."
+      >
+        <Button variant="secondary" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      </EmptyState>
     )
   }
 
@@ -143,6 +168,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
         <ListSection
           key={section.type}
           title={section.title}
+          noun={section.noun}
           emptyHint={section.emptyHint}
           lists={byType[section.type]}
           canCreate={viewerIsOwner}
@@ -172,6 +198,7 @@ export default function ProfileLists({ did, viewerIsOwner }: ProfileListsProps) 
 
 function ListSection({
   title,
+  noun,
   emptyHint,
   lists,
   canCreate,
@@ -179,6 +206,8 @@ function ListSection({
   onOpen,
 }: {
   title: string
+  /** Singular noun for the "New … list" button, e.g. "activity". */
+  noun: string
   emptyHint: string
   lists: TypedListRecord[]
   canCreate: boolean
@@ -187,23 +216,29 @@ function ListSection({
 }) {
   return (
     <section className="profile-lists__section" aria-label={title}>
-      <header className="profile-lists__section-head">
-        <h2 className="profile-lists__section-title">{title}</h2>
-        {canCreate ? (
-          <Tooltip label="Create a new list">
-            <button
-              type="button"
-              className="profile-lists__create-btn"
-              onClick={onCreate}
-              aria-label={`Create new ${title.toLowerCase()}`}
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-            </button>
-          </Tooltip>
-        ) : null}
-      </header>
+      <SectionHeader
+        title={
+          <>
+            {title} <PanelCount n={lists.length} />
+          </>
+        }
+        action={
+          canCreate ? (
+            <Tooltip label="New list">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onCreate}
+                aria-label={`New ${noun} list`}
+              >
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+              </Button>
+            </Tooltip>
+          ) : null
+        }
+      />
       {lists.length === 0 ? (
-        <p className="profile-lists__empty">{emptyHint}</p>
+        <EmptyState variant="inline" title={emptyHint} />
       ) : (
         <ul className="profile-lists__rows">
           {lists.map((list) => (
@@ -338,14 +373,14 @@ function ListDetail({
     <section className="profile-lists">
       <header className="profile-lists__detail-head">
         <Tooltip label="Back to all lists">
-          <button
-            type="button"
-            className="profile-lists__back"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onBack}
             aria-label="Back to all lists"
           >
             <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-          </button>
+          </Button>
         </Tooltip>
         <h2 className="profile-lists__detail-title">
           <bdi>{list.title}</bdi>
@@ -353,45 +388,41 @@ function ListDetail({
         </h2>
         {viewerIsOwner ? (
           <div className="profile-lists__detail-actions">
-            <Tooltip label="Add items">
-              <button
-                type="button"
-                className="profile-lists__create-btn"
-                onClick={() => setAddOpen(true)}
-                aria-label="Add items"
-              >
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
+            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              Add items
+            </Button>
             <Tooltip label="Add several at once">
-              <button
-                type="button"
-                className="profile-lists__create-btn"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setPasteOpen(true)}
                 aria-label="Add several at once"
               >
                 <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
-              </button>
+              </Button>
             </Tooltip>
             <Tooltip label="Edit list">
-              <button
-                type="button"
-                className="profile-lists__create-btn"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setEditOpen(true)}
                 aria-label="Edit list title and description"
               >
                 <Pencil size={16} strokeWidth={1.75} aria-hidden />
-              </button>
+              </Button>
             </Tooltip>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setConfirmingDelete(true)}
-              disabled={isDeleting}
-            >
-              <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-              Delete
-            </Button>
+            <Tooltip label="Delete list">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={isDeleting}
+                aria-label="Delete list"
+              >
+                <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+              </Button>
+            </Tooltip>
           </div>
         ) : null}
       </header>
@@ -404,10 +435,16 @@ function ListDetail({
           title="No items yet"
           description={
             viewerIsOwner
-              ? "Click the + to add items."
+              ? "Items you add to this list show here."
               : "This list is empty."
           }
-        />
+        >
+          {viewerIsOwner ? (
+            <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
+              Add items
+            </Button>
+          ) : null}
+        </EmptyState>
       ) : (
         <>
           {viewerIsOwner ? (

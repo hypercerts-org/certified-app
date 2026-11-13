@@ -1,32 +1,30 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ArrowUpDown, Inbox, Plus, Search } from "lucide-react"
+import { Inbox, Plus, SearchX } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useManagedAuthors } from "@/hooks/use-managed-authors"
-import FeedLayout from "@/components/feed/feed-layout"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
-import Badge from "@/components/ui/badge"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverItem,
-} from "@/components/ui/popover"
+import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import {
+  PANEL_SEARCH_MIN,
+  PanelTools,
+  ProfileActivityRow,
+  ProfileRowsSkeleton,
+  type SortOption,
+} from "@/components/profile/profile-panel"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 interface ProfileCertsProps {
   /** DID of the profile being viewed. */
   did: string | null
-  /** When true the viewer is looking at their own profile — surface a
-   *  Create-cert CTA in the toolbar that links to the /create flow. */
+  /** The viewer's current identity is this account: adds "New activity". */
   viewerIsOwner?: boolean
   /** True only on the viewer's OWN personal profile (not acting-as a
    *  group). When set, the Created bucket aggregates activities authored
-   *  by the groups the viewer owns/admins — each card shows the owning
-   *  group as its author. */
+   *  by the groups the viewer owns/admins; each row names the group. */
   aggregateOwned?: boolean
 }
 
@@ -38,39 +36,33 @@ type SortKey =
   | "alpha-asc"
   | "alpha-desc"
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+const SORT_OPTIONS: SortOption<SortKey>[] = [
   { key: "created-desc", label: "Newest first" },
   { key: "created-asc", label: "Oldest first" },
-  { key: "alpha-asc", label: "Title A → Z" },
-  { key: "alpha-desc", label: "Title Z → A" },
+  { key: "alpha-asc", label: "Title A to Z" },
+  { key: "alpha-desc", label: "Title Z to A" },
 ]
 
 /**
- * Certs tab on a user's profile. Two sub-tabs:
+ * Activities tab on a profile, as rows like the Overview. Two sub-tabs:
  *
- *   - Created — certs whose author DID is this profile.
- *   - Contributed to — certs on someone else's repo where this user
- *     appears in `contributors[*].contributorIdentity`.
+ *   - Created: activities this account published.
+ *   - Contributed to: activities in someone else's repo that list this
+ *     account as a contributor.
  *
- * Both are sourced from one indexer query (`where: { _or: [...] }`)
- * and split locally by author DID. Pagination is shared — scrolling
- * the bottom sentinel fetches the next combined page regardless of
- * which sub-tab is active.
+ * Both come from the indexer (one query per bucket, so an activity where
+ * the account is both author and contributor appears in both); scrolling
+ * to the end loads the next page of both. A search field and a sort menu
+ * appear once a list is long.
  *
- * Records that stored a contributor as a handle (not a DID) won't
- * match the indexer's contributor filter and will be missing here —
- * see the indexer notes on producer-side handle storage.
+ * Records that stored a contributor as a handle (not a DID) won't match
+ * the indexer's contributor filter and are missing here.
  */
 export default function ProfileCerts({
   did,
   viewerIsOwner,
   aggregateOwned = false,
 }: ProfileCertsProps) {
-  // On the viewer's own personal profile, the Created bucket aggregates
-  // activities authored by the viewer + every group they own/admin; the
-  // Contributed bucket stays the viewer's personal contributions. The
-  // owning DID per card comes from the hook's `dids` map, so a
-  // group-authored card shows the group as its author.
   const { authors } = useManagedAuthors()
   const {
     created,
@@ -89,163 +81,153 @@ export default function ProfileCerts({
   const [tab, setTab] = useState<SubTab>("created")
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
-  const [sortOpen, setSortOpen] = useState(false)
 
-  // `created` and `contributed` come directly from the hook now —
-  // the previous `_or` + client-side split is replaced by two
-  // parallel queries (one per bucket) so a cert where the user is
-  // BOTH author and contributor appears in both lists.
-
-  const visibleSource = tab === "created" ? created : contributed
+  const source = tab === "created" ? created : contributed
   const visible = useMemo(
-    () => filterAndSort(visibleSource, query, sort),
-    [visibleSource, query, sort],
+    () => filterAndSort(source, query, sort),
+    [source, query, sort],
   )
+  const showTools = source.length > PANEL_SEARCH_MIN || query.trim() !== ""
 
-  const createdCountLabel = formatCount(created.length, hasMore)
-  const contributedCountLabel = formatCount(contributed.length, hasMore)
-
-  const emptyState =
-    tab === "contributed" ? (
-      <EmptyState
-        icon={Inbox}
-        title="No contributions yet"
-        description="Activities where someone else lists this account as a contributor will appear here."
-      />
-    ) : viewerIsOwner && !query.trim() ? (
-      <EmptyState
-        icon={Inbox}
-        title="No activities yet"
-        description="Activities you publish will appear here."
-      >
-        <Button href="/create" variant="secondary" size="sm">
-          Create an activity
-        </Button>
-      </EmptyState>
-    ) : undefined
-
-  const feed = (
-    <FeedLayout
-      activities={visible}
-      getDid={(uri) => dids.get(uri) ?? did ?? ""}
-      isLoading={isLoading}
-      isLoadingMore={isLoadingMore}
-      error={error}
-      hasMore={hasMore}
-      loadMore={loadMore}
-      emptyState={emptyState}
-      onRetry={refetch}
-    />
-  )
+  const body = (() => {
+    if (isLoading && source.length === 0) return <ProfileRowsSkeleton rows={4} />
+    if (error) {
+      return (
+        <EmptyState
+          icon={Inbox}
+          title="Couldn't load activities"
+          description="Something went wrong on our side. Try again in a moment."
+        >
+          <Button variant="secondary" size="sm" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </EmptyState>
+      )
+    }
+    if (source.length === 0) {
+      return tab === "contributed" ? (
+        <EmptyState
+          icon={Inbox}
+          title="No contributions yet"
+          description={
+            viewerIsOwner
+              ? "Activities that list you as a contributor show here."
+              : "Activities that list this account as a contributor show here."
+          }
+        />
+      ) : (
+        <EmptyState
+          icon={Inbox}
+          title="No activities yet"
+          description={
+            viewerIsOwner
+              ? "Activities you publish show here."
+              : "Activities this account publishes show here."
+          }
+        >
+          {viewerIsOwner ? (
+            <Button href="/create" variant="secondary" size="sm">
+              New activity
+            </Button>
+          ) : null}
+        </EmptyState>
+      )
+    }
+    if (visible.length === 0) {
+      return (
+        <EmptyState
+          icon={SearchX}
+          title="Nothing matches"
+          description={`No activities match "${query.trim()}".`}
+        >
+          <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
+            Clear search
+          </Button>
+        </EmptyState>
+      )
+    }
+    return (
+      <>
+        <ul className="profile-rows">
+          {visible.map((a) => {
+            const author = dids.get(a.uri) ?? did ?? ""
+            return (
+              <ProfileActivityRow
+                key={a.uri}
+                activity={a}
+                authorDid={author}
+                showAuthor={author !== did}
+              />
+            )
+          })}
+        </ul>
+        {hasMore && !query.trim() ? (
+          <LoadMoreSentinel
+            onLoadMore={() => void loadMore()}
+            isLoading={isLoadingMore}
+            className="profile-panel__more"
+          />
+        ) : null}
+      </>
+    )
+  })()
 
   return (
     <Tabs
       value={tab}
       onChange={(v) => setTab(v as SubTab)}
-      className="profile-certs"
+      // Segments, so the sub-tabs don't read as a second row of the
+      // profile's section tabs.
+      variant="segmented"
+      className="profile-panel"
     >
-      <div className="profile-certs__toolbar">
-        {/* The .profile-certs__toolbar (layout.css, cross-track) already
-            draws the strip's shared bottom border, so drop TabList's own
-            and pin it to the toolbar's bottom edge. Count chips render via
-            the neutral Badge (muted grey, not the attention red). */}
-        <TabList
-          aria-label="Activities sections"
-          className="border-0 self-end"
-        >
-          <Tab value="created">
+      <h2 className="sr-only">Activities</h2>
+      <div className="profile-panel__head">
+        <TabList aria-label="Activities sections">
+          <Tab value="created" count={countLabel(created.length, isLoading, hasMore)}>
             Created
-            {createdCountLabel ? (
-              <Badge variant="count" tone="neutral" compact>
-                {createdCountLabel}
-              </Badge>
-            ) : null}
           </Tab>
-          <Tab value="contributed">
+          <Tab
+            value="contributed"
+            count={countLabel(contributed.length, isLoading, hasMore)}
+          >
             Contributed to
-            {contributedCountLabel ? (
-              <Badge variant="count" tone="neutral" compact>
-                {contributedCountLabel}
-              </Badge>
-            ) : null}
           </Tab>
         </TabList>
-
-        <div className="profile-certs__controls">
-          {viewerIsOwner ? (
-            <Button
-              href="/create"
-              variant="primary"
-              size="sm"
-              className="profile-new-record-btn"
-              aria-label="New activity"
-            >
-              <Plus size={14} strokeWidth={1.75} aria-hidden />
-              <span className="profile-new-record-btn__label">
-                New activity
-              </span>
-            </Button>
-          ) : null}
-          <label className="profile-certs__search">
-            <Search
-              size={16}
-              strokeWidth={1.75}
-              className="profile-certs__search-icon"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search activities"
-              aria-label="Search activities"
-              className="profile-certs__search-input"
-            />
-          </label>
-
-          <div className="profile-certs__sort-wrap">
-            <Popover open={sortOpen} onOpenChange={setSortOpen}>
-              <PopoverTrigger>
-                <button
-                  type="button"
-                  className="profile-certs__sort-btn"
-                  aria-label="Sort activities"
-                  title="Sort"
-                >
-                  <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end">
-                {SORT_OPTIONS.map((opt) => (
-                  <PopoverItem
-                    key={opt.key}
-                    selected={opt.key === sort}
-                    onClick={() => {
-                      setSort(opt.key)
-                      setSortOpen(false)
-                    }}
-                  >
-                    {opt.label}
-                  </PopoverItem>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
+        {/* The empty Created list carries "New activity" itself. */}
+        {viewerIsOwner &&
+        !(tab === "created" && created.length === 0 && !isLoading && !error) ? (
+          <Button href="/create" variant="secondary" size="sm">
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            New activity
+          </Button>
+        ) : null}
       </div>
 
-      {/* `visible` + `emptyState` are already keyed off the active sub-tab,
-          so the feed body is identical in either panel; only the active
-          one mounts. Two panels keep both tabs' aria-controls resolvable. */}
-      <TabPanel value="created">{feed}</TabPanel>
-      <TabPanel value="contributed">{feed}</TabPanel>
+      {showTools ? (
+        <PanelTools
+          query={query}
+          onQueryChange={setQuery}
+          searchLabel="Search activities"
+          sort={sort}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={setSort}
+          sortLabel="Sort activities"
+        />
+      ) : null}
+
+      {/* `body` already follows the active sub-tab; two panels keep both
+          tabs' aria-controls resolvable, only the active one mounts. */}
+      <TabPanel value="created">{body}</TabPanel>
+      <TabPanel value="contributed">{body}</TabPanel>
     </Tabs>
   )
 }
 
-function formatCount(n: number, hasMore: boolean): string | null {
-  if (n === 0) return hasMore ? "…" : null
-  return `${n.toLocaleString()}${hasMore ? "+" : ""}`
+/** The tab's count: nothing while loading, "40+" while more pages exist. */
+function countLabel(n: number, isLoading: boolean, hasMore: boolean): string | undefined {
+  if (isLoading && n === 0) return undefined
+  return `${n.toLocaleString()}${hasMore && n > 0 ? "+" : ""}`
 }
 
 function filterAndSort(

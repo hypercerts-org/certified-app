@@ -45,7 +45,7 @@
   gap: 4px;
   padding: 4px 0;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   font-weight: 450;
   color: var(--fg-muted);
   text-decoration: none;
@@ -118,7 +118,7 @@
 
 .pe__section-title {
   font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.125rem;
+  font-size: var(--text-h4);
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--fg-primary);
@@ -127,7 +127,7 @@
 }
 
 .pe__hint {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   line-height: 1.55;
   color: var(--fg-muted);
   margin: 0;
@@ -181,7 +181,7 @@ fieldset.pe__field > legend {
 
 .pe__label {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-primary);
   display: flex;
@@ -191,14 +191,14 @@ fieldset.pe__field > legend {
 }
 
 .pe__label-count {
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   font-weight: 400;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .pe__field-error {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--color-error);
   margin: 0;
 }
@@ -250,7 +250,7 @@ fieldset.pe__field > legend {
 }
 
 .pe__url-empty {
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-muted);
   font-style: italic;
   margin: 0;

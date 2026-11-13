@@ -13,6 +13,7 @@ import type { CertifiedProfile } from "@/lib/atproto/types"
 import type { Group } from "@/lib/groups/types"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
+import { profileEditUrl } from "@/components/profile/profile-edit-url"
 
 /** The account Home describes, as `useUserProfile` resolved it. */
 export interface HomeIdentity {
@@ -57,14 +58,10 @@ export function HomeIdentityHeader({
   const canManageGroup =
     isGroup && (activeGroup.role === "owner" || activeGroup.role === "admin")
 
-  // Personal accounts edit on the settings form; a group is edited by its
-  // owners and admins on the group's own form. A plain member acting as the
-  // group gets no edit link.
-  const editHref = !isGroup
-    ? "/settings/edit-profile"
-    : canManageGroup
-      ? `/groups/${encodeURIComponent(did)}/edit-profile`
-      : null
+  // "Edit profile" opens the inline editor on the profile of the account
+  // the viewer is acting as. A plain member acting as the group gets no
+  // edit link.
+  const editHref = !isGroup || canManageGroup ? profileEditUrl(handle || did) : null
 
   const name = profile?.displayName?.trim() || activeGroup?.displayName?.trim() || null
   const title = name || (handle ? `@${handle}` : "Your account")

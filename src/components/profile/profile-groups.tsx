@@ -1,15 +1,21 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { profileUrl } from "@/lib/urls"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowUpDown, Building2, Check, LogIn, Plus, Search } from "lucide-react"
+import { Building2, Check, Plus, SearchX } from "lucide-react"
+import { profileUrl } from "@/lib/urls"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import Tooltip from "@/components/ui/tooltip"
+import SectionHeader from "@/components/ui/section-header"
+import {
+  PANEL_SEARCH_MIN,
+  PanelCount,
+  PanelTools,
+  ProfileRowsSkeleton,
+  type SortOption,
+} from "@/components/profile/profile-panel"
 import { useCgsMemberships, type UserGroup } from "@/hooks/use-cgs-memberships"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -27,19 +33,24 @@ type SortKey =
   | "alpha-asc"
   | "alpha-desc"
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+const SORT_OPTIONS: SortOption<SortKey>[] = [
   { key: "joined-desc", label: "Recently joined" },
   { key: "joined-asc", label: "Earliest joined" },
-  { key: "alpha-asc", label: "Name A → Z" },
-  { key: "alpha-desc", label: "Name Z → A" },
+  { key: "alpha-asc", label: "Name A to Z" },
+  { key: "alpha-desc", label: "Name Z to A" },
 ]
 
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+}
+
 /**
- * Groups tab on the signed-in user's own profile. Single source of
- * truth: the Certified Group Service (CGS) — no public/private split,
- * no PDS-membership lexicon. The parent page gates rendering so this
- * component only mounts on the viewer's own profile; the CGS endpoint
- * is session-authed and would return [] for any other DID anyway.
+ * Groups tab on the signed-in account's own profile, as rows: each group
+ * with its role and when you joined, and "Act as" to act for it. The
+ * Certified Group Service is the one source; the page only mounts this
+ * while the viewer's active identity is this profile.
  */
 export default function ProfileGroups({ did }: ProfileGroupsProps) {
   const { did: viewerDid } = useAuth()
@@ -49,187 +60,108 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
 
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("joined-desc")
-  const [sortOpen, setSortOpen] = useState(false)
-
-  const sortBtnRef = useRef<HTMLButtonElement>(null)
-  const sortMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sortOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target
-      if (!(t instanceof Node)) return
-      if (sortBtnRef.current?.contains(t)) return
-      if (sortMenuRef.current?.contains(t)) return
-      setSortOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortOpen(false)
-    }
-    document.addEventListener("mousedown", onMouseDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [sortOpen])
 
   const visible = useMemo(
     () => filterAndSort(groups, query, sort),
     [groups, query, sort],
   )
+  const showTools = groups.length > PANEL_SEARCH_MIN || query.trim() !== ""
+  const loading = isLoading && groups.length === 0
 
-  const count = groups.length
+  const body = loading ? (
+    <ProfileRowsSkeleton rows={3} shape="circle" />
+  ) : error ? (
+    <EmptyState
+      icon={Building2}
+      title="Couldn't load groups"
+      description="Something went wrong on our side. Try again in a moment."
+    >
+      <Button variant="secondary" size="sm" onClick={refresh}>
+        Try again
+      </Button>
+    </EmptyState>
+  ) : groups.length === 0 ? (
+    <EmptyState
+      icon={Building2}
+      title="No groups yet"
+      description={
+        isOwnProfile
+          ? "Groups you create or join show here."
+          : "Groups this account belongs to show here."
+      }
+    >
+      {isOwnProfile ? (
+        <Button href="/groups/create" variant="secondary" size="sm">
+          New group
+        </Button>
+      ) : null}
+    </EmptyState>
+  ) : visible.length === 0 ? (
+    <EmptyState
+      icon={SearchX}
+      title="Nothing matches"
+      description={`No groups match "${query.trim()}".`}
+    >
+      <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
+        Clear search
+      </Button>
+    </EmptyState>
+  ) : (
+    <ul className="profile-rows">
+      {visible.map((g) => (
+        <GroupRow key={g.groupDid} group={g} />
+      ))}
+    </ul>
+  )
 
   return (
-    <div className="profile-groups">
-      <div className="profile-groups__toolbar">
-        {/* The profile tab strip already labels this section, so the
-            lone sub-tab label is dropped visually; the heading stays for
-            screen readers. */}
-        <h2 className="sr-only">
-          Groups{count > 0 ? ` (${count})` : ""}
-        </h2>
-
-        <div className="profile-groups__controls">
-          {isOwnProfile ? (
-            <Button
-              href="/groups/create"
-              variant="primary"
-              size="sm"
-              className="profile-new-record-btn"
-              aria-label="New group"
-            >
-              <Plus size={14} strokeWidth={1.75} aria-hidden />
-              <span className="profile-new-record-btn__label">New group</span>
-            </Button>
-          ) : null}
-          <label className="profile-groups__search">
-            <Search
-              size={16}
-              strokeWidth={1.75}
-              className="profile-groups__search-icon"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search groups"
-              aria-label="Search groups"
-              className="profile-groups__search-input"
-            />
-          </label>
-
-          <div className="profile-groups__sort-wrap">
-            <Tooltip label="Sort">
-              <button
-                ref={sortBtnRef}
-                type="button"
-                className="profile-groups__sort-btn"
-                onClick={() => setSortOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={sortOpen}
-                aria-label="Sort groups"
-              >
-                <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
-            {sortOpen ? (
-              <div
-                ref={sortMenuRef}
-                className="profile-groups__sort-menu"
-                role="menu"
-              >
-                {SORT_OPTIONS.map((opt) => {
-                  const active = opt.key === sort
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className="profile-groups__sort-item"
-                      onClick={() => {
-                        setSort(opt.key)
-                        setSortOpen(false)
-                      }}
-                    >
-                      <span className="profile-groups__sort-item-check">
-                        {active ? <Check size={14} strokeWidth={2} aria-hidden /> : null}
-                      </span>
-                      {opt.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="profile-groups__loading">
-          <LoadingSpinner size="md" />
-        </div>
-      ) : error ? (
-        <EmptyState
-          icon={Building2}
-          title="Couldn't load groups"
-          description="Something went wrong on our side. Try again in a moment."
-        >
-          <Button variant="secondary" size="sm" onClick={refresh}>
-            Try again
-          </Button>
-        </EmptyState>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={Building2}
-          title={query ? "No groups match" : "No groups yet"}
-          description={
-            query
-              ? "Try a different search term."
-              : isOwnProfile
-                ? "Create a group or join one to see it here."
-                : "Groups this profile belongs to will appear here."
-          }
-        >
-          {isOwnProfile && !query ? (
+    <section className="profile-panel" aria-labelledby="profile-groups-heading">
+      <SectionHeader
+        id="profile-groups-heading"
+        title={
+          <>
+            Groups <PanelCount n={loading || error ? null : groups.length} />
+          </>
+        }
+        action={
+          // The empty state carries "New group" when there are none.
+          isOwnProfile && (loading || !!error || groups.length > 0) ? (
             <Button href="/groups/create" variant="secondary" size="sm">
-              Create a group
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New group
             </Button>
-          ) : null}
-        </EmptyState>
-      ) : (
-        <ul className="profile-groups__list">
-          {visible.map((g) => (
-            <GroupRow key={g.groupDid} group={g} />
-          ))}
-        </ul>
-      )}
-    </div>
+          ) : null
+        }
+      />
+      {showTools ? (
+        <PanelTools
+          query={query}
+          onQueryChange={setQuery}
+          searchLabel="Search groups"
+          sort={sort}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={setSort}
+          sortLabel="Sort groups"
+        />
+      ) : null}
+      {body}
+    </section>
   )
 }
 
-interface GroupRowProps {
-  group: UserGroup
-}
-
-function GroupRow({ group }: GroupRowProps) {
+function GroupRow({ group }: { group: UserGroup }) {
   const router = useRouter()
   const { groups: orgGroups, activeOrg, switchOrg } = useOrg()
   const name = group.displayName || group.handle
   const initials = getInitials(name, group.handle ?? group.groupDid)
-  const joinedLabel = group.joinedAt
-    ? `Joined ${formatRelativeTime(group.joinedAt)}`
-    : null
-  const isOperating = activeOrg?.groupDid === group.groupDid
+  const role = group.role ? (ROLE_LABEL[group.role] ?? group.role) : null
+  const joined = group.joinedAt ? `Joined ${formatRelativeTime(group.joinedAt)}` : null
+  const isActing = activeOrg?.groupDid === group.groupDid
 
-  // "Operate as" = act FOR this group (delegation). Deliberately separate
-  // from the row link, which goes to the group's profile. Prefer the
-  // org-context's canonical Group so the active-org reconciliation keeps it;
-  // fall back to a Group built from the CGS membership if it isn't loaded yet.
-  const handleOperateAs = () => {
+  // "Act as" switches the identity to this group; the row link only opens
+  // the group's profile. Prefer the org context's Group so the active-org
+  // reconciliation keeps it; fall back to one built from the membership.
+  const handleActAs = () => {
     const org =
       orgGroups.find((g) => g.groupDid === group.groupDid) ?? {
         groupDid: group.groupDid,
@@ -244,67 +176,49 @@ function GroupRow({ group }: GroupRowProps) {
   }
 
   return (
-    <li className="profile-groups__item">
-      <div className="profile-groups__row">
-        <Link
-          href={profileUrl(group.handle)}
-          className="profile-groups__avatar-link"
-          aria-label={name}
-          tabIndex={-1}
-        >
-          <Avatar
-            size="md"
-            src={group.avatarUrl}
-            fallbackInitials={initials}
-            alt=""
-          />
-        </Link>
-        <div className="profile-groups__main">
-          <Link
-            href={profileUrl(group.handle)}
-            className="profile-groups__identity"
-            title={`${name} (@${group.handle})`}
-          >
-            <span className="profile-groups__name" dir="auto">{name}</span>
-            <span className="profile-groups__handle">@{group.handle}</span>
-          </Link>
+    <li className="profile-row profile-group-row">
+      <Link
+        href={profileUrl(group.handle)}
+        className="profile-group-row__main"
+        title={`${name} (@${group.handle})`}
+      >
+        <Avatar
+          size="sm"
+          shape="square"
+          src={group.avatarUrl}
+          fallbackInitials={initials}
+          seed={group.groupDid}
+          alt=""
+        />
+        <span className="profile-row__text">
+          <span className="profile-row__title" dir="auto">
+            {name}
+          </span>
           {group.description ? (
-            <p className="profile-groups__description">{group.description}</p>
+            <span className="profile-row__desc" dir="auto">
+              {group.description}
+            </span>
           ) : null}
-          <div className="profile-groups__rolerow">
-            {group.role ? (
-              <span className="profile-groups__role">{group.role}</span>
-            ) : null}
-            {joinedLabel ? (
-              <span className="profile-groups__joined">{joinedLabel}</span>
-            ) : null}
-          </div>
-          <div className="profile-groups__row-actions">
-            {isOperating ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="profile-groups__operate-btn"
-                disabled
-              >
-                <Check size={14} strokeWidth={2} aria-hidden />
-                Operating
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="profile-groups__operate-btn"
-                onClick={handleOperateAs}
-                title={`Operate as ${name}`}
-              >
-                <LogIn size={14} strokeWidth={1.75} aria-hidden />
-                Operate as
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+          <span className="profile-row__meta">
+            {[role, `@${group.handle}`, joined].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+      </Link>
+      {isActing ? (
+        <span className="profile-group-row__acting">
+          <Check size={16} strokeWidth={1.75} aria-hidden />
+          Acting as
+        </span>
+      ) : (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleActAs}
+          aria-label={`Act as ${name}`}
+        >
+          Act as
+        </Button>
+      )}
     </li>
   )
 }

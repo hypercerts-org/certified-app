@@ -7,17 +7,19 @@ interface ProfileOwnerBarProps {
   /** The viewer is acting as this group (rather than viewing their own
    *  personal profile). Changes "your profile" to "this group's profile". */
   isGroup?: boolean
-  /** Enters edit mode. */
-  onEditClick: () => void
+  /** The group's settings, for its owners and admins. */
+  groupSettingsHref?: string
 }
 
 /**
- * The slim bar at the top of your own profile: it says this is the public
- * view and offers the two ways on, editing the profile or going back Home.
+ * The slim bar at the top of your own profile (or your group's, while
+ * acting as it): it says this is the public view and offers the way back
+ * Home, plus the group's settings for its admins. "Edit profile" lives in
+ * the header's actions.
  */
 export default function ProfileOwnerBar({
   isGroup = false,
-  onEditClick,
+  groupSettingsHref,
 }: ProfileOwnerBarProps) {
   return (
     <div className="profile-owner-bar" role="note">
@@ -28,13 +30,11 @@ export default function ProfileOwnerBar({
           : "This is how others see your profile."}
       </p>
       <div className="profile-owner-bar__links">
-        <button
-          type="button"
-          className="profile-owner-bar__link"
-          onClick={onEditClick}
-        >
-          Edit profile
-        </button>
+        {groupSettingsHref ? (
+          <Link href={groupSettingsHref} className="profile-owner-bar__link">
+            Group settings
+          </Link>
+        ) : null}
         <Link href="/home" className="profile-owner-bar__link">
           Back to Home
         </Link>

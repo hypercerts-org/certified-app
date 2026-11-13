@@ -147,7 +147,7 @@ export default function UserProfilePage() {
     if (did && !isOwnProfile) trackRecentlyViewed("user", did)
   }, [did, isOwnProfile])
 
-  const { activeOrg, groups } = useOrg()
+  const { activeOrg, groups, isLoading: isOrgsLoading } = useOrg()
   const memberOrg = did ? groups.find((g) => g.groupDid === did) : undefined
   const isAdminOfThisGroup =
     !!memberOrg && (memberOrg.role === "owner" || memberOrg.role === "admin")
@@ -271,6 +271,8 @@ export default function UserProfilePage() {
     displayLongDescription,
     handleEditClick,
     handleCancelEdit,
+    inlineLocation,
+    resolvedLocationRef,
     handleDraftChange,
     handleAvatarFile,
     handleBannerFile,
@@ -372,6 +374,42 @@ export default function UserProfilePage() {
         ? "overview"
         : tabFromUrl
 
+  // `?edit=1` opens the editor: the one way into profile editing, used by
+  // "Edit profile" on Home and in Settings (and /settings/edit-profile,
+  // which redirects here). It waits until the edit base is the raw record
+  // (so a save keeps the avatar and banner blobs), the org marker and its
+  // location have loaded (so the drafts are seeded in full), and the
+  // viewer's identity is known; then it opens the editor once and drops
+  // the param so a reload or Back doesn't reopen it. Anyone who can't edit
+  // this profile just sees it, without the param.
+  const wantsEdit = searchParams?.get("edit") === "1"
+  const editSeedReady =
+    editBaseValid &&
+    !isOrgMarkerLoading &&
+    (!inlineLocation.refUri ||
+      resolvedLocationRef?.uri === inlineLocation.refUri)
+  useEffect(() => {
+    if (!wantsEdit || !pathname || isAuthLoading || isOrgsLoading || !did) return
+    if (canEditInline && !editSeedReady) return
+    if (canEditInline && !isEditing) handleEditClick()
+    const qs = new URLSearchParams(searchParams?.toString() ?? "")
+    qs.delete("edit")
+    const query = qs.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [
+    wantsEdit,
+    pathname,
+    isAuthLoading,
+    isOrgsLoading,
+    did,
+    canEditInline,
+    editSeedReady,
+    isEditing,
+    handleEditClick,
+    searchParams,
+    router,
+  ])
+
   // `replace`, not `push`: switching sections doesn't stack history
   // entries, so Back leaves the profile instead of stepping through tabs.
   const selectTab = useCallback(
@@ -389,7 +427,7 @@ export default function UserProfilePage() {
 
   if (isProfileLoading) {
     return (
-      <PageContainer width="wide" className="profile-page">
+      <PageContainer width="default" className="profile-page">
         <ProfileHeaderSkeleton />
       </PageContainer>
     )
@@ -397,7 +435,7 @@ export default function UserProfilePage() {
 
   if (profileError || !did) {
     return (
-      <PageContainer width="wide" className="profile-page">
+      <PageContainer width="default" className="profile-page">
         <NotFoundMarker />
         <EmptyState
           icon={UserX}
@@ -414,7 +452,7 @@ export default function UserProfilePage() {
     effectiveProfile?.displayName || resolvedHandle || "this account"
 
   return (
-    <PageContainer width="wide" className="profile-page">
+    <PageContainer width="default" className="profile-page">
       {editing ? (
         <div className="profile-page__edit-bar">
           <EditBanner
@@ -429,7 +467,7 @@ export default function UserProfilePage() {
       ) : canEditInline ? (
         <ProfileOwnerBar
           isGroup={isActingAsThisGroup}
-          onEditClick={handleEditClick}
+          groupSettingsHref={isActingAsThisGroup ? settingsHref : undefined}
         />
       ) : null}
 
@@ -518,7 +556,7 @@ export default function UserProfilePage() {
                     >
                       {canEditInline ? (
                         <Button variant="secondary" size="sm" onClick={handleEditClick}>
-                          <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                          <Pencil size={16} strokeWidth={1.75} aria-hidden />
                           Write About
                         </Button>
                       ) : null}

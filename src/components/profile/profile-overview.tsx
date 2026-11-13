@@ -5,11 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { MapPin, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
-import CertIcon from "@/components/ui/cert-icon"
 import EmptyState from "@/components/ui/empty-state"
-import RowThumb from "@/components/ui/row-thumb"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
-import Skeleton from "@/components/ui/skeleton"
 import StatRow from "@/components/ui/stat-row"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
@@ -27,13 +24,15 @@ import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useUserActivityCount } from "@/hooks/use-user-activity-count"
 import { useUserProjects } from "@/hooks/use-user-projects"
-import { activityDetailHref } from "@/lib/atproto/activity-uri"
-import { resolveActivityImageUrl } from "@/lib/atproto/activity"
-import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import { formatShortDate } from "@/lib/utils/format-date"
+import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
+import {
+  ProfileActivityRow,
+  ProfileRowsSkeleton,
+} from "@/components/profile/profile-panel"
 
 interface ProfileOverviewProps {
   did: string
@@ -100,6 +99,7 @@ export default function ProfileOverview({
   const {
     created,
     contributed,
+    dids: activityDids,
     isLoading: activitiesLoading,
     hasMore: activitiesHasMore,
   } = useUserIndexerActivities(did)
@@ -200,7 +200,7 @@ export default function ProfileOverview({
             }
           />
           {activitiesLoading && previewActivities.length === 0 ? (
-            <RowsSkeleton />
+            <ProfileRowsSkeleton />
           ) : previewActivities.length === 0 ? (
             <div className="profile-overview__empty">
               <EmptyState
@@ -219,9 +219,18 @@ export default function ProfileOverview({
             </div>
           ) : (
             <ul className="profile-rows">
-              {previewActivities.map((a) => (
-                <ActivityRow key={a.uri} activity={a} did={did} />
-              ))}
+              {previewActivities.map((a) => {
+                // Contributions live in another account's repo.
+                const author = activityDids.get(a.uri) ?? did
+                return (
+                  <ProfileActivityRow
+                    key={a.uri}
+                    activity={a}
+                    authorDid={author}
+                    showAuthor={author !== did}
+                  />
+                )
+              })}
             </ul>
           )}
         </section>
@@ -243,7 +252,7 @@ export default function ProfileOverview({
             }
           />
           {received.isLoading && previewEndorsements.length === 0 ? (
-            <RowsSkeleton />
+            <ProfileRowsSkeleton />
           ) : previewEndorsements.length === 0 ? (
             <EmptyState
               variant="inline"
@@ -267,61 +276,6 @@ export default function ProfileOverview({
 }
 
 /* ------------------------------- Rows -------------------------------- */
-
-function RowsSkeleton() {
-  return (
-    <div className="profile-rows profile-rows--skeleton" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="profile-row">
-          <Skeleton variant="box" width={48} height={48} />
-          <div className="profile-row__text">
-            <Skeleton variant="line" width="60%" height={14} />
-            <Skeleton variant="line" width="40%" height={12} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function uriToRkey(uri: string): string {
-  const parts = uri.split("/")
-  return parts[parts.length - 1] || ""
-}
-
-function ActivityRow({ activity, did }: { activity: ActivityRecord; did: string }) {
-  const { value } = activity
-  const imageUrl = value.image ? resolveActivityImageUrl(value.image, did) : null
-  return (
-    <li>
-      <Link
-        href={activityDetailHref(did, uriToRkey(activity.uri))}
-        className="profile-row profile-row--link"
-      >
-        <RowThumb
-          src={imageUrl}
-          icon={<CertIcon size={20} strokeWidth={1.25} />}
-          className="profile-row__thumb"
-        />
-        <span className="profile-row__text">
-          <span className="profile-row__title" dir="auto">
-            {value.title || "Untitled activity"}
-          </span>
-          {value.shortDescription ? (
-            <span className="profile-row__desc" dir="auto">
-              {value.shortDescription}
-            </span>
-          ) : null}
-        </span>
-        {value.createdAt ? (
-          <time className="profile-row__date" dateTime={value.createdAt}>
-            {formatShortDate(value.createdAt)}
-          </time>
-        ) : null}
-      </Link>
-    </li>
-  )
-}
 
 /**
  * One endorsement received, written as the statement it is: who endorsed
