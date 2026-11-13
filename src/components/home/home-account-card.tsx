@@ -1,47 +1,58 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId } from "react"
 import { Pencil } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import SmartLink from "@/components/ui/smart-link"
 import CopyPill from "@/components/account/copy-pill"
-import { useUserProfile } from "@/hooks/use-user-profile"
+import type { CertifiedProfile } from "@/lib/atproto/types"
+import type { Group } from "@/lib/groups/types"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
-import type { Group } from "@/lib/groups/types"
+
+/** The account Home describes, as `useUserProfile` resolved it. */
+export interface HomeIdentity {
+  did: string
+  profile: CertifiedProfile | null
+  avatarUrl: string | null
+  handle: string | null
+  isLoading: boolean
+}
+
+/** The first non-empty line of a bio, so the header stays one line. */
+export function bioFirstLine(text: string | undefined | null): string | null {
+  if (!text) return null
+  return (
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean) ?? null
+  )
+}
 
 /**
- * The account card at the top of the signed-in home: the profile (banner,
- * avatar, name, handle, bio, website) and the ID (handle + DID, each
- * click-to-copy). It describes whichever account the viewer is acting as,
- * so a group admin who switched into a group sees the group's account.
+ * Home's page header is the identity strip: the account's avatar, its name
+ * as the page's h1, the bio's first line (or the @handle when there is no
+ * bio) with the website under it, and "Edit profile" / "View profile". It
+ * describes whichever account the viewer is acting as, so a group admin
+ * who switched into a group sees the group.
  */
-export default function HomeAccountCard({
-  did,
+export function HomeIdentityHeader({
+  identity,
   activeGroup,
 }: {
-  did: string
+  identity: HomeIdentity
   /** Set when the viewer is acting as a group; null for the personal account. */
   activeGroup: Group | null
 }) {
-  const { profile, avatarUrl, bannerUrl, handle, isLoading } = useUserProfile(did)
-  const nameId = useId()
-  const idHeadingId = useId()
+  const { did, profile, avatarUrl, handle, isLoading } = identity
 
-  // No banner (or one that fails to load) means no banner strip at all: the
-  // card starts with the avatar instead of an empty grey band. Reset the
-  // failure flag when the URL changes, using the adjust-state-during-render
-  // pattern.
-  const [bannerFailed, setBannerFailed] = useState(false)
-  const [prevBannerUrl, setPrevBannerUrl] = useState(bannerUrl)
-  if (prevBannerUrl !== bannerUrl) {
-    setPrevBannerUrl(bannerUrl)
-    setBannerFailed(false)
-  }
-  const showBanner = !!bannerUrl && !bannerFailed
+  if (isLoading && !profile) return <HomeIdentityHeaderSkeleton />
 
   const isGroup = !!activeGroup
   const canManageGroup =
@@ -56,112 +67,128 @@ export default function HomeAccountCard({
       ? `/groups/${encodeURIComponent(did)}/edit-profile`
       : null
 
-  const displayName =
-    profile?.displayName || activeGroup?.displayName || (handle ? `@${handle}` : "Your account")
-  const initials = getInitials(profile?.displayName ?? activeGroup?.displayName, handle ?? did)
-  const profileHref = profileUrl(handle || did)
+  const name = profile?.displayName?.trim() || activeGroup?.displayName?.trim() || null
+  const title = name || (handle ? `@${handle}` : "Your account")
+  // The @handle stands in for a missing bio, unless the title already is it.
+  const tagline = bioFirstLine(profile?.description) ?? (name && handle ? `@${handle}` : null)
+  const website = profile?.website?.trim() || null
+
+  const description =
+    tagline || website ? (
+      <>
+        {tagline ? (
+          <span className="line-clamp-2" dir="auto">
+            {tagline}
+          </span>
+        ) : null}
+        {website ? (
+          // SmartLink renders the site's icon and the link as siblings.
+          <span className="mt-1 flex min-w-0 items-center gap-2 text-[var(--fg-muted)] [&>svg]:shrink-0">
+            <SmartLink
+              url={website}
+              className="min-w-0 truncate text-[var(--fg-secondary)] no-underline underline-offset-4 hover:underline"
+            />
+          </span>
+        ) : null}
+      </>
+    ) : undefined
 
   return (
-    <Card
-      as="section"
-      unpadded
-      className={showBanner ? "home-account" : "home-account home-account--no-banner"}
-      aria-labelledby={nameId}
-      data-tour="home-account"
-    >
-      {showBanner ? (
-        <div className="home-account__banner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={bannerUrl!}
-            alt=""
-            className="home-account__banner-img"
-            loading="lazy"
-            onError={() => setBannerFailed(true)}
-          />
-        </div>
-      ) : null}
-
-      <div className="home-account__body">
-        <div className="home-account__avatar">
-          <Avatar
-            size="lg"
-            src={avatarUrl || activeGroup?.avatarUrl || undefined}
-            fallbackInitials={initials}
-            bordered
-          />
-        </div>
-
-        {isLoading && !profile ? (
-          <div className="home-account__name-skeleton">
-            {/* Keeps the section named while the profile loads. */}
-            <span id={nameId} className="sr-only">Your account</span>
-            <Skeleton variant="line" width="60%" height={24} aria-hidden />
-            <Skeleton variant="line" width="40%" height={14} aria-hidden />
-          </div>
-        ) : (
-          <>
-            <h2 id={nameId} className="home-account__name font-headline text-h3" dir="auto">
-              {displayName}
-            </h2>
-            {/* No handle line here: the ID section below shows it. */}
-            {profile?.pronouns ? (
-              <p className="home-account__pronouns">{profile.pronouns}</p>
-            ) : null}
-          </>
-        )}
-        {profile?.description ? (
-          <p className="home-account__bio" dir="auto">{profile.description}</p>
-        ) : !isLoading && editHref ? (
-          <p className="home-account__bio home-account__bio--empty">
-            Add a few lines about {isGroup ? "this group" : "yourself"} so
-            people know who they are looking at.
-          </p>
-        ) : null}
-
-        {profile?.website ? (
-          <div className="home-account__website">
-            <SmartLink url={profile.website} />
-          </div>
-        ) : null}
-
-        <div className="home-account__actions">
+    <PageHeader
+      visual={
+        <Avatar
+          size="lg"
+          src={avatarUrl || activeGroup?.avatarUrl || undefined}
+          fallbackInitials={getInitials(name, handle ?? did)}
+          seed={did}
+          shape={isGroup ? "square" : "circle"}
+        />
+      }
+      title={<span dir="auto">{title}</span>}
+      description={description}
+      actions={
+        <>
           {editHref ? (
             <Button href={editHref} variant="secondary" size="sm">
               <Pencil size={14} aria-hidden />
               Edit profile
             </Button>
           ) : null}
-          <Button href={profileHref} variant="ghost" size="sm">
+          <Button href={profileUrl(handle || did)} variant="secondary" size="sm">
             View profile
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    />
+  )
+}
 
-      <div className="home-account__id" role="group" aria-labelledby={idHeadingId}>
-        <h3 id={idHeadingId} className="home-account__id-title">ID</h3>
-        <p className="home-account__id-note">
-          {isGroup
+/** The header's shape while the profile loads: avatar, name, one line. */
+function HomeIdentityHeaderSkeleton() {
+  return (
+    <div className="mb-4 flex items-center gap-3" aria-hidden>
+      <Skeleton variant="circle" width={64} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <Skeleton variant="line" width="min(240px, 60%)" height={28} />
+        <Skeleton variant="line" width="min(360px, 80%)" height={14} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The ID card: the account's handle and permanent ID (DID), each
+ * click-to-copy, with the note that apps use it to identify the account.
+ */
+export function HomeIdCard({
+  identity,
+  isGroup,
+}: {
+  identity: HomeIdentity
+  isGroup: boolean
+}) {
+  const { did, handle, isLoading } = identity
+  const titleId = useId()
+
+  return (
+    <Card
+      as="section"
+      unpadded
+      className="flex flex-col gap-4 p-5"
+      aria-labelledby={titleId}
+      data-tour="home-account"
+    >
+      <SectionHeader
+        id={titleId}
+        title="ID"
+        description={
+          isGroup
             ? "Identifies this group's account in every app."
-            : "Identifies your account in every app."}
-        </p>
-        <dl className="home-account__id-list">
-          {handle ? (
-            <div className="home-account__id-row">
-              <dt className="home-account__id-label">Handle</dt>
-              <dd className="home-account__id-value">
+            : "Identifies your account in every app."
+        }
+      />
+      {/* Side by side while the card spans the one column (800-1099px);
+          stacked on phones and in the 320px side column. */}
+      <dl className="m-0 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-6 lg:grid-cols-1">
+        {handle || isLoading ? (
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <dt className="text-ui font-medium text-[var(--fg-secondary)]">Handle</dt>
+            <dd className="m-0 min-w-0">
+              {handle ? (
                 <CopyPill value={handle} display={`@${handle}`} label="handle" />
-              </dd>
-            </div>
-          ) : null}
-          <div className="home-account__id-row">
-            <dt className="home-account__id-label">Permanent ID</dt>
-            <dd className="home-account__id-value">
-              <CopyPill value={did} label="permanent ID" />
+              ) : (
+                <Skeleton variant="line" height={36} aria-hidden />
+              )}
             </dd>
           </div>
-        </dl>
-      </div>
+        ) : null}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <dt className="text-ui font-medium text-[var(--fg-secondary)]">Permanent ID</dt>
+          <dd className="m-0 min-w-0">
+            <CopyPill value={did} label="permanent ID" />
+          </dd>
+        </div>
+      </dl>
     </Card>
   )
 }

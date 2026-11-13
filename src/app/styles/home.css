@@ -1,51 +1,64 @@
 /* ---------- /home page ----------
-   The signed-in home is about the account: an account card (profile + ID)
-   and a "Your groups" box beside the account's sections (records,
-   endorsements and follows from others, apps). The follow feed lives on
-   /feed; its card styles stay in this file (.home-feed*).
+   The signed-in home is about the account. Its <PageHeader> is the
+   identity strip (avatar, name, bio, website; home-account-card.tsx);
+   below it come the ID card, the account's sections (records, from
+   others, apps) and Your groups. <PageContainer> sets the width and
+   gutters; this file sets the grid and the hairline rows. The follow
+   feed lives on /feed; its card styles stay in this file (.home-feed*). */
 
-   The page-frame shell rules in layout.css
-   (`:is(:has(.home-page), :has(.explore-page))`) zero the desktop shell
-   padding and lift the 600px reading cap; this file sets the page's own
-   width and gutters. Below 800px the shell's 16px gutter applies. */
-
-.home-page {
-  padding: 8px 0 32px;
-}
-
-@media (min-width: 800px) {
-  .home-page {
-    padding: 32px 24px 64px;
-  }
-}
-
-/* One column (account card first) until 1100px, then the card moves into
-   a left column beside the sections. */
+/* One column below 1100px, in DOM order: ID, sections, groups. The top
+   padding adds to the header's own 16px margin (a margin would collapse
+   into it), so the identity strip stands 24px (phone) / 32px (desktop)
+   clear of the first section. */
 .home__layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 32px;
-  max-width: 640px;
-  margin-inline: auto;
+  padding-top: 8px;
 }
 
 @media (min-width: 800px) {
   .home__layout {
     gap: 48px;
+    padding-top: 16px;
   }
 }
 
+/* From 1100px the sections take the left column and the ID card and Your
+   groups a 320px column on the right. The main column spans every row,
+   so the side rows size to the ID card and the groups list alone and
+   the last row (1fr) absorbs the rest of the main column. */
 @media (min-width: 1100px) {
   .home__layout {
-    display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
-    gap: 48px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "main id"
+      "main groups"
+      "main .";
+    row-gap: 48px;
+    column-gap: 64px;
     align-items: start;
-    max-width: 1120px;
+  }
+
+  .home__id {
+    grid-area: id;
+  }
+
+  .home__main {
+    grid-area: main;
+  }
+
+  .home__groups {
+    grid-area: groups;
   }
 }
 
-.home__aside,
+.home__id,
+.home__groups {
+  min-width: 0;
+}
+
 .home__main {
   display: flex;
   flex-direction: column;
@@ -59,315 +72,33 @@
   }
 }
 
-/* ---------- Account card ---------- */
+/* ---------- Hairline rows (latest records, Your groups) ----------
+   The same rhythm as the endorsement rows reused from the profile
+   Overview: a hairline between rows, no fill, the title underlines on
+   hover. */
 
-/* Surface, border and radius come from <Card>; clip the banner to it. */
-.home-account {
-  overflow: hidden;
-}
-
-.home-account__banner {
-  height: 88px;
-  background: var(--bg-sunken);
-}
-
-.home-account__banner-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.home-account__body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 20px 20px;
-}
-
-/* The avatar overlaps the banner, like the profile header. */
-.home-account__avatar {
-  align-self: flex-start;
-  margin-top: -32px;
-  margin-bottom: 8px;
-}
-
-/* No banner: no grey band either. The card starts with the avatar on the
-   card surface, with the card's own top padding. */
-.home-account--no-banner .home-account__body {
-  padding-top: 20px;
-}
-
-.home-account--no-banner .home-account__avatar {
-  margin-top: 0;
-}
-
-.home-account__id-title,
-.home-block__subhead {
-  margin: 0;
-  font-size: var(--text-label);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  font-feature-settings: 'case' 1;
-  color: var(--fg-muted);
-}
-
-.home-account__name {
-  margin: 0;
-  color: var(--fg-primary);
-  text-wrap: balance;
-}
-
-.home-account__name-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.home-account__pronouns {
-  margin: 0;
-  font-size: var(--text-caption);
-  color: var(--fg-muted);
-}
-
-.home-account__bio {
-  display: -webkit-box;
-  margin: 12px 0 0;
-  overflow: hidden;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-secondary);
-  text-wrap: pretty;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-}
-
-.home-account__bio--empty {
-  color: var(--fg-muted);
-}
-
-/* SmartLink renders its icon and the link as siblings; Tailwind's
-   preflight makes the svg a block, so lay them out as one row. */
-.home-account__website {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  margin-top: 8px;
-  font-size: var(--text-body-sm);
-  color: var(--fg-muted);
-}
-
-.home-account__website > svg {
-  flex-shrink: 0;
-}
-
-.home-account__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.home-account__id {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px 20px 20px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.home-account__id-note {
-  margin: 0;
-  font-size: var(--text-caption);
-  line-height: 1.4;
-  color: var(--fg-muted);
-  text-wrap: pretty;
-}
-
-.home-account__id-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 4px 0 0;
-}
-
-.home-account__id-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.home-account__id-label {
-  font-size: var(--text-ui);
-  font-weight: 500;
-  color: var(--fg-secondary);
-}
-
-.home-account__id-value {
-  min-width: 0;
-  margin: 0;
-}
-
-/* ---------- Sections ---------- */
-
-.home-block {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
-.home-block__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.home-block__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.home-block__title {
-  margin: 0;
-  color: var(--fg-primary);
-  text-wrap: balance;
-}
-
-.home-block__desc {
-  max-width: var(--measure);
-  margin: 0;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-muted);
-  text-wrap: pretty;
-}
-
-.home-block__action {
-  flex-shrink: 0;
-}
-
-.home-block__see-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  font-size: var(--text-ui);
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .home-block__see-all:hover {
-    color: var(--fg-primary);
-  }
-}
-
-.home-block__subhead {
-  margin-top: 8px;
-}
-
-.home-block__loading {
-  display: flex;
-  padding: 8px 0;
-}
-
-/* Count tiles: one per kind, each linking to the full list. */
-.home-counts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.home-count {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 16px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: inherit;
-  text-decoration: none;
-  transition:
-    border-color var(--transition-fast),
-    background-color var(--transition-fast);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .home-count:hover {
-    border-color: var(--border-hover);
-    background-color: var(--bg-sunken);
-  }
-}
-
-.home-count__value {
-  display: flex;
-  align-items: center;
-  min-height: 1.75rem;
-  font-family: var(--font-headline);
-  font-size: var(--text-h3);
-  font-weight: 600;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-primary);
-}
-
-.home-count__label {
-  font-size: var(--text-ui);
-  color: var(--fg-muted);
-}
-
-/* Latest records and groups: hairline-separated rows. */
-.home-records,
-.home-groups {
+.home-rows {
   margin: 0;
   padding: 0;
   list-style: none;
   border-top: 1px solid var(--border-subtle);
 }
 
-.home-records > li,
-.home-groups > li {
+.home-rows > li {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.home-record,
-.home-group {
+.home-row {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 44px;
-  padding: 12px 4px;
+  padding: 12px 0;
   color: inherit;
   text-decoration: none;
-  transition: background-color var(--transition-fast);
 }
 
-.home-group {
-  padding-block: 8px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .home-record:hover,
-  .home-group:hover {
-    background-color: var(--overlay-weak);
-  }
-}
-
-.home-record__thumb {
+.home-row__thumb {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -380,155 +111,47 @@
   color: var(--fg-secondary);
 }
 
-.home-record__thumb img {
+.home-row__thumb img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.home-record__text {
+.home-row__text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.home-record__title,
-.home-group__name {
+.home-row__title,
+.home-row__meta {
   overflow: hidden;
-  font-size: var(--text-body-sm);
-  font-weight: 500;
-  color: var(--fg-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.home-group__name {
-  flex: 1;
-  min-width: 0;
+.home-row__title {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--fg-primary);
+  text-underline-offset: 3px;
 }
 
-.home-record__meta {
+.home-row__meta {
   font-size: var(--text-caption);
+  line-height: 1.4;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
 
-/* Apps: one per row on a phone, two across from 800px. */
-.home-apps {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 800px) {
-  .home-apps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.home-app {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 100%;
-  padding: 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color var(--transition-fast);
-}
-
 @media (hover: hover) and (pointer: fine) {
-  .home-app:hover {
-    border-color: var(--border-hover);
+  .home-row:hover .home-row__title {
+    text-decoration: underline;
   }
-}
-
-.home-app__logo {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: var(--radius);
-  background: var(--bg-canvas);
-}
-
-.home-app__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.home-app__name {
-  font-size: var(--text-body-sm);
-  font-weight: 600;
-  color: var(--fg-primary);
-}
-
-.home-app__desc {
-  display: -webkit-box;
-  overflow: hidden;
-  font-size: var(--text-caption);
-  line-height: 1.4;
-  color: var(--fg-muted);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.home-app__arrow {
-  flex-shrink: 0;
-  color: var(--fg-muted);
-}
-
-/* ---------- Your groups (box under the account card) ---------- */
-
-.home-groups-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 12px 12px 20px;
-}
-
-.home-groups-card__title {
-  margin: 0;
-  color: var(--fg-primary);
-}
-
-.home-groups-card__loading {
-  display: flex;
-  padding: 0 20px 16px;
-}
-
-.home-groups-card__empty {
-  margin: 0;
-  padding: 0 20px 20px;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-muted);
-}
-
-/* Rows run edge to edge inside the box; the box's border closes the list. */
-.home-groups-card .home-groups > li:last-child {
-  border-bottom: 0;
-}
-
-.home-groups-card .home-group {
-  padding-inline: 20px;
-}
-
-.home-groups-card__more {
-  padding: 4px 20px 8px;
-  border-top: 1px solid var(--border-subtle);
 }
 
 /* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).
@@ -540,7 +163,7 @@
   align-items: center;
   gap: 4px;
   min-width: 0;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   line-height: 1.2;
   color: var(--fg-muted);
 }
