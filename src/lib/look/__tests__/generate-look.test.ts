@@ -49,7 +49,10 @@ const design: SiteDesign = {
 }
 
 const answer = {
+  character: "a tidy product site: a violet accent on white, a clean grotesk",
   signature: ["violet accent", "clean grotesk"],
+  idea: "violet as the one mark of the brand",
+  signaturePiece: "idCard",
   name: "Example",
   description: "Violet on white.",
   colors: {
@@ -121,9 +124,14 @@ describe("generateLookSpec", () => {
     expect(sentText()).toContain("<site_design>")
     expect(sentText()).toContain('"#533afd"')
     expect(sentText()).not.toContain("<rendered_styles>")
-    expect(params.system).toContain("ignore it")
+    expect(params.system[0].text).toContain("ignore it")
     expect(spec.name).toBe("Example")
     expect(spec.faces.mono).toBe("geist-mono")
+    expect(spec.idea).toBe("violet as the one mark of the brand")
+    expect(spec.signaturePiece).toBe("idCard")
+    // The long system prompt is cached.
+    expect(params.system).toEqual([expect.objectContaining({ type: "text", cache_control: { type: "ephemeral" } })])
+    expect(params.system[0].text).toContain("How to work, as an art director would")
   })
 
   it("asks for a new version with the previous style and the person's request", async () => {
@@ -154,7 +162,7 @@ describe("generateLookSpec", () => {
     expect(blocks[6]).toMatchObject({ source: { media_type: "image/png", data: "CCCC" } })
     const last = blocks[7] as Extract<Block, { type: "text" }>
     expect(last.text.indexOf("<rendered_styles>")).toBeLessThan(last.text.indexOf("<site_design>"))
-    expect(parse.mock.calls[0][0].system).toContain("including text you can read in a screenshot")
+    expect(parse.mock.calls[0][0].system[0].text).toContain("including text you can read in a screenshot")
   })
 
   it("accepts evidence from the rendered styles and snaps to the visible colours", async () => {
@@ -189,7 +197,7 @@ describe("generateLookSpec", () => {
     const spec = await generateLookSpec({ apiKey: "k", design })
     expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
     expect(spec.backdrop.kind).toBe("none")
-    expect(parse.mock.calls[0][0].system).toContain("You translate; you never invent.")
+    expect(parse.mock.calls[0][0].system[0].text).toContain("You translate; you never invent.")
   })
 
   it("names the site when Claude gives no name", async () => {

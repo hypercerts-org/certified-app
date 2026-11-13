@@ -16,7 +16,10 @@ import {
 import { rgbToOklch } from "../oklch"
 
 const stripe = (over: Partial<LookSpecInput> = {}): LookSpecInput => ({
+  character: "a payments company for developers: navy text on white, a violet-to-pink hero gradient, a clean grotesk",
   signature: ["violet-to-pink gradients", "Söhne-like grotesk", "navy text on white"],
+  idea: "the gradient as a signature on a calm white desk",
+  signaturePiece: "backdrop",
   evidence: [],
   name: "Stripe",
   description: "Stripe's navy and violet with its hero gradient.",
@@ -304,5 +307,23 @@ describe("groundLookSpec: nothing invented", () => {
   it("keeps a second colour from the site's gradient", () => {
     const { spec } = ground({ ...stripe(), colors: { ...stripe().colors, secondary: "#FF6EC7" } })
     expect((spec.colors as Record<string, string>).secondary).toBe("#FF6EC7")
+  })
+})
+
+describe("the idea and the signature piece", () => {
+  it("keeps them, and reads styles made before they existed", () => {
+    const spec = normalizeLookSpec(stripe())
+    expect(spec.idea).toBe("the gradient as a signature on a calm white desk")
+    expect(spec.signaturePiece).toBe("backdrop")
+    expect(spec.character).toContain("payments company")
+
+    const { idea: _i, signaturePiece: _p, character: _c, ...older } = stripe()
+    void _i
+    void _p
+    void _c
+    const old = normalizeLookSpec(older)
+    expect(old.idea).toBe("")
+    expect(old.signaturePiece).toBeNull()
+    expect(normalizeLookSpec({ ...stripe(), signaturePiece: "everything" }).signaturePiece).toBeNull()
   })
 })

@@ -270,12 +270,26 @@ const ColorsSchema = z.object({
     .describe("Only if the site has its own scheme for the other mode: its background, surface and text. Otherwise null."),
 })
 
+/** The pieces a style can make loud: one carries the idea, the others stay
+ *  quiet. */
+export const SIGNATURE_PIECES = ["idCard", "avatar", "endorsement", "backdrop"] as const
+export type SignaturePiece = (typeof SIGNATURE_PIECES)[number]
+
 /** What Claude returns. Kept loose where the API's schema support is
  *  (no string patterns or number ranges); `normalizeLookSpec` enforces. */
 export const LookSpecSchema = z.object({
+  character: z
+    .string()
+    .describe("One sentence: who the site is for, its tone, its typeface, its colour, its imagery."),
   signature: z
     .array(z.string())
-    .describe("Two to four short phrases: the things someone would recognise the site by, all visible in the digest."),
+    .describe("Two to four short phrases: the things someone would recognise the site by, seen in the screenshots and confirmed in the rendered styles or the digest."),
+  idea: z
+    .string()
+    .describe("One short phrase that carries the site's character into an account app. Every choice after it follows from it."),
+  signaturePiece: z
+    .enum(SIGNATURE_PIECES)
+    .describe("The one piece that carries the idea strongly; the others stay quiet."),
   evidence: z
     .array(
       z.object({
@@ -283,7 +297,7 @@ export const LookSpecSchema = z.object({
         choice: z.string(),
         quote: z
           .string()
-          .describe("Copied exactly from the digest (or the person's request): the CSS value, property, class name or count that shows the site does this."),
+          .describe("Copied exactly from the rendered styles or the digest (or the person's request): the CSS value, property, class name or count that shows the site does this."),
       }),
     )
     .describe("One entry for every lever set to anything but a plain option."),
@@ -351,7 +365,12 @@ export interface LookSpec {
   version: 2
   name: string
   description: string
+  /** The site's character, the idea carried from it, and the piece that
+   *  carries it (empty / null in styles made before these existed). */
+  character: string
   signature: string[]
+  idea: string
+  signaturePiece: SignaturePiece | null
   faces: Record<"ui" | "headline" | "mono" | "numeral" | "label", LookFace>
   headlineWeight: number
   headlineStrongWeight: number
@@ -731,10 +750,15 @@ export function normalizeLookSpec(raw: unknown, fallbackName = "Your style"): Lo
     version: 2,
     name: clean(r.name, 32) || fallbackName,
     description: clean(r.description, 120),
+    character: clean(r.character, 240),
     signature: (Array.isArray(r.signature) ? r.signature : [])
       .map((s) => clean(s, 60))
       .filter(Boolean)
       .slice(0, 4),
+    idea: clean(r.idea, 120),
+    signaturePiece: (SIGNATURE_PIECES as readonly unknown[]).includes(r.signaturePiece)
+      ? (r.signaturePiece as SignaturePiece)
+      : null,
     faces,
     headlineWeight: oneWeight ? 400 : snapWeight(r.headlineWeight, 600),
     headlineStrongWeight: oneWeight ? 400 : snapWeight(r.headlineStrongWeight, 700),

@@ -74,11 +74,28 @@ You see the website three ways: screenshots of it rendered in a browser (the fir
 
 You translate; you never invent. Everything in the style comes from the website: every colour is one the site uses, every face is the closest match to one it uses, and every design move echoes something the site actually does. If the site is plain, the style is plain, and that is the right answer: leave every lever on a plain option unless the site shows it does that thing. A flourish the site doesn't have is wrong, however good it would look. When the site does have something distinctive (a gradient, a pattern, a texture, uppercase labels, hard shadows, a strong brand colour on its surfaces), use it: that is what makes the style recognisable as theirs.
 
-Work in this order.
-1. Find the signature: two to four things the site is recognised by. Look at the screenshots first, then confirm each in the rendered styles or the digest. Write them in "signature". If little stands out, say what is there (for example "black text on white, Helvetica, square corners").
-2. Carry each signature item into Certified through the levers below, and nothing else.
-3. Evidence: for every lever you set to anything but a plain option, add an entry to "evidence" with the lever, your choice, and a quote copied exactly from the rendered styles or the digest (a CSS value, a property, a class name, or a count) that shows the site does this. In a new version, the quote may also come from the person's request. The app checks every quote against that text and resets the lever to plain if the quote isn't there; what you see in a screenshot tells you where to look, but the quote must be text.
-4. Check the whole: would the site's own designers recognise it, and would they say nothing in it is foreign to their site?
+How to work, as an art director would:
+1. Look at the screenshots first and the CSS second. Describe the site's character in one sentence in "character": who it is for, its tone, its typeface, its colour, its imagery. For example: "a grassroots sports charity: heavy condensed capitals, orange on deep navy, photographs of girls playing, big round buttons".
+2. Write the signature: two to four things the site is recognised by, each one you can see in the screenshots and confirm in the rendered styles or the digest. If little stands out, say what is there (for example "black text on white, Helvetica, square corners").
+3. Name the idea: one short phrase that carries that character into an account app. Write it in "idea". Everything after this follows from it.
+4. Choose one signature piece to carry the idea strongly: the ID card, the avatar, the endorsement or the page backdrop. Write it in "signaturePiece". Keep the others quiet. One loud thing with everything else supporting it reads as designed; four loud things read as a theme generator.
+5. Type: match the site's faces by character, and keep the UI face very readable. Big names and counters are where the site's display type can show.
+6. Colour: use the brand colour sparingly, on a few surfaces and the signature piece, not on every button and border. Neutrals lean toward the brand. Dark mode keeps the same hues and isn't simply inverted.
+7. Shape and material: corners, borders and shadows come from the site. Square sites stay square; soft sites stay soft. Don't mix the two.
+8. Evidence: carry the signature into Certified through the levers below, and nothing else. For every lever you set to anything but a plain option, add an entry to "evidence" with the lever, your choice, and a quote copied exactly from the rendered styles or the digest (a CSS value, a property, a class name, or a count) that shows the site does this. In a new version, the quote may also come from the person's request. The app checks every quote against that text and resets the lever to plain if the quote isn't there; what you see in a screenshot tells you where to look, but the quote must be text.
+9. Check the whole:
+   - At a glance, does it read as theirs?
+   - Would their designer find anything foreign in it?
+   - Is text readable in both modes?
+   - Does it still feel like Certified, a calm place people trust with their record?
+
+Avoid these clichés unless the site itself uses them:
+- leaf, sprout and globe icons, stock eco greens, blue-green "earth" gradients;
+- shields with ticks and blue checkmarks (Bluesky owns those);
+- holographic foil, aurora or sparkle backdrops, gradient-border cards, pulsing dots;
+- progress circles for impact.
+
+A plain site gets a plain style done well. That is a good answer, not a failure.
 
 Reading the screenshots and rendered styles:
 - The screenshots show what the site really looks like: which colour covers the page, how much of the brand colour there is and where, photography or illustration, how large and heavy the type is, how buttons and cards are shaped. Let them decide what matters; use the CSS to get the exact values.
@@ -324,7 +341,9 @@ export async function generateLookSpec({
         fallbacks: "default",
         // Art direction is judgement work: high effort.
         output_config: { effort: "high", format: betaZodOutputFormat(LookSpecSchema) },
-        system: LOOK_SYSTEM_PROMPT,
+        // The same long prompt every time: cached, so repeat runs read it
+        // at a fraction of the price.
+        system: [{ type: "text", text: LOOK_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: userContent({ design, capture, previous, request }) }],
       },
       { signal, timeout: 300_000 },
