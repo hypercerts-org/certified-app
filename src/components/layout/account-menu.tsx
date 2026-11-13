@@ -2,7 +2,6 @@
 
 import { useId, useMemo, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
-import { useTheme } from "next-themes"
 import {
   Check,
   ChevronDown,
@@ -10,13 +9,9 @@ import {
   LogIn,
   LogOut,
   MessageSquare,
-  Monitor,
-  Moon,
   Plus,
   Settings,
-  Sun,
   UserRound,
-  type LucideIcon,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useFeedback } from "@/lib/feedback-context"
@@ -27,7 +22,6 @@ import type { Group, OrgRole } from "@/lib/groups/types"
 import { useOrgProfile } from "@/hooks/use-org-profile"
 import { useProfile } from "@/hooks/use-profile"
 import { useSession } from "@/hooks/use-session"
-import { useMounted } from "@/hooks/use-mounted"
 import { ownProfileUrl } from "@/lib/urls"
 import { getInitials } from "@/lib/utils/initials"
 import Avatar from "@/components/ui/avatar"
@@ -177,62 +171,6 @@ function useSignOutConfirm(returnFocusRef: RefObject<HTMLElement | null>) {
 // Menu content (shared by the desktop popover and the phone sheet)
 // ---------------------------------------------------------------------------
 
-const THEME_OPTIONS: { value: "light" | "dark" | "system"; label: string; icon: LucideIcon }[] = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
-]
-
-/** The Appearance row: Light / Dark / System. Menu items in a menu,
- *  toggle buttons (`aria-pressed`) in a sheet. */
-function AppearanceRow({ mode }: { mode: MenuMode }) {
-  const { theme, setTheme } = useTheme()
-  const mounted = useMounted()
-  const labelId = useId()
-  const current = mounted ? theme : undefined
-  const isMenu = mode === "menu"
-
-  return (
-    <div
-      className={`flex items-center justify-between gap-3 px-3 ${isMenu ? "min-h-10 py-1" : "min-h-12 py-1.5"}`}
-    >
-      <span id={labelId} className="text-body-sm font-medium text-[var(--fg-primary)]">
-        Appearance
-      </span>
-      <div
-        role="group"
-        aria-labelledby={labelId}
-        className="inline-flex shrink-0 items-stretch gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-0.5"
-      >
-        {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
-          const selected = current === value
-          return (
-            <button
-              key={value}
-              type="button"
-              {...(isMenu
-                ? { role: "menuitemradio", "aria-checked": selected, tabIndex: -1 }
-                : { "aria-pressed": selected })}
-              onClick={() => setTheme(value)}
-              className={`inline-flex items-center gap-1 rounded border-0 px-1.5 text-caption font-medium cursor-pointer transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-[-2px] ${
-                // 44px in the sheet: the touch minimum.
-                isMenu ? "min-h-7" : "min-h-control-md"
-              } ${
-                selected
-                  ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
-                  : "bg-transparent text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
-              }`}
-            >
-              <Icon size={14} strokeWidth={1.75} aria-hidden />
-              {label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 /** One account in the "Switch account" list. */
 function AccountRow({
   mode,
@@ -287,8 +225,9 @@ export interface AccountMenuContentProps {
 
 /**
  * The account menu (DESIGN.md §4): the current account and its profile,
- * switching between your personal account and your groups, Settings, Help,
- * feedback and appearance, then signing in as someone else or out.
+ * switching between your personal account and your groups, Settings, Help
+ * and feedback, then signing in as someone else or out. Appearance is in
+ * Settings.
  *
  * One component for both presentations: inside `<PopoverContent>`
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
@@ -396,7 +335,8 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         </>
       ) : null}
 
-      {/* 3. Settings, Help, feedback, appearance. */}
+      {/* 3. Settings, Help, feedback. Appearance (light, dark, system) is
+          in Settings only. */}
       {separator}
       <Link href="/settings" {...item} className={row()} onClick={onClose}>
         <Settings size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
@@ -418,7 +358,6 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         <MessageSquare size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
         Send feedback
       </button>
-      <AppearanceRow mode={mode} />
 
       {/* 4. Session. "Sign in with another account" asks the PDS who is
           signing in (never the silent bounce back into this account) and

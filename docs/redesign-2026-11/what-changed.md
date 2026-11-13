@@ -38,7 +38,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 1. Your account, with View profile.
 2. Switch account: you, then your groups with your role. Then New group.
-3. Settings, Help, Send feedback, Appearance (light, dark or system).
+3. Settings, Help, Send feedback. Appearance (light, dark or system) is in Settings only.
 4. Sign in with another account. This now really asks who is signing in.
 5. Sign out, after a confirmation.
 
@@ -49,7 +49,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 - `/endorsements` redirects to Records → Endorsements.
 - `/workspace` redirects to Records.
 
-**Footer**: Help and Feedback, for everyone including signed-out visitors. It is the only Feedback button: the floating one is gone. The theme switch is in the account menu (Appearance) and Settings, not the footer.
+**Footer**: Help and Feedback, for everyone including signed-out visitors. It is the only Feedback button: the floating one is gone. The theme switch (Appearance) is in Settings only.
 
 ## Pages
 

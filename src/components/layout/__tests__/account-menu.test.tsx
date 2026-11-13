@@ -4,7 +4,7 @@ import type { Group } from "@/lib/groups/types"
 
 // --- Module mocks ---------------------------------------------------------
 // The menu reads who is signed in (auth, session, profile), who they act as
-// (org context) and a few actions (feedback, theme, switching). Each is a
+// (org context) and a few actions (feedback, switching). Each is a
 // hoisted latch so a test can set the account state before rendering.
 
 const state = vi.hoisted(() => ({
@@ -15,7 +15,6 @@ const state = vi.hoisted(() => ({
   signOut: vi.fn(),
   openFeedback: vi.fn(),
   switchActor: vi.fn(),
-  setTheme: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -60,10 +59,6 @@ vi.mock("@/hooks/use-profile", () => ({
 
 vi.mock("@/hooks/use-org-profile", () => ({
   useOrgProfile: () => ({ orgAvatarUrl: null }),
-}))
-
-vi.mock("next-themes", () => ({
-  useTheme: () => ({ theme: "dark", setTheme: state.setTheme }),
 }))
 
 import {
@@ -113,7 +108,6 @@ beforeEach(() => {
   state.signOut.mockReset().mockResolvedValue(undefined)
   state.openFeedback.mockReset()
   state.switchActor.mockReset()
-  state.setTheme.mockReset()
 })
 
 function renderMenu(mode: "menu" | "sheet" = "menu") {
@@ -137,7 +131,7 @@ describe("identityTag", () => {
 })
 
 describe("AccountMenuContent", () => {
-  it("lists the sections in order: profile, switch account, settings/help/feedback/appearance, session", () => {
+  it("lists the sections in order: profile, switch account, settings/help/feedback, session", () => {
     renderMenu("menu")
     const labels = [
       ...screen.getAllByRole("menuitem"),
@@ -156,9 +150,6 @@ describe("AccountMenuContent", () => {
       "Settings",
       "Help",
       "Send feedback",
-      "Light",
-      "Dark",
-      "System",
       expect.stringContaining("Sign in with another account"),
       "Sign out",
     ])
@@ -240,15 +231,10 @@ describe("AccountMenuContent", () => {
     expect(onClose).toHaveBeenCalledTimes(3)
   })
 
-  it("sets the theme from the Appearance row", () => {
+  it("leaves Appearance to Settings", () => {
     renderMenu("menu")
-    expect(screen.getByRole("group", { name: "Appearance" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitemradio", { name: "Dark" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    )
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Light" }))
-    expect(state.setTheme).toHaveBeenCalledWith("light")
+    expect(screen.queryByRole("group", { name: "Appearance" })).toBeNull()
+    expect(screen.queryByRole("menuitemradio", { name: "Dark" })).toBeNull()
   })
 
   it("keeps menu items out of the tab order (the popover roves with arrow keys)", () => {
@@ -263,7 +249,7 @@ describe("AccountMenuContent", () => {
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0)
     expect(screen.getByRole("heading", { level: 3, name: "Switch account" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Maya Lin/ })).toHaveAttribute("aria-current", "true")
-    expect(screen.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.queryByRole("button", { name: "Dark" })).toBeNull()
     const legal = screen.getByRole("navigation", { name: "Legal" })
     expect(within(legal).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
   })
