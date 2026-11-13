@@ -90,8 +90,19 @@
   gap: 8px;
 }
 
+/* Projects and activities: the search and the create actions on one
+   row. The field takes what the buttons leave; below about 240px of
+   field the buttons wrap under it (phones). */
+.records-pane__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .records-pane__search {
-  max-width: 360px;
+  flex: 1 1 240px;
+  min-width: 0;
 }
 
 .records-pane__note {
@@ -243,8 +254,9 @@
   transition: opacity var(--transition-fast);
 }
 
-/* The select checkbox, always shown so selecting has a visible start: a
-   column the height of the row, so the whole strip is the hit area. */
+/* The select checkbox: a column the height of the row, so the whole strip
+   is the hit area. The column keeps its width while the box is hidden
+   (below), so rows never shift. */
 .records-row__check {
   display: flex;
   flex-shrink: 0;
@@ -257,6 +269,34 @@
 
 .records-row[data-selected] {
   background: var(--overlay-weak);
+}
+
+/* Row controls that show on hover or focus with a mouse: the select box
+   and the Edit shortcut (the "More actions" menu, which also holds Edit,
+   always shows). Hidden by opacity only, so they stay in the Tab order
+   and a keyboard focus brings them back (:focus-within). The boxes show
+   on every row while anything is selected. Devices without a fine
+   pointer (touch) always show them. */
+@media (hover: hover) and (pointer: fine) {
+  .records-reveal {
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .records-row:hover .records-reveal,
+  .records-row:focus-within .records-reveal,
+  .records-row[data-selected] .records-reveal,
+  .records-folder__head:hover .records-reveal,
+  .records-folder__head:focus-within .records-reveal,
+  .records-work[data-selecting] .records-row__check.records-reveal {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .records-reveal {
+    transition: none;
+  }
 }
 
 /* ---------- Project chips ---------- */
@@ -311,9 +351,9 @@
 }
 
 /* Phones: a row is the checkbox, the title (up to two lines) over its
-   dates, and the "More actions" menu. The thumbnail and the Edit button go
-   (Edit is in the menu there), and the contributors drop under the title,
-   so the title keeps the row's width. Folder heads lose their Edit too. */
+   dates, and the "More actions" menu. The thumbnail and the Edit shortcut
+   go (Edit is in the menu), and the contributors drop under the title, so
+   the title keeps the row's width. Folder heads lose their Edit too. */
 @media (max-width: 799px) {
   .records-row--activity {
     display: grid;

@@ -124,9 +124,6 @@ export type RowMenuEntry =
       label: string
       href: string
       icon: LucideIcon
-      /** Only in the phone sheet: for an action the row shows as its own
-       *  button from 800px (Edit) and leaves to the menu on phones. */
-      phoneOnly?: boolean
     }
   | {
       kind: "action"
@@ -211,8 +208,9 @@ function RowMenuItems({
 
 /**
  * A row's "More actions" menu: a popover menu on desktop and the same
- * entries in a bottom sheet on phones (DESIGN.md §9.7). Entries marked
- * `phoneOnly` show in the sheet only.
+ * entries in a bottom sheet on phones (DESIGN.md §9.7). It holds every
+ * action of the row, including the ones the row also offers as a hover
+ * shortcut (Edit).
  */
 export function RowMenu({
   label,
@@ -228,9 +226,6 @@ export function RowMenu({
   const { isDesktop } = useLayoutBreakpoints()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const shown = isDesktop
-    ? entries.filter((e) => !(e.kind === "link" && e.phoneOnly))
-    : entries
   const trigger = (
     <Button
       ref={triggerRef}
@@ -252,7 +247,7 @@ export function RowMenu({
         <BottomSheet open={open} onClose={() => setOpen(false)} title={title}>
           <div className="flex flex-col gap-0.5 px-2 pb-4">
             <RowMenuItems
-              entries={shown}
+              entries={entries}
               mode="sheet"
               onDone={() => setOpen(false)}
               trigger={triggerRef}
@@ -267,7 +262,7 @@ export function RowMenu({
       <PopoverTrigger>{trigger}</PopoverTrigger>
       <PopoverContent portal side="bottom" align="end" offset={4} minWidth={220} aria-label={label}>
         <RowMenuItems
-          entries={shown}
+          entries={entries}
           mode="menu"
           onDone={() => setOpen(false)}
           trigger={triggerRef}

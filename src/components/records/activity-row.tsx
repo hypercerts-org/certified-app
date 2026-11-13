@@ -169,15 +169,18 @@ export interface ActivityRowProps {
 }
 
 /**
- * One activity row. Left to right: a select checkbox (own activities;
- * always shown), the thumbnail and title over its dates (both open the
- * activity), chips for the other projects it sits in, contributor
- * avatars, then Edit and a "More actions" menu (Open, Contributors…, Add
- * to project…, Remove from project, Delete).
+ * One activity row. Left to right: a select checkbox (own activities),
+ * the thumbnail and title over its dates (both open the activity), chips
+ * for the other projects it sits in, contributor avatars, then an Edit
+ * shortcut and the "More actions" menu (Open, Edit, Contributors…, Add to
+ * project…, Remove from project, Delete).
+ *
+ * With a mouse the checkbox and the Edit shortcut show on hover or focus
+ * (the checkboxes on every row while anything is selected); on touch they
+ * always show. Both stay in the DOM and in the Tab order (records.css).
  *
  * Below 800px the row keeps the checkbox, the title (up to two lines) and
- * the menu: the thumbnail and the Edit button go (records.css), and Edit
- * moves into the menu.
+ * the menu: the thumbnail and the Edit shortcut go (records.css).
  *
  * An activity another account published can sit in your project: it
  * reads "By @handle", can't be selected, and offers Open and Remove from
@@ -236,8 +239,7 @@ export default function ActivityRow({
   const entries: RowMenuEntry[] = isOwn
     ? [
         { kind: "link", key: "open", label: "Open", href, icon: ExternalLink },
-        // The pencil beside the menu from 800px.
-        { kind: "link", key: "edit", label: "Edit", href: `${href}/edit`, icon: Pencil, phoneOnly: true },
+        { kind: "link", key: "edit", label: "Edit", href: `${href}/edit`, icon: Pencil },
         {
           kind: "link",
           key: "contributors",
@@ -266,7 +268,9 @@ export default function ActivityRow({
       aria-busy={busy || undefined}
     >
       {selectable ? (
-        <label className="records-row__check">
+        // With a mouse the box shows on hover or focus, and on every row
+        // while anything is selected; always on touch (records.css).
+        <label className="records-row__check records-reveal">
           <Checkbox
             checked={selected}
             onChange={() => onToggleSelect(record.uri)}
@@ -293,13 +297,15 @@ export default function ActivityRow({
       <ContributorStack contributors={record.value.contributors} />
       <div className="records-row__actions">
         {isOwn ? (
+          // A shortcut to the menu's Edit: shown on hover or focus with a
+          // mouse, always on touch from 800px (records.css).
           <Button
             href={`${href}/edit`}
             variant="ghost"
             size="icon-sm"
             aria-label={`Edit ${title}`}
             tooltip="Edit"
-            className="records-row__edit"
+            className="records-row__edit records-reveal"
           >
             <Pencil size={16} strokeWidth={1.75} aria-hidden />
           </Button>

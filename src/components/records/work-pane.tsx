@@ -126,15 +126,16 @@ function useDeleteFlow<T extends { uri: string }>(
  * activity can sit in several projects, so it shows in each of their
  * folders, with chips naming the others.
  *
- * Own activities can be selected (a checkbox per row, always shown). The
+ * Own activities can be selected (a checkbox per row: shown on touch, and
+ * with a mouse on hover or focus and while anything is selected). The
  * selection bar offers "Add to project…", a picker that ticks and unticks
  * projects and can start a new project from the selection. Each folder
  * has "Add activities", and each row "Remove from project". Every change
  * writes each touched project once (`updateOwnProjectItems`, personal
  * repo only) and confirms with a toast that can undo it.
  *
- * The pane's header carries the page's create actions: New activity (the
- * page's one primary button) and New project.
+ * The toolbar above the folders carries the search and the page's create
+ * actions: New activity (the page's one primary button) and New project.
  */
 export default function WorkPane({
   did,
@@ -485,38 +486,33 @@ export default function WorkPane({
 
   return (
     <WorkspaceFrame
-      // The content opens with the search, a control row, not a heading.
+      // The content opens with the toolbar, a control row, not a heading.
       offset={false}
-      header={
-        <PaneHead
-          titleId={titleId}
-          section="activities"
-          action={
-            // Hidden while loading and when there is nothing yet: the empty
-            // state below carries its own "New activity".
-            !isLoading && !nothingYet ? (
-              <div className="records-pane__actions">
-                <Button href="/create" variant="primary" size="sm">
-                  <Plus size={16} strokeWidth={1.75} aria-hidden />
-                  New activity
-                </Button>
-                <Button href="/project/new" variant="secondary" size="sm">
-                  <Plus size={16} strokeWidth={1.75} aria-hidden />
-                  New project
-                </Button>
-              </div>
-            ) : null
-          }
-        />
-      }
+      header={<PaneHead titleId={titleId} section="activities" />}
     >
       <section
         className="records-pane records-work"
         aria-labelledby={titleId}
         data-selecting={hasSelection || undefined}
       >
+        {/* One row: the search takes the width, the create actions sit at
+            its end (they wrap under it on a phone). Hidden while loading
+            and when there is nothing yet: the empty state below carries
+            its own "New activity". */}
         {!isLoading && !nothingYet ? (
-          <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
+          <div className="records-pane__toolbar">
+            <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
+            <div className="records-pane__actions">
+              <Button href="/create" variant="primary" size="md">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New activity
+              </Button>
+              <Button href="/project/new" variant="secondary" size="md">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New project
+              </Button>
+            </div>
+          </div>
         ) : null}
 
         {/* Announces the selection count; the bar itself mounts and unmounts. */}
@@ -798,13 +794,15 @@ function ProjectFolder({
         meta={`Project · ${count(n, "activity", "activities")}`}
         actions={
           <>
+            {/* A shortcut to the menu's Edit: shown on hover or focus with
+                a mouse, always on touch from 800px (records.css). */}
             <Button
               href={`${href}/edit`}
               variant="ghost"
               size="icon-sm"
               aria-label={`Edit ${title}`}
               tooltip="Edit"
-              className="records-row__edit"
+              className="records-row__edit records-reveal"
             >
               <Pencil size={16} strokeWidth={1.75} aria-hidden />
             </Button>
@@ -813,14 +811,12 @@ function ProjectFolder({
               title={title}
               entries={[
                 { kind: "link", key: "open", label: "Open project", href, icon: ExternalLink },
-                // The pencil beside the menu from 800px.
                 {
                   kind: "link",
                   key: "edit",
                   label: "Edit project",
                   href: `${href}/edit`,
                   icon: Pencil,
-                  phoneOnly: true,
                 },
                 ...addEntry,
                 { kind: "separator", key: "sep" },
