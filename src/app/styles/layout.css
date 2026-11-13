@@ -876,9 +876,12 @@
   border-radius: var(--radius);
 }
 
+/* "More" (three older posts) starts at the same left edge as the post
+   text and time above it, so the box reads down one edge; sized to its
+   label (the section is a flex column). */
 .news__more {
   display: block;
-  width: 100%;
+  align-self: flex-start;
   margin-top: 12px;
   padding: 8px 0;
   background: none;
@@ -888,7 +891,7 @@
   font-weight: 400;
   color: var(--fg-muted);
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: color var(--transition-fast);
 }
 

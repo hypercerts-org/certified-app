@@ -1481,7 +1481,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
    destinations): the page header, then the layout. Below 1100px one
    column, the header and the list together capped at the 600px reading
    column; the filters open from the header's Filters button. From 1100px
-   three columns inside the 1120px: filters 216 | feed up to 600 | news
+   three columns inside the 1120px: filters 240 | feed up to 576 | news
    256, 24px apart, the filters box sticky below the fixed chrome. */
 
 /* Below 1100px the whole page (header included) is the 600px reading
@@ -1509,7 +1509,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
   .feed-layout {
     display: grid;
     grid-template-areas: "filters main news";
-    grid-template-columns: 216px minmax(0, 1fr) 256px;
+    grid-template-columns: 240px minmax(0, 1fr) 256px;
     align-items: start;
     gap: 24px;
   }
@@ -1529,6 +1529,18 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
     max-height: calc(100vh - var(--chrome-top, var(--navbar-height)) - 48px);
     overflow-y: auto;
     scrollbar-width: thin;
+    /* Keyboard focus scrolls a row clear of the fade below. */
+    scroll-padding-bottom: 48px;
+  }
+
+  /* While more of the filters is below the visible part (useMoreBelow in
+     home-feed.tsx), the bottom 48px fade out, so the cut-off group reads
+     as "scroll for more". A mask rather than a colour: the box fades into
+     the page canvas behind it in either theme. No fade once scrolled to
+     the end; it switches without animating. */
+  .feed-layout__filters[data-more-below] {
+    -webkit-mask-image: linear-gradient(to bottom, var(--mask-opaque) calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to bottom, var(--mask-opaque) calc(100% - 48px), transparent);
   }
 
   .feed-layout__news {

@@ -554,6 +554,8 @@ a.home-feed__card-body:focus-visible {
   }
 }
 
+/* The full width of the text column at every width, so the image and the
+   title below it share both edges. */
 .home-feed__card-image {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -577,17 +579,20 @@ a.home-feed__card-body:focus-visible {
   min-width: 0;
 }
 
-/* Record title: the serif title voice (DESIGN.md §3.2 — feed card title
-   is serif 700 at the h4 size on phones, 1.25rem from 800px). */
+/* Record title: the serif title voice at the h4 step (size, weight,
+   leading and tracking of Tailwind's `text-h4`), at every width, so it
+   stays a step under the page title and close to the byline. Lines fill
+   the column (`pretty`, not `balance`: balancing a title that runs past
+   the clamp spreads it over three or more short lines and shows two). */
 .home-feed__card-title {
   font-family: var(--font-headline), "Noto Serif", Georgia, serif;
   font-size: var(--text-h4);
-  font-weight: 700;
+  font-weight: var(--weight-headline, 600);
   color: var(--fg-primary);
-  line-height: 1.3;
+  line-height: 1.35;
   letter-spacing: -0.005em;
   min-width: 0;
-  text-wrap: balance;
+  text-wrap: pretty;
   /* Two-line clamp: long titles stay readable instead of cutting at
      the first line. */
   overflow: hidden;
@@ -649,16 +654,6 @@ a.home-feed__card-body:focus-visible {
 
   .home-feed__item:first-child > .home-feed__card {
     padding-top: 16px;
-  }
-
-  .home-feed__card-title {
-    font-size: 1.25rem;
-  }
-
-  /* Capped width, but flush with the title / text column's left
-     edge (not centred) so image and title line up. */
-  .home-feed__card-image {
-    width: min(100%, 400px);
   }
 }
 

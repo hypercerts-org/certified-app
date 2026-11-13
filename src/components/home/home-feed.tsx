@@ -25,6 +25,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useMoreBelow } from "@/hooks/use-more-below"
 import { groupConsecutiveEndorsements } from "@/lib/utils/group-feed"
 import { useFollowing } from "@/hooks/use-following"
 import {
@@ -360,7 +361,7 @@ export default function HomeFeed({
         </div>
 
         {/* 1100px and wider: the same filters, always open. */}
-        <div className="feed-layout__filters">
+        <FeedFiltersColumn>
           <Card unpadded className="feed-layout__box">
             {/* No box title: "Trusted endorsers" leads, styled like the
                 "News from Certified" heading in the box opposite. */}
@@ -371,7 +372,7 @@ export default function HomeFeed({
               {...filterPanelProps}
             />
           </Card>
-        </div>
+        </FeedFiltersColumn>
 
         {news ? <div className="feed-layout__news">{news}</div> : null}
       </div>
@@ -408,6 +409,27 @@ export default function HomeFeed({
         </div>
       </ResponsiveDialog>
     </>
+  )
+}
+
+/**
+ * The filters column at 1100px and wider (hidden below). It is sticky and
+ * scrolls inside itself when the filters are taller than the window; while
+ * more of them is below, `data-more-below` fades its bottom edge (feed.css)
+ * so the cut-off group reads as "scroll for more". Its own component so a
+ * scroll that crosses the end re-renders only this wrapper, not the page.
+ */
+function FeedFiltersColumn({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const moreBelow = useMoreBelow(ref)
+  return (
+    <div
+      ref={ref}
+      className="feed-layout__filters"
+      data-more-below={moreBelow ? "" : undefined}
+    >
+      {children}
+    </div>
   )
 }
 

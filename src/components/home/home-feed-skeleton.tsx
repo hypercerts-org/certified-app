@@ -24,8 +24,8 @@ export default function HomeFeedSkeleton() {
               </div>
             </div>
             <div className="home-feed__card-body">
-              {/* Same box as .home-feed__card-image: square, full width
-                  on phones, capped at 400px from 800px. */}
+              {/* Same box as .home-feed__card-image: square, the full
+                  width of the text column. */}
               <div className="home-feed__card-image">
                 <Skeleton variant="box" height="100%" />
               </div>
