@@ -43,6 +43,7 @@ import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { countGraphemes } from "@/lib/utils/graphemes"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import ActivityQuickPick from "@/components/project/activity-quick-pick"
 import {
   itemRowsFromRecord,
   nextProjectItems,
@@ -781,49 +782,14 @@ export default function ProjectEditRoute({
                   </Link>
                 </EmptyState>
               ) : (
-                <>
-                  <p className="create-project__quick-pick-label">
-                    Add your activities:
-                  </p>
-                  <ul className="create-project__quick-pick-list">
-                    {ownCerts.map((c) => {
-                      const isAdded = items.some((r) => r.uri === c.uri)
-                      return (
-                        <li
-                          key={c.uri}
-                          className={
-                            isAdded
-                              ? "create-project__quick-pick-row create-project__quick-pick-row--added"
-                              : "create-project__quick-pick-row"
-                          }
-                        >
-                          <label className="create-project__quick-pick-label-inner">
-                            <input
-                              type="checkbox"
-                              checked={isAdded}
-                              onChange={() => {
-                                markInteracted()
-                                if (isAdded) {
-                                  setItems((rows) =>
-                                    rows.filter((r) => r.uri !== c.uri),
-                                  )
-                                } else {
-                                  setItems((rows) => [
-                                    ...rows,
-                                    { uri: c.uri, cid: c.cid, raw: null },
-                                  ])
-                                }
-                              }}
-                            />
-                            <span className="create-project__quick-pick-title">
-                              {c.title}
-                            </span>
-                          </label>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </>
+                <ActivityQuickPick
+                  activities={ownCerts}
+                  addedUris={new Set(items.map((r) => r.uri))}
+                  onAdd={(c) => {
+                    markInteracted()
+                    setItems((rows) => [...rows, { uri: c.uri, cid: c.cid, raw: null }])
+                  }}
+                />
               )}
             </section>
           </div>

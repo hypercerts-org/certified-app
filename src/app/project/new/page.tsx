@@ -32,6 +32,7 @@ import { countGraphemes } from "@/lib/utils/graphemes"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import ActivityQuickPick from "@/components/project/activity-quick-pick"
 import { toUserErrorMessage } from "@/lib/utils/api"
 import LocationPickerDialog, {
   type AddedLocation,
@@ -520,11 +521,10 @@ export default function CreateProjectPage() {
                 </ul>
               ) : null}
 
-              {/* "Your certs" quick-pick — a toggleable checklist of
-                  the certs the author has already published. Clicking
-                  a row adds/removes the strongRef from the project's
-                  items[] without typing anything. Hidden when the
-                  user has no certs OR the active group has none. */}
+              {/* "Add your activities": the author's published
+                  activities that aren't in the project yet; clicking one
+                  adds it to the list above (the x there removes it).
+                  An empty state when the account has none. */}
               {ownCertsLoading ? (
                 <div role="status" aria-label="Loading your activities" className="flex flex-col gap-2">
                   <Skeleton variant="line" width="100%" height="2.25rem" />
@@ -540,49 +540,15 @@ export default function CreateProjectPage() {
                   </Link>
                 </EmptyState>
               ) : (
-                <>
-                  <p className="create-project__quick-pick-label">
-                    Add your activities:
-                  </p>
-                  <ul className="create-project__quick-pick-list">
-                    {ownCerts.map((c) => {
-                      const isAdded = items.some((r) => r.uri === c.uri)
-                      return (
-                        <li
-                          key={c.uri}
-                          className={
-                            isAdded
-                              ? "create-project__quick-pick-row create-project__quick-pick-row--added"
-                              : "create-project__quick-pick-row"
-                          }
-                        >
-                          <label className="create-project__quick-pick-label-inner">
-                            <input
-                              type="checkbox"
-                              checked={isAdded}
-                              onChange={() => {
-                                if (isAdded) {
-                                  setItems((rows) =>
-                                    rows.filter((r) => r.uri !== c.uri),
-                                  )
-                                } else {
-                                  setItems((rows) => [...rows, c])
-                                }
-                              }}
-                            />
-                            <span className="create-project__quick-pick-title">
-                              {c.title}
-                            </span>
-                          </label>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </>
+                <ActivityQuickPick
+                  activities={ownCerts}
+                  addedUris={new Set(items.map((r) => r.uri))}
+                  onAdd={(c) => setItems((rows) => [...rows, c])}
+                />
               )}
 
               {/* The "search for any cert" affordance is intentionally
-                  gone for now — the quick-pick checklist above covers
+                  gone for now — the quick-pick list above covers
                   the author's own certs, which is the only flow we
                   want for v1 of /project/new. The full search will
                   come back once we decide how to handle adding

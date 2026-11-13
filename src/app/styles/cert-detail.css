@@ -1329,10 +1329,9 @@
 
 /* ---------- /project/new cert picker + selected-cert list ---------- */
 
-/* "Your certs" quick-pick — click-to-add list shown above the
-   CertSearch typeahead so the author can attach their own certs
-   without typing. Checked rows visually fade so the eye lands on
-   the still-unattached certs. */
+/* "Add your activities" (activity-quick-pick.tsx): the author's own
+   activities not yet in the project, each a click-to-add row. Added
+   ones leave this list for the project's list above it. */
 .create-project__quick-pick-label {
   margin: 0 0 6px 0;
   font-size: 0.75rem;
@@ -1381,20 +1380,37 @@
   background: var(--overlay-weak);
 }
 
-.create-project__quick-pick-row--added {
-  opacity: 0.6;
-}
-
-.create-project__quick-pick-label-inner {
+.create-project__quick-pick-add {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
   flex: 1;
   min-width: 0;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
   cursor: pointer;
+  font: inherit;
   font-size: 0.875rem;
+  text-align: left;
   color: var(--fg-primary);
+}
+
+.create-project__quick-pick-add > svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.create-project__quick-pick-add:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+@media (max-width: 799px) {
+  .create-project__quick-pick-add {
+    min-height: 44px;
+  }
 }
 
 .create-project__quick-pick-title {
