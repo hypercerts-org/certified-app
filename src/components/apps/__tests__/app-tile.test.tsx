@@ -32,6 +32,19 @@ describe("AppTile", () => {
     expect(link.textContent).toContain("(opens in new tab)")
   })
 
+  it("puts logos on a white plate, except the ones with a transparent background", () => {
+    for (const app of CONNECTED_APPS) {
+      const { container, unmount } = render(<AppTile app={app} />)
+      const img = container.querySelector("img")!
+      const transparent = "transparentLogo" in app && app.transparentLogo
+      expect(img.className.includes("bg-[var(--color-white)]"), app.name).toBe(!transparent)
+      unmount()
+    }
+    expect(
+      CONNECTED_APPS.filter((a) => "transparentLogo" in a && a.transparentLogo).map((a) => a.name),
+    ).toEqual(["GainForest", "Simocracy"])
+  })
+
   it("shows the long description only when asked", () => {
     const { rerender } = render(<AppTile app={plainApp} />)
     expect(screen.queryByText(plainApp.longDesc)).toBeNull()

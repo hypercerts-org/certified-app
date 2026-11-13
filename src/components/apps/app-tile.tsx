@@ -71,10 +71,13 @@ export default function AppTile({
           height={logo.px}
           // Partner logos are brand assets drawn for a light ground, some
           // with a transparent background, so they sit on an invariant
-          // white plate that doesn't flip in dark mode. No outline: on a
-          // white logo (GainForest, Simocracy) it read as a box drawn
-          // around white on white.
-          className={`${logo.cls} shrink-0 rounded bg-[var(--color-white)] object-cover`}
+          // white plate that doesn't flip in dark mode. A logo whose white
+          // background was removed (`transparentLogo`: GainForest,
+          // Simocracy) sits straight on the tile instead, so it never
+          // shows as a white square. No outline either way.
+          className={`${logo.cls} shrink-0 rounded object-cover ${
+            "transparentLogo" in app && app.transparentLogo ? "" : "bg-[var(--color-white)]"
+          }`}
         />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span

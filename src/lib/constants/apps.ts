@@ -2,6 +2,10 @@
  * Partner apps surfaced on the /apps directory page. Add a new entry
  * by dropping a square logo (~256px) into public/assets/partners and
  * referencing it here. Order in this list is the order rendered.
+ *
+ * `transparentLogo`: the logo is a PNG with its white background removed,
+ * so it sits straight on the tile (any style, light or dark) instead of on
+ * the white plate the other logos need.
  */
 export const CONNECTED_APPS = [
   {
@@ -17,7 +21,8 @@ export const CONNECTED_APPS = [
     desc: "Co-creating a fair future for nature stewards",
     longDesc:
       "GainForest develops open nature tech that monitors ecosystems and rewards verifiable conservation outcomes.",
-    logo: "/assets/partners/gainforest_logo.jpeg",
+    logo: "/assets/partners/gainforest_logo.png",
+    transparentLogo: true,
     url: "https://gainforest.app",
   },
   {
@@ -33,7 +38,8 @@ export const CONNECTED_APPS = [
     desc: "Democratic governance for the digital age",
     longDesc:
       "Simocracy lets people build AI digital twins of themselves and send them into governance, deliberation, and capital allocation.",
-    logo: "/assets/partners/simocracy_logo.jpg",
+    logo: "/assets/partners/simocracy_logo.png",
+    transparentLogo: true,
     url: "https://simocracy.org",
   },
   {
