@@ -50,3 +50,10 @@ export function sortGroupsForSwitcher(groups: readonly Group[]): Group[] {
     return nameA.localeCompare(nameB)
   })
 }
+
+/** Where an account's settings live: yours on /settings, a group's on its
+ *  own page. Used by Settings' "for" switcher and the Workspace menu's
+ *  settings icons. */
+export function accountSettingsHref(group: Pick<Group, "groupDid"> | null): string {
+  return group ? `/groups/${encodeURIComponent(group.groupDid)}/settings` : "/settings"
+}

@@ -32,6 +32,7 @@ const PasswordSection = dynamic(
   () => import("@/components/account/password-section"),
 )
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
+import SettingsForSwitcher from "@/components/settings/settings-for-switcher"
 import SettingsLayout, {
   SettingsBlock,
   SettingsNote,
@@ -1099,6 +1100,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   return (
     <>
       <SettingsLayout
+        titleAside={<SettingsForSwitcher current={org} />}
         description={
           <>
             Settings for the group{" "}

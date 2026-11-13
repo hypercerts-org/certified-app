@@ -159,21 +159,29 @@ describe("DesktopWorkspaceMenu", () => {
     expect(state.push).toHaveBeenCalledWith("/home")
   })
 
-  it("shows the group while acting as it, with its settings in the menu", () => {
+  it("shows the group while acting as it", () => {
     state.activeOrg = EARTH
     render(<DesktopWorkspaceMenu />)
-    const trigger = screen.getByRole("button", { name: "Ma Earth, workspace, switch workspace" })
-    expect(trigger).toHaveTextContent("Ma Earth")
-    fireEvent.click(trigger)
-    expect(screen.getByRole("menuitem", { name: "Group settings" })).toHaveAttribute(
+    expect(
+      screen.getByRole("button", { name: "Ma Earth, workspace, switch workspace" }),
+    ).toHaveTextContent("Ma Earth")
+  })
+
+  it("puts a settings gear on every workspace, apart from the row that switches", () => {
+    openDesktopMenu()
+    expect(screen.getByRole("menuitem", { name: "Your settings" })).toHaveAttribute(
+      "href",
+      "/settings",
+    )
+    expect(screen.getByRole("menuitem", { name: "Ma Earth settings" })).toHaveAttribute(
       "href",
       "/groups/did%3Aplc%3Aearth/settings",
     )
-  })
-
-  it("has no Group settings in your personal workspace (yours are in the account menu)", () => {
-    openDesktopMenu()
+    expect(screen.getByRole("menuitem", { name: "River Trust settings" })).toBeInTheDocument()
+    // The row itself still just switches; no separate "Group settings".
     expect(screen.queryByRole("menuitem", { name: "Group settings" })).toBeNull()
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ma Earth settings" }))
+    expect(state.switchOrg).not.toHaveBeenCalled()
   })
 
   it("is a plain link to the Overview with only one workspace", () => {

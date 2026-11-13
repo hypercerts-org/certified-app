@@ -5,11 +5,12 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Check, ChevronDown, FolderOpen, Plus, Settings } from "lucide-react"
 import Badge from "@/components/ui/badge"
+import Button from "@/components/ui/button"
 import BottomSheet from "@/components/ui/bottom-sheet"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import { useOrg } from "@/lib/groups/org-context"
-import { routeForActorSwitch } from "@/lib/groups/navigation"
+import { accountSettingsHref, routeForActorSwitch } from "@/lib/groups/navigation"
 import type { Group } from "@/lib/groups/types"
 import { DESTINATIONS, isDestinationActive } from "@/lib/layout/destinations"
 import { getInitials } from "@/lib/utils/initials"
@@ -90,20 +91,25 @@ function useOpenWorkspace() {
 }
 
 /** One workspace in the menu: avatar, name, @handle, role, a check on the
- *  current one. Also the rows of Feed and Explore's "Seen as" switcher. */
+ *  current one. Also the rows of the account pickers ("Seen as", Settings'
+ *  "for"). With `settings`, a gear after the row opens that account's
+ *  settings (the Workspace menu): its own menu item, not part of the row,
+ *  so the row still just switches. */
 export function WorkspaceRow({
   mode,
   identity,
   current,
   onSelect,
+  settings,
 }: {
   mode: MenuMode
   identity: AccountIdentity
   current: boolean
   onSelect: () => void
+  settings?: { href: string; label: string; onNavigate: () => void }
 }) {
   const isMenu = mode === "menu"
-  return (
+  const row = (
     <button
       type="button"
       {...(isMenu
@@ -132,13 +138,32 @@ export function WorkspaceRow({
       />
     </button>
   )
+  if (!settings) return row
+  return (
+    <div role={isMenu ? "none" : undefined} className="flex items-center gap-1">
+      <div role={isMenu ? "none" : undefined} className="min-w-0 flex-1">
+        {row}
+      </div>
+      <Button
+        href={settings.href}
+        variant="ghost"
+        size={isMenu ? "icon-sm" : "icon"}
+        aria-label={settings.label}
+        {...menuItemProps(mode)}
+        onClick={settings.onNavigate}
+        className="shrink-0"
+      >
+        <Settings size={16} strokeWidth={1.75} aria-hidden />
+      </Button>
+    </div>
+  )
 }
 
 /**
  * The menu (desktop popover) or sheet (phones) content: your personal
- * workspace, then each group's, the current one checked; then, in a
- * group's workspace, its settings (the account menu's Settings are always
- * yours); then New group.
+ * workspace, then each group's, the current one checked, each with a gear
+ * to its settings; then New group. (Settings themselves switch between
+ * you and your groups with the "for" picker after their title.)
  */
 export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose: () => void }) {
   const { personal, groups, activeOrg } = useWorkspaceState()
@@ -162,33 +187,31 @@ export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose:
           identity={{ ...personal, name: PERSONAL_WORKSPACE_LABEL }}
           current={!activeOrg}
           onSelect={() => select(null)}
+          settings={{ href: accountSettingsHref(null), label: "Your settings", onNavigate: onClose }}
         />
-        {groups.map((group) => (
-          <WorkspaceRow
-            key={group.groupDid}
-            mode={mode}
-            identity={groupIdentity(group)}
-            current={activeOrg?.groupDid === group.groupDid}
-            onSelect={() => select(group)}
-          />
-        ))}
+        {groups.map((group) => {
+          const identity = groupIdentity(group)
+          return (
+            <WorkspaceRow
+              key={group.groupDid}
+              mode={mode}
+              identity={identity}
+              current={activeOrg?.groupDid === group.groupDid}
+              onSelect={() => select(group)}
+              settings={{
+                href: accountSettingsHref(group),
+                label: `${identity.name} settings`,
+                onNavigate: onClose,
+              }}
+            />
+          )
+        })}
       </div>
       {isMenu ? (
         <div role="separator" className={MENU_SEPARATOR_CLASS} />
       ) : (
         <hr className={MENU_SEPARATOR_CLASS} />
       )}
-      {activeOrg ? (
-        <Link
-          href={`/groups/${encodeURIComponent(activeOrg.groupDid)}/settings`}
-          {...menuItemProps(mode)}
-          className={menuRowClass(mode)}
-          onClick={onClose}
-        >
-          <Settings size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-          Group settings
-        </Link>
-      ) : null}
       <Link href="/groups/create" {...menuItemProps(mode)} className={menuRowClass(mode)} onClick={onClose}>
         <Plus size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
         New group

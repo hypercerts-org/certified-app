@@ -10,6 +10,7 @@ import { profileEditUrl } from "@/components/profile/profile-edit-url"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import AppPasswordsSection from "@/components/settings/app-passwords-section"
+import SettingsForSwitcher from "@/components/settings/settings-for-switcher"
 import SettingsLayout, {
   SettingsBlock,
   SettingsRow,
@@ -207,6 +208,7 @@ export default function SettingsPanel() {
 
   return (
     <SettingsLayout
+      titleAside={<SettingsForSwitcher current={null} />}
       description={
         handle ? (
           <>
