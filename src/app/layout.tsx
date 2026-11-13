@@ -186,9 +186,9 @@ export default async function RootLayout({
                 <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
                   <DesktopTopBar />
                 </Suspense>
-                <main id="main-content" className="flex-1 flex flex-col">
-                  <AppShell>{children}</AppShell>
-                </main>
+                {/* <main id="main-content"> and, after it, the site
+                    footer (the contentinfo landmark). */}
+                <AppShell>{children}</AppShell>
                 <BottomNav />
                 <PwaInstallGuard />
                 <FeedbackModal />

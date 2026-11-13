@@ -4,60 +4,80 @@ import { usePathname } from "next/navigation";
 import { useNavbarContext } from "@/lib/navbar-context";
 import SiteFooter from "@/components/layout/site-footer";
 
+/** Editorial pages: full-width content with no app column, still with the
+ *  site footer. */
+const EDITORIAL_PATHS: ReadonlySet<string> = new Set([
+  "/terms",
+  "/privacy",
+  "/imprint",
+  "/dsa",
+]);
+
 /**
- * Single-column shell (post-Overview-redesign).
+ * The page frame: `<main>` and, after it, the site footer.
  *
  * Structure:
- *   .app-shell                        min-height: 100vh; bg canvas
- *     .app-shell__grid                max-width 1320; margin 0 auto
- *       .app-shell__center            grid cell (center column)
- *         .app-shell__content         reading-width container
- *     SiteFooter                      sibling of the grid — sits at
- *                                     viewport width so the footer
- *                                     border-top runs edge-to-edge
- *                                     on every page (matches the
- *                                     full-bleed navbar).
+ *   main#main-content                 the skip link's target
+ *     .app-shell                      min-height: fills main; bg canvas
+ *       .app-shell__grid              max-width 1300; margin 0 auto
+ *         .app-shell__center          grid cell (center column)
+ *           .app-shell__content       reading-width container
+ *   SiteFooter                        outside <main>, so it is the page's
+ *                                     contentinfo landmark; full viewport
+ *                                     width, like the top bar.
  *
- * The desktop top bar is mounted in the root layout (sibling to <main>),
- * NOT inside this grid. The left rail and right rail were both retired
- * in the Overview redesign — the top bar carries all chrome, and the
- * profile page widens its own container for the GitHub-style two-column
- * Overview layout.
+ * The top bars are mounted in the root layout (siblings before this).
+ * Pages in a `<PageContainer>` lift the reading-column cap and set their
+ * own width (layout.css, "Page-frame layout").
  *
- * Fullbleed (profile pages) operates on .app-shell__content INSIDE the
- * center cell — banner extends to the cell width, not the viewport.
+ * /welcome, the legal pages and /embed skip the app column: the landing
+ * and legal pages render edge to edge (the landing's footer sits on its
+ * off-white band), and embeds render bare, with no footer.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { profileOverlay } = useNavbarContext();
 
-  // /welcome bypasses the app shell entirely — the marketing
-  // landing wants edge-to-edge hero / patterns / pricing strips,
-  // not the 600/720px reading column the shell applies to every
-  // other page. Mirrors the same short-circuit main's AppShell
-  // does. Note: SiteFooter is not rendered on /welcome either —
-  // the ReadyCta section is the page's own footer.
-  if (
-    pathname === "/welcome" ||
-    pathname === "/terms" ||
-    pathname === "/privacy" ||
-    pathname === "/imprint" ||
-    pathname === "/dsa" ||
-    pathname.startsWith("/embed")
-  ) {
-    return <>{children}</>;
+  const main = (content: React.ReactNode) => (
+    <main id="main-content" className="flex-1 flex flex-col">
+      {content}
+    </main>
+  );
+
+  if (pathname.startsWith("/embed")) return main(children);
+
+  if (pathname === "/welcome") {
+    return (
+      <>
+        {main(children)}
+        <div className="welcome-footer">
+          <SiteFooter />
+        </div>
+      </>
+    );
+  }
+
+  if (EDITORIAL_PATHS.has(pathname)) {
+    return (
+      <>
+        {main(children)}
+        <SiteFooter />
+      </>
+    );
   }
 
   return (
-    <div className={`app-shell ${profileOverlay ? "app-shell--fullbleed" : ""}`}>
-      <div className="app-shell__grid">
-        <div className="app-shell__center">
-          <div className="app-shell__content">
-            {children}
+    <>
+      {main(
+        <div className={`app-shell ${profileOverlay ? "app-shell--fullbleed" : ""}`}>
+          <div className="app-shell__grid">
+            <div className="app-shell__center">
+              <div className="app-shell__content">{children}</div>
+            </div>
           </div>
-        </div>
-      </div>
+        </div>,
+      )}
       <SiteFooter />
-    </div>
+    </>
   );
 }

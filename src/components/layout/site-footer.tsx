@@ -5,10 +5,13 @@ import Link from "next/link"
  * desktop: wordmark + copyright on the left, link list on the
  * right. Wraps to two stacked rows on narrow viewports.
  *
- * Rendered as a sibling of `.app-shell__grid` (NOT inside it) so
- * the footer spans the full viewport width on every page — its
- * border-top reads as a page-frame divider that matches the
+ * Rendered by AppShell after `<main>` (not inside it), so it is the
+ * page's contentinfo landmark and spans the full viewport width on every
+ * page — its border-top reads as a page-frame divider that matches the
  * navbar's border-bottom edge-to-edge.
+ *
+ * Help is here for everyone: signed-out visitors have no account menu
+ * (where signed-in people find it).
  *
  * Kept intentionally short — no marketing copy, no newsletter
  * signup, no social rail. Just identity + a handful of links the
@@ -33,6 +36,9 @@ export default function SiteFooter() {
         <nav className="site-footer__nav" aria-label="Footer links">
           <Link href="/welcome" className="site-footer__link">
             Welcome
+          </Link>
+          <Link href="/help" className="site-footer__link">
+            Help
           </Link>
           <a
             href="https://docs.hypercerts.org/"

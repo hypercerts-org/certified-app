@@ -280,6 +280,18 @@
   /* Navbar */
   --navbar-height: 64px;
 
+  /* Fixed top chrome. `--chrome-top` is the bottom edge of whatever is
+     pinned to the top of the viewport: the phone top bar, plus the
+     acting-as bar while acting as a group (phones only — on desktop the
+     acting-as bar and the top bar scroll with the page, and
+     --navbar-height is 0). Sticky elements use
+     `top: var(--chrome-top, var(--navbar-height))`, and the root's
+     scroll-padding-top uses it so focused controls never land under the
+     bar. `--acting-as-height` is set by `html.has-acting-as-bar`
+     (layout.css). */
+  --acting-as-height: 0px;
+  --chrome-top: calc(var(--navbar-height) + var(--acting-as-height));
+
   /* Bottom nav (mobile-first). Base height lives here so the desktop
      zeroing in the @media block below actually wins — defining the base
      in layout.css (imported AFTER this file) clobbered the override and
@@ -287,14 +299,11 @@
      desktop. Zeroed at ≥800px below. */
   --bottom-nav-height: 56px;
 
-  /* Desktop top bar (rendered ≥800px). Row 1 is chrome (brandmark +
-     the five destinations, then search + New + account button); row 2
-     is the profile tabs strip or the record Back row, on the pages that
-     have one. `--top-bar-total` is row 1 by default and is bumped to
-     row 1 + row 2 whenever row 2 renders (layout.css). Sticky elements
-     use it for their top so they never slide under the bar. */
+  /* Desktop top bar (rendered ≥800px): one row — brandmark and the five
+     destinations, then search, New and the account button. It scrolls
+     with the page, so nothing sticks below it; `--top-bar-total` is kept
+     as the bar's height for the few layouts that size against it. */
   --top-bar-row1: 52px;
-  --top-bar-row2: 44px;
   --top-bar-total: var(--top-bar-row1);
 
   /* ===== Breakpoints (informational; CSS @media rules hardcode these

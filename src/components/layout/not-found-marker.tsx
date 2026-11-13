@@ -5,11 +5,12 @@ import { useEffect, useSyncExternalStore } from "react"
 /**
  * Lets the app chrome know the current route rendered a not-found page.
  *
- * The desktop top bar derives its rows (profile tab strip, record detail
- * tabs) from the pathname alone, so a "Profile not found" page at
- * `/{handle}` would otherwise still show Overview / Activities / … tabs for
- * an actor that doesn't exist. `not-found.tsx` renders <NotFoundMarker />;
- * the chrome reads `useIsNotFound()` and drops those rows.
+ * Written for the desktop top bar's second row (profile and record tabs,
+ * derived from the pathname), which had to hide on a "not found" page.
+ * That row is gone — pages own their tabs — so nothing in the chrome reads
+ * `useIsNotFound()` today; the marker (and its `data-not-found` span) stays
+ * as the one signal that a route rendered not-found. Remove it with its
+ * three call sites if nothing comes to need it.
  *
  * The store is a mount counter rather than a boolean so overlapping
  * mounts (StrictMode's double effect, a not-found page replacing another)

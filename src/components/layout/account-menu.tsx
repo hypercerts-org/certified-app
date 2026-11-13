@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useId, useMemo, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
@@ -44,6 +44,7 @@ import {
   type MenuMode,
 } from "./menu-row"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
+import { ORG_ROLE_LABEL } from "./role-label"
 
 // ---------------------------------------------------------------------------
 // Who is signed in, and who they act as
@@ -61,11 +62,7 @@ export interface AccountIdentity {
   role?: OrgRole
 }
 
-const ROLE_LABEL: Record<OrgRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  member: "Member",
-}
+const ROLE_LABEL = ORG_ROLE_LABEL
 
 /** The tag under the current account's name: "Personal" or "Group · Admin". */
 export function identityTag(identity: Pick<AccountIdentity, "kind" | "role">): string {
@@ -145,13 +142,16 @@ function IdentityAvatar({
  * holds the menu trigger (not the menu), so it stays mounted after the menu
  * or sheet closes.
  */
-function useSignOutConfirm() {
+function useSignOutConfirm(returnFocusRef: RefObject<HTMLElement | null>) {
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  // The menu item that opens the dialog unmounts with the menu, so focus
+  // returns to the account button instead.
   const dialog = open ? (
     <ConfirmDialog
+      returnFocusRef={returnFocusRef}
       title="Sign out of Certified?"
       message="You'll be signed out on this device. Your account and everything it holds stay as they are."
       confirmLabel="Sign out"
@@ -215,7 +215,8 @@ function AppearanceRow({ mode }: { mode: MenuMode }) {
                 : { "aria-pressed": selected })}
               onClick={() => setTheme(value)}
               className={`inline-flex items-center gap-1 rounded border-0 px-1.5 text-caption font-medium cursor-pointer transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-[-2px] ${
-                isMenu ? "min-h-7" : "min-h-10"
+                // 44px in the sheet: the touch minimum.
+                isMenu ? "min-h-7" : "min-h-control-md"
               } ${
                 selected
                   ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
@@ -344,9 +345,9 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         View profile
       </Link>
 
-      {/* 2. Switch account: personal first, then groups, then New group.
-          Hidden for an account that is itself a group (nothing to switch
-          to inside it). */}
+      {/* 2. Switch account: personal first, then groups; New group after
+          a separator. Hidden for an account that is itself a group
+          (nothing to switch to inside it). */}
       {!selfGroup ? (
         <>
           {separator}
@@ -384,11 +385,14 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
                 onSelect={() => select(group)}
               />
             ))}
-            <Link href="/groups/create" {...item} className={row()} onClick={onClose}>
-              <Plus size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-              New group
-            </Link>
           </div>
+          {/* After its own hairline, so it doesn't read as an account to
+              switch to. */}
+          {separator}
+          <Link href="/groups/create" {...item} className={row()} onClick={onClose}>
+            <Plus size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            New group
+          </Link>
         </>
       ) : null}
 
@@ -502,7 +506,8 @@ function accountButtonLabel(current: AccountIdentity, personalHandle: string | n
  */
 export function DesktopAccountMenu() {
   const [open, setOpen] = useRouteScopedOpen()
-  const signOut = useSignOutConfirm()
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const signOut = useSignOutConfirm(triggerRef)
   const { current, personal } = useAccountState()
   const sub = accountButtonSub(current, personal.handle)
 
@@ -511,6 +516,7 @@ export function DesktopAccountMenu() {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger>
           <button
+            ref={triggerRef}
             type="button"
             className="account-button"
             aria-label={accountButtonLabel(current, personal.handle)}
@@ -553,12 +559,14 @@ export function DesktopAccountMenu() {
  */
 export function PhoneAccountMenu() {
   const [open, setOpen] = useRouteScopedOpen()
-  const signOut = useSignOutConfirm()
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const signOut = useSignOutConfirm(triggerRef)
   const { current, personal } = useAccountState()
 
   return (
     <>
       <Button
+        ref={triggerRef}
         variant="ghost"
         size="icon"
         aria-label={accountButtonLabel(current, personal.handle)}
@@ -569,7 +577,12 @@ export function PhoneAccountMenu() {
       >
         <IdentityAvatar identity={current} size="sm" />
       </Button>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Account">
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Account"
+        returnFocusRef={triggerRef}
+      >
         <div className="px-2 pb-4">
           <AccountMenuContent
             mode="sheet"

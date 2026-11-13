@@ -6,6 +6,7 @@ import { formatRelativeTime } from "@/lib/atproto/activity"
 import { formatShortDate } from "@/lib/utils/format-date"
 import { rkeyFromUri } from "@/lib/urls"
 import Button from "@/components/ui/button"
+import Skeleton from "@/components/ui/skeleton"
 import RichText from "./rich-text"
 
 const DEFAULT_ACTOR = "certified.app"
@@ -57,7 +58,7 @@ function NewsFeed({ actor, onRetry }: { actor: string; onRetry: () => void }) {
   return (
     <>
       {isLoading && posts.length === 0 ? (
-        <p className="right-rail__empty">Loading…</p>
+        <NewsSkeleton />
       ) : error && posts.length === 0 ? (
         <>
           <p className="right-rail__empty">Couldn&apos;t load posts.</p>
@@ -89,6 +90,27 @@ function NewsFeed({ actor, onRetry }: { actor: string; onRetry: () => void }) {
         </>
       )}
     </>
+  )
+}
+
+/** Loading: rows shaped like posts (two lines of text and a time), on the
+ *  same hairlines, so the column doesn't jump when they arrive. */
+function NewsSkeleton() {
+  return (
+    <div aria-busy="true">
+      <span className="sr-only">Loading posts</span>
+      <ul className="news__list" aria-hidden="true">
+        {[0, 1].map((i) => (
+          <li key={i} className="news__item">
+            <div className="news__article flex flex-col gap-2">
+              <Skeleton variant="line" height={12} />
+              <Skeleton variant="line" height={12} width="70%" />
+              <Skeleton variant="line" height={10} width={48} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

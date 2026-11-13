@@ -43,16 +43,18 @@ function isOwnProfilePath(
 /**
  * Phone top bar (below 800px). Two layouts:
  *
- * - **Top-level pages** (Home, Feed, Explore, Records, Apps, Settings,
- *   Help, your own profile, and any page without a title): the brandmark on
- *   the left; on the right a `+` (the New menu, as a sheet) and the avatar
- *   (the account sheet), or "Sign in" when signed out.
- * - **Detail pages** (anything else with a title): a back chevron and the
- *   compact title, plus the record menu when the page publishes one.
+ * - **The normal bar**: the brandmark on the left; on the right a `+` (the
+ *   New menu, as a sheet) and the avatar (the account sheet), or "Sign in"
+ *   when signed out. Used on the top-level pages (Home, Feed, Explore,
+ *   Records, Apps, Settings, Help, your own profile), on any page without
+ *   a title, and on every page that renders a `<PageHeader>` — the page
+ *   header already carries the title and its own back link, so the bar
+ *   doesn't repeat them.
+ * - **Fallback detail bar** (a titled page with no PageHeader): a back
+ *   chevron and the compact title, which is then the page's h1.
  *
- * The h1 rule (DESIGN.md §3.6): when the page renders a `<PageHeader>`,
- * that header is the h1 and the bar renders none (a plain span on detail
- * pages, nothing on top-level ones). Otherwise the bar's title is the h1.
+ * It's a `<header>` (the banner landmark), not a `<nav>`: it holds the
+ * brand and two buttons, not a list of links.
  *
  * Fixed, translucent, hides on scroll down and returns on scroll up — except
  * while acting as a group, when it stays put with the acting-as bar below.
@@ -84,7 +86,8 @@ const Navbar: React.FC = () => {
       ...(activeOrg ? [{ handle: activeOrg.handle, did: activeOrg.groupDid }] : []),
     ]);
   const hasTitle = !!(pageTitle || breadcrumb);
-  const isTopLevel = isTopLevelPath(pathname) || isOwnProfile || !hasTitle;
+  const isTopLevel =
+    isTopLevelPath(pathname) || isOwnProfile || !hasTitle || hasPageHeader;
 
   const navClasses = [
     "navbar",
@@ -101,12 +104,10 @@ const Navbar: React.FC = () => {
     (breadcrumb
       ? [breadcrumb.left.text, breadcrumb.right?.text].filter(Boolean).join(" / ")
       : null);
-  // The compact title is the page's h1 only when no PageHeader owns it.
-  const TitleTag = hasPageHeader ? "span" : "h1";
 
   if (isTopLevel) {
     return (
-      <nav className={navClasses} aria-label="Top bar">
+      <header className={navClasses}>
         <div className="navbar__inner">
           <div className="navbar__left">
             <Link
@@ -135,13 +136,14 @@ const Navbar: React.FC = () => {
             )}
           </div>
         </div>
-      </nav>
+      </header>
     );
   }
 
-  // Detail page: back chevron + compact title (+ the record menu).
+  // Fallback detail bar (no PageHeader): back chevron + compact title, which
+  // is the page's h1 (+ the record menu, if a page still publishes one).
   return (
-    <nav className={navClasses} aria-label="Top bar">
+    <header className={navClasses}>
       <div className="navbar__inner">
         <div className="navbar__left">
           <Button
@@ -153,7 +155,7 @@ const Navbar: React.FC = () => {
             <ChevronLeft size={24} strokeWidth={1.5} aria-hidden />
           </Button>
         </div>
-        <TitleTag className="navbar__title">
+        <h1 className="navbar__title">
           {breadcrumb ? (
             <>
               <Link href={breadcrumb.left.href} className="navbar__title-part">
@@ -171,7 +173,7 @@ const Navbar: React.FC = () => {
           ) : (
             pageTitle
           )}
-        </TitleTag>
+        </h1>
         <div className="navbar__right">
           {recordMenu ? (
             <span className="navbar__action">
@@ -186,7 +188,7 @@ const Navbar: React.FC = () => {
           ) : null}
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

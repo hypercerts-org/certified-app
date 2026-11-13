@@ -17,17 +17,26 @@
  * whichever is visible), routes to that page, then shows what you can do
  * there. The order mirrors the navigation: Home, Feed, Explore, Records,
  * Apps, then the New button and the account menu (profile, settings,
- * help, switching to a group).
+ * help, switching to a group). The top-bar search step comes on Feed,
+ * because the top bar hides its search on /explore (Explore has its own).
  *
  * Anchors are matched against `data-tour="<anchor>"` attributes placed on
  * page content. The same anchor id may appear on more than one element
  * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
  * the renderer picks the first *rendered* one, so the visible variant wins
- * per layout. Every anchor here exists in the current shell:
+ * per layout. Every anchor here exists in the current app:
  *   nav-home, nav-feed, nav-explore, nav-records, nav-apps — destinations
  *   nav-create — the New button (desktop) / the + (phone)
  *   account-menu — the account button (desktop and phone)
- *   navbar-search — the desktop search field
+ *   navbar-search — the desktop search field (not on /explore)
+ *   home-account — Home's identity strip (home-account-card.tsx)
+ *   feed — the Feed column (home-feed.tsx)
+ *   explore-category — Explore's type chips (explore.tsx)
+ *   apps-grid — the Apps list (apps/page.tsx)
+ *   create-title, create-submit — the New activity form
+ *   profile-tabs, profile-edit — the profile's tab strip and Edit button
+ *   settings-handle — the handle row in Settings › Account
+ *   settings-bsky-sync — Settings › Social graph
  *
  * Copy mirrors the concept sections on /help; keep them in sync.
  */
@@ -103,6 +112,17 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Your feed shows new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
     placement: "right",
   },
+  // Before Explore: the top-bar search steps aside on /explore, which has
+  // its own search box.
+  {
+    id: "navbar-search",
+    navigateTo: null,
+    anchor: "navbar-search",
+    title: "Search the network",
+    body: "The search bar up here finds any activity, project or account across the whole network, from any page. Press / to jump to it.",
+    placement: "bottom",
+    platform: "desktop",
+  },
 
   // ---- Explore -------------------------------------------------------
   {
@@ -114,20 +134,11 @@ export const TOUR_STEPS: readonly TourStep[] = [
     placement: "bottom",
   },
   {
-    id: "navbar-search",
-    navigateTo: null,
-    anchor: "navbar-search",
-    title: "Search the network",
-    body: "The search bar up here is always with you. Look up any activity, project, or account from across the whole network — from any page in the app. Press / to jump to it.",
-    placement: "bottom",
-    platform: "desktop",
-  },
-  {
     id: "explore-search",
     navigateTo: "/explore",
     anchor: "explore-category",
-    title: "Activities, projects, and accounts",
-    body: "On Explore, this dropdown sets what you're looking through. Browse all of it at once, or narrow to just activities, projects, or accounts.",
+    title: "Activities, projects and accounts",
+    body: "These buttons set what you're looking through: all of it at once, or just activities, projects or accounts. Search above them to narrow it down.",
     placement: "bottom",
     align: "start",
   },
@@ -221,8 +232,8 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "settings-handle",
     navigateTo: "/settings#account",
     anchor: "settings-handle",
-    title: "Your handle and identity",
-    body: "Settings is where you manage your account. This is your handle — your username on the network. Behind it sits a permanent DID that owns your data, so your work stays yours even if you rename your handle.",
+    title: "Your ID",
+    body: "Settings is where you manage your account. This is your handle, the readable part of your ID. Behind it sits a Permanent ID that never changes, so your work stays yours even if you change your handle.",
     placement: "bottom",
   },
   {
@@ -240,7 +251,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/help",
     anchor: null,
     title: "Help",
-    body: "Help has guides for everything we just covered — open it from the account menu any time. You can replay this walk-through from there too.",
+    body: "Help has guides for everything we just covered. Open it from the account menu or the link at the bottom of every page. You can replay this walk-through from there too.",
   },
 
   {

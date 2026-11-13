@@ -125,6 +125,24 @@
   transform: translateY(-100%);
 }
 
+/* Shift+Tab back into a bar that hid on scroll brings it back, so the
+   focused control is never off-screen (WCAG 2.4.11). */
+.navbar--hidden:focus-within {
+  transform: none;
+}
+
+/* Focus never lands under the fixed chrome (WCAG 2.4.11): when Tab moves
+   to a control behind the top bar (and the acting-as bar) or the phone
+   tab bar, the browser scrolls it clear of them. `--chrome-top` lives in
+   tokens.css; `--bottom-nav-height` is 0 on desktop and wherever the tab
+   bar isn't shown. Pages with a form action bar add its height. */
+:root {
+  scroll-padding-top: var(--chrome-top, var(--navbar-height));
+  scroll-padding-bottom: calc(
+    var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 16px
+  );
+}
+
 .navbar__inner {
   max-width: 1536px;
   margin: 0 auto;
@@ -287,8 +305,9 @@
   }
 }
 
+/* The one press scale (DESIGN.md §5: 0.97). */
 .bottom-nav__item:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 .bottom-nav__item--active {
@@ -471,39 +490,6 @@
    edge-to-edge. On phones the banner starts right below the fixed top bar;
    on desktop (≥800px) full-bleed scopes to the center cell and the banner
    starts immediately below the top bar. */
-
-/* Bump `--top-bar-total` whenever the desktop top bar renders its
-   second row (the profile/settings tabs row OR the cert/project
-   back-button row — both use `.desktop-top-bar__row--tabs`). The
-   default in tokens.css is row 1 only; this keeps anything sticking
-   off `--top-bar-total` (e.g. the inline-edit banner) positioned
-   below the actual top bar on every page that renders row 2. We
-   match on `html` because `.desktop-top-bar` is a sibling of
-   `.app-shell`, not a descendant. */
-@media (min-width: 800px) {
-  html:has(.desktop-top-bar__row--tabs) {
-    --top-bar-total: calc(var(--top-bar-row1) + var(--top-bar-row2));
-  }
-}
-
-/* Not-found pages (src/components/layout/not-found-marker.tsx): no tabs
-   for an actor or record that doesn't exist. The marker's span is in the
-   server HTML, so this applies before hydration (no flash of the strip);
-   the top bar drops the rows itself once hydrated. Row 2 only counts
-   toward `--top-bar-total` when a row other than the profile tabs (the
-   record back row) is still showing. */
-@media (min-width: 800px) {
-  html:has([data-not-found]) .desktop-top-bar__row--profile-tabs,
-  html:has([data-not-found]) .desktop-top-bar__row--tabs [role="tablist"] {
-    display: none;
-  }
-
-  html:has([data-not-found]):not(
-      :has(.desktop-top-bar__row--tabs:not(.desktop-top-bar__row--profile-tabs))
-    ) {
-    --top-bar-total: var(--top-bar-row1);
-  }
-}
 
 .app-shell--fullbleed .app-shell__content {
   max-width: none;
@@ -752,13 +738,85 @@
     flex: 1 1 auto;
     min-width: 0;
   }
+  /* The fixed bar adds to the pinned chrome: `--chrome-top` (tokens.css)
+     grows by its height, so sticky elements and scroll-padding clear it. */
+  html.has-acting-as-bar {
+    --acting-as-height: 44px;
+  }
   /* Reserve the fixed bar's height so it doesn't overlay the top of the
      page content. Applied to `.app-shell` (not `.app-shell__content`,
      whose top padding is overridden per-page by higher-specificity
      `:has()` rules) so it stacks on top of whatever navbar offset each
      page already carries. */
   html.has-acting-as-bar .app-shell {
-    padding-top: 44px;
+    padding-top: var(--acting-as-height);
+  }
+}
+
+/* ========== Floating Feedback button (desktop) ==========
+   feedback-trigger.tsx. A secondary control — surface, hairline and the
+   small elevation shadow, not a solid black block — so it doesn't compete
+   with the page's one primary action. Above page chrome but below every
+   overlay (drawer, bottom sheet, modals). Desktop only: on phones "Send
+   feedback" is in the account sheet; the component unmounts below 800px
+   and the media rule covers first paint. */
+.feedback-trigger {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: var(--z-feedback-trigger);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-h-sm);
+  padding: 0 12px;
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: color var(--transition-fast), border-color var(--transition-fast), bottom var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feedback-trigger:hover {
+    color: var(--fg-primary);
+    border-color: var(--border-hover);
+  }
+}
+
+.feedback-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Small "Beta" tag. */
+.feedback-trigger__beta {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+}
+
+/* Create and edit forms pin their action bar to the bottom edge, where the
+   button would sit on Cancel / Publish. Feedback stays in the account
+   menu. */
+html:has(.form-action-bar) .feedback-trigger {
+  display: none;
+}
+
+@media (max-width: 799px) {
+  .feedback-trigger {
+    display: none;
   }
 }
 
@@ -1258,11 +1316,11 @@
 }
 
 /* ========== Desktop Top Bar (≥ 800px) ==========
-   See desktop-top-bar.tsx. Row 1: brandmark + the five destinations on
-   the left; search, New and the account button on the right. Row 2 is
-   the profile tabs strip on profile pages, or Back (+ record tabs) on
-   record detail and create pages. Hidden below 800px — the phone
-   <Navbar /> and <BottomNav /> handle that range.
+   See desktop-top-bar.tsx. One row: brandmark + the five destinations on
+   the left; search, New and the account button on the right. Pages carry
+   their own back link and section tabs (PageHeader, in-page Tabs).
+   Hidden below 800px — the phone <Navbar /> and <BottomNav /> handle
+   that range.
 
    The bar scrolls with the page (no `position: sticky`) so the whole
    layout — top bar + content — moves together as the user scrolls. */
@@ -1304,15 +1362,7 @@
   gap: 16px;
 }
 
-/* Single-row bar (pages without a tabs row) needs its own bottom border —
-   the two-row case carries the same border on row 2. */
-.desktop-top-bar__row--chrome:last-child {
-  border-bottom: 1px solid var(--border-default);
-}
-
-.desktop-top-bar__row--tabs {
-  height: var(--top-bar-row2);
-  gap: 20px;
+.desktop-top-bar__row--chrome {
   border-bottom: 1px solid var(--border-default);
 }
 
@@ -1486,35 +1536,6 @@
 
 .account-button__chevron {
   flex-shrink: 0;
-}
-
-/* Back affordance rendered in the row-2 slot on cert / project detail
-   pages. Left-aligned, sits at the same height as the tab strip. */
-.desktop-top-bar__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-  padding: 0 4px;
-  background: transparent;
-  border: none;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .desktop-top-bar__back:hover {
-    color: var(--fg-primary);
-  }
-}
-
-.desktop-top-bar__back:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 /* ========== Two-column page layout ==========
@@ -2163,8 +2184,23 @@
   transition: color var(--transition-fast);
 }
 
-.site-footer__link:hover {
-  color: var(--fg-primary);
+/* 44px touch targets on phones: the row of short words would otherwise
+   be ~18px tall. */
+@media (max-width: 799px) {
+  .site-footer__nav {
+    gap: 0 16px;
+  }
+  .site-footer__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .site-footer__link:hover {
+    color: var(--fg-primary);
+  }
 }
 
 .site-footer__link:focus-visible {

@@ -1490,63 +1490,15 @@
  *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
  *  - .app-page backs /about, /terms, /privacy, /dsa,
  *    /imprint, /help.
- *  - .welcome-footer wraps SiteFooter on /welcome (welcome/layout.tsx).
+ *  - .welcome-footer wraps SiteFooter on /welcome (rendered by AppShell).
  * ========================================================================== */
 
 /* modalFadeIn / modalSlideUp (used below and by AppDialog) live in
    components.css — the single app-wide definition. */
 
-/* ========== Feedback Modal ========== */
-.feedback-trigger {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  /* Above page chrome (navbar, bottom nav) but below every overlay
-     (drawer + scrim, bottom sheet, modals), so an open overlay dims and
-     covers it instead of the button floating bright and clickable. */
-  z-index: var(--z-feedback-trigger);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--color-navy);
-  color: var(--color-off-white);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: background var(--transition-fast), box-shadow var(--transition-fast), bottom var(--transition-fast);
-}
-
-.feedback-trigger:hover {
-  background: var(--color-accent);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Small "Beta" chip — sized down and tucked in a translucent pill so the
-   trigger stays compact (the label was shortened from "Share Feedback" to
-   "Feedback" to make room). */
-.feedback-trigger__beta {
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  line-height: 1;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--color-off-white);
-}
-
-/* Dark mode flips the trigger to a light button with dark ink, so the
-   translucent-white pill disappears against it — swap to a dark pill. */
-[data-theme="dark"] .feedback-trigger__beta {
-  background: rgba(0, 0, 0, 0.16);
-}
-
+/* ========== Feedback Modal ==========
+   The floating Feedback button (.feedback-trigger) is app chrome and lives
+   in layout.css. */
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;
@@ -1733,13 +1685,6 @@
 }
 
 @media (max-width: 799px) {
-  /* Desktop only: on phones "Send feedback" lives in the account sheet
-     and the bottom tab bar sits where the button would float. The
-     component unmounts below 800px; this covers first paint. */
-  .feedback-trigger {
-    display: none;
-  }
-
   .feedback-modal__backdrop--desktop {
     display: none;
   }
@@ -1786,8 +1731,8 @@
   }
 }
 
-/* /welcome footer wrapper — the app shell skips SiteFooter on this
-   route, so the landing layout renders it directly. Full-bleed (no
+/* /welcome footer wrapper — AppShell renders SiteFooter inside it on this
+   route (after <main>, without the app column). Full-bleed (no
    horizontal padding or max-width cap) so the off-white band and the
    footer's border-top span the full viewport width; SiteFooter applies
    its own 32px content inset. */

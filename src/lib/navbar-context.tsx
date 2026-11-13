@@ -14,18 +14,16 @@ import {
  * What pages tell the chrome (the phone `Navbar`, the `DesktopTopBar` and
  * the `AppShell`):
  *   - the page title (`usePageTitle`, optional desktop override and
- *     breadcrumb): the phone bar's compact title, and the chrome's fallback
- *     `<h1>` when the page has no `<PageHeader>` (DESIGN.md §3.6);
+ *     breadcrumb): the chrome's fallback `<h1>` when the page has no
+ *     `<PageHeader>` (DESIGN.md §3.6), and the phone fallback bar's title;
  *   - whether a `<PageHeader>` is mounted (`useRegisterPageHeader`);
- *   - the record menu for the phone detail bar (`usePageRecordMenu`);
- *   - profile flags: full-bleed shell (`useProfileNavbar`), which profile
- *     tabs exist, and whether the profile is being edited.
+ *   - the full-bleed shell flag for the profile (`useProfileNavbar`).
  *
- * The phone bar picks its layout itself: top-level pages (the five
- * destinations, Settings, Help, your own profile, untitled pages) get the
- * brandmark, New and account buttons; anything else with a title gets a
- * back chevron and the compact title. The hooks below only toggle their own
- * flag so multiple pages can coexist without stepping on each other.
+ * The phone bar picks its layout itself: the normal bar (brandmark, New and
+ * account buttons) on top-level pages, untitled pages and every page with
+ * a PageHeader; a back chevron and the compact title only on a titled page
+ * without one. The hooks below only toggle their own flag so multiple pages
+ * can coexist without stepping on each other.
  */
 export interface PageTitleBreadcrumbPart {
   text: string;
@@ -40,8 +38,8 @@ export interface PageTitleBreadcrumb {
 }
 
 /**
- * Config for the record-level overflow menu (Share / Add to list / Copy
- * AT URI) shown in the mobile navbar's right slot on detail pages. Stored
+ * Config for the record-level overflow menu (Share / Add to list / Copy AT
+ * URI) shown in the mobile navbar's right slot on detail pages. Stored
  * as plain primitives (not a ReactNode) so the navbar can construct the
  * `<AddToListMenu>` itself and the publishing hook's effect deps stay
  * stable across renders.
@@ -81,34 +79,17 @@ export interface PageRecordMenu {
  */
 interface NavbarValues {
   pageTitle: string | null;
-  /** Desktop-only title override. The mobile navbar shows `pageTitle` (which
-   *  detail pages make tab-aware, e.g. "Funding"); the wide desktop top bar,
-   *  where the tab strip is already visible, shows this instead so it always
-   *  reads the record's name regardless of the active tab. Falls back to
-   *  `pageTitle` when unset. */
+  /** Desktop-only fallback-h1 override (the record's name regardless of
+   *  the active tab). Falls back to `pageTitle` when unset. */
   desktopTitle: string | null;
   breadcrumb: PageTitleBreadcrumb | null;
-  /** Record-level overflow menu rendered in the mobile navbar's right
-   *  slot on detail (sub-)pages. Null on pages that don't set it. */
+  /** Record-level overflow menu, rendered only in the phone *fallback*
+   *  detail bar (a titled page without a PageHeader). Record pages now
+   *  carry their menu beside the title, so this is on its way out. */
   recordMenu: PageRecordMenu | null;
   /** The page wants the full-bleed shell (the profile: banner edge to
    *  edge). Read by `AppShell`. Set via `useProfileNavbar`. */
   profileOverlay: boolean;
-  /** True when the viewed profile has a non-empty `longDescription`.
-   *  Drives whether the "About" tab is rendered in the top-bar tab
-   *  strip. Set by the profile page from its org-marker state and
-   *  read by `<DesktopTopBar />` while filtering PROFILE_TABS. */
-  profileAboutAvailable: boolean;
-  /** True when the viewed profile carries at least one public group
-   *  membership OR when the viewer is looking at their own profile.
-   *  Drives whether the "Groups" tab renders in the top-bar tab strip. */
-  profileGroupsAvailable: boolean;
-  /** True while the viewer is inline-editing the profile. The top-bar
-   *  (and mobile) tab strips lock to the editable section(s) — Overview,
-   *  plus About for orgs — and disable the rest so you can't tab away to
-   *  read-only sections mid-edit. Set by the profile page, read by
-   *  `<DesktopTopBar />`. */
-  profileEditing: boolean;
   /** True while at least one `<PageHeader>` is mounted. The page then owns
    *  its visible `<h1>`, so the chrome must not render its own (visible or
    *  visually hidden) h1. See `useRegisterPageHeader`. */
@@ -127,9 +108,6 @@ interface NavbarSetters {
   setBreadcrumb: (b: PageTitleBreadcrumb | null) => void;
   setRecordMenu: (m: PageRecordMenu | null) => void;
   setProfileOverlay: (v: boolean) => void;
-  setProfileAboutAvailable: (v: boolean) => void;
-  setProfileGroupsAvailable: (v: boolean) => void;
-  setProfileEditing: (v: boolean) => void;
   /** Register a mounted `<PageHeader>`. Returns the matching unregister
    *  function. Ref-counted, so nested or remounting headers are safe. */
   registerPageHeader: () => () => void;
@@ -143,9 +121,6 @@ const defaultValues: NavbarValues = {
   breadcrumb: null,
   recordMenu: null,
   profileOverlay: false,
-  profileAboutAvailable: false,
-  profileGroupsAvailable: false,
-  profileEditing: false,
   hasPageHeader: false,
 };
 
@@ -155,9 +130,6 @@ const defaultSetters: NavbarSetters = {
   setBreadcrumb: () => {},
   setRecordMenu: () => {},
   setProfileOverlay: () => {},
-  setProfileAboutAvailable: () => {},
-  setProfileGroupsAvailable: () => {},
-  setProfileEditing: () => {},
   registerPageHeader: () => () => {},
 };
 
@@ -170,11 +142,6 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   const [breadcrumb, setBreadcrumb] = useState<PageTitleBreadcrumb | null>(null);
   const [recordMenu, setRecordMenu] = useState<PageRecordMenu | null>(null);
   const [profileOverlay, setProfileOverlay] = useState<boolean>(false);
-  const [profileAboutAvailable, setProfileAboutAvailable] =
-    useState<boolean>(false);
-  const [profileGroupsAvailable, setProfileGroupsAvailable] =
-    useState<boolean>(false);
-  const [profileEditing, setProfileEditing] = useState<boolean>(false);
   // How many <PageHeader>s are mounted. A count rather than a boolean so a
   // header that remounts (StrictMode, a key change, two briefly overlapping
   // during a route transition) never clears the flag for the one that stays.
@@ -199,9 +166,6 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setBreadcrumb,
       setRecordMenu,
       setProfileOverlay,
-      setProfileAboutAvailable,
-      setProfileGroupsAvailable,
-      setProfileEditing,
       registerPageHeader,
     }),
     [
@@ -210,9 +174,6 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setBreadcrumb,
       setRecordMenu,
       setProfileOverlay,
-      setProfileAboutAvailable,
-      setProfileGroupsAvailable,
-      setProfileEditing,
       registerPageHeader,
     ]
   );
@@ -223,22 +184,9 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       breadcrumb,
       recordMenu,
       profileOverlay,
-      profileAboutAvailable,
-      profileGroupsAvailable,
-      profileEditing,
       hasPageHeader,
     }),
-    [
-      pageTitle,
-      desktopTitle,
-      breadcrumb,
-      recordMenu,
-      profileOverlay,
-      profileAboutAvailable,
-      profileGroupsAvailable,
-      profileEditing,
-      hasPageHeader,
-    ]
+    [pageTitle, desktopTitle, breadcrumb, recordMenu, profileOverlay, hasPageHeader]
   );
   return (
     <NavbarSettersContext.Provider value={setters}>
@@ -268,11 +216,11 @@ export function useNavbarContext(): NavbarContextValue {
 }
 
 /**
- * Set the title for the current page. The phone bar shows it (as a
- * compact title, with a back chevron on detail pages) and the chrome
- * renders it as the page's `<h1>` unless the page renders a `<PageHeader>`
- * (see `useRegisterPageHeader`); on desktop that fallback h1 is visually
- * hidden.
+ * Set the title for the current page. The chrome renders it as the page's
+ * `<h1>` unless the page renders a `<PageHeader>` (see
+ * `useRegisterPageHeader`): on phones as the fallback bar's compact title,
+ * on desktop visually hidden. Also used for the document title by some
+ * pages' own effects.
  *
  * Usage:
  *   export default function SettingsPage() {
@@ -294,8 +242,8 @@ export function usePageTitle(title: string) {
  *
  * - A page that renders `<PageHeader>` owns it: the header's title is the
  *   visible h1. While a PageHeader is mounted, the chrome (mobile navbar,
- *   desktop top bar) must NOT render its own h1, visible or visually hidden.
- *   It may still show the title as plain text (e.g. a compact phone title).
+ *   desktop top bar) renders no h1 of its own, visible or visually hidden,
+ *   and the phone bar shows its normal layout (no second title or back).
  * - A page without a PageHeader keeps the chrome's h1 (the `usePageTitle`
  *   value) as the fallback.
  *
@@ -319,10 +267,10 @@ export function useHasPageHeader(): boolean {
 }
 
 /**
- * Set a desktop-only title override (the wide top bar). Use alongside
- * `usePageTitle` when the mobile title is tab-aware but the desktop bar —
- * which shows the tab strip already — should keep the record's name on every
- * tab. Pass `null` to leave the desktop bar on the `usePageTitle` value.
+ * Set a desktop-only fallback-h1 override. Use alongside `usePageTitle`
+ * when the phone title is tab-aware but the desktop h1 should keep the
+ * record's name on every tab. Pass `null` to leave it on the
+ * `usePageTitle` value. (Only matters on pages without a PageHeader.)
  */
 export function usePageDesktopTitle(title: string | null) {
   const { setDesktopTitle } = useContext(NavbarSettersContext);
@@ -354,12 +302,12 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
 
 /**
  * Publish the record-level overflow menu (Share / Add to list / Copy AT
- * URI) to the phone detail bar's right slot. Detail pages call this so the
- * menu reads as page-level chrome that acts on the whole record, instead
- * of sitting in the author row where it can be mistaken for an action on
- * the author. Pass `null` while data is loading. No-op visually on
- * desktop (the navbar isn't rendered there — detail pages keep their own
- * in-body menu at ≥800px).
+ * URI) to the phone bar. It only renders in the *fallback* detail bar (a
+ * titled page with no PageHeader); record pages render a PageHeader, so
+ * their menu belongs beside the title in the page at every width.
+ *
+ * @deprecated Put the record menu in the page; this is kept only until the
+ * record pages stop calling it.
  */
 export function usePageRecordMenu(menu: PageRecordMenu | null) {
   const { setRecordMenu } = useContext(NavbarSettersContext);
@@ -400,45 +348,4 @@ export function useProfileNavbar(enabled: boolean = true) {
     setProfileOverlay(true);
     return () => setProfileOverlay(false);
   }, [setProfileOverlay, enabled]);
-}
-
-/**
- * Publish to the navbar whether the currently viewed profile has a
- * non-empty `longDescription` (rich-text "About" content). The top
- * bar renders the About tab only when this is `true`. Reset to false
- * on unmount so the flag doesn't bleed into the next page.
- */
-export function useProfileAboutAvailable(available: boolean) {
-  const { setProfileAboutAvailable } = useContext(NavbarSettersContext);
-  useEffect(() => {
-    setProfileAboutAvailable(available);
-    return () => setProfileAboutAvailable(false);
-  }, [setProfileAboutAvailable, available]);
-}
-
-/**
- * Publish to the navbar whether the currently viewed profile has any
- * group memberships (or is the viewer's own profile). Drives whether
- * the Groups tab renders in the top-bar tab strip.
- */
-export function useProfileGroupsAvailable(available: boolean) {
-  const { setProfileGroupsAvailable } = useContext(NavbarSettersContext);
-  useEffect(() => {
-    setProfileGroupsAvailable(available);
-    return () => setProfileGroupsAvailable(false);
-  }, [setProfileGroupsAvailable, available]);
-}
-
-/**
- * Publish to the navbar whether the viewer is currently inline-editing
- * the profile. While set, the top-bar tab strip locks to the editable
- * section(s) so the viewer can't tab away to a read-only section mid-edit.
- * Reset to false on unmount so the lock doesn't bleed into the next page.
- */
-export function useProfileEditing(editing: boolean) {
-  const { setProfileEditing } = useContext(NavbarSettersContext);
-  useEffect(() => {
-    setProfileEditing(editing);
-    return () => setProfileEditing(false);
-  }, [setProfileEditing, editing]);
 }

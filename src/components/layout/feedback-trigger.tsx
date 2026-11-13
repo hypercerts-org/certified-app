@@ -7,13 +7,15 @@ import { useFeedback } from "@/lib/feedback-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 /**
- * Floating "Feedback" button, pinned bottom-right on desktop (≥800px).
- * Opening is delegated to the shared <FeedbackModal> via `useFeedback()`,
- * so this file only owns the trigger and its placement.
+ * Floating "Feedback" button, pinned bottom-right on desktop (≥800px), in
+ * the secondary style (surface + hairline; layout.css). Opening is
+ * delegated to the shared <FeedbackModal> via `useFeedback()`, so this file
+ * only owns the trigger and its placement.
  *
  * Phones don't get it: the bottom tab bar sits where it would float, and
  * "Send feedback" lives in the account sheet (as it does in the desktop
- * account menu).
+ * account menu). Create and edit forms hide it too (CSS), since their
+ * action bar is pinned where it floats.
  *
  * When the <SiteFooter> scrolls into view the button lifts above it so it
  * never covers the footer links; otherwise it rests at the default offset.
@@ -91,7 +93,7 @@ export default function FeedbackTrigger() {
       onClick={() => openFeedback()}
       aria-label="Share feedback"
     >
-      <MessageSquare size={16} />
+      <MessageSquare size={16} strokeWidth={1.75} aria-hidden />
       <span>Feedback</span>
       <span className="feedback-trigger__beta">Beta</span>
     </button>

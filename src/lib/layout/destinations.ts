@@ -1,8 +1,8 @@
 import {
   Compass,
+  FolderOpen,
   House,
   LayoutGrid,
-  Library,
   Newspaper,
   type LucideIcon,
 } from "lucide-react"
@@ -34,7 +34,7 @@ export const DESTINATIONS: readonly Destination[] = [
   { key: "home", label: "Home", href: "/home", icon: House, isPublic: false, tour: "nav-home" },
   { key: "feed", label: "Feed", href: "/feed", icon: Newspaper, isPublic: false, tour: "nav-feed" },
   { key: "explore", label: "Explore", href: "/explore", icon: Compass, isPublic: true, tour: "nav-explore" },
-  { key: "records", label: "Records", href: "/records", icon: Library, isPublic: false, tour: "nav-records" },
+  { key: "records", label: "Records", href: "/records", icon: FolderOpen, isPublic: false, tour: "nav-records" },
   { key: "apps", label: "Apps", href: "/apps", icon: LayoutGrid, isPublic: true, tour: "nav-apps" },
 ]
 
