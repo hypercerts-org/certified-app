@@ -216,10 +216,9 @@
   border-radius: var(--radius);
   background: var(--bg-sunken);
   border: 1px solid var(--border-subtle);
-  /* Center the placeholder icon (Award) when there's no <img>. The
-     icon used to sit in the top-left because the box had default
-     block layout. The img child fills 100% / 100% so flex centering
-     doesn't visibly change it. */
+  /* Flex centring for the image child (it fills 100% / 100%, so this
+     is invisible there). Empty, the form's slot holds only the
+     "Add image" pill (ImageEditOverlay), never a glyph as well. */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -234,11 +233,6 @@
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.cert-detail__image-placeholder-icon {
-  color: var(--fg-muted);
-  opacity: 0.55;
 }
 
 /* Inline-edit chrome ---------------------------------------------- */
@@ -293,17 +287,6 @@
 .cert-detail__meta-input::placeholder {
   color: var(--fg-muted);
   opacity: 1;
-}
-
-/* Date inputs (type="date") don't expose a `::placeholder` —
-   their format hint ("mm/dd/yyyy") is painted via WebKit's
-   internal `::-webkit-datetime-edit-*` pseudos. Coloring the
-   whole edit area `--fg-muted` matches the Time-period
-   placeholder to every other muted placeholder above; filled
-   values pick up the same colour, which reads naturally in the
-   aside meta column. */
-.cert-detail__meta-input[type="date"]::-webkit-datetime-edit {
-  color: var(--fg-muted);
 }
 
 .cert-detail__short-desc-input {
@@ -1110,9 +1093,6 @@
     aspect-ratio: auto;
     height: 96px;
   }
-  .create-cert .cert-detail__image--empty .cert-detail__image-placeholder-icon {
-    display: none;
-  }
   .create-cert .cert-detail__image--empty .image-edit-overlay {
     top: 50%;
     left: 50%;
@@ -1122,8 +1102,8 @@
   }
 }
 
-/* Full-width modifier for a legacy meta input (the group form's fields and
-   the location picker's URI field). */
+/* Full-width modifier for a legacy meta input (the location picker's
+   fields). */
 .cert-detail__meta-input.create-cert__field--full {
   width: 100%;
 }
@@ -1134,21 +1114,24 @@
   gap: 8px;
 }
 
-.create-cert__date-row > input {
+/* Each date field is the Input's icon wrapper (the field plus its
+   calendar icon). */
+.create-cert__date-row > div {
   flex: 1 1 0;
   min-width: 0;
 }
 
-/* Native date fields: the Input's 16px side padding clips "mm/dd/yyyy" in
-   the 296px details column, so they take 8px and a tighter picker-icon
-   gap. (0,2,1) beats the single-class Tailwind padding utility. */
+/* The Input's 16px side padding and 44px icon room clip "mm/dd/yyyy" in
+   the 296px details column, so the fields take 8px on the left and the
+   calendar sits 8px from the right edge with 28px kept for it. (0,2,1) /
+   (0,2,0) beat the single-class Tailwind padding and position utilities. */
 .create-cert__date-row input[type="date"] {
   padding-left: 8px;
-  padding-right: 8px;
+  padding-right: 28px;
 }
 
-.create-cert__date-row input[type="date"]::-webkit-calendar-picker-indicator {
-  margin-left: 2px;
+.create-cert__date-row .input-date__icon {
+  right: 8px;
 }
 
 /* "Add contributor" + "Add me" side by side, wrapping on narrow screens. */

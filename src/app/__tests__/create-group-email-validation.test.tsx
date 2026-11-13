@@ -193,3 +193,27 @@ describe("CreateGroupPage fields", () => {
     expect(email.getAttribute("aria-describedby")).toBe(error.closest("p")!.id)
   })
 })
+
+describe("CreateGroupPage frame and labels", () => {
+  // Audit FR2: one frame for the create flows. New group sits in the
+  // default container like New activity (its column capped in CSS to New
+  // activity's main column), not the narrow one.
+  it("uses the default page container, like New activity", () => {
+    const { container } = render(<CreateGroupPage />)
+    const frame = container.querySelector(".page-container") as HTMLElement
+    expect(frame.className).toContain("--page-width-default")
+    expect(frame.className).not.toContain("--page-width-narrow")
+  })
+
+  // Audit FR3: no other form puts icons on its labels.
+  it("has no icons on its labels", () => {
+    const { container } = render(<CreateGroupPage />)
+    const labels = container.querySelectorAll("label, .project-detail__meta-label")
+    expect(labels.length).toBeGreaterThan(0)
+    labels.forEach((label) => expect(label.querySelector("svg")).toBeNull())
+    expect(screen.getByText("Avatar")).toBeTruthy()
+    expect(screen.getByText("Banner")).toBeTruthy()
+    // About now labels its field.
+    expect(screen.getByLabelText("About").tagName).toBe("TEXTAREA")
+  })
+})

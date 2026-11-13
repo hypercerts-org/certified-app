@@ -118,6 +118,33 @@ describe("ActivityFormFields", () => {
     ).toHaveProperty("value", "50")
     expect(container.querySelector("#contributors")).not.toBeNull()
   })
+
+  // Audit FR5: the empty image slot had a pencil in the middle as well as
+  // the "Add image" pill; now the pill is its one affordance.
+  it("gives the empty image slot one affordance, the Add image pill", () => {
+    const { container } = renderForm()
+    const slot = container.querySelector(".cert-detail__image") as HTMLElement
+    expect(slot.querySelectorAll("button")).toHaveLength(1)
+    expect(screen.getByRole("button", { name: "Add image" })).toBeTruthy()
+    // The only glyph is the pill's own camera.
+    expect(slot.querySelectorAll("svg")).toHaveLength(1)
+    expect(slot.querySelector("button svg")).not.toBeNull()
+  })
+
+  // Audit FR4: the time period fields are native date inputs in the Input
+  // frame with a lucide calendar, not the browser's glyph alone.
+  it("draws the time period as date fields with a calendar icon", () => {
+    renderForm({ startDate: "2026-11-01" })
+    const start = screen.getByLabelText("Start date") as HTMLInputElement
+    const end = screen.getByLabelText("End date") as HTMLInputElement
+    for (const field of [start, end]) {
+      expect(field.type).toBe("date")
+      expect(field.classList.contains("input-date")).toBe(true)
+      expect(field.parentElement!.querySelector(".input-date__icon svg")).not.toBeNull()
+    }
+    expect(start).not.toHaveAttribute("data-empty")
+    expect(end).toHaveAttribute("data-empty")
+  })
 })
 
 describe("activityFormProblems", () => {

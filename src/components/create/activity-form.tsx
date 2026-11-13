@@ -8,7 +8,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react"
-import { PenLine, Plus, Trash2, X } from "lucide-react"
+import { Plus, Trash2, X } from "lucide-react"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import Input from "@/components/ui/input"
@@ -276,17 +276,12 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             imageUrl ? "" : " cert-detail__image--empty"
           }`}
         >
+          {/* Empty, the slot shows one affordance: the overlay's "Add
+              image" pill (no glyph in the middle as well). */}
           {imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img src={imageUrl} alt="" className="cert-detail__image-img" />
-          ) : (
-            <PenLine
-              size={32}
-              strokeWidth={1.25}
-              aria-hidden
-              className="cert-detail__image-placeholder-icon"
-            />
-          )}
+          ) : null}
           <ImageEditOverlay
             onFile={onImageFile}
             hasPending={hasPendingImage}

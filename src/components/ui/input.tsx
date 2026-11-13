@@ -1,5 +1,5 @@
 import React, { useId } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Calendar } from "lucide-react";
 
 export type InputSize = "sm" | "md" | "lg" | "bare";
 export type InputVariant = "default" | "underline" | "inline-edit";
@@ -218,10 +218,28 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       }
     })();
 
+    // A date field gets a lucide calendar in place of the browser's glyph,
+    // in the trailing slot (unless the caller fills it). The native
+    // picker indicator stays the click target: the `.input-date` CSS
+    // (components.css) stretches it, transparent, over the icon, so the
+    // browser's own picker, keyboard entry and YYYY-MM-DD value are kept.
+    // `data-empty` (controlled and empty) mutes the format hint
+    // ("mm/dd/yyyy") like a placeholder.
+    const isDate = props.type === "date";
+    const dateIcon = isDate && !trailingIcon && !trailingButton;
+    const trailingGlyph = dateIcon ? (
+      <Calendar size={16} strokeWidth={1.75} />
+    ) : (
+      trailingIcon
+    );
+    const dateAttrs = isDate
+      ? { "data-empty": props.value === "" ? "" : undefined }
+      : {};
+
     // The interactive trailing button takes priority over the decorative icon
     // for the trailing slot; only one occupies it at a time.
     const showTrailingButton = Boolean(trailingButton);
-    const showTrailingIcon = Boolean(trailingIcon) && !showTrailingButton;
+    const showTrailingIcon = Boolean(trailingGlyph) && !showTrailingButton;
     const hasTrailingAddon = showTrailingButton || showTrailingIcon;
 
     const iconPad = `${leadingIcon ? leadingPadClasses[size] : ""} ${
@@ -239,7 +257,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`${sizeClasses[size]} ${densityClasses} ${iconPad} ${baseChrome} ${variantChrome} ${disabledChrome} ${className}`}
+        className={`${sizeClasses[size]} ${densityClasses} ${iconPad} ${baseChrome} ${variantChrome} ${disabledChrome} ${dateIcon ? "input-date" : ""} ${className}`}
+        {...dateAttrs}
         {...props}
       />
     );
@@ -272,9 +291,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             showTrailingIcon && (
               <span
                 aria-hidden="true"
-                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center text-[var(--fg-muted)]`}
+                className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${trailingIconPos[size]} flex items-center text-[var(--fg-muted)] ${dateIcon ? "input-date__icon" : ""}`}
               >
-                {trailingIcon}
+                {trailingGlyph}
               </span>
             )
           )}

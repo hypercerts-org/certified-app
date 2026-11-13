@@ -431,3 +431,13 @@
   margin: 0;
   padding: 0;
 }
+
+/* New group sits in the same frame as New activity (the default
+   container), so the page header, the left edge and the action bar
+   match. Its one column lines up with New activity's main column: the
+   container less the 296px details column and the 32px gap
+   (.page-layout, layout.css); New activity is wider only by that
+   column. */
+.page-container .create-group {
+  max-width: calc(var(--page-width-default) - 296px - 32px);
+}

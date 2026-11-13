@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import {
-  ArrowLeftRight,
-  FileText,
-  Image as ImageIcon,
-  Users,
-} from "lucide-react"
+import { ArrowLeftRight, Image as ImageIcon, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
@@ -373,7 +368,7 @@ export default function CreateGroupPage() {
   // Still resolving auth or the self-created-org count.
   if (authLoading || isChecking) {
     return (
-      <PageContainer width="narrow">
+      <PageContainer>
         {pageHeader}
         <div className="flex justify-center py-16">
           <LoadingSpinner size="md" />
@@ -388,7 +383,7 @@ export default function CreateGroupPage() {
   // out. Render a recoverable state with a clear primary action instead.
   if (!did) {
     return (
-      <PageContainer width="narrow">
+      <PageContainer>
         {pageHeader}
         <EmptyState
           icon={Users}
@@ -406,7 +401,7 @@ export default function CreateGroupPage() {
 
   if (limitReached) {
     return (
-      <PageContainer width="narrow">
+      <PageContainer>
         {pageHeader}
         <EmptyState
           icon={Users}
@@ -423,7 +418,7 @@ export default function CreateGroupPage() {
   }
 
   return (
-    <PageContainer width="narrow">
+    <PageContainer>
       {pageHeader}
       <form onSubmit={handleSubmit}>
         <article className="project-detail-page project-detail--wide create-project create-group">
@@ -438,10 +433,7 @@ export default function CreateGroupPage() {
                 aspect via `flex: 1`. */}
             <div className="create-group__identity-row">
               <div className="create-group__identity-col">
-                <span className="project-detail__meta-label">
-                  <Users size={12} strokeWidth={2} aria-hidden />
-                  Avatar
-                </span>
+                <span className="project-detail__meta-label">Avatar</span>
                 <div
                   className={
                     avatarPreviewUrl
@@ -476,10 +468,7 @@ export default function CreateGroupPage() {
               </div>
 
               <div className="create-group__identity-col">
-                <span className="project-detail__meta-label">
-                  <ImageIcon size={12} strokeWidth={2} aria-hidden />
-                  Banner
-                </span>
+                <span className="project-detail__meta-label">Banner</span>
                 <div
                   className={
                     bannerPreviewUrl
@@ -553,16 +542,15 @@ export default function CreateGroupPage() {
             </header>
 
             <section className="cert-detail__section create-group__about">
-              <span className="project-detail__meta-label">
-                <FileText size={12} strokeWidth={2} aria-hidden />
+              <label htmlFor="create-group-about" className="project-detail__meta-label">
                 About
-              </span>
+              </label>
               <div className="create-cert__input-with-counter">
                 <Textarea
                   flush
+                  id="create-group-about"
                   value={shortDescription}
                   placeholder="A short description of your group (optional)"
-                  aria-label="Short description"
                   aria-describedby="create-group-desc-counter"
                   onChange={(e) => setShortDescription(e.target.value)}
                   rows={3}

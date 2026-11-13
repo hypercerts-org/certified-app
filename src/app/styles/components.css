@@ -1359,6 +1359,59 @@
   border: 0;
 }
 
+/* ==================================================================
+   Date fields — <Input type="date"> (ui/input.tsx) adds `.input-date`
+   and a lucide calendar (`.input-date__icon`) in its trailing slot, in
+   the Input frame like every other field. The field stays a native
+   date input: typing, the keyboard and the YYYY-MM-DD value are the
+   browser's. Where the WebKit picker indicator exists (Chrome, Edge,
+   Safari) it is kept as the click target, stretched over the icon's
+   end of the field and made transparent, so a click on the icon opens
+   the browser's own picker. Elsewhere (Firefox) the browser's own
+   button stays and the lucide icon is hidden, so there is never a
+   second glyph. The picker follows the theme through `color-scheme`,
+   which next-themes sets on <html> with data-theme.
+   ================================================================== */
+
+@supports selector(::-webkit-calendar-picker-indicator) {
+  .input-date {
+    position: relative;
+  }
+
+  .input-date::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 40px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .input-date:disabled::-webkit-calendar-picker-indicator {
+    cursor: not-allowed;
+  }
+}
+
+@supports not selector(::-webkit-calendar-picker-indicator) {
+  .input-date__icon {
+    display: none;
+  }
+
+  /* No icon, so no room kept for one. (0,1,1) beats the pr-* utility. */
+  input.input-date {
+    padding-right: 12px;
+  }
+}
+
+/* Empty: the format hint ("mm/dd/yyyy") reads as a placeholder. */
+.input-date[data-empty]::-webkit-datetime-edit {
+  color: var(--fg-muted);
+}
+
 
 /* ============================================================================
    First-signin onboarding modal
