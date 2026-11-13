@@ -96,6 +96,17 @@ export default function Wordmark({
   const label = title ?? (variant === "certified-app" ? "Certified.app" : "Certified");
   const descender = (art.height - LETTER_H) * scale;
   const isApp = variant === "certified-app";
+  // `overflow: visible`: the artwork runs right up to its box (the "p"
+  // descenders end 0.01 units above the bottom, the last "p" and the "d"
+  // touch the right edge), and an SVG clips to its box by default. At zoom
+  // levels that put an edge between two screen pixels, that clip shaved a
+  // sliver off the letters; painting past the box keeps them whole without
+  // changing the layout.
+  const svgStyle: React.CSSProperties = {
+    overflow: "visible",
+    ...(descender > 0 ? { marginBottom: -descender } : null),
+    ...style,
+  };
   return (
     <svg
       height={art.height * scale}
@@ -107,7 +118,7 @@ export default function Wordmark({
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative ? true : undefined}
       className={className}
-      style={descender > 0 ? { marginBottom: -descender, ...style } : style}
+      style={svgStyle}
       {...rest}
     >
       {!decorative && <title>{label}</title>}

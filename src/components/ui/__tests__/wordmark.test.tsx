@@ -19,6 +19,14 @@ describe("Wordmark", () => {
     expect(parseFloat(svg.style.marginBottom)).toBeCloseTo(-((76.31 - 60) * 30) / 60)
   })
 
+  it("paints past its box, so a zoom level can't clip the letters that touch its edges", () => {
+    for (const variant of ["certified", "certified-app"] as const) {
+      const { container, unmount } = render(<Wordmark variant={variant} decorative />)
+      expect(container.querySelector("svg")!.style.overflow).toBe("visible")
+      unmount()
+    }
+  })
+
   it("adds the artwork's thin Beta pill without growing the wordmark", () => {
     render(<Wordmark variant="certified-app" beta height={30} />)
     const svg = screen.getByRole("img", { name: "Certified.app" })
