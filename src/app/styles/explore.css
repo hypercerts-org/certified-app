@@ -97,11 +97,11 @@
 }
 
 /* "Show" (the list: Whole network, Accounts I follow, ...): a visible
-   label beside the Select primitive, last in the row so it sits next to
-   Filters. The select keeps its natural width (its longest option), so
-   it doesn't resize as the choice changes. From 800px it ends the row
-   (pushed there when the sign-in prompt leaves it alone); on phones it
-   takes its own line under the search. */
+   label beside the Select primitive, last in the row, after Filters
+   (and funding's Confirmed by). The select keeps its natural width (its
+   longest option), so it doesn't resize as the choice changes. From
+   800px it ends the row (pushed there when the sign-in prompt leaves it
+   alone); on phones it takes its own line under the search and actions. */
 .explore__show {
   display: flex;
   align-items: center;
@@ -129,6 +129,12 @@
 @media (max-width: 799px) {
   .explore__search-row {
     flex-wrap: wrap;
+  }
+
+  /* A zero basis, so the field's natural width never pushes the actions
+     onto a line of their own: it takes what they leave. */
+  .explore__search-field {
+    flex-basis: 0;
   }
 
   .explore__show {
