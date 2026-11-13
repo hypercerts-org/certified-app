@@ -751,7 +751,9 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   }
 }
 
-/* ---------- Rows (Overview activities and endorsements) ---------- */
+/* ---------- Rows (Overview activities, the tab panels) ----------
+   The Overview's endorsements use the shared endorsement row
+   (.profile-overview__endorse-*, layout.css). */
 
 .profile-rows {
   display: flex;
@@ -845,53 +847,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   flex-shrink: 0;
   font-size: var(--text-caption);
   line-height: 1.5;
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* An endorsement as a statement: "{endorser} endorsed {account}", their
-   note, the date. */
-.profile-statement__line {
-  margin: 0;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-secondary);
-  overflow-wrap: anywhere;
-}
-
-.profile-statement__name {
-  font-weight: 500;
-  color: var(--fg-primary);
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-statement__name:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-}
-
-.profile-statement__name:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
-.profile-statement__note {
-  margin: 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--border-default);
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-primary);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.profile-statement__meta {
-  margin: 0;
-  font-size: var(--text-caption);
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }

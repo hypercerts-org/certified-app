@@ -1908,8 +1908,9 @@ button.desktop-top-bar__nav-link {
    at 1100px; the same `minmax(0, 1/3)` rule keeps cards capped to 1/3 of
    the container at every width. */
 
-/* Received-endorsement rows (EndorsementPreviewRow), used by Home's
-   "From others". */
+/* Received-endorsement rows (EndorsementPreviewRow): the one endorsement
+   row, compact size (32px avatar, 14px name, 12px date), on the Workspace
+   Overview and the profile Overview. */
 .profile-overview__endorse-list {
   list-style: none;
   margin: 0;

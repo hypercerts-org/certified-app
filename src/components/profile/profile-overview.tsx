@@ -1,9 +1,7 @@
 "use client"
 
-import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MapPin, X } from "lucide-react"
-import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
@@ -16,19 +14,15 @@ import {
   type ForwardGeocodeResult,
 } from "@/lib/locations/geocode"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
-import {
-  useReceivedEndorsements,
-  type ReceivedEndorsement,
-} from "@/hooks/use-received-endorsements"
+import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useUserActivityCount } from "@/hooks/use-user-activity-count"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
-import { formatRelativeDate } from "@/lib/utils/format-date"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
-import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
+import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
 import {
   ProfileActivityRow,
   ProfileRowsSkeleton,
@@ -36,8 +30,6 @@ import {
 
 interface ProfileOverviewProps {
   did: string
-  /** The account's name, for the endorsement statements ("… endorsed Ada"). */
-  subjectName: string
   /** Path of the profile page, without the query. */
   basePath: string
   /** The viewer's current identity is this account. Adds "New activity"
@@ -72,12 +64,11 @@ const ENDORSEMENT_PREVIEW = 3
  * The profile's Overview tab: a quiet row of counts, the organization's
  * About block (organizations only; a person's bio sits in the header),
  * the latest activities as rows and the latest endorsements received as
- * statements. From 1100px the activities and endorsements sit side by
- * side.
+ * the compact endorsement rows the Workspace Overview uses. From 1100px
+ * the activities and endorsements sit side by side.
  */
 export default function ProfileOverview({
   did,
-  subjectName,
   basePath,
   viewerIsOwner = false,
   isEditing = false,
@@ -243,11 +234,14 @@ export default function ProfileOverview({
           className="profile-overview__section"
           aria-labelledby="profile-overview-endorsements"
         >
+          {/* "All endorsements" whenever there is one: the tab holds more
+              than this preview (the endorsements given, too), and the
+              activities column beside it has its "All activities". */}
           <SectionHeader
             id="profile-overview-endorsements"
             title="Endorsements received"
             action={
-              received.endorsements.length > ENDORSEMENT_PREVIEW ? (
+              received.endorsements.length > 0 ? (
                 <SeeAllLink
                   href={`${basePath}?tab=endorsements`}
                   label="All endorsements"
@@ -256,78 +250,23 @@ export default function ProfileOverview({
             }
           />
           {received.isLoading && previewEndorsements.length === 0 ? (
-            <ProfileRowsSkeleton />
+            <ProfileRowsSkeleton shape="circle" />
           ) : previewEndorsements.length === 0 ? (
             <EmptyState
               variant="inline"
               title="No endorsements yet. When another account endorses this one, it shows here."
             />
           ) : (
-            <ul className="profile-rows">
+            // The one endorsement row, shared with the Workspace Overview.
+            <ul className="profile-overview__endorse-list">
               {previewEndorsements.map((e) => (
-                <EndorsementStatement
-                  key={e.uri}
-                  endorsement={e}
-                  subjectName={subjectName}
-                />
+                <EndorsementPreviewRow key={e.uri} endorsement={e} />
               ))}
             </ul>
           )}
         </section>
       </div>
     </div>
-  )
-}
-
-/* ------------------------------- Rows -------------------------------- */
-
-/**
- * One endorsement received, written as the statement it is: who endorsed
- * whom, in their words, and when.
- */
-function EndorsementStatement({
-  endorsement,
-  subjectName,
-}: {
-  endorsement: ReceivedEndorsement
-  subjectName: string
-}) {
-  const { displayName, avatarSrc, initials, href } =
-    useEndorserIdentity(endorsement)
-  return (
-    // An endorsement: a centerpiece every style can redraw (looks.css).
-    <li className="profile-row profile-statement" data-centerpiece="endorsement">
-      <Avatar
-        size="sm"
-        src={avatarSrc}
-        fallbackInitials={initials}
-        seed={endorsement.issuerDid}
-      />
-      <div className="profile-row__text">
-        <p className="profile-statement__line">
-          <Link href={href} className="profile-statement__name" dir="auto" data-part="who">
-            {displayName}
-          </Link>{" "}
-          endorsed <span dir="auto">{subjectName}</span>
-        </p>
-        {endorsement.note ? (
-          <p className="profile-statement__note" dir="auto" data-part="note">
-            {endorsement.note}
-          </p>
-        ) : null}
-        <p className="profile-statement__meta">
-          <time dateTime={endorsement.createdAt} data-part="when">
-            {formatRelativeDate(endorsement.createdAt)}
-          </time>
-          {endorsement.listTitle ? (
-            <>
-              <span aria-hidden> · </span>
-              <span dir="auto">{endorsement.listTitle}</span>
-            </>
-          ) : null}
-        </p>
-      </div>
-    </li>
   )
 }
 

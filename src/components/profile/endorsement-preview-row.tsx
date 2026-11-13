@@ -7,11 +7,12 @@ import { formatRelativeDate } from "@/lib/utils/format-date"
 import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
 
 /**
- * One received endorsement as a compact row: issuer avatar, name, date and
- * note, linking to the issuer's profile. Used by the signed-in home's "From
- * others" section; styles are the `profile-overview__endorse-*` classes.
- * The public profile's Overview renders the same data as a statement
- * (`EndorsementStatement` in profile-overview.tsx).
+ * One received endorsement as a compact row (32px avatar, 14px name, 12px
+ * date): the endorser's avatar, then their name with the date beside it,
+ * and their note under them, linking to the endorser's profile. The one
+ * endorsement row, used by the Workspace Overview's "Endorsements and
+ * followers" and the profile Overview's "Endorsements received"; styles
+ * are the `profile-overview__endorse-*` classes (layout.css).
  */
 interface EndorsementPreviewRowProps {
   readonly endorsement: ReceivedEndorsement
@@ -26,17 +27,26 @@ export function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProp
     // its parts marked with data-part.
     <li className="profile-overview__endorse-item" data-centerpiece="endorsement">
       <Link href={href} className="profile-overview__endorse-link">
-        <Avatar size="sm" src={avatarSrc} fallbackInitials={initials} />
+        <Avatar
+          size="sm"
+          src={avatarSrc}
+          fallbackInitials={initials}
+          seed={endorsement.issuerDid}
+        />
         <span className="profile-overview__endorse-meta">
           <span className="profile-overview__endorse-name" dir="auto" data-part="who">
             {displayName}
           </span>
-          <span className="profile-overview__endorse-when" data-part="when">
+          <time
+            className="profile-overview__endorse-when"
+            dateTime={endorsement.createdAt}
+            data-part="when"
+          >
             {formatRelativeDate(endorsement.createdAt)}
-          </span>
+          </time>
         </span>
         {endorsement.note ? (
-          <span className="profile-overview__endorse-note" data-part="note">
+          <span className="profile-overview__endorse-note" dir="auto" data-part="note">
             {endorsement.note}
           </span>
         ) : null}

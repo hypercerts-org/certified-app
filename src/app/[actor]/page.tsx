@@ -512,7 +512,6 @@ export default function UserProfilePage() {
               {shownTab === "overview" ? (
                 <ProfileOverview
                   did={did}
-                  subjectName={displayName}
                   basePath={basePath}
                   viewerIsOwner={isViewerThisEntity}
                   isEditing={editing}
