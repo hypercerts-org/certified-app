@@ -69,11 +69,30 @@ describe("Home: Your groups", () => {
 
 describe("Workspace → Groups rows", () => {
   it("keep a Switch button that acts as the group", () => {
-    render(<GroupRows groups={GROUPS} />)
+    render(<GroupRows groups={GROUPS} size="md" />)
     const rows = screen.getAllByRole("listitem")
     expect(rows).toHaveLength(2)
     expect(within(rows[0]).getByRole("link").getAttribute("href")).toBe("/estuary.certified.app")
     fireEvent.click(within(rows[0]).getByRole("button", { name: "Switch to Estuary Alliance" }))
     expect(switchActor).toHaveBeenCalledWith(GROUPS[0])
+  })
+
+  it("use the people size, like Followers (GR1): 40px square avatar, name in body, meta in ui", () => {
+    render(<GroupRows groups={GROUPS} size="md" />)
+    const row = screen.getAllByRole("listitem")[0]
+    expect(row).toHaveClass("records-person")
+    const avatar = row.querySelector(".h-10.w-10")
+    expect(avatar).not.toBeNull()
+    expect(within(row).getByText("Estuary Alliance")).toHaveClass("records-person__name")
+    expect(within(row).getByText(/Admin/)).toHaveClass("records-person__handle")
+    // The button sits in the people rows' one-width slot.
+    expect(within(row).getByRole("button").closest(".records-person__action")).not.toBeNull()
+  })
+
+  it("stay compact in Home's Your groups", () => {
+    render(<GroupRows groups={GROUPS} size="sm" showSwitch={false} />)
+    const row = screen.getAllByRole("listitem")[0]
+    expect(row).toHaveClass("home-group")
+    expect(row.querySelector(".h-8.w-8")).not.toBeNull()
   })
 })

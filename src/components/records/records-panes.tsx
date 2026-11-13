@@ -615,7 +615,7 @@ export function GroupsPane() {
             description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
           />
         ) : (
-          <GroupRows groups={groups} />
+          <GroupRows groups={groups} size="md" />
         )}
       </section>
     </WorkspaceFrame>

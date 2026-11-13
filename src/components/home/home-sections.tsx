@@ -444,21 +444,82 @@ export function groupProfileHref(group: Pick<Group, "groupDid" | "handle">): str
 }
 
 /**
- * Group rows: the group's avatar, name, your role and its handle, each row
- * linking to the group's profile. Workspace → Groups shows them all, each
- * with a Switch button to act as it (`showSwitch`); Home's "Your groups"
- * shows the first few without one, so the names get the row's width
- * (switching lives in the Workspace menu).
+ * Group rows: the group's square avatar, name, your role and its handle,
+ * each row linking to the group's profile.
+ *
+ * - `size="md"` (Workspace → Groups, a full-page list of accounts): the
+ *   people row Followers and Endorsements use (40px avatar, the name in
+ *   `body`, the meta in `ui`, `records-person` in records.css), with a
+ *   Switch button to act as the group (`showSwitch`).
+ * - `size="sm"` (Home's "Your groups", a list inside a section): the
+ *   compact row (32px, `body-sm` / `caption`), without Switch, so the
+ *   names get the row's width (switching lives in the Workspace menu).
  */
 export function GroupRows({
   groups,
+  size = "md",
   showSwitch = true,
 }: {
   groups: readonly Group[]
+  /** @default "md" */
+  size?: "sm" | "md"
   /** Add a Switch button to each row. @default true */
   showSwitch?: boolean
 }) {
   const switchActor = useSwitchActor()
+  const switchButton = (g: Group, name: string) =>
+    showSwitch ? (
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => switchActor(g)}
+        aria-label={`Switch to ${name}`}
+      >
+        Switch
+      </Button>
+    ) : null
+
+  if (size === "md") {
+    return (
+      <ul className="records-list">
+        {groups.map((g) => {
+          const { name, handle } = groupRowLabel(g)
+          return (
+            <li key={g.groupDid} className="records-person">
+              <Link href={groupProfileHref(g)} className="records-person__main">
+                <Avatar
+                  size="row"
+                  shape="square"
+                  src={g.avatarUrl}
+                  alt=""
+                  seed={g.groupDid}
+                  fallbackInitials={getInitials(g.displayName, g.handle)}
+                />
+                <span className="records-person__text">
+                  <span className="records-person__name" dir="auto">
+                    {name}
+                  </span>
+                  <span className="records-person__handle">
+                    {roleLabel(g.role)}
+                    {handle ? (
+                      <>
+                        <span aria-hidden> · </span>
+                        {handle}
+                      </>
+                    ) : null}
+                  </span>
+                </span>
+              </Link>
+              {showSwitch ? (
+                <div className="records-person__action">{switchButton(g, name)}</div>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
   return (
     <ul className="home-rows">
       {groups.map((g) => {
@@ -489,16 +550,7 @@ export function GroupRows({
                 </span>
               </span>
             </Link>
-            {showSwitch ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => switchActor(g)}
-                aria-label={`Switch to ${name}`}
-              >
-                Switch
-              </Button>
-            ) : null}
+            {switchButton(g, name)}
           </li>
         )
       })}
@@ -532,7 +584,7 @@ export function HomeGroups() {
       ) : groups.length === 0 ? (
         <EmptyState variant="inline" title="You're not in any groups yet." />
       ) : (
-        <GroupRows groups={preview} showSwitch={false} />
+        <GroupRows groups={preview} size="sm" showSwitch={false} />
       )}
       {groups.length > GROUP_PREVIEW ? (
         <div>

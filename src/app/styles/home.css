@@ -239,9 +239,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A group row: the link to the group's profile, then (Workspace → Groups
-   only) its Switch button. Home's rows are the link alone, which takes
-   the full width. */
+/* A compact group row (Home's "Your groups"): the link to the group's
+   profile, which takes the full width, and an optional Switch button.
+   Workspace → Groups uses the people row instead (records-person in
+   records.css). */
 .home-group {
   display: flex;
   align-items: center;
