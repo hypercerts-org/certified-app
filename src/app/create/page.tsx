@@ -22,6 +22,10 @@ import Input from "@/components/ui/input"
 import Select from "@/components/ui/select"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader from "@/components/ui/section-header"
+import FormActionBar, { SectionTitleCount } from "@/components/create/form-action-bar"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import { PenLine } from "lucide-react"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -369,6 +373,17 @@ export default function CreatePage() {
     })
   }, [])
 
+  // The page's one header (DESIGN.md §9.13): back to Records, the title as
+  // the page's h1, one line of description. Shared by the loading and
+  // signed-out states so the page doesn't jump when the session settles.
+  const pageHeader = (
+    <PageHeader
+      back={{ href: "/records", label: "Records" }}
+      title="New activity"
+      description="Describe a piece of work: what was done, when, where and by whom."
+    />
+  )
+
   // Auth state takes a tick to resolve on refresh — the session is
   // restored from a cookie via `/api/auth/session` and that round-
   // trip hasn't completed yet. During that window `isAuthenticated`
@@ -378,30 +393,26 @@ export default function CreatePage() {
   // the session check settles.
   if (isLoading) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main create-cert__auth-loading">
-            <LoadingSpinner size="md" />
-          </div>
+      <PageContainer>
+        {pageHeader}
+        <div className="flex justify-center py-16">
+          <LoadingSpinner size="md" />
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <SignedOutPrompt
-              icon={PenLine}
-              title="Sign in to create an activity"
-              description="Activities are published under your Certified account."
-              headingLevel={2}
-            />
-          </div>
-        </div>
-      </div>
+      <PageContainer>
+        {pageHeader}
+        <SignedOutPrompt
+          icon={PenLine}
+          title="Sign in to create an activity"
+          description="Activities are published under your Certified account."
+          headingLevel={2}
+        />
+      </PageContainer>
     )
   }
 
@@ -660,6 +671,8 @@ export default function CreatePage() {
   ].filter((m): m is string => !!m)
 
   return (
+    <PageContainer>
+    {pageHeader}
     <form onSubmit={handleSubmit}>
       <article className="page-layout cert-detail--wide create-cert">
         <aside className="cert-detail__aside" aria-label="Activity metadata">
@@ -869,8 +882,8 @@ export default function CreatePage() {
           <header className="cert-detail__headline">
             <div className="create-cert__input-with-counter">
               {/* Bare/flush <Input> so the title typography cascades.
-                  The serif headline scale, weight, tracking, and the
-                  1.375rem create-form size are carried inline here
+                  The serif title role at the ramp's h3 step (size,
+                  weight, leading, tracking) is carried inline here
                   (the legacy `.cert-detail__title-input` +
                   `.create-cert .cert-detail__title-input` rules that
                   used to supply them are now dead). borderWeight="hover"
@@ -885,7 +898,7 @@ export default function CreatePage() {
                 aria-label="Title"
                 aria-describedby="create-title-counter"
                 placeholder="Title for your activity"
-                className="flex-[1_1_auto] min-w-0 font-headline !text-[1.375rem] font-bold !leading-[1.15] tracking-[-0.015em] text-[var(--fg-primary)] !px-2.5 py-1"
+                className="flex-[1_1_auto] min-w-0 font-headline !text-h3 text-[var(--fg-primary)] !px-2.5 py-1"
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(e) => setTitle(e.target.value)}
@@ -935,9 +948,7 @@ export default function CreatePage() {
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Description</h2>
-            </div>
+            <SectionHeader title="Description" />
             <LeafletEditor
               value={description}
               onChange={setDescription}
@@ -954,14 +965,9 @@ export default function CreatePage() {
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Contributors</h2>
-              {contributors.length > 0 ? (
-                <span className="cert-detail__section-count">
-                  {contributors.length}
-                </span>
-              ) : null}
-            </div>
+            <SectionHeader
+              title={<SectionTitleCount label="Contributors" count={contributors.length} />}
+            />
 
             {contributors.length === 0 ? (
               <p className="cert-detail__empty-line">
@@ -1204,37 +1210,21 @@ export default function CreatePage() {
             </div>
           </section>
 
-          {error ? (
-            <p className="cert-detail__error-desc" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="create-cert__actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (!confirmDiscard()) return
-                if (arrivedFromInApp) router.back()
-                else router.push("/")
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSubmitting}
-              disabled={isSubmitting}
-              data-tour="create-submit"
-            >
-              {isSubmitting ? "Publishing…" : "Publish activity"}
-            </Button>
-          </div>
         </div>
       </article>
+
+      <FormActionBar
+        submitLabel="Publish activity"
+        submittingLabel="Publishing…"
+        isSubmitting={isSubmitting}
+        error={error}
+        onCancel={() => {
+          if (!confirmDiscard()) return
+          if (arrivedFromInApp) router.back()
+          else router.push("/")
+        }}
+        submitTourId="create-submit"
+      />
 
       {isLocationDialogOpen && did ? (
         <LocationPickerDialog
@@ -1253,6 +1243,7 @@ export default function CreatePage() {
         />
       ) : null}
     </form>
+    </PageContainer>
   )
 }
 

@@ -12,6 +12,10 @@ import { authFetch } from "@/lib/auth/fetch"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader from "@/components/ui/section-header"
+import FormActionBar, { SectionTitleCount } from "@/components/create/form-action-bar"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import type { LinearDocument } from "@/lib/leaflet/types"
@@ -186,32 +190,38 @@ export default function CreateProjectPage() {
     })
   }, [])
 
+  // The page's one header (DESIGN.md §9.13), shared by the loading and
+  // signed-out states so the page doesn't jump when the session settles.
+  const pageHeader = (
+    <PageHeader
+      back={{ href: "/records", label: "Records" }}
+      title="New project"
+      description="Group related activities under one project."
+    />
+  )
+
   if (isLoading) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main create-cert__auth-loading">
-            <LoadingSpinner size="md" />
-          </div>
+      <PageContainer width="narrow">
+        {pageHeader}
+        <div className="flex justify-center py-16">
+          <LoadingSpinner size="md" />
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <SignedOutPrompt
-              icon={FolderGit2}
-              title="Sign in to create a project"
-              description="Projects are published under your Certified account."
-              headingLevel={2}
-            />
-          </div>
-        </div>
-      </div>
+      <PageContainer width="narrow">
+        {pageHeader}
+        <SignedOutPrompt
+          icon={FolderGit2}
+          title="Sign in to create a project"
+          description="Projects are published under your Certified account."
+          headingLevel={2}
+        />
+      </PageContainer>
     )
   }
 
@@ -335,6 +345,8 @@ export default function CreateProjectPage() {
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
 
   return (
+    <PageContainer width="narrow">
+    {pageHeader}
     <form onSubmit={handleSubmit}>
       <article className="project-detail-page project-detail--wide create-project">
         <div className="project-detail">
@@ -423,9 +435,7 @@ export default function CreateProjectPage() {
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Description</h2>
-            </div>
+            <SectionHeader title="Description" />
             <LeafletEditor
               value={description}
               onChange={setDescription}
@@ -442,9 +452,7 @@ export default function CreateProjectPage() {
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Location</h2>
-            </div>
+            <SectionHeader title="Location" />
             {location ? (
               <ul className="create-project__cert-list">
                 <li className="create-project__cert-row">
@@ -482,14 +490,9 @@ export default function CreateProjectPage() {
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Activities</h2>
-              {items.length > 0 ? (
-                <span className="cert-detail__section-count">
-                  {items.length}
-                </span>
-              ) : null}
-            </div>
+            <SectionHeader
+              title={<SectionTitleCount label="Activities" count={items.length} />}
+            />
 
             {items.length > 0 ? (
               <ul className="create-project__cert-list">
@@ -580,36 +583,20 @@ export default function CreateProjectPage() {
                 someone else's cert to a project. */}
           </section>
 
-          {error ? (
-            <p className="cert-detail__error-desc" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="create-cert__actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (!confirmDiscard()) return
-                if (arrivedFromInApp) router.back()
-                else router.push("/")
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSubmitting}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Publishing…" : "Publish project"}
-            </Button>
-          </div>
         </div>
       </article>
+
+      <FormActionBar
+        submitLabel="Publish project"
+        submittingLabel="Publishing…"
+        isSubmitting={isSubmitting}
+        error={error}
+        onCancel={() => {
+          if (!confirmDiscard()) return
+          if (arrivedFromInApp) router.back()
+          else router.push("/")
+        }}
+      />
 
       {isLocationDialogOpen && did ? (
         <LocationPickerDialog
@@ -624,5 +611,6 @@ export default function CreateProjectPage() {
         />
       ) : null}
     </form>
+    </PageContainer>
   )
 }

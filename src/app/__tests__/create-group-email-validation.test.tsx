@@ -41,6 +41,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => {},
+  useRegisterPageHeader: () => {},
 }))
 
 // The group write API is only touched on submit; keep it inert so an

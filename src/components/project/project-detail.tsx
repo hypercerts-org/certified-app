@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
-import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
+import {
+  usePageTitle,
+  usePageRecordMenu,
+  useRegisterPageHeader,
+} from "@/lib/navbar-context"
 import { TransitionLink } from "@/lib/view-transitions"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -48,7 +52,7 @@ import ContextUpdates from "@/components/context/context-updates"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
-import { useContextUpdates } from "@/hooks/use-context-updates"
+import { RecordSectionTabs } from "@/components/feed/cert-detail-parts"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import CertListRow from "@/components/explore-page/cert-list-row"
@@ -276,34 +280,13 @@ export default function ProjectDetail({
   // first rows aren't left hidden behind the fixed navbar.
   useScrollTopOnTabChange(activeTab)
 
-  // Updates count for the navbar title on the Updates tab. Fetched only
-  // on that tab (null subjectUri = no fetch elsewhere).
-  const { updates: navUpdates } = useContextUpdates(
-    activeTab === "updates"
-      ? `at://${did}/org.hypercerts.collection/${rkey}`
-      : null,
-  )
-
-  // Navbar title: sub-tabs show the tab name next to the back arrow; the
-  // overview shows the project's own name. (We deliberately don't prefix
-  // it with the author handle — the mobile bar is too narrow to show both,
-  // and the name is the useful identifier.)
-  usePageTitle(
-    activeTab === "description"
-      ? "Description"
-      : activeTab === "updates"
-        ? navUpdates.length > 0
-          ? `Updates (${navUpdates.length})`
-          : "Updates"
-        : activeTab === "activities"
-          ? Array.isArray(value.items) && value.items.length > 0
-            ? `Activities (${value.items.length})`
-            : "Activities"
-          : title || "Project",
-  )
-  // Desktop top bar keeps the project's name on every tab (the tab strip is
-  // already visible there); only the mobile navbar title is tab-aware.
-  usePageDesktopTitle(title || "Project")
+  // The project title is the page's h1 on every tab (the head bar below),
+  // so the page registers its header and the chrome renders no h1 of its
+  // own. The navbar title (the phone bar's compact title next to the back
+  // chevron, and the document title) stays the project's name on every
+  // tab: the phone tab strip under the byline names the section.
+  useRegisterPageHeader()
+  usePageTitle(title || "Project")
   // Record-level overflow menu in the mobile navbar's right slot (Share /
   // Add to list / Copy AT URI). Reads as page-level chrome instead of an
   // action on the author. Desktop keeps the in-body menu (lead row).
@@ -956,9 +939,9 @@ export default function ProjectDetail({
                 }
               />
             ) : (
-              <h2 className="project-detail__title" title={title} dir="auto">
+              <h1 className="project-detail__title" title={title} dir="auto">
                 {title}
-              </h2>
+              </h1>
             )}
           </div>
           <div className="project-detail__head-actions">
@@ -1020,6 +1003,17 @@ export default function ProjectDetail({
         <div className="project-detail__byline">
           <ActivityAuthor did={did} />
         </div>
+
+        {/* Phones: the project's sections as a tab strip under the byline
+            (from 800px they live in the desktop top bar's second row). */}
+        <RecordSectionTabs
+          tabs={PROJECT_DETAIL_TABS}
+          activeKey={activeTab}
+          ariaLabel="Project sections"
+          counts={{
+            activities: Array.isArray(value.items) ? value.items.length : 0,
+          }}
+        />
 
         <TabPanelTransition
           className="project-detail__body"

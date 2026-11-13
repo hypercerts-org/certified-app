@@ -1,9 +1,13 @@
 "use client"
 
 import { useEffect } from "react"
+import { FolderGit2 } from "lucide-react"
 import { useProject } from "@/hooks/use-project"
 import ProjectDetail from "@/components/project/project-detail"
-import LoadingSpinner from "@/components/ui/loading-spinner"
+import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
+import PageContainer from "@/components/ui/page-container"
+import { RecordDetailSkeleton } from "@/components/feed/cert-detail-parts"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 
 /**
@@ -13,6 +17,9 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
  *
  * `resolving` is true while the parent is still turning the actor segment
  * into a DID — we stay in the loading state instead of flashing "not found".
+ *
+ * Every state renders inside `<PageContainer>` (the page frame: width,
+ * gutters, top and bottom space), so the page doesn't jump between them.
  */
 export default function ProjectDetailRoute({
   did,
@@ -35,41 +42,44 @@ export default function ProjectDetailRoute({
 
   if (resolving || isLoading) {
     return (
-      <div className="project-detail-page">
-        <div className="project-detail__loading">
-          <LoadingSpinner size="md" />
-        </div>
-      </div>
+      <PageContainer>
+        <RecordDetailSkeleton label="Loading project" />
+      </PageContainer>
     )
   }
 
   if (error || !project || !rkey) {
     return (
-      <div className="project-detail-page">
-        <div className="project-detail__error">
-          <p className="project-detail__error-title">
-            {error && error !== "Project not found"
+      <PageContainer>
+        <EmptyState
+          icon={FolderGit2}
+          title={
+            error && error !== "Project not found"
               ? "Couldn't load this project"
-              : "Project not found"}
-          </p>
-          <p className="project-detail__error-desc">
-            This project may have been deleted, or its account&rsquo;s server
-            is unreachable right now. Try again later.
-          </p>
-        </div>
-      </div>
+              : "Project not found"
+          }
+          description="This project may have been deleted, or its account's server is unreachable right now. Try again later."
+          headingLevel={2}
+        >
+          <Button href="/explore" variant="secondary" size="sm">
+            Go to Explore
+          </Button>
+        </EmptyState>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="project-detail-page">
-      <ProjectDetail
-        did={project.did}
-        rkey={rkey}
-        value={project.value}
-        cid={project.cid}
-        handle={handle}
-      />
-    </div>
+    <PageContainer>
+      <div className="project-detail-page">
+        <ProjectDetail
+          did={project.did}
+          rkey={rkey}
+          value={project.value}
+          cid={project.cid}
+          handle={handle}
+        />
+      </div>
+    </PageContainer>
   )
 }

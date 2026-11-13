@@ -11,7 +11,11 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
-import EditBanner from "@/components/ui/edit-banner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader from "@/components/ui/section-header"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
+import FormActionBar, { SectionTitleCount } from "@/components/create/form-action-bar"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -344,64 +348,77 @@ export default function ProjectEditRoute({
       : null
   const displayBannerUrl = pendingBannerPreviewUrl ?? existingBannerUrl
 
+  // The page's one header (DESIGN.md §9.13): back to the project, the
+  // title as the page's h1, one line of description. Shared by every gate
+  // below so the page keeps its frame while the record loads.
+  const recordHref = did && rkey ? recordUrl(did, "project", rkey) : null
+  const pageHeader = (
+    <PageHeader
+      back={
+        recordHref
+          ? { href: recordHref, label: "Project" }
+          : { href: "/records", label: "Records" }
+      }
+      title="Edit project"
+      description="Your changes update the published project."
+    />
+  )
+  const gate = (body: React.ReactNode) => (
+    <PageContainer width="narrow">
+      {pageHeader}
+      {body}
+    </PageContainer>
+  )
+
   // Loading / sign-in gates.
   if (resolving || authLoading || projectLoading) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main create-cert__auth-loading">
-            <LoadingSpinner size="md" />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <div className="flex justify-center py-16">
+        <LoadingSpinner size="md" />
+      </div>,
     )
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={FolderGit2}
-              title="Sign in to edit"
-              description="You need to be signed in to edit a project."
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <SignedOutPrompt
+        icon={FolderGit2}
+        title="Sign in to edit"
+        description="You need to be signed in to edit a project."
+        headingLevel={2}
+      />,
     )
   }
 
   if (projectError || !project) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={FolderGit2}
-              title="Project not found"
-              description={projectError || "Couldn't load this project to edit."}
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <EmptyState
+        icon={FolderGit2}
+        title="Project not found"
+        description={projectError || "Couldn't load this project to edit."}
+        headingLevel={2}
+      >
+        <Button href="/records" variant="secondary" size="sm">
+          Go to Records
+        </Button>
+      </EmptyState>,
     )
   }
 
   if (!isOwner) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={FolderGit2}
-              title="You can't edit this project"
-              description="Only the project's creator (or the active group it's published under) can make changes."
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <EmptyState
+        icon={FolderGit2}
+        title="You can't edit this project"
+        description="Only the project's creator (or the active group it's published under) can make changes."
+        headingLevel={2}
+      >
+        {recordHref ? (
+          <Button href={recordHref} variant="secondary" size="sm">
+            View project
+          </Button>
+        ) : null}
+      </EmptyState>,
     )
   }
 
@@ -570,26 +587,14 @@ export default function ProjectEditRoute({
   }
 
   return (
+    <PageContainer width="narrow">
+    {pageHeader}
     <form
       onSubmit={(e) => {
         e.preventDefault()
         void doSave()
       }}
     >
-      <EditBanner
-        label="Editing project"
-        error={error}
-        isSaving={isSubmitting}
-        canSave={canSubmit}
-        onCancel={handleCancel}
-        onSave={() => {
-          void doSave()
-        }}
-        // Cap the banner to the same centered reading column as the
-        // article below (.project-detail), so it doesn't span the full
-        // 1280px `.project-detail--wide` content area.
-        className="edit-banner--project"
-      />
       <article
         className="project-detail-page project-detail--wide create-project"
         onInput={markInteracted}
@@ -678,9 +683,7 @@ export default function ProjectEditRoute({
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Description</h2>
-            </div>
+            <SectionHeader title="Description" />
             <LeafletEditor
               value={description}
               onChange={setDescription}
@@ -697,9 +700,7 @@ export default function ProjectEditRoute({
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Location</h2>
-            </div>
+            <SectionHeader title="Location" />
             {location ? (
               <ul className="create-project__cert-list">
                 <li className="create-project__cert-row">
@@ -740,14 +741,9 @@ export default function ProjectEditRoute({
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Activities</h2>
-              {items.length > 0 ? (
-                <span className="cert-detail__section-count">
-                  {items.length}
-                </span>
-              ) : null}
-            </div>
+            <SectionHeader
+              title={<SectionTitleCount label="Activities" count={items.length} />}
+            />
 
             {items.length > 0 ? (
               <ul className="create-project__cert-list">
@@ -827,6 +823,16 @@ export default function ProjectEditRoute({
         </div>
       </article>
 
+      <FormActionBar
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        isSubmitting={isSubmitting}
+        submitDisabled={!canSubmit}
+        error={error}
+        onCancel={handleCancel}
+        identityLabel="Saving as"
+      />
+
       {isLocationDialogOpen && sessionDid ? (
         <LocationPickerDialog
           ownDid={sessionDid}
@@ -840,5 +846,6 @@ export default function ProjectEditRoute({
         />
       ) : null}
     </form>
+    </PageContainer>
   )
 }

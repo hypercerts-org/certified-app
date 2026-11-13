@@ -48,6 +48,7 @@ import {
   hydrateFeedPageData,
   activitiesConnection,
   activityEditRecord,
+  projectDetailRecord,
 } from "@/lib/dev/fixtures/feed"
 import {
   networkActorsConnection,
@@ -315,6 +316,10 @@ function xrpcResponse(
       // Hydrates the `/dev/preview/activity-edit` surface: `useActivity`
       // reads the record to edit. Any rkey resolves to the one fixture.
       return json(activityEditRecord())
+    }
+    if (collection === "org.hypercerts.collection") {
+      // Hydrates the `/dev/preview/project` surface (`useProject`).
+      return json(projectDetailRecord())
     }
     // Any other single record (bsky profile, etc.) — treat as missing.
     return json({ error: "RecordNotFound" }, 400)

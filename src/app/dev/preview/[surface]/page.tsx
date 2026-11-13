@@ -32,6 +32,8 @@
  *   /dev/preview/profile-edit   — profile inline-edit form
  *   /dev/preview/activity-edit  — activity EDIT form (hydrated from a fixture)
  *   /dev/preview/records        — Records (projects as folders, ?kind= panes)
+ *   /dev/preview/activity       — activity DETAIL page (same fixture record)
+ *   /dev/preview/project        — project DETAIL page (project fixture)
  *
  * `?fixture=empty` switches every list/connection to its empty variant.
  */
@@ -69,7 +71,7 @@ import {
   certsProfileRecord,
 } from "@/lib/dev/fixtures/profile"
 import { MOCK_HANDLE } from "@/lib/dev/fixtures/session"
-import { MOCK_ACTIVITY_RKEY } from "@/lib/dev/fixtures/feed"
+import { MOCK_ACTIVITY_RKEY, MOCK_PROJECT_RKEY } from "@/lib/dev/fixtures/feed"
 import type { UploadedBlob } from "@/lib/atproto/profile"
 
 // Real composed surfaces.
@@ -84,6 +86,7 @@ import RecordsPage from "@/components/records/records-page"
 // fire on submit, which a screenshot pass never triggers.
 import CreatePage from "@/app/create/page"
 import RecordEditPage from "@/app/[actor]/[type]/[rkey]/edit/page"
+import RecordDetailPage from "@/app/[actor]/[type]/[rkey]/page"
 import ProfileEditForm from "@/components/profile/profile-edit-form"
 
 const SURFACES = [
@@ -97,6 +100,8 @@ const SURFACES = [
   "profile-edit",
   "activity-edit",
   "records",
+  "activity",
+  "project",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -197,6 +202,24 @@ function SurfaceBody({
         <Suspense fallback={null}>
           <RecordsPage />
         </Suspense>
+      )
+    case "activity":
+    case "project":
+      // The record detail page, with its `{ actor, type, rkey }` params
+      // synthesized like the edit surface above. `useActivity` /
+      // `useProject` load the fixture records through the mocked getRecord.
+      return (
+        <NavigationPromisesContext.Provider value={null}>
+          <PathParamsContext.Provider
+            value={{
+              actor: MOCK_HANDLE,
+              type: surface,
+              rkey: surface === "activity" ? MOCK_ACTIVITY_RKEY : MOCK_PROJECT_RKEY,
+            }}
+          >
+            <RecordDetailPage />
+          </PathParamsContext.Provider>
+        </NavigationPromisesContext.Provider>
       )
     case "profile-edit":
       // The inline-edit form mounted by profile-sidebar when isEditing.

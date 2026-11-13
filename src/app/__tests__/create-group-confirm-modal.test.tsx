@@ -44,6 +44,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => {},
+  useRegisterPageHeader: () => {},
 }))
 
 // The group write API is only touched on confirm. Keep `registerGroup` a spy

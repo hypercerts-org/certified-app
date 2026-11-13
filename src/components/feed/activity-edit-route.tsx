@@ -18,7 +18,11 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
-import EditBanner from "@/components/ui/edit-banner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader from "@/components/ui/section-header"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
+import FormActionBar, { SectionTitleCount } from "@/components/create/form-action-bar"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
@@ -461,48 +465,60 @@ export default function ActivityEditRoute({
       : null
   const displayImageUrl = pendingImagePreviewUrl ?? existingImageUrl
 
+  // The page's one header (DESIGN.md §9.13): back to the record, the title
+  // as the page's h1, one line of description. Shared by every gate below
+  // so the page keeps its frame while the record loads.
+  const recordHref = did && rkey ? recordUrl(did, "activity", rkey) : null
+  const pageHeader = (
+    <PageHeader
+      back={
+        recordHref
+          ? { href: recordHref, label: "Activity" }
+          : { href: "/records", label: "Records" }
+      }
+      title="Edit activity"
+      description="Your changes update the published activity."
+    />
+  )
+  const gate = (body: React.ReactNode) => (
+    <PageContainer>
+      {pageHeader}
+      {body}
+    </PageContainer>
+  )
+
   // Auth-loading / signed-out states. Mirrors /create's gates.
   if (resolving || authLoading || activityLoading) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main create-cert__auth-loading">
-            <LoadingSpinner size="md" />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <div className="flex justify-center py-16">
+        <LoadingSpinner size="md" />
+      </div>,
     )
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={PenLine}
-              title="Sign in to edit"
-              description="You need to be signed in to edit an activity."
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <SignedOutPrompt
+        icon={PenLine}
+        title="Sign in to edit"
+        description="You need to be signed in to edit an activity."
+        headingLevel={2}
+      />,
     )
   }
 
   if (activityError || !activity) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={PenLine}
-              title="Activity not found"
-              description={activityError || "Couldn't load this activity to edit."}
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <EmptyState
+        icon={PenLine}
+        title="Activity not found"
+        description={activityError || "Couldn't load this activity to edit."}
+        headingLevel={2}
+      >
+        <Button href="/records" variant="secondary" size="sm">
+          Go to Records
+        </Button>
+      </EmptyState>,
     )
   }
 
@@ -512,34 +528,30 @@ export default function ActivityEditRoute({
   // those fields blank and silently strip them from the authoritative
   // record on save — refuse to edit until the full record loads.
   if (activity.partial) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={PenLine}
-              title="Can't edit right now"
-              description="We couldn't load the full activity, so editing now could lose details. Try again in a minute."
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <EmptyState
+        icon={PenLine}
+        title="Can't edit right now"
+        description="We couldn't load the full activity, so editing now could lose details. Try again in a minute."
+        headingLevel={2}
+      />,
     )
   }
 
   if (!isCreator) {
-    return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={PenLine}
-              title="You can't edit this activity"
-              description="Only the activity's creator (or the active group it's published under) can make changes."
-            />
-          </div>
-        </div>
-      </div>
+    return gate(
+      <EmptyState
+        icon={PenLine}
+        title="You can't edit this activity"
+        description="Only the activity's creator (or the active group it's published under) can make changes."
+        headingLevel={2}
+      >
+        {recordHref ? (
+          <Button href={recordHref} variant="secondary" size="sm">
+            View activity
+          </Button>
+        ) : null}
+      </EmptyState>,
     )
   }
 
@@ -819,22 +831,14 @@ export default function ActivityEditRoute({
   }
 
   return (
+    <PageContainer>
+    {pageHeader}
     <form
       onSubmit={(e) => {
         e.preventDefault()
         void doSave()
       }}
     >
-      <EditBanner
-        label="Editing activity"
-        error={error}
-        isSaving={isSubmitting}
-        canSave={canSubmit}
-        onCancel={handleCancel}
-        onSave={() => {
-          void doSave()
-        }}
-      />
       <article className="page-layout cert-detail--wide create-cert">
         <aside className="cert-detail__aside" aria-label="Activity metadata">
           <div className="cert-detail__image cert-detail__image--editing">
@@ -1055,9 +1059,7 @@ export default function ActivityEditRoute({
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Description</h2>
-            </div>
+            <SectionHeader title="Description" />
             <LeafletEditor
               value={description}
               onChange={setDescription}
@@ -1074,14 +1076,9 @@ export default function ActivityEditRoute({
           </section>
 
           <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">Contributors</h2>
-              {contributors.length > 0 ? (
-                <span className="cert-detail__section-count">
-                  {contributors.length}
-                </span>
-              ) : null}
-            </div>
+            <SectionHeader
+              title={<SectionTitleCount label="Contributors" count={contributors.length} />}
+            />
 
             {contributors.length === 0 ? (
               <p className="cert-detail__empty-line">
@@ -1302,6 +1299,16 @@ export default function ActivityEditRoute({
         </div>
       </article>
 
+      <FormActionBar
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        isSubmitting={isSubmitting}
+        submitDisabled={!canSubmit}
+        error={error}
+        onCancel={handleCancel}
+        identityLabel="Saving as"
+      />
+
       {isLocationDialogOpen && sessionDid ? (
         <LocationPickerDialog
           ownDid={sessionDid}
@@ -1317,5 +1324,6 @@ export default function ActivityEditRoute({
         />
       ) : null}
     </form>
+    </PageContainer>
   )
 }

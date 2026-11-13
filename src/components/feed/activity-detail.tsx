@@ -9,7 +9,11 @@ import {
   useLayoutEffect,
 } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
-import { usePageTitle, usePageDesktopTitle, usePageRecordMenu } from "@/lib/navbar-context"
+import {
+  usePageTitle,
+  usePageRecordMenu,
+  useRegisterPageHeader,
+} from "@/lib/navbar-context"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
@@ -72,6 +76,7 @@ import {
   ContributorRow,
   SlimTabHeadline,
   CertHeadlineColumns,
+  RecordSectionTabs,
 } from "./cert-detail-parts"
 import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
 import {
@@ -371,28 +376,13 @@ export default function ActivityDetail({
   // first rows aren't left hidden behind the fixed navbar.
   useScrollTopOnTabChange(activeTab)
 
-  // Navbar title: sub-tabs show the tab name next to the back arrow; the
-  // overview shows the activity's own name. (We deliberately don't prefix
-  // it with the author handle — the mobile bar is too narrow to show both,
-  // and the name is the useful identifier.)
-  usePageTitle(
-    activeTab === "contributors"
-      ? contributorCount > 0
-        ? `Contributors (${contributorCount})`
-        : "Contributors"
-      : activeTab === "funding"
-          ? shownFundingCount > 0
-            ? `Funding (${shownFundingCount})`
-            : "Funding"
-          : activeTab === "updates"
-            ? updatesCount > 0
-              ? `Updates (${updatesCount})`
-              : "Updates"
-            : value.title || "Activity",
-  )
-  // Desktop top bar keeps the activity's name on every tab (the tab strip is
-  // already visible there); only the mobile navbar title is tab-aware.
-  usePageDesktopTitle(value.title || "Activity")
+  // The record title is the page's h1 on every tab (the headline below), so
+  // the page registers its header and the chrome renders no h1 of its own.
+  // The navbar title (the phone bar's compact title next to the back
+  // chevron, and the document title) stays the activity's name on every
+  // tab: the phone tab strip below the title names the section.
+  useRegisterPageHeader()
+  usePageTitle(value.title || "Activity")
 
   // Edit affordance — the viewer can act on the cert when they're
   // signed in as the cert's creator. Two paths:
@@ -1029,18 +1019,16 @@ export default function ActivityDetail({
       </div>
       <div className="cert-detail__title-row">
         {editing ? (
-          // Bare/flush <Input> for the inline title edit. The detail
-          // page keeps the full 1.875rem serif headline scale (the
-          // create form shrinks it to 1.375rem); carried inline here
-          // since the legacy `.cert-detail__title-input` rule is now
-          // dead. borderWeight="hover" reproduces its 1.5px
-          // --border-hover / --fg-primary focus chrome.
+          // Bare/flush <Input> for the inline title edit, at the same
+          // ramp step as the read title (`text-h2`, the page title).
+          // borderWeight="hover" reproduces the 1.5px --border-hover /
+          // --fg-primary focus chrome.
           <Input
             flush
             size="bare"
             borderWeight="hover"
             type="text"
-            className="flex-[1_1_auto] min-w-0 font-headline !text-[1.875rem] font-bold !leading-[1.15] tracking-[-0.015em] text-[var(--fg-primary)] !px-2.5 py-1"
+            className="flex-[1_1_auto] min-w-0 font-headline !text-h2 text-[var(--fg-primary)] !px-2.5 py-1"
             value={drafts.title}
             maxLength={256}
             placeholder="Activity title"
@@ -1050,9 +1038,9 @@ export default function ActivityDetail({
             }
           />
         ) : (
-          <h2 className="cert-detail__title" dir="auto">
+          <h1 className="cert-detail__title" dir="auto">
             {effectiveValue.title?.trim() || "Untitled activity"}
-          </h2>
+          </h1>
         )}
         {!editing && rkey ? (
           // Three-dot record menu — DESKTOP only, right-aligned on the title
@@ -1517,6 +1505,19 @@ export default function ActivityDetail({
             row, actions in a three-dot menu, no date/project byline);
             Overview keeps the full headline with the byline columns. */}
         {activeTab === "overview" ? headline : slimHeadline}
+
+        {/* Phones: the record's sections as a tab strip under the title
+            (from 800px they live in the desktop top bar's second row). */}
+        <RecordSectionTabs
+          tabs={CERT_DETAIL_TABS}
+          activeKey={activeTab}
+          ariaLabel="Activity sections"
+          counts={{
+            contributors: contributorCount,
+            funding: shownFundingCount,
+            updates: updatesCount,
+          }}
+        />
 
         {/* Short description / summary. Rendered as a SIBLING of the tab
             panel (not inside it) so the mobile single-column order can place

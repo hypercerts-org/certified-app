@@ -17,11 +17,7 @@
    though, because the cert page does NOT use an overlay navbar; its
    content must start below the solid top bar. */
 
-.cert-detail-page {
-  padding-bottom: 64px;
-}
-
-.app-shell:has(.cert-detail--wide) .app-shell__content {
+.app-shell:has(.cert-detail--wide):not(:has(.page-container)) .app-shell__content {
   /* Zero ALL `.app-shell__content` padding so the cert page renders
      edge-to-edge like the profile page's `.app-shell--fullbleed`.
      Top spacing for the read-only view comes from the inner
@@ -34,7 +30,7 @@
    would let the title slide under it. Re-add the navbar-height top
    offset (the inner .page-layout's 24px provides the gap below it). */
 @media (max-width: 799px) {
-  .app-shell:has(.cert-detail--wide) .app-shell__content {
+  .app-shell:has(.cert-detail--wide):not(:has(.page-container)) .app-shell__content {
     padding-top: var(--navbar-height);
   }
 }
@@ -48,7 +44,7 @@
      read-only activity overview and the /create publish form (both
      carry `.cert-detail--wide`), so the app reads at one consistent
      width across activity, create, and project pages. */
-  .app-shell:has(.cert-detail--wide) .app-shell__content {
+  .app-shell:has(.cert-detail--wide):not(:has(.page-container)) .app-shell__content {
     max-width: 1008px;
   }
 
@@ -171,11 +167,6 @@
   .create-cert .cert-detail__section {
     order: 4;
   }
-  /* Cancel / Publish sit at the very end of the form (they carry no
-     order otherwise and would default to 0, jumping above the title). */
-  .create-cert .create-cert__actions {
-    order: 5;
-  }
 
   /* The single-column grid already provides a uniform 24px row gap
      between every promoted leaf (headline, image, each meta-row).
@@ -192,13 +183,9 @@
     border-top: none;
   }
 
-  /* Description / Contributors / Updates tabs: show only the tab
-     content. Hide the headline, image, and meta rows (the tab name +
-     count live in the navbar; the navbar Back button returns). */
-  .cert-detail--tab-description .cert-detail__headline,
-  .cert-detail--tab-contributors .cert-detail__headline,
-  .cert-detail--tab-funding .cert-detail__headline,
-  .cert-detail--tab-updates .cert-detail__headline,
+  /* Contributors / Funding / Updates tabs: the title (the page's h1) and
+     the section tab strip stay; the image and the Overview's meta rows
+     drop out so the tab's own content follows the strip. */
   .cert-detail--tab-description .cert-detail__image,
   .cert-detail--tab-contributors .cert-detail__image,
   .cert-detail--tab-funding .cert-detail__image,
@@ -210,27 +197,13 @@
     display: none;
   }
 
-  /* Contributors tab: title + count live in the navbar — drop the
-     in-main section header. */
-  .cert-detail--tab-contributors .cert-detail__section-header {
-    display: none;
+  /* The section tab strip sits right under the title (same order as the
+     headline, after it in the DOM). */
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__phone-tabs {
+    order: 1;
   }
 
-  /* Funding tab: the "Funding" title + count live in the navbar, so drop
-     them from the in-main section header (the record-funding + Confirmed-by
-     filter controls in the header stay). */
-  .cert-detail--tab-funding .cert-detail__section-title,
-  .cert-detail--tab-funding .cert-detail__section-count {
-    display: none;
-  }
-
-  /* Updates tab: the title + count live in the navbar, so drop the
-     in-body updates header (heading + count) and reset the section's
-     top divider/padding so the first update sits at the top — matching
-     the project detail page's Updates tab. */
-  .cert-detail--tab-updates .context-updates__head {
-    display: none;
-  }
+  /* Updates tab: the first update sits right under the tab strip. */
   .cert-detail--wide.cert-detail--tab-updates:not(.cert-detail--editing)
     .context-updates {
     margin-top: 0;
@@ -239,24 +212,7 @@
   }
 }
 
-/* ---------- Loading + error ---------- */
-
-.cert-detail__loading,
-.cert-detail__error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 96px 24px;
-  text-align: center;
-}
-
-.cert-detail__error-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0 0 6px;
-}
+/* ---------- Inline error line (location picker) ---------- */
 
 .cert-detail__error-desc {
   font-size: 0.875rem;
@@ -336,12 +292,14 @@
 .cert-detail__title-input {
   flex: 1 1 auto;
   min-width: 0;
+  /* The serif title role at the ramp's h3 step (record title), the same
+     size the /create title input uses. */
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.875rem;
-  font-weight: 700;
+  font-size: var(--text-h3);
+  font-weight: 600;
   color: var(--fg-primary);
-  line-height: 1.15;
-  letter-spacing: -0.015em;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   border: 1.5px solid var(--border-hover);
   border-radius: var(--radius);
   padding: 4px 10px;
@@ -614,15 +572,18 @@
   }
 }
 
+/* The record title: the page's h1, at the page-title step of the ramp
+   (`text-h2`, as in <PageHeader>) at every width. */
 .cert-detail__title {
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.875rem;
-  font-weight: 700;
+  font-size: var(--text-h2);
+  font-weight: 600;
   color: var(--fg-primary);
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.015em;
   margin: 0;
   word-break: break-word;
+  text-wrap: balance;
 }
 
 .cert-detail__short-desc {
@@ -892,6 +853,21 @@
   width: auto;
   min-height: 0;
   aspect-ratio: 1 / 1;
+}
+
+/* Phones: the title takes the full width; the author and the menu sit on
+   their own row below it, as on the Overview headline. */
+@media (max-width: 799px) {
+  .cert-detail__headline--slim .cert-detail__title-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .cert-slim-headline__trailing {
+    margin-left: 0;
+    justify-content: space-between;
+  }
 }
 
 /* Skeletons */
@@ -1196,35 +1172,44 @@
   outline-offset: 2px;
 }
 
+/* Section heading inside a record page (Description, Contributors,
+   Funding, …): the `text-section` role, Inter 600 at 1rem, as in
+   <SectionHeader>. Headings carry no icon (the legacy 12px glyphs that
+   are still in the markup are hidden), and a count rides beside the
+   title, muted and tabular. */
 .cert-detail__section-title {
-  /* Match the .cert-detail__meta-label headings (Summary / Locations / …)
-     so every section label on the activity page reads the same: icon +
-     uppercase label + bare count (`.cert-detail__meta-count`). */
-  font-size: 0.6875rem;
+  font-size: var(--text-section);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  color: var(--fg-muted);
+  line-height: 1.4;
+  color: var(--fg-primary);
   margin: 0;
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  align-items: baseline;
+  gap: 8px;
 }
 
-/* Count beside a section title. Same bare look as `.cert-detail__meta-count`
-   (no pill) so it matches the icon + label + count section pattern. */
+.cert-detail__section-title > svg {
+  display: none;
+}
+
+.cert-detail__section-title .cert-detail__meta-count {
+  font-size: inherit;
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+/* Count beside a section title: muted and tabular, no pill. */
 .cert-detail__section-count {
-  color: var(--fg-secondary);
-  font-size: 0.6875rem;
-  font-weight: 500;
+  color: var(--fg-muted);
+  font-size: var(--text-section);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
-/* Pull a sibling count in tight to its title (the header's 12px gap is
-   for the trailing actions), matching the 4px label/count gap. */
+/* Pull a sibling count in to the title's own 8px gap (the header's 12px
+   gap is for the trailing actions). */
 .cert-detail__section-title + .cert-detail__section-count {
-  margin-left: -8px;
+  margin-left: -4px;
 }
 
 /* ---------- Funding receipts list ----------
@@ -1923,18 +1908,6 @@
   gap: 4px;
 }
 
-/* Auth loading spinner — centered in the dashboard main pane
-   while the session check is in flight. The /create page resolves
-   `useAuth().isLoading` first; rendering the EmptyState during
-   that window flashed a "Sign in to create" message on every
-   refresh even for already-signed-in users. */
-.create-cert__auth-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-}
-
 .create-cert__contrib-list {
   list-style: none;
   margin: 0;
@@ -2432,10 +2405,6 @@
   .create-cert__loc-combobox:has(.create-cert__loc-search-again) > input {
     padding-right: 48px;
   }
-  /* Let the Cancel/Publish action row wrap instead of crowding on tiny phones. */
-  .create-cert__actions {
-    flex-wrap: wrap;
-  }
 }
 
 .create-cert__loc-suggestions {
@@ -2523,13 +2492,6 @@
   padding-top: 4px;
 }
 
-.create-cert__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 12px;
-}
-
 /* ---------- Expand-map button + modal ---------- */
 
 /* Small icon button overlaying the top-right of the map. Sized
@@ -2570,10 +2532,89 @@
   height: min(720px, 70vh);
 }
 
-/* ---------- Mobile tweaks ---------- */
 
-@media (max-width: 799px) {
-  .cert-detail__title {
-    font-size: 1.5rem;
+/* ========== Inside <PageContainer> ==========
+   Create, edit and record pages render in the PageContainer primitive,
+   which owns the page width, gutters and top/bottom space. The legacy
+   frames drop their own padding and width there (the shell override at
+   the top of this file already steps aside via `:not(:has(.page-container))`). */
+.page-container .cert-detail--wide.page-layout {
+  padding: 0;
+}
+
+/* ========== Form action bar ==========
+   <FormActionBar> (src/components/create/form-action-bar.tsx): the one
+   action bar every create and edit form ends with. "Publishing as …" on
+   the left, Cancel + the primary action on the right. Sticky at the
+   bottom of the viewport (above the phone tab bar) while the form
+   scrolls; it settles at the end of the form once you reach it. It
+   bleeds into the page gutters so its hairline spans the column: the
+   shell's 16px below 800px, the container's --page-gutter from 800px. */
+.form-action-bar {
+  position: sticky;
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-rail-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 32px -16px 0;
+  padding: 12px 16px;
+  background: var(--navbar-bg);
+  border-top: 1px solid var(--border-subtle);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+}
+
+.form-action-bar__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.form-action-bar__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Phones: identity line on top, the two buttons share the row below. */
+.form-action-bar__buttons > * {
+  flex: 1 1 0;
+}
+
+.form-action-bar__error {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--color-error);
+}
+
+@media (min-width: 800px) {
+  .form-action-bar {
+    margin-inline: calc(-1 * var(--page-gutter, 24px));
+    padding-inline: var(--page-gutter, 24px);
+  }
+
+  .form-action-bar__row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .form-action-bar__buttons {
+    flex-shrink: 0;
+  }
+
+  .form-action-bar__buttons > * {
+    flex: 0 0 auto;
+  }
+
+  /* The floating Feedback button rests bottom-right over where the bar's
+     primary button sits on narrower desktops. Lift it clear of the bar
+     while a form is mounted (translate composes with the offset the
+     trigger sets itself when the footer scrolls into view). */
+  html:has(.form-action-bar) .feedback-trigger {
+    translate: 0 -64px;
   }
 }

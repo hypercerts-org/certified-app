@@ -32,6 +32,7 @@ vi.mock("@/lib/groups/org-context", () => ({
 
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => {},
+  useRegisterPageHeader: () => {},
 }))
 
 const SEEDED_VALUE = {
@@ -100,9 +101,9 @@ describe("project edit save — conflict re-read uses authFetch", () => {
 
     render(<ProjectEditRoute did={DID} rkey={RKEY} resolving={false} />)
 
-    // The Save button comes from the sticky EditBanner. It's enabled
+    // The Save button comes from the sticky FormActionBar. It's enabled
     // because the seeded title is >= 5 graphemes and a mountSnapshot is set.
-    const saveBtn = await screen.findByRole("button", { name: "Save" })
+    const saveBtn = await screen.findByRole("button", { name: "Save changes" })
 
     fireEvent.click(saveBtn)
 

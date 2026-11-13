@@ -46,63 +46,13 @@
 @media (min-width: 800px) {
   /* Match the fullbleed width used by profile / settings / workspace
      / cert-detail so the app reads with one consistent "wide" width. */
-  .app-shell:has(.project-detail--wide) .app-shell__content {
+  .app-shell:has(.project-detail--wide):not(:has(.page-container)) .app-shell__content {
     max-width: 1280px;
   }
 
   .project-detail {
     max-width: 960px;
   }
-
-  /* The edit banner sits above the article inside the widened (1280px)
-     content area. Align its border box with the visible content below:
-     the article column (`.project-detail`) is 960px wide with 16px side
-     padding, so the hero/title sit in a 928px box. Cap the banner to
-     that (960 − 2×16) and center it so its edges line up with the hero
-     and title, not the column's padding edge. Two-class selector
-     outranks the base `.edit-banner` margin + the `mx-6` utility, so
-     margin-inline:auto wins reliably. */
-  .edit-banner.edit-banner--project {
-    max-width: calc(960px - 32px);
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-@media (max-width: 799px) {
-  /* Below desktop the column caps at 720px (same 16px side padding). */
-  .edit-banner.edit-banner--project {
-    max-width: calc(720px - 32px);
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-/* ---------- Loading / error ---------- */
-
-.project-detail__loading,
-.project-detail__error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 24px;
-  text-align: center;
-}
-
-.project-detail__error-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  margin: 0 0 6px;
-}
-
-.project-detail__error-desc {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  margin: 0;
-  max-width: 32ch;
-  line-height: 1.5;
 }
 
 /* ---------- Persistent head bar ----------
@@ -234,12 +184,14 @@
    lines rather than truncating to one; the element's title attribute
    carries the full text. */
 .project-detail__title {
+  /* The page's h1 at the page-title step of the ramp (`text-h2`, as in
+     <PageHeader>) at every width. */
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--text-h2);
+  font-weight: 600;
   color: var(--fg-primary);
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   margin: 0;
   /* Constrained by the parent `.project-detail__head-title-group`'s
      flex 1; min-width:0 lets the title wrap within its column
@@ -253,12 +205,6 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
   overflow: hidden;
-}
-
-@media (min-width: 800px) {
-  .project-detail__title {
-    font-size: 1.75rem;
-  }
 }
 
 /* Mobile: the Edit + Delete actions cluster starves the title's flex
@@ -521,35 +467,20 @@
     order: 10;
   }
 
-  /* Description / Updates / Activities tabs: show only the tab content —
-     hide the title bar and byline (the tab name lives in the navbar;
-     Back returns). */
-  .project-detail--tab-description .project-detail__head-bar,
-  .project-detail--tab-updates .project-detail__head-bar,
-  .project-detail--tab-activities .project-detail__head-bar,
-  .project-detail--tab-description:not(.project-detail--editing)
-    .project-detail__byline,
-  .project-detail--tab-updates:not(.project-detail--editing)
-    .project-detail__byline,
-  .project-detail--tab-activities:not(.project-detail--editing)
-    .project-detail__byline {
-    display: none;
+  /* Every tab keeps the title (the page's h1), the byline and the section
+     tab strip, which sits right under the byline. The tab content (the
+     TabPanelTransition wrapper, whose own children carry the orders
+     above) follows them; without an order it defaults to 0 and would
+     render above the title. */
+  .project-detail:not(.project-detail--editing) .cert-detail__phone-tabs {
+    order: 2;
+  }
+  .project-detail:not(.project-detail--editing) > .project-detail__body {
+    order: 3;
   }
 
-  /* Activities tab (view mode): the title + count live in the navbar,
-     so drop the in-main section header — just the gallery. */
-  .project-detail--tab-activities:not(.project-detail--editing)
-    .project-detail__certs-header {
-    display: none;
-  }
-
-  /* Updates tab: the title + count live in the navbar, so drop the
-     whole in-main header (heading + count) and the section's top
-     divider/padding so the first update sits right at the top. The
+  /* Updates tab: the first update sits right under the tab strip. The
      compound selector beats the standardized 24px section margin. */
-  .project-detail--tab-updates .context-updates__head {
-    display: none;
-  }
   .project-detail.project-detail--tab-updates:not(.project-detail--editing)
     .context-updates {
     border-top: none;
@@ -923,22 +854,16 @@
   width: 100%;
   min-width: 0;
   font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--text-h2);
+  font-weight: 600;
   color: var(--fg-primary);
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   background: var(--bg-elevated);
   border: 1.5px solid var(--border-hover);
   border-radius: var(--radius);
   padding: 4px 10px;
   word-break: break-word;
-}
-
-@media (min-width: 800px) {
-  .project-detail__title-input {
-    font-size: 1.75rem;
-  }
 }
 
 .project-detail__title-input:focus {
@@ -1281,12 +1206,6 @@
     max-width: 50%;
     margin-inline: auto;
   }
-  /* Cancel / Create group pinned to the very end of the form, after the
-     organization-type field. Higher specificity than the create-project
-     `> *` order rule so it wins regardless of source order. */
-  .create-group .project-detail > .create-cert__actions {
-    order: 9;
-  }
 }
 
 /* Create / edit project form (mobile): lead with the title, then the
@@ -1307,4 +1226,26 @@
     /* A little breathing room between the title and the image section. */
     margin-top: 12px;
   }
+}
+
+/* ========== Inside <PageContainer> ==========
+   Project forms and the project page render in the PageContainer
+   primitive, which owns the width, gutters and top/bottom space. The
+   legacy column (`.project-detail`: its own max width, auto margins and
+   16px sides) and the page wrapper's bottom padding step aside there.
+   Forms fill the narrow container; the project page keeps its 960px
+   reading column, centred in the default container. */
+.page-container .project-detail-page {
+  padding: 0;
+}
+
+.page-container .create-project .project-detail {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-container .project-detail--wide.project-detail {
+  margin: 0 auto;
+  padding: 0;
 }

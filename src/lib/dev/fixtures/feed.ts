@@ -283,3 +283,38 @@ export function activityEditRecord(): {
     },
   }
 }
+
+/** Stable rkey for the `/dev/preview/project` surface's project record. */
+export const MOCK_PROJECT_RKEY = "previewproject001"
+
+/**
+ * A project (`org.hypercerts.collection`, type project) for the
+ * `/dev/preview/project` surface: `useProject` reads it through the mocked
+ * getRecord. Holds the activity fixture as its one item.
+ */
+export function projectDetailRecord(): {
+  uri: string
+  cid: string
+  value: Record<string, unknown>
+} {
+  return {
+    uri: `at://${MOCK_DID}/org.hypercerts.collection/${MOCK_PROJECT_RKEY}`,
+    cid: "bafyprojectdetail00000000000000000000000000000000000000000",
+    value: {
+      $type: "org.hypercerts.collection",
+      type: "project",
+      title: "Tagus estuary restoration",
+      shortDescription:
+        "Restoring mangrove and salt-marsh habitat along the Tagus estuary, season by season.",
+      createdAt: "2024-01-05T09:00:00.000Z",
+      items: [
+        {
+          itemIdentifier: {
+            uri: `at://${MOCK_DID}/org.hypercerts.claim.activity/${MOCK_ACTIVITY_RKEY}`,
+            cid: "bafyactivityedit0000000000000000000000000000000000000000000",
+          },
+        },
+      ],
+    },
+  }
+}

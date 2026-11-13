@@ -9,9 +9,11 @@
 
 import { memo, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { FolderGit2, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
+import type { DetailTab } from "@/lib/detail-tabs"
+import { Tabs, TabList, Tab } from "@/components/ui/tabs"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { projectImage, projectTitle } from "@/lib/atproto/collection"
 import {
@@ -26,6 +28,7 @@ import { getInitials } from "@/lib/utils/initials"
 import { deriveIdentity } from "@/lib/utils/identity"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import Skeleton from "@/components/ui/skeleton"
 import {
   Popover,
   PopoverTrigger,
@@ -238,7 +241,9 @@ export function SlimTabHeadline({
   return (
     <header className="cert-detail__headline cert-detail__headline--slim">
       <div className="cert-detail__title-row">
-        <h2 className="cert-detail__title" dir="auto">{title}</h2>
+        {/* The record title is the page's one h1 on every tab (the page
+            registers its header, so the chrome renders none). */}
+        <h1 className="cert-detail__title" dir="auto">{title}</h1>
 
         {/* Author + actions sit together at the right edge; the author's
             own content stays left-aligned (avatar then name/handle). The
@@ -304,6 +309,102 @@ export function SlimTabHeadline({
         </div>
       </div>
     </header>
+  )
+}
+
+/**
+ * Loading placeholder for a record page (activity or project), shaped like
+ * the content: the title, the byline, the phone tab strip, then a few lines
+ * of body text. Announced once through the wrapper's `aria-label`; the bars
+ * themselves are `aria-hidden` (Skeleton).
+ */
+export function RecordDetailSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label} className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <Skeleton variant="line" width="min(32rem, 85%)" height="2rem" />
+        <div className="flex items-center gap-2">
+          <Skeleton variant="circle" width={32} height={32} />
+          <Skeleton variant="line" width="10rem" height="0.875rem" />
+        </div>
+      </div>
+      <Skeleton variant="line" width="100%" height="2.75rem" className="md:hidden" />
+      <div className="flex max-w-measure flex-col gap-2">
+        <Skeleton variant="line" width="100%" height="1rem" />
+        <Skeleton variant="line" width="92%" height="1rem" />
+        <Skeleton variant="line" width="60%" height="1rem" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Phone tab strip for a record's sections (activity: Overview /
+ * Contributors / Funding / Updates; project: Overview / Description /
+ * Activities / Updates). Below 800px only: from 800px the same tabs live
+ * in the desktop top bar's second row.
+ *
+ * Each tab is a real link (`?tab=<key>` on the current path, other query
+ * params kept, so filters survive a switch) that REPLACES the history
+ * entry and keeps the scroll position, mirroring the desktop strip. The
+ * row scrolls sideways when the tabs don't fit; counts, when given, ride
+ * on the tab as a muted badge.
+ */
+export function RecordSectionTabs({
+  tabs,
+  activeKey,
+  ariaLabel,
+  counts,
+}: {
+  tabs: DetailTab[]
+  activeKey: string
+  ariaLabel: string
+  counts?: Partial<Record<string, number>>
+}) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const hrefFor = (t: DetailTab): string => {
+    const base = pathname ?? ""
+    if (t.subRoute) return `${base}/${t.subRoute}`
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
+    if (t.key === "overview") params.delete("tab")
+    else params.set("tab", t.key)
+    const qs = params.toString()
+    return qs ? `${base}?${qs}` : base
+  }
+
+  return (
+    <div className="cert-detail__phone-tabs md:hidden">
+      {/* Link tabs: `value` follows the URL, so onChange has nothing to do. */}
+      <Tabs value={activeKey} onChange={() => {}}>
+        <TabList
+          aria-label={ariaLabel}
+          className="flex w-full overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {tabs.map((t) => {
+            const count = counts?.[t.key]
+            return (
+              <Tab
+                key={t.key}
+                value={t.key}
+                href={hrefFor(t)}
+                linkProps={{ replace: true, scroll: false }}
+                className="shrink-0 whitespace-nowrap"
+              >
+                {t.label}
+                {/* A quiet section count (the Tab's own `count` badge is
+                    the red notification style). */}
+                {count && count > 0 ? (
+                  <span className="font-normal tabular-nums text-[var(--fg-muted)]">
+                    {count}
+                  </span>
+                ) : null}
+              </Tab>
+            )
+          })}
+        </TabList>
+      </Tabs>
+    </div>
   )
 }
 

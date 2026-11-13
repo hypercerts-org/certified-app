@@ -32,6 +32,9 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import FormActionBar from "@/components/create/form-action-bar"
 import ImageEditOverlay from "@/components/feed/image-edit-overlay"
 import type { UploadedBlob } from "@/lib/atproto/profile"
 import type {
@@ -359,16 +362,25 @@ export default function CreateGroupPage() {
     }
   }
 
+  // The page's one header (DESIGN.md §9.13), shared by every state below so
+  // the page keeps its frame while auth and the group count resolve.
+  const pageHeader = (
+    <PageHeader
+      back={{ href: "/home", label: "Home" }}
+      title="New group"
+      description="A shared account your team can publish records as."
+    />
+  )
+
   // Still resolving auth or the self-created-org count.
   if (authLoading || isChecking) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main create-cert__auth-loading">
-            <LoadingSpinner size="md" />
-          </div>
+      <PageContainer width="narrow">
+        {pageHeader}
+        <div className="flex justify-center py-16">
+          <LoadingSpinner size="md" />
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
@@ -378,48 +390,43 @@ export default function CreateGroupPage() {
   // out. Render a recoverable state with a clear primary action instead.
   if (!did) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={Users}
-              title="Sign in to create a group"
-              description="You need to be signed in to start a new group."
-            >
-              <Button variant="primary" onClick={() => openSignIn()}>
-                Sign in
-              </Button>
-            </EmptyState>
-          </div>
-        </div>
-      </div>
+      <PageContainer width="narrow">
+        {pageHeader}
+        <EmptyState
+          icon={Users}
+          title="Sign in to create a group"
+          description="You need to be signed in to start a new group."
+          headingLevel={2}
+        >
+          <Button variant="primary" onClick={() => openSignIn()}>
+            Sign in
+          </Button>
+        </EmptyState>
+      </PageContainer>
     )
   }
 
   if (limitReached) {
     return (
-      <div className="dashboard">
-        <div className="dashboard__body">
-          <div className="dashboard__main">
-            <EmptyState
-              icon={Users}
-              title="Group limit reached"
-              description={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups. Leave or delete one to make room for a new group.`}
-            >
-              <Button
-                variant="secondary"
-                onClick={() => router.push("/home")}
-              >
-                Back to home
-              </Button>
-            </EmptyState>
-          </div>
-        </div>
-      </div>
+      <PageContainer width="narrow">
+        {pageHeader}
+        <EmptyState
+          icon={Users}
+          title="Group limit reached"
+          description={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups. Leave or delete one to make room for a new group.`}
+          headingLevel={2}
+        >
+          <Button variant="secondary" href="/home">
+            Back to Home
+          </Button>
+        </EmptyState>
+      </PageContainer>
     )
   }
 
   return (
+    <PageContainer width="narrow">
+    {pageHeader}
     <form onSubmit={handleSubmit}>
       <article className="project-detail-page project-detail--wide create-project create-group">
         <div className="project-detail">
@@ -704,33 +711,6 @@ export default function CreateGroupPage() {
             </div>
           </section>
 
-          {error ? (
-            <p className="cert-detail__error-desc" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="create-cert__actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (confirmDiscard()) router.push("/home")
-              }}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isCreating}
-              disabled={isCreating}
-            >
-              {isCreating ? "Creating…" : "Create group"}
-            </Button>
-          </div>
-
           <aside className="create-group__convert">
             <ArrowLeftRight
               size={16}
@@ -754,6 +734,19 @@ export default function CreateGroupPage() {
         </div>
       </article>
 
+      {/* No "Publishing as" line: a new group is its own account, created
+          from your personal one. */}
+      <FormActionBar
+        submitLabel="Create group"
+        submittingLabel="Creating…"
+        isSubmitting={isCreating}
+        error={error}
+        identityLabel={null}
+        onCancel={() => {
+          if (confirmDiscard()) router.push("/home")
+        }}
+      />
+
       {confirmOpen ? (
         <ConfirmDialog
           title="Confirm the group's email"
@@ -767,5 +760,6 @@ export default function CreateGroupPage() {
         />
       ) : null}
     </form>
+    </PageContainer>
   )
 }
