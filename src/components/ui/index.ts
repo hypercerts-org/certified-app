@@ -87,6 +87,12 @@ export * from "./loading-spinner";
 export { default as LoadMoreSentinel } from "./load-more-sentinel";
 export * from "./load-more-sentinel";
 
+export { default as PageContainer } from "./page-container";
+export * from "./page-container";
+
+export { default as PageHeader } from "./page-header";
+export * from "./page-header";
+
 export { default as Pagination } from "./pagination";
 export * from "./pagination";
 
@@ -105,11 +111,17 @@ export * from "./responsive-dialog";
 export { default as RowThumb } from "./row-thumb";
 export * from "./row-thumb";
 
+export { default as SectionHeader } from "./section-header";
+export * from "./section-header";
+
 export { default as SegmentedControl } from "./segmented-control";
 export * from "./segmented-control";
 
 export { default as Select } from "./select";
 export * from "./select";
+
+export { default as SideNav } from "./side-nav";
+export * from "./side-nav";
 
 export { default as SignInModal } from "./sign-in-modal";
 export * from "./sign-in-modal";
@@ -119,6 +131,9 @@ export * from "./skeleton";
 
 export { default as SmartLink } from "./smart-link";
 export * from "./smart-link";
+
+export { default as StatRow } from "./stat-row";
+export * from "./stat-row";
 
 export { default as Switch } from "./switch";
 export * from "./switch";

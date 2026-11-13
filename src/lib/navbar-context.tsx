@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  ReactNode,
+} from "react";
 
 /**
  * Navbar rendering modes:
@@ -94,6 +102,10 @@ interface NavbarValues {
    *  read-only sections mid-edit. Set by the profile page, read by
    *  `<DesktopTopBar />`. */
   profileEditing: boolean;
+  /** True while at least one `<PageHeader>` is mounted. The page then owns
+   *  its visible `<h1>`, so the chrome must not render its own (visible or
+   *  visually hidden) h1. See `useRegisterPageHeader`. */
+  hasPageHeader: boolean;
 }
 
 /**
@@ -111,6 +123,9 @@ interface NavbarSetters {
   setProfileAboutAvailable: (v: boolean) => void;
   setProfileGroupsAvailable: (v: boolean) => void;
   setProfileEditing: (v: boolean) => void;
+  /** Register a mounted `<PageHeader>`. Returns the matching unregister
+   *  function. Ref-counted, so nested or remounting headers are safe. */
+  registerPageHeader: () => () => void;
 }
 
 type NavbarContextValue = NavbarValues & NavbarSetters;
@@ -124,6 +139,7 @@ const defaultValues: NavbarValues = {
   profileAboutAvailable: false,
   profileGroupsAvailable: false,
   profileEditing: false,
+  hasPageHeader: false,
 };
 
 const defaultSetters: NavbarSetters = {
@@ -135,6 +151,7 @@ const defaultSetters: NavbarSetters = {
   setProfileAboutAvailable: () => {},
   setProfileGroupsAvailable: () => {},
   setProfileEditing: () => {},
+  registerPageHeader: () => () => {},
 };
 
 const NavbarValuesContext = createContext<NavbarValues>(defaultValues);
@@ -151,6 +168,21 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   const [profileGroupsAvailable, setProfileGroupsAvailable] =
     useState<boolean>(false);
   const [profileEditing, setProfileEditing] = useState<boolean>(false);
+  // How many <PageHeader>s are mounted. A count rather than a boolean so a
+  // header that remounts (StrictMode, a key change, two briefly overlapping
+  // during a route transition) never clears the flag for the one that stays.
+  const [pageHeaderCount, setPageHeaderCount] = useState(0);
+  const registerPageHeader = useCallback(() => {
+    setPageHeaderCount((n) => n + 1);
+    let registered = true;
+    return () => {
+      // Guard against a double unregister driving the count below zero.
+      if (!registered) return;
+      registered = false;
+      setPageHeaderCount((n) => Math.max(0, n - 1));
+    };
+  }, []);
+  const hasPageHeader = pageHeaderCount > 0;
   // Setters are stable across renders, so this memo never recomputes and the
   // setters context keeps one identity for the provider's lifetime.
   const setters = useMemo<NavbarSetters>(
@@ -163,6 +195,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setProfileAboutAvailable,
       setProfileGroupsAvailable,
       setProfileEditing,
+      registerPageHeader,
     }),
     [
       setPageTitle,
@@ -173,6 +206,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       setProfileAboutAvailable,
       setProfileGroupsAvailable,
       setProfileEditing,
+      registerPageHeader,
     ]
   );
   const values = useMemo<NavbarValues>(
@@ -185,6 +219,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       profileAboutAvailable,
       profileGroupsAvailable,
       profileEditing,
+      hasPageHeader,
     }),
     [
       pageTitle,
@@ -195,6 +230,7 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       profileAboutAvailable,
       profileGroupsAvailable,
       profileEditing,
+      hasPageHeader,
     ]
   );
   return (
@@ -228,7 +264,8 @@ export function useNavbarContext(): NavbarContextValue {
  * Set the navbar title for the current page. While mounted, the navbar
  * switches to a titled layout: a back icon on the left, the title in the
  * center, and an empty right slot. The page itself should not render its
- * own `<h1>` page title since the navbar now carries it.
+ * own `<h1>` page title since the navbar now carries it, unless the page
+ * renders a `<PageHeader>` (see `useRegisterPageHeader`).
  *
  * Usage:
  *   export default function SettingsPage() {
@@ -242,6 +279,36 @@ export function usePageTitle(title: string) {
     setPageTitle(title);
     return () => setPageTitle(null);
   }, [setPageTitle, title]);
+}
+
+/**
+ * The chrome h1 contract (DESIGN.md §3.6). Every page has exactly one
+ * `<h1>`:
+ *
+ * - A page that renders `<PageHeader>` owns it: the header's title is the
+ *   visible h1. While a PageHeader is mounted, the chrome (mobile navbar,
+ *   desktop top bar) must NOT render its own h1, visible or visually hidden.
+ *   It may still show the title as plain text (e.g. a compact phone title).
+ * - A page without a PageHeader keeps the chrome's h1 (the `usePageTitle`
+ *   value) as the fallback.
+ *
+ * `<PageHeader>` calls this; pages don't. Registers on mount and
+ * unregisters on unmount. The registry is ref-counted, so nested,
+ * remounting or briefly overlapping headers are fine.
+ */
+export function useRegisterPageHeader() {
+  const { registerPageHeader } = useContext(NavbarSettersContext);
+  useEffect(() => registerPageHeader(), [registerPageHeader]);
+}
+
+/**
+ * True while a `<PageHeader>` is mounted, i.e. the page renders its own
+ * visible `<h1>`. Chrome readers check this and skip their own h1 when it
+ * is true (see `useRegisterPageHeader`). Subscribes to the live navbar
+ * values, so only chrome components should call it.
+ */
+export function useHasPageHeader(): boolean {
+  return useContext(NavbarValuesContext).hasPageHeader;
 }
 
 /**

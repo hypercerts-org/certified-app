@@ -10,6 +10,11 @@ import {
   List,
   LayoutGrid,
   Check,
+  FolderGit2,
+  ThumbsUp,
+  UserCheck,
+  Users,
+  Plus,
 } from "lucide-react";
 
 import Badge from "@/components/ui/badge";
@@ -54,7 +59,12 @@ import LoadMoreSentinel from "@/components/ui/load-more-sentinel";
 import EditBanner from "@/components/ui/edit-banner";
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog";
 import SignInModal from "@/components/ui/sign-in-modal";
+import PageHeader from "@/components/ui/page-header";
+import SectionHeader, { SeeAllLink } from "@/components/ui/section-header";
+import SideNav from "@/components/ui/side-nav";
+import StatRow from "@/components/ui/stat-row";
 import { useFeedback } from "@/lib/feedback-context";
+import { useHasPageHeader } from "@/lib/navbar-context";
 
 /* -------------------------------------------------------------------------- *
  * Layout helpers (gallery-local; not part of the design system).             *
@@ -119,6 +129,9 @@ export default function GalleryPage() {
   const [iconView, setIconView] = useState("list");
   const [pillView, setPillView] = useState("week");
   const [responses, setResponses] = useState<string[]>(["accept"]);
+  const [sideNavKey, setSideNavKey] = useState("activities");
+  // The chrome side of the PageHeader h1 contract (live).
+  const hasPageHeader = useHasPageHeader();
 
   // Overlay open-flags.
   const [appDialogOpen, setAppDialogOpen] = useState(false);
@@ -164,15 +177,19 @@ export default function GalleryPage() {
   return (
     <div className="min-h-screen w-full bg-[var(--bg-canvas)] px-6 py-12">
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-12">
-        <header className="flex flex-col gap-2">
-          <h1 className="font-headline text-h1 text-[var(--fg-primary)]">
-            Component gallery
-          </h1>
-          <p className="text-body text-[var(--fg-secondary)]">
-            Live render of every <code>@/components/ui/*</code> primitive with
-            its variants and states. Dev-only.
-          </p>
-        </header>
+        {/* The page's one h1 is a live <PageHeader> (see "Page layout"). */}
+        <PageHeader
+          back={{ href: "/home", label: "Home" }}
+          visual={<Brandmark size={40} decorative />}
+          title="Component gallery"
+          description={
+            <>
+              Live render of every <code>@/components/ui/*</code> primitive
+              with its variants and states. Dev-only.
+            </>
+          }
+          actions={<ThemeToggle variant="cycle" />}
+        />
 
         {/* ================================================================ */}
         {/* CORE INTERACTIVE                                                 */}
@@ -625,6 +642,130 @@ export default function GalleryPage() {
                 </TabList>
               </Tabs>
             </div>
+          </Row>
+        </Section>
+
+        {/* ================================================================ */}
+        {/* PAGE LAYOUT (redesign 2026-11)                                   */}
+        {/* ================================================================ */}
+        <Section title="Page layout">
+          <Row label="PageHeader — the header at the top of this page">
+            <p className="m-0 text-body-sm text-[var(--fg-secondary)] text-pretty">
+              Back link, visual, serif <code>text-h2</code> title as the
+              page&apos;s <code>&lt;h1&gt;</code>, one line of description and
+              actions on the right (they wrap under the title below 800px).
+              Mounted, it tells the chrome to skip its own h1:{" "}
+              <code data-testid="has-page-header">
+                useHasPageHeader() = {String(hasPageHeader)}
+              </code>
+              .
+            </p>
+          </Row>
+
+          <Row label="PageContainer — widths (gutters sit outside)">
+            <ul className="m-0 flex list-none flex-col gap-1 p-0 text-body-sm text-[var(--fg-secondary)]">
+              <li>
+                <code>narrow</code>: 720px, Help and forms
+              </li>
+              <li>
+                <code>default</code>: 1120px
+              </li>
+              <li>
+                <code>wide</code>: 1280px, the profile
+              </li>
+              <li>
+                Gutters: the shell&apos;s 16px below 800px, 24px from 800px,
+                32px from 1100px. Top 8px (phone) / 32px; bottom 32px / 64px.
+              </li>
+            </ul>
+          </Row>
+
+          <Row label="Type roles — title (serif) vs. section (Inter 600)">
+            <div className="flex w-full flex-col gap-2">
+              <span className="font-headline text-h2 text-[var(--fg-primary)]">
+                Page title, text-h2
+              </span>
+              <span className="text-section text-[var(--fg-primary)]">
+                Section heading, text-section
+              </span>
+              <span className="text-body-sm text-[var(--fg-secondary)]">
+                Body, text-body-sm
+              </span>
+            </div>
+          </Row>
+
+          <Row label="SectionHeader — description + SeeAllLink">
+            <div className="flex w-full flex-col gap-3">
+              <SectionHeader
+                as="h3"
+                title="Your records"
+                description="What you have published, here or in other apps."
+                action={<SeeAllLink href="/records" />}
+              />
+              <div className="text-body-sm text-[var(--fg-muted)]">
+                (section content, 12px below)
+              </div>
+            </div>
+          </Row>
+
+          <Row label="SectionHeader — button action, no description">
+            <div className="w-full">
+              <SectionHeader
+                as="h3"
+                title="Your groups"
+                action={
+                  <Button variant="secondary" size="sm">
+                    <Plus size={14} aria-hidden />
+                    New group
+                  </Button>
+                }
+              />
+            </div>
+          </Row>
+
+          <Row label="SeeAllLink — custom label">
+            <SeeAllLink href="/apps" label="All apps" />
+          </Row>
+
+          <Row label="SideNav — pills below 1100px, a column from 1100px">
+            <div className="w-full max-w-[260px] lg:max-w-[220px]">
+              <SideNav
+                aria-label="Gallery sections demo"
+                sticky={false}
+                items={[
+                  { key: "activities", label: "Projects / Activities", icon: FolderGit2 },
+                  { key: "endorsements", label: "Endorsements", icon: ThumbsUp },
+                  { key: "following", label: "Following", icon: UserCheck, count: 128 },
+                  { key: "followers", label: "Followers", icon: Users, count: "…" },
+                ].map((item) => ({
+                  ...item,
+                  current: item.key === sideNavKey,
+                  onClick: () => setSideNavKey(item.key),
+                }))}
+              />
+            </div>
+          </Row>
+
+          <Row label="StatRow — linked, loaded">
+            <StatRow
+              aria-label="Records by kind"
+              items={[
+                { label: "Activities", value: 24, href: "/records?kind=activities" },
+                { label: "Projects", value: 3, href: "/records?kind=activities" },
+                { label: "Lists", value: 0, href: "/records?kind=lists" },
+              ]}
+            />
+          </Row>
+
+          <Row label="StatRow — loading (skeletons, never 0) and unknown">
+            <StatRow
+              aria-label="Loading stats demo"
+              items={[
+                { label: "Endorsements", value: null, loading: true },
+                { label: "Followers", value: 0, loading: true },
+                { label: "Following", value: null },
+              ]}
+            />
           </Row>
         </Section>
 

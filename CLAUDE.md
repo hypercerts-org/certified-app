@@ -9,7 +9,7 @@ Claude Code reads this file at session start. The longer agent reference is `AGE
 3. **Breakpoints are 800 / 1100 / 1300 only.** "Below desktop" → `@media (max-width: 799px)`. Don't introduce 768 / 760 / 640.
 4. **Elevation shadows are `var(--shadow-sm | --shadow-md | --shadow-lg)`, plus `var(--shadow-modal)` for dialogs only.** Rings and hairlines use the `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. Never a literal `box-shadow: 0 X Y rgba(...)`.
 5. **Z-index is a `--z-*` token.** No literal numbers.
-6. **Headings use the canonical scale + `font-headline`.** `text-h1`/`text-h2`/`text-h3`/`text-h4`. Never `text-xl` / `text-lg` / `text-2xl` for app headings.
+6. **Headings use the canonical scale.** Page titles, account names and record titles (plus empty-state and dialog titles) are `font-headline` + `text-h1`/`text-h2`/`text-h3`/`text-h4`. Section headings inside a page are `text-section` (Inter 600, via `<SectionHeader>`). Never `text-xl` / `text-lg` / `text-2xl` for app headings.
 7. **Modals use `<AppDialog>`** (or `<ConfirmDialog>` / `<DeleteRecordDialog>` which wrap it). Never hand-roll a backdrop + `useFocusTrap`.
 8. **Icon-only buttons are `<Button size="icon" aria-label="…">`.** The TypeScript discriminated union enforces `aria-label`.
 9. **Dark mode must work.** Toggle `data-theme="dark"` on `<html>` and verify. Don't pin colors so they break the flip. Landing must also flip (use `--color-navy` / `--color-off-white` — theme-aware — not `--color-primary` / `--color-white` which are invariant).

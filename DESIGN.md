@@ -38,7 +38,7 @@ These mirror the `CLAUDE.md` hard rules. Hold every UI change to them.
 | 3 | Breakpoints are 800 / 1100 / 1300 only. "Below desktop" is `@media (max-width: 799px)`. | `grep -rEn "@media.*?\((max\|min)-width:\s*(76[08]\|64[80])px\)" src/app/styles/` is silent |
 | 4 | Elevation shadows are `var(--shadow-sm \| --shadow-md \| --shadow-lg)`, plus `--shadow-modal` for dialogs only. Rings and hairlines use `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline`. Never a literal `box-shadow`. | stylelint |
 | 5 | Z-index is a `--z-*` token. | stylelint |
-| 6 | Headings use `font-headline` + `text-h1`..`text-h4`. Never `text-xl` / `text-lg` / `text-2xl`. | `grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/` is silent |
+| 6 | Titles (page titles, account names, record titles, empty-state and dialog titles) use `font-headline` + `text-h1`..`text-h4`. Section headings inside a page use `text-section` (Inter 600, via `<SectionHeader>`). Never `text-xl` / `text-lg` / `text-2xl`. | `grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/` is silent |
 | 7 | Modals are `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` / `<FormDialog>`). Never a hand-rolled backdrop + focus trap. | `grep -rn "signin-modal__backdrop" src/components/` only hits the two allowed files |
 | 8 | Icon-only buttons are `<Button size="icon" aria-label="…">` (or `size="icon-sm"`). | TypeScript enforces the label |
 | 9 | Dark mode must work. Toggle `data-theme="dark"` on `<html>` and check. Landing uses the theme-aware `--color-navy` / `--color-off-white`, not the invariant `--color-primary` / `--color-white`. | Manual |
@@ -180,23 +180,34 @@ Translucent chrome is always the surface it sits on at reduced alpha, never a se
 
 | Var | Family | Loaded weights | Role |
 |---|---|---|---|
-| `--font-inter` | Inter | Variable font (every weight in one file); the system uses 400 / 500 / 600 | All chrome and body: buttons, nav, labels, descriptions. |
-| `--font-headline` | Noto Serif (normal + italic) | 300 / 400 / 600 / 700 | Content titles. 300 is landing display only; 400 is landing item titles; 600 is app headings h2-h4; 700 is display, h1 and feed card titles. |
+| `--font-inter` | Inter | Variable font (every weight in one file); the system uses 400 / 500 / 600 | Everything that isn't a title: section headings, buttons, nav, labels, body, meta. |
+| `--font-headline` | Noto Serif (normal + italic) | 300 / 400 / 600 / 700 | Titles of named things: page titles, account names, record titles, empty-state and dialog titles. 300 is landing display only; 400 is landing item titles; 600 is app titles h2-h4; 700 is display, h1 and feed card titles. |
 | `--font-mono` | System stack (`ui-monospace, SFMono-Regular, …`) | n/a | DIDs, AT URIs, code; on landing also registry numerals and stats. No web font. |
 
 Inter and Noto Serif load via `next/font/google` with `display: swap`. A spec may only name a loaded weight: an unloaded serif weight silently renders as the nearest loaded face. Inter is loaded as a variable font, so 700 would render; the system still never uses it.
 
 ### 3.2 Type ramp
 
-`tailwind.config.ts` `fontSize` is authoritative; this table must match it. Each step carries its own leading and tracking. The sizes are mirrored as `--text-*` tokens in `tokens.css` (`--text-display` … `--text-micro`) for CSS consumers, with `--tracking-label` (0.06em) and `--measure` (65ch).
+Five roles cover the app:
+
+| Role | Style | Use |
+|---|---|---|
+| Title | `font-headline` + `text-h1` / `text-h2` / `text-h3` (`text-h4` for small titles) | Page titles (`<PageHeader>`), account and profile names, record titles, empty-state and dialog titles |
+| Section | `text-section`: Inter 600, 1rem | Section headings inside a page (`<SectionHeader>`). Never serif. |
+| Body | `text-body` / `text-body-sm` | Reading text, descriptions |
+| Label | `text-ui` / `text-body-sm` at 500 | Navigation, menus, buttons, field labels |
+| Meta | `text-caption` / `text-ui`, `tabular-nums` | Timestamps, counts, bylines |
+
+`tailwind.config.ts` `fontSize` is authoritative; this table must match it. Each step carries its own leading and tracking. The sizes are mirrored as `--text-*` tokens in `tokens.css` (`--text-display` … `--text-micro`, plus `--text-section`) for CSS consumers, with `--tracking-label` (0.06em) and `--measure` (65ch).
 
 | Utility | Size | Leading | Tracking | Weight | Font | Use |
 |---|---|---|---|---|---|---|
 | `text-display` | 3rem | 1.1 | -0.03em | 700 | serif | Rare app hero |
 | `text-h1` | 2.25rem | 1.15 | -0.02em | 700 | serif | Wide-page title |
-| `text-h2` | 1.75rem | 1.2 | -0.015em | 600 | serif | Page title in the content (column pages) |
-| `text-h3` | 1.375rem | 1.3 | -0.01em | 600 | serif | Section title, profile name |
+| `text-h2` | 1.75rem | 1.2 | -0.015em | 600 | serif | Page title (`<PageHeader>`) |
+| `text-h3` | 1.375rem | 1.3 | -0.01em | 600 | serif | Profile name, record title |
 | `text-h4` | 1.125rem | 1.35 | -0.005em | 600 | serif | Card title, empty-state title, dialog and sheet title |
+| `text-section` | 1rem | 1.4 | 0 | 600 | Inter | Section heading inside a page (`<SectionHeader>`) |
 | `text-body` | 1rem | 1.6 | 0 | 400 | Inter | Reading text |
 | `text-body-sm` | 0.875rem | 1.5 | 0 | 400 / 500 | Inter | Default UI text, descriptions, buttons |
 | `text-ui` | 0.8125rem | 1.45 | 0 | none set (400 / 500) | Inter | Dense chrome, meta rows, menu items, field labels |
@@ -233,8 +244,11 @@ Rules:
 
 ### 3.6 Heading hierarchy
 
-- The chrome title is the page's single `<h1>`: the mobile navbar title or the desktop top bar title (`AuthGuard` sets it when signed out).
-- Page content therefore starts at `<h2>`. Section headings are `<h3>`; card and empty-state titles are `<h4>` (or the level passed via `headingLevel`).
+Every page has exactly one `<h1>`.
+
+- **A page with a `<PageHeader>`:** the header's title is the page's visible `<h1>`. `PageHeader` registers itself through `navbar-context` (`useRegisterPageHeader()`, ref-counted). The chrome reads `useHasPageHeader()` and, while it is true, renders no h1 of its own, visible or visually hidden. It may still show the title as plain text (a compact phone title).
+- **A page without a `PageHeader` (fallback):** the chrome renders the page title (`usePageTitle`; `AuthGuard` sets it when signed out) as the `<h1>`, visually hidden on desktop and visible in the phone bar on detail pages.
+- Under the h1, section headings are `<h2>` (`<SectionHeader>`, or `as="h3"` inside an h2 section); card and empty-state titles take the next level down (the level passed via `headingLevel`).
 - Visual size and DOM level are independent: pick the ramp step for the look and the element for the outline.
 
 ---
@@ -295,6 +309,7 @@ Write mobile first: base styles, then `@media (min-width: 800px)`. "Below deskto
 | Reading column, mobile | 720px max | `.app-shell__content` |
 | Reading column, desktop | 600px | Narrower on purpose; the column is editorial, not stretched |
 | Fullbleed pages | 1280px | Profile, settings, workspace, cert detail, project detail. Opt in with `.app-shell--fullbleed`. |
+| `<PageContainer>` | `narrow` 720px / `default` 1120px / `wide` 1280px content (`--page-width-*`) | The page frame for top-level pages. Gutters sit outside the width: the shell's 16px below 800px, 24px from 800px, 32px from 1100px. Its `.page-container` class opts into the page-frame shell layout below. |
 | Page-frame pages | Edge to edge (shell) | Explore carries its own sidebar/main split. Home sets its own width: one 640px column, then a 320px account column beside the sections up to 1120px at ≥ 1100px |
 | Grid wrapper | 1300px | Ultra-wide screens get passive gutters |
 
@@ -308,7 +323,7 @@ Scale (Tailwind steps): **4 · 8 · 12 · 16 · 20 · 24 · 32 · 48 · 64** (`1
 |---|---|
 | Label → its control | 6 (`mb-1.5`, the one in-control exception) |
 | Field → field, paragraph → paragraph | 16 |
-| Heading → its content | 8 (h4) / 12 (h3) / 16 (h2 and up) |
+| Heading → its content | 8 (h4) / 12 (h3, `text-section`) / 16 (h2 and up, `<PageHeader>`) |
 | Related groups within a card or section | 24 |
 | Section → section | 32 mobile / 48 desktop |
 | Page top → first heading | 24 mobile / 32 desktop |
@@ -635,6 +650,19 @@ All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, 
 - **Feed with evaluator filter:** tapping the active "For you" tab opens an inline filter panel; a non-default filter renames the tab "Custom" and the unfiltered state shows a caution banner.
 - **Profile hero:** full-bleed banner with the avatar overlapping downward; the navbar goes transparent over it.
 
+### 9.13 Page layout: PageContainer, PageHeader, SectionHeader, SideNav, StatRow
+
+One page pattern for every top-level page (November 2026 redesign). Build a page from these before writing page-level CSS.
+
+| Primitive | Use it for | Contract |
+|---|---|---|
+| `<PageContainer width as>` | The outer frame of every top-level page. `narrow` (720) for Help and forms, `default` (1120), `wide` (1280) for the profile. | Centred, max width plus gutters (§4.6). Top space: 8px on phones (24px below the navbar in all), 32px from 800px; bottom 32px / 64px. Lifts the shell's 600px desktop column via `.page-container`. |
+| `<PageHeader title description actions back visual titleId>` | The first thing in the container, once per page. | Optional back link (chevron + parent name, `text-ui` muted) above; optional `visual` (avatar or icon) beside the title; title as the `<h1>` in `font-headline text-h2`, balanced; one line of description in `body-sm` `--fg-secondary`, capped at the measure; actions on the right with at most one `primary`, wrapping under the title below 800px. 16px below the block. Registers with the chrome (§3.6). |
+| `<SectionHeader title description action as id>` | The heading of a section inside a page. | Title in `text-section`, `<h2>` by default (`as="h3"` when nested); optional muted description; `action` on the right. No outer margin: the section puts its content 12px below (`gap-3`). Pass `id` and point the section's `aria-labelledby` at it. |
+| `<SeeAllLink href label>` | The one "See all" link, usually a `SectionHeader` action. | `text-ui` 500 `--fg-secondary` + 14px chevron-right; 32px tall with a 44px hit area. Name the destination ("All apps") when "See all" is unclear. |
+| `<SideNav aria-label items sticky>` | Navigation between the sections of one page: Records kinds, Settings sections, Help contents, Explore lists. | Below 1100px a horizontally scrolling row of 44px pills (4px row padding so focus rings aren't clipped, no visible scrollbar; current = filled `--btn-primary-*` pill). From 1100px a vertical list of 40px rows (current = `--bg-sunken` + `--fg-primary` + 600), sticky below the top bar unless `sticky={false}`. Items: `label`, optional 16px `icon`, optional right-aligned tabular `count`, `href` (link, `aria-current="page"`) or `onClick` (button, `aria-current="true"`). |
+| `<StatRow items aria-label>` | A quiet row of counts (Home's records, endorsements, followers), in place of boxed count tiles. | Each stat is its value (Inter 600 at the h4 size, tabular) over a `text-ui` muted label; stats separated by 32px, wrapping on phones. Linked stats underline on hover (hover devices only). `loading` shows a skeleton, never "0"; a loaded `null` shows an en dash. |
+
 ---
 
 ## 10. Async states and copy
@@ -764,6 +792,8 @@ Prompts name tokens, not hex. Look values up in `tokens.css` if you need them.
 - Shadows on cards. Use the border shift.
 - Filled icons, or active states shown by color alone.
 - Wide tracking on mixed-case text, or a font size off the ramp.
+- A serif section heading. Serif is for titles; sections use `text-section` (`<SectionHeader>`).
+- A page-level `<h1>` outside `<PageHeader>`, or two `PageHeader`s on one page.
 - Naming a font weight outside the system (Inter 700) or one that isn't loaded (Noto Serif 500).
 - `ring-[var(--x)]/20` and similar opacity modifiers on `var()` colors.
 - A `hover:` style written in plain CSS without `(hover: hover)`.
@@ -804,8 +834,8 @@ Names only; values are in `tokens.css`.
 | Badges | `--badge-{success,warning,neutral,danger,accent}-{bg,fg,border}` (where defined), `--badge-count-bg`, `--badge-count-fg` |
 | Button | `--btn-primary-bg`, `--btn-primary-fg`, `--btn-primary-bg-hover`, `--opacity-disabled` |
 | Motion | `--duration-instant`, `--duration-fast`, `--duration-base`, `--duration-slow`, `--ease-out`, `--ease-emphasized`, `--ease-in-out`, `--transition-fast`, `--transition-base` |
-| Geometry | `--radius`, `--radius-pill`, `--measure`, `--control-h-compact`, `--control-h-sm`, `--control-h-md`, `--control-h-lg` |
-| Type | `--font-inter`, `--font-headline`, `--font-mono`, `--text-display`, `--text-h1`..`--text-h4`, `--text-body`, `--text-body-sm`, `--text-ui`, `--text-caption`, `--text-label`, `--text-micro`, `--tracking-label` |
+| Geometry | `--radius`, `--radius-pill`, `--measure`, `--page-width-narrow`, `--page-width-default`, `--page-width-wide`, `--control-h-compact`, `--control-h-sm`, `--control-h-md`, `--control-h-lg` |
+| Type | `--font-inter`, `--font-headline`, `--font-mono`, `--text-display`, `--text-h1`..`--text-h4`, `--text-section`, `--text-body`, `--text-body-sm`, `--text-ui`, `--text-caption`, `--text-label`, `--text-micro`, `--tracking-label` |
 | Breakpoints | `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop` |
 | Z-index | §4.10 |
 
@@ -813,6 +843,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-13, redesign foundation: page primitives and type roles.** New `text-section` type role (Inter 600, 1rem, leading 1.4; `--text-section`) for section headings inside a page. Serif `font-headline` + `text-h1`..`text-h4` is kept for titles of named things: page titles, account names, record titles, empty-state and dialog titles. New primitives (§9.13): `<PageContainer>` (narrow 720 / default 1120 / wide 1280, `--page-width-*`, joins the page-frame shell layout via `.page-container`), `<PageHeader>` (the page's visible `<h1>`), `<SectionHeader>` + `<SeeAllLink>`, `<SideNav>` (the Records kinds nav, generalised) and `<StatRow>` (replaces boxed count tiles). The chrome h1 contract (§3.6): `PageHeader` registers through `navbar-context` (`useRegisterPageHeader`), and the chrome reads `useHasPageHeader()` to skip its own h1; the chrome starts reading it in the shell step that follows, so pages adopt `PageHeader` after that. Rule 6 (§0 and `CLAUDE.md`) allows `text-section` for section headings.
 - **2026-11-13, Records.** New `/records` page (Records, a `Library` icon, between Apps and Profile in the top bar; personal account only) where the signed-in person manages what their account holds. Kinds: Projects / Activities (each project a folder of its activities, plus "Without a project"; search, open, edit, delete with the type-the-name dialog), Endorsements (tabs: Given, with "Endorse someone" and remove; Received, with show/hide; Lists, the endorsement lists), Following (unfollow, kept as a Follow row until you leave), Followers (read-only, follow back) and Lists (lists of activities, projects and accounts). Kinds sit in a sticky column from 1100px and a scrolling row of pills below; `?kind=` picks the pane.
 - **2026-11-13, feed on its own page.** The follow feed moves from `/home` to `/feed` (Feed between Home and Apps in the desktop top bar, and in both menus), starting straight with the feed (no page header). From 1100px the feed is three columns: the filters in a sticky box on the left, the feed (600px) in the middle, News from Certified on the right; below 1100px the filters stay behind the "For you" disclosure. Home drops the news panel; "Your groups" becomes a box under the account card with "New group" in its corner, shown even when empty. The account card has no banner strip when there is no banner. Home shows four apps; the rest are under "All apps".
 - **2026-11-12, account-centred home.** `/home` now leads with the account the viewer is acting as: an account card (profile and ID, with the handle and permanent ID click-to-copy), then Records, From others (endorsements, followers), Apps and Your groups, with the follow feed as the last section. The old sidebar ("My groups / projects / activities") and the feed-first layout are gone. The bottom-nav Home icon is a house instead of a newspaper.

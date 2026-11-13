@@ -67,6 +67,13 @@ export default {
           "1.125rem",
           { lineHeight: "1.35", fontWeight: "600", letterSpacing: "-0.005em" },
         ],
+        /* Section heading inside a page (SectionHeader). Inter, never
+           `font-headline`: serif is kept for page titles, account names
+           and record titles. */
+        section: [
+          "1rem",
+          { lineHeight: "1.4", fontWeight: "600", letterSpacing: "0" },
+        ],
         body: ["1rem", { lineHeight: "1.6", fontWeight: "400" }],
         "body-sm": ["0.875rem", { lineHeight: "1.5", fontWeight: "400" }],
         ui: ["0.8125rem", { lineHeight: "1.45" }],
