@@ -50,7 +50,7 @@ export default function PageHeader({
   className = "",
   titleId,
 }: PageHeaderProps) {
-  useRegisterPageHeader();
+  useRegisterPageHeader({ hasBack: !!back });
 
   return (
     <header className={`mb-4 flex flex-col gap-2 ${className}`.trim()}>

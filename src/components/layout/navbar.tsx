@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context";
+import { useHasPageHeader, useHasPageHeaderBack, useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
 import { useSession } from "@/hooks/use-session";
 import { useOrg } from "@/lib/groups/org-context";
@@ -65,6 +65,9 @@ const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
   const { pageTitle, breadcrumb, recordMenu } = useNavbarValues();
   const hasPageHeader = useHasPageHeader();
+  // A page header with its own back link ("‹ Records") is the way back;
+  // the bar then shows the brandmark rather than a second chevron.
+  const headerHasBack = useHasPageHeaderBack();
   const { handle } = useSession();
   const { activeOrg } = useOrg();
   const pathname = usePathname();
@@ -106,7 +109,7 @@ const Navbar: React.FC = () => {
     <header className={navClasses}>
       <div className="navbar__inner">
         <div className="navbar__left">
-          {isTopLevel ? (
+          {isTopLevel || headerHasBack ? (
             <Link
               href={isAuthenticated ? "/home" : "/welcome"}
               className="navbar__logo"

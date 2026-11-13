@@ -94,6 +94,9 @@ interface NavbarValues {
    *  its visible `<h1>`, so the chrome must not render its own (visible or
    *  visually hidden) h1. See `useRegisterPageHeader`. */
   hasPageHeader: boolean;
+  /** A mounted `<PageHeader>` renders its own back link, so the phone
+   *  bar shows no second back chevron. */
+  hasPageHeaderBack: boolean;
 }
 
 /**
@@ -110,7 +113,7 @@ interface NavbarSetters {
   setProfileOverlay: (v: boolean) => void;
   /** Register a mounted `<PageHeader>`. Returns the matching unregister
    *  function. Ref-counted, so nested or remounting headers are safe. */
-  registerPageHeader: () => () => void;
+  registerPageHeader: (opts?: { hasBack?: boolean }) => () => void;
 }
 
 type NavbarContextValue = NavbarValues & NavbarSetters;
@@ -122,6 +125,7 @@ const defaultValues: NavbarValues = {
   recordMenu: null,
   profileOverlay: false,
   hasPageHeader: false,
+  hasPageHeaderBack: false,
 };
 
 const defaultSetters: NavbarSetters = {
@@ -146,17 +150,23 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   // header that remounts (StrictMode, a key change, two briefly overlapping
   // during a route transition) never clears the flag for the one that stays.
   const [pageHeaderCount, setPageHeaderCount] = useState(0);
-  const registerPageHeader = useCallback(() => {
+  // Of those, how many carry their own back link (same ref-counting).
+  const [pageHeaderBackCount, setPageHeaderBackCount] = useState(0);
+  const registerPageHeader = useCallback((opts?: { hasBack?: boolean }) => {
+    const hasBack = !!opts?.hasBack;
     setPageHeaderCount((n) => n + 1);
+    if (hasBack) setPageHeaderBackCount((n) => n + 1);
     let registered = true;
     return () => {
       // Guard against a double unregister driving the count below zero.
       if (!registered) return;
       registered = false;
       setPageHeaderCount((n) => Math.max(0, n - 1));
+      if (hasBack) setPageHeaderBackCount((n) => Math.max(0, n - 1));
     };
   }, []);
   const hasPageHeader = pageHeaderCount > 0;
+  const hasPageHeaderBack = pageHeaderBackCount > 0;
   // Setters are stable across renders, so this memo never recomputes and the
   // setters context keeps one identity for the provider's lifetime.
   const setters = useMemo<NavbarSetters>(
@@ -185,8 +195,9 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       recordMenu,
       profileOverlay,
       hasPageHeader,
+      hasPageHeaderBack,
     }),
-    [pageTitle, desktopTitle, breadcrumb, recordMenu, profileOverlay, hasPageHeader]
+    [pageTitle, desktopTitle, breadcrumb, recordMenu, profileOverlay, hasPageHeader, hasPageHeaderBack]
   );
   return (
     <NavbarSettersContext.Provider value={setters}>
@@ -252,9 +263,10 @@ export function usePageTitle(title: string) {
  * unregisters on unmount. The registry is ref-counted, so nested,
  * remounting or briefly overlapping headers are fine.
  */
-export function useRegisterPageHeader() {
+export function useRegisterPageHeader(opts?: { hasBack?: boolean }) {
   const { registerPageHeader } = useContext(NavbarSettersContext);
-  useEffect(() => registerPageHeader(), [registerPageHeader]);
+  const hasBack = !!opts?.hasBack;
+  useEffect(() => registerPageHeader({ hasBack }), [registerPageHeader, hasBack]);
 }
 
 /**
@@ -265,6 +277,14 @@ export function useRegisterPageHeader() {
  */
 export function useHasPageHeader(): boolean {
   return useContext(NavbarValuesContext).hasPageHeader;
+}
+
+/**
+ * True while a mounted `<PageHeader>` renders its own back link. The phone
+ * bar then shows the brandmark instead of a second back chevron.
+ */
+export function useHasPageHeaderBack(): boolean {
+  return useContext(NavbarValuesContext).hasPageHeaderBack;
 }
 
 /**

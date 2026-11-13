@@ -8,6 +8,7 @@ import { render, screen, fireEvent } from "@testing-library/react"
 const state = vi.hoisted(() => ({
   pathname: "/home",
   hasPageHeader: false,
+  hasPageHeaderBack: false,
   pageTitle: null as string | null,
   isAuthenticated: true,
   transitionBack: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@/lib/auth/auth-context", () => ({
 vi.mock("@/lib/navbar-context", () => ({
   useNavbarValues: () => ({ pageTitle: state.pageTitle, breadcrumb: null, recordMenu: null }),
   useHasPageHeader: () => state.hasPageHeader,
+  useHasPageHeaderBack: () => state.hasPageHeaderBack,
 }))
 
 vi.mock("@/lib/view-transitions", () => ({
@@ -68,6 +70,7 @@ import Navbar from "../navbar"
 beforeEach(() => {
   state.pathname = "/home"
   state.hasPageHeader = false
+  state.hasPageHeaderBack = false
   state.pageTitle = null
   state.isAuthenticated = true
   state.transitionBack.mockReset()
@@ -101,6 +104,15 @@ describe("Navbar (phone)", () => {
     expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument()
     fireEvent.click(back)
     expect(state.transitionBack).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows no second back chevron when the page header has its own back link", () => {
+    state.pathname = "/create"
+    state.hasPageHeader = true
+    state.hasPageHeaderBack = true
+    render(<Navbar />)
+    expect(screen.queryByRole("button", { name: "Go back" })).toBeNull()
+    expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
   })
 
   it("keeps a back chevron on someone else's profile", () => {
