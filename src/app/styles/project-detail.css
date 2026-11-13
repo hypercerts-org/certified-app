@@ -129,10 +129,28 @@
   word-break: break-word;
 }
 
-/* ---------- Long-form description (prose) ----------
-   The typography lives on `.leaflet-doc__*` (leaflet.css); this wrapper
-   only caps the measure. */
-.project-detail__prose {
+/* ---------- Full description ----------
+   <RecordDescription> (cert-detail-parts.tsx): the "Read full description"
+   disclosure and the Description section it reveals, styled in
+   cert-detail.css. The toggle sits 16px under the summary: the body's gap
+   is 32px (48px from 800px), and the toggle's own -16px covers phones.
+   With nothing above it (no banner, no summary) it keeps its place under
+   the tab strip. */
+.project-detail__body > .cert-detail__desc-toggle:first-child {
+  margin-top: 0;
+}
+
+@media (min-width: 800px) {
+  .project-detail__body > .cert-detail__desc-toggle:not(:first-child) {
+    margin-top: -32px;
+  }
+}
+
+/* The description's prose caps at the reading measure in the full-width
+   column, like the summary. The typography lives on `.leaflet-doc__*`
+   (leaflet.css); a plain-string description renders as a bare
+   `.leaflet-doc__para`. */
+.project-detail__section > :is(.leaflet-doc, .leaflet-doc__para) {
   max-width: var(--measure);
   text-wrap: pretty;
 }

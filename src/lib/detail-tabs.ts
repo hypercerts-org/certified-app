@@ -19,9 +19,11 @@ export const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "updates", label: "Updates" },
 ]
 
+/** The project's full description lives on Overview (behind "Read full
+ *  description"); an old `?tab=description` link opens Overview with it
+ *  showing. */
 export const PROJECT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
-  { key: "description", label: "Description" },
   { key: "activities", label: "Activities" },
   { key: "updates", label: "Updates" },
 ]

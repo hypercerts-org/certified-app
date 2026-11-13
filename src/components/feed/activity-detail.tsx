@@ -9,7 +9,7 @@ import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
-import { ChevronDown, Pencil, Plus, RefreshCw } from "lucide-react"
+import { Pencil, Plus, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import {
@@ -39,14 +39,13 @@ import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-c
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
-import LeafletDocument, {
-  isRenderableDescription,
-} from "@/components/leaflet/leaflet-document"
+import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
 import CertLocationsMap from "./cert-locations-map"
 import {
   ActivityProjectField,
   ContributorRow,
   RecordByline,
+  RecordDescription,
   RecordHeader,
   RecordSectionTabs,
 } from "./cert-detail-parts"
@@ -97,10 +96,13 @@ const formatDate = formatShortDate
  *     with the owner's Edit button and the ⋯ record menu beside it, and
  *     the byline (author, date created, project).
  *   - The section tabs (Overview / Contributors / Funding / Updates).
- *   - The tab content. On Overview, from 800px, a two-column body: the
- *     summary, updates, funding and locations on the left; the image and
- *     the details (time period, work scope, contributors, rights) on the
- *     right. Phones stack the two into one reading order (cert-detail.css).
+ *   - The tab content. On Overview, from 800px, a two-column block: the
+ *     summary, the description disclosure and the latest update on the
+ *     left; the image and the details (time period, work scope,
+ *     contributors, rights) on the right. Funding and locations follow at
+ *     the full page width, so their actions share the right edge with the
+ *     record's Edit. Phones stack it all into one reading order
+ *     (cert-detail.css).
  *
  * Editing happens on the edit page (`/{actor}/activity/{rkey}/edit`).
  */
@@ -154,9 +156,6 @@ export default function ActivityDetail({
   )
   const locations = value.locations ?? []
   const showFullDescription = isRenderableDescription(value.description)
-  // Overview "Read full description": reveals the full description inline as
-  // its own Description section (the user stays on Overview).
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
   // ClaimActivity doesn't carry its own rkey; the route at
   // /[actor]/[type]/[rkey] does. Derived from the trailing pathname
@@ -572,41 +571,17 @@ export default function ActivityDetail({
       </section>
     ) : null
 
-  // Overview "Read full description": a centered disclosure button below the
-  // summary that reveals the full rich description inline as its own
-  // Description section, and collapses it again. The chevron points down to
-  // expand and flips up once open (driven off aria-expanded in CSS).
-  const descriptionToggle = (
-    <div className="cert-detail__desc-toggle">
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-expanded={descriptionExpanded}
-        onClick={() => setDescriptionExpanded((open) => !open)}
-        className="cert-detail__desc-toggle-btn"
-      >
-        {descriptionExpanded ? "Hide description" : "Read full description"}
-        <ChevronDown
-          size={16}
-          strokeWidth={1.75}
-          aria-hidden
-          className="cert-detail__desc-toggle-chevron"
-        />
-      </Button>
-    </div>
-  )
-
-  const descriptionReveal = !showFullDescription ? null : descriptionExpanded ? (
-    <>
-      <section className="cert-detail__section">
-        <SectionHeader title="Description" />
-        <LeafletDocument value={value.description} did={did} />
-      </section>
-      {descriptionToggle}
-    </>
-  ) : (
-    descriptionToggle
-  )
+  // Overview "Read full description": the disclosure below the summary that
+  // reveals the full description inline (an old `?tab=description` link
+  // arrives with it open).
+  const descriptionReveal = showFullDescription ? (
+    <RecordDescription
+      value={value.description}
+      did={did}
+      defaultExpanded={tabParam === "description"}
+      sectionClassName="cert-detail__section"
+    />
+  ) : null
 
   // Funding list body, shared by the overview preview (first five) and the
   // Funding tab (all).
@@ -662,6 +637,42 @@ export default function ActivityDetail({
       )}
     </section>
   )
+
+  // The Overview's full-width sections, below the summary-and-details block
+  // (cert-detail.css), so the Funding header's actions share the page's
+  // right edge with Edit. First the funding preview: up to five receipts,
+  // with "See all" into the Funding tab when there are more; also shown
+  // (header only) to a signed-in viewer with no receipts yet, so they can
+  // record one. Then where.
+  const overviewFunding =
+    fundingReceipts.length > 0 || canRecordFunding ? (
+      <section className="cert-detail__section">
+        <SectionHeader
+          title={<SectionTitleCount label="Funding" count={shownFundingCount} />}
+          action={
+            <div className="cert-detail__section-actions">
+              {recordFundingControl}
+              {fundingReceipts.length > 0 ? confirmedByControl : null}
+              {fundingHref && filteredFunding.length > OVERVIEW_FUNDING_PREVIEW ? (
+                <SeeAllLink href={fundingHref} />
+              ) : null}
+            </div>
+          }
+        />
+        {fundingRecordedNote}
+        {recipientConfirmedNote}
+        {fundingBody(OVERVIEW_FUNDING_PREVIEW)}
+      </section>
+    ) : null
+  const overviewLocations =
+    locations.length > 0 ? (
+      <section className="cert-detail__section cert-detail__section--locations">
+        <SectionHeader
+          title={<SectionTitleCount label="Locations" count={locations.length} />}
+        />
+        <CertLocationsMap locations={locations} />
+      </section>
+    ) : null
 
   return (
     <>
@@ -791,7 +802,8 @@ export default function ActivityDetail({
               {activeTab === "overview" ? (
                 <>
                   {descriptionReveal}
-                  {/* The latest update, then funding, then where. */}
+                  {/* The latest update; funding and where follow in the
+                      full-width block below. */}
                   {recordUri ? (
                     <ContextUpdates
                       subjectUri={recordUri}
@@ -799,44 +811,6 @@ export default function ActivityDetail({
                       maxItems={1}
                       seeAllHref={tabHref("updates")}
                     />
-                  ) : null}
-
-                  {/* Funding preview — up to five receipts, with "See all"
-                      into the Funding tab when there are more. Also shown
-                      (header only) to a signed-in viewer with no receipts
-                      yet, so they can record one. */}
-                  {fundingReceipts.length > 0 || canRecordFunding ? (
-                    <section className="cert-detail__section">
-                      <SectionHeader
-                        title={
-                          <SectionTitleCount label="Funding" count={shownFundingCount} />
-                        }
-                        action={
-                          <div className="cert-detail__section-actions">
-                            {recordFundingControl}
-                            {fundingReceipts.length > 0 ? confirmedByControl : null}
-                            {fundingHref &&
-                            filteredFunding.length > OVERVIEW_FUNDING_PREVIEW ? (
-                              <SeeAllLink href={fundingHref} />
-                            ) : null}
-                          </div>
-                        }
-                      />
-                      {fundingRecordedNote}
-                      {recipientConfirmedNote}
-                      {fundingBody(OVERVIEW_FUNDING_PREVIEW)}
-                    </section>
-                  ) : null}
-
-                  {locations.length > 0 ? (
-                    <section className="cert-detail__section cert-detail__section--locations">
-                      <SectionHeader
-                        title={
-                          <SectionTitleCount label="Locations" count={locations.length} />
-                        }
-                      />
-                      <CertLocationsMap locations={locations} />
-                    </section>
                   ) : null}
                 </>
               ) : activeTab === "contributors" ? (
@@ -891,6 +865,17 @@ export default function ActivityDetail({
               ) : null}
             </TabPanelTransition>
           </div>
+
+          {activeTab === "overview" && (overviewFunding || overviewLocations) ? (
+            <TabPanelTransition
+              className="cert-detail__content cert-detail__content--lower"
+              activeKey={activeTab}
+              order={CERT_DETAIL_TABS.map((t) => t.key)}
+            >
+              {overviewFunding}
+              {overviewLocations}
+            </TabPanelTransition>
+          ) : null}
         </div>
       </article>
       {deleteOpen ? (

@@ -10,12 +10,11 @@
 import { memo, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { FolderGit2 } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
 import type { DetailTab } from "@/lib/detail-tabs"
 import { Tabs, TabList, Tab } from "@/components/ui/tabs"
-import { resolveActivityImageUrl } from "@/lib/atproto/activity"
-import { projectImage, projectTitle } from "@/lib/atproto/collection"
+import { projectTitle } from "@/lib/atproto/collection"
 import {
   useContributorInfo,
   isAtprotoIdentity,
@@ -28,7 +27,10 @@ import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 import { deriveIdentity } from "@/lib/utils/identity"
 import Avatar from "@/components/ui/avatar"
+import Button from "@/components/ui/button"
+import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
+import LeafletDocument from "@/components/leaflet/leaflet-document"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
 
 /**
@@ -253,15 +255,16 @@ export function RecordDetailSkeleton({ label }: { label: string }) {
 
 /**
  * The record's section tabs (activity: Overview / Contributors / Funding /
- * Updates; project: Overview / Description / Activities / Updates), one
- * strip under the record header at every width, like the profile's tabs.
+ * Updates; project: Overview / Activities / Updates), one strip under the
+ * record header at every width, like the profile's tabs.
  * It scrolls sideways when the tabs don't fit (phones) and stays pinned
  * below the top bar while the page scrolls.
  *
  * Each tab is a real link (`?tab=<key>` on the current path, other query
  * params kept, so filters survive a switch) that REPLACES the history
  * entry and keeps the scroll position. Counts ride on the tab through the
- * `Tab` primitive's `count`; zero shows no count.
+ * `Tab` primitive's `count`; zero shows no count. Every tab that is a list
+ * gets a count and no other tab does (Overview never).
  */
 export function RecordSectionTabs({
   tabs,
@@ -413,7 +416,8 @@ export function RecordByline({
 
 /**
  * The activity's Project field for `<RecordByline>`: the first project
- * that contains it (`useCertProjects`), with "+N" when there are more.
+ * that contains it (`useCertProjects`), by title, with "+N" when there are
+ * more.
  * When it's in no project, owners get an "Add to project" link to their
  * Records (where activities are put into projects) and visitors see no
  * field at all.
@@ -462,19 +466,13 @@ export function ActivityProjectField({
     ? recordUrl(firstParts.did, "project", firstParts.rkey)
     : null
   const title = projectTitle(first.value)
-  // Resolved against the project's own DID so foreign-PDS blobs come
-  // through the xrpc proxy.
-  const projectDid = firstParts?.did ?? ""
-  const rawImage = projectImage(first.value, "thumb")
-  const imageUrl =
-    rawImage && projectDid ? resolveActivityImageUrl(rawImage, projectDid) : null
+  // The title alone, no thumbnail: a project's image is usually its 3:1
+  // banner, which cropped to a byline-sized square reads as noise, and the
+  // byline keeps one picture (the author's avatar).
   const body = (
-    <>
-      <HeadlineProjectThumb src={imageUrl} />
-      <span className="cert-detail__headline-project-title" dir="auto">
-        {title}
-      </span>
-    </>
+    <span className="cert-detail__headline-project-title" dir="auto">
+      {title}
+    </span>
   )
 
   return (
@@ -498,23 +496,60 @@ export function ActivityProjectField({
   )
 }
 
-/** Byline project thumb: the project image, or the project icon when
- *  there is none or it fails to load — never an empty grey tile. */
-function HeadlineProjectThumb({ src }: { src: string | null }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  return (
-    <span className="cert-detail__headline-project-thumb" aria-hidden="true">
-      {src && failedSrc !== src ? (
-        /* eslint-disable-next-line @next/next/no-img-element -- dynamic bsky-CDN/blob URL; next/image remotePatterns limited to **.certified.app */
-        <img
-          src={src}
-          alt=""
-          className="cert-detail__headline-project-thumb-img"
-          onError={() => setFailedSrc(src)}
+/**
+ * The record's full description on Overview (activity and project), behind
+ * a disclosure: a centred "Read full description" button below the summary
+ * reveals it as its own Description section, and "Hide description" folds
+ * it again. The chevron points down to expand and flips up once open
+ * (driven off `aria-expanded` in cert-detail.css). The pages render it only
+ * when the description has content (`isRenderableDescription`).
+ *
+ * `defaultExpanded` opens it on arrival: an old `?tab=description` link
+ * (the project page's former Description tab) lands on Overview with the
+ * description showing.
+ */
+export function RecordDescription({
+  value,
+  did,
+  defaultExpanded = false,
+  sectionClassName,
+}: {
+  /** The record's `description` (plain string or Leaflet document). */
+  value: unknown
+  /** The record's repo DID, for the document's image blobs. */
+  did: string
+  defaultExpanded?: boolean
+  /** The page's section class (`cert-detail__section`, `project-detail__section`). */
+  sectionClassName: string
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  const toggle = (
+    <div className="cert-detail__desc-toggle">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((open) => !open)}
+        className="cert-detail__desc-toggle-btn"
+      >
+        {expanded ? "Hide description" : "Read full description"}
+        <ChevronDown
+          size={16}
+          strokeWidth={1.75}
+          aria-hidden
+          className="cert-detail__desc-toggle-chevron"
         />
-      ) : (
-        <FolderGit2 size={14} strokeWidth={1.75} />
-      )}
-    </span>
+      </Button>
+    </div>
+  )
+  if (!expanded) return toggle
+  return (
+    <>
+      <section className={sectionClassName}>
+        <SectionHeader title="Description" />
+        <LeafletDocument value={value} did={did} />
+      </section>
+      {toggle}
+    </>
   )
 }

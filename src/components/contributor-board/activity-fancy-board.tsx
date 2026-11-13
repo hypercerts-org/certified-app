@@ -2,6 +2,8 @@
 
 import { useHyperboard } from "@/hooks/use-hyperboard"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import SectionHeader from "@/components/ui/section-header"
+import { SectionTitleCount } from "@/components/create/form-action-bar"
 import { FancyContributorBoard } from "./fancy-contributor-board"
 import type { ActivityContributor } from "@/lib/atproto/activity-types"
 
@@ -29,10 +31,9 @@ export function ActivityFancyBoard({
 
   return (
     <section className="cert-detail__section">
-      <div className="cert-detail__section-header">
-        <h2 className="cert-detail__section-title">Contributor Board</h2>
-        <span className="cert-detail__section-count">{entries.length}</span>
-      </div>
+      <SectionHeader
+        title={<SectionTitleCount label="Contributor Board" count={entries.length} />}
+      />
 
       {isLoading && entries.length === 0 ? (
         <div className="cert-detail__funding-loading">

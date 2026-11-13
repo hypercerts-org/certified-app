@@ -17,17 +17,17 @@ import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { PROJECT_DETAIL_TABS } from "@/lib/detail-tabs"
-import LeafletDocument, {
-  isRenderableDescription,
-} from "@/components/leaflet/leaflet-document"
+import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_PROJECTS_TYPE } from "@/lib/atproto/typed-lists"
 import ContextUpdates from "@/components/context/context-updates"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
+import { useContextUpdates } from "@/hooks/use-context-updates"
 import {
   RecordByline,
+  RecordDescription,
   RecordHeader,
   RecordSectionTabs,
 } from "@/components/feed/cert-detail-parts"
@@ -71,9 +71,10 @@ interface ProjectDetailProps {
  * Laid out like the activity page, the same at every width: the record
  * header ("Project" eyebrow, the title as the page's h1 with the owner's
  * Edit button and the ⋯ record menu beside it, the byline), the section
- * tabs (Overview / Description / Activities / Updates), then the tab's
- * content in one column: the banner, summary, details, location, the
- * activities in the project and the latest update on Overview. The
+ * tabs (Overview / Activities / Updates), then the tab's content in one
+ * column: the banner, summary, the full description (behind "Read full
+ * description"), details, location, the activities in the project and the
+ * latest update on Overview. The
  * activities are compact rows (thumbnail, title, period and scope) at
  * every width, like Records and Home.
  *
@@ -123,12 +124,12 @@ export default function ProjectDetail({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  // Legacy ?tab=certs resolves to activities so old links keep working.
+  // Old links keep working: ?tab=certs opens Activities, and
+  // ?tab=description (the former Description tab, now part of Overview)
+  // opens Overview with the description showing.
   const normalizedTab = tabParam === "certs" ? "activities" : tabParam
-  const activeTab: "overview" | "description" | "activities" | "updates" =
-    normalizedTab === "description" ||
-    normalizedTab === "activities" ||
-    normalizedTab === "updates"
+  const activeTab: "overview" | "activities" | "updates" =
+    normalizedTab === "activities" || normalizedTab === "updates"
       ? normalizedTab
       : "overview"
 
@@ -144,7 +145,7 @@ export default function ProjectDetail({
 
   /** A URL to another tab on this page, keeping any other query params. */
   const buildTabHref = (
-    tab: "overview" | "description" | "activities" | "updates",
+    tab: "overview" | "activities" | "updates",
   ): string | null => {
     if (!pathname) return null
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -153,7 +154,6 @@ export default function ProjectDetail({
     const qs = params.toString()
     return qs ? `${pathname}?${qs}` : pathname
   }
-  const descriptionHref = buildTabHref("description")
   const certsHref = buildTabHref("activities")
   const updatesHref = buildTabHref("updates")
 
@@ -216,6 +216,10 @@ export default function ProjectDetail({
   const timePeriodLabel = formatTimePeriod(startDate, endDate)
   const certCount = resolutions.length
   const itemCount = Array.isArray(value.items) ? value.items.length : 0
+  // Updates count for the Updates tab (the same shared fetch the updates
+  // sections read).
+  const { updates } = useContextUpdates(recordUri)
+  const updatesCount = updates.length
   const hasAnyMeta = !!timePeriodLabel || contributors.length > 0
   const hasLocation = !!locationRefUri || !!inlineLocation
 
@@ -343,7 +347,7 @@ export default function ProjectDetail({
           tabs={PROJECT_DETAIL_TABS}
           activeKey={activeTab}
           ariaLabel="Project sections"
-          counts={{ activities: itemCount }}
+          counts={{ activities: itemCount, updates: updatesCount }}
         />
 
         <TabPanelTransition
@@ -365,25 +369,24 @@ export default function ProjectDetail({
                 </div>
               ) : null}
 
-              {shortDesc || showFullDescription ? (
+              {shortDesc ? (
                 <section className="project-detail__section">
-                  <SectionHeader
-                    title="Summary"
-                    action={
-                      showFullDescription && descriptionHref ? (
-                        <SeeAllLink
-                          href={descriptionHref}
-                          label="Read full description"
-                        />
-                      ) : null
-                    }
-                  />
-                  {shortDesc ? (
-                    <p className="project-detail__lead" dir="auto">
-                      {shortDesc}
-                    </p>
-                  ) : null}
+                  <SectionHeader title="Summary" />
+                  <p className="project-detail__lead" dir="auto">
+                    {shortDesc}
+                  </p>
                 </section>
+              ) : null}
+
+              {/* The full description, behind "Read full description" as
+                  on the activity page. */}
+              {showFullDescription ? (
+                <RecordDescription
+                  value={value.description}
+                  did={did}
+                  defaultExpanded={tabParam === "description"}
+                  sectionClassName="project-detail__section"
+                />
               ) : null}
 
               {hasAnyMeta ? (
@@ -457,26 +460,6 @@ export default function ProjectDetail({
                 seeAllHref={updatesHref}
               />
             </>
-          ) : null}
-
-          {activeTab === "description" ? (
-            showFullDescription ? (
-              <div className="project-detail__prose">
-                <LeafletDocument value={value.description} did={did} />
-              </div>
-            ) : (
-              <EmptyState
-                title="No description yet"
-                description="This project doesn't have a full description."
-                headingLevel={2}
-              >
-                {isOwner ? (
-                  <Button href={editHref} variant="secondary" size="sm">
-                    Add a description
-                  </Button>
-                ) : null}
-              </EmptyState>
-            )
           ) : null}
 
           {activeTab === "activities" ? (

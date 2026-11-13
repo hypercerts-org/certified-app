@@ -77,19 +77,30 @@
 
   /* Full-bleed tabs: drop the supplementary aside so the content spans the
      full width of both panes. The Contributors tab carries the deluxe board
-     above the list; Description / Funding / Updates just want the room.
-     (Only Overview keeps the aside.) */
+     above the list; Funding / Updates just want the room. (Only Overview
+     keeps the aside.) */
   .cert-detail--wide.cert-detail--tab-contributors.page-layout,
-  .cert-detail--wide.cert-detail--tab-description.page-layout,
   .cert-detail--wide.cert-detail--tab-funding.page-layout,
   .cert-detail--wide.cert-detail--tab-updates.page-layout {
     grid-template-columns: minmax(0, 1fr);
   }
   .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
-  .cert-detail--wide.cert-detail--tab-description.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
   .cert-detail--wide.cert-detail--tab-updates.page-layout > .cert-detail__aside {
     display: none;
+  }
+
+  /* Overview: the summary, description and latest update sit beside the
+     details column; the funding and locations sections run the full page
+     width below both, so the Funding header's actions share the right
+     edge with the record's Edit and menu (and with the Funding tab, which
+     is full width too). A hairline closes the two-column block above them. */
+  .cert-detail--wide.page-layout > .cert-detail__content--lower {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .cert-detail__content--lower > .cert-detail__section:first-child {
+    border-top: 1px solid var(--border-subtle);
   }
 }
 
@@ -103,7 +114,8 @@
 
      1 headline   2 image   3 summary
      4 time period   5 work scope   6 contributors   7 rights
-     8 the tab's content (updates / funding / locations)
+     8 the tab's content (on Overview: description, latest update)
+     9 the Overview's full-width sections (funding, locations)
 
    The create and edit activity forms reuse this grid (`.create-cert`)
    with their own order; see "Activity create / edit form" below. */
@@ -123,8 +135,9 @@
 
   /* The summary is rendered as a sibling of the tab panel (see
      activity-detail.tsx) so the details rows can sit between it and the
-     tab content. The panel itself (`.cert-detail__content`) is ordered
-     last as a single unit. */
+     tab content. The panel itself (`.cert-detail__content`) follows them
+     as a single unit, and the Overview's full-width panel
+     (`.cert-detail__content--lower`: funding, locations) comes last. */
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
     order: 1;
   }
@@ -152,6 +165,9 @@
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
     order: 8;
   }
+  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content--lower {
+    order: 9;
+  }
 
   /* The single-column grid already provides a uniform 24px row gap
      between every promoted leaf (headline, image, each meta-row).
@@ -170,11 +186,9 @@
 
   /* Contributors / Funding / Updates tabs: the image and the Overview's
      details rows drop out so the tab's own content follows the strip. */
-  .cert-detail--tab-description .cert-detail__image,
   .cert-detail--tab-contributors .cert-detail__image,
   .cert-detail--tab-funding .cert-detail__image,
   .cert-detail--tab-updates .cert-detail__image,
-  .cert-detail--tab-description .cert-detail__meta-row,
   .cert-detail--tab-contributors .cert-detail__meta-row,
   .cert-detail--tab-funding .cert-detail__meta-row,
   .cert-detail--tab-updates .cert-detail__meta-row {
@@ -359,6 +373,13 @@
   min-width: 0;
 }
 
+/* An Overview with no description and no updates leaves the main panel
+   empty (funding and locations sit in the full-width panel below); drop
+   it so it adds no gap. */
+.cert-detail__content:empty {
+  display: none;
+}
+
 /* No divider above the Updates preview on the Overview — it reads as part
    of the overview narrative, not a ruled-off section. (The mobile rule
    above drops the base .context-updates border; this covers desktop.) */
@@ -394,15 +415,18 @@
   height: 24px;
 }
 
+/* Name over @handle. 1.3 leading so the two lines have air between them
+   (at 1.15 the handle touched the name). `.record-byline__value` sizes
+   every byline value to this pair's height. */
 .cert-detail__headline-author-meta {
   display: inline-flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: 1.3;
   min-width: 0;
 }
 
 .cert-detail__headline-name {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   white-space: nowrap;
@@ -411,7 +435,7 @@
 }
 
 .cert-detail__headline-handle {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -580,62 +604,15 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-.cert-detail__section-header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-/* Right-aligned cluster of section-header controls (Funding "Confirmed by"
-   filter button + the "See all" link). Pushed flush-right via auto-margin;
-   centered against the baseline-aligned title so the icon button doesn't
-   ride high. */
+/* Right-aligned cluster of section-header controls (Funding: Record
+   funding, the "Confirmed by" filter, See all), in a <SectionHeader>'s
+   action slot. Section headings themselves are always <SectionHeader>. */
 .cert-detail__section-actions {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   align-self: center;
-}
-
-/* Section heading inside a record page (Description, Contributors,
-   Funding, …): the `text-section` role, Inter 600 at 1rem, as in
-   <SectionHeader>. Headings carry no icon (the legacy 12px glyphs that
-   are still in the markup are hidden), and a count rides beside the
-   title, muted and tabular. */
-.cert-detail__section-title {
-  font-size: var(--text-section);
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--fg-primary);
-  margin: 0;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.cert-detail__section-title > svg {
-  display: none;
-}
-
-.cert-detail__section-title .cert-detail__meta-count {
-  font-size: inherit;
-  font-weight: 400;
-  color: var(--fg-muted);
-}
-
-/* Count beside a section title: muted and tabular, no pill. */
-.cert-detail__section-count {
-  color: var(--fg-muted);
-  font-size: var(--text-section);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Pull a sibling count in to the title's own 8px gap (the header's 12px
-   gap is for the trailing actions). */
-.cert-detail__section-title + .cert-detail__section-count {
-  margin-left: -4px;
 }
 
 /* ---------- Funding receipts list ----------
@@ -948,7 +925,7 @@
 }
 
 /* ---------- Byline project field ----------
-   The project in an activity's byline: a small thumb + the title, wrapping
+   The project in an activity's byline: its title (no thumbnail), wrapping
    to two lines before it truncates. */
 
 .cert-detail__headline-project-value {
@@ -962,7 +939,6 @@
      reflowing the row. */
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   color: var(--fg-primary);
   text-decoration: none;
   min-width: 0;
@@ -992,32 +968,6 @@
 
 .cert-detail__headline-project-link--static {
   cursor: default;
-}
-
-.cert-detail__headline-project-thumb {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Matches the Author avatar's effective size (24×24 — see the
-     `.cert-detail__headline-author > div:first-child` override
-     that scales the shared Avatar component down to 24px on the
-     headline byline) so the two glyphs read as a pair. */
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-subtle);
-  /* Tints the icon fallback shown when the project has no image. */
-  color: var(--fg-secondary);
-}
-
-.cert-detail__headline-project-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .cert-detail__headline-project-title {
@@ -1806,13 +1756,14 @@
   color: var(--fg-secondary);
 }
 
-/* Values share the author's height (avatar + two lines) so the row's
-   single-line values sit level with it. */
+/* Values share the author's height (name over @handle at 1.3 leading,
+   taller than the 24px avatar) so the row's single-line values sit level
+   with it. */
 .record-byline__value {
   display: flex;
   align-items: center;
   min-width: 0;
-  min-height: 32px;
+  min-height: calc((var(--text-body-sm) + var(--text-caption)) * 1.3);
   margin: 0;
   font-size: var(--text-body-sm);
   line-height: 1.4;
