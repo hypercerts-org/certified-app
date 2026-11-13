@@ -1,411 +1,168 @@
 /* ---------- /explore page ----------
-   Page-frame layout lives in layout.css under the
-   `:is(:has(.home-page), :has(.explore-page))` selector — those
-   rules zero the shell padding, stretch the page to fill the
-   100vh shell, and collapse the footer margin so the sidebar/main
-   divider meets the footer flush. This file owns explore-specific
-   styling only. */
-
-.explore-page {
-  padding: 2px 8px 16px;
-}
-
-@media (min-width: 800px) {
-  .explore-page {
-    padding: 0;
-  }
-}
-
-@media (max-width: 799px) {
-  /* Clip horizontal overflow so overlong content (degree-pills,
-     monospace DIDs, etc.) can't push the page wider than the viewport.
-     Cap at 100% (the containing block, which already excludes the
-     reserved scrollbar gutter) rather than 100vw — 100vw includes the
-     gutter, so it can overhang by the scrollbar width. */
-  .explore-page {
-    overflow-x: clip;
-    max-width: 100%;
-  }
-  /* Zero the shell's 16px reading gutter — the page carries its own
-     small (8px) gutter above so list rows run nearly edge-to-edge,
-     matching the /home feed treatment. Specificity (three classes via
-     :has) beats the components.css mobile gutter rule. */
-  .app-shell:has(.explore-page) .app-shell__content {
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-
-.explore-page {
-  position: relative;
-  /* Fluid sidebar width clamped to 256–296px. */
-  --explore-sidebar-width: clamp(256px, 22vw, 296px);
-}
+   A <PageContainer width="wide"> (`.explore-page`, which also joins the
+   shell's page-frame layout in layout.css): the page header, then the
+   layout. Below 1100px one column: the list pills (SideNav), then the
+   main column. From 1100px the lists are a sticky column on the left.
+   The main column: the search row (field + result actions), the type
+   chips, optional inline controls, then the sections or results. */
 
 .explore__layout {
-  display: grid;
-  grid-template-columns: var(--explore-sidebar-width) 1fr;
-  gap: 0;
-  align-items: start;
-}
-
-/* Vertical divider between the sidebar and the main pane,
-   matching GitHub's repo-list layout. Anchored on .explore-page
-   (not .explore__layout) so it spans every bit of the page
-   including the bottom padding — the divider meets the
-   .site-footer border-top flush instead of stopping where the
-   main column's last card ends. */
-.explore-page::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--explore-sidebar-width);
-  width: 1px;
-  background: var(--border-default);
-  pointer-events: none;
-}
-
-@media (max-width: 799px) {
-  /* Phone: the explore page is the main pane only. The left filter
-     sidebar is hidden (its filters duplicate the on-page category
-     dropdown + sub-toggles), so the layout is a single full-width
-     column. The vertical sidebar divider is suppressed below. */
-  .explore__layout {
-    grid-template-columns: 1fr;
-    padding: 0;
-  }
-  .explore-page::before {
-    display: none;
-  }
-}
-
-/* ---------- Sidebar ---------- */
-
-.explore__sidebar {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  /* Scrolls with the page (matches the top bar's no-sticky
-     behavior). Flush-left to the viewport, with breathing room at
-     the top + right so the active filter pill doesn't touch the
-     vertical divider. Top padding shared with /home and /settings
-     so first-line-of-text sits at the same vertical position on
-     every page-frame route. */
-  padding: 32px 12px 32px 12px;
 }
 
-/* Phone: hide the left filter sidebar entirely so the explore page is
-   the main pane only (its filters duplicate the on-page category
-   dropdown + sub-toggles). This override sits AFTER the base rule above
-   so it wins on equal specificity — a @media block adds no specificity,
-   so an earlier-placed override would lose to the base `display: flex`. */
-@media (max-width: 799px) {
-  .explore__sidebar {
-    display: none;
+@media (min-width: 1100px) {
+  .explore__layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+    gap: 32px;
   }
 }
 
-/* Filter list rows need their own right padding now that the
-   sidebar wrapper doesn't reserve any. */
-.explore__filter-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+/* The SideNav pill row scrolls inside the gutter on phones; pull it out
+   by the row's own 4px focus padding so the first pill lines up with
+   the text above. */
+@media (max-width: 1099px) {
+  .explore__lists {
+    margin-inline: -4px;
+  }
 }
-
-/* Section heading above the Featured group. Same font size as
-   the filter pills below so the two read at the same visual
-   weight; the muted color + medium weight still carries the
-   label/target hierarchy. */
-.explore__filter-heading {
-  margin: 0;
-  padding: 0 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-}
-
-/* Thin horizontal divider between the Featured group and the
-   generic filter list. Uses the standard subtle border token. */
-.explore__filter-divider {
-  margin: 12px 10px;
-  border: 0;
-  border-top: 1px solid var(--border-subtle);
-}
-
-/* Featured-group pills sit indented from the section heading so
-   they read as nested children of it. The indent is applied to
-   the surrounding list (not the inner pill padding) so the pill's
-   hover + active background also shifts right by the same amount —
-   the highlight ends up tabbed in, matching the text. */
-.explore__filter-list--indented {
-  padding-left: 18px;
-}
-
-.explore__filter {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--radius);
-  background: none;
-  text-align: left;
-  font-size: 0.85rem;
-  color: var(--fg-primary);
-  cursor: pointer;
-}
-
-.explore__filter:hover {
-  background: var(--bg-sunken);
-}
-
-.explore__filter--active,
-.explore__filter--active:hover {
-  /* Subtle selected state shared with .sx-menu__item--active: an
-     --overlay-medium fill (one step past the --bg-sunken hover, and
-     theme-aware so it lifts rather than inverts in dark mode) with
-     --fg-primary text at 600. Held on hover so the selection doesn't
-     flicker back to the hover fill. */
-  background: var(--overlay-medium);
-  color: var(--fg-primary);
-  font-weight: 600;
-}
-
-/* ---------- Main pane ---------- */
 
 .explore__main {
   min-width: 0;
-  /* Center the content in the space right of the sidebar. The grid
-     cell takes the full remaining width; the inner content is
-     bounded + auto-margined so it sits in the middle of the cell.
-     Vertical padding gives the body air; the surrounding panes
-     (.app-shell__content, .explore-page) carry no padding so the
-     page-frame borders meet the navbar + footer borders flush. */
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px 24px 32px;
-}
-
-/* ---------- Sub-category dropdown prefix to the search bar ---------- */
-
-.explore__sub-dropdown-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  /* 32px tall: matches the icon-only chrome buttons so the whole
-     chrome row sits at the same height. Vertical centering is
-     handled by align-items; horizontal padding is unaffected. */
-  height: 32px;
-  padding: 0 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.explore__sub-dropdown-trigger:hover {
-  background: var(--bg-sunken);
-  border-color: var(--fg-secondary);
-}
-
-.explore__sub-dropdown-label {
-  color: var(--fg-primary);
-}
-
-
-@media (max-width: 799px) {
-  /* Full-width single pane on phones — horizontal gutters come from
-     .explore-page's 16px padding, so the main pane drops its own
-     side padding and keeps a little top air above the chrome row. */
-  .explore__main {
-    max-width: none;
-    padding: 8px 0 8px;
-  }
-}
-
-.explore__chrome {
   display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Toolbar: search + actions, then type chips ---------- */
+
+.explore__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.explore__search-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
 }
 
-/* Search field grows to fill the chrome row. The field chrome (border,
-   fill, focus ring, leading search glyph) now comes from the canonical
-   <Input leadingIcon> primitive; this wrapper only carries the flex
-   sizing the bespoke <label> used to own. */
+/* The field takes the row; the Input primitive draws its chrome. */
 .explore__search-field {
-  flex: 1;
-  min-width: 200px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-/* On desktop, constrain the search input to 32px — the same height as
-   the icon-only chrome buttons — so the whole chrome row sits level.
-   The Input primitive uses h-9 (36px) for size="sm"; we shave it down
-   here to keep the explore chrome compact without touching the primitive. */
-@media (min-width: 800px) {
-  .explore__search-field input {
-    height: 32px;
-  }
-}
-
-.explore__chrome-actions {
+.explore__actions {
   display: flex;
-  gap: 6px;
-}
-
-/* Icon-only chrome buttons (sort, quality filter, confirmed-by) are
-   <Button size="icon" variant="secondary">; this class only pins them to
-   the 32px chrome row height (the primitive's 40px would misalign with
-   the 32px search field and view toggle). Two-class selector so it wins
-   over the primitive's Tailwind size utilities. */
-.explore__chrome-actions .explore__chrome-btn--icon {
-  width: 32px;
-  height: 32px;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-/* Mobile-first chrome: search takes a full-width row of its own (the
-   primary action on a phone), and the type dropdown + view/sort/filter
-   controls sit together on a comfortable second row. Every control meets
-   the 44px tap target. */
-@media (max-width: 799px) {
-  .explore__chrome {
-    gap: 10px;
-  }
-  /* Search first, full width. */
-  .explore__search-field {
-    order: -1;
-    flex: 1 0 100%;
-    min-width: 0;
-  }
-  /* Second row: dropdown on the left, action cluster pushed to the right.
-     Stretch the cluster to the row height so its icon buttons can match
-     the category pills (which set the line height). `flex-shrink: 0`
-     keeps the filter button from being squeezed off the right edge when
-     the category pills get wide (they scroll instead — see below). */
-  .explore__chrome-actions {
-    margin-left: auto;
-    gap: 8px;
-    align-self: stretch;
-    flex-shrink: 0;
-  }
-  /* Mobile icon buttons (sort + filter): a deterministic square.
-     A fixed width/height keeps the action cluster a predictable size so
-     `margin-left: auto` pins it flush to the right. The 36px visual box
-     is kept; the touch target is extended to 44px via an out-of-flow
-     pseudo-element below (so the cluster width is unchanged). */
-  .explore__chrome-actions .explore__chrome-btn--icon {
-    width: 36px;
-    height: 36px;
-    min-height: 0;
-    align-self: center;
-    position: relative;
-  }
-  /* Invisible >=44px touch target (WCAG 2.5.8) centered over the 36px box.
-     Absolutely positioned, so it extends the tappable area without growing
-     the flex cluster; clicks on it still dispatch to the button. The 8px
-     inter-button gap means adjacent targets meet but don't overlap. */
-  .explore__chrome-btn--icon::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translate(-50%, -50%);
-  }
-  /* The type dropdown trigger matches the 44px control height too. */
-  .explore__sub-dropdown-trigger {
-    min-height: 44px;
-  }
+/* Everything in the search row is 44px tall, the search field's height,
+   at every width (the icon Button is 36px from 800px on its own; the
+   view toggle's segments sit inside a 1px border, hence 42px). */
+.explore__actions .explore__action-btn {
+  width: 44px;
+  height: var(--control-h-md);
 }
 
-/* Category dropdown wrapper — transparent on desktop, hidden on mobile
-   (replaced by the pill strip below). */
-.explore__category-dropdown {
-  display: contents;
+.explore__actions [role="radio"] {
+  width: 42px;
+  height: calc(var(--control-h-md) - 2px);
 }
 
-@media (max-width: 799px) {
-  .explore__category-dropdown {
-    display: none;
-  }
+/* Type chips. The strip scrolls sideways when it can't fit (narrow
+   phones); 4px of padding keeps the inset focus rings visible. */
+.explore__types {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: -4px;
+  padding: 4px;
 }
 
-/* Mobile-only category pills — Activities / Projects / Accounts.
-   Sits inside the chrome row between the search field and the filter
-   button. Hidden on desktop (dropdown takes its place). */
-.explore__category-pills {
+.explore__types::-webkit-scrollbar {
   display: none;
 }
 
+/* Phones: every chip and action is a 44px target (the primitives are
+   32 / 36px on desktop). */
 @media (max-width: 799px) {
-  .explore__category-pills {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    /* Take only the width the pills need (don't grow) so the action
-       cluster keeps its full width and `margin-left: auto` can pin it to
-       the right edge — `flex: 1` here grew the pills and pushed the
-       filter button off-screen. Shrink + wrap handle the rare case where
-       the pills can't fit beside the actions. No `overflow` clip: the
-       category dropdown popover is a child and must escape the box. */
-    flex: 0 1 auto;
-    min-width: 0;
-    flex-wrap: wrap;
+  .explore__types [role="radio"],
+  .explore__inline-controls [role="radio"],
+  .explore__degree-pills [aria-pressed] {
+    min-height: 44px;
   }
 
-  .explore__category-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 12px;
-    border: 1px solid var(--border-default);
-    border-radius: 999px;
-    background: var(--bg-elevated);
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--fg-primary);
-    cursor: pointer;
-    white-space: nowrap;
-    min-height: 30px;
+  /* Tighter chips so all five types fit a 360px phone. */
+  .explore__types [role="radio"] {
+    padding-inline: 10px;
   }
-
-  .explore__category-pill--active {
-    background: var(--fg-primary);
-    color: var(--bg-canvas);
-    border-color: var(--fg-primary);
-  }
-
-  .explore__category-pills-sep {
-    display: block;
-    width: 1px;
-    height: 18px;
-    background: var(--border-default);
-    flex-shrink: 0;
-    align-self: center;
-  }
-
 }
 
-.explore__loading {
+/* The accounts sub-type (People / Organizations) and the endorsement
+   rings share one row under the toolbar. */
+.explore__inline-controls {
   display: flex;
-  justify-content: center;
-  padding: 48px 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: -8px 0 24px;
+}
+
+/* Light vertical rule between the sub-type pills and the ring pills. */
+.explore__inline-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 20px;
+  background: var(--border-default);
+}
+
+/* Featured note: a quiet line + "Show everything" above the results. */
+.explore__note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: -8px 0 16px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.explore__note-text {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
+/* ---------- Sections (the All type) ---------- */
+
+.explore__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+@media (min-width: 800px) {
+  .explore__sections {
+    gap: 48px;
+  }
+}
+
+.explore__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
 /* Load-more sentinel — sits below the result list, auto-triggers
@@ -417,29 +174,83 @@
   padding: 24px 0;
 }
 
-/* ---------- Popover content (quality filter) ----------
-   The popover container, overlay, and menu chrome now come from the
+/* ---------- Skeletons ---------- */
+
+.explore-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.explore-skeleton-row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.explore-skeleton-row__aside {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  width: 200px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 800px) {
+  .explore-skeleton-row__aside {
+    display: flex;
+  }
+}
+
+.explore-skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.explore-skeleton-card__image {
+  aspect-ratio: 1 / 1;
+}
+
+.explore-skeleton-card__image--wide {
+  aspect-ratio: 3 / 1;
+}
+
+/* ---------- Popover content (quality / confirmed-by filters) ----------
+   The popover container, overlay, and menu chrome come from the
    canonical <Popover> primitive (src/components/ui/popover.tsx). These
-   classes style only the *content* the quality filter renders inside
+   classes style only the *content* the filters render inside
    <PopoverContent>: the tier checkboxes, section headings, divider,
    and reset button. */
 
 .popover__item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  min-height: var(--control-h-compact);
+  padding: 4px 8px;
   border-radius: var(--radius);
   background: none;
   border: 0;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   cursor: pointer;
 }
 
-.popover__item:hover {
-  background: var(--bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .popover__item:hover {
+    background: var(--overlay-weak);
+  }
+}
+
+@media (max-width: 799px) {
+  .popover__item {
+    min-height: 44px;
+  }
 }
 
 /* Row wrapper for a quality-filter <Checkbox>. The box + label chrome
@@ -449,52 +260,52 @@
   cursor: pointer;
 }
 
-/* Sub-section heading inside a popover — used by the certs-tab
-   Quality popover to separate the Hyperlabel + Orglabeler tier
-   blocks. Same font size as the items, muted color, medium weight
-   so it reads as a label. */
+/* Sub-section heading inside a popover ("Activity quality",
+   "Account quality", "Confirmed by"). */
 .popover__section-heading {
-  margin: 4px 0 2px;
+  margin: 4px 0;
   padding: 0 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: var(--text-ui);
+  font-weight: 600;
   color: var(--fg-secondary);
 }
 
 /* Thin rule between popover sections. Inset from the menu edges so
    it doesn't visually merge with the menu border. */
 .popover__divider {
-  margin: 6px 8px;
+  margin: 4px 8px;
   border: 0;
   border-top: 1px solid var(--border-subtle);
 }
 
-/* "Reset to default" link at the bottom of each popover. Sits just
-   under the menu's last divider; rendered as a quiet text button
-   (no border / no fill) so it doesn't compete with the active
-   selection above. Disabled state when already at default keeps it
-   visible but reads as inert. */
+/* "Reset to default" at the bottom of each filter popover: a quiet text
+   button (no border / no fill) so it doesn't compete with the choices
+   above. Disabled when already at default: visible but inert. */
 .popover__reset-btn {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-height: var(--control-h-compact);
   margin: 0;
-  padding: 6px 12px;
+  padding: 4px 8px;
   border: 0;
   border-radius: var(--radius);
   background: none;
   text-align: left;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.78rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast),
+  transition: background-color var(--transition-fast),
     color var(--transition-fast);
 }
 
-.popover__reset-btn:hover:not(:disabled) {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .popover__reset-btn:hover:not(:disabled) {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
 }
 
 .popover__reset-btn:disabled {
@@ -502,12 +313,12 @@
   cursor: default;
 }
 
-/* Quiet <PopoverItem> for the "Reset to default" / "Show all" actions in
-   role="menu" popovers — same muted look as .popover__reset-btn, but a
-   real menuitem so arrow-key roving reaches it. The [role] prefix lifts
-   specificity over the primitive's Tailwind text utilities. */
+/* Quiet <PopoverItem> for "Reset to default" in role="menu" popovers —
+   the same muted look as .popover__reset-btn, but a real menuitem so
+   arrow-key roving reaches it. The [role] prefix lifts specificity over
+   the primitive's Tailwind text utilities. */
 [role="menu"] .popover__item--quiet {
-  font-size: 0.78rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
 }
@@ -516,161 +327,78 @@
   color: var(--fg-muted);
 }
 
-/* Inline reset on the endorsement-degree pill row (the degree
-   control lives in the chrome strip, not a popover, so its reset
-   sits adjacent to the pills rather than below them). */
+/* Inline reset beside the endorsement-ring pills. */
 .explore__degree-reset {
+  min-height: var(--control-h-compact);
   margin-left: 4px;
-  padding: 4px 10px;
+  padding: 0 8px;
   background: none;
   border: 0;
   border-radius: var(--radius);
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.78rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast),
+  transition: background-color var(--transition-fast),
     color var(--transition-fast);
 }
 
-.explore__degree-reset:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
+.explore__degree-reset:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-/* ---------- Combined "All" view (search across kinds) ---------- */
-
-.explore__all {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-.explore__all-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.explore__all-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.explore__all-section-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-secondary);
-}
-
-/* "Show all" action in the section header — sits on the same line as
-   the section title (pushed right by the head's space-between). Matches
-   the project detail page's "See all →" link: small, muted, underline
-   on hover. Collapses the All view to that single category. */
-.explore__all-section-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.explore__all-section-action:hover {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* All view, single-category mode: the row that hosts the inline
-   sub-option pills and/or the endorsement-degree pills, in place of the
-   chrome's sub-dropdown + the standalone degree bar. Low vertical
-   footprint so it doesn't read as a tall band under the chrome. */
-.explore__inline-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-/* On mobile the pill strip already handles sub-filtering, so the
-   inline-controls row (SegmentedControl + degree bar) is hidden to
-   avoid duplicate UI and prevent overflow. */
-@media (max-width: 799px) {
-  .explore__inline-controls {
-    display: none;
+@media (hover: hover) and (pointer: fine) {
+  .explore__degree-reset:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
   }
 }
 
-/* Light vertical rule between the sub-option pills and the degree pills
-   when both are shown. */
-.explore__inline-divider {
-  width: 1px;
-  align-self: stretch;
-  min-height: 20px;
-  background: var(--border-default);
-}
-
-/* Inline variant of the degree bar — drops the standalone bar's block
-   padding/margin so the pills sit flush in the inline-controls row.
-   Doubled class so it beats the base `.explore__degree-bar` rule, which
-   is declared later in this file. */
-.explore__degree-bar.explore__degree-bar--inline {
-  padding: 0;
-  margin: 0;
-}
-
-.explore__all-empty {
-  margin: 0;
-  padding: 14px;
-  font-size: 0.85rem;
-  color: var(--fg-muted);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-}
-
-.explore__all-loading {
-  display: flex;
-  justify-content: center;
-  padding: 20px 0;
-}
-
-/* ---------- List view (certs + projects) ---------- */
+/* ---------- List view (activities, projects, accounts, funding) ----------
+   Rows separated by hairlines, no box around the list. The row styles
+   (.cert-list-row) are shared with the project page and the profile's
+   Lists tab, so explore-only spacing is scoped to `.explore-page`. */
 
 .explore__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  overflow: hidden;
 }
 
-.explore__list > li + li .cert-list-row {
+.explore__list > li + li .cert-list-row,
+.explore__list > li + li .account-list-row,
+.explore__list > li + li .explore-skeleton-row {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* From 800px rows carry 8px of side padding for the hover wash; pull the
+   list out by the same amount so row text lines up with the section
+   heading above. */
+@media (min-width: 800px) {
+  .explore-page .explore__list {
+    margin-inline: -8px;
+  }
+
+  .explore-page .cert-list-row,
+  .explore-page .account-list-row,
+  .explore-page .explore-skeleton-row {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .explore-page .explore__list--funding .funding-receipt-row > :first-child {
+    padding-left: 8px;
+  }
+
+  .explore-page .explore__list--funding .funding-receipt-row > :last-child {
+    padding-right: 8px;
+  }
+}
+
 /* Skip layout/paint for offscreen rows — load-more appends 50 per page
-   with no cap. Estimate matches the ~60px row (40px thumb + padding);
+   with no cap. Estimate matches the ~64px row (40px thumb + padding);
    rendered rows are re-measured via the `auto` keyword, keeping
    back-button scroll restoration stable.
    Scoped to the three variants it helps: --funding is excluded because
@@ -685,20 +413,21 @@
 }
 
 .cert-list-row {
-  /* Four columns: link block (thumb + title/meta), author column,
+  /* Three columns: link block (thumb + title/meta), author column,
      and time. The link block shrinks; the author column has a
      fixed minimum so author bylines stack vertically across rows. */
   display: grid;
   grid-template-columns: 1fr 200px 84px;
   align-items: center;
   gap: 16px;
-  padding: 10px 14px;
-  transition: background var(--transition-fast);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  transition: background-color var(--transition-fast);
 }
 
-/* 800-1099px: the sidebar eats into the content column, so the fixed
-   200px author column starved the title. Narrow the author/date
-   columns here; the author byline already truncates with an ellipsis. */
+/* 800-1099px: a narrower content column, so the fixed 200px author
+   column starved the title. Narrow the author/date columns here; the
+   author byline already truncates with an ellipsis. */
 @media (min-width: 800px) and (max-width: 1099px) {
   .cert-list-row {
     grid-template-columns: minmax(0, 1fr) 140px 76px;
@@ -706,11 +435,10 @@
   }
 }
 
-.cert-list-row:hover {
-  /* --bg-subtle doesn't exist in the token set; fell through to
-     no background. Use --bg-sunken for a clearly-visible hover
-     wash that highlights the whole row, not just the title link. */
-  background: var(--bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .cert-list-row:hover {
+    background: var(--overlay-weak);
+  }
 }
 
 /* Compact variant (image + title/meta only, no author/date columns).
@@ -729,8 +457,14 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+  border-radius: var(--radius);
   text-decoration: none;
   color: inherit;
+}
+
+.cert-list-row__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .cert-list-row__thumb {
@@ -762,11 +496,11 @@
 
 .cert-list-row__title {
   margin: 0;
-  /* Standard text, bold (primary line). */
-  font-size: 0.85rem;
+  /* Primary line: body-sm at 600. */
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
-  line-height: 1.3;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -774,14 +508,13 @@
 
 /* "by Display Name" line under a project row's title. Hidden on
    desktop (the avatar author column carries the byline there); shown on
-   mobile, where the column is dropped (see the mobile block below). */
+   phones, where the column is dropped (see the phone block below). */
 .cert-list-row__subtitle {
   display: none;
   margin: 0;
-  /* Second-row text — smaller. */
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
-  line-height: 1.3;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -791,9 +524,10 @@
   margin: 0;
   /* Single line: time period · work scope, truncated with an ellipsis
      when the work scope doesn't fit (no wrapping to a second line). */
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
-  line-height: 1.3;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -804,7 +538,7 @@
 }
 
 .cert-list-row__meta-sep {
-  margin: 0 5px;
+  margin: 0 4px;
   color: var(--fg-muted);
 }
 
@@ -820,7 +554,7 @@
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-ui);
 }
 
 /* In list rows the author byline is a centered grid cell — drop the
@@ -830,60 +564,36 @@
 }
 
 .cert-list-row__time {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-/* Phone: list rows pick up the /home feed-card treatment — the boxed
-   list flattens to hairline-divided full-width cards, the author
-   byline moves on top with the relative time pinned right, and titles
-   speak in the serif headline voice. */
+/* Phone: rows run full width between hairlines, the author column and
+   the per-row meta give way to a "by …" line, and the date stays pinned
+   right. */
 @media (max-width: 799px) {
-  .explore__list {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    overflow: visible;
-  }
-
-  .explore__list > li + li .cert-list-row,
-  .explore__list > li + li .account-list-row {
-    border-top: 1px solid var(--border-default);
-  }
-
   .cert-list-row {
     padding: 16px 0;
-  }
-
-  .cert-list-row:hover {
-    background: transparent;
   }
 
   .cert-list-row__body {
     gap: 4px;
   }
 
-  .cert-list-row__title {
-    /* Standard Inter text everywhere (no serif headline bump) — bold as
-       the primary line. */
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-
   .cert-list-row__meta {
     color: var(--fg-muted);
   }
 
-  /* Activities (compact): thumb + serif title + meta in one row — the
-     same treatment the mobile project-detail activities list uses. */
+  /* Activities (compact): thumb + title + meta in one row — the
+     same treatment the phone project-detail activities list uses. */
   .cert-list-row.cert-list-row--compact .cert-list-row__link {
     align-items: flex-start;
   }
 
-  /* Let the activity meta (time period · work scope) wrap on mobile so
+  /* Let the activity meta (time period · work scope) wrap on phones so
      the work scope stays visible instead of being clipped by the
      single-line ellipsis. The dot separator is hidden at wrap points by
      ExploreListRow's line-start measurement. */
@@ -893,9 +603,9 @@
     text-overflow: clip;
   }
 
-  /* Projects (non-compact): [thumb + title / "by …"] on the left, the
-     date pinned to the right of the same row. Author avatar column and
-     the count·location meta line are dropped on mobile. */
+  /* Non-compact rows: [thumb + title / "by …"] on the left, the date
+     pinned to the right of the same row. The author avatar column and
+     the meta line are dropped on phones. */
   .cert-list-row:not(.cert-list-row--compact) {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "link time";
@@ -989,17 +699,20 @@
   background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
-  transition: border-color var(--transition-fast), background var(--transition-fast),
-    box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast);
   min-width: 0;
 }
 
-.explore-user-card:hover {
-  border-color: var(--fg-secondary);
-  background: var(--bg-sunken);
-  /* Subtle lift on hover — distinguishes the account cards from the
-     flat cert/project cards so the kind switch is visually felt. */
-  box-shadow: var(--shadow-sm);
+.explore-user-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Cards never carry shadows (DESIGN.md §5); hover is the border only. */
+@media (hover: hover) and (pointer: fine) {
+  .explore-user-card:hover {
+    border-color: var(--border-hover);
+  }
 }
 
 .explore-user-card__head {
@@ -1022,7 +735,7 @@
 
 .explore-user-card__name {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
@@ -1033,7 +746,7 @@
 
 .explore-user-card__handle {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1051,7 +764,7 @@
 
 .explore-user-card__desc {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   line-height: 1.45;
   overflow: hidden;
@@ -1076,15 +789,14 @@
   align-items: center;
   gap: 16px;
   padding: 12px 14px;
-  transition: background var(--transition-fast);
+  border-radius: var(--radius);
+  transition: background-color var(--transition-fast);
 }
 
-.explore__list > li + li .account-list-row {
-  border-top: 1px solid var(--border-subtle);
-}
-
-.account-list-row:hover {
-  background: var(--bg-sunken);
+@media (hover: hover) and (pointer: fine) {
+  .account-list-row:hover {
+    background: var(--overlay-weak);
+  }
 }
 
 .account-list-row__link {
@@ -1109,7 +821,7 @@
 
 .account-list-row__name {
   /* Standard text, bold (primary line). */
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
@@ -1120,7 +832,7 @@
 
 .account-list-row__handle {
   /* Second-row text — smaller. */
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1144,7 +856,7 @@
 }
 
 .account-list-row__joined {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1158,11 +870,8 @@
      no boxed hover wash. */
   .account-list-row {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-    padding: 14px 0;
-  }
-  .account-list-row:hover {
-    background: transparent;
+    gap: 8px;
+    padding: 12px 0;
   }
   .account-list-row__badge {
     justify-self: start;
@@ -1221,7 +930,7 @@
 }
 
 .funding-receipt-row__heading {
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
@@ -1236,7 +945,7 @@
 /* Trailing column: amount + currency. Standard body text, like the
    date / to / for fields. */
 .funding-receipt-row__amount {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 400;
   color: var(--fg-primary);
   font-variant-numeric: tabular-nums;
@@ -1282,7 +991,7 @@
 }
 
 .funding-receipt-row__word {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 400;
   color: var(--fg-secondary);
   flex-shrink: 0;
@@ -1292,7 +1001,7 @@
    address); it owns truncation + numeric figures. Only the row's font
    size needs pinning here — it inherits down to the address label. */
 .funding-receipt-row__text-party {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 400;
 }
 
@@ -1337,7 +1046,7 @@
 /* Activity title — standard body text, wraps to at most two lines. */
 .funding-receipt-row__activity-title {
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 400;
   color: var(--fg-primary);
   line-height: 1.3;
@@ -1355,7 +1064,7 @@
 .funding-receipt-row__date {
   /* Dates are secondary metadata — smaller + muted, like the date on the
      cert / account rows. */
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 400;
   color: var(--fg-secondary);
   white-space: nowrap;
@@ -1437,7 +1146,7 @@
    lines so "Sender & Recipient" isn't truncated to "Sender & Reci…" in the
    narrow column; clamps (with an ellipsis) past two lines. */
 .funding-receipt-row__confirmed-label {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 400;
   color: var(--fg-secondary);
   display: -webkit-box;
@@ -1537,7 +1246,7 @@
     grid-column: 1;
     grid-row: 1;
     align-self: center;
-    font-size: 0.8125rem;
+    font-size: var(--text-ui);
   }
   .funding-receipt-row__amount {
     grid-column: 2;
@@ -1563,7 +1272,7 @@
     display: block;
     flex: 0 0 4.5rem;
     padding-top: 2px;
-    font-size: 0.6875rem;
+    font-size: var(--text-label);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: var(--tracking-label);
@@ -1601,12 +1310,18 @@
   background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 
-.explore-project-card:hover {
-  border-color: var(--fg-secondary);
-  background: var(--bg-sunken);
+.explore-project-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .explore-project-card:hover {
+    border-color: var(--border-hover);
+  }
 }
 
 .explore-project-card__image-wrap {
@@ -1642,7 +1357,7 @@
 
 .explore-project-card__title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   line-height: 1.3;
@@ -1657,7 +1372,7 @@
 
 .explore-project-card__desc {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--text-ui);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1673,7 +1388,7 @@
   align-items: center;
   gap: 12px;
   margin-top: 2px;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
 }
 
@@ -1694,22 +1409,20 @@
 .explore__degree-bar {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 0 6px;
-  margin-bottom: 12px;
+  gap: 8px;
 }
 
 .explore__degree-pills {
   display: inline-flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.explore__degree-truncated {
-  font-size: 12px;
+.explore__degree-note {
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   margin: 0;
-  font-style: italic;
 }
 
 /* -----------------------------------------------------------------
@@ -1725,7 +1438,7 @@
   height: 16px;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--text-micro);
   font-weight: 600;
   line-height: 1;
   border: 1px solid transparent;
@@ -1751,7 +1464,7 @@
 
 .endorsement-row-badge__sep {
   color: var(--fg-muted);
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1;
 }
 
@@ -1782,7 +1495,7 @@
   border-bottom: 1px solid var(--border-default);
   background: none;
   text-align: left;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   cursor: pointer;
@@ -1830,7 +1543,7 @@
 }
 
 .funding-receipt-detail__label {
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
@@ -1843,7 +1556,7 @@
 .funding-receipt-detail__value {
   margin: 0;
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
 }
 
@@ -1880,7 +1593,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
 }
 

@@ -193,15 +193,13 @@
 }
 
 /* ---------- Activity feed (certs.social-style social cards) ----------
-   Each entry is a full-width card separated by hairline dividers:
-   author byline (avatar + name + @handle + relative time) with the
-   event verb as a muted second line, then — for record creates — the
-   record body: full-width image, serif headline title, clamped short
-   description and a dot-separated muted meta row. Mirrors the
-   feed-card layout shipped on certs.social. */
+   The /feed list. Each entry is a row separated by a hairline: the
+   author byline (avatar, then name, @handle and relative time on one
+   line) with the event verb as a muted second line, then, for record
+   creates, the record body: image, serif title, clamped short
+   description and a dot-separated meta row. Everything under the byline
+   lines up with the name column, not the avatar. */
 
-/* No border-top — the tab strip above (.feed-tabs) carries the
-   dividing rule, exactly like the certs.social feed surface. */
 .home-feed {
   list-style: none;
   margin: 0;
@@ -230,16 +228,22 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 20px 0;
-  font-size: 0.875rem;
+  padding: 16px 0;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
 }
 
-/* Align everything under the byline (the preview card / endorsement
+/* The first row sits right under the page header (and level with the
+   side boxes from 1100px), so it needs less space above it. */
+.home-feed__item:first-child > .home-feed__card {
+  padding-top: 8px;
+}
+
+/* Align everything under the byline (the record body / endorsement
    expansion) with the actor's name column rather than the avatar: indent
-   by the head's avatar column (32px) + its 10px gap. */
+   by the head's avatar column (32px) + its 12px gap. */
 .home-feed__card > :not(.home-feed__card-head) {
-  padding-left: 42px;
+  margin-left: 44px;
 }
 
 /* ---- Head: avatar + byline + verb sentence ---- */
@@ -248,11 +252,9 @@
   display: grid;
   /* Avatar column sized to the Avatar component's "sm" intrinsic
      (32px) so the actor icon renders at the same diameter on every
-     card regardless of whether the profile lookup has resolved yet.
-     Top-aligned — the meta column is three lines tall (name+time /
-     @handle / sentence), so the avatar pins to the name line. */
+     card regardless of whether the profile lookup has resolved yet. */
   grid-template-columns: 32px minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
   align-items: start;
 }
 
@@ -260,29 +262,44 @@
   width: 32px;
   height: 32px;
   display: inline-flex;
+  border-radius: 50%;
   text-decoration: none;
   flex-shrink: 0;
-  margin-top: 2px;
+}
+
+.home-feed__avatar:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .home-feed__card-head-meta {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
-/* Row 1: display name, relative time pinned right. */
+.home-feed__card-head-meta--skeleton {
+  gap: 8px;
+  padding-top: 2px;
+}
+
+/* Line 1: display name, @handle, relative time. The handle gives way
+   first (it truncates); the name truncates only when it alone is too
+   long; the time never shrinks. */
 .home-feed__byline {
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.4;
 }
 
 .home-feed__actor {
-  font-size: 0.875rem;
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 600;
   color: var(--fg-primary);
   text-decoration: none;
@@ -291,37 +308,34 @@
   text-overflow: ellipsis;
 }
 
-.home-feed__actor:hover {
-  text-decoration: underline;
-}
-
-/* Row 2: the @handle on its own line under the name. */
 .home-feed__handle {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.3;
+  flex: 0 100 auto;
+  min-width: 0;
   color: var(--fg-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+}
+
+.home-feed__dot {
+  flex-shrink: 0;
+  color: var(--fg-muted);
 }
 
 .home-feed__time {
-  margin-left: auto;
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
   white-space: nowrap;
-  flex-shrink: 0;
 }
 
-/* Verb sentence — muted second line under the name; carries its own
-   links (target cert / project / account names). */
+/* Line 2: the verb sentence; carries its own links (target activity /
+   project / account names). */
 .home-feed__sentence {
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.35;
+  font-size: var(--text-ui);
+  line-height: 1.45;
   color: var(--fg-secondary);
   min-width: 0;
   overflow: hidden;
@@ -337,30 +351,46 @@
   font-weight: 500;
   color: var(--fg-primary);
   text-decoration: none;
-  border-bottom: 1px solid transparent;
 }
 
-.home-feed__target:hover {
-  border-bottom-color: var(--fg-primary);
+.home-feed__actor:focus-visible,
+.home-feed__target:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-feed__actor:hover,
+  .home-feed__target:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--fg-muted);
+    text-underline-offset: 3px;
+  }
 }
 
 /* The "Show all / Show fewer" toggle is a <Button variant="ghost"
    size="sm">; keep it sized to its label inside the flex-column card
-   (the primitive is inline-flex and would otherwise stretch). */
+   (the primitive is inline-flex and would otherwise stretch). Pulled
+   up so it sits close to the sentence it expands. */
 .home-feed__group-toggle {
   align-self: flex-start;
+  margin-top: -4px;
 }
 
 /* Expanded endorsement-group list: each row is an <IdentityRow>
-   (avatar + display name + @handle), so give them breathing room. */
+   (avatar + display name + @handle). */
 .home-feed__group-list {
+  list-style: none;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 4px;
 }
 
-/* Follow-list error banner: message + inline Retry button. */
+/* Follow-list error banner: message + inline retry button. */
 .home-feed__error {
   display: flex;
   align-items: center;
@@ -371,8 +401,8 @@
 /* ---- Body: record image + headline + description + meta ---- */
 
 /* The whole record body is one Link to the detail page. Keep it
-   visually invisible — no underline, no color shift — so the card
-   still reads as a card; only the title underlines on hover. */
+   visually invisible — no underline, no color shift — so the row still
+   reads as a row; only the title underlines on hover. */
 .home-feed__card-body {
   display: flex;
   flex-direction: column;
@@ -380,12 +410,20 @@
   color: inherit;
   text-decoration: none;
   min-width: 0;
+  border-radius: var(--radius);
 }
 
-a.home-feed__card-body:hover .home-feed__card-title {
-  text-decoration: underline;
-  text-decoration-color: var(--fg-muted);
-  text-underline-offset: 3px;
+a.home-feed__card-body:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.home-feed__card-body:hover .home-feed__card-title {
+    text-decoration: underline;
+    text-decoration-color: var(--fg-muted);
+    text-underline-offset: 3px;
+  }
 }
 
 .home-feed__card-image {
@@ -407,17 +445,21 @@ a.home-feed__card-body:hover .home-feed__card-title {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
+/* Record title: the serif title voice (DESIGN.md §3.2 — feed card title
+   is serif 700 at the h4 size on phones, 1.25rem from 800px). */
 .home-feed__card-title {
   font-family: var(--font-headline), "Noto Serif", Georgia, serif;
-  font-size: 1.125rem;
+  font-size: var(--text-h4);
   font-weight: 700;
   color: var(--fg-primary);
   line-height: 1.3;
+  letter-spacing: -0.005em;
   min-width: 0;
+  text-wrap: balance;
   /* Two-line clamp: long titles stay readable instead of cutting at
      the first line. */
   overflow: hidden;
@@ -430,9 +472,10 @@ a.home-feed__card-body:hover .home-feed__card-title {
 }
 
 .home-feed__card-desc {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   line-height: 1.6;
   color: var(--fg-secondary);
+  text-wrap: pretty;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -445,8 +488,9 @@ a.home-feed__card-body:hover .home-feed__card-title {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.75rem;
+  gap: 4px 8px;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
 }
 
@@ -457,22 +501,26 @@ a.home-feed__card-body:hover .home-feed__card-title {
   white-space: nowrap;
 }
 
-/* Dot separator between meta items (certs.social meta row). */
+/* Dot separator between meta items. */
 .home-feed__card-meta-item + .home-feed__card-meta-item::before {
   content: "";
   width: 3px;
   height: 3px;
   border-radius: 50%;
   background: var(--fg-muted);
-  margin-right: 8px;
+  margin-right: 4px;
   flex-shrink: 0;
 }
 
-/* ---- Desktop enhancements ---- */
+/* ---- From 800px ---- */
 
 @media (min-width: 800px) {
   .home-feed__card {
     padding: 24px 0;
+  }
+
+  .home-feed__item:first-child > .home-feed__card {
+    padding-top: 16px;
   }
 
   .home-feed__card-title {
@@ -487,37 +535,13 @@ a.home-feed__card-body:hover .home-feed__card-title {
 }
 
 @media (max-width: 799px) {
-  .home-feed__item {
-    /* Slightly stronger divider than the desktop subtle line so cards
-       read as distinct entries in a thumb-scrolled timeline. */
-    border-bottom: 1px solid var(--border-default);
-  }
-
-  .home-feed__item:last-child {
-    border-bottom: 0;
-  }
-
-  .home-feed__card {
-    padding: 16px 0;
-  }
-
-  .home-feed__load-more {
-    padding: 20px 0 8px;
-  }
-
   /* Expandable endorsement-group list rows get comfortable touch height. */
   .home-feed__group-list-item {
     padding: 4px 0;
   }
-
-  /* Center the "Show all / Show fewer" toggle in the thumb-scrolled
-     feed (desktop keeps it flush-left, the default above). */
-  .home-feed__group-toggle {
-    align-self: center;
-  }
 }
 
-/* ---------- Auth-loading + signed-out states ---------- */
+/* ---------- Auth-loading state (Home) ---------- */
 
 .home__loading {
   display: flex;
@@ -526,17 +550,10 @@ a.home-feed__card-body:hover .home-feed__card-title {
   min-height: 50vh;
 }
 
-
-/* The feed's tab strip + inline filter panel reuse the certs.social
-   classes in feed.css (.feed-tabs, .feed-evaluator-panel,
-   .feed-evaluators__*) — no home-specific chrome styles needed. */
-
-
-/* ---------- Activity timeline load-more sentinel ---------- */
+/* ---------- Feed load-more sentinel ---------- */
 
 .home-feed__load-more {
   display: flex;
   justify-content: center;
   padding: 16px 0 32px;
 }
-

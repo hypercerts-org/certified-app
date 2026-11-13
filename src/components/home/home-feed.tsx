@@ -9,18 +9,21 @@ import {
   useRef,
   useState,
 } from "react"
-import { ChevronDown, Inbox, Info, Users } from "lucide-react"
+import { ChevronDown, Filter, Inbox, Info, Users } from "lucide-react"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
 import Checkbox from "@/components/ui/checkbox"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import EmptyState from "@/components/ui/empty-state"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
+import PageHeader from "@/components/ui/page-header"
+import ResponsiveDialog from "@/components/ui/responsive-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useClickOutsideClose } from "@/hooks/use-click-outside-close"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
 import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { groupConsecutiveEndorsements } from "@/lib/utils/group-feed"
 import { useFollowing } from "@/hooks/use-following"
 import { hideBrokenThumb } from "@/lib/utils/image-fallback"
@@ -47,7 +50,7 @@ const DEFAULT_INCLUDED_TIERS: ReadonlySet<HyperlabelTier> = new Set(
 )
 
 /** Sentinel for the "Not labeled yet" checkbox — separate from the
- *  Hyperlabel tier enum so the popover state can carry it without
+ *  Hyperlabel tier enum so the filter state can carry it without
  *  widening the tier type. Mirrors the explore-page convention. */
 const UNLABELED_SLUG = "unlabeled" as const
 type UnlabeledSlug = typeof UNLABELED_SLUG
@@ -60,6 +63,16 @@ type OrgQualityValue = OrglabelTier | UnlabeledSlug
 const DEFAULT_INCLUDED_ORG_TIERS: ReadonlySet<OrglabelTier> = new Set(
   ORGLABEL_TIERS.filter((t) => !DEFAULT_HIDDEN_ORG_LABELS.includes(t)),
 )
+
+/** The full default selections, "Not labeled yet" included. */
+const DEFAULT_TIER_SELECTION: ReadonlySet<QualityFilterValue> = new Set<QualityFilterValue>([
+  ...DEFAULT_INCLUDED_TIERS,
+  UNLABELED_SLUG,
+])
+const DEFAULT_ORG_TIER_SELECTION: ReadonlySet<OrgQualityValue> = new Set<OrgQualityValue>([
+  ...DEFAULT_INCLUDED_ORG_TIERS,
+  UNLABELED_SLUG,
+])
 
 /** Highest tier first — same order the explore Account-quality
  *  popover lists them in. */
@@ -89,23 +102,81 @@ const MIN_VISIBLE_ITEMS = 10
  *  IntersectionObserver sentinel takes over. */
 const MAX_AUTO_LOADS = 25
 
+const FEED_DESCRIPTION =
+  "New activities, projects and endorsements from accounts you follow, and from accounts your trusted endorsers have endorsed."
+
+/** Number of entries in `a` or `b` but not both. */
+function differenceCount<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): number {
+  let n = 0
+  for (const v of a) if (!b.has(v)) n++
+  for (const v of b) if (!a.has(v)) n++
+  return n
+}
+
 /**
- * Social-card activity feed for the home page, modeled on the
- * certs.social feed design. Each entry is an author byline (avatar +
- * display name + @handle + relative time) with the event verb as a
- * muted second line; cert / project / update creates also render a
- * full-card body underneath — full-width image, serif headline title,
- * short description and a dot-separated meta row (period + location
- * count for certs, item count for projects). Endorsement events keep
- * to the byline-only treatment since the sentence already names both
- * ends of the action.
+ * The /feed page header: title, one line on where the items come from,
+ * and (below 1100px, where the filters have no column of their own) a
+ * Filters button that opens them in a sheet or dialog. `changedCount`
+ * shows on the button ("Filters · 2") once the filters differ from the
+ * defaults. Without `onOpenFilters` (while the page is still loading) the
+ * button renders disabled so the header keeps its size.
+ */
+export function FeedPageHeader({
+  changedCount = 0,
+  onOpenFilters,
+  filtersOpen = false,
+}: {
+  changedCount?: number
+  onOpenFilters?: () => void
+  filtersOpen?: boolean
+}) {
+  return (
+    <PageHeader
+      title="Feed"
+      description={FEED_DESCRIPTION}
+      actions={
+        <Button
+          variant="secondary"
+          size="md"
+          className="lg:hidden"
+          onClick={onOpenFilters}
+          disabled={!onOpenFilters}
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
+          aria-label={
+            changedCount > 0
+              ? `Filters, ${changedCount} changed`
+              : "Filters"
+          }
+        >
+          <Filter size={16} strokeWidth={1.75} aria-hidden />
+          <span className="tabular-nums">
+            {changedCount > 0 ? `Filters · ${changedCount}` : "Filters"}
+          </span>
+        </Button>
+      }
+    />
+  )
+}
+
+/**
+ * The /feed page body, modeled on the certs.social feed design. Each
+ * entry is an author byline (avatar, name, @handle and relative time)
+ * with the event verb as a muted second line; activity, project and
+ * update creates also render the record underneath: image, serif title,
+ * short description and a dot-separated meta row. Endorsement events
+ * keep to the byline, since the sentence already names both ends.
  *
- * Layout (the /feed page): at 1100px and wider, three columns: the
+ * The author set is direct follows ∪ the accounts the selected trusted
+ * endorsers have endorsed, narrowed by the organization-quality filter;
+ * the activity-quality filter narrows the records.
+ *
+ * Layout: the page header first. At 1100px and wider, three columns: the
  * filters in a sticky box on the left, the list in the middle and `news`
- * on the right. Below 1100px it is one column and the
- * filters sit behind the "For you" disclosure above the list. The list
- * ends in an IntersectionObserver sentinel that calls `useHomeFeed`'s
- * `loadMore` when it enters the viewport.
+ * on the right. Below 1100px one column, with the filters behind the
+ * header's Filters button (a bottom sheet on phones, a dialog from
+ * 800px). The list ends in an IntersectionObserver sentinel that calls
+ * `useHomeFeed`'s `loadMore` when it enters the viewport.
  */
 export default function HomeFeed({
   activeDid,
@@ -115,12 +186,12 @@ export default function HomeFeed({
   /** Right-column content at 1100px and wider (hidden below). */
   news?: React.ReactNode
 }) {
-  // Home feed reads ONLY the Certified follow graph
+  // The feed reads ONLY the Certified follow graph
   // (`app.certified.graph.follow`). Viewers who want their Bluesky
   // follows reflected here run the social-graph sync in Settings,
   // which mirrors their Bluesky graph into the Certified collection
   // once — after that, the Certified graph is the canonical source
-  // and the home feed reads from a single place instead of merging
+  // and the feed reads from a single place instead of merging
   // both live every page load.
   const {
     subjects: followedDids,
@@ -130,10 +201,10 @@ export default function HomeFeed({
   } = useFollowing(activeDid)
   // Default state has every visible Hyperlabel tier checked AND
   // "Not labeled yet" checked — same default as the explore page so
-  // a viewer who hasn't touched the filter sees the same set of certs
-  // here and on /explore.
+  // a viewer who hasn't touched the filter sees the same set of
+  // activities here and on /explore.
   const [includedTiers, setIncludedTiers] = useState<Set<QualityFilterValue>>(
-    () => new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
+    () => new Set<QualityFilterValue>(DEFAULT_TIER_SELECTION),
   )
   // Trusted evaluators are sourced live from the curated list; the
   // hardcoded set is the fallback used until it resolves.
@@ -157,23 +228,18 @@ export default function HomeFeed({
   // event ACTOR rather than the record, by adjusting the author DID
   // set handed to useHomeFeed (see effectiveFollows below).
   const [includedOrgTiers, setIncludedOrgTiers] = useState<Set<OrgQualityValue>>(
-    () => new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
+    () => new Set<OrgQualityValue>(DEFAULT_ORG_TIER_SELECTION),
   )
-  // Inline filter panel under the "For you" tab (certs.social pattern:
-  // clicking the active tab toggles the disclosure).
-  const [filterOpen, setFilterOpen] = useState(false)
-  const filterPanelId = useId()
+
+  // Below 1100px the filters open in a sheet (phones) or dialog. Close it
+  // if the window widens past 1100px, where the filters column shows.
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const { hasRightRail } = useLayoutBreakpoints()
+  if (filtersOpen && hasRightRail) setFiltersOpen(false)
+  const closeFilters = useCallback(() => setFiltersOpen(false), [])
   const sidebarPanelId = useId()
-  const filterWrapRef = useRef<HTMLDivElement>(null)
-  useClickOutsideClose(filterOpen, filterWrapRef, () => setFilterOpen(false))
-  useEffect(() => {
-    if (!filterOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilterOpen(false)
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [filterOpen])
+  const dialogPanelId = useId()
+
   // Two filter modes, mirroring the explore page (see the
   // `certIncludeUnlabeled` comment block there for the full rationale):
   //   - Unlabeled INCLUDED → use `excludeCertLabels` (drop specific
@@ -228,7 +294,7 @@ export default function HomeFeed({
   // evaluator endorsements, org-label DID set) so the feed renders in a
   // single frame instead of flashing direct-follows first and then a
   // second pass with the narrowed union. All three fetches cache at
-  // module scope, so after the first /home visit `ready` flips
+  // module scope, so after the first visit `ready` flips
   // effectively-synchronously — only the cold first paint waits.
   const ready = !followsLoading && !endorsementsLoading && !orgFilter.isLoading
   const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
@@ -238,22 +304,21 @@ export default function HomeFeed({
       ready,
     })
 
-  // "For you" flips to "Custom" once any filter diverges from the
-  // defaults — same affordance certs.social uses on its feed tabs.
-  const isDefaultFilters =
-    isQualityDefault(includedTiers) &&
-    isOrgQualityDefault(includedOrgTiers) &&
-    selectedEvaluators.size === evaluatorDids.length
+  // How many checkboxes differ from their default, across the three
+  // groups. Shown on the Filters button; zero means "defaults".
+  const changedCount =
+    differenceCount(includedTiers, DEFAULT_TIER_SELECTION) +
+    differenceCount(includedOrgTiers, DEFAULT_ORG_TIER_SELECTION) +
+    (customEvaluators === null
+      ? 0
+      : evaluatorDids.filter((did) => !customEvaluators.has(did)).length)
+  const isDefaultFilters = changedCount === 0
 
-  const resetFilters = () => {
-    setIncludedTiers(
-      new Set<QualityFilterValue>([...DEFAULT_INCLUDED_TIERS, UNLABELED_SLUG]),
-    )
-    setIncludedOrgTiers(
-      new Set<OrgQualityValue>([...DEFAULT_INCLUDED_ORG_TIERS, UNLABELED_SLUG]),
-    )
+  const resetFilters = useCallback(() => {
+    setIncludedTiers(new Set<QualityFilterValue>(DEFAULT_TIER_SELECTION))
+    setIncludedOrgTiers(new Set<OrgQualityValue>(DEFAULT_ORG_TIER_SELECTION))
     setCustomEvaluators(null)
-  }
+  }, [])
 
   const filterPanelProps = {
     evaluatorDids,
@@ -270,38 +335,15 @@ export default function HomeFeed({
   // DOM order is main, filters, news (main content first for keyboard
   // and screen-reader users); the grid areas put the filters on the left.
   return (
-    <div className="feed-layout">
-      <div className="feed-layout__main" data-tour="feed">
-        {/* Below 1100px: certs.social-style tab strip. One tab for now
-            ("For you"); clicking the active tab toggles the inline filter
-            panel. Hidden at 1100px and wider, where the filters have their
-            own column. */}
-        <div ref={filterWrapRef} className="feed-layout__disclosure">
-          {/* A disclosure, not a tab: the button shows/hides the inline
-              filter panel below (aria-controls). */}
-          <div className="feed-tabs">
-            <div className="feed-tabs__tab-wrapper">
-              <button
-                type="button"
-                className="feed-tabs__tab feed-tabs__tab--active"
-                aria-expanded={filterOpen}
-                aria-controls={filterPanelId}
-                onClick={() => setFilterOpen((v) => !v)}
-              >
-                {isDefaultFilters ? "For you" : "Custom"}
-                <ChevronDown
-                  size={14}
-                  aria-hidden
-                  className={`feed-tabs__chevron${filterOpen ? " feed-tabs__chevron--open" : ""}`}
-                />
-              </button>
-            </div>
-          </div>
-          {filterOpen ? (
-            <FeedFilterPanel id={filterPanelId} {...filterPanelProps} />
-          ) : null}
-        </div>
-        <div className="feed-layout__list">
+    <>
+      <FeedPageHeader
+        changedCount={changedCount}
+        onOpenFilters={() => setFiltersOpen(true)}
+        filtersOpen={filtersOpen}
+      />
+
+      <div className="feed-layout">
+        <div className="feed-layout__main" data-tour="feed">
           <HomeFeedBody
             followsLoading={followsLoading}
             followsError={!!followsError}
@@ -313,34 +355,68 @@ export default function HomeFeed({
             hasMore={hasMore}
             isLoadingMore={isLoadingMore}
             loadMore={loadMore}
+            filtersChanged={!isDefaultFilters}
+            onResetFilters={resetFilters}
           />
         </div>
+
+        {/* 1100px and wider: the same filters, always open. */}
+        <div className="feed-layout__filters">
+          <Card unpadded className="feed-layout__box">
+            {/* No box title: "Trusted endorsers" leads, styled like the
+                "News from Certified" heading in the box opposite. */}
+            <FeedFilterPanel
+              id={sidebarPanelId}
+              previewMode="popover"
+              showReset
+              {...filterPanelProps}
+            />
+          </Card>
+        </div>
+
+        {news ? <div className="feed-layout__news">{news}</div> : null}
       </div>
 
-      {/* 1100px and wider: the same filters, always open. */}
-      <div className="feed-layout__filters">
-        <Card unpadded className="feed-layout__box">
-          {/* No box title: "Trusted endorsers" leads, styled like the
-              "News from Certified" header in the box opposite. */}
+      {/* Below 1100px: the filters in a bottom sheet (phones) or a
+          dialog (800px and up). Changes apply as they are made; Done
+          closes. */}
+      <ResponsiveDialog
+        open={filtersOpen}
+        onClose={closeFilters}
+        ariaLabel="Filters"
+        header={<AppDialogHeader title="Filters" onClose={closeFilters} />}
+        className="feed-filter-dialog"
+      >
+        <div className="feed-filter-dialog__body">
           <FeedFilterPanel
-            id={sidebarPanelId}
-            className="feed-evaluator-panel--sidebar"
-            previewInPortal
+            id={dialogPanelId}
+            previewMode="inline"
+            showReset={false}
             {...filterPanelProps}
           />
-        </Card>
-      </div>
-
-      {news ? <div className="feed-layout__news">{news}</div> : null}
-    </div>
+        </div>
+        <div className="feed-filter-dialog__footer">
+          <Button
+            variant="secondary"
+            onClick={resetFilters}
+            disabled={isDefaultFilters}
+          >
+            Reset
+          </Button>
+          <Button variant="primary" onClick={closeFilters}>
+            Done
+          </Button>
+        </div>
+      </ResponsiveDialog>
+    </>
   )
 }
 
-// Memoized: filter state (panel open/close, evaluator + tier checkbox
+// Memoized: filter state (dialog open/close, evaluator + tier checkbox
 // ticks) lives in HomeFeed, so without memo every filter interaction
 // re-executes the full row map. Props are primitives plus a stable
-// events ref and a useCallback-stable loadMore, so the default shallow
-// compare bails correctly.
+// events ref and useCallback-stable loadMore / onResetFilters, so the
+// default shallow compare bails correctly.
 const HomeFeedBody = memo(function HomeFeedBody({
   followsLoading,
   followsError,
@@ -352,6 +428,8 @@ const HomeFeedBody = memo(function HomeFeedBody({
   hasMore,
   isLoadingMore,
   loadMore,
+  filtersChanged,
+  onResetFilters,
 }: {
   followsLoading: boolean
   followsError: boolean
@@ -363,6 +441,10 @@ const HomeFeedBody = memo(function HomeFeedBody({
   hasMore: boolean
   isLoadingMore: boolean
   loadMore: () => void
+  /** Any filter differs from its default: empty states name the filters
+   *  and offer to reset them. */
+  filtersChanged: boolean
+  onResetFilters: () => void
 }) {
   // Hooks at the top, before any early return — rules-of-hooks
   // requires identical hook ordering on every render. The branches
@@ -400,23 +482,33 @@ const HomeFeedBody = memo(function HomeFeedBody({
     return (
       <Banner variant="warning">
         <span className="home-feed__error">
-          Could not load your follow list.
+          Couldn&apos;t load the accounts you follow.
           <Button variant="secondary" size="sm" onClick={onRetryFollows}>
-            Retry
+            Try again
           </Button>
         </span>
       </Banner>
     )
   }
   if (followedCount === 0) {
-    return (
+    return filtersChanged ? (
+      <EmptyState
+        icon={Users}
+        title="No accounts match your filters"
+        description="Your filters leave out every account. Reset them to see the accounts you follow and the accounts your trusted endorsers have endorsed."
+      >
+        <Button variant="secondary" size="sm" onClick={onResetFilters}>
+          Reset filters
+        </Button>
+      </EmptyState>
+    ) : (
       <EmptyState
         icon={Users}
         title="You're not following anyone yet"
-        description="Follow people to see their work here."
+        description="Follow accounts to see their new activities, projects and endorsements here."
       >
-        <Button href="/explore" variant="secondary" size="sm">
-          Find people on Explore
+        <Button href="/explore?show=accounts" variant="secondary" size="sm">
+          Find accounts
         </Button>
       </EmptyState>
     )
@@ -429,12 +521,26 @@ const HomeFeedBody = memo(function HomeFeedBody({
     )
   }
   if (events.length === 0) {
-    return (
+    return filtersChanged ? (
       <EmptyState
         icon={Inbox}
-        title="No activity yet"
-        description="People you follow haven't posted any activity yet."
-      />
+        title="Nothing matches your filters"
+        description="No new activities, projects or endorsements pass the filters you set."
+      >
+        <Button variant="secondary" size="sm" onClick={onResetFilters}>
+          Reset filters
+        </Button>
+      </EmptyState>
+    ) : (
+      <EmptyState
+        icon={Inbox}
+        title="Nothing new yet"
+        description="The accounts you follow haven't published anything yet."
+      >
+        <Button href="/explore" variant="secondary" size="sm">
+          Explore the network
+        </Button>
+      </EmptyState>
     )
   }
 
@@ -463,21 +569,6 @@ const HomeFeedBody = memo(function HomeFeedBody({
     </>
   )
 })
-
-function isQualityDefault(included: Set<QualityFilterValue>): boolean {
-  // Default = every tier in DEFAULT_INCLUDED_TIERS, plus unlabeled.
-  if (included.size !== DEFAULT_INCLUDED_TIERS.size + 1) return false
-  if (!included.has(UNLABELED_SLUG)) return false
-  for (const t of DEFAULT_INCLUDED_TIERS) if (!included.has(t)) return false
-  return true
-}
-
-function isOrgQualityDefault(included: Set<OrgQualityValue>): boolean {
-  if (included.size !== DEFAULT_INCLUDED_ORG_TIERS.size + 1) return false
-  if (!included.has(UNLABELED_SLUG)) return false
-  for (const t of DEFAULT_INCLUDED_ORG_TIERS) if (!included.has(t)) return false
-  return true
-}
 
 /**
  * Resolve the organization-quality checkboxes into a DID set + how to
@@ -534,17 +625,18 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
 }
 
 /**
- * Inline filter panel under the "For you" tab — the certs.social
- * evaluator-panel pattern (`.feed-evaluator-panel` / `.feed-evaluators`
- * styles), extended with three sections: trusted evaluators, activity
- * quality (Hyperlabel tiers) and organization quality (Orglabeler
- * tiers), plus a reset row.
+ * The feed filters: trusted endorsers, activity quality (Hyperlabel
+ * tiers) and organization quality (Orglabeler tiers), each a fieldset,
+ * plus an optional reset row. Rendered twice: in the filters column at
+ * 1100px and wider (`previewMode="popover"`, previews in a portalled
+ * popover because the column scrolls) and in the sheet / dialog below
+ * that (`previewMode="inline"`, previews open under the row, since a
+ * portalled popover would sit beneath the dialog layer).
  */
 function FeedFilterPanel({
   id,
-  labelledBy,
-  className,
-  previewInPortal = false,
+  previewMode,
+  showReset,
   evaluatorDids,
   selectedEvaluators,
   onEvaluatorsChange,
@@ -556,13 +648,9 @@ function FeedFilterPanel({
   onReset,
 }: {
   id: string
-  /** Id of a visible title that names the panel; falls back to a label. */
-  labelledBy?: string
-  className?: string
-  /** Portal the evaluator previews (the desktop filter box scrolls and
-   *  would clip them). The mobile disclosure keeps them inline so a click
-   *  in the preview counts as inside the panel and doesn't close it. */
-  previewInPortal?: boolean
+  previewMode: "popover" | "inline"
+  /** Show the "Reset to default" row (the dialog has its own Reset). */
+  showReset: boolean
   evaluatorDids: string[]
   selectedEvaluators: Set<string>
   onEvaluatorsChange: (next: Set<string>) => void
@@ -583,23 +671,22 @@ function FeedFilterPanel({
   return (
     <div
       id={id}
-      className={className ? `feed-evaluator-panel ${className}` : "feed-evaluator-panel"}
+      className={`feed-evaluator-panel feed-evaluator-panel--${previewMode}`}
       role="region"
-      aria-labelledby={labelledBy}
-      aria-label={labelledBy ? undefined : "Feed filters"}
+      aria-label="Feed filters"
     >
       {/* Each checkbox group is a <fieldset> so its heading (the
           <legend>) is announced when focus moves into the group. */}
       <fieldset className="feed-evaluators__group">
         <legend className="feed-evaluator-panel__heading">
-          <TrustedEndorsersInfo inPortal={previewInPortal} />
+          <TrustedEndorsersInfo inPortal={previewMode === "popover"} />
         </legend>
         <div className="feed-evaluators__list">
           {evaluatorDids.map((did) => (
             <EvaluatorRow
               key={did}
               did={did}
-              previewInPortal={previewInPortal}
+              previewMode={previewMode}
               checked={selectedEvaluators.has(did)}
               onToggle={() =>
                 onEvaluatorsChange(toggled(selectedEvaluators, did))
@@ -648,15 +735,19 @@ function FeedFilterPanel({
           />
         </div>
       </fieldset>
-      <div className="feed-evaluators__separator" aria-hidden="true" />
-      <button
-        type="button"
-        className="feed-evaluator-panel__reset"
-        onClick={onReset}
-        disabled={isDefault}
-      >
-        Reset to default
-      </button>
+      {showReset ? (
+        <>
+          <div className="feed-evaluators__separator" aria-hidden="true" />
+          <button
+            type="button"
+            className="feed-evaluator-panel__reset"
+            onClick={onReset}
+            disabled={isDefault}
+          >
+            Reset to default
+          </button>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -672,7 +763,7 @@ function TrustedEndorsersInfo({ inPortal }: { inPortal: boolean }) {
       <PopoverTrigger>
         <button type="button" className="feed-evaluator-panel__info">
           Trusted endorsers
-          <Info size={12} strokeWidth={2} aria-hidden />
+          <Info size={14} strokeWidth={1.75} aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -719,30 +810,88 @@ function FilterCheckRow({
  * endorse (selecting an evaluator pulls every DID they've endorsed into the
  * effective follow set, so the feed shows transitively-vouched activity).
  * The avatar and name open a short profile preview with a link to the full
- * profile.
+ * profile: a popover in the filters column, or a panel that opens under the
+ * row in the sheet / dialog.
  */
 function EvaluatorRow({
   did,
   checked,
   onToggle,
-  previewInPortal,
+  previewMode,
 }: {
   did: string
   checked: boolean
   onToggle: () => void
-  previewInPortal: boolean
+  previewMode: "popover" | "inline"
 }) {
   const { info } = useAuthorInfo(did)
+  const [expanded, setExpanded] = useState(false)
+  const previewId = useId()
   const label =
     info?.displayName ||
     (info?.handle ? `@${info.handle}` : did.slice(0, 14) + "…")
+
+  const person = (
+    <>
+      {info?.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={info.avatarUrl}
+          alt=""
+          className="feed-evaluators__avatar"
+          width={24}
+          height={24}
+          onError={hideBrokenThumb}
+        />
+      ) : (
+        <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
+      )}
+      <span className="feed-evaluators__name" dir="auto">{label}</span>
+    </>
+  )
+
+  const checkbox = (
+    <Checkbox
+      checked={checked}
+      onChange={onToggle}
+      aria-label={`Include endorsements by ${label}`}
+    />
+  )
+
+  if (previewMode === "inline") {
+    return (
+      <div className="feed-evaluators__item">
+        <div className="feed-evaluators__row feed-evaluators__row--evaluator">
+          {checkbox}
+          <button
+            type="button"
+            className="feed-evaluators__person"
+            aria-expanded={expanded}
+            aria-controls={previewId}
+            aria-label={`Profile preview: ${label}`}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {person}
+            <ChevronDown
+              size={14}
+              strokeWidth={1.75}
+              aria-hidden
+              className="feed-evaluators__chevron"
+            />
+          </button>
+        </div>
+        {expanded ? (
+          <div id={previewId} className="feed-evaluators__preview">
+            <EvaluatorPreview did={did} />
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <div className="feed-evaluators__row feed-evaluators__row--evaluator">
-      <Checkbox
-        checked={checked}
-        onChange={onToggle}
-        aria-label={`Include endorsements by ${label}`}
-      />
+      {checkbox}
       <Popover>
         <PopoverTrigger>
           <button
@@ -750,24 +899,11 @@ function EvaluatorRow({
             className="feed-evaluators__person"
             aria-label={`Show profile preview: ${label}`}
           >
-            {info?.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={info.avatarUrl}
-                alt=""
-                className="feed-evaluators__avatar"
-                width={24}
-                height={24}
-                onError={hideBrokenThumb}
-              />
-            ) : (
-              <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
-            )}
-            <span className="feed-evaluators__name" dir="auto">{label}</span>
+            {person}
           </button>
         </PopoverTrigger>
         <PopoverContent
-          portal={previewInPortal}
+          portal
           role="group"
           align="start"
           minWidth={288}

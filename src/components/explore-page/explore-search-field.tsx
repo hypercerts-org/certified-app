@@ -72,8 +72,8 @@ export default function ExploreSearchField({
     <div className="explore__search-field">
       <Input
         type="search"
-        size="sm"
-        leadingIcon={<TextSearch size={14} strokeWidth={1.75} aria-hidden />}
+        size="md"
+        leadingIcon={<TextSearch size={16} strokeWidth={1.75} aria-hidden />}
         placeholder={placeholder}
         value={localQuery}
         onChange={(e) => setLocalQuery(e.target.value)}

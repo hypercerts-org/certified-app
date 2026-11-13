@@ -116,10 +116,10 @@ export default function FundingConfirmedByPopover({
               // The outer <Tooltip> already explains it; suppress the
               // icon button's own aria-label tooltip so it doesn't double up.
               tooltip=""
-              className="explore__chrome-btn--icon"
+              className="explore__action-btn"
               aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
             >
-              <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
+              <UserRoundCheck size={16} strokeWidth={1.75} aria-hidden />
             </Button>
           )}
         </PopoverTrigger>

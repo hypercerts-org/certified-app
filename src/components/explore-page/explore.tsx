@@ -1,28 +1,30 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
-  ChevronDown,
-  ChevronRight,
-  FolderGit2,
-  HandCoins,
+  Globe,
+  History,
   LayoutGrid,
   List as ListIcon,
-  Users,
+  SearchX,
+  ThumbsUp,
+  UserCheck,
 } from "lucide-react"
-import CertIcon from "@/components/ui/cert-icon"
 import {
   Popover as UiPopover,
   PopoverContent,
   PopoverItem,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Tooltip from "@/components/ui/tooltip"
 import Button from "@/components/ui/button"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
+import SideNav, { type SideNavItem } from "@/components/ui/side-nav"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import CertListRow from "./cert-list-row"
@@ -36,12 +38,20 @@ import {
   QualityFilterPopover,
   useQualityFilters,
 } from "./quality-filters"
-import { ResultsArea, sortCerts, sortProjects, sortUsers } from "./explore-results"
+import {
+  ExploreRowsSkeleton,
+  ResultsArea,
+  sortCerts,
+  sortProjects,
+  sortUsers,
+  type EmptyContext,
+} from "./explore-results"
 import {
   DEFAULT_CONFIRM_ROLES,
   matchesConfirmedBy,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
+import { MA_EARTH_FILTER } from "@/lib/atproto/featured"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import {
   EMPTY_DID_SET,
@@ -52,7 +62,6 @@ import {
   viewFilterToKindFilter,
   type Degree,
   type ExploreKind,
-  type FilterOption,
   type ListGalleryView,
   type SortOrder,
 } from "./explore-types"
@@ -62,7 +71,7 @@ import { useScrollRestoration } from "@/hooks/use-scroll-restoration"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { usePageTitle } from "@/lib/navbar-context"
-
+import { getRecentlyViewed } from "@/lib/utils/recently-viewed"
 
 const SORT_LABEL: Record<SortOrder, string> = {
   newest: "Newest first",
@@ -153,70 +162,327 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
 }
 
 /**
- * /explore entry point. The page is always the combined "All" view now
- * (the old per-kind top tabs were removed); category switching happens
- * via the on-page dropdown, which drives `?show=`. {@link ExploreAll}
- * branches that into the three-block layout or a single-category pane.
+ * /explore entry point: the page header, the list navigation (All,
+ * Accounts I follow, Endorsed accounts, Recently viewed) and the main
+ * column. The main column starts with the search field, then the type
+ * chips (All · Activities · Projects · Accounts · Funding, `?show=`),
+ * then the results: on "All", one short section per type (Featured
+ * first on the plain All list); on a single type, that type in full.
+ * Public: signed-out visitors can browse everything except the lists
+ * built from their own follows and endorsements.
  */
 export default function Explore() {
-  // Register the page title in the top bar's title slot — mirrors the
-  // convention every other top-level page uses (Apps, Settings…).
+  // Kept for the chrome's document / phone title; PageHeader owns the h1.
   usePageTitle("Explore")
   return <ExploreAll />
 }
 
-/** Icon component shape shared by lucide icons + the bespoke CertIcon —
- *  used for the All view's per-section headers. */
-type SectionIcon = React.ComponentType<{
-  size?: number
-  strokeWidth?: number
-  "aria-hidden"?: boolean
-}>
+// ----------------------------- URL state ------------------------------------
 
-interface ExploreMainProps {
-  kind: ExploreKind
-  /** Already resolved to the kind-specific filter key. The All view
-   *  maps its unified key through `viewFilterToKindFilter` before
-   *  passing it here; the single-kind tab passes the URL filter as-is. */
-  filter: string
-  /** Optional control rendered at the start of the chrome row, before
-   *  the sub-dropdown. The All view hosts its category dropdown here. */
-  leadingControl?: React.ReactNode
-  /** When set, ExploreMain renders the mobile category pill strip inside
-   *  the chrome row (with access to sub/setUrl). The All view passes its
-   *  current `show` value and `setShow` handler. */
-  mobilePillsShow?: AllShow
-  mobilePillsSetShow?: (next: AllShow) => void
-  /** Render the endorsement-degree control in its compact, low-padding
-   *  variant instead of the standalone bar. Used by the All view's
-   *  single-category mode (no section header there, so the pills sit
-   *  tight under the chrome). */
-  compactDegrees?: boolean
+/** How many results each block on the All view shows. The loaders fetch
+ *  a 2x window per kind (`pageSize` below) — enough to fill a block after
+ *  client-side trimming without pulling a full 50-row page for 5 rows. */
+const ALL_VIEW_BLOCK_SIZE = 5
+
+/** Filter keys accepted in `?filter=`: the SideNav lists plus the
+ *  featured Ma Earth set (reached from the Featured section). */
+function isValidViewFilter(filter: string): boolean {
+  return filtersForView("all").some((f) => f.key === filter)
 }
 
-/**
- * The single-kind chrome + results pane (everything right of the filter
- * sidebar). Shared by the dedicated Activities/Projects/Accounts tabs
- * and by the All view when one category is selected from its dropdown —
- * which is what gives that mode the same sub-dropdown, view toggle,
- * sort, and quality controls as the real tabs. `kind` + `filter` come
- * in as props; everything else (sub / sort / view / quality / degrees /
- * q) is read from and written to the URL.
- */
-function ExploreMain({
-  kind,
-  filter,
-  leadingControl,
-  mobilePillsShow,
-  mobilePillsSetShow,
-  compactDegrees,
-}: ExploreMainProps) {
+/** Which type the page is showing. "all" renders one capped section per
+ *  type; a concrete kind shows that type in full (with pagination).
+ *  Backed by the `?show=` URL param. */
+type AllShow = "all" | ExploreKind
+
+function parseAllShow(v: string | null): AllShow {
+  if (
+    v === "activities" ||
+    v === "projects" ||
+    v === "accounts" ||
+    v === "funding"
+  )
+    return v
+  return "all"
+}
+
+const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "activities", label: "Activities" },
+  { key: "projects", label: "Projects" },
+  { key: "accounts", label: "Accounts" },
+  { key: "funding", label: "Funding" },
+]
+
+/** Shared URL state: the list (`?filter=`), the type (`?show=`), the
+ *  search (`?q=`), a replace-in-place writer and an href builder for
+ *  links that change one of them. */
+function useAllView() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
+  const rawFilter = searchParams?.get("filter") ?? null
+  const filter =
+    rawFilter && isValidViewFilter(rawFilter)
+      ? rawFilter
+      : defaultFilterForView("all")
+  const show = parseAllShow(searchParams?.get("show") ?? null)
   const search = searchParams?.get("q") ?? ""
+
+  const setUrl = useCallback(
+    (patch: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === "") params.delete(k)
+        else params.set(k, v)
+      }
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, searchParams, router],
+  )
+
+  /** The current URL with `patch` applied — for links (SideNav, See all). */
+  const hrefWith = useCallback(
+    (patch: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === null || v === "") params.delete(k)
+        else params.set(k, v)
+      }
+      const qs = params.toString()
+      return qs ? `${pathname}?${qs}` : (pathname ?? "/explore")
+    },
+    [pathname, searchParams],
+  )
+
+  // Type selection — "all" is the default, so it clears the param.
+  const setShow = useCallback(
+    (next: AllShow) => setUrl({ show: next === "all" ? null : next }),
+    [setUrl],
+  )
+
+  return { filter, show, search, setUrl, hrefWith, setShow }
+}
+
+type AllView = ReturnType<typeof useAllView>
+
+// --------------------------- Recently viewed --------------------------------
+
+function subscribeStorage(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange)
+  return () => window.removeEventListener("storage", onChange)
+}
+
+function hasRecentlyViewedSnapshot(): boolean {
+  return (
+    getRecentlyViewed("cert").length > 0 ||
+    getRecentlyViewed("project").length > 0 ||
+    getRecentlyViewed("user").length > 0
+  )
+}
+
+/** Whether this browser has any recently viewed records (localStorage).
+ *  False on the server and the first client render, so hydration matches. */
+function useHasRecentlyViewed(): boolean {
+  return useSyncExternalStore(
+    subscribeStorage,
+    hasRecentlyViewedSnapshot,
+    () => false,
+  )
+}
+
+// ------------------------------- Page ---------------------------------------
+
+const LIST_LABEL: Record<string, string> = {
+  all: "All",
+  follows: "Accounts I follow",
+  endorsed: "Endorsed accounts",
+  recent: "Recently viewed",
+}
+
+function ExploreAll() {
+  const view = useAllView()
+  const { filter, show, hrefWith } = view
+  const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth()
+  const hasRecent = useHasRecentlyViewed()
+
+  // The lists. "All" first: it is the default, so it is the one in view
+  // when the phone pill row loads. Featured (`?filter=ma-earth`) is part
+  // of All, so All stays current while it is shown. Recently viewed
+  // appears once this browser has viewed something (or when linked to).
+  const listItems: SideNavItem[] = [
+    { key: "all", label: LIST_LABEL.all, icon: Globe },
+    { key: "follows", label: LIST_LABEL.follows, icon: UserCheck },
+    { key: "endorsed", label: LIST_LABEL.endorsed, icon: ThumbsUp },
+    ...(hasRecent || filter === "recent"
+      ? [{ key: "recent", label: LIST_LABEL.recent, icon: History }]
+      : []),
+  ].map((item) => ({
+    ...item,
+    href: hrefWith({
+      filter: item.key === defaultFilterForView("all") ? null : item.key,
+    }),
+    current:
+      item.key === filter ||
+      (item.key === "all" && filter === MA_EARTH_FILTER),
+  }))
+
+  // "Accounts I follow" and "Endorsed accounts" are built from the
+  // viewer's own graph: signed out, explain and offer to sign in.
+  const needsSignIn =
+    !authLoading &&
+    !isAuthenticated &&
+    (filter === "follows" || filter === "endorsed")
+
+  return (
+    <PageContainer width="wide" className="explore-page">
+      <PageHeader
+        title="Explore"
+        description="Activities, projects and accounts across the Certified network."
+      />
+      <div className="explore__layout">
+        <SideNav
+          aria-label="Explore lists"
+          items={listItems}
+          className="explore__lists"
+        />
+        <div className="explore__main">
+          {needsSignIn ? (
+            <EmptyState
+              icon={filter === "follows" ? UserCheck : ThumbsUp}
+              headingLevel={2}
+              title={
+                filter === "follows"
+                  ? "Sign in to see the accounts you follow"
+                  : "Sign in to see endorsed accounts"
+              }
+              description={
+                filter === "follows"
+                  ? "This list shows activities, projects and accounts from the accounts you follow."
+                  : "This list starts from the accounts you have endorsed, and the accounts they endorsed."
+              }
+            >
+              <Button variant="primary" onClick={() => void openSignIn?.()}>
+                Sign in
+              </Button>
+            </EmptyState>
+          ) : show === "all" ? (
+            <ExploreAllBlocks view={view} />
+          ) : (
+            <ExploreMain
+              key={show}
+              kind={show}
+              filter={viewFilterToKindFilter(filter, show)}
+              view={view}
+            />
+          )}
+        </div>
+      </div>
+    </PageContainer>
+  )
+}
+
+/**
+ * The top of the main column: the search field with the result actions
+ * (view, sort, filters) beside it, then the type chips.
+ */
+function ExploreToolbar({
+  view,
+  placeholder,
+  actions,
+}: {
+  view: AllView
+  placeholder: string
+  actions: React.ReactNode
+}) {
+  const { search, setUrl, show, setShow } = view
+  // Debounced search — ExploreSearchField owns the keystroke state so
+  // typing re-renders the input alone, not the results below.
+  const onSearchCommit = useCallback(
+    (q: string | null) => setUrl({ q }),
+    [setUrl],
+  )
+  return (
+    <div className="explore__toolbar">
+      <div className="explore__search-row">
+        <ExploreSearchField
+          search={search}
+          placeholder={placeholder}
+          onCommit={onSearchCommit}
+        />
+        <div className="explore__actions">{actions}</div>
+      </div>
+      {/* data-tour anchors the product tour's "Activities, projects, and
+          accounts" step on a real box (the chips' own wrapper). */}
+      <div className="explore__types" data-tour="explore-category">
+        <SegmentedControl
+          aria-label="Type"
+          value={show}
+          onValueChange={(next) => setShow(parseAllShow(next))}
+          options={SHOW_OPTIONS.map((o) => ({ value: o.key, label: o.label }))}
+          size="md"
+          joined
+          shape="square"
+        />
+      </div>
+    </div>
+  )
+}
+
+/** A short line above the results while the featured Ma Earth set is
+ *  shown (it is reached from the Featured section, not the list nav). */
+function FeaturedNote({ view }: { view: AllView }) {
+  return (
+    <div className="explore__note">
+      <p className="explore__note-text">Showing featured picks from Ma Earth.</p>
+      <Button
+        variant="ghost"
+        size="sm"
+        href={view.hrefWith({ filter: null })}
+      >
+        Show everything
+      </Button>
+    </div>
+  )
+}
+
+/** How an empty result should explain itself and what it offers. */
+function emptyContextFor(view: AllView): EmptyContext {
+  const { search, filter, setUrl, hrefWith } = view
+  return {
+    search,
+    list: filter,
+    onClearSearch: () => setUrl({ q: null }),
+    allListHref: hrefWith({ filter: null }),
+  }
+}
+
+// ------------------------- Single type ----------------------------------------
+
+interface ExploreMainProps {
+  kind: ExploreKind
+  /** Already resolved to the kind-specific filter key
+   *  (`viewFilterToKindFilter`). */
+  filter: string
+  view: AllView
+}
+
+/**
+ * One type shown in full: the toolbar (search, view toggle, sort, quality
+ * and, for funding, "Confirmed by"), a row for the accounts sub-type and
+ * the endorsement rings when they apply, then the results with
+ * pagination. `kind` + `filter` come in as props; everything else (sub /
+ * sort / view / quality / degrees / q) is read from and written to the
+ * URL.
+ */
+function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const { setUrl, search } = allView
+
+  const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
   // Funding "Confirmed by" filter (client-side — the role buckets aren't a
   // single indexer arg). URL-backed state shared with the activity detail
   // page via `useFundingConfirmedBy`. Only meaningful on the funding kind.
@@ -224,8 +490,13 @@ function ExploreMain({
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
   const { isDesktop } = useLayoutBreakpoints()
-  // On mobile always use gallery — denser grid fits more on a small screen.
-  const effectiveView: ListGalleryView = isDesktop ? view : "gallery"
+  // Phones: accounts as rows, activities and projects as image-led cards
+  // (one column). The list / gallery toggle is desktop only.
+  const effectiveView: ListGalleryView = isDesktop
+    ? view
+    : kind === "accounts"
+      ? "list"
+      : "gallery"
   // Endorsement-graph ring tags — multi-select of {1, 2, 3}. The URL
   // stores the active subset under `?degrees=` (sorted); legacy
   // `?degree=N` is read as the cumulative set {1..N} so old bookmarks
@@ -245,46 +516,16 @@ function ExploreMain({
   // "is default" flags, and the toggle/reset handlers.
   const quality = useQualityFilters()
 
-  const setUrl = useCallback(
-    (patch: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      for (const [k, v] of Object.entries(patch)) {
-        if (v === null || v === "") params.delete(k)
-        else params.set(k, v)
-      }
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [pathname, searchParams, router],
-  )
-
-  // Declared before the callbacks below that close over the setters —
-  // the react-hooks lint rejects accessing a state variable above its
-  // declaration.
   const [sortOpen, setSortOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
   const [confirmedByOpen, setConfirmedByOpen] = useState(false)
-  const [subPrefixOpen, setSubPrefixOpen] = useState(false)
 
   // Read the target's `data-*` attribute instead of capturing the
   // iteration variable in a closure. The SWC minifier (Next 16's
   // default prod-build pipeline) was hoisting the loop variable out of
   // the per-iteration `.map()` scope and sharing it across every
   // button's onClick. Reading from the DOM dataset is minifier-proof
-  // because there's no captured variable. (The sidebar filter buttons
-  // use the same pattern; their handler lives in the parent that owns
-  // the sidebar.)
-  const onSubOptionClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const key = e.currentTarget.dataset.subKey
-      if (key) {
-        setUrl({ sub: key === "all" ? null : key })
-        setSubPrefixOpen(false)
-      }
-    },
-    [setUrl],
-  )
-
+  // because there's no captured variable.
   const onSortOptionClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       const key = e.currentTarget.dataset.sortKey
@@ -327,22 +568,11 @@ function ExploreMain({
     excludeCertLabels: kind === "activities" ? quality.excludeCertLabels : undefined,
     includeCertLabels: kind === "activities" ? quality.includeCertLabels : undefined,
     // Org-quality filter — used on accounts (filters the actor list),
-    // certs (filters certs whose author org carries the tier), and
-    // funding (filters receipts whose creator account carries the tier).
-    excludeOrgLabels:
-      kind === "accounts" ||
-      kind === "activities" ||
-      kind === "projects" ||
-      kind === "funding"
-        ? quality.excludeOrgLabels
-        : undefined,
-    includeOrgLabels:
-      kind === "accounts" ||
-      kind === "activities" ||
-      kind === "projects" ||
-      kind === "funding"
-        ? quality.includeOrgLabels
-        : undefined,
+    // certs (filters certs whose author org carries the tier), projects
+    // and funding (filters receipts whose creator account carries the
+    // tier).
+    excludeOrgLabels: quality.excludeOrgLabels,
+    includeOrgLabels: quality.includeOrgLabels,
     // The funding "Confirmed by" filter is applied client-side (see
     // ResultsArea); the loader fetches the full receipt set so the popover
     // can offer every third-party attestor as a candidate.
@@ -369,195 +599,137 @@ function ExploreMain({
     [setUrl],
   )
 
-  // Debounced search — ExploreSearchField owns the keystroke state +
-  // URL sync so a keystroke re-renders only the input, not this whole
-  // chrome + results tree.
-  const onSearchCommit = useCallback(
-    (q: string | null) => setUrl({ q }),
-    [setUrl],
+  const emptyContext = emptyContextFor(allView)
+  const hasSubOptions = SUB_OPTIONS[kind].length > 0
+
+  const actions = (
+    <>
+      {/* Funding receipts have a single list layout (no gallery card),
+          so the list/gallery toggle is suppressed there. */}
+      {isDesktop && kind !== "funding" && (
+        <SegmentedControl
+          aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
+          value={view}
+          // List is the default view, so selecting it clears the
+          // `?view=` param (keeps the URL clean); Gallery writes
+          // `?view=gallery`.
+          onValueChange={(next) =>
+            setUrl({ view: next === "gallery" ? "gallery" : null })
+          }
+          options={[
+            {
+              value: "list",
+              icon: <ListIcon size={16} strokeWidth={1.75} aria-hidden />,
+              ariaLabel: "List view",
+              tooltip: "List view",
+            },
+            {
+              value: "gallery",
+              icon: <LayoutGrid size={16} strokeWidth={1.75} aria-hidden />,
+              ariaLabel: "Gallery view",
+              tooltip: "Gallery view",
+            },
+          ]}
+          size="md"
+          joined
+          shape="square"
+          iconOnly
+        />
+      )}
+      <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
+        <PopoverTrigger>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="explore__action-btn"
+            aria-label="Sort"
+          >
+            <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end">
+          {(["newest", "oldest", "alphabetical"] as SortOrder[]).map((s) => (
+            <PopoverItem
+              key={s}
+              selected={sort === s}
+              data-sort-key={s}
+              onClick={onSortOptionClick}
+            >
+              {SORT_LABEL[s]}
+            </PopoverItem>
+          ))}
+          <hr className="popover__divider" aria-hidden="true" />
+          <PopoverItem
+            className="popover__item--quiet"
+            onClick={onResetSort}
+            disabled={sort === "newest"}
+          >
+            Reset to default
+          </PopoverItem>
+        </PopoverContent>
+      </UiPopover>
+
+      {/* Activity + account quality filter — shared with the All view.
+          The cert (Activity Labeler) section shows only on activities;
+          the account (Orglabeler) section shows on every kind. On
+          funding it filters receipts by the creator account's tier. */}
+      <QualityFilterPopover
+        q={quality}
+        showCertSection={kind === "activities"}
+        open={qualityOpen}
+        onOpenChange={setQualityOpen}
+      />
+      {/* Funding also offers the "Confirmed by" filter (role buckets +
+          specific third-party attestors). */}
+      {kind === "funding" ? (
+        <FundingConfirmedByPopover
+          receipts={data.fundingReceipts}
+          roles={confirmedBy.roles}
+          onToggleRole={confirmedBy.toggleRole}
+          thirdParties={confirmedBy.thirdParties}
+          onToggleThirdParty={confirmedBy.toggleThirdParty}
+          isDefault={confirmedBy.isDefault}
+          onReset={confirmedBy.reset}
+          open={confirmedByOpen}
+          onOpenChange={setConfirmedByOpen}
+        />
+      ) : null}
+    </>
   )
 
   return (
-    <div className="explore__main">
-          {/* Kind switcher (Certs / Projects / Accounts) is now
-              rendered as a second row in the top navbar — same
-              pattern profile pages use for their tab strip. See
-              EXPLORE_TABS in desktop-top-bar.tsx. */}
-          <div className="explore__chrome">
-            {leadingControl}
-            {/* The All view's single-category mode renders the sub-options
-                as inline pills below the chrome (see the inline-controls
-                row), so the dropdown is suppressed there. */}
-            {!compactDegrees && SUB_OPTIONS[kind].length > 0 ? (
-              <SubPrefixDropdown
-                kind={kind}
-                sub={sub}
-                viewerDid={viewerDid}
-                onSelect={onSubOptionClick}
-                open={subPrefixOpen}
-                setOpen={setSubPrefixOpen}
-              />
-            ) : null}
+    <>
+      <ExploreToolbar
+        view={allView}
+        placeholder={searchPlaceholder(kind)}
+        actions={actions}
+      />
 
-            <ExploreSearchField
-              search={search}
-              placeholder={searchPlaceholder(kind)}
-              onCommit={onSearchCommit}
+      {/* The accounts sub-type (People / Organizations) and the
+          endorsement rings share one row when either applies. */}
+      {hasSubOptions || showsDegreeControl ? (
+        <div className="explore__inline-controls">
+          {hasSubOptions ? (
+            <SegmentedControl
+              aria-label="Account type"
+              value={sub}
+              onValueChange={(next) =>
+                setUrl({ sub: next === "all" ? null : next })
+              }
+              options={SUB_OPTIONS[kind].map((o) => ({
+                value: o.key,
+                label: o.label,
+                disabled: !!o.requiresAuth && !viewerDid,
+              }))}
+              size="md"
+              shape="pill"
+              joined={false}
             />
-
-            {mobilePillsShow !== undefined && mobilePillsSetShow ? (
-              <AllCategoryPills
-                show={mobilePillsShow}
-                setShow={mobilePillsSetShow}
-                kind={kind}
-                sub={sub}
-                onSubChange={(nextSub) =>
-                  setUrl({ sub: nextSub === "all" ? null : nextSub })
-                }
-              />
-            ) : null}
-
-            <div className="explore__chrome-actions">
-              {/* Funding receipts have a single list layout (no gallery
-                  card), so the list/gallery toggle is suppressed there. */}
-              {isDesktop && kind !== "funding" && (
-                <SegmentedControl
-                  aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
-                  value={view}
-                  // List is the default view, so selecting it clears the
-                  // `?view=` param (keeps the URL clean); Gallery writes
-                  // `?view=gallery`. Same mapping the two buttons had.
-                  onValueChange={(next) =>
-                    setUrl({ view: next === "gallery" ? "gallery" : null })
-                  }
-                  options={[
-                    {
-                      value: "list",
-                      icon: <ListIcon size={14} strokeWidth={1.75} aria-hidden />,
-                      ariaLabel: "List view",
-                      tooltip: "List view",
-                    },
-                    {
-                      value: "gallery",
-                      icon: (
-                        <LayoutGrid size={14} strokeWidth={1.75} aria-hidden />
-                      ),
-                      ariaLabel: "Gallery view",
-                      tooltip: "Gallery view",
-                    },
-                  ]}
-                  size="md"
-                  joined
-                  shape="square"
-                  iconOnly
-                />
-              )}
-              <UiPopover open={sortOpen} onOpenChange={setSortOpen}>
-                <PopoverTrigger>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="explore__chrome-btn--icon"
-                    aria-label="Sort"
-                  >
-                    <ArrowUpDown size={14} strokeWidth={1.75} aria-hidden />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end">
-                  {(["newest", "oldest", "alphabetical"] as SortOrder[]).map(
-                    (s) => (
-                      <PopoverItem
-                        key={s}
-                        selected={sort === s}
-                        data-sort-key={s}
-                        onClick={onSortOptionClick}
-                      >
-                        {SORT_LABEL[s]}
-                      </PopoverItem>
-                    ),
-                  )}
-                  <hr className="popover__divider" aria-hidden="true" />
-                  <PopoverItem
-                    className="popover__item--quiet"
-                    onClick={onResetSort}
-                    disabled={sort === "newest"}
-                  >
-                    Reset to default
-                  </PopoverItem>
-                </PopoverContent>
-              </UiPopover>
-
-              {/* Activity + account quality filter — shared with the
-                  All view. The cert (Activity Labeler) section shows
-                  only on the certs kind; the account (Orglabeler)
-                  section shows on every kind. On funding it filters
-                  receipts by the creator account's quality tier (the
-                  account section is the only meaningful one there). */}
-              <QualityFilterPopover
-                q={quality}
-                showCertSection={kind === "activities"}
-                open={qualityOpen}
-                onOpenChange={setQualityOpen}
-              />
-              {/* Funding also offers the "Confirmed by" filter (role
-                  buckets + specific third-party attestors), alongside the
-                  creator-quality filter above. */}
-              {kind === "funding" ? (
-                <FundingConfirmedByPopover
-                  receipts={data.fundingReceipts}
-                  roles={confirmedBy.roles}
-                  onToggleRole={confirmedBy.toggleRole}
-                  thirdParties={confirmedBy.thirdParties}
-                  onToggleThirdParty={confirmedBy.toggleThirdParty}
-                  isDefault={confirmedBy.isDefault}
-                  onReset={confirmedBy.reset}
-                  open={confirmedByOpen}
-                  onOpenChange={setConfirmedByOpen}
-                />
-              ) : null}
-            </div>
-          </div>
-
-          {compactDegrees ? (
-            // All-view single-category mode: the sub-options (e.g.
-            // People / Organizations) and the endorsement-degree pills
-            // share one inline row in place of the chrome's sub-dropdown
-            // and the standalone degree bar. A light divider separates
-            // them when both are present.
-            SUB_OPTIONS[kind].length > 0 || showsDegreeControl ? (
-              <div className="explore__inline-controls">
-                {SUB_OPTIONS[kind].length > 0 ? (
-                  <SegmentedControl
-                    aria-label={`${kind === "accounts" ? "Account" : "Activity"} sub-category`}
-                    value={sub}
-                    onValueChange={(next) =>
-                      setUrl({ sub: next === "all" ? null : next })
-                    }
-                    options={SUB_OPTIONS[kind].map((o) => ({
-                      value: o.key,
-                      label: o.label,
-                      disabled: !!o.requiresAuth && !viewerDid,
-                    }))}
-                    size="sm"
-                    shape="pill"
-                    joined={false}
-                  />
-                ) : null}
-                {SUB_OPTIONS[kind].length > 0 && showsDegreeControl ? (
-                  <span className="explore__inline-divider" aria-hidden="true" />
-                ) : null}
-                {showsDegreeControl ? (
-                  <EndorsementDegreeBar
-                    degrees={degrees}
-                    onChange={onDegreesChange}
-                    onReset={onResetDegrees}
-                    meta={data.endorsementClosure}
-                    inline
-                  />
-                ) : null}
-              </div>
-            ) : null
-          ) : showsDegreeControl ? (
+          ) : null}
+          {hasSubOptions && showsDegreeControl ? (
+            <span className="explore__inline-divider" aria-hidden="true" />
+          ) : null}
+          {showsDegreeControl ? (
             <EndorsementDegreeBar
               degrees={degrees}
               onChange={onDegreesChange}
@@ -565,237 +737,56 @@ function ExploreMain({
               meta={data.endorsementClosure}
             />
           ) : null}
-          <ResultsArea
-            kind={kind}
-            data={data}
-            sort={sort}
-            view={effectiveView}
-            degrees={showsDegreeControl ? degrees : null}
-            confirmRoles={kind === "funding" ? confirmedBy.roles : undefined}
-            confirmThirdParties={
-              kind === "funding" ? confirmedBy.thirdParties : undefined
-            }
-          />
-          {data.hasMore || data.isLoadingMore ? (
-            <LoadMoreSentinel
-              onLoadMore={data.loadMore}
-              isLoading={data.isLoadingMore}
-            />
-          ) : null}
-    </div>
-  )
-}
-
-/**
- * The filter list in the left rail. Shared by the single-kind browser
- * and the All view — each passes the filter set its view exposes
- * (`filtersForKind` vs the trimmed `filtersForView("all")`). Splits
- * the list into a standard group and a "Featured" group below a
- * divider; the active filter is highlighted. Click handling is hoisted
- * to the parent via `data-filter-key` so the SWC minifier can't share
- * a hoisted loop variable across buttons (see `onFilterButtonClick`).
- */
-function ExploreFilterSidebar({
-  filters,
-  activeFilter,
-  onFilterClick,
-}: {
-  filters: FilterOption[]
-  activeFilter: string
-  onFilterClick: (e: React.MouseEvent<HTMLButtonElement>) => void
-}) {
-  const featured = filters.filter((f) => f.featured)
-  const standard = filters.filter((f) => !f.featured)
-  return (
-    <aside className="explore__sidebar" aria-label="Explore filters">
-      <ul className="explore__filter-list">
-        {standard.map((f) => (
-          <li key={f.key}>
-            <button
-              type="button"
-              className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
-              aria-current={activeFilter === f.key ? "true" : undefined}
-              data-filter-key={f.key}
-              onClick={onFilterClick}
-            >
-              {f.label}
-            </button>
-          </li>
-        ))}
-      </ul>
-      {featured.length > 0 ? (
-        <>
-          <hr className="explore__filter-divider" aria-hidden="true" />
-          <h3 className="explore__filter-heading">Featured</h3>
-          <ul className="explore__filter-list explore__filter-list--indented">
-            {featured.map((f) => (
-              <li key={f.key}>
-                <button
-                  type="button"
-                  className={`explore__filter${activeFilter === f.key ? " explore__filter--active" : ""}`}
-                  aria-current={activeFilter === f.key ? "true" : undefined}
-                  data-filter-key={f.key}
-                  onClick={onFilterClick}
-                >
-                  {f.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        </div>
       ) : null}
-    </aside>
+
+      {filter === MA_EARTH_FILTER ? <FeaturedNote view={allView} /> : null}
+
+      <ResultsArea
+        kind={kind}
+        data={data}
+        sort={sort}
+        view={effectiveView}
+        degrees={showsDegreeControl ? degrees : null}
+        confirmRoles={kind === "funding" ? confirmedBy.roles : undefined}
+        confirmThirdParties={
+          kind === "funding" ? confirmedBy.thirdParties : undefined
+        }
+        emptyContext={emptyContext}
+      />
+      {data.hasMore || data.isLoadingMore ? (
+        <SharedLoadMoreSentinel
+          onLoadMore={data.loadMore}
+          isLoading={data.isLoadingMore}
+          className="explore__load-more"
+        />
+      ) : null}
+    </>
   )
 }
 
-// ----------------------------- All view -------------------------------------
-
-/** How many results each block on the All view shows. The loaders fetch
- *  a 2x window per kind (`pageSize` below) — enough to fill a block after
- *  client-side trimming without pulling a full 50-row page for 5 rows. */
-const ALL_VIEW_BLOCK_SIZE = 5
-
-function isValidViewFilter(filter: string): boolean {
-  return filtersForView("all").some((f) => f.key === filter)
-}
-
-/** Which category the All view is showing. "all" renders all three
- *  capped blocks; a concrete kind collapses to that one section shown
- *  in full (with pagination). Backed by the `?show=` URL param. */
-type AllShow = "all" | ExploreKind
-
-function parseAllShow(v: string | null): AllShow {
-  if (
-    v === "activities" ||
-    v === "projects" ||
-    v === "accounts" ||
-    v === "funding"
-  )
-    return v
-  return "all"
-}
-
-const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "activities", label: "Activities" },
-  { key: "projects", label: "Projects" },
-  { key: "accounts", label: "Accounts" },
-  { key: "funding", label: "Funding" },
-]
-
-/** Shared URL state for the All view — the unified sidebar filter, the
- *  `?show=` category, and the writers both All-view modes need. */
-function useAllView() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const router = useRouter()
-
-  const rawFilter = searchParams?.get("filter") ?? null
-  const filter =
-    rawFilter && isValidViewFilter(rawFilter)
-      ? rawFilter
-      : defaultFilterForView("all")
-  const show = parseAllShow(searchParams?.get("show") ?? null)
-
-  const setUrl = useCallback(
-    (patch: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      for (const [k, v] of Object.entries(patch)) {
-        if (v === null || v === "") params.delete(k)
-        else params.set(k, v)
-      }
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [pathname, searchParams, router],
-  )
-
-  const onFilterButtonClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const key = e.currentTarget.dataset.filterKey
-      if (key) setUrl({ filter: key === defaultFilterForView("all") ? null : key })
-    },
-    [setUrl],
-  )
-
-  // Category selection — "all" is the default, so it clears the param.
-  const setShow = useCallback(
-    (next: AllShow) => setUrl({ show: next === "all" ? null : next }),
-    [setUrl],
-  )
-  const [showOpen, setShowOpen] = useState(false)
-  const onShowOptionClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const key = e.currentTarget.dataset.showKey as AllShow | undefined
-      if (key) {
-        setShow(key)
-        setShowOpen(false)
-      }
-    },
-    [setShow],
-  )
-
-  return {
-    filter,
-    show,
-    setUrl,
-    onFilterButtonClick,
-    setShow,
-    showOpen,
-    setShowOpen,
-    onShowOptionClick,
-  }
-}
+// ----------------------------- All types -----------------------------------
 
 /**
- * Combined "All" view. A category dropdown sits before the search field.
- * Its default ("All") shows the first {@link ALL_VIEW_BLOCK_SIZE} of
- * each kind as its own block (Activities, Projects, Accounts), each
- * ending in a thin "Show all" row. Picking a concrete category — via the
- * dropdown OR a "Show all" row — collapses to that one category, shown
- * with the full single-kind chrome (sub / view / sort / quality) through
- * {@link ExploreMain}. Selection rides the `?show=` URL param.
+ * The All type: one short section per type (Activities, Projects,
+ * Accounts, Funding), each with up to {@link ALL_VIEW_BLOCK_SIZE} rows and
+ * a "See all" link that switches to that type. On the plain All list with
+ * no search, a Featured section (Ma Earth's picks) leads.
  *
- * Split so the two modes are separate components: the blocks mode runs
- * three loaders, the single mode runs exactly one (inside ExploreMain).
- * Branching at this boundary keeps the other two loaders from firing
- * wasted queries while a single category is selected.
+ * Runs one loader per type; the single-type view (ExploreMain) runs just
+ * one, so switching type doesn't keep the other queries running.
  */
-function ExploreAll() {
-  const searchParams = useSearchParams()
-  const show = parseAllShow(searchParams?.get("show") ?? null)
-  return show === "all" ? <ExploreAllBlocks /> : <ExploreAllSingle show={show} />
-}
-
-/** All view, default mode: three capped blocks side by side. */
-function ExploreAllBlocks() {
-  const {
-    filter,
-    setUrl,
-    onFilterButtonClick,
-    setShow,
-    showOpen,
-    setShowOpen,
-    onShowOptionClick,
-  } = useAllView()
-  const searchParams = useSearchParams()
-  const search = searchParams?.get("q") ?? ""
-  // Quality filter shared with the single-kind view. The All view
+function ExploreAllBlocks({ view }: { view: AllView }) {
+  const { filter, search, hrefWith, setUrl } = view
+  // Quality filter shared with the single-type view. The All view
   // always includes the activities block, so it shows both the cert
   // (Activity Labeler) and account (Orglabeler) sections.
   const quality = useQualityFilters()
   const [qualityOpen, setQualityOpen] = useState(false)
 
-  // Debounced search — ExploreSearchField owns the keystroke state so
-  // typing re-renders the input alone, not the four section blocks.
-  const onSearchCommit = useCallback(
-    (q: string | null) => setUrl({ q }),
-    [setUrl],
-  )
-
   // Three independent loaders — one per kind. Each maps the unified
   // All-view filter to that kind's concrete filter key. `sub` is pinned
-  // to "all" (the All view has no People/Created sub-toggle).
+  // to "all" (the All view has no People/Organizations sub-toggle).
   const activities = useExploreData({
     kind: "activities",
     filter: viewFilterToKindFilter(filter, "activities"),
@@ -855,7 +846,7 @@ function ExploreAllBlocks() {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // Same default "Confirmed by" filter as the funding tab — show only
+  // Same default "Confirmed by" filter as the funding type — show only
   // receipts the recipient confirmed (recipient or both); sender-only and
   // third-party-only are hidden. Fixed here (the All view has no confirmer
   // control). Merge optimistic confirmations first so a just-confirmed pair
@@ -871,410 +862,290 @@ function ExploreAllBlocks() {
     [mergedFunding],
   )
 
+  const blocks = [activities, projects, accounts, funding]
+  const allLoaded = blocks.every((b) => !b.isLoading)
+  const nothingFound =
+    allLoaded &&
+    blocks.every((b) => !b.error) &&
+    activityItems.length === 0 &&
+    projectItems.length === 0 &&
+    accountItems.length === 0 &&
+    fundingItems.length === 0
+
+  const seeAll = (kind: ExploreKind) => hrefWith({ show: kind })
+  const showFeatured = filter === "all" && search === ""
+
+  const actions = (
+    <QualityFilterPopover
+      q={quality}
+      showCertSection
+      open={qualityOpen}
+      onOpenChange={setQualityOpen}
+    />
+  )
+
   return (
-    <div className="explore">
-      <div className="explore__layout">
-        <ExploreFilterSidebar
-          filters={filtersForView("all")}
-          activeFilter={filter}
-          onFilterClick={onFilterButtonClick}
-        />
+    <>
+      <ExploreToolbar
+        view={view}
+        placeholder="Search all of Explore"
+        actions={actions}
+      />
 
-        <div className="explore__main">
-          <div className="explore__chrome">
-            <span className="explore__category-dropdown">
-              <AllCategoryDropdown
-                show="all"
-                onSelect={onShowOptionClick}
-                open={showOpen}
-                setOpen={setShowOpen}
-              />
-            </span>
+      {filter === MA_EARTH_FILTER ? <FeaturedNote view={view} /> : null}
 
-            <ExploreSearchField
-              search={search}
-              placeholder="Search all of Explore…"
-              onCommit={onSearchCommit}
+      {nothingFound && (search || filter !== "all") ? (
+        <AllEmpty view={view} onClearSearch={() => setUrl({ q: null })} />
+      ) : (
+        <div className="explore__sections">
+          {showFeatured ? (
+            <FeaturedSection
+              quality={quality}
+              seeAllHref={hrefWith({ filter: MA_EARTH_FILTER, show: "activities" })}
             />
+          ) : null}
 
-            <AllCategoryPills show="all" setShow={setShow} />
-
-            <div className="explore__chrome-actions">
-              <QualityFilterPopover
-                q={quality}
-                showCertSection
-                open={qualityOpen}
-                onOpenChange={setQualityOpen}
-              />
-            </div>
-          </div>
-
-          <div className="explore__all">
-            <AllSection
-              title="Activities"
-              icon={CertIcon}
-              isLoading={activities.isLoading}
-              error={activities.error}
-              onRetry={activities.refetch}
-              isEmpty={activityItems.length === 0}
-              onShowAll={() => setShow("activities")}
-            >
-              <ul className="explore__list explore__list--certs">
-                {activityItems.map((rec) => {
-                  const did = activities.certDids.get(rec.uri) ?? ""
-                  return (
-                    <li key={rec.uri}>
-                      <CertListRow record={rec} did={did} showByline />
-                    </li>
-                  )
-                })}
-              </ul>
-            </AllSection>
-
-            <AllSection
-              title="Projects"
-              icon={FolderGit2}
-              isLoading={projects.isLoading}
-              error={projects.error}
-              onRetry={projects.refetch}
-              isEmpty={projectItems.length === 0}
-              onShowAll={() => setShow("projects")}
-            >
-              <ul className="explore__list explore__list--projects">
-                {projectItems.map((p) => (
-                  <li key={p.uri}>
-                    <ProjectListRow project={p} />
+          <AllSection
+            title="Activities"
+            seeAllHref={seeAll("activities")}
+            seeAllLabel="All activities"
+            isLoading={activities.isLoading}
+            error={activities.error}
+            onRetry={activities.refetch}
+            isEmpty={activityItems.length === 0}
+            emptyText={sectionEmptyText("activities", filter, search)}
+          >
+            <ul className="explore__list explore__list--certs">
+              {activityItems.map((rec) => {
+                const did = activities.certDids.get(rec.uri) ?? ""
+                return (
+                  <li key={rec.uri}>
+                    <CertListRow record={rec} did={did} showByline />
                   </li>
-                ))}
-              </ul>
-            </AllSection>
+                )
+              })}
+            </ul>
+          </AllSection>
 
-            <AllSection
-              title="Accounts"
-              icon={Users}
-              isLoading={accounts.isLoading}
-              error={accounts.error}
-              onRetry={accounts.refetch}
-              isEmpty={accountItems.length === 0}
-              onShowAll={() => setShow("accounts")}
-            >
-              <ul className="explore__list explore__list--accounts">
-                {accountItems.map((a) => (
-                  <li key={a.did}>
-                    <AccountListRow actor={a} />
-                  </li>
-                ))}
-              </ul>
-            </AllSection>
-
-            <AllSection
-              title="Funding"
-              icon={HandCoins}
-              isLoading={funding.isLoading}
-              error={funding.error}
-              onRetry={funding.refetch}
-              isEmpty={fundingItems.length === 0}
-              onShowAll={() => setShow("funding")}
-            >
-              <ul className="explore__list explore__list--funding">
-                <li>
-                  <FundingReceiptHeader />
+          <AllSection
+            title="Projects"
+            seeAllHref={seeAll("projects")}
+            seeAllLabel="All projects"
+            isLoading={projects.isLoading}
+            error={projects.error}
+            onRetry={projects.refetch}
+            isEmpty={projectItems.length === 0}
+            emptyText={sectionEmptyText("projects", filter, search)}
+          >
+            <ul className="explore__list explore__list--projects">
+              {projectItems.map((p) => (
+                <li key={p.uri}>
+                  <ProjectListRow project={p} />
                 </li>
-                {fundingItems.map((r) => (
-                  <li key={r.uri}>
-                    <FundingReceiptRow receipt={r} showTextParties />
-                  </li>
-                ))}
-              </ul>
-            </AllSection>
-          </div>
+              ))}
+            </ul>
+          </AllSection>
+
+          <AllSection
+            title="Accounts"
+            seeAllHref={seeAll("accounts")}
+            seeAllLabel="All accounts"
+            isLoading={accounts.isLoading}
+            error={accounts.error}
+            onRetry={accounts.refetch}
+            isEmpty={accountItems.length === 0}
+            emptyText={sectionEmptyText("accounts", filter, search)}
+            skeleton="account"
+          >
+            <ul className="explore__list explore__list--accounts">
+              {accountItems.map((a) => (
+                <li key={a.did}>
+                  <AccountListRow actor={a} />
+                </li>
+              ))}
+            </ul>
+          </AllSection>
+
+          <AllSection
+            title="Funding"
+            description="Payments to and from accounts on Certified."
+            seeAllHref={seeAll("funding")}
+            seeAllLabel="All funding"
+            isLoading={funding.isLoading}
+            error={funding.error}
+            onRetry={funding.refetch}
+            isEmpty={fundingItems.length === 0}
+            emptyText={sectionEmptyText("funding receipts", "all", search)}
+          >
+            <ul className="explore__list explore__list--funding">
+              <li>
+                <FundingReceiptHeader />
+              </li>
+              {fundingItems.map((r) => (
+                <li key={r.uri}>
+                  <FundingReceiptRow receipt={r} showTextParties />
+                </li>
+              ))}
+            </ul>
+          </AllSection>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   )
 }
 
-/** All view, single-category mode: the chosen kind rendered with the
- *  full single-kind chrome via {@link ExploreMain}, behind the trimmed
- *  All-view sidebar and the category dropdown. */
-function ExploreAllSingle({ show }: { show: ExploreKind }) {
-  const {
-    filter,
-    setShow,
-    onFilterButtonClick,
-    showOpen,
-    setShowOpen,
-    onShowOptionClick,
-  } = useAllView()
-  return (
-    <div className="explore">
-      <div className="explore__layout">
-        <ExploreFilterSidebar
-          filters={filtersForView("all")}
-          activeFilter={filter}
-          onFilterClick={onFilterButtonClick}
-        />
-        <ExploreMain
-          kind={show}
-          filter={viewFilterToKindFilter(filter, show)}
-          compactDegrees
-          leadingControl={
-            <span className="explore__category-dropdown">
-              <AllCategoryDropdown
-                show={show}
-                onSelect={onShowOptionClick}
-                open={showOpen}
-                setOpen={setShowOpen}
-              />
-            </span>
-          }
-          mobilePillsShow={show}
-          mobilePillsSetShow={setShow}
-        />
-      </div>
-    </div>
-  )
+/** The one-line empty text of an All-type section, naming the search or
+ *  list that left it empty. Funding ignores the list (it has none). */
+function sectionEmptyText(noun: string, filter: string, search: string): string {
+  if (search) return `No ${noun} match “${search}”.`
+  if (filter === "follows") return `No ${noun} from accounts you follow.`
+  if (filter === "endorsed") return `No ${noun} from endorsed accounts.`
+  if (filter === "recent") return `No recently viewed ${noun}.`
+  if (filter === MA_EARTH_FILTER) return `No featured ${noun}.`
+  return `No ${noun} yet.`
 }
 
-/** Mobile-only pill strip in the filter row — Activities / Projects / Accounts.
- *  When showing all: three plain pills.
- *  When one is selected: that pill becomes a dropdown to switch to the other
- *  two; "Restore default" deselects back to all three. For accounts, also
- *  renders a vertical separator + sub-filter (All / People / Organizations).
- *  Hidden on desktop. */
-function AllCategoryPills({
-  show,
-  setShow,
-  kind,
-  sub,
-  onSubChange,
+/** Every section came back empty for a search or a narrowed list: one
+ *  message for the page, naming what narrowed it, instead of five. */
+function AllEmpty({
+  view,
+  onClearSearch,
 }: {
-  show: AllShow
-  setShow: (next: AllShow) => void
-  kind?: ExploreKind
-  sub?: string
-  onSubChange?: (next: string) => void
+  view: AllView
+  onClearSearch: () => void
 }) {
-  const [categoryOpen, setCategoryOpen] = useState(false)
-  const [subOpen, setSubOpen] = useState(false)
-
-  if (show !== "all") {
-    const active = SHOW_OPTIONS.find((o) => o.key === show)!
-    // Other categories (no "All" — replaced by "Restore default" below)
-    const otherCategories = SHOW_OPTIONS.filter(
-      (o) => o.key !== show && o.key !== "all",
-    )
-    const showSubFilter =
-      kind === "accounts" && sub !== undefined && onSubChange
-    const subOptions = SUB_OPTIONS.accounts
-    const activeSub = subOptions.find((o) => o.key === sub) ?? subOptions[0]
-    // Exclude "all" from the switch list (replaced by "Show all" button below)
-    const otherSubs = subOptions.filter(
-      (o) => o.key !== activeSub.key && o.key !== "all",
-    )
-
+  const { search, filter, hrefWith } = view
+  if (search) {
     return (
-      <div className="explore__category-pills">
-        <UiPopover open={categoryOpen} onOpenChange={setCategoryOpen}>
-          <PopoverTrigger>
-            <button
-              type="button"
-              className="explore__category-pill explore__category-pill--active"
-            >
-              {active.label}
-              <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start">
-            {otherCategories.map((opt) => (
-              <PopoverItem
-                key={opt.key}
-                selected={false}
-                onClick={() => {
-                  setShow(opt.key)
-                  setCategoryOpen(false)
-                }}
-              >
-                {opt.label}
-              </PopoverItem>
-            ))}
-            {otherCategories.length > 0 && (
-              <hr className="popover__divider" aria-hidden="true" />
-            )}
-            <PopoverItem
-              className="popover__item--quiet"
-              onClick={() => {
-                setShow("all")
-                setCategoryOpen(false)
-              }}
-            >
-              Show all
-            </PopoverItem>
-          </PopoverContent>
-        </UiPopover>
-
-        {showSubFilter && (
-          <>
-            <span className="explore__category-pills-sep" aria-hidden />
-            <UiPopover open={subOpen} onOpenChange={setSubOpen}>
-              <PopoverTrigger>
-                <button
-                  type="button"
-                  className={`explore__category-pill${activeSub.key !== "all" ? " explore__category-pill--active" : ""}`}
-                >
-                  {activeSub.label}
-                  <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start">
-                {otherSubs.map((opt) => (
-                  <PopoverItem
-                    key={opt.key}
-                    selected={false}
-                    onClick={() => {
-                      onSubChange!(opt.key)
-                      setSubOpen(false)
-                    }}
-                  >
-                    {opt.label}
-                  </PopoverItem>
-                ))}
-                {activeSub.key !== "all" && (
-                  <>
-                    <hr className="popover__divider" aria-hidden="true" />
-                    <PopoverItem
-                      className="popover__item--quiet"
-                      onClick={() => {
-                        onSubChange!("all")
-                        setSubOpen(false)
-                      }}
-                    >
-                      Show all
-                    </PopoverItem>
-                  </>
-                )}
-              </PopoverContent>
-            </UiPopover>
-          </>
-        )}
-      </div>
+      <EmptyState
+        icon={SearchX}
+        headingLevel={2}
+        title={`Nothing matches “${search}”`}
+        description="No activities, projects, accounts or funding receipts match this search. Try another word."
+      >
+        <Button variant="secondary" size="sm" onClick={onClearSearch}>
+          Clear search
+        </Button>
+      </EmptyState>
     )
   }
-
+  const listLabel =
+    filter === MA_EARTH_FILTER ? "Featured" : (LIST_LABEL[filter] ?? filter)
   return (
-    <div className="explore__category-pills">
-      {SHOW_OPTIONS.filter((o) => o.key !== "all").map((opt) => (
-        <button
-          key={opt.key}
-          type="button"
-          className="explore__category-pill"
-          onClick={() => setShow(opt.key)}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-/** Category dropdown that sits before the All view's search field —
- *  All / Activities / Projects / Accounts. Mirrors the single-kind
- *  SubPrefixDropdown's chrome + the data-attr click handoff (so the SWC
- *  minifier can't share a hoisted loop variable across the options). */
-function AllCategoryDropdown({
-  show,
-  onSelect,
-  open,
-  setOpen,
-}: {
-  show: AllShow
-  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
-  open: boolean
-  setOpen: (next: boolean) => void
-}) {
-  const active = SHOW_OPTIONS.find((o) => o.key === show) ?? SHOW_OPTIONS[0]
-  return (
-    <UiPopover open={open} onOpenChange={setOpen}>
-      <Tooltip label="Filter by type">
-        <PopoverTrigger>
-          {/* data-tour anchors the product tour's "Activities, projects, and
-              accounts" step. It lives on the trigger button (a real box) and
-              not the wrapping .explore__category-dropdown span, which is
-              display:contents and so has no rect for the spotlight to find. */}
-          <button type="button" className="explore__sub-dropdown-trigger" data-tour="explore-category">
-            <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-          </button>
-        </PopoverTrigger>
-      </Tooltip>
-      <PopoverContent align="start">
-        {SHOW_OPTIONS.map((opt) => (
-          <PopoverItem
-            key={opt.key}
-            selected={show === opt.key}
-            data-show-key={opt.key}
-            onClick={onSelect}
-          >
-            {opt.label}
-          </PopoverItem>
-        ))}
-      </PopoverContent>
-    </UiPopover>
+    <EmptyState
+      icon={SearchX}
+      headingLevel={2}
+      title={`Nothing in ${listLabel} yet`}
+      description="There are no activities, projects or accounts in this list yet."
+    >
+      <Button variant="secondary" size="sm" href={hrefWith({ filter: null })}>
+        Show all
+      </Button>
+    </EmptyState>
   )
 }
 
 /**
- * One block on the All view's default (three-block) layout: an uppercase
- * section heading with a "Show all" action pinned to its right (when the
- * block has content), then either a spinner (still loading), a muted
- * empty line (no matches), or the result list passed as children.
+ * The first section on the plain All list: activities picked by Ma Earth
+ * (the featured curated set). Its own component so its loader only runs
+ * while it is shown.
+ */
+function FeaturedSection({
+  quality,
+  seeAllHref,
+}: {
+  quality: ReturnType<typeof useQualityFilters>
+  seeAllHref: string
+}) {
+  const featured = useExploreData({
+    kind: "activities",
+    filter: MA_EARTH_FILTER,
+    sub: "all",
+    search: "",
+    pageSize: ALL_VIEW_BLOCK_SIZE * 2,
+    excludeCertLabels: quality.excludeCertLabels,
+    includeCertLabels: quality.includeCertLabels,
+    excludeOrgLabels: quality.excludeOrgLabels,
+    includeOrgLabels: quality.includeOrgLabels,
+  })
+  const items = featured.certs.slice(0, ALL_VIEW_BLOCK_SIZE)
+  // Nothing curated (or the curated set failed): leave the section out
+  // rather than lead the page with an empty box.
+  if (!featured.isLoading && (featured.error || items.length === 0)) return null
+  return (
+    <AllSection
+      title="Featured"
+      description="Activities picked by Ma Earth."
+      seeAllHref={seeAllHref}
+      seeAllLabel="All featured"
+      isLoading={featured.isLoading}
+      isEmpty={false}
+      emptyText=""
+    >
+      <ul className="explore__list explore__list--certs">
+        {items.map((rec) => {
+          const did = featured.certDids.get(rec.uri) ?? ""
+          return (
+            <li key={rec.uri}>
+              <CertListRow record={rec} did={did} showByline />
+            </li>
+          )
+        })}
+      </ul>
+    </AllSection>
+  )
+}
+
+/**
+ * One section on the All type: a SectionHeader with a "See all" link
+ * (once there is something to see), then skeleton rows while loading, a
+ * retry on error, one muted line when empty, or the rows.
  */
 function AllSection({
   title,
-  icon: Icon,
+  description,
+  seeAllHref,
+  seeAllLabel,
   isLoading,
   isEmpty,
+  emptyText,
   error = false,
   onRetry,
-  onShowAll,
+  skeleton = "record",
   children,
 }: {
   title: string
-  icon: SectionIcon
+  description?: string
+  seeAllHref: string
+  seeAllLabel: string
   isLoading: boolean
   isEmpty: boolean
-  /** The block's fetch failed: show a retry instead of "No … found". */
+  emptyText: string
+  /** The block's fetch failed: show a retry instead of the empty line. */
   error?: boolean
   onRetry?: () => void
-  /** Collapses the All view to this single category. The "Show all"
-   *  control renders in the section header (matching the project
-   *  detail page's "See all →" affordance) only when there's content
-   *  to expand into. */
-  onShowAll: () => void
+  skeleton?: "record" | "account"
   children: React.ReactNode
 }) {
+  const headingId = useId()
   return (
-    <section className="explore__all-section">
-      <div className="explore__all-section-head">
-        <h2 className="explore__all-section-title">
-          <Icon size={14} strokeWidth={1.75} aria-hidden />
-          {title}
-        </h2>
-        {!isLoading && !isEmpty && !error ? (
-          <button
-            type="button"
-            className="explore__all-section-action"
-            onClick={onShowAll}
-          >
-            Show all
-            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-          </button>
-        ) : null}
-      </div>
+    <section
+      className="explore__section"
+      aria-labelledby={headingId}
+      aria-busy={isLoading || undefined}
+    >
+      <SectionHeader
+        id={headingId}
+        title={title}
+        description={description}
+        action={
+          !isLoading && !isEmpty && !error ? (
+            <SeeAllLink href={seeAllHref} label={seeAllLabel} />
+          ) : null
+        }
+      />
       {isLoading ? (
-        <div className="explore__all-loading">
-          <LoadingSpinner size="sm" />
-        </div>
+        <ExploreRowsSkeleton rows={ALL_VIEW_BLOCK_SIZE} variant={skeleton} />
       ) : error ? (
         <EmptyState
           variant="inline"
@@ -1287,18 +1158,13 @@ function AllSection({
           ) : null}
         </EmptyState>
       ) : isEmpty ? (
-        <p className="explore__all-empty">No {title.toLowerCase()} found</p>
+        <EmptyState variant="inline" title={emptyText} />
       ) : (
         children
       )}
     </section>
   )
 }
-
-/** Pagination sentinel — auto-fires `onLoadMore` when scrolled into
- *  view (IntersectionObserver) and also renders an explicit "Load
- *  more" button so the affordance is keyboard-accessible and
- *  visually anchored at the end of the list. */
 
 // ----------------------- Endorsement-degree selector ------------------------
 
@@ -1309,45 +1175,35 @@ const DEGREE_LABEL: Record<Degree, string> = {
 }
 
 /**
- * Multi-select pill row above the result list when the active filter
- * is endorsement-based (Accounts/"endorsed", Projects|Certs/"by-endorsed").
+ * Multi-select pill row shown when the active list is endorsement-based
+ * (Accounts/"endorsed", Projects|Activities/"by-endorsed").
  *
  * Each pill — 1st / 2nd / 3rd — toggles independently so the user can
- * compose any non-empty subset of rings (e.g. show only direct
- * endorsements, or only 3rd-degree connections, or skip the 2nd ring
- * entirely). The caption tracks the current selection.
+ * compose any subset of rings (e.g. show only direct endorsements, or
+ * only 3rd-degree connections, or skip the 2nd ring entirely).
  *
  * Rendered with the canonical <ToggleGroup> primitive (gapped pills,
  * neutral tone): it owns the aria-pressed buttons + role="group" and
  * emits the full next subset, which we convert back into the
- * `Set<Degree>` the URL serialiser expects. (This also sidesteps the
- * old SWC-minifier closure-capture hazard the data-degree-key hand-roll
- * was working around — the primitive carries no per-button closure.)
+ * `Set<Degree>` the URL serialiser expects.
  */
 function EndorsementDegreeBar({
   degrees,
   onChange,
   onReset,
   meta,
-  inline = false,
 }: {
   degrees: Set<Degree>
   onChange: (next: Set<Degree>) => void
   onReset: () => void
   meta: ReturnType<typeof useExploreData>["endorsementClosure"]
-  /** Compact layout for the All view's single-category section header —
-   *  drops the standalone bar's block padding so the pills sit inline
-   *  next to the section title. */
-  inline?: boolean
 }) {
   // Default is {1}. Hide the reset affordance when we're already
   // there so the inline control doesn't read as "active" on a fresh
   // visit.
   const isDefault = degrees.size === 1 && degrees.has(1)
   return (
-    <div
-      className={`explore__degree-bar${inline ? " explore__degree-bar--inline" : ""}`}
-    >
+    <div className="explore__degree-bar">
       <div className="explore__degree-pills">
         <ToggleGroup
           aria-label="Endorsement rings — mark one or more"
@@ -1367,6 +1223,7 @@ function EndorsementDegreeBar({
           tone="neutral"
           shape="pill"
           joined={false}
+          size="md"
         />
         {!isDefault ? (
           <Tooltip label="Reset to default">
@@ -1383,103 +1240,29 @@ function EndorsementDegreeBar({
       </div>
       {meta?.truncated ? (
         <p
-          className="explore__degree-truncated"
+          className="explore__degree-note"
           role="status"
           aria-live="polite"
         >
-          Showing a subset of your trust graph (capped for performance).
+          Showing part of your trust graph; it is capped so the page stays fast.
         </p>
       ) : null}
       {meta?.warming ? (
         <p
-          className="explore__degree-truncated"
+          className="explore__degree-note"
           role="status"
           aria-live="polite"
         >
-          Building your endorsement network — results in a moment.
+          Building your endorsement network. Results arrive in a moment.
         </p>
       ) : null}
     </div>
   )
 }
 
-function LoadMoreSentinel({
-  onLoadMore,
-  isLoading,
-}: {
-  onLoadMore: () => void
-  isLoading: boolean
-}) {
-  return (
-    <SharedLoadMoreSentinel
-      onLoadMore={onLoadMore}
-      isLoading={isLoading}
-      className="explore__load-more"
-    />
-  )
-}
-
-/** Sub-category dropdown control — sits to the left of the search
- *  input in the chrome row. Single button shows the active option,
- *  click opens a Popover-style menu listing the rest. */
-function SubPrefixDropdown({
-  kind,
-  sub,
-  viewerDid,
-  onSelect,
-  open,
-  setOpen,
-}: {
-  kind: ExploreKind
-  sub: string
-  viewerDid: string | null
-  /** Click handler shared across all option buttons — reads the
-   *  selected key from `event.currentTarget.dataset.subKey` rather
-   *  than capturing the loop variable in a closure, so the SWC
-   *  minifier can't share a single hoisted variable across all
-   *  iterations (see comment on `onFilterButtonClick` in the parent
-   *  Explore component). */
-  onSelect: (e: React.MouseEvent<HTMLButtonElement>) => void
-  open: boolean
-  setOpen: (next: boolean) => void
-}) {
-  const options = SUB_OPTIONS[kind]
-  if (options.length === 0) return null
-  const active = options.find((o) => o.key === sub) ?? options[0]
-  return (
-    <UiPopover open={open} onOpenChange={setOpen}>
-      <Tooltip label={kind === "accounts" ? "Filter accounts" : "Filter by type"}>
-        <PopoverTrigger>
-          <button type="button" className="explore__sub-dropdown-trigger">
-            <span className="explore__sub-dropdown-label">{active.label}</span>
-            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-          </button>
-        </PopoverTrigger>
-      </Tooltip>
-      <PopoverContent align="start">
-        {options.map((opt) => {
-          const disabled = opt.requiresAuth && !viewerDid
-          return (
-            <PopoverItem
-              key={opt.key}
-              disabled={disabled}
-              title={disabled ? "Sign in to filter by your role" : undefined}
-              className={sub === opt.key ? "font-medium" : ""}
-              data-sub-key={opt.key}
-              onClick={onSelect}
-            >
-              {opt.label}
-            </PopoverItem>
-          )
-        })}
-      </PopoverContent>
-    </UiPopover>
-  )
-}
-
 function searchPlaceholder(kind: ExploreKind): string {
-  if (kind === "accounts") return "Search accounts by name…"
-  if (kind === "projects") return "Search projects…"
-  if (kind === "funding") return "Funding receipts"
-  return "Search activities…"
+  if (kind === "accounts") return "Search accounts"
+  if (kind === "projects") return "Search projects"
+  if (kind === "funding") return "Search funding"
+  return "Search activities"
 }

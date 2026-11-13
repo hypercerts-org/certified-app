@@ -25,6 +25,7 @@
  *   /dev/preview/profile        — own individual profile
  *   /dev/preview/profile-org    — own organization profile
  *   /dev/preview/feed           — signed-in home (account + feed)
+ *   /dev/preview/feed-page      — the /feed page (filters, feed, news)
  *   /dev/preview/settings       — settings panel
  *   /dev/preview/workspace      — workspace explorer
  *   /dev/preview/create         — cert/activity CREATE form
@@ -74,6 +75,7 @@ import type { UploadedBlob } from "@/lib/atproto/profile"
 // Real composed surfaces.
 import UserProfilePage from "@/app/[actor]/page"
 import Home from "@/components/home/home"
+import FeedPage from "@/components/feed/feed-page"
 import SettingsPanel from "@/components/settings/settings-panel"
 import Workspace from "@/components/workspace/workspace"
 import RecordsPage from "@/components/records/records-page"
@@ -88,6 +90,7 @@ const SURFACES = [
   "profile",
   "profile-org",
   "feed",
+  "feed-page",
   "settings",
   "workspace",
   "create",
@@ -151,6 +154,8 @@ function SurfaceBody({
       )
     case "feed":
       return <Home />
+    case "feed-page":
+      return <FeedPage />
     case "settings":
       return <SettingsPanel />
     case "workspace":

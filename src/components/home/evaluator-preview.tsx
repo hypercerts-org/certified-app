@@ -18,8 +18,9 @@ import { getInitials } from "@/lib/utils/initials"
  * many endorsements they have given and how many followers they have, and a
  * button to the full profile.
  *
- * Mounted only while the popover is open, so the profile and counts are
- * fetched on demand rather than for every evaluator in the list.
+ * Mounted only while the popover (or, in the filters sheet, the row's
+ * preview panel) is open, so the profile and counts are fetched on demand
+ * rather than for every evaluator in the list.
  */
 export default function EvaluatorPreview({ did }: { did: string }) {
   const { profile, avatarUrl, handle, isLoading } = useUserProfile(did)
@@ -60,11 +61,23 @@ export default function EvaluatorPreview({ did }: { did: string }) {
       <dl className="evaluator-preview__stats">
         <div className="evaluator-preview__stat">
           <dt>Endorsements given</dt>
-          <dd>{givenLoading ? "…" : formatGraphCount(given.length)}</dd>
+          <dd>
+            {givenLoading ? (
+              <Skeleton variant="line" width={32} height={14} aria-hidden />
+            ) : (
+              formatGraphCount(given.length)
+            )}
+          </dd>
         </div>
         <div className="evaluator-preview__stat">
           <dt>Followers</dt>
-          <dd>{countsLoading && counts.followers === null ? "…" : formatGraphCount(counts.followers)}</dd>
+          <dd>
+            {countsLoading && counts.followers === null ? (
+              <Skeleton variant="line" width={32} height={14} aria-hidden />
+            ) : (
+              formatGraphCount(counts.followers)
+            )}
+          </dd>
         </div>
       </dl>
 

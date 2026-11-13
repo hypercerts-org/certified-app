@@ -20,6 +20,7 @@ vi.mock("@/lib/auth/auth-context", () => ({
 
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => undefined,
+  useRegisterPageHeader: () => {},
 }))
 
 vi.mock("next/navigation", () => ({

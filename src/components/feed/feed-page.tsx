@@ -6,8 +6,9 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import Card from "@/components/ui/card"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import HomeFeed from "@/components/home/home-feed"
+import PageContainer from "@/components/ui/page-container"
+import HomeFeed, { FeedPageHeader } from "@/components/home/home-feed"
+import HomeFeedSkeleton from "@/components/home/home-feed-skeleton"
 import NewsSection from "@/components/right-rail/news-section"
 
 /** DID of the account whose Bluesky posts fill "News from Certified". */
@@ -16,9 +17,10 @@ const NEWS_ACTOR_DID = "did:plc:apun3uo5jqm34pxzqq6on754"
 /**
  * `/feed` — what is new in the network: activities, projects and
  * endorsements from accounts the viewer follows plus accounts endorsed by
- * the evaluators picked in the filters. The page starts with the feed; at
- * 1100px and wider the filters sit on the left and "News from Certified"
- * on the right (see HomeFeed).
+ * the trusted endorsers picked in the filters. The page header comes
+ * first, then the feed; at 1100px and wider the filters sit on the left
+ * and "News from Certified" on the right (see HomeFeed). Below 1100px the
+ * header's Filters button opens the filters in a sheet or dialog.
  * Follows the account the viewer is acting as, like /home.
  */
 export default function FeedPage() {
@@ -36,28 +38,32 @@ export default function FeedPage() {
   }, [authLoading, isAuthenticated, router])
 
   if (authLoading || !isAuthenticated || !activeDid) {
+    // Same frame as the loaded page, so nothing jumps when it arrives.
     return (
-      <div className="feed-page">
-        <div className="feed-page__loading">
-          <LoadingSpinner size="md" />
+      <PageContainer width="wide" className="feed-page">
+        <FeedPageHeader />
+        <div className="feed-layout">
+          <div className="feed-layout__main">
+            <HomeFeedSkeleton />
+          </div>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="feed-page">
+    <PageContainer width="wide" className="feed-page">
       {/* Keyed on the account so switching account starts a fresh feed
           instead of showing the previous account's items while it loads. */}
       <HomeFeed
         key={activeDid}
         activeDid={activeDid}
         news={
-          <Card unpadded className="feed-page__news">
+          <Card unpadded className="feed-layout__box feed-page__news">
             <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />
           </Card>
         }
       />
-    </div>
+    </PageContainer>
   )
 }

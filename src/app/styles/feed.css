@@ -74,91 +74,26 @@
 }
 
 /* ==========================================================================
-   Feed Tabs (mobile-first)
+   Feed filters (/feed): trusted endorsers, activity quality and
+   organization quality. One panel, shown in the filters box from 1100px
+   (.feed-evaluator-panel--popover) and in the Filters sheet / dialog
+   below that (.feed-evaluator-panel--inline).
    ========================================================================== */
-
-.feed-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-canvas);
-}
-
-.feed-tabs__tab {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 14px 0;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
-  text-align: center;
-}
-
-.feed-tabs__tab:hover {
-  color: var(--fg-primary);
-}
-
-.feed-tabs__tab--active {
-  color: var(--fg-primary);
-  font-weight: 600;
-  border-bottom-color: var(--fg-primary);
-}
-
-.feed-tabs__tab-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-.feed-tabs__chevron {
-  margin-left: 4px;
-  transition: transform var(--transition-fast);
-}
-
-.feed-tabs__chevron--open {
-  transform: rotate(180deg);
-}
-
-@media (min-width: 800px) {
-  .feed-tabs__tab {
-    font-size: 0.9375rem;
-    padding: 16px 0;
-  }
-}
-
-/* ---- Inline Evaluator Checkboxes ---- */
 
 .feed-evaluator-panel {
   width: 100%;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border-default);
-  padding: 10px 16px 8px;
 }
 
-/* Section heading inside the panel ("Activity quality", …) — same
-   register as the create-form field labels. */
+/* Group heading (the fieldset legend): the section-heading role, the same
+   as "News from Certified" in the box opposite. */
 .feed-evaluator-panel__heading {
-  margin: 8px 0 6px;
+  margin: 0 0 8px;
+  padding: 0;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: var(--text-section);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  color: var(--fg-muted);
-}
-
-.feed-evaluators__group:first-child > .feed-evaluator-panel__heading {
-  margin-top: 2px;
+  line-height: 1.4;
+  color: var(--fg-primary);
 }
 
 /* Each checkbox group is a <fieldset> + <legend>; drop the UA chrome. */
@@ -169,71 +104,77 @@
   min-width: 0;
 }
 
-.feed-evaluators__group > legend {
-  padding: 0;
+/* Hairline between groups, with room on both sides. */
+.feed-evaluators__separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 16px 0;
 }
 
-/* Quiet text button at the panel's bottom. */
+/* Quiet text button at the panel's bottom (filters box only; the sheet
+   has its own Reset button). */
 .feed-evaluator-panel__reset {
-  display: block;
-  margin: 2px 0 4px;
-  padding: 6px 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-compact);
+  margin: 0;
+  padding: 0;
   border: none;
   background: transparent;
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   font-weight: 500;
   color: var(--fg-secondary);
   cursor: pointer;
+  border-radius: var(--radius);
   transition: color var(--transition-fast);
 }
 
-.feed-evaluator-panel__reset:hover:not(:disabled) {
-  color: var(--fg-primary);
+.feed-evaluator-panel__reset:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feed-evaluator-panel__reset:hover:not(:disabled) {
+    color: var(--fg-primary);
+  }
 }
 
 .feed-evaluator-panel__reset:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.feed-evaluators {
-  background: var(--bg-canvas);
-  padding: 10px 16px 8px;
-  border-bottom: 1px solid var(--border-subtle);
+  color: var(--fg-muted);
+  cursor: default;
 }
 
 .feed-evaluators__list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .feed-evaluators__row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: var(--control-h-compact);
+  font-size: var(--text-body-sm);
+  line-height: 1.4;
   cursor: pointer;
-  font-size: 0.8125rem;
-  line-height: 1.3;
-  padding: 2px 0;
 }
 
-/* Mobile: each filter row is a 44px tap target. */
+/* Phones (the sheet): each filter row is a 44px tap target. */
 @media (max-width: 799px) {
+  .feed-evaluators__list {
+    gap: 0;
+  }
+
   .feed-evaluators__row {
     min-height: 44px;
   }
 }
 
-.feed-evaluators__row--disabled {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
 /* Rows host the <Checkbox> primitive; let its wrapper + label shrink so
-   long evaluator names ellipsize, and lay the label slot out as a row
-   (avatar + name + handle) at the panel's 13px scale. */
+   long names ellipsize, and lay the label slot out as a row. */
 .feed-evaluators__row > div {
   flex: 1 1 auto;
   min-width: 0;
@@ -303,8 +244,9 @@
   gap: 8px;
   min-width: 0;
   max-width: 100%;
+  min-height: var(--control-h-compact);
   margin: 0 0 0 -4px;
-  padding: 2px 4px;
+  padding: 0 4px;
   border: 0;
   border-radius: var(--radius);
   background: none;
@@ -312,6 +254,12 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* In the sheet the name button takes the rest of the row, so the whole
+   width opens the preview. */
+.feed-evaluator-panel--inline .feed-evaluators__person {
+  flex: 1 1 auto;
 }
 
 .feed-evaluators__person:focus-visible {
@@ -326,7 +274,37 @@
   }
 }
 
-/* Profile preview in the evaluator popover. */
+/* Disclosure chevron on the sheet's evaluator rows. */
+.feed-evaluators__chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast);
+}
+
+.feed-evaluators__person[aria-expanded="true"] .feed-evaluators__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-evaluators__chevron {
+    transition: none;
+  }
+}
+
+/* The sheet's inline preview panel, under its row. */
+.feed-evaluators__preview {
+  margin: 4px 0 8px 24px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.feed-evaluators__preview .evaluator-preview {
+  width: auto;
+  max-width: none;
+}
+
+/* Profile preview (popover in the filters box, panel in the sheet). */
 .evaluator-preview {
   display: flex;
   flex-direction: column;
@@ -384,7 +362,7 @@
 .evaluator-preview__stat {
   display: flex;
   flex-direction: column-reverse;
-  gap: 2px;
+  gap: 4px;
 }
 
 .evaluator-preview__stat dt {
@@ -400,10 +378,68 @@
   font-variant-numeric: tabular-nums;
 }
 
-.feed-evaluators__separator {
-  height: 1px;
-  background: var(--border-subtle);
-  margin: 8px 0;
+/* "Trusted endorsers": the group label doubles as a button that explains
+   the group. Inherits the heading's type from .feed-evaluator-panel__heading. */
+.feed-evaluator-panel__info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.feed-evaluator-panel__info svg {
+  color: var(--fg-muted);
+}
+
+.feed-evaluator-panel__info:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feed-evaluator-panel__info:hover svg {
+    color: var(--fg-primary);
+  }
+}
+
+.feed-evaluator-panel__info-text {
+  max-width: 280px;
+  margin: 0;
+  padding: 8px;
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+/* ---- Filters sheet / dialog (below 1100px) ---- */
+
+.feed-filter-dialog__body {
+  padding: 16px 20px;
+}
+
+/* Reset + Done, pinned to the bottom of the scrolling sheet / dialog. */
+.feed-filter-dialog__footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+}
+
+dialog.feed-filter-dialog .feed-filter-dialog__footer {
+  background: var(--bg-overlay);
 }
 
 /* ==========================================================================
@@ -1424,31 +1460,20 @@
 }
 
 /* ---------- /feed page ----------
-   Page-frame page (layout.css lifts the shell's 600px cap on desktop).
-   Below 1100px: one 600px column; the filters sit behind the "For you"
-   disclosure. From 1100px: filters | feed | news, the feed column capped
-   at 600px and the filters box sticky under the top bar. */
+   A <PageContainer width="wide"> (`.feed-page`): the page header, then
+   the layout. Below 1100px one column, the header and the list together
+   capped at the 600px reading column; the filters open from the header's
+   Filters button. From 1100px three columns: filters | feed | news, the
+   feed capped at 600px in the middle and the filters box sticky under
+   the top bar. */
 
-.feed-page {
-  padding: 8px 0 32px;
-}
-
-@media (min-width: 800px) {
-  .feed-page {
-    padding: 24px 24px 64px;
+/* Below 1100px the whole page (header included) is the 600px reading
+   column, so the title lines up with the list. Two classes to win over
+   PageContainer's width utility. */
+@media (max-width: 1099px) {
+  .feed-page.page-container {
+    --page-width: 600px;
   }
-}
-
-.feed-page__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-}
-
-.feed-layout {
-  max-width: 600px;
-  margin-inline: auto;
 }
 
 .feed-layout__main {
@@ -1464,15 +1489,16 @@
   .feed-layout {
     display: grid;
     grid-template-areas: "filters main news";
-    grid-template-columns: 220px minmax(0, 600px) 280px;
-    justify-content: center;
+    grid-template-columns: 220px minmax(0, 1fr) 260px;
     align-items: start;
     gap: 24px;
-    max-width: none;
   }
 
   .feed-layout__main {
     grid-area: main;
+    width: 100%;
+    max-width: 600px;
+    margin-inline: auto;
   }
 
   .feed-layout__filters {
@@ -1482,6 +1508,7 @@
     top: calc(var(--top-bar-total) + 24px);
     max-height: calc(100vh - var(--top-bar-total) - 48px);
     overflow-y: auto;
+    scrollbar-width: thin;
   }
 
   .feed-layout__news {
@@ -1489,98 +1516,48 @@
     display: block;
     min-width: 0;
   }
-
-  /* The filters have their own column, so the "For you" strip goes; the
-     list takes over the strip's dividing rule. */
-  .feed-layout__disclosure {
-    display: none;
-  }
-
-  .feed-layout__list {
-    border-top: 1px solid var(--border-subtle);
-  }
 }
 
 @media (min-width: 1300px) {
   .feed-layout {
-    grid-template-columns: 240px minmax(0, 600px) 300px;
+    grid-template-columns: 240px minmax(0, 1fr) 300px;
     gap: 32px;
   }
 }
 
-/* Filters box (1100px and wider): same padding, header style and spacing
-   as the News from Certified box opposite (.right-rail__heading: label
-   type, 12px under it). Sections are split by a hairline with room on
-   both sides. */
+/* The two side boxes: the same surface, padding and heading style. */
 .feed-layout__box {
   padding: 16px;
 }
 
-/* Same panel as the mobile disclosure, minus its strip chrome. */
-.feed-evaluator-panel--sidebar {
-  padding: 0;
-  border-bottom: 0;
-  background: transparent;
-}
-
-.feed-evaluator-panel--sidebar .feed-evaluator-panel__heading,
-.feed-evaluator-panel--sidebar .feed-evaluators__group:first-child > .feed-evaluator-panel__heading {
-  margin: 0 0 12px;
-}
-
-.feed-evaluator-panel--sidebar .feed-evaluators__list {
-  gap: 8px;
-}
-
-.feed-evaluator-panel--sidebar .feed-evaluators__separator {
-  margin: 20px 0;
-}
-
-.feed-evaluator-panel--sidebar .feed-evaluator-panel__reset {
-  margin: 0;
-}
-
-/* "Trusted endorsers": the group label doubles as a button that explains
-   the group. Inherits the label's type from .feed-evaluator-panel__heading. */
-.feed-evaluator-panel__info {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-}
-
-.feed-evaluator-panel__info:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .feed-evaluator-panel__info:hover {
-    color: var(--fg-primary);
-  }
-}
-
-.feed-evaluator-panel__info-text {
-  max-width: 280px;
-  margin: 0;
-  padding: 8px;
-  font-size: var(--text-body-sm);
-  font-weight: 400;
-  line-height: 1.5;
+/* "News from Certified" (NewsSection's uppercase rail label) takes the
+   section-heading role, matching "Trusted endorsers" opposite. */
+.feed-page__news .right-rail__heading {
+  margin: 0 0 8px;
+  font-size: var(--text-section);
+  font-weight: 600;
+  line-height: 1.4;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--fg-secondary);
-  text-wrap: pretty;
+  font-feature-settings: normal;
+  color: var(--fg-primary);
 }
 
-.feed-page__news {
-  padding: 16px;
+/* Posts are rows split by hairlines; inside the box the first and last
+   rules would double the box edge. */
+.feed-page__news .news__item:first-child {
+  border-top: 0;
+}
+
+.feed-page__news .news__item:first-child .news__article {
+  padding-top: 4px;
+}
+
+.feed-page__news .news__item:last-child {
+  border-bottom: 0;
+}
+
+.feed-page__news .right-rail__empty {
+  border-top: 0;
+  padding: 4px 0 0;
 }

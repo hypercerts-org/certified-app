@@ -38,12 +38,12 @@ import { TYPED_LIST_TYPES, type TypedListType } from "@/lib/atproto/typed-lists"
  */
 
 /**
- * Card head shared by single-event and grouped rows — the certs.social
- * author byline: avatar + display name + @handle linking to the actor's
- * profile, relative time pinned to the right edge, and the event verb
+ * Card head shared by single-event and grouped rows — the author byline:
+ * avatar, then one line with the display name, @handle and relative time
+ * (the handle truncates first, the time never does), and the event verb
  * sentence as a muted second line. The sentence renders OUTSIDE the
- * byline link because it carries its own links (target cert / project /
- * account names) — nested anchors are invalid HTML.
+ * byline link because it carries its own links (target activity /
+ * project / account names) — nested anchors are invalid HTML.
  *
  * The indexer's denormalised `actorProfile` is empty in practice today
  * (magic-indexer#130 — profile ingestion not enabled on prod).
@@ -66,7 +66,7 @@ function FeedCardHead({
   const actorDisplayName = lookup?.displayName || actorProfile.displayName || null
   const actorHandle = lookup?.handle || actorProfile.handle || null
   // No display name → the @handle takes the name slot and the separate
-  // handle row is dropped, so the handle never shows twice.
+  // handle is dropped, so the handle never shows twice.
   const actorName =
     actorDisplayName ||
     (actorHandle ? `@${actorHandle}` : null) ||
@@ -95,13 +95,16 @@ function FeedCardHead({
         />
       </Link>
       <div className="home-feed__card-head-meta">
-        {/* Row 1: display name + relative time pinned right. The
-            @handle gets its own second row below the name (only when
-            there is a display name to sit under). */}
         <p className="home-feed__byline">
           <Link href={profileHref} className="home-feed__actor" dir="auto">
             {actorName}
           </Link>
+          {actorDisplayName && actorHandle ? (
+            <span className="home-feed__handle">@{actorHandle}</span>
+          ) : null}
+          <span className="home-feed__dot" aria-hidden="true">
+            ·
+          </span>
           <time
             className="home-feed__time"
             dateTime={createdAt}
@@ -110,9 +113,6 @@ function FeedCardHead({
             {formatRelativeTime(createdAt)}
           </time>
         </p>
-        {actorDisplayName && actorHandle ? (
-          <p className="home-feed__handle">@{actorHandle}</p>
-        ) : null}
         <p className="home-feed__sentence">{action}</p>
       </div>
     </header>

@@ -5,11 +5,11 @@ import Explore from "@/components/explore-page/explore"
 export const metadata: Metadata = {
   title: "Explore",
   description:
-    "Browse users, projects, and activities across the Certified network.",
+    "Browse activities, projects and accounts across the Certified network.",
   openGraph: {
     title: "Explore Certified",
     description:
-      "Browse users, projects, and activities across the Certified network.",
+      "Browse activities, projects and accounts across the Certified network.",
     siteName: "Certified",
     locale: "en_US",
     type: "website",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     creator: "@hypercerts",
     title: "Explore Certified",
     description:
-      "Browse users, projects, and activities across the Certified network.",
+      "Browse activities, projects and accounts across the Certified network.",
     images: ["/assets/certs-hero-1200x630.png"],
   },
 }
@@ -54,15 +54,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"
 
 export default function ExplorePage() {
+  // Suspense boundary still required by Next 16 because <Explore>
+  // reads useSearchParams() at the top level. Without it, even dynamic
+  // rendering bails per
+  // https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+  // <Explore> renders its own <PageContainer className="explore-page">.
   return (
-    <div className="explore-page">
-      {/* Suspense boundary still required by Next 16 because <Explore>
-          reads useSearchParams() at the top level. Without it,
-          even dynamic rendering bails per
-          https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout */}
-      <Suspense fallback={null}>
-        <Explore />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <Explore />
+    </Suspense>
   )
 }

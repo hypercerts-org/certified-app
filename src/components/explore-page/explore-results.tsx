@@ -3,9 +3,9 @@
 import { useCallback, useMemo } from "react"
 import { AlertCircle, FolderGit2, HandCoins, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import Skeleton from "@/components/ui/skeleton"
 import ActivityCard from "@/components/feed/activity-card"
 import CertListRow from "./cert-list-row"
 import ExploreUserCard from "./explore-user-card"
@@ -27,6 +27,18 @@ import {
 import type { useExploreData } from "@/hooks/use-explore"
 import { useMergedFunding } from "@/hooks/use-merged-funding"
 
+/** What an empty result names and offers: the search to clear, or the
+ *  list to leave for "All". */
+export interface EmptyContext {
+  search: string
+  /** The `?filter=` list key ("all", "follows", "endorsed", "recent",
+   *  "ma-earth"). */
+  list: string
+  onClearSearch: () => void
+  /** The current URL with the list reset to All. */
+  allListHref: string
+}
+
 /** Render whatever the data hook returned, applying client-side sort
  *  and routing through the right card. */
 export function ResultsArea({
@@ -37,6 +49,7 @@ export function ResultsArea({
   degrees,
   confirmRoles,
   confirmThirdParties,
+  emptyContext,
 }: {
   kind: ExploreKind
   data: ReturnType<typeof useExploreData>
@@ -53,6 +66,7 @@ export function ResultsArea({
    *  nothing shows. */
   confirmRoles?: ReadonlySet<ConfirmRole>
   confirmThirdParties?: ReadonlySet<string>
+  emptyContext?: EmptyContext
 }) {
   const closure = data.endorsementClosure
   const degreeMatches = useCallback(
@@ -119,10 +133,13 @@ export function ResultsArea({
     data.certs.length === 0 &&
     data.fundingReceipts.length === 0
   ) {
-    return (
-      <div className="explore__loading">
-        <LoadingSpinner size="md" />
-      </div>
+    return view === "gallery" && kind !== "funding" && kind !== "accounts" ? (
+      <ExploreCardsSkeleton kind={kind} />
+    ) : (
+      <ExploreRowsSkeleton
+        rows={8}
+        variant={kind === "accounts" ? "account" : "record"}
+      />
     )
   }
 
@@ -131,7 +148,7 @@ export function ResultsArea({
 
   if (kind === "funding") {
     const receipts = filteredFundingReceipts
-    if (receipts.length === 0) return <EmptyResults kind={kind} />
+    if (receipts.length === 0) return <EmptyResults kind={kind} context={emptyContext} />
     return (
       <ul className="explore__list explore__list--funding">
         <li>
@@ -148,7 +165,7 @@ export function ResultsArea({
 
   if (kind === "accounts") {
     const actors = sortedUsers
-    if (actors.length === 0) return <EmptyResults kind={kind} />
+    if (actors.length === 0) return <EmptyResults kind={kind} context={emptyContext} />
     if (view === "list") {
       return (
         <ul className="explore__list explore__list--accounts">
@@ -176,7 +193,7 @@ export function ResultsArea({
 
   if (kind === "projects") {
     const projects = sortedProjects
-    if (projects.length === 0) return <EmptyResults kind={kind} />
+    if (projects.length === 0) return <EmptyResults kind={kind} context={emptyContext} />
     if (view === "list") {
       return (
         <ul className="explore__list explore__list--projects">
@@ -211,7 +228,7 @@ export function ResultsArea({
   // certs
   const certs = sortedCerts
   const certDids = data.certDids
-  if (certs.length === 0) return <EmptyResults kind={kind} />
+  if (certs.length === 0) return <EmptyResults kind={kind} context={emptyContext} />
 
   if (view === "list") {
     return (
@@ -272,15 +289,14 @@ function LoadError({
   )
 }
 
-function EmptyResults({ kind }: { kind: ExploreKind }) {
-  const label =
-    kind === "accounts"
-      ? "accounts"
-      : kind === "projects"
-        ? "projects"
-        : kind === "funding"
-          ? "funding receipts"
-          : "activities"
+function EmptyResults({
+  kind,
+  context,
+}: {
+  kind: ExploreKind
+  context?: EmptyContext
+}) {
+  const label = kindLabel(kind)
   const icon =
     kind === "accounts"
       ? Users
@@ -289,12 +305,112 @@ function EmptyResults({ kind }: { kind: ExploreKind }) {
         : kind === "funding"
           ? HandCoins
           : CertIcon
+  // Name what narrowed the results and offer to undo it: the search
+  // first, then the list.
+  if (context?.search) {
+    return (
+      <EmptyState
+        icon={icon}
+        title={`No ${label} match “${context.search}”`}
+        description="Try another word, or clear the search to see everything."
+      >
+        <Button variant="secondary" size="sm" onClick={context.onClearSearch}>
+          Clear search
+        </Button>
+      </EmptyState>
+    )
+  }
+  const listTitle: Record<string, string> = {
+    follows: `No ${label} from accounts you follow`,
+    endorsed: `No ${label} from endorsed accounts`,
+    recent: `No recently viewed ${label}`,
+    "ma-earth": `No featured ${label}`,
+  }
+  const narrowed = context ? listTitle[context.list] : undefined
+  if (context && narrowed && kind !== "funding") {
+    return (
+      <EmptyState
+        icon={icon}
+        title={narrowed}
+        description="This list has nothing of this type yet. The All list shows everything on the network."
+      >
+        <Button variant="secondary" size="sm" href={context.allListHref}>
+          Show all {label}
+        </Button>
+      </EmptyState>
+    )
+  }
   return (
     <EmptyState
       icon={icon}
-      title={`No ${label} match`}
-      description="Try a different filter, clear the search, or pick a broader scope."
+      title={`No ${label} yet`}
+      description="Nothing has been published here yet, or the quality filter leaves it out."
     />
+  )
+}
+
+/**
+ * Loading rows shaped like the list rows: a 40px thumbnail (or a round
+ * avatar for accounts), a title and a meta line, and on desktop the
+ * author and date columns. `aria-hidden`; the caller's region carries
+ * `aria-busy`.
+ */
+export function ExploreRowsSkeleton({
+  rows,
+  variant = "record",
+}: {
+  rows: number
+  variant?: "record" | "account"
+}) {
+  return (
+    <ul className="explore__list explore__list--skeleton" aria-hidden="true">
+      {Array.from({ length: rows }).map((_, i) => (
+        <li key={i}>
+          <div className="explore-skeleton-row">
+            {variant === "account" ? (
+              <Skeleton circle width={40} height={40} />
+            ) : (
+              <Skeleton variant="box" width={40} height={40} />
+            )}
+            <div className="explore-skeleton-row__text">
+              <Skeleton variant="line" width="55%" height={14} />
+              <Skeleton variant="line" width="35%" height={12} />
+            </div>
+            {variant === "record" ? (
+              <div className="explore-skeleton-row__aside">
+                <Skeleton circle width={20} height={20} />
+                <Skeleton variant="line" width={96} height={12} />
+              </div>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Loading cards for the gallery view, shaped like the result cards. */
+function ExploreCardsSkeleton({ kind }: { kind: ExploreKind }) {
+  const grid =
+    kind === "projects" ? "explore__grid--projects" : "explore__grid--certs"
+  return (
+    <ul className={`explore__grid ${grid}`} aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <li key={i}>
+          <div className="explore-skeleton-card">
+            <div
+              className={`explore-skeleton-card__image${
+                kind === "projects" ? " explore-skeleton-card__image--wide" : ""
+              }`}
+            >
+              <Skeleton variant="box" height="100%" />
+            </div>
+            <Skeleton variant="line" width="70%" height={16} />
+            <Skeleton variant="line" width="45%" height={12} />
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
