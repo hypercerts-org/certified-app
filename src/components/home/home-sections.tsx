@@ -132,7 +132,8 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: `${profileBase}?tab=activities`,
         projects: `${profileBase}?tab=projects`,
         lists: `${profileBase}?tab=lists`,
-        endorsements: `${profileBase}?tab=endorsements&sub=received`,
+        endorsements: `${profileBase}?tab=endorsements`,
+        endorsementsReceived: `${profileBase}?tab=endorsements&sub=received`,
         endorsementsGiven: `${profileBase}?tab=endorsements&sub=given`,
         followers: `${profileBase}?tab=followers`,
       }
@@ -142,9 +143,8 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: "/records?kind=activities",
         projects: "/records?kind=activities",
         lists: "/records?kind=lists",
-        // "From others" is about what was received; "Your records" counts
-        // the ones given.
-        endorsements: "/records?kind=endorsements&tab=received",
+        endorsements: "/records?kind=endorsements",
+        endorsementsReceived: "/records?kind=endorsements&tab=received",
         endorsementsGiven: "/records?kind=endorsements&tab=given",
         followers: "/records?kind=followers",
       }
@@ -165,10 +165,6 @@ export function HomeRecords({
 }) {
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
   const { created, isLoading: activitiesLoading } = useUserIndexerActivities(did)
-  // The same source as Records → Endorsements → Given, so the two counts
-  // agree: one per account endorsed.
-  const given = useGivenEndorsements(did)
-  const givenCount = given.error && given.endorsements.length === 0 ? null : given.endorsements.length
   const hrefs = recordsHrefs(isGroup, profileBase)
 
   // Newest first across both kinds, so the list reads as "what was added
@@ -214,9 +210,7 @@ export function HomeRecords({
     latest.length === 0 &&
     !hasCount(counts.certs) &&
     !hasCount(counts.projects) &&
-    !hasCount(counts.lists) &&
-    !given.isLoading &&
-    !hasCount(givenCount)
+    !hasCount(counts.lists)
 
   return (
     <HomeSection
@@ -260,12 +254,6 @@ export function HomeRecords({
                 value: counts.lists,
                 loading: countsLoading && counts.lists === null,
                 href: hrefs.lists,
-              },
-              {
-                label: byCount(givenCount, "Endorsement given", "Endorsements given"),
-                value: givenCount,
-                loading: given.isLoading && given.endorsements.length === 0,
-                href: hrefs.endorsementsGiven,
               },
             ]}
           />
@@ -316,9 +304,14 @@ export function HomeRecords({
   )
 }
 
-// ---------------------------- From others -----------------------------------
+// ---------------------- Endorsements and followers -------------------------
 
-export function HomeReceived({
+/**
+ * Endorsements in one place: received and given side by side (given used
+ * to sit under Your records, received under "From others"), then
+ * followers, and the latest endorsements received.
+ */
+export function HomeEndorsements({
   did,
   isGroup,
   profileBase,
@@ -334,30 +327,41 @@ export function HomeReceived({
   // Hidden (rejected) endorsements are left out, so the count matches the
   // list the profile shows.
   const { endorsements, isLoading } = useReceivedEndorsements(did)
+  // The same source as Records → Endorsements → Given, so the two counts
+  // agree: one per account endorsed.
+  const given = useGivenEndorsements(did)
+  const givenCount = given.error && given.endorsements.length === 0 ? null : given.endorsements.length
   const preview = endorsements.slice(0, LATEST_ENDORSEMENTS)
   const hrefs = recordsHrefs(isGroup, profileBase)
   const endorsementsLoading = isLoading && endorsements.length === 0
+  const hasAny = endorsements.length > 0 || (givenCount ?? 0) > 0
 
   return (
     <HomeSection
-      title="From others"
-      description="Endorsements and follows that others have given you."
+      title="Endorsements and followers"
+      description="Endorsements you have received and given, and who follows you."
       tour="home-received"
-      action={
-        preview.length > 0 ? (
-          <SeeAllLink href={hrefs.endorsements} label="All endorsements" />
-        ) : null
-      }
+      action={hasAny ? <SeeAllLink href={hrefs.endorsements} label="All endorsements" /> : null}
     >
       <div className="flex flex-col gap-6">
         <StatRow
-          aria-label="Received, by kind"
+          aria-label="Endorsements and followers"
           items={[
             {
-              label: byCount(endorsementsLoading ? null : endorsements.length, "Endorsement", "Endorsements"),
+              label: byCount(
+                endorsementsLoading ? null : endorsements.length,
+                "Endorsement received",
+                "Endorsements received",
+              ),
               value: endorsementsLoading ? null : endorsements.length,
               loading: endorsementsLoading,
-              href: hrefs.endorsements,
+              href: hrefs.endorsementsReceived,
+            },
+            {
+              label: byCount(givenCount, "Endorsement given", "Endorsements given"),
+              value: givenCount,
+              loading: given.isLoading && given.endorsements.length === 0,
+              href: hrefs.endorsementsGiven,
             },
             {
               label: byCount(counts.followers, "Follower", "Followers"),
@@ -373,7 +377,7 @@ export function HomeReceived({
           <RowsSkeleton count={2} thumb="person" />
         ) : preview.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <ListLabel>Latest endorsements</ListLabel>
+            <ListLabel>Latest received</ListLabel>
             {/* Reuses the profile Overview's endorsement rows and styles. */}
             <ul className="profile-overview__endorse-list">
               {preview.map((e) => (
@@ -436,7 +440,7 @@ function roleLabel(role: Group["role"]): string {
 /**
  * The groups the signed-in person belongs to, each with their role, and
  * "New group" in the corner. A row opens the group's profile; its Switch
- * button acts as the group (the same switch as the account menu).
+ * button acts as the group (the same switch as the Workspace menu).
  * Personal account only: while acting as a group the list would be the
  * person's, not the group's.
  */

@@ -494,26 +494,17 @@ function ListDetail({
         </div>
         {canEdit ? (
           <div className="endorsement-lists__actions">
-            <Tooltip label="Add people">
-              <button
-                type="button"
-                className="endorsement-lists__add-btn"
-                onClick={onAdd}
-                aria-label="Add people to list"
-              >
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
-            <Tooltip label="Bulk paste">
-              <button
-                type="button"
-                className="endorsement-lists__add-btn"
-                onClick={onBulkPaste}
-                aria-label="Bulk add people by handle or profile link"
-              >
-                <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-            </Tooltip>
+            <Button variant="secondary" size="sm" onClick={onAdd}>
+              <Plus size={14} strokeWidth={1.75} aria-hidden />
+              Add people
+            </Button>
+            {/* Labelled, not an icon: adding many at once (handles, DIDs,
+                profile links) is the way to fill a long list, and was
+                hard to find as a bare icon. */}
+            <Button variant="secondary" size="sm" onClick={onBulkPaste}>
+              <ClipboardPaste size={14} strokeWidth={1.75} aria-hidden />
+              Paste many
+            </Button>
             <Button variant="secondary" size="sm" onClick={onEdit}>
               <Pencil size={14} strokeWidth={1.75} aria-hidden />
               Edit

@@ -412,16 +412,13 @@ function ListDetail({
               <Plus size={16} strokeWidth={1.75} aria-hidden />
               Add items
             </Button>
-            <Tooltip label="Add several at once">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setPasteOpen(true)}
-                aria-label="Add several at once"
-              >
-                <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
-              </Button>
-            </Tooltip>
+            {/* Labelled, not an icon: pasting many links, handles or DIDs
+                is the way to fill a long list, and was hard to find as a
+                bare icon. */}
+            <Button variant="secondary" size="sm" onClick={() => setPasteOpen(true)}>
+              <ClipboardPaste size={16} strokeWidth={1.75} aria-hidden />
+              Paste many
+            </Button>
             <Tooltip label="Edit list">
               <Button
                 variant="ghost"

@@ -16,8 +16,8 @@ import Card from "@/components/ui/card"
 import { HomeIdSection, HomeIdentityHeader } from "@/components/home/home-account-card"
 import {
   HomeApps,
+  HomeEndorsements,
   HomeGroups,
-  HomeReceived,
   HomeRecords,
 } from "@/components/home/home-sections"
 
@@ -31,12 +31,13 @@ import {
  *   │ header: avatar, name │ │ ID (box)  │      ID (box)
  *   │ bio, website         │ └───────────┘      Your groups (box)
  *   │ Your records         │ ┌───────────┐      Your records
- *   │ From others          │ │ Your      │      From others
- *   │ Apps                 │ │ groups    │      Apps
- *   └──────────────────────┘ └───────────┘
+ *   │ Endorsements and     │ │ Your      │      Endorsements and
+ *   │   followers          │ │ groups    │        followers
+ *   │ Apps                 │ └───────────┘      Apps
+ *   └──────────────────────┘
  *
  * Everything describes the account the viewer is acting as: the personal
- * account, or the group picked in the account switcher. "Your groups" is
+ * account, or the group picked in the Workspace menu. "Your groups" is
  * personal-only.
  */
 export default function Home() {
@@ -147,7 +148,7 @@ function HomeAccount({
           counts={counts}
           countsLoading={countsLoading}
         />
-        <HomeReceived
+        <HomeEndorsements
           did={did}
           isGroup={isGroup}
           profileBase={profileBase}

@@ -478,7 +478,7 @@ export function ListsPane({ did }: { did: string }) {
       <PaneHead
         titleId={titleId}
         title="Lists"
-        description="Your lists of activities, projects, accounts and endorsements. Open a list to rename it, add to it or delete it."
+        description="Your lists of activities, projects, accounts and endorsements. Open a list to rename it, delete it, or add to it: one at a time, or many at once by pasting handles, DIDs or links."
       />
       <Tabs value={tab} onChange={selectTab}>
         <TabList aria-label="Lists">

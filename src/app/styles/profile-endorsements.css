@@ -32,9 +32,15 @@
 .endorsement-lists__header--detail {
   /* Detail view keeps the same row layout but the back arrow +
      title + counter live in `.endorsement-lists__detail-lede` so
-     they hug the left edge as a single group, with Edit on the
-     right. */
-  gap: 4px;
+     they hug the left edge as a single group, with the actions on the
+     right. The four labelled actions wrap under the title when the
+     row is too narrow (phones). */
+  flex-wrap: wrap;
+  gap: 8px 4px;
+}
+
+.endorsement-lists__header--detail .endorsement-lists__actions {
+  flex-wrap: wrap;
 }
 
 .endorsement-lists__detail-lede {
@@ -234,34 +240,6 @@
   margin: 0;
   font-size: var(--text-ui);
   color: var(--color-error);
-}
-
-/* Square `+` button to the LEFT of Edit on the list-detail toolbar. */
-.endorsement-lists__add-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: var(--fg-primary);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.endorsement-lists__add-btn:hover {
-  background: var(--overlay-weak);
-  border-color: var(--border-hover);
-}
-
-.endorsement-lists__add-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .endorsement-lists__items {
