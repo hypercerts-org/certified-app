@@ -45,7 +45,6 @@ import LeafletDocument, {
 import CertLocationsMap from "./cert-locations-map"
 import {
   ActivityProjectField,
-  ContributorWeightHeader,
   ContributorRow,
   RecordByline,
   RecordHeader,
@@ -648,21 +647,16 @@ export default function ActivityDetail({
         title={<SectionTitleCount label="Contributors" count={contributorCount} />}
       />
       {contributorCount > 0 ? (
-        <div>
-          {contributors.some((c) => c.contributionWeight != null) ? (
-            <ContributorWeightHeader />
-          ) : null}
-          <ul className="cert-detail__contributors">
-            {contributors.map((c, i) => (
-              <ContributorRow
-                key={contributorKey(c, i)}
-                contributor={c}
-                role={contributionRoleText(c.contributionDetails)}
-                weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
-              />
-            ))}
-          </ul>
-        </div>
+        <ul className="cert-detail__contributors">
+          {contributors.map((c, i) => (
+            <ContributorRow
+              key={contributorKey(c, i)}
+              contributor={c}
+              role={contributionRoleText(c.contributionDetails)}
+              weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
+            />
+          ))}
+        </ul>
       ) : (
         <EmptyState variant="inline" title="No contributors listed." />
       )}
@@ -742,11 +736,6 @@ export default function ActivityDetail({
                     {contributorsHref ? <SeeAllLink href={contributorsHref} /> : null}
                   </dt>
                   <dd className="cert-detail__meta-value">
-                    {contributors
-                      .slice(0, ASIDE_CONTRIB_PREVIEW)
-                      .some((c) => c.contributionWeight != null) ? (
-                      <ContributorWeightHeader />
-                    ) : null}
                     <ul className="cert-detail__contributors cert-detail__contributors--aside">
                       {contributors.slice(0, ASIDE_CONTRIB_PREVIEW).map((c, i) => (
                         <ContributorRow

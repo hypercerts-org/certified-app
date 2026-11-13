@@ -1,45 +1,33 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
+import { parseAtUri, recordUrl } from "@/lib/urls"
 import { useRouter } from "next/navigation"
-import {
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react"
+import { PenLine } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
-import Button from "@/components/ui/button"
-import EmptyState from "@/components/ui/empty-state"
-import Input from "@/components/ui/input"
-import Select from "@/components/ui/select"
-import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
-import SectionHeader from "@/components/ui/section-header"
-import FormActionBar, { SectionTitleCount } from "@/components/create/form-action-bar"
-import ImageEditOverlay from "@/components/feed/image-edit-overlay"
-import { PenLine } from "lucide-react"
+import FormActionBar from "@/components/create/form-action-bar"
+import {
+  ActivityFormFields,
+  activityFormProblems,
+  type ContributorRow,
+} from "@/components/create/activity-form"
+import {
+  useRightsOptions,
+  type RightsOption,
+} from "@/components/create/use-rights-options"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
 import {
   uploadBlob,
   type UploadedBlob,
 } from "@/lib/atproto/profile"
-import { useAuthorInfo } from "@/hooks/use-author-info"
-import {
-  ContributorIdentityField,
-  isContributorIdentityAcceptable,
-  isContributorWeightAcceptable,
-  normalizeIdentity,
-} from "@/components/create/contributor-identity-field"
-import { ContributorIdentityCard } from "@/components/create/contributor-identity-card"
-import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
+import { normalizeIdentity } from "@/components/create/contributor-identity-field"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -47,7 +35,6 @@ import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useTour } from "@/lib/tour/tour-context"
-import { countGraphemes } from "@/lib/utils/graphemes"
 import { toUserErrorMessage } from "@/lib/utils/api"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
@@ -77,63 +64,16 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
  *                          records — created from a search-and-pin
  *                          dialog — OR pasted at:// URIs of existing
  *                          records)
- *     - rights            (strongRef chosen from the dropdown of
- *                          org.hypercerts.claim.rights records
- *                          published by RIGHTS_PUBLISHER_DID)
+ *     - rights            (strongRef chosen from the curated
+ *                          org.hypercerts.claim.rights records; see
+ *                          `useRightsOptions`)
  *
  *   shortDescriptionFacets is derived at parse time elsewhere; the
  *   form itself stays plain-text.
+ *
+ * The fields themselves are `<ActivityFormFields>`, shared with the edit
+ * page so the two forms stay identical.
  */
-
-/**
- * Single curated publisher of org.hypercerts.claim.rights records.
- * The rights dropdown lists every record under this DID's collection
- * and uses the record's `rightsName` as the user-facing label. If
- * additional publishers come online later, swap this for a discovery
- * step (search index, indexer query, etc.).
- */
-const RIGHTS_PUBLISHER_DID = "did:plc:s4puetfspot742ai7y4otuel"
-const RIGHTS_COLLECTION = "org.hypercerts.claim.rights"
-
-interface ContributorRow {
-  /** Stable key — survives reorders and the trash button. */
-  key: string
-  identity: string
-  weight: string
-  role: string
-  /** True once the identity has been "committed" — a typeahead pick,
-   *  Enter, or blur with a valid value. Drives whether the row
-   *  renders the read-only contributor card (true) or the typeahead
-   *  input (false). New rows start uncommitted so the user can keep
-   *  typing past intermediate matches like `alice.so` on the way to
-   *  `alice.social`. */
-  picked: boolean
-}
-
-function freshContributor(): ContributorRow {
-  return {
-    key: `contrib-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    identity: "",
-    weight: "",
-    role: "",
-    picked: false,
-  }
-}
-
-// Contributor helpers (normalizeIdentity, isContributorIdentityAcceptable,
-// isContributorWeightAcceptable) and the ContributorIdentityField
-// typeahead are imported from
-// `@/components/create/contributor-identity-field` so the /project/new
-// form can reuse them.
-
-// `AddedLocation` is re-exported from
-// `@/components/create/location-picker-dialog` so the project form
-// can use the same shape.
-
-interface RightsOption {
-  ref: StrongRef
-  name: string
-}
 
 export default function CreatePage() {
   usePageTitle("New activity")
@@ -153,10 +93,6 @@ export default function CreatePage() {
   // personal user.
   const effectiveDid: string =
     activeOrg?.groupDid ?? did ?? ""
-  // Author info for whoever is currently publishing — feeds the
-  // "Add me" shortcut on the contributors row. `useAuthorInfo`
-  // resolves the handle (preferred) and falls back to the DID.
-  const { info: selfInfo } = useAuthorInfo(effectiveDid)
 
   const [arrivedFromInApp] = useState(() => {
     if (typeof window === "undefined") return false
@@ -193,13 +129,22 @@ export default function CreatePage() {
   const [locations, setLocations] = useState<AddedLocation[]>([])
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
 
-  // Rights — single strongRef. Options come from listRecords on the
-  // curated publisher DID. We keep the rkey on the value so the
-  // <select> can drive controlled state.
-  const [rightsOptions, setRightsOptions] = useState<RightsOption[]>([])
-  const [rightsLoading, setRightsLoading] = useState(true)
-  const [rightsLoadError, setRightsLoadError] = useState<string | null>(null)
+  // Rights — single strongRef, picked from the curated publisher's
+  // records. Default: "Public Display of Contributions", the most
+  // permissive option, so a new activity is publishable without a rights
+  // decision the author probably hasn't thought about yet. Matched by
+  // exact name; if the publisher renames it, the author picks manually.
   const [rightsUri, setRightsUri] = useState<string>("")
+  const rights = useRightsOptions(
+    useCallback((opts: RightsOption[]) => {
+      const defaultPick = opts.find(
+        (o) => o.name === "Public Display of Contributions",
+      )
+      if (defaultPick) {
+        setRightsUri((prev) => (prev ? prev : defaultPick.ref.uri))
+      }
+    }, []),
+  )
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -229,90 +174,9 @@ export default function CreatePage() {
     }
   }, [pendingImagePreviewUrl])
 
-  // Fetch the rights options once — listRecords under
-  // RIGHTS_PUBLISHER_DID's `org.hypercerts.claim.rights` collection.
-  // No pagination handling: the assumption is the curated publisher
-  // maintains a small set (well under the 100-record listRecords
-  // default page). Records without a `rightsName` fall back to the
-  // rkey so the option still selectable.
-  useEffect(() => {
-    const controller = new AbortController()
-    setRightsLoading(true)
-    setRightsLoadError(null)
-    const params = new URLSearchParams({
-      repo: RIGHTS_PUBLISHER_DID,
-      collection: RIGHTS_COLLECTION,
-      limit: "100",
-    })
-    authFetch(
-      `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-      { signal: controller.signal },
-    )
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(
-            "Couldn't load the rights options. Reload the page to try again.",
-          )
-        }
-        const body = (await res.json()) as {
-          records?: Array<{
-            uri: string
-            cid: string
-            value?: { rightsName?: unknown }
-          }>
-        }
-        const opts: RightsOption[] = (body.records ?? []).map((rec) => {
-          const rawName =
-            typeof rec.value?.rightsName === "string"
-              ? rec.value.rightsName.trim()
-              : ""
-          const fallback = rkeyFromUri(rec.uri) || "(unnamed rights)"
-          return {
-            ref: { uri: rec.uri, cid: rec.cid },
-            name: rawName || fallback,
-          }
-        })
-        // Stable, name-sorted order so the dropdown reads alphabetically.
-        opts.sort((a, b) => a.name.localeCompare(b.name))
-        setRightsOptions(opts)
-        // Default selection: "Public Display of Contributions" —
-        // the most permissive option in the curated rights set, so
-        // a brand-new cert is publishable without forcing the
-        // author to make a rights decision they probably haven't
-        // thought about yet. Match by exact name; if the publisher
-        // ever renames it, the dropdown still functions (the user
-        // just has to pick manually).
-        const defaultPick = opts.find(
-          (o) => o.name === "Public Display of Contributions",
-        )
-        if (defaultPick) {
-          setRightsUri((prev) => (prev ? prev : defaultPick.ref.uri))
-        }
-      })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name === "AbortError") return
-        setRightsLoadError(
-          err instanceof Error
-            ? err.message
-            : "Couldn't load the rights options. Reload the page to try again.",
-        )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setRightsLoading(false)
-      })
-    return () => controller.abort()
-  }, [])
-
-  const titleCount = countGraphemes(title)
-  const shortDescCount = countGraphemes(shortDescription)
-  // Lexicon caps: title.maxLength = 256 (bytes), shortDescription
-  // maxGraphemes = 300. Minimums are our product floor, not a
-  // lexicon constraint — kept here so the validation gate +
-  // counter copy stay in sync.
-  const TITLE_MIN = 5
-  const TITLE_MAX = 256
-  const SHORT_DESC_MIN = 100
-  const SHORT_DESC_MAX = 300
+  // Set by a Publish click with requirements unmet: every under-minimum
+  // count then turns red, not only the ones already edited.
+  const [submitAttempted, setSubmitAttempted] = useState(false)
 
   useEffect(() => {
     setError(null)
@@ -418,45 +282,28 @@ export default function CreatePage() {
   // identical either way — only the submit path differs (see
   // handleSubmit's targetDid branch).
 
+  // What still blocks publishing (lengths, contributor rows, dates).
+  const problems = activityFormProblems({
+    title,
+    shortDescription,
+    startDate,
+    endDate,
+    contributors,
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!did) return
     // Publish stays enabled so a click always explains itself: list
-    // whatever is still missing and focus the first offending field.
-    if (unmetRequirements.length > 0) {
-      setError(`Before publishing: ${unmetRequirements.join("; ")}.`)
-      if (titleUnder0 || titleOver) titleInputRef.current?.focus()
-      else if (shortDescUnder0 || shortDescOver) shortDescRef.current?.focus()
+    // whatever is still missing, flag the counts and focus the first
+    // offending field. (This also covers an Enter-key submit.)
+    if (problems.unmet.length > 0) {
+      setSubmitAttempted(true)
+      setError(`Before publishing: ${problems.unmet.join("; ")}.`)
+      if (problems.focus === "title") titleInputRef.current?.focus()
+      else if (problems.focus === "shortDescription") shortDescRef.current?.focus()
       return
     }
-    // Guard against the form firing past the disabled submit button
-    // (Enter-key submit in a child input would still trigger
-    // handleSubmit). Same bounds the submit-disable check enforces.
-    const trimT = countGraphemes(title.trim())
-    const trimS = countGraphemes(shortDescription.trim())
-    if (trimT < TITLE_MIN || trimS < SHORT_DESC_MIN) return
-    if (titleCount > TITLE_MAX || shortDescCount > SHORT_DESC_MAX) return
-    if (
-      !contributors.every(
-        (c) =>
-          isContributorIdentityAcceptable(c.identity) &&
-          isContributorWeightAcceptable(c.weight),
-      )
-    ) {
-      return
-    }
-    {
-      const seen = new Set<string>()
-      for (const c of contributors) {
-        const n = normalizeIdentity(c.identity).toLowerCase()
-        if (!n) continue
-        if (seen.has(n)) return
-        seen.add(n)
-      }
-    }
-    // Time-period sanity: start must not be after end. Both fields
-    // are optional; only enforce when the user filled both.
-    if (startDate && endDate && startDate > endDate) return
 
     setIsSubmitting(true)
     setError(null)
@@ -557,7 +404,7 @@ export default function CreatePage() {
       record.locations = locations.map((l) => l.ref)
     }
     if (rightsUri) {
-      const chosen = rightsOptions.find((o) => o.ref.uri === rightsUri)
+      const chosen = rights.options.find((o) => o.ref.uri === rightsUri)
       if (chosen) record.rights = chosen.ref
     }
 
@@ -610,603 +457,55 @@ export default function CreatePage() {
     }
   }
 
-  // Validation gates the submit button. Title + short description
-  // both have min + max bounds; we count graphemes (visible chars)
-  // not code units. Trimmed length keeps "    " from counting as
-  // five real characters.
-  const trimmedTitleCount = countGraphemes(title.trim())
-  const trimmedShortDescCount = countGraphemes(shortDescription.trim())
-  const titleUnder = trimmedTitleCount > 0 && trimmedTitleCount < TITLE_MIN
-  const titleOver = titleCount > TITLE_MAX
-  const shortDescUnder =
-    trimmedShortDescCount > 0 && trimmedShortDescCount < SHORT_DESC_MIN
-  const shortDescOver = shortDescCount > SHORT_DESC_MAX
-  // Contributors gate: every row that has been started must resolve
-  // to a proper DID or handle. Empty rows are dropped at save time
-  // so they don't fail this check. Additionally, the same identity
-  // cannot appear twice — compare normalised (lowercased, @-stripped)
-  // forms so "@Alice.bsky.social" + "alice.bsky.social" register as
-  // the same contributor.
-  const allContributorsValid = contributors.every(
-    (c) =>
-      isContributorIdentityAcceptable(c.identity) &&
-      isContributorWeightAcceptable(c.weight),
-  )
-  const duplicateIdentitySet = (() => {
-    const seen = new Set<string>()
-    const dupes = new Set<string>()
-    for (const c of contributors) {
-      const norm = normalizeIdentity(c.identity).toLowerCase()
-      if (!norm) continue
-      if (seen.has(norm)) dupes.add(norm)
-      seen.add(norm)
-    }
-    return dupes
-  })()
-  const noContributorDuplicates = duplicateIdentitySet.size === 0
-  // Date inputs use the lexicographically-sortable YYYY-MM-DD shape
-  // browsers emit for `<input type="date">`, so a plain string
-  // comparison is equivalent to a calendar comparison. Equal dates
-  // are allowed (the cert covers a single day). Empty values bypass
-  // the check.
-  const datesValid =
-    !startDate || !endDate || startDate <= endDate
-  // Including empty fields (the `…Under` flags above skip zero so the
-  // counters don't turn red before the author starts typing).
-  const titleUnder0 = trimmedTitleCount < TITLE_MIN
-  const shortDescUnder0 = trimmedShortDescCount < SHORT_DESC_MIN
-  const unmetRequirements: string[] = [
-    titleUnder0 && `the title needs at least ${TITLE_MIN} characters`,
-    titleOver && `the title must be ${TITLE_MAX} characters or fewer`,
-    shortDescUnder0 &&
-      `the short description needs at least ${SHORT_DESC_MIN} characters`,
-    shortDescOver &&
-      `the short description must be ${SHORT_DESC_MAX} characters or fewer`,
-    !allContributorsValid && "fix the highlighted contributor rows",
-    !noContributorDuplicates && "remove duplicate contributors",
-    !datesValid && "the end date must be on or after the start date",
-  ].filter((m): m is string => !!m)
-
   return (
     <PageContainer>
       {pageHeader}
       <form onSubmit={handleSubmit}>
-        <article className="page-layout cert-detail--wide create-cert">
-          <aside className="cert-detail__aside" aria-label="Activity metadata">
-            {/* Image slot — `--editing` carries the dashed outline that
-                signals "click here to set an image", matching the
-                inline-edit mode of the detail page. When a blob is
-                staged the preview displays; the overlay's "Change image"
-                pill flips to "Replace image". */}
-            <div className="cert-detail__image cert-detail__image--editing">
-              {pendingImagePreviewUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={pendingImagePreviewUrl}
-                  alt=""
-                  className="cert-detail__image-img"
-                />
-              ) : (
-                <PenLine
-                  size={32}
-                  strokeWidth={1.25}
-                  aria-hidden
-                  className="cert-detail__image-placeholder-icon"
-                />
-              )}
-              <ImageEditOverlay
-                onFile={handleImageFile}
-                hasPending={!!pendingImageBlob}
-                variant="with-remove"
-                onRemove={handleImageRemove}
-                hasImage={!!pendingImageBlob}
-              />
-            </div>
-
-            <dl className="cert-detail__meta">
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  Time period
-                </dt>
-                <dd className="cert-detail__meta-value">
-                  <div className="create-cert__date-row">
-                    {/* Native `type="date"` keeps the calendar picker
-                        affordance the user expects. The .value
-                        attribute is ALWAYS ISO 8601 `YYYY-MM-DD`
-                        regardless of the locale-dependent visual
-                        formatting in the field (en-US: MM/DD/YYYY,
-                        en-GB: DD/MM/YYYY, etc.) — so the stored
-                        string the submit handler consumes is ISO
-                        either way. The displayed text format is
-                        controlled by the browser/OS locale and can't
-                        be overridden without dropping the picker UI. */}
-                    {/* flex-[1_1_0] + min-w-0 reproduce the legacy
-                        `.create-cert__date-row .cert-detail__meta-input`
-                        rule so the two date fields split the row evenly
-                        (the bare input is otherwise content-width). */}
-                    <Input
-                      flush
-                      density="compact"
-                      borderWeight="hover"
-                      type="date"
-                      aria-label="Start date"
-                      className="flex-[1_1_0] min-w-0"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-                    <span aria-hidden>→</span>
-                    <Input
-                      flush
-                      density="compact"
-                      borderWeight="hover"
-                      type="date"
-                      aria-label="End date"
-                      // Preserve the exact legacy invalid treatment from
-                      // `.create-cert__contrib-id-input--invalid` (solid
-                      // --color-error border + red focus ring), which is a
-                      // heavier cue than the primitive's translucent
-                      // `error` border. Applied via className so it wins
-                      // over the borderWeight="hover" resting border.
-                      className={
-                        datesValid
-                          ? "flex-[1_1_0] min-w-0"
-                          : "flex-[1_1_0] min-w-0 !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[color-mix(in_srgb,var(--color-error)_15%,transparent)]"
-                      }
-                      aria-invalid={!datesValid}
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-                  </div>
-                  {!datesValid ? (
-                    <p
-                      className="create-cert__contrib-error"
-                      role="alert"
-                    >
-                      End date must be on or after the start date.
-                    </p>
-                  ) : null}
-                </dd>
-              </div>
-
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  Work scope
-                </dt>
-                <dd className="cert-detail__meta-value">
-                  <Input
-                    flush
-                    density="compact"
-                    borderWeight="hover"
-                    type="text"
-                    aria-label="Work scope"
-                    className="create-cert__field--full"
-                    placeholder="e.g. mentorship, code review…"
-                    value={workScope}
-                    maxLength={256}
-                    onChange={(e) => setWorkScope(e.target.value)}
-                  />
-                </dd>
-              </div>
-
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  Locations
-                  {locations.length > 0 ? (
-                    <span className="cert-detail__meta-count ml-1">
-                      {locations.length}
-                    </span>
-                  ) : null}
-                </dt>
-                <dd className="cert-detail__meta-value">
-                  {locations.length > 0 ? (
-                    <ul className="create-cert__loc-list">
-                      {locations.map((loc) => (
-                        <li
-                          key={loc.ref.uri}
-                          className="create-cert__loc-row"
-                        >
-                          <span className="create-cert__loc-name">
-                            {loc.name}
-                          </span>
-                          <button
-                            type="button"
-                            className="create-cert__loc-remove"
-                            aria-label={`Remove ${loc.name}`}
-                            onClick={() =>
-                              setLocations((rows) =>
-                                rows.filter((r) => r.ref.uri !== loc.ref.uri),
-                              )
-                            }
-                          >
-                            <X size={12} strokeWidth={2} aria-hidden />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setIsLocationDialogOpen(true)}
-                  >
-                    <Plus size={14} strokeWidth={1.75} aria-hidden />
-                    Add location
-                  </Button>
-                </dd>
-              </div>
-
-              <div className="cert-detail__meta-row">
-                <dt className="cert-detail__meta-label">
-                  Rights
-                </dt>
-                <dd className="cert-detail__meta-value">
-                  {rightsLoading ? (
-                    <span className="cert-detail__meta-aux">Loading…</span>
-                  ) : rightsLoadError ? (
-                    <span className="cert-detail__meta-aux">
-                      Couldn&apos;t load
-                    </span>
-                  ) : rightsOptions.length === 0 ? (
-                    <span className="cert-detail__meta-aux">
-                      None available
-                    </span>
-                  ) : (
-                    <Select
-                      size="sm"
-                      aria-label="Rights"
-                      value={rightsUri}
-                      onChange={(e) => setRightsUri(e.target.value)}
-                    >
-                      <option value="">No rights</option>
-                      {rightsOptions.map((opt) => (
-                        <option key={opt.ref.uri} value={opt.ref.uri}>
-                          {opt.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </aside>
-
-          <div className="page-layout__main cert-detail__main">
-            <header className="cert-detail__headline">
-              <div className="create-cert__input-with-counter">
-                {/* Bare/flush <Input> so the title typography cascades.
-                    The serif title role at the ramp's h3 step (size,
-                    weight, leading, tracking) is carried inline here
-                    (the legacy `.cert-detail__title-input` +
-                    `.create-cert .cert-detail__title-input` rules that
-                    used to supply them are now dead). borderWeight="hover"
-                    reproduces the 1.5px --border-hover / --fg-primary
-                    focus chrome the legacy class painted. */}
-                <Input
-                  flush
-                  size="bare"
-                  borderWeight="hover"
-                  type="text"
-                  ref={titleInputRef}
-                  aria-label="Title"
-                  aria-describedby="create-title-counter"
-                  placeholder="Title for your activity"
-                  className="flex-[1_1_auto] min-w-0 font-headline !text-h3 text-[var(--fg-primary)] !px-2.5 py-1"
-                  value={title}
-                  maxLength={TITLE_MAX}
-                  onChange={(e) => setTitle(e.target.value)}
-                  autoFocus={!tourActive}
-                  data-tour="create-title"
-                />
-                <p
-                  className={`create-cert__counter${
-                    titleOver
-                      ? " create-cert__counter--over"
-                      : titleUnder
-                        ? " create-cert__counter--under"
-                        : ""
-                  }`}
-                  id="create-title-counter"
-                >
-                  {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
-                </p>
-              </div>
-            </header>
-
-            <section className="cert-detail__section">
-              <div className="create-cert__input-with-counter">
-                <textarea
-                  ref={shortDescRef}
-                  className="cert-detail__short-desc-input"
-                  aria-describedby="create-short-desc-counter"
-                  value={shortDescription}
-                  placeholder="A short description (one or two lines)…"
-                  aria-label="Short description"
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  rows={3}
-                />
-                <p
-                  className={`create-cert__counter${
-                    shortDescOver
-                      ? " create-cert__counter--over"
-                      : shortDescUnder
-                        ? " create-cert__counter--under"
-                        : ""
-                  }`}
-                  id="create-short-desc-counter"
-                >
-                  {shortDescCount}/{SHORT_DESC_MAX} · min. {SHORT_DESC_MIN} characters
-                </p>
-              </div>
-            </section>
-
-            <section className="cert-detail__section">
-              <SectionHeader title="Description" />
-              <LeafletEditor
-                value={description}
-                onChange={setDescription}
-                placeholder="Full description of this activity. Headings, lists, links, images, and video embeds are all supported via the toolbar."
-                ariaLabel="Activity description"
-                did={did ?? ""}
-                onImageUpload={(file) =>
-                  uploadBlob(
-                    file,
-                    activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
-                  )
-                }
-              />
-            </section>
-
-            <section className="cert-detail__section">
-              <SectionHeader
-                title={<SectionTitleCount label="Contributors" count={contributors.length} />}
-              />
-
-              {contributors.length === 0 ? (
-                <EmptyState
-                  variant="inline"
-                  title="No contributors yet."
-                  description="Add one to credit collaborators."
-                />
-              ) : (
-                <ul className="create-cert__contrib-list">
-                  {contributors.map((c, idx) => {
-                    const identityValid = isContributorIdentityAcceptable(
-                      c.identity,
-                    )
-                    const weightValid = isContributorWeightAcceptable(c.weight)
-                    const normalized = normalizeIdentity(c.identity).toLowerCase()
-                    const identityDuplicate =
-                      normalized.length > 0 && duplicateIdentitySet.has(normalized)
-                    // Other rows' normalised identities — passed into the
-                    // typeahead so the dropdown can hide actors that are
-                    // already on the list. Keeps duplicates from being
-                    // introduced through the autocomplete path; manual
-                    // typing of a duplicate still surfaces the inline
-                    // "Already added" error.
-                    const otherIdentities = new Set<string>()
-                    for (const other of contributors) {
-                      if (other.key === c.key) continue
-                      const n = normalizeIdentity(other.identity).toLowerCase()
-                      if (n) otherIdentities.add(n)
-                    }
-                    // Card vs typeahead input. The card only renders once
-                    // the row has been EXPLICITLY committed (typeahead
-                    // pick, Enter, or blur with a valid value) — typing
-                    // alone doesn't swap, so the user can transit through
-                    // intermediate matches like `alice.so` on the way to
-                    // `alice.social`. Duplicates always stay in input
-                    // mode so the inline "Already added" error stays
-                    // visible.
-                    const normalizedIdentity = normalizeIdentity(c.identity)
-                    const showCard =
-                      c.picked &&
-                      identityValid &&
-                      !identityDuplicate &&
-                      normalizedIdentity.length > 0 &&
-                      isAtprotoIdentity(normalizedIdentity)
-                    return (
-                    <li key={c.key} className="create-cert__contrib-row">
-                      {showCard ? (
-                        <ContributorIdentityCard
-                          identity={normalizedIdentity}
-                          ariaLabel={`Contributor ${idx + 1}`}
-                          onClear={() =>
-                            setContributors((rows) =>
-                              rows.map((r) =>
-                                r.key === c.key
-                                  ? { ...r, identity: "", picked: false }
-                                  : r,
-                              ),
-                            )
-                          }
-                        />
-                      ) : (
-                        <ContributorIdentityField
-                          value={c.identity}
-                          onChange={(next) =>
-                            setContributors((rows) =>
-                              rows.map((r) =>
-                                r.key === c.key ? { ...r, identity: next } : r,
-                              ),
-                            )
-                          }
-                          onCommit={() =>
-                            setContributors((rows) =>
-                              rows.map((r) =>
-                                r.key === c.key ? { ...r, picked: true } : r,
-                              ),
-                            )
-                          }
-                          ariaLabel={`Contributor ${idx + 1} identity`}
-                          idx={idx}
-                          invalid={!identityValid || identityDuplicate}
-                          excludeIdentities={otherIdentities}
-                        />
-                      )}
-                      <Input
-                        flush
-                        density="compact"
-                        borderWeight="hover"
-                        type="text"
-                        aria-label={`Contributor ${idx + 1} role (optional)`}
-                        placeholder="Role (optional)"
-                        value={c.role}
-                        maxLength={1000}
-                        onChange={(e) =>
-                          setContributors((rows) =>
-                            rows.map((r) =>
-                              r.key === c.key
-                                ? { ...r, role: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                      />
-                      <Input
-                        flush
-                        density="compact"
-                        borderWeight="hover"
-                        type="text"
-                        inputMode="decimal"
-                        // `create-cert__contrib-weight` keeps the row's
-                        // text-align:left layout. Invalid border matches
-                        // the legacy `--invalid` (solid --color-error +
-                        // red focus ring), applied via className so it
-                        // wins over borderWeight="hover".
-                        className={
-                          weightValid
-                            ? "create-cert__contrib-weight"
-                            : "create-cert__contrib-weight !border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-2 focus:!ring-[color-mix(in_srgb,var(--color-error)_15%,transparent)]"
-                        }
-                        aria-label={`Contributor ${idx + 1} weight (optional)`}
-                        aria-invalid={!weightValid}
-                        placeholder="Weight (optional)"
-                        value={c.weight}
-                        maxLength={100}
-                        onChange={(e) =>
-                          setContributors((rows) =>
-                            rows.map((r) =>
-                              r.key === c.key
-                                ? { ...r, weight: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="create-cert__contrib-remove"
-                        aria-label={`Remove contributor ${idx + 1}`}
-                        onClick={() =>
-                          setContributors((rows) =>
-                            rows.filter((r) => r.key !== c.key),
-                          )
-                        }
-                      >
-                        <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                      </button>
-                      {!identityValid ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Use a handle like alice.bsky.social.
-                        </p>
-                      ) : identityDuplicate ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Already added — each contributor can only appear once.
-                        </p>
-                      ) : !weightValid ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Weight must be a number (decimals are fine, e.g. 1.5).
-                        </p>
-                      ) : null}
-                    </li>
-                    )
-                  })}
-                </ul>
-              )}
-
-              <div className="create-cert__contrib-actions">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    setContributors((rows) => [...rows, freshContributor()])
-                  }
-                >
-                  <Plus size={14} strokeWidth={1.75} aria-hidden />
-                  Add contributor
-                </Button>
-                {/* "Add me" shortcut — prefills a fresh contributor row
-                    with the signed-in user's @handle (or DID if no
-                    handle resolved). Skipped if the user has already
-                    added themselves so duplicate rows aren't created.
-                    Disabled until the author info loads (no point
-                    spawning a blank row that says "@undefined"). */}
-                {selfInfo && (selfInfo.handle || selfInfo.did) ? (
-                  (() => {
-                    const selfIdentity =
-                      selfInfo.handle && selfInfo.handle !== selfInfo.did
-                        ? `@${selfInfo.handle}`
-                        : selfInfo.did
-                    // Match the signed-in user against contributor rows by
-                    // EITHER their handle or their DID — a row may hold
-                    // either form (an existing activity stores contributor
-                    // DIDs; a typeahead pick may store a handle), and
-                    // comparing only `selfIdentity` would miss the other
-                    // form and wrongly leave "Add me" enabled for someone
-                    // already on the list.
-                    const selfKeys = new Set(
-                      [selfInfo.handle, selfInfo.did]
-                        .filter((v): v is string => !!v)
-                        .map((v) => normalizeIdentity(v).toLowerCase()),
-                    )
-                    const alreadyAdded = contributors.some((c) =>
-                      selfKeys.has(
-                        normalizeIdentity(c.identity).toLowerCase(),
-                      ),
-                    )
-                    return (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={alreadyAdded}
-                        onClick={() =>
-                          setContributors((rows) => [
-                            ...rows,
-                            {
-                              ...freshContributor(),
-                              identity: selfIdentity,
-                              picked: true,
-                            },
-                          ])
-                        }
-                        title={
-                          alreadyAdded
-                            ? "Already on the list"
-                            : `Add ${selfIdentity} as a contributor`
-                        }
-                      >
-                        Add me
-                      </Button>
-                    )
-                  })()
-                ) : null}
-              </div>
-            </section>
-
-          </div>
-        </article>
+        <ActivityFormFields
+          title={title}
+          onTitleChange={setTitle}
+          titleRef={titleInputRef}
+          // During the product tour, don't auto-focus the title: the
+          // tour's arrow-key navigation needs focus on its own card.
+          autoFocusTitle={!tourActive}
+          titleTourId="create-title"
+          shortDescription={shortDescription}
+          onShortDescriptionChange={setShortDescription}
+          shortDescriptionRef={shortDescRef}
+          showAllErrors={submitAttempted}
+          description={description}
+          onDescriptionChange={setDescription}
+          descriptionPlaceholder="Full description of this activity. Headings, lists, links, images, and video embeds are all supported via the toolbar."
+          editorDid={did ?? ""}
+          onEditorImageUpload={(file) =>
+            uploadBlob(
+              file,
+              activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+            )
+          }
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          workScope={workScope}
+          onWorkScopeChange={setWorkScope}
+          imageUrl={pendingImagePreviewUrl}
+          hasPendingImage={!!pendingImageBlob}
+          hasImage={!!pendingImageBlob}
+          onImageFile={handleImageFile}
+          onImageRemove={handleImageRemove}
+          locations={locations}
+          onRemoveLocation={(uri) =>
+            setLocations((rows) => rows.filter((r) => r.ref.uri !== uri))
+          }
+          onAddLocation={() => setIsLocationDialogOpen(true)}
+          rights={rights}
+          rightsUri={rightsUri}
+          onRightsChange={setRightsUri}
+          contributors={contributors}
+          setContributors={setContributors}
+          selfDid={effectiveDid || null}
+        />
 
         <FormActionBar
           submitLabel="Publish activity"

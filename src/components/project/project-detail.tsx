@@ -9,7 +9,6 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
 import { Inbox, Pencil } from "lucide-react"
-import ActivityCard from "@/components/feed/activity-card"
 import ActivityContributor from "@/components/feed/activity-contributor"
 import CertLocationsMap from "@/components/feed/cert-locations-map"
 import EmptyState from "@/components/ui/empty-state"
@@ -33,7 +32,6 @@ import {
   RecordSectionTabs,
 } from "@/components/feed/cert-detail-parts"
 import { SectionTitleCount } from "@/components/create/form-action-bar"
-import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import CertListRow from "@/components/explore-page/cert-list-row"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
@@ -75,7 +73,9 @@ interface ProjectDetailProps {
  * Edit button and the ⋯ record menu beside it, the byline), the section
  * tabs (Overview / Description / Activities / Updates), then the tab's
  * content in one column: the banner, summary, details, location, the
- * activities in the project and the latest update on Overview.
+ * activities in the project and the latest update on Overview. The
+ * activities are compact rows (thumbnail, title, period and scope) at
+ * every width, like Records and Home.
  *
  * Editing happens on the edit page (`/{actor}/project/{rkey}/edit`).
  */
@@ -216,8 +216,6 @@ export default function ProjectDetail({
   const timePeriodLabel = formatTimePeriod(startDate, endDate)
   const certCount = resolutions.length
   const itemCount = Array.isArray(value.items) ? value.items.length : 0
-  // Phones show activities as full-width list rows; desktop as cards.
-  const { isDesktop } = useLayoutBreakpoints()
   const hasAnyMeta = !!timePeriodLabel || contributors.length > 0
   const hasLocation = !!locationRefUri || !!inlineLocation
 
@@ -437,32 +435,18 @@ export default function ProjectDetail({
                       ) : null
                     }
                   />
-                  {isDesktop ? (
-                    <div className="feed project-detail__cards">
-                      {resolvedActivities
-                        .slice(0, OVERVIEW_CERT_PREVIEW)
-                        .map((rec) => (
-                          <ActivityCard
-                            key={rec.uri}
+                  <ul className="project-detail__certs-list">
+                    {resolvedActivities
+                      .slice(0, OVERVIEW_CERT_PREVIEW)
+                      .map((rec) => (
+                        <li key={rec.uri}>
+                          <CertListRow
                             record={rec}
                             did={didByUri.get(rec.uri) ?? did}
                           />
-                        ))}
-                    </div>
-                  ) : (
-                    <ul className="project-detail__certs-list">
-                      {resolvedActivities
-                        .slice(0, OVERVIEW_CERT_PREVIEW)
-                        .map((rec) => (
-                          <li key={rec.uri}>
-                            <CertListRow
-                              record={rec}
-                              did={didByUri.get(rec.uri) ?? did}
-                            />
-                          </li>
-                        ))}
-                    </ul>
-                  )}
+                        </li>
+                      ))}
+                  </ul>
                 </section>
               ) : null}
 
@@ -515,10 +499,10 @@ export default function ProjectDetail({
                   ) : null}
                 </EmptyState>
               ) : (
-                <ul className="explore__grid explore__grid--certs">
+                <ul className="project-detail__certs-list">
                   {resolvedActivities.map((rec) => (
                     <li key={rec.uri}>
-                      <ActivityCard
+                      <CertListRow
                         record={rec}
                         did={didByUri.get(rec.uri) ?? did}
                       />

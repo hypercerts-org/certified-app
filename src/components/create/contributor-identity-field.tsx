@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Combobox from "@/components/ui/combobox"
+import LoadingSpinner from "@/components/ui/loading-spinner"
 import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
 
 /**
@@ -10,13 +11,11 @@ import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
  *
  *   - `ContributorIdentityField` — compact typeahead bound to
  *     `/api/search-actors`, the same endpoint that powers the
- *     HandleSearch component in groups + endorsements. Renders as
- *     a `cert-detail__meta-input` so it sits flush in a row
- *     alongside Role + Weight inputs. The input + dropdown +
- *     keyboard + ARIA machinery is the shared `Combobox` primitive
- *     (via its bare-input `renderInput` escape hatch); this surface
- *     keeps its own fetch / exclude filtering / commit-on-Enter /
- *     blur-commit behaviour.
+ *     HandleSearch component in groups + endorsements. Renders the
+ *     shared `<Input>` so it matches the form's other fields. The
+ *     input + dropdown + keyboard + ARIA machinery is the shared
+ *     `Combobox` primitive; this surface keeps its own fetch / exclude
+ *     filtering / commit-on-Enter / blur-commit behaviour.
  *   - `normalizeIdentity` — strips the leading `@` and trims.
  *   - `isContributorIdentityAcceptable` — empty OR a recognisable
  *     atproto handle / DID.
@@ -226,30 +225,26 @@ export function ContributorIdentityField({
       escapeStage="close-only"
       liveStatus={null}
       listboxClassName="create-cert__contrib-id-dropdown"
-      renderInput={({ ref, onKeyDown, ...rest }) => (
-        <>
-          <input
-            ref={ref}
-            type="text"
-            id={`create-cert-contrib-input-${idx}`}
-            className={
-              invalid
-                ? "cert-detail__meta-input create-cert__contrib-id-input--invalid"
-                : "cert-detail__meta-input"
-            }
-            aria-label={ariaLabel}
-            aria-invalid={invalid}
-            placeholder="@alice.bsky.social"
-            maxLength={1000}
-            onKeyDown={onKeyDown}
-            onBlur={handleBlur}
-            {...rest}
-          />
-          {isSearching ? (
-            <span className="create-cert__contrib-id-spinner" aria-hidden />
-          ) : null}
-        </>
-      )}
+      // The shared <Input> (44px, the form's field chrome); the combobox
+      // spreads its value, keyboard and ARIA wiring over these props.
+      inputProps={{
+        flush: true,
+        id: `create-cert-contrib-input-${idx}`,
+        "aria-label": ariaLabel,
+        // `error` only paints the invalid border in flush mode (and sets
+        // aria-invalid); the row shows the message under the fields.
+        error: invalid ? "Not a valid handle" : undefined,
+        placeholder: "Name or @handle",
+        maxLength: 1000,
+        onBlur: handleBlur,
+        // Always pass the slot (empty while idle) so the input keeps the
+        // same wrapper and never remounts, and loses focus, mid-typing.
+        trailingIcon: (
+          <span className="inline-flex w-4 justify-center">
+            {isSearching ? <LoadingSpinner size="sm" /> : null}
+          </span>
+        ),
+      }}
       renderOption={({ item: actor, highlighted, optionId, onHover, onSelect }) => (
         <li
           id={optionId}

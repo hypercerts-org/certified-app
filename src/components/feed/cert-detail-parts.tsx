@@ -32,16 +32,16 @@ import Skeleton from "@/components/ui/skeleton"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
 
 /**
- * "Share" column heading over a contributors list when at least one row
- * carries a `contributionWeight`. The weight chips (each "N%") sit at the
- * rows' right edge, so the heading sits over that column; hovering shows
- * the full meaning.
+ * A contributor's share of the work, at the row's trailing edge: the
+ * label travels with the value ("Share 40%"), so it reads on its own at
+ * any width instead of relying on a column heading above the list.
  */
-export function ContributorWeightHeader() {
+function ContributorShare({ weight }: { weight: string }) {
   return (
-    <div className="cert-detail__contributors-weight-header">
-      <span title="Each contributor's share of the work">Share</span>
-    </div>
+    <span className="cert-detail__contributor-weight">
+      <span className="cert-detail__contributor-weight-label">Share</span>{" "}
+      {weight}%
+    </span>
   )
 }
 
@@ -141,9 +141,7 @@ export const ContributorRow = memo(function ContributorRow({
           <div className="cert-detail__contributor-name-skel" />
           <div className="cert-detail__contributor-handle-skel" />
         </div>
-        {weight ? (
-          <span className="cert-detail__contributor-weight">{weight}%</span>
-        ) : null}
+        {weight ? <ContributorShare weight={weight} /> : null}
       </li>
     )
   }
@@ -185,9 +183,7 @@ export const ContributorRow = memo(function ContributorRow({
           {body}
         </span>
       )}
-      {weight ? (
-        <span className="cert-detail__contributor-weight">{weight}%</span>
-      ) : null}
+      {weight ? <ContributorShare weight={weight} /> : null}
     </li>
   )
 })

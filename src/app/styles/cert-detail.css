@@ -101,11 +101,12 @@
    and `order` sequences them (the record header and the section tabs sit
    above the grid, outside it):
 
-     1 form title (create / edit only)   2 image   3 summary
+     1 headline   2 image   3 summary
      4 time period   5 work scope   6 contributors   7 rights
      8 the tab's content (updates / funding / locations)
 
-   The create and edit activity forms share this grid (`.create-cert`). */
+   The create and edit activity forms reuse this grid (`.create-cert`)
+   with their own order; see "Activity create / edit form" below. */
 @media (max-width: 799px) {
   /* Single-column grid with a 0-floored track so promoted leaves can
      never push the page wider than the viewport. (The default implicit
@@ -150,19 +151,6 @@
   }
   .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
     order: 8;
-  }
-
-  /* Create / edit activity form: lead with the title, then the image,
-     then the metadata and the rest of the form. The headline (order 1)
-     and image (order 2) already come from the read-view rules above; the
-     form's generic meta-rows and sections carry no modifier class, so
-     they defaulted to order:0 and jumped ahead of the title. Push them
-     after the image. */
-  .create-cert .cert-detail__meta-row {
-    order: 3;
-  }
-  .create-cert .cert-detail__section {
-    order: 4;
   }
 
   /* The single-column grid already provides a uniform 24px row gap
@@ -703,21 +691,6 @@
   gap: 2px;
 }
 
-/* "Share" column heading above a contributors list when any row carries a
-   contributionWeight. Right-aligned over the weight chips (the last child
-   of each row); hovering shows what the share means. */
-.cert-detail__contributors-weight-header {
-  display: flex;
-  justify-content: flex-end;
-  /* The contributor row's right padding, so the heading's right edge
-     lines up with the chips'. */
-  padding: 0 8px 4px 0;
-  font-size: var(--text-caption);
-  font-weight: 500;
-  color: var(--fg-muted);
-  cursor: help;
-}
-
 /* Aside variant — tighter rows + flush left padding so the
    contributor block fits the narrow meta column without feeling
    crowded against the rounded card edge. */
@@ -789,15 +762,20 @@
   font-weight: 400;
 }
 
+/* A contributor's share ("Share 40%"): the label travels with the value
+   at the row's trailing edge, so no column heading floats above the list. */
 .cert-detail__contributor-weight {
-  font-size: 0.6875rem;
+  flex-shrink: 0;
+  font-size: var(--text-caption);
   font-weight: 600;
   color: var(--fg-secondary);
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
   font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cert-detail__contributor-weight-label {
+  font-weight: 400;
+  color: var(--fg-muted);
 }
 
 /* Skeleton */
@@ -1071,65 +1049,113 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- /create page tweaks ----------
-   The create-cert page reuses the cert-detail visual shell
-   (`.page-layout.cert-detail--wide`, `.cert-detail__aside`, etc.)
-   so the editing surface reads like an inline draft of the same
-   page it'll publish to. Only a few create-specific bits live
-   here. */
+/* ---------- Activity create / edit form ----------
+   <ActivityFormFields> (src/components/create/activity-form.tsx), shared by
+   /create and the activity edit page. It reuses the record page's two-pane
+   shell (`.page-layout.cert-detail--wide`: main column left, details
+   column right from 800px) with form spacing: 24px between fields in both
+   columns, labels (`.cert-detail__meta-label`: text-ui 500, secondary)
+   4px above their controls, counters 4px below. */
 
-/* Full-pane-width modifier for a meta input on /create. Used by the
-   Work scope field so the input stretches to fill the aside column
-   instead of sitting at the browser's default input width. Applies
-   width: 100% but leaves the rest of the .cert-detail__meta-input
-   styling intact. */
-.cert-detail__meta-input.create-cert__field--full {
-  width: 100%;
+.create-cert .cert-detail__main,
+.create-cert.cert-detail--wide > .cert-detail__aside,
+.create-cert .cert-detail__meta {
+  gap: 24px;
 }
 
-/* Smaller title font in the create form. The detail-page edit
-   mode keeps the full 1.875rem so the inline-edit reads as
-   "you are editing the cert title at full size"; on the create
-   form the title sits next to the counter + the rest of the form
-   inputs and full-size felt overpowering. */
-.create-cert .cert-detail__title-input {
-  font-size: 1.375rem;
+/* Sections take the column's gap only (the record page's section top
+   padding stacked to ~60px between the title and the short description). */
+.create-cert .cert-detail__section {
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* A labelled field in the main column: label, control, counter. */
+.create-cert__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Phones: one column, in reading order: title, short description, image,
+   description, the details, contributors. The read view's rules above
+   dissolve the aside / main / details wrappers (`display: contents`), so
+   these leaves are items of the single-column grid (24px apart). Two
+   classes beat the read view's `.cert-detail--wide:not(…)` orders. */
+@media (max-width: 799px) {
+  .create-cert.cert-detail--wide .create-cert__field--title {
+    order: 1;
+  }
+  .create-cert.cert-detail--wide .create-cert__field--summary {
+    order: 2;
+  }
+  .create-cert.cert-detail--wide .cert-detail__image {
+    order: 3;
+    /* A wide preview, not a full-width square above every field. */
+    aspect-ratio: 16 / 9;
+  }
+  .create-cert.cert-detail--wide .create-cert__field--description {
+    order: 4;
+  }
+  .create-cert.cert-detail--wide .cert-detail__meta-row {
+    order: 5;
+  }
+  .create-cert.cert-detail--wide .create-cert__contributors {
+    order: 6;
+  }
+
+  /* No image yet: a compact dashed row with "Add image" in the middle. */
+  .create-cert.cert-detail--wide .cert-detail__image--empty {
+    aspect-ratio: auto;
+    height: 96px;
+  }
+  .create-cert .cert-detail__image--empty .cert-detail__image-placeholder-icon {
+    display: none;
+  }
+  .create-cert .cert-detail__image--empty .image-edit-overlay {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Full-width modifier for a legacy meta input (the group form's fields and
+   the location picker's URI field). */
+.cert-detail__meta-input.create-cert__field--full {
+  width: 100%;
 }
 
 .create-cert__date-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-.create-cert__date-row .cert-detail__meta-input {
+.create-cert__date-row > input {
   flex: 1 1 0;
   min-width: 0;
 }
 
-/* Time-period date fields (/create + the activity edit view). The Input
-   primitive's md size pads 16px a side, which in the narrow meta column
-   clips the native "mm/dd/yyyy" text. Date fields take the meta-input
-   6px side padding and a tighter picker-icon gap so the full date shows.
-   (0,2,1) specificity beats the single-class Tailwind padding utility. */
-.create-cert__date-row input[type="date"],
-.cert-detail__meta-edit input[type="date"] {
-  padding-left: 6px;
-  padding-right: 6px;
+/* Native date fields: the Input's 16px side padding clips "mm/dd/yyyy" in
+   the 296px details column, so they take 8px and a tighter picker-icon
+   gap. (0,2,1) beats the single-class Tailwind padding utility. */
+.create-cert__date-row input[type="date"] {
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
-.create-cert__date-row input[type="date"]::-webkit-calendar-picker-indicator,
-.cert-detail__meta-edit input[type="date"]::-webkit-calendar-picker-indicator {
+.create-cert__date-row input[type="date"]::-webkit-calendar-picker-indicator {
   margin-left: 2px;
 }
 
-/* "Add contributor" + "Add me" sit side by side. Wrapping the two
-   buttons in a single flex row keeps them aligned at the left edge
-   while letting them flow onto a second line on narrow screens. */
+/* "Add contributor" + "Add me" side by side, wrapping on narrow screens. */
 .create-cert__contrib-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   margin-top: 8px;
 }
@@ -1137,7 +1163,7 @@
 .create-cert__counter {
   margin: 0;
   align-self: flex-end;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1151,92 +1177,90 @@
   font-weight: 600;
 }
 
-/* Tight wrapper around an input + its counter line. Used on the
-   title (inside the headline) and on the short description
-   (inside its section). The headline + section both have ~12-32px
-   gaps between their children; that's the right rhythm between
-   blocks, but the counter is metadata about the input directly
-   above it and should sit close. 4px keeps it tucked under the
-   field without forcing a tight cap on the typography. */
+/* Tight wrapper around an input + its counter line (the project and group
+   forms' title and short description). */
 .create-cert__input-with-counter {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
+/* Contributors: one block per contributor, separated by hairlines. Who
+   they are (the picked card, or the name/handle typeahead) and the one
+   remove button on the first line; their role and share, each labelled,
+   on the second. */
 .create-cert__contrib-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .create-cert__contrib-row {
   display: grid;
-  /* Identity (typeahead) — role — weight — remove. Weight gets a
-     fixed 170px track so its "Weight (optional)" placeholder
-     renders without ellipsis in most cases; role gets the middle
-     flex track since role labels run longer than weight values;
-     identity gets the widest flex track because it carries
-     @handle + dropdown affordance. */
-  grid-template-columns: 2fr 1.5fr 170px auto;
-  gap: 8px;
-  /* Center the role/weight/remove tracks against the identity slot
-     so the picked-contributor card (avatar + name + handle, 32px
-     tall) aligns its mid-line with the inputs and the trash button.
-     The per-row error message still grid-column-spans all tracks
-     below, so vertical centering doesn't pull errors out of place. */
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  gap: 8px 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-subtle);
 }
 
-.create-cert__contrib-weight {
-  /* Left-align matches the role + identity inputs in the same row.
-     Right-aligning the weight made the "Weight (optional)"
-     placeholder hug the right edge while the entered numeric value
-     was supposed to read as a label; consistent left alignment
-     keeps the row visually tidy. */
-  text-align: left;
+.create-cert__contrib-row:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
-/* Identity field wrapper — positions the typeahead dropdown
-   absolutely beneath the input. `min-width: 0` keeps the field
-   from blowing out the grid track when the search results contain
-   long display names. */
+.create-cert__contrib-row:last-child {
+  padding-bottom: 0;
+}
+
+.create-cert__contrib-who {
+  min-width: 0;
+}
+
+/* Role (flexible) and Share (a short number field), under the identity. */
+.create-cert__contrib-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  gap: 12px;
+}
+
+.create-cert__contrib-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Identity field wrapper: positions the typeahead dropdown under the
+   input; `min-width: 0` keeps long results from widening the track. */
 .create-cert__contrib-id {
   position: relative;
   min-width: 0;
 }
 
-/* Resolved-contributor card — the "picked" state of the row. Same
-   visual rhythm as the read-mode `activity-detail__contributor`
-   row: avatar + meta column + trailing clear button. Slots into
-   the same identity-track of the row grid as the typeahead input,
-   so the row's height/alignment stays put across the input → card
-   swap. */
+/* The picked contributor: avatar, name and handle, as tall as the inputs
+   so the row doesn't jump when the typeahead turns into the card. */
 .create-cert__contrib-card {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 4px 8px 4px 4px;
-  border: none;
-  border-radius: var(--radius);
-  background: transparent;
-  height: 32px;
+  min-height: var(--control-h-md);
 }
 
 .create-cert__contrib-card-meta {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1.1;
+  line-height: 1.3;
   flex: 1;
 }
 
 .create-cert__contrib-card-name {
-  font-size: 0.8125rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   overflow: hidden;
@@ -1245,74 +1269,21 @@
 }
 
 .create-cert__contrib-card-handle {
-  font-size: 0.6875rem;
+  font-size: var(--text-caption);
   color: var(--fg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.create-cert__contrib-card-clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.create-cert__contrib-card-clear:hover,
-.create-cert__contrib-card-clear:focus-visible {
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-}
-
-.create-cert__contrib-id input {
-  width: 100%;
-}
-
-/* Invalid identity — paints the border red so the row's failure
-   reads at a glance. The accompanying `<p create-cert__contrib-
-   error>` below the row carries the explanation; this is the
-   field-level visual cue. */
-.create-cert__contrib-id-input--invalid {
-  border-color: var(--color-error);
-}
-
-.create-cert__contrib-id-input--invalid:focus {
-  border-color: var(--color-error);
-  box-shadow: var(--shadow-ring-error);
-}
-
-/* Per-row identity error — slots into the contributor grid by
-   spanning all four tracks, sitting below the row's inputs. The
-   text reuses the form-error rhythm: small, muted red. */
+/* A field's error line, under the fields it's about (spans the whole
+   contributor row). Also used by the group form. */
+.create-cert__field-error,
 .create-cert__contrib-error {
   grid-column: 1 / -1;
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--color-error);
-}
-
-.create-cert__contrib-id-spinner {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  /* Centre with margin, not transform: the spin keyframe owns transform. */
-  margin-top: -6px;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--border-default);
-  border-top-color: var(--fg-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  pointer-events: none;
 }
 
 .create-cert__contrib-id-dropdown {
@@ -1335,8 +1306,8 @@
 .create-cert__contrib-id-option {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 6px 10px;
+  gap: 2px;
+  padding: 8px 12px;
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -1346,45 +1317,14 @@
 }
 
 .create-cert__contrib-id-name {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-primary);
   font-weight: 500;
 }
 
 .create-cert__contrib-id-handle {
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
-}
-
-.create-cert__contrib-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border-default);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-}
-
-.create-cert__contrib-remove:hover {
-  background: var(--bg-sunken);
-  color: var(--color-error);
-  border-color: var(--color-error);
-}
-
-@media (max-width: 799px) {
-  .create-cert__contrib-row {
-    grid-template-columns: 1fr auto;
-    gap: 6px;
-  }
-  .create-cert__contrib-row > input:nth-child(2),
-  .create-cert__contrib-row > input:nth-child(3) {
-    grid-column: 1 / 2;
-  }
 }
 
 /* ---------- /project/new cert picker + selected-cert list ---------- */
@@ -1523,21 +1463,11 @@
   color: var(--fg-primary);
 }
 
-.create-cert__followup-note {
-  margin: 0;
-  padding: 12px 14px;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  background: var(--bg-sunken);
-  border-radius: var(--radius);
-  border: 1px dashed var(--border-default);
-}
-
-/* ---------- Locations list in the aside on /create ---------- */
+/* ---------- Locations list in the form's details column ---------- */
 
 .create-cert__loc-list {
   list-style: none;
-  margin: 0 0 6px 0;
+  margin: 0 0 8px 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -1547,11 +1477,11 @@
 .create-cert__loc-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: 8px;
+  padding-left: 8px;
   background: var(--overlay-weak);
   border-radius: var(--radius);
-  font-size: 0.8125rem;
+  font-size: var(--text-ui);
   color: var(--fg-primary);
   min-width: 0;
 }
@@ -1562,27 +1492,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.create-cert__loc-remove {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  color: var(--fg-muted);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.create-cert__loc-remove:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
 }
 
 /* ---------- Location picker dialog ---------- */
