@@ -253,7 +253,7 @@ Rules:
 Every page has exactly one `<h1>`.
 
 - **A page with a `<PageHeader>`:** the header's title is the page's visible `<h1>`. `PageHeader` registers itself through `navbar-context` (`useRegisterPageHeader()`, ref-counted). The chrome reads `useHasPageHeader()` and, while it is true, renders no h1 of its own, visible or visually hidden. It may still show the title as plain text (a compact phone title).
-- **A page without a `PageHeader` (fallback):** the chrome renders the page title (`usePageTitle`; `AuthGuard` sets it when signed out) as the `<h1>`: visually hidden in the desktop top bar, and the phone bar's compact title (centred next to the brandmark on top-level pages, next to the back chevron on other pages). While a `PageHeader` is mounted the desktop bar renders no h1 and the phone bar shows its normal layout with no title (§4.2).
+- **A page without a `PageHeader` (fallback):** the chrome renders the page title (`usePageTitle`; `AuthGuard` sets it when signed out) as the `<h1>`: visually hidden in the desktop top bar, and the phone bar's compact title (centred next to the square brandmark on top-level pages, next to the back chevron on other pages). While a `PageHeader` is mounted the desktop bar renders no h1 and the phone bar shows its normal layout with no title (§4.2).
 - Under the h1, section headings are `<h2>` (`<SectionHeader>`, or `as="h3"` inside an h2 section); card and empty-state titles take the next level down (the level passed via `headingLevel`).
 - Visual size and DOM level are independent: pick the ramp step for the look and the element for the outline.
 
@@ -270,7 +270,7 @@ The app shell (`src/components/layout/app-shell.tsx`) is a single centered colum
 | < 800px | Phone top bar (§4.2) + bottom tab bar (§4.3) | Column up to 720px, 16px side gutter |
 | ≥ 800px | Desktop top bar (§4.4) | Column 600px; `<PageContainer>` pages 720 / 1120 / 1280px; full-bleed pages up to 1280px |
 
-`useLayoutBreakpoints()` mirrors the CSS breakpoints and JS-unmounts the components that must not exist at the other width (the phone bar, the tab bar, the floating Feedback button on phones). Everything else is CSS-only.
+`useLayoutBreakpoints()` mirrors the CSS breakpoints and JS-unmounts the components that must not exist at the other width (the phone bar, the tab bar). Everything else is CSS-only.
 
 Profile, Settings, Help, feedback, appearance and signing out live in the **account menu** (§4.4.1), opened from the account button on desktop and the avatar on phones. Creating lives in **New** (desktop button, phone `+`).
 
@@ -278,7 +278,7 @@ Profile, Settings, Help, feedback, appearance and signing out live in the **acco
 
 **`--chrome-top`** (tokens.css) is the bottom edge of the fixed top chrome: `--navbar-height` (64px on phones, 0 on desktop, where the top bar scrolls with the page) plus `--acting-as-height` (44px while the phone acting-as bar shows, set by `html.has-acting-as-bar`). Every sticky element uses `top: var(--chrome-top, var(--navbar-height))`. The root's `scroll-padding-top` is `--chrome-top` and its `scroll-padding-bottom` the tab bar's height + safe area + 16px, so a control reached by Tab never sits under the fixed bars (WCAG 2.4.11); pages with a sticky form action bar add its height. A phone bar hidden on scroll comes back while it holds focus.
 
-**Landmarks:** the top bars are `<header>`s (banner), the page is `<main id="main-content">` (the skip link's target; `AppShell` renders it), and the site footer follows `<main>`, so it is the contentinfo landmark on every page, including `/welcome` and the legal pages. The footer links Welcome, Help, Feedback (opens the feedback dialog), Docs, Terms, Privacy and Imprint, and ends with the compact Light / Dark / System switch (`<ThemeToggle compact>`), for everyone: signed-out visitors have no account menu, and phones have no floating Feedback button. Links and switch segments are 44px tall on phones.
+**Landmarks:** the top bars are `<header>`s (banner), the page is `<main id="main-content">` (the skip link's target; `AppShell` renders it), and the site footer follows `<main>`, so it is the contentinfo landmark on every page, including `/welcome` and the legal pages. The footer links Welcome, Help, Feedback (opens the feedback dialog; the only Feedback button on the page, there is no floating one), Docs, Terms, Privacy and Imprint, for everyone: signed-out visitors have no account menu. The theme switch is not in the footer: it is Appearance in the account menu and in Settings. Links are 44px tall on phones.
 
 ### 4.2 Phone top bar (< 800px)
 
@@ -288,7 +288,7 @@ One bar on every page:
 
 | Slot | Top-level pages: the five destinations, `/settings`, `/help`, your own profile | Every other page: a record, someone else's profile, a group page, a form, the legal pages |
 |---|---|---|
-| Left | Brandmark (to Home; `/welcome` signed out) | Back chevron (`<Button size="icon" aria-label="Go back">`), **whether or not a `PageHeader` is mounted**: the installed app has no browser Back, so this is the way back to where you were |
+| Left | The wordmark (`<Wordmark>`, 18px tall, to Home; `/welcome` signed out) and a **Beta** tag (`<Badge variant="tag" compact>`); the square brandmark instead while the compact title shows | Back chevron (`<Button size="icon" aria-label="Go back">`), **whether or not a `PageHeader` is mounted**: the installed app has no browser Back, so this is the way back to where you were |
 | Center | The compact title as the h1 when no `PageHeader` is mounted, else nothing | Same |
 | Right | `+` (`<Button size="icon" aria-label="New">`, opens the New sheet) and the avatar (opens the account sheet). Signed out: "Sign in". | Same (a page that still publishes a record menu gets it first; deprecated) |
 
@@ -304,11 +304,11 @@ Items: Home (`House`), Feed (`Newspaper`), Explore (`Compass`), Records (`Folder
 
 `desktop-top-bar.tsx`, mounted in the root layout before `<main>`. Translucent chrome with a 1px bottom line; scrolls with the page (so `--chrome-top` is 0 on desktop). **One row** (`--top-bar-row1`, 52px), the same on every page: nothing page-specific lives in the chrome. Pages carry their own back link and title (`PageHeader`) and their own section tabs, in the page, at every width.
 
-- Left: the brandmark (to Home; `/welcome` signed out), then the destinations as labelled links: 20px icon + word, `text-ui` / 500, 36px tall. Current: `--bg-selected` pill (`--radius-pill`) + `--fg-primary`; others `--fg-secondary`; hover `--overlay-weak` (hover devices only); never a weight change; `aria-current="page"`.
-- Right: the search field (placeholder "Search"; `/` or Cmd/Ctrl+K focuses it; up to 300px, shrinking to 120px so the destinations never clip; not shown on `/explore`, which has its own search), **New** (`<Button variant="primary" size="sm">` with a Plus icon; a `<Popover>` menu: New activity, New project, New group), and the **account button** (avatar, then name and @handle from 1100px; acting as a group, the group's square avatar, its name and "as @you"). Signed out: search, **Help** (styled like a destination link) and "Sign in".
+- Left: the wordmark (`<Wordmark>`, 18px tall, to Home; `/welcome` signed out) with a **Beta** tag (`<Badge variant="tag" compact>`), then the destinations as labelled links: 20px icon + word (word only at 800–1099px, so everything fits on one row), `text-ui` / 500, 36px tall. Current: `--bg-selected` pill (`--radius-pill`) + `--fg-primary`; others `--fg-secondary`; hover `--overlay-weak` (hover devices only); never a weight change; `aria-current="page"`.
+- Right: the search field (placeholder "Search"; `/` or Cmd/Ctrl+K focuses it; up to 300px, shrinking to 120px (96px below 1100px) so the destinations never clip; not shown on `/explore`, which has its own search), **New** (`<Button variant="primary" size="sm">` with a Plus icon; a `<Popover>` menu: New activity, New project, New group), and the **account button** (avatar, then name and @handle from 1100px, capped at 200px until 1300px; acting as a group, the group's square avatar, its name and "as @you"). Signed out: search, **Help** (styled like a destination link) and "Sign in".
 - No page title; a page without a `PageHeader` gets a visually hidden h1 here (§3.6).
 
-The floating **Feedback** button (`feedback-trigger.tsx`, desktop only) is a secondary control: `--bg-elevated`, a `--border-default` hairline, `--shadow-sm`, `text-ui`, with a small muted "Beta" tag. It lifts above the site footer when that scrolls into view. It is hidden where pages keep controls of their own in that corner (`isFeedbackTriggerVisible`): Records (row actions, the selection bar), record pages and everything under them, and create and edit forms (their action bar). "Send feedback" is also in the account menu, and Feedback in the site footer.
+There is no floating Feedback button: Feedback is in the site footer and "Send feedback" in the account menu.
 
 #### 4.4.1 Account menu
 
@@ -319,7 +319,7 @@ The floating **Feedback** button (`feedback-trigger.tsx`, desktop only) is a sec
 3. **Settings**, **Help**, **Send feedback** (opens the feedback modal), and **Appearance** (Light / Dark / System; 44px buttons in the sheet).
 4. **Sign in with another account** (`openSignInAnotherAccount`: the sign-in bounce with `prompt: "login"`, so the PDS asks who is signing in instead of returning the same account; it replaces the current session, and says so under the label) and **Sign out**, behind a `<ConfirmDialog>` ("Sign out of Certified?") that returns focus to the account button (`returnFocusRef`).
 
-The sheet ends with the legal links (Terms, Privacy, Imprint); the desktop keeps them in the site footer. Menus opened from the top bar sit at `--z-chrome-menu`, above the floating Feedback button. Switching goes through `useSwitchActor()`, shared with the acting-as bar and Records: the viewer stays on the page unless it is personal-only.
+The sheet ends with the legal links (Terms, Privacy, Imprint); the desktop keeps them in the site footer. Menus opened from the top bar sit at `--z-chrome-menu`, above the navbar. Switching goes through `useSwitchActor()`, shared with the acting-as bar and Records: the viewer stays on the page unless it is personal-only.
 
 ### 4.5 Breakpoints
 
@@ -328,8 +328,8 @@ Three, everywhere: tokens `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-d
 | Range | What changes |
 |---|---|
 | < 800px | Phone top bar + bottom tab bar, bottom sheets instead of dropdowns, 16px input text (iOS zoom rule), dialog actions stack |
-| ≥ 800px | Desktop top bar; column narrows to 600px; dropdowns and centered dialogs replace sheets; tab panels slide; floating Feedback button |
-| ≥ 1100px | Account button shows its name and handle; destination links get 12px padding; profile Overview about-block and project detail go two-column |
+| ≥ 800px | Desktop top bar; column narrows to 600px; dropdowns and centered dialogs replace sheets; tab panels slide; top-bar destinations are words only until 1100px |
+| ≥ 1100px | Account button shows its name and handle; destination links get their icons and 12px padding; profile Overview about-block and project detail go two-column |
 | ≥ 1300px | Grid wrapper reaches its max width; endorsement grids go to three columns |
 
 Write mobile first: base styles, then `@media (min-width: 800px)`. "Below desktop" is `max-width: 799px`. Never 768 / 760 / 640.
@@ -387,7 +387,7 @@ Every image has `loading="lazy"` and an `onError` fallback: feed images hide the
 
 ### 4.10 Z-index
 
-Every layer is a `--z-*` token in `tokens.css`. Lowest to highest: `--z-local-raise`, `--z-rail-sticky`, `--z-popover`, `--z-navbar` / `--z-bottom-nav`, `--z-feedback-trigger` (floating Feedback button: above the nav bars, below sheets and dialogs), `--z-chrome-menu` (the New and account menus: above the Feedback button), `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-feedback-above`, `--z-tour-backdrop`, `--z-tour-card`, `--z-tooltip`. A genuinely new layer gets a new token, placed in this order.
+Every layer is a `--z-*` token in `tokens.css`. Lowest to highest: `--z-local-raise`, `--z-rail-sticky`, `--z-popover`, `--z-navbar` / `--z-bottom-nav`, `--z-chrome-menu` (the New and account menus: above the nav bars), `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-feedback-above`, `--z-tour-backdrop`, `--z-tour-card`, `--z-tooltip`. A genuinely new layer gets a new token, placed in this order.
 
 ---
 
@@ -408,7 +408,7 @@ Elevation shadow tokens:
 | Token | Use |
 |---|---|
 | `--shadow-sm` | Controls only: switch thumb, segmented active segment |
-| `--shadow-md` | Popover, tooltip, toast, floating Feedback button |
+| `--shadow-md` | Popover, tooltip, toast |
 | `--shadow-lg` | Drawer |
 | `--shadow-modal` | AppDialog (Tailwind `shadow-modal`), the feedback modal, the domain modal and the landing contact modal. Dialogs only. |
 
@@ -470,7 +470,7 @@ The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind 
 ### 6.4 Touch
 
 - Inputs are at least 16px font size below 800px, or iOS Safari zooms on focus. Tailwind `md:text-sm` on fields flips at 800, not 768.
-- Safe-area insets: the bottom tab bar and bottom sheets respect `env(safe-area-inset-bottom)` (the floating Feedback button is desktop-only).
+- Safe-area insets: the bottom tab bar and bottom sheets respect `env(safe-area-inset-bottom)`.
 - Dialog actions stack (column-reverse, primary on top) below 800px.
 
 ---
@@ -683,7 +683,7 @@ All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, 
 
 ### 9.12 Distinctive patterns
 
-- **Phone top bar:** the normal bar (brandmark, `+`, avatar) almost everywhere, and a fallback back-chevron bar only on titled pages without a `PageHeader` (§4.2), switching instantly on route change.
+- **Phone top bar:** the normal bar (wordmark and Beta tag, `+`, avatar) almost everywhere, and a fallback back-chevron bar only on titled pages without a `PageHeader` (§4.2), switching instantly on route change.
 - **Account menu:** a sheet on phones, a popover menu on desktop (§4.4.1); reflects the acting identity (`useOrg().activeOrg`).
 - **Feed with evaluator filter:** tapping the active "For you" tab opens an inline filter panel; a non-default filter renames the tab "Custom" and the unfiltered state shows a caution banner.
 - **Profile hero:** full-bleed banner below the top bar, with the avatar overlapping downward.
@@ -881,6 +881,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-13, wordmark, Beta tag, one Feedback button, Home boxes.** Both top bars show the full **wordmark** (new `<Wordmark>` primitive: inline SVG in `currentColor`, so it flips with the theme) with a **Beta** tag (`<Badge variant="tag" compact>`) instead of the square brandmark; the phone bar keeps the brandmark only while its compact title shows. The desktop destinations are words only at 800–1099px so the row fits. The **floating Feedback button is removed** (with `--z-feedback-trigger` and `isFeedbackTriggerVisible`); Feedback stays in the site footer and the account menu. The footer drops its theme switch (Appearance is in the account menu and Settings). **Home**: the header has no buttons (the name, and the @handle when it stands in for a bio, link to the profile, which has Edit); the ID and Your groups are white boxes (`<Card>` elevated, 16px padding) in a right-hand column level with the header from 1100px, and under the header on phones.
 - **2026-11-13, redesign review round 2: shell and primitives.** **Phone top bar** keeps a back chevron on every page that isn't top-level (records, other people's profiles, group pages, forms), with or without a `PageHeader`; only the compact title drops when a `PageHeader` is mounted; New and the account button (or Sign in) are on the right on every page (§4.2). New **`--bg-selected`** token for the current item (SideNav, the top bar's current destination; the active segment of segmented controls in dark mode): in dark mode it is a step above `--bg-elevated`, so the current item no longer reads as a hole (§2.2). **SideNav on phones** wraps up to six items onto more lines; longer lists scroll the current item into view (§9.13). The underline `TabList` spans the full width (§9.6). The desktop search placeholder is "Search" (it clipped at 800–1099px). The **floating Feedback button** is hidden on Records and record pages as well as forms; the **site footer** gains Feedback and a compact theme switch, for everyone (§4.1, §4.4). "Sign in with another account" asks the PDS who is signing in (`prompt: "login"`) instead of bouncing back into the same account (§4.4.1). Toasts stay live while a bottom sheet is open (§9.9). Groups can create: `/create` is no longer personal-only, so switching to a group there keeps the form. `/endorsements?tab=…` keeps its tab when it redirects to Records.
 - **2026-11-13, redesign review fixes: shell, primitives, accessibility.** **`--chrome-top`** (navbar height + the phone acting-as bar) is the one top edge for sticky elements and the root's `scroll-padding-top`; `scroll-padding-bottom` clears the tab bar, so focused controls never land under fixed chrome (§4.1). The **desktop top bar is one row**: row 2 (record tabs + Back, Back on create pages) and `--top-bar-row2` are gone, pages carry their own back link and tabs; signed-out visitors get Help there; the search steps aside on `/explore` (§4.4). On phones a page with a `PageHeader` gets the **normal bar**, with no second back link or title (§4.2). The tab bar is hidden on create and edit forms (§4.3), and Records uses `FolderOpen`. The site footer sits after `<main>` (contentinfo), links Help for everyone and has 44px links on phones. **Counts are neutral:** `<Tab count>` is a muted tabular number, never the red badge (§9.6). **One error pattern:** a load failure is an inline block with "Try again", never a warning banner (§10.1). **One primary per page:** at most one black button in a page's content; the top bar's New is the global one (§9.1). **Page widths:** the five destinations, Settings and Help share `PageContainer width="default"` (1120); forms keep theirs (§4.6). SideNav's current item on phones is a sunken pill (not black). Card hover is a border change only. SegmentedControl / ToggleGroup and `Input size="sm"` are 44px / 16px below 800px. Avatar initials are `aria-hidden` and show while an image loads. **Focus:** portaled menus focus their first item once positioned, close on Tab and return focus to the trigger; bottom sheets move focus in, make the page inert and trap Tab; dialogs record their opener at first render and take `returnFocusRef`; use `initialFocusRef`, not `autoFocus`, in dialogs (§9.7–§9.9). Acting as a group reads "Acting as {Group} · {Role}" with "Switch to personal account"; "New group" sits after its own separator in the account menu. The floating Feedback button is secondary and hidden on forms. **Docs reconciled with code:** the one press scale is `0.97` (buttons via `.press-scale` and the tab bar; the plan's value); the EmptyState icon is 40px (the code's value, now also in the plan).
 - **2026-11-13, redesign foundation: the shell and navigation.** One set of five destinations everywhere: Home, Feed, Explore, Records, Apps (signed out: Explore, Apps). **Desktop top bar** row 1 is now brandmark + the destinations (20px icon + word; current = sunken pill, no weight change) on the left, and search (`/` focuses it), a primary **New** button (New activity / project / group) and the **account button** on the right; the page title, the Profile / Settings / Help links and the dormant hamburger + site drawer are gone; a page without a `PageHeader` keeps a visually hidden h1 there (§3.6). **Phone top bar**: brandmark, `+` and avatar on top-level pages; back chevron + compact `text-section` title on detail pages; no hamburger, no profile overlay (profile pages get the normal bar and the banner starts below it). **Bottom tab bar** in every phone browser (not only the installed app) with the five destinations; Create and Feedback left it. **Account menu** (§4.4.1), one component as a desktop popover and a phone sheet: current account + View profile, Switch account (personal, groups with handle and role, New group), Settings, Help, Send feedback, Appearance, Sign in with another account (labelled as replacing the session) and Sign out behind a confirmation. Groups draw square avatars (`<Avatar shape="square">`). The floating Feedback button is desktop-only. New `--z-chrome-menu` layer for the top-bar menus. Records stays in the navigation while acting as a group and explains itself. `/endorsements` → `/records?kind=endorsements` and `/workspace` → `/records`. `/create` and `/project/new` show a Sign in button when signed out. The Help graph pop-up no longer blanks the page title or widens the Help page.

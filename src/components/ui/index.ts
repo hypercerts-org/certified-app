@@ -27,6 +27,7 @@ export * from "./bottom-sheet";
 
 export { default as Brandmark } from "./brandmark";
 export * from "./brandmark";
+export { default as Wordmark } from "./wordmark";
 
 export { default as Button } from "./button";
 export * from "./button";

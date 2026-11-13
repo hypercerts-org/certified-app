@@ -1,59 +1,73 @@
 /* ---------- /home page ----------
    The signed-in home is about the account. Its <PageHeader> is the
    identity strip (avatar, name, bio, website; home-account-card.tsx);
-   below it come the ID, the account's sections (records, from others),
-   Your groups and Apps. <PageContainer> sets the width and gutters; this
+   the ID and Your groups are white boxes beside it (under it on phones),
+   then come the account's sections (records, from others) and Apps.
+   <PageContainer> sets the width and gutters; this
    file sets the grid and the hairline rows. The follow feed lives on
    /feed; its card styles stay in this file (.home-feed*). */
 
-/* One column below 1100px, in DOM order: ID, sections, groups, apps. The
-   top padding adds to the header's own 16px margin (a margin would
-   collapse into it), so the identity strip stands 24px (phone) / 32px
-   (desktop) clear of the first section. */
+/* One column below 1100px, in DOM order: header, the ID and Your groups
+   boxes, the sections, Apps. The header's negative bottom margin pulls the
+   first box to 24px (phone) / 32px (desktop) below it; the rest keep the
+   full gap. */
 .home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 32px;
-  padding-top: 8px;
+}
+
+.home__header {
+  min-width: 0;
+  margin-bottom: -8px;
 }
 
 @media (min-width: 800px) {
   .home__layout {
     gap: 48px;
-    padding-top: 16px;
+  }
+
+  .home__header {
+    margin-bottom: -16px;
   }
 }
 
-/* From 1100px the sections take the left column, with Apps under them,
-   and the ID and Your groups a 320px column on the right. The main
-   column spans the first three rows, so the side rows size to the ID and
-   the groups list alone and the third row (1fr) absorbs the rest of the
-   main column. Both side blocks are plain sections, so their headers
-   line up with "Your records". */
+/* The two boxes stack with the sections' gap. */
+.home__side {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+/* From 1100px: the header, the sections and Apps in the left column; the
+   boxes in a 320px column on the right, its top level with the header.
+   The side column spans every row and the last row is 1fr, so a tall
+   side column lengthens only that row (under Apps), never the space
+   between the header and the sections. */
 @media (min-width: 1100px) {
   .home__layout {
     grid-template-columns: minmax(0, 1fr) 320px;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto 1fr;
     grid-template-areas:
-      "main id"
-      "main groups"
-      "main ."
-      "apps .";
-    row-gap: 48px;
+      "header side"
+      "main side"
+      "apps side";
     column-gap: 64px;
     align-items: start;
   }
 
-  .home__id {
-    grid-area: id;
+  .home__header {
+    grid-area: header;
+  }
+
+  .home__side {
+    grid-area: side;
+    gap: 24px;
   }
 
   .home__main {
     grid-area: main;
-  }
-
-  .home__groups {
-    grid-area: groups;
   }
 
   .home__apps {
@@ -61,14 +75,33 @@
   }
 }
 
-.home__id,
-.home__groups,
 .home__apps {
   min-width: 0;
 }
 
-/* The ID's two values between hairlines, like the rows beside it. Side
-   by side while the section spans the one column (800-1099px). */
+/* The ID and Your groups: white boxes (<Card> elevated, unpadded) with
+   the Feed side boxes' 16px padding, at every width. Their rows keep the
+   hairline under the heading; the last row drops its bottom hairline,
+   since the box edge closes the list. */
+.home__box {
+  padding: 16px;
+}
+
+.home__box .home-rows > li:last-child {
+  border-bottom: none;
+}
+
+.home__box .home-rows > li:last-child .home-row {
+  padding-bottom: 0;
+}
+
+.home__box .home-id__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* The ID's two values between hairlines. Side by side while the box
+   spans the one column (800-1099px). */
 .home-id {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -80,6 +113,12 @@
   .home-id {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 24px;
+  }
+
+  /* Side by side, both values are the last row. */
+  .home__box .home-id__item {
+    border-bottom: none;
+    padding-bottom: 0;
   }
 }
 

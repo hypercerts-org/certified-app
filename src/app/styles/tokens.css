@@ -327,8 +327,7 @@
   --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
   --z-navbar: 50;                   /* fixed top navbar */
   --z-bottom-nav: 50;               /* only mounted < 800px; never co-mounts with rails */
-  --z-feedback-trigger: 55;         /* floating Feedback button: above navbar + bottom nav, below drawers/sheets/modals */
-  --z-chrome-menu: 56;              /* menus opened from the top bar (New, account): above the Feedback button, below sheets/modals */
+  --z-chrome-menu: 56;              /* menus opened from the top bar (New, account): above the navbar, below sheets/modals */
   --z-portal-sheet: 60;             /* bottom sheets (account, New, feedback), drawer */
   --z-modal: 100;                   /* generic modals */
   --z-skip-nav: 9999;               /* skip-nav link */

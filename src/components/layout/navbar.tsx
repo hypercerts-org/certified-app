@@ -14,7 +14,9 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 import { isTopLevelPath } from "@/lib/layout/destinations";
 import { parseActor } from "@/lib/urls";
 import Button from "@/components/ui/button";
+import Badge from "@/components/ui/badge";
 import Brandmark from "@/components/ui/brandmark";
+import Wordmark from "@/components/ui/wordmark";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
 import { PhoneAccountMenu } from "./account-menu";
@@ -43,8 +45,10 @@ function isOwnProfilePath(
 /**
  * Phone top bar (below 800px). One bar on every page:
  *
- * - **Left:** the brandmark on the top-level pages (Home, Feed, Explore,
- *   Records, Apps, Settings, Help and your own profile). Everywhere else
+ * - **Left:** the wordmark and its Beta tag on the top-level pages (Home,
+ *   Feed, Explore, Records, Apps, Settings, Help and your own profile);
+ *   the square brandmark instead when the compact title shares the row,
+ *   so the title keeps its room. Everywhere else
  *   (a record, someone else's profile, a group page, a form) a back
  *   chevron, whether or not the page renders a `<PageHeader>`: the
  *   installed app has no browser Back, so this is the way back to where
@@ -92,6 +96,9 @@ const Navbar: React.FC = () => {
     ]);
   const isTopLevel = isTopLevelPath(pathname) || isOwnProfile;
 
+  // The compact title is the page's h1 only while no PageHeader owns it.
+  const showTitle = !hasPageHeader && !!(pageTitle || breadcrumb);
+
   const navClasses = [
     "navbar",
     scrolled ? "navbar--scrolled" : "",
@@ -102,21 +109,34 @@ const Navbar: React.FC = () => {
     .filter(Boolean)
     .join(" ");
 
-  // The compact title is the page's h1 only while no PageHeader owns it.
-  const showTitle = !hasPageHeader && !!(pageTitle || breadcrumb);
 
   return (
     <header className={navClasses}>
       <div className="navbar__inner">
         <div className="navbar__left">
           {isTopLevel || headerHasBack ? (
-            <Link
-              href={isAuthenticated ? "/home" : "/welcome"}
-              className="navbar__logo"
-              aria-label="Certified home"
-            >
-              <Brandmark size={28} decorative />
-            </Link>
+            showTitle ? (
+              <Link
+                href={isAuthenticated ? "/home" : "/welcome"}
+                className="navbar__logo"
+                aria-label="Certified home"
+              >
+                <Brandmark size={28} decorative />
+              </Link>
+            ) : (
+              <span className="navbar__brand-group">
+                <Link
+                  href={isAuthenticated ? "/home" : "/welcome"}
+                  className="navbar__logo navbar__logo--wordmark"
+                  aria-label="Certified home"
+                >
+                  <Wordmark height={18} decorative />
+                </Link>
+                <Badge variant="tag" compact>
+                  Beta
+                </Badge>
+              </span>
+            )
           ) : (
             <Button
               variant="ghost"

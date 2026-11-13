@@ -2,22 +2,21 @@
 
 import Link from "next/link"
 import { useFeedback } from "@/lib/feedback-context"
-import ThemeToggle from "@/components/ui/theme-toggle"
 
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
- * desktop: wordmark + copyright on the left, links, Feedback and the
- * theme switch on the right. Wraps to stacked, centred rows on narrow
- * viewports.
+ * desktop: wordmark + copyright on the left, the links and Feedback on
+ * the right. Wraps to stacked, centred rows on narrow viewports.
  *
  * Rendered by AppShell after `<main>` (not inside it), so it is the
  * page's contentinfo landmark and spans the full viewport width on every
  * page — its border-top reads as a page-frame divider that matches the
  * navbar's border-bottom edge-to-edge.
  *
- * Help, Feedback and the theme switch are here for everyone: signed-out
- * visitors have no account menu (where signed-in people find them), and on
- * phones there is no floating Feedback button.
+ * Help and Feedback are here for everyone: signed-out visitors have no
+ * account menu (where signed-in people also find them). This is the one
+ * Feedback button on the page; there is no floating one. The theme switch
+ * lives in the account menu (Appearance), not here.
  *
  * Kept intentionally short — no marketing copy, no newsletter
  * signup, no social rail. Just identity + a handful of links the
@@ -73,7 +72,6 @@ export default function SiteFooter() {
               Imprint
             </Link>
           </nav>
-          <ThemeToggle compact />
         </div>
       </div>
     </footer>

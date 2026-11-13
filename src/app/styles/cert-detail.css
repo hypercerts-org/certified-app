@@ -2008,12 +2008,4 @@ html:has(.form-action-bar) {
   .form-action-bar__row {
     gap: 16px;
   }
-
-  /* The floating Feedback button rests bottom-right over where the bar's
-     primary button sits on narrower desktops. Lift it clear of the bar
-     while a form is mounted (translate composes with the offset the
-     trigger sets itself when the footer scrolls into view). */
-  html:has(.form-action-bar) .feedback-trigger {
-    translate: 0 -64px;
-  }
 }

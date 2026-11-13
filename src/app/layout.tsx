@@ -16,7 +16,6 @@ import OnboardingModal from "@/components/onboarding/onboarding-modal";
 import { TourProvider } from "@/lib/tour/tour-context";
 import ProductTour from "@/components/tour/product-tour";
 import FeedbackModal from "@/components/ui/feedback-modal";
-import FeedbackTrigger from "@/components/layout/feedback-trigger";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import BottomNav from "@/components/layout/bottom-nav";
 import ActingAsBar from "@/components/layout/acting-as-bar";
@@ -192,7 +191,6 @@ export default async function RootLayout({
                 <BottomNav />
                 <PwaInstallGuard />
                 <FeedbackModal />
-                <FeedbackTrigger />
                 <OnboardingModal />
                 <ProductTour />
                 </ViewTransitionProvider>

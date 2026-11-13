@@ -464,10 +464,7 @@
    inside the pane on desktop, fixed above the bottom tab bar on phones.
    It comes before the list in the DOM (one Tab stop from the search);
    `order` moves it to the end of the pane's flex column, where the
-   sticky bottom can hold it.
-
-   Centred and capped on desktop so it stays clear of the floating
-   Feedback button in the bottom-right corner. */
+   sticky bottom can hold it. Centred and capped on desktop. */
 .records-selection {
   order: 1;
   position: sticky;

@@ -23,14 +23,14 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 **Desktop**
 
-- One top bar: the brandmark, the five labelled destinations, search, a black **New** button and your account.
+- One top bar: the wordmark with a Beta tag, the five labelled destinations, search, a black **New** button and your account.
 - New offers: New activity, New project, New group.
 - Profile, Settings and Help moved into the account menu.
 
 **Phone**
 
 - A bottom tab bar with the same five tabs, in every browser. Before, it only appeared in the installed app.
-- The top bar shows the brandmark, **+** (the New menu) and your avatar.
+- The top bar shows the wordmark with a Beta tag, **+** (the New menu) and your avatar.
 - Detail pages get a back chevron.
 - The hamburger and the drawer are gone.
 
@@ -49,16 +49,16 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 - `/endorsements` redirects to Records → Endorsements.
 - `/workspace` redirects to Records.
 
-**Footer**: Help, Feedback and the theme switch, for everyone including signed-out visitors.
+**Footer**: Help and Feedback, for everyone including signed-out visitors. It is the only Feedback button: the floating one is gone. The theme switch is in the account menu (Appearance) and Settings, not the footer.
 
 ## Pages
 
 - **Home**
-  - The header is you: avatar, name, bio and website, with Edit profile and View profile.
+  - The header is you: avatar, name, bio and website. No buttons: the name opens your profile, which has Edit.
   - Then Your records, as counts plus the latest items, and From others: endorsements and followers.
   - Apps shows the first four partner apps.
-  - Beside them sit your ID (handle and Permanent ID, each copyable) and Your groups, each group with a Switch button.
-  - On phones the order is: header, ID, records, from others, groups, apps.
+  - On the right, level with the header, sit two white boxes: your ID (handle and Permanent ID, each copyable) and Your groups, each group with a Switch button.
+  - On phones the order is: header, ID, groups, records, from others, apps.
 - **Feed**
   - A page header.
   - Desktop has three columns:
@@ -129,7 +129,6 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 - **Radius**: still 2px. A more "modern" look could use a softer radius; that's a brand decision for you.
 - **Records on phones**: the five section buttons wrap onto three rows. Shorter labels, or a select menu, would make them more compact.
-- **Feedback button**: the floating one is hidden on Records, record pages and forms. It still shows elsewhere on desktop.
 - **Profile**: the endorsement-list manager moved from the profile's Endorsements tab to Records. The tab now links there.
 - **Group profile editing**: `/groups/{did}/edit-profile` remains for admins who aren't currently acting as the group.
 - **Not redesigned**:

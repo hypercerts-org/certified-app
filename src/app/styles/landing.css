@@ -1497,8 +1497,8 @@
    components.css — the single app-wide definition. */
 
 /* ========== Feedback Modal ==========
-   The floating Feedback button (.feedback-trigger) is app chrome and lives
-   in layout.css. */
+   Opened from the site footer's Feedback link, the account menu's "Send
+   feedback" and Help. */
 .feedback-modal__backdrop {
   position: fixed;
   inset: 0;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 
-// The phone top bar: brandmark on top-level pages, a back chevron on every
+// The phone top bar: wordmark + Beta on top-level pages, a back chevron on every
 // other page (PageHeader or not), and the compact title only when no
 // PageHeader owns the h1.
 
@@ -84,6 +84,20 @@ describe("Navbar (phone)", () => {
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull()
     expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument()
+  })
+
+  it("shows the wordmark with a Beta tag on a top-level page", () => {
+    state.hasPageHeader = true
+    render(<Navbar />)
+    expect(screen.getByText("Beta")).toBeInTheDocument()
+  })
+
+  it("keeps the square brandmark, without Beta, while the compact title shows", () => {
+    state.pageTitle = "Home"
+    render(<Navbar />)
+    expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument()
+    expect(screen.queryByText("Beta")).toBeNull()
   })
 
   it("treats your own profile as top-level", () => {

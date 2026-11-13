@@ -1,9 +1,8 @@
 "use client"
 
 import { useId } from "react"
-import { Pencil } from "lucide-react"
+import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
-import Button from "@/components/ui/button"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
@@ -13,7 +12,6 @@ import type { CertifiedProfile } from "@/lib/atproto/types"
 import type { Group } from "@/lib/groups/types"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
-import { profileEditUrl } from "@/components/profile/profile-edit-url"
 
 /** The account Home describes, as `useUserProfile` resolved it. */
 export interface HomeIdentity {
@@ -35,12 +33,17 @@ export function bioFirstLine(text: string | undefined | null): string | null {
   )
 }
 
+/** The name and @handle in the header link to the profile. */
+const PROFILE_LINK_CLASS =
+  "rounded text-inherit no-underline decoration-[var(--fg-muted)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+
 /**
  * Home's page header is the identity strip: the account's avatar, its name
  * as the page's h1, the bio's first line (or the @handle when there is no
- * bio) with the website under it, and "Edit profile" / "View profile". It
- * describes whichever account the viewer is acting as, so a group admin
- * who switched into a group sees the group.
+ * bio) with the website under it. No buttons: the name (and the @handle)
+ * open the profile, which has its own Edit button. It describes whichever
+ * account the viewer is acting as, so a group admin who switched into a
+ * group sees the group.
  */
 export function HomeIdentityHeader({
   identity,
@@ -55,26 +58,27 @@ export function HomeIdentityHeader({
   if (isLoading && !profile) return <HomeIdentityHeaderSkeleton />
 
   const isGroup = !!activeGroup
-  const canManageGroup =
-    isGroup && (activeGroup.role === "owner" || activeGroup.role === "admin")
-
-  // "Edit profile" opens the inline editor on the profile of the account
-  // the viewer is acting as. A plain member acting as the group gets no
-  // edit link.
-  const editHref = !isGroup || canManageGroup ? profileEditUrl(handle || did) : null
+  const profileHref = profileUrl(handle || did)
 
   const name = profile?.displayName?.trim() || activeGroup?.displayName?.trim() || null
   const title = name || (handle ? `@${handle}` : "Your account")
+  const bio = bioFirstLine(profile?.description)
   // The @handle stands in for a missing bio, unless the title already is it.
-  const tagline = bioFirstLine(profile?.description) ?? (name && handle ? `@${handle}` : null)
+  const handleLine = !bio && name && handle ? `@${handle}` : null
   const website = profile?.website?.trim() || null
 
   const description =
-    tagline || website ? (
+    bio || handleLine || website ? (
       <>
-        {tagline ? (
+        {bio ? (
           <span className="line-clamp-2" dir="auto">
-            {tagline}
+            {bio}
+          </span>
+        ) : handleLine ? (
+          <span className="block min-w-0 truncate">
+            <Link href={profileHref} className={PROFILE_LINK_CLASS}>
+              {handleLine}
+            </Link>
           </span>
         ) : null}
         {website ? (
@@ -100,21 +104,13 @@ export function HomeIdentityHeader({
           shape={isGroup ? "square" : "circle"}
         />
       }
-      title={<span dir="auto">{title}</span>}
-      description={description}
-      actions={
-        <>
-          {editHref ? (
-            <Button href={editHref} variant="secondary" size="sm">
-              <Pencil size={14} aria-hidden />
-              Edit profile
-            </Button>
-          ) : null}
-          <Button href={profileUrl(handle || did)} variant="secondary" size="sm">
-            View profile
-          </Button>
-        </>
+      title={
+        <Link href={profileHref} className={PROFILE_LINK_CLASS} dir="auto">
+          {title}
+        </Link>
       }
+      description={description}
+      className="!mb-0"
     />
   )
 }
@@ -122,7 +118,7 @@ export function HomeIdentityHeader({
 /** The header's shape while the profile loads: avatar, name, one line. */
 function HomeIdentityHeaderSkeleton() {
   return (
-    <div className="mb-4 flex items-center gap-3" aria-hidden>
+    <div className="flex items-center gap-3" aria-hidden>
       <Skeleton variant="circle" width={64} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <Skeleton variant="line" width="min(240px, 60%)" height={28} />
@@ -135,8 +131,8 @@ function HomeIdentityHeaderSkeleton() {
 /**
  * The ID section: the account's handle and permanent ID (DID), each
  * click-to-copy, with the note that apps use it to identify the account.
- * A plain section like Your groups beside it: a section header, then the
- * two values between hairlines (home.css).
+ * Home puts it in a white box above Your groups: a section header, then
+ * the two values between hairlines (home.css).
  */
 export function HomeIdSection({
   identity,

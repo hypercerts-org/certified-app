@@ -47,7 +47,7 @@ These are the rules most often violated by drift. If your change touches CSS, JS
 2. **No raw hex / rgb / hsl / named colors** outside `src/app/styles/tokens.css` and `src/app/styles/landing.css` (stylelint-enforced). Use semantic tokens (`--fg-primary`, `--bg-elevated`, `--border-default`, …) or, on landing, the theme-aware landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-surface`). The two invariant primitives `--color-primary` and `--color-white` are reserved for systems that must not flip (skip-nav, brand SVG); don't reach for them on app surfaces.
 3. **No new breakpoints.** The only canonical breakpoints are 800 / 1100 / 1300 (tokens `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop`). For "below desktop" use `max-width: 799px`. Don't introduce 768 / 760 / 640.
 4. **No ad-hoc shadows.** Elevation shadows are `var(--shadow-sm)` / `var(--shadow-md)` / `var(--shadow-lg)`, plus `var(--shadow-modal)` for dialogs only; rings and hairlines use the `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. Raw `box-shadow: 0 8px 24px rgba(...)` is a smell.
-5. **No ad-hoc z-index.** Use the tokens in `tokens.css` §"Z-index map" (`--z-rail`, `--z-popover`, `--z-navbar`, `--z-feedback-trigger`, `--z-chrome-menu`, `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-tooltip`, …).
+5. **No ad-hoc z-index.** Use the tokens in `tokens.css` §"Z-index map" (`--z-rail`, `--z-popover`, `--z-navbar`, `--z-chrome-menu`, `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-tooltip`, …).
 6. **Reach for the canonical UI primitive before writing a new BEM class.** The components in `src/components/ui/` are: `<Button>` (4 variants × 5 sizes including `size="icon"` and `size="icon-sm"`), `<Input>` (4 sizes incl. `bare` × 3 variants), `<Textarea>`, `<Badge>` (11 variants), `<Card>` (`row` / `elevated` / `inset`), `<Tabs>`/`<Tab>`/`<TabPanel>`, `<Skeleton>`, `<Popover>`, `<Avatar>`, `<AppDialog>`, `<ConfirmDialog>`, `<EmptyState>`, `<ErrorMessage>`, `<LoadingSpinner>`, `<EditBanner>`, and the page-layout set `<PageContainer>`, `<PageHeader>`, `<SectionHeader>`, `<SideNav>`, `<StatRow>`. If a divergent style already exists for the job (e.g. a `.foo__btn` class), do **not** add another — migrate the existing one toward the primitive or, if too risky, leave a TODO that references this file.
 7. **Titles use the `text-display` / `text-h1` / `text-h2` / `text-h3` / `text-h4` scale and `font-headline`** (Noto Serif): page titles, account names, record titles, empty-state and dialog titles. Section headings inside a page use `text-section` (Inter 600, via `<SectionHeader>`). Body uses `text-body` / `text-body-sm` / `text-caption` + Inter. Do not use Tailwind's `text-xl` / `text-lg` / `text-2xl` for app headings.
 8. **All modals use `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` which wrap it).** Don't hand-roll backdrop / Esc / focus-trap / scroll-lock — the `<dialog>` + `showModal()` pattern is centralized and has bug history. See `app-dialog.tsx:118` for the bug class it prevents.
@@ -201,15 +201,15 @@ Key principles:
             </main>
             <BottomNav />              // Phone tab bar (< 800px)
             <PwaInstallGuard />
-            <FeedbackModal /> <FeedbackTrigger />   // The floating trigger is desktop-only
+            <FeedbackModal />          // Opened from the footer, the account menu and Help
             <OnboardingModal /> <ProductTour />
     <Analytics />
 ```
 
 **The shell** (DESIGN.md §4). Five destinations, in one order everywhere: Home, Feed, Explore, Records, Apps (`src/lib/layout/destinations.ts`; signed out: Explore and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
 
-- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: brandmark, the five destinations (icon + word), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
-- **Phone (< 800px).** `navbar.tsx` (a `<header>`): the normal bar (brandmark, a `+` for the New sheet, the avatar for the account sheet) on top-level pages, untitled pages and every page with a `PageHeader`; a back chevron + compact title (the h1) only on a titled page without one. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
+- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: the wordmark with a Beta tag, the five destinations (icon + word; word only at 800–1099px), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
+- **Phone (< 800px).** `navbar.tsx` (a `<header>`): the normal bar (the wordmark with a Beta tag, a `+` for the New sheet, the avatar for the account sheet) on top-level pages, untitled pages and every page with a `PageHeader`; a back chevron + compact title (the h1) only on a titled page without one. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
 - **`<main>` and the footer.** `AppShell` renders `<main id="main-content">` and, after it, `SiteFooter` (the contentinfo landmark), on every route except `/embed`; `/welcome` and the legal pages skip the app column but keep the footer.
 - **`--chrome-top`** (tokens.css): the bottom edge of the fixed top chrome (navbar + the phone acting-as bar; 0 on desktop, where the bar scrolls). Sticky elements use `top: var(--chrome-top, var(--navbar-height))`; the root's `scroll-padding-top` uses it.
 - **Account menu**, `account-menu.tsx`: one `AccountMenuContent` rendered in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones. Current account (+ View profile), Switch account (personal first, then groups sorted by `sortGroupsForSwitcher`), New group (after a separator), Settings, Help, Send feedback, Appearance, Sign in with another account (replaces the session), Sign out (behind a `ConfirmDialog` that returns focus to the account button). Switching goes through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`), which the acting-as bar and Records also use.
@@ -442,7 +442,7 @@ Token catalog is the source of truth at `src/app/styles/tokens.css`. The most-us
 - **Type:** `--text-display` … `--text-micro` (plus `--text-section`) mirror the Tailwind ramp · `--tracking-label` (0.06em, uppercase only) · `--measure` (65ch).
 - **Control heights:** `--control-h-compact` (32) / `-sm` (36) / `-md` (44) / `-lg` (56) → Tailwind `h-control-*`.
 - **Geometry:** `--radius` (2 px) · `--radius-pill` (999 px) · `--page-width-narrow` / `-default` / `-wide` (720 / 1120 / 1280 px, `<PageContainer>`) · `--navbar-height` (64 px; 0 on desktop) · `--chrome-top` (navbar + phone acting-as bar; the top for sticky elements) · `--top-bar-row1` / `--top-bar-total` (the one-row desktop top bar, 52 px) · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
-- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-feedback-trigger` (55; floating Feedback button) · `--z-chrome-menu` (56; New and account menus) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
+- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-chrome-menu` (56; New and account menus) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
 
 ### Rules
 
@@ -895,9 +895,8 @@ certified-app/
     │   │   ├── auth-guard.tsx             # Auth redirect with loading spinner
     │   │   ├── bottom-nav.tsx             # Phone tab bar: Home, Feed, Explore, Records, Apps
     │   │   ├── desktop-top-bar.tsx        # Desktop bar (one row): destinations, search, New, account
-    │   │   ├── feedback-trigger.tsx       # Floating Feedback button (desktop only)
     │   │   ├── menu-row.ts                # Shared row styling for the shell menus
-    │   │   ├── navbar.tsx                 # Phone top bar (brandmark / back, title, New, account)
+    │   │   ├── navbar.tsx                 # Phone top bar (wordmark + Beta / back, title, New, account)
     │   │   ├── new-menu.tsx               # New activity / project / group: popover + phone sheet
     │   │   └── site-footer.tsx            # Global footer
     │   ├── dashboard/

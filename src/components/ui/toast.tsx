@@ -202,8 +202,8 @@ const variantChrome: Record<ToastVariant, string> = {
   default:
     "bg-[var(--bg-elevated)] text-[var(--fg-primary)] border-[var(--border-default)]",
   // The tint tokens are translucent, so they're laid over the opaque
-  // elevated surface; on their own, whatever floats beneath the toast (the
-  // Feedback button) shows through.
+  // elevated surface; on their own, whatever sits beneath the toast shows
+  // through.
   // Soft success tint; border stays neutral (no success-border token exists).
   success:
     "bg-[var(--bg-elevated)] [background-image:linear-gradient(var(--color-success-bg),var(--color-success-bg))] text-[var(--fg-primary)] border-[var(--border-default)]",

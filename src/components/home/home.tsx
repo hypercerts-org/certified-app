@@ -12,6 +12,7 @@ import { ownProfileUrl } from "@/lib/urls"
 import type { Group } from "@/lib/groups/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
+import Card from "@/components/ui/card"
 import { HomeIdSection, HomeIdentityHeader } from "@/components/home/home-account-card"
 import {
   HomeApps,
@@ -25,12 +26,13 @@ import {
  * own page, /feed.
  *
  *   ≥ 1100px                                    < 1100px (one column)
- *   header: avatar · name · bio · website       header
- *   ┌──────────────────────┐ ┌───────────┐      ID
- *   │ Your records         │ │ ID        │      Your records
+ *   ┌──────────────────────┐ ┌───────────┐      header
+ *   │ header: avatar, name │ │ ID (box)  │      ID (box)
+ *   │ bio, website         │ └───────────┘      Your groups (box)
+ *   │ Your records         │ ┌───────────┐      Your records
  *   │ From others          │ │ Your      │      From others
- *   │ Apps                 │ │ groups    │      Your groups
- *   └──────────────────────┘ └───────────┘      Apps
+ *   │ Apps                 │ │ groups    │      Apps
+ *   └──────────────────────┘ └───────────┘
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the account switcher. "Your groups" is
@@ -108,44 +110,48 @@ function HomeAccount({
   const identity = { did, profile, avatarUrl, handle, isLoading }
 
   return (
-    <>
-      <HomeIdentityHeader identity={identity} activeGroup={activeGroup} />
-
-      {/* DOM order is the phone order (ID, records, from others, groups,
-          apps); from 1100px a grid puts the ID and groups in a side
-          column and Apps under the main column (home.css). */}
-      <div className="home__layout">
-        <div className="home__id">
-          <HomeIdSection identity={identity} isGroup={isGroup} />
-        </div>
-
-        <div className="home__main">
-          <HomeRecords
-            did={did}
-            isGroup={isGroup}
-            profileBase={profileBase}
-            counts={counts}
-            countsLoading={countsLoading}
-          />
-          <HomeReceived
-            did={did}
-            isGroup={isGroup}
-            profileBase={profileBase}
-            counts={counts}
-            countsLoading={countsLoading}
-          />
-        </div>
-
-        {isGroup ? null : (
-          <div className="home__groups">
-            <HomeGroups profileBase={profileBase} />
-          </div>
-        )}
-
-        <div className="home__apps">
-          <HomeApps />
-        </div>
+    // DOM order is the phone order: header, the ID and Your groups boxes,
+    // the sections (records, from others), Apps. From 1100px a grid puts
+    // the two boxes in a column on the right, level with the header
+    // (home.css).
+    <div className="home__layout">
+      <div className="home__header">
+        <HomeIdentityHeader identity={identity} activeGroup={activeGroup} />
       </div>
-    </>
+
+      {/* White boxes, so the ID and the groups stand out from the open
+          sections. */}
+      <div className="home__side">
+        <Card unpadded className="home__box">
+          <HomeIdSection identity={identity} isGroup={isGroup} />
+        </Card>
+        {isGroup ? null : (
+          <Card unpadded className="home__box">
+            <HomeGroups profileBase={profileBase} />
+          </Card>
+        )}
+      </div>
+
+      <div className="home__main">
+        <HomeRecords
+          did={did}
+          isGroup={isGroup}
+          profileBase={profileBase}
+          counts={counts}
+          countsLoading={countsLoading}
+        />
+        <HomeReceived
+          did={did}
+          isGroup={isGroup}
+          profileBase={profileBase}
+          counts={counts}
+          countsLoading={countsLoading}
+        />
+      </div>
+
+      <div className="home__apps">
+        <HomeApps />
+      </div>
+    </div>
   )
 }

@@ -9,15 +9,19 @@ import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context";
 import { useMounted } from "@/hooks/use-mounted";
 import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
 import Button from "@/components/ui/button";
-import Brandmark from "@/components/ui/brandmark";
+import Badge from "@/components/ui/badge";
+import Wordmark from "@/components/ui/wordmark";
 import GlobalSearch from "@/components/search/global-search";
 import { DesktopAccountMenu } from "./account-menu";
 import { DesktopNewMenu } from "./new-menu";
 
 /**
  * Desktop chrome (≥800px). One row:
- *   [brandmark] [Home] [Feed] [Explore] [Records] [Apps]     [search] [New] [account]
- *   Signed out: [brandmark] [Explore] [Apps]          [search] [Help] [Sign in]
+ *   [wordmark] [Beta] [Home] [Feed] [Explore] [Records] [Apps]   [search] [New] [account]
+ *   Signed out: [wordmark] [Beta] [Explore] [Apps]        [search] [Help] [Sign in]
+ *
+ * The destinations drop their icons at 800–1099px, so the full wordmark
+ * fits beside them (layout.css).
  *
  * Nothing page-specific lives here: pages carry their own back link and
  * title (`<PageHeader>`) and their own section tabs, in the page, at every
@@ -55,7 +59,7 @@ export default function DesktopTopBar() {
     (pathname?.startsWith("/embed") ?? false)
   ) return null;
 
-  // The brandmark goes Home for signed-in viewers and to /welcome once we
+  // The wordmark goes Home for signed-in viewers and to /welcome once we
   // know the viewer is signed out (while auth resolves it points Home; that
   // page's own guard sends a signed-out visitor on).
   const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
@@ -78,9 +82,14 @@ export default function DesktopTopBar() {
       ) : null}
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
-          <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
-            <Brandmark size={28} decorative />
-          </Link>
+          <div className="desktop-top-bar__brand-group">
+            <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
+              <Wordmark height={18} decorative />
+            </Link>
+            <Badge variant="tag" compact>
+              Beta
+            </Badge>
+          </div>
           {/* Destinations wait for auth, so a signed-in viewer never sees
               the signed-out set flash first. */}
           {!isLoading ? (
