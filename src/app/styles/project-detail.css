@@ -351,7 +351,7 @@
     display: block;
     order: 0;
     font-family: var(--font-headline), "Noto Serif", serif;
-    font-size: 1.5rem;
+    font-size: var(--text-h3);
     font-weight: 700;
     color: var(--fg-primary);
     line-height: 1.2;
@@ -474,6 +474,7 @@
      render above the title. */
   .project-detail:not(.project-detail--editing) .cert-detail__phone-tabs {
     order: 2;
+    margin: 8px 0 24px;
   }
   .project-detail:not(.project-detail--editing) > .project-detail__body {
     order: 3;
@@ -511,7 +512,7 @@
 }
 
 .project-detail__lead {
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   line-height: 1.55;
   color: var(--fg-secondary);
   font-style: italic;
@@ -875,7 +876,7 @@
 .project-detail__lead-input {
   width: 100%;
   font: inherit;
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   line-height: 1.55;
   color: var(--fg-primary);
   background: var(--bg-elevated);

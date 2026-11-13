@@ -1,37 +1,33 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import OrgSettings from "@/components/groups/org-settings"
-import PageContainer from "@/components/ui/page-container"
-import PageHeader from "@/components/ui/page-header"
-import Skeleton from "@/components/ui/skeleton"
+import { GroupAccessPage, useGroupAccess } from "@/components/groups/group-access"
 
+/**
+ * `/groups/{did}/settings`: the group's settings, for its members. While
+ * the session and the group list load it shows a spinner; signed out it
+ * asks to sign in; a signed-in visitor who isn't a member gets an
+ * explanation and a link to the group's profile (it used to spin forever).
+ */
 export default function OrgSettingsPage() {
   usePageTitle("Group settings")
   const params = useParams()
   const groupDid = decodeURIComponent(params.groupDid as string)
-  const { groups } = useOrg()
+  const access = useGroupAccess(groupDid)
 
-  const org = groups.find((o) => o.groupDid === groupDid)
-
-  // Until the viewer's groups resolve, hold the page's shape: the header,
-  // the section nav and a few rows.
-  if (!org) {
+  if (access.status !== "member") {
     return (
-      <PageContainer>
-        <PageHeader title="Settings" description="Settings for this group." />
-        <div
-          aria-busy="true"
-          className="grid grid-cols-1 gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:items-start lg:gap-12"
-        >
-          <Skeleton variant="line" width="100%" height={40} count={3} />
-          <Skeleton variant="line" width="100%" height={56} count={3} />
-        </div>
-      </PageContainer>
+      <GroupAccessPage
+        access={access}
+        groupDid={groupDid}
+        title="Group settings"
+        signedOutTitle="Sign in to manage this group"
+        signedOutDescription="Group settings are open to the group's members."
+      />
     )
   }
 
-  return <OrgSettings groupDid={groupDid} org={org} />
+  return <OrgSettings groupDid={groupDid} org={access.org} />
 }

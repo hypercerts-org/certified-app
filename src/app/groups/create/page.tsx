@@ -426,340 +426,340 @@ export default function CreateGroupPage() {
 
   return (
     <PageContainer width="narrow">
-    {pageHeader}
-    <form onSubmit={handleSubmit}>
-      <article className="project-detail-page project-detail--wide create-project create-group">
-        <div className="project-detail">
-          {/* Avatar (circular) on the left, banner image on the
-              right — both pickers sit on a single header row so the
-              identity inputs are introduced before the text fields.
-              The avatar is square-aspect inside its tile and given
-              `border-radius: 50%` so the preview reads as a circle
-              that matches how the avatar will render everywhere else
-              in the app. The banner keeps the project-form hero
-              aspect via `flex: 1`. */}
-          <div className="create-group__identity-row">
-            <div className="create-group__identity-col">
-              <span className="project-detail__meta-label">
-                <Users size={12} strokeWidth={2} aria-hidden />
-                Avatar
-              </span>
-              <div
-                className={
-                  avatarPreviewUrl
-                    ? "create-group__avatar-tile"
-                    : "create-group__avatar-tile create-group__avatar-tile--placeholder"
-                }
-              >
-                {avatarPreviewUrl ? (
-                  <Image
-                    src={avatarPreviewUrl}
-                    alt=""
-                    fill
-                    className="create-group__avatar-img"
-                    unoptimized
+      {pageHeader}
+      <form onSubmit={handleSubmit}>
+        <article className="project-detail-page project-detail--wide create-project create-group">
+          <div className="project-detail">
+            {/* Avatar (circular) on the left, banner image on the
+                right — both pickers sit on a single header row so the
+                identity inputs are introduced before the text fields.
+                The avatar is square-aspect inside its tile and given
+                `border-radius: 50%` so the preview reads as a circle
+                that matches how the avatar will render everywhere else
+                in the app. The banner keeps the project-form hero
+                aspect via `flex: 1`. */}
+            <div className="create-group__identity-row">
+              <div className="create-group__identity-col">
+                <span className="project-detail__meta-label">
+                  <Users size={12} strokeWidth={2} aria-hidden />
+                  Avatar
+                </span>
+                <div
+                  className={
+                    avatarPreviewUrl
+                      ? "create-group__avatar-tile"
+                      : "create-group__avatar-tile create-group__avatar-tile--placeholder"
+                  }
+                >
+                  {avatarPreviewUrl ? (
+                    <Image
+                      src={avatarPreviewUrl}
+                      alt=""
+                      fill
+                      className="create-group__avatar-img"
+                      unoptimized
+                    />
+                  ) : (
+                    <Users
+                      size={36}
+                      strokeWidth={1.25}
+                      aria-hidden
+                      className="create-group__avatar-placeholder-icon"
+                    />
+                  )}
+                  <ImageEditOverlay
+                    onFile={handleAvatarFile}
+                    hasPending={!!avatarFile}
+                    variant="with-remove"
+                    onRemove={handleAvatarRemove}
+                    hasImage={!!avatarFile}
                   />
-                ) : (
-                  <Users
-                    size={36}
-                    strokeWidth={1.25}
-                    aria-hidden
-                    className="create-group__avatar-placeholder-icon"
+                </div>
+              </div>
+
+              <div className="create-group__identity-col">
+                <span className="project-detail__meta-label">
+                  <ImageIcon size={12} strokeWidth={2} aria-hidden />
+                  Banner
+                </span>
+                <div
+                  className={
+                    bannerPreviewUrl
+                      ? "project-detail__hero create-project__hero create-group__banner-tile"
+                      : "project-detail__hero project-detail__hero--placeholder create-project__hero create-group__banner-tile"
+                  }
+                >
+                  {bannerPreviewUrl ? (
+                    <Image
+                      src={bannerPreviewUrl}
+                      alt=""
+                      fill
+                      className="project-detail__hero-img"
+                      unoptimized
+                    />
+                  ) : (
+                    <ImageIcon
+                      size={48}
+                      strokeWidth={1.25}
+                      aria-hidden
+                      className="project-detail__hero-placeholder-icon"
+                    />
+                  )}
+                  <ImageEditOverlay
+                    onFile={handleBannerFile}
+                    hasPending={!!bannerFile}
+                    variant="with-remove"
+                    onRemove={handleBannerRemove}
+                    hasImage={!!bannerFile}
                   />
-                )}
-                <ImageEditOverlay
-                  onFile={handleAvatarFile}
-                  hasPending={!!avatarFile}
-                  variant="with-remove"
-                  onRemove={handleAvatarRemove}
-                  hasImage={!!avatarFile}
-                />
+                </div>
               </div>
             </div>
 
-            <div className="create-group__identity-col">
+            <header className="cert-detail__headline">
+              <div className="create-cert__input-with-counter">
+                <input
+                  type="text"
+                  id="create-group-name"
+                  className="cert-detail__title-input"
+                  aria-label="Display name"
+                  aria-describedby={
+                    nameError ? "create-group-name-error" : "create-group-name-counter"
+                  }
+                  aria-invalid={!!nameError || undefined}
+                  placeholder="Display name for your group"
+                  value={displayName}
+                  maxLength={64}
+                  onChange={(e) => {
+                    setDisplayName(e.target.value)
+                    if (nameError) validateName(e.target.value)
+                  }}
+                  autoFocus
+                />
+                <p className="create-cert__counter" id="create-group-name-counter">
+                  {displayName.length}/64 · required
+                </p>
+                {nameError ? (
+                  <p
+                    id="create-group-name-error"
+                    className="create-cert__counter create-cert__counter--over"
+                    role="alert"
+                  >
+                    {nameError}
+                  </p>
+                ) : null}
+              </div>
+            </header>
+
+            <section className="cert-detail__section create-group__about">
               <span className="project-detail__meta-label">
-                <ImageIcon size={12} strokeWidth={2} aria-hidden />
-                Banner
+                <FileText size={12} strokeWidth={2} aria-hidden />
+                About
               </span>
-              <div
-                className={
-                  bannerPreviewUrl
-                    ? "project-detail__hero create-project__hero create-group__banner-tile"
-                    : "project-detail__hero project-detail__hero--placeholder create-project__hero create-group__banner-tile"
-                }
-              >
-                {bannerPreviewUrl ? (
-                  <Image
-                    src={bannerPreviewUrl}
-                    alt=""
-                    fill
-                    className="project-detail__hero-img"
-                    unoptimized
-                  />
-                ) : (
-                  <ImageIcon
-                    size={48}
-                    strokeWidth={1.25}
-                    aria-hidden
-                    className="project-detail__hero-placeholder-icon"
-                  />
-                )}
-                <ImageEditOverlay
-                  onFile={handleBannerFile}
-                  hasPending={!!bannerFile}
-                  variant="with-remove"
-                  onRemove={handleBannerRemove}
-                  hasImage={!!bannerFile}
+              <div className="create-cert__input-with-counter">
+                <textarea
+                  className="cert-detail__short-desc-input"
+                  value={shortDescription}
+                  placeholder="A short description of your group (optional)"
+                  aria-label="Short description"
+                  aria-describedby="create-group-desc-counter"
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  rows={3}
+                  maxLength={3000}
+                />
+                <p className="create-cert__counter" id="create-group-desc-counter">
+                  {shortDescription.length}/3000
+                </p>
+              </div>
+            </section>
+
+            <section className="project-detail__meta create-project__meta create-group__account">
+              <div className="project-detail__meta-row">
+                <span className="project-detail__meta-label">
+                  <AtSign size={12} strokeWidth={2} aria-hidden />
+                  Handle
+                </span>
+                <input
+                  type="text"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  id="create-group-handle"
+                  aria-label="Handle"
+                  aria-describedby={
+                    handleError
+                      ? "create-group-handle-hint create-group-handle-error"
+                      : "create-group-handle-hint"
+                  }
+                  aria-invalid={!!handleError || undefined}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="my-group"
+                  value={handle}
+                  maxLength={32}
+                  onChange={(e) => {
+                    // Force lowercase + strip spaces so the rule the
+                    // validator enforces is visible as the user types.
+                    const cleaned = e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, "")
+                    setHandle(cleaned)
+                    if (handleError) validateHandle(cleaned)
+                  }}
+                />
+                <p className="create-group__field-hint" id="create-group-handle-hint">
+                  How people find this group on Certified.
+                </p>
+                {handleError ? (
+                  <p
+                    id="create-group-handle-error"
+                    className="create-cert__contrib-error mt-1"
+                    role="alert"
+                  >
+                    {handleError}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="project-detail__meta-row">
+                <span className="project-detail__meta-label">
+                  <Mail size={12} strokeWidth={2} aria-hidden />
+                  Email
+                </span>
+                <input
+                  type="email"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  id="create-group-email"
+                  aria-label="Group email"
+                  aria-describedby={
+                    emailError
+                      ? "create-group-email-hint create-group-email-error"
+                      : "create-group-email-hint"
+                  }
+                  aria-invalid={!!emailError || undefined}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="group@example.com"
+                  value={email}
+                  maxLength={254}
+                  autoComplete="off"
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) validateEmail(e.target.value)
+                  }}
+                  onBlur={(e) => validateEmail(e.target.value)}
+                />
+                <p className="create-group__field-hint" id="create-group-email-hint">
+                  Sign-in and recovery — use an address you control.
+                </p>
+                {emailError ? (
+                  <p
+                    id="create-group-email-error"
+                    className="create-cert__contrib-error mt-1"
+                    role="alert"
+                  >
+                    {emailError}
+                  </p>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="project-detail__meta create-project__meta">
+              <div className="project-detail__meta-row">
+                <span className="project-detail__meta-label">
+                  <Globe size={12} strokeWidth={2} aria-hidden />
+                  Website
+                </span>
+                <input
+                  type="url"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  aria-label="Website"
+                  placeholder="https://your-group.org"
+                  value={website}
+                  maxLength={2048}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  autoComplete="off"
                 />
               </div>
-            </div>
+
+              <div className="project-detail__meta-row">
+                <span className="project-detail__meta-label">
+                  <Calendar size={12} strokeWidth={2} aria-hidden />
+                  Founded
+                </span>
+                <input
+                  type="date"
+                  className="cert-detail__meta-input"
+                  aria-label="Founded date"
+                  value={foundedDate}
+                  onChange={(e) => setFoundedDate(e.target.value)}
+                />
+              </div>
+
+              <div className="project-detail__meta-row">
+                <span className="project-detail__meta-label">
+                  <Building2 size={12} strokeWidth={2} aria-hidden />
+                  Organization type
+                </span>
+                <input
+                  type="text"
+                  className="cert-detail__meta-input create-cert__field--full"
+                  aria-label="Organization type"
+                  placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
+                  value={organizationType}
+                  onChange={(e) => setOrganizationType(e.target.value)}
+                />
+              </div>
+            </section>
+
+            <aside className="create-group__convert">
+              <ArrowLeftRight
+                size={16}
+                strokeWidth={2}
+                aria-hidden
+                className="create-group__convert-icon"
+              />
+              <div className="create-group__convert-body">
+                <p className="create-group__convert-title">
+                  Already have an account for this group?
+                </p>
+                <p className="create-group__convert-text">
+                  Log in as that account, then open{" "}
+                  <span className="create-group__convert-path">
+                    Settings → Group account
+                  </span>{" "}
+                  to convert it.
+                </p>
+              </div>
+            </aside>
           </div>
+        </article>
 
-          <header className="cert-detail__headline">
-            <div className="create-cert__input-with-counter">
-              <input
-                type="text"
-                id="create-group-name"
-                className="cert-detail__title-input"
-                aria-label="Display name"
-                aria-describedby={
-                  nameError ? "create-group-name-error" : "create-group-name-counter"
-                }
-                aria-invalid={!!nameError || undefined}
-                placeholder="Display name for your group"
-                value={displayName}
-                maxLength={64}
-                onChange={(e) => {
-                  setDisplayName(e.target.value)
-                  if (nameError) validateName(e.target.value)
-                }}
-                autoFocus
-              />
-              <p className="create-cert__counter" id="create-group-name-counter">
-                {displayName.length}/64 · required
-              </p>
-              {nameError ? (
-                <p
-                  id="create-group-name-error"
-                  className="create-cert__counter create-cert__counter--over"
-                  role="alert"
-                >
-                  {nameError}
-                </p>
-              ) : null}
-            </div>
-          </header>
-
-          <section className="cert-detail__section create-group__about">
-            <span className="project-detail__meta-label">
-              <FileText size={12} strokeWidth={2} aria-hidden />
-              About
-            </span>
-            <div className="create-cert__input-with-counter">
-              <textarea
-                className="cert-detail__short-desc-input"
-                value={shortDescription}
-                placeholder="A short description of your group (optional)"
-                aria-label="Short description"
-                aria-describedby="create-group-desc-counter"
-                onChange={(e) => setShortDescription(e.target.value)}
-                rows={3}
-                maxLength={3000}
-              />
-              <p className="create-cert__counter" id="create-group-desc-counter">
-                {shortDescription.length}/3000
-              </p>
-            </div>
-          </section>
-
-          <section className="project-detail__meta create-project__meta create-group__account">
-            <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                <AtSign size={12} strokeWidth={2} aria-hidden />
-                Handle
-              </span>
-              <input
-                type="text"
-                className="cert-detail__meta-input create-cert__field--full"
-                id="create-group-handle"
-                aria-label="Handle"
-                aria-describedby={
-                  handleError
-                    ? "create-group-handle-hint create-group-handle-error"
-                    : "create-group-handle-hint"
-                }
-                aria-invalid={!!handleError || undefined}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="my-group"
-                value={handle}
-                maxLength={32}
-                onChange={(e) => {
-                  // Force lowercase + strip spaces so the rule the
-                  // validator enforces is visible as the user types.
-                  const cleaned = e.target.value
-                    .toLowerCase()
-                    .replace(/\s+/g, "")
-                  setHandle(cleaned)
-                  if (handleError) validateHandle(cleaned)
-                }}
-              />
-              <p className="create-group__field-hint" id="create-group-handle-hint">
-                How people find this group on Certified.
-              </p>
-              {handleError ? (
-                <p
-                  id="create-group-handle-error"
-                  className="create-cert__contrib-error mt-1"
-                  role="alert"
-                >
-                  {handleError}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                <Mail size={12} strokeWidth={2} aria-hidden />
-                Email
-              </span>
-              <input
-                type="email"
-                className="cert-detail__meta-input create-cert__field--full"
-                id="create-group-email"
-                aria-label="Group email"
-                aria-describedby={
-                  emailError
-                    ? "create-group-email-hint create-group-email-error"
-                    : "create-group-email-hint"
-                }
-                aria-invalid={!!emailError || undefined}
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="group@example.com"
-                value={email}
-                maxLength={254}
-                autoComplete="off"
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (emailError) validateEmail(e.target.value)
-                }}
-                onBlur={(e) => validateEmail(e.target.value)}
-              />
-              <p className="create-group__field-hint" id="create-group-email-hint">
-                Sign-in and recovery — use an address you control.
-              </p>
-              {emailError ? (
-                <p
-                  id="create-group-email-error"
-                  className="create-cert__contrib-error mt-1"
-                  role="alert"
-                >
-                  {emailError}
-                </p>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="project-detail__meta create-project__meta">
-            <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                <Globe size={12} strokeWidth={2} aria-hidden />
-                Website
-              </span>
-              <input
-                type="url"
-                className="cert-detail__meta-input create-cert__field--full"
-                aria-label="Website"
-                placeholder="https://your-group.org"
-                value={website}
-                maxLength={2048}
-                onChange={(e) => setWebsite(e.target.value)}
-                autoComplete="off"
-              />
-            </div>
-
-            <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                <Calendar size={12} strokeWidth={2} aria-hidden />
-                Founded
-              </span>
-              <input
-                type="date"
-                className="cert-detail__meta-input"
-                aria-label="Founded date"
-                value={foundedDate}
-                onChange={(e) => setFoundedDate(e.target.value)}
-              />
-            </div>
-
-            <div className="project-detail__meta-row">
-              <span className="project-detail__meta-label">
-                <Building2 size={12} strokeWidth={2} aria-hidden />
-                Organization type
-              </span>
-              <input
-                type="text"
-                className="cert-detail__meta-input create-cert__field--full"
-                aria-label="Organization type"
-                placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
-                value={organizationType}
-                onChange={(e) => setOrganizationType(e.target.value)}
-              />
-            </div>
-          </section>
-
-          <aside className="create-group__convert">
-            <ArrowLeftRight
-              size={16}
-              strokeWidth={2}
-              aria-hidden
-              className="create-group__convert-icon"
-            />
-            <div className="create-group__convert-body">
-              <p className="create-group__convert-title">
-                Already have an account for this group?
-              </p>
-              <p className="create-group__convert-text">
-                Log in as that account, then open{" "}
-                <span className="create-group__convert-path">
-                  Settings → Group account
-                </span>{" "}
-                to convert it.
-              </p>
-            </div>
-          </aside>
-        </div>
-      </article>
-
-      {/* No "Publishing as" line: a new group is its own account, created
-          from your personal one. */}
-      <FormActionBar
-        submitLabel="Create group"
-        submittingLabel="Creating…"
-        isSubmitting={isCreating}
-        error={error}
-        identityLabel={null}
-        onCancel={() => {
-          if (confirmDiscard()) router.push("/home")
-        }}
-      />
-
-      {confirmOpen ? (
-        <ConfirmDialog
-          title="Confirm the group's email"
-          message={`This group will sign in and recover with ${email.trim()}. You'll need access to this inbox to reset its password or manage the account later, so make sure it's correct. Re-enter it below to confirm.`}
-          confirmPhrase={email.trim()}
-          confirmLabel="Create group"
-          cancelLabel="Back"
-          confirmVariant="primary"
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={doCreate}
+        {/* No "Publishing as" line: a new group is its own account, created
+            from your personal one. */}
+        <FormActionBar
+          submitLabel="Create group"
+          submittingLabel="Creating…"
+          isSubmitting={isCreating}
+          error={error}
+          identityLabel={null}
+          onCancel={() => {
+            if (confirmDiscard()) router.push("/home")
+          }}
         />
-      ) : null}
-    </form>
+
+        {confirmOpen ? (
+          <ConfirmDialog
+            title="Confirm the group's email"
+            message={`This group will sign in and recover with ${email.trim()}. You'll need access to this inbox to reset its password or manage the account later, so make sure it's correct. Re-enter it below to confirm.`}
+            confirmPhrase={email.trim()}
+            confirmLabel="Create group"
+            cancelLabel="Back"
+            confirmVariant="primary"
+            onCancel={() => setConfirmOpen(false)}
+            onConfirm={doCreate}
+          />
+        ) : null}
+      </form>
     </PageContainer>
   )
 }

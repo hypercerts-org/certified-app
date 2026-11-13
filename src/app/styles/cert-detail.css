@@ -1416,7 +1416,7 @@
 /* ---------- Long-form description ---------- */
 
 .cert-detail__description {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   line-height: 1.65;
   color: var(--fg-secondary);
   white-space: pre-wrap;
@@ -1479,7 +1479,7 @@
    adjusts gap + spacing to match the rest of the cert detail page. */
 .cert-detail .leaflet-doc {
   gap: 14px;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   line-height: 1.65;
   color: var(--fg-secondary);
   word-break: break-word;
@@ -1626,7 +1626,7 @@
   background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast),
     background var(--transition-fast);

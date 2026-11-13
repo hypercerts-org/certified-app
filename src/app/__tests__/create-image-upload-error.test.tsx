@@ -20,6 +20,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => {},
+  useRegisterPageHeader: () => {},
 }))
 
 vi.mock("@/hooks/use-author-info", () => ({

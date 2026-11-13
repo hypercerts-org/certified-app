@@ -588,264 +588,264 @@ export default function ProjectEditRoute({
 
   return (
     <PageContainer width="narrow">
-    {pageHeader}
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        void doSave()
-      }}
-    >
-      <article
-        className="project-detail-page project-detail--wide create-project"
-        onInput={markInteracted}
+      {pageHeader}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void doSave()
+        }}
       >
-        <div className="project-detail">
-          <div
-            className={
-              displayBannerUrl
-                ? "project-detail__hero create-project__hero"
-                : "project-detail__hero project-detail__hero--placeholder create-project__hero"
-            }
-          >
-            {displayBannerUrl ? (
-              <Image
-                src={displayBannerUrl}
-                alt=""
-                fill
-                className="project-detail__hero-img"
-                unoptimized
-              />
-            ) : (
-              <FolderGit2
-                size={56}
-                strokeWidth={1.25}
-                aria-hidden
-                className="project-detail__hero-placeholder-icon"
-              />
-            )}
-            <ImageEditOverlay
-              onFile={handleBannerFile}
-              hasPending={!!pendingBannerBlob}
-              variant="with-remove"
-              onRemove={handleBannerRemove}
-              hasImage={!!displayBannerUrl}
-            />
-          </div>
-
-          <header className="cert-detail__headline">
-            <div className="create-cert__input-with-counter">
-              <input
-                type="text"
-                className="cert-detail__title-input"
-                aria-label="Title"
-                aria-describedby="edit-project-title-counter"
-                placeholder="Title for your project"
-                value={title}
-                maxLength={TITLE_MAX * 4}
-                onChange={(e) => setTitle(e.target.value)}
-                autoFocus
-              />
-              <p
-                className={`create-cert__counter${
-                  titleOver
-                    ? " create-cert__counter--over"
-                    : titleUnder
-                      ? " create-cert__counter--under"
-                      : ""
-                }`}
-                id="edit-project-title-counter"
-              >
-                {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
-              </p>
-            </div>
-          </header>
-
-          <section className="cert-detail__section">
-            <div className="create-cert__input-with-counter">
-              <textarea
-                className="cert-detail__short-desc-input"
-                value={shortDescription}
-                placeholder="A short description (one or two lines)…"
-                aria-label="Short description"
-                aria-describedby="edit-project-short-desc-counter"
-                onChange={(e) => setShortDescription(e.target.value)}
-                rows={3}
-              />
-              <p
-                className={`create-cert__counter${
-                  shortDescOver ? " create-cert__counter--over" : ""
-                }`}
-                id="edit-project-short-desc-counter"
-              >
-                {shortDescCount}/{SHORT_DESC_MAX}
-              </p>
-            </div>
-          </section>
-
-          <section className="cert-detail__section">
-            <SectionHeader title="Description" />
-            <LeafletEditor
-              value={description}
-              onChange={setDescription}
-              placeholder="Full description of this project."
-              ariaLabel="Project description"
-              did={did ?? ""}
-              onImageUpload={(file) =>
-                uploadBlob(
-                  file,
-                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
-                )
+        <article
+          className="project-detail-page project-detail--wide create-project"
+          onInput={markInteracted}
+        >
+          <div className="project-detail">
+            <div
+              className={
+                displayBannerUrl
+                  ? "project-detail__hero create-project__hero"
+                  : "project-detail__hero project-detail__hero--placeholder create-project__hero"
               }
-            />
-          </section>
-
-          <section className="cert-detail__section">
-            <SectionHeader title="Location" />
-            {location ? (
-              <ul className="create-project__cert-list">
-                <li className="create-project__cert-row">
-                  <MapPin
-                    size={14}
-                    strokeWidth={1.75}
-                    aria-hidden
-                    className="shrink-0 text-[var(--fg-muted)]"
-                  />
-                  <span className="create-project__cert-title">
-                    {location.name}
-                  </span>
-                  <button
-                    type="button"
-                    className="create-project__cert-remove"
-                    aria-label={`Remove ${location.name}`}
-                    onClick={() => {
-                      markInteracted()
-                      setLocation(null)
-                    }}
-                  >
-                    <X size={14} strokeWidth={2} aria-hidden />
-                  </button>
-                </li>
-              </ul>
-            ) : null}
-            <div className="create-cert__contrib-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsLocationDialogOpen(true)}
-              >
-                <Plus size={14} strokeWidth={1.75} aria-hidden />
-                {location ? "Change location" : "Add location"}
-              </Button>
+            >
+              {displayBannerUrl ? (
+                <Image
+                  src={displayBannerUrl}
+                  alt=""
+                  fill
+                  className="project-detail__hero-img"
+                  unoptimized
+                />
+              ) : (
+                <FolderGit2
+                  size={56}
+                  strokeWidth={1.25}
+                  aria-hidden
+                  className="project-detail__hero-placeholder-icon"
+                />
+              )}
+              <ImageEditOverlay
+                onFile={handleBannerFile}
+                hasPending={!!pendingBannerBlob}
+                variant="with-remove"
+                onRemove={handleBannerRemove}
+                hasImage={!!displayBannerUrl}
+              />
             </div>
-          </section>
 
-          <section className="cert-detail__section">
-            <SectionHeader
-              title={<SectionTitleCount label="Activities" count={items.length} />}
-            />
+            <header className="cert-detail__headline">
+              <div className="create-cert__input-with-counter">
+                <input
+                  type="text"
+                  className="cert-detail__title-input"
+                  aria-label="Title"
+                  aria-describedby="edit-project-title-counter"
+                  placeholder="Title for your project"
+                  value={title}
+                  maxLength={TITLE_MAX * 4}
+                  onChange={(e) => setTitle(e.target.value)}
+                  autoFocus
+                />
+                <p
+                  className={`create-cert__counter${
+                    titleOver
+                      ? " create-cert__counter--over"
+                      : titleUnder
+                        ? " create-cert__counter--under"
+                        : ""
+                  }`}
+                  id="edit-project-title-counter"
+                >
+                  {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
+                </p>
+              </div>
+            </header>
 
-            {items.length > 0 ? (
-              <ul className="create-project__cert-list">
-                {items.map((c) => (
-                  <li key={c.uri} className="create-project__cert-row">
+            <section className="cert-detail__section">
+              <div className="create-cert__input-with-counter">
+                <textarea
+                  className="cert-detail__short-desc-input"
+                  value={shortDescription}
+                  placeholder="A short description (one or two lines)…"
+                  aria-label="Short description"
+                  aria-describedby="edit-project-short-desc-counter"
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  rows={3}
+                />
+                <p
+                  className={`create-cert__counter${
+                    shortDescOver ? " create-cert__counter--over" : ""
+                  }`}
+                  id="edit-project-short-desc-counter"
+                >
+                  {shortDescCount}/{SHORT_DESC_MAX}
+                </p>
+              </div>
+            </section>
+
+            <section className="cert-detail__section">
+              <SectionHeader title="Description" />
+              <LeafletEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Full description of this project."
+                ariaLabel="Project description"
+                did={did ?? ""}
+                onImageUpload={(file) =>
+                  uploadBlob(
+                    file,
+                    activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
+                  )
+                }
+              />
+            </section>
+
+            <section className="cert-detail__section">
+              <SectionHeader title="Location" />
+              {location ? (
+                <ul className="create-project__cert-list">
+                  <li className="create-project__cert-row">
+                    <MapPin
+                      size={14}
+                      strokeWidth={1.75}
+                      aria-hidden
+                      className="shrink-0 text-[var(--fg-muted)]"
+                    />
                     <span className="create-project__cert-title">
-                      {c.title || c.uri}
+                      {location.name}
                     </span>
                     <button
                       type="button"
                       className="create-project__cert-remove"
-                      aria-label={`Remove ${c.title || c.uri}`}
+                      aria-label={`Remove ${location.name}`}
                       onClick={() => {
                         markInteracted()
-                        setItems((rows) => rows.filter((r) => r.uri !== c.uri))
+                        setLocation(null)
                       }}
                     >
                       <X size={14} strokeWidth={2} aria-hidden />
                     </button>
                   </li>
-                ))}
-              </ul>
-            ) : null}
-
-            {ownCertsLoading ? (
-              <p className="cert-detail__empty-line">Loading your activities…</p>
-            ) : ownCerts.length === 0 ? (
-              <p className="cert-detail__empty-line">
-                You don&rsquo;t have any activities yet.{" "}
-                <Link href="/create" className="create-project__inline-link">
-                  Create your first activity
-                </Link>
-                .
-              </p>
-            ) : (
-              <>
-                <p className="create-project__quick-pick-label">
-                  Add your activities:
-                </p>
-                <ul className="create-project__quick-pick-list">
-                  {ownCerts.map((c) => {
-                    const isAdded = items.some((r) => r.uri === c.uri)
-                    return (
-                      <li
-                        key={c.uri}
-                        className={
-                          isAdded
-                            ? "create-project__quick-pick-row create-project__quick-pick-row--added"
-                            : "create-project__quick-pick-row"
-                        }
-                      >
-                        <label className="create-project__quick-pick-label-inner">
-                          <input
-                            type="checkbox"
-                            checked={isAdded}
-                            onChange={() => {
-                              if (isAdded) {
-                                setItems((rows) =>
-                                  rows.filter((r) => r.uri !== c.uri),
-                                )
-                              } else {
-                                setItems((rows) => [...rows, c])
-                              }
-                            }}
-                          />
-                          <span className="create-project__quick-pick-title">
-                            {c.title}
-                          </span>
-                        </label>
-                      </li>
-                    )
-                  })}
                 </ul>
-              </>
-            )}
-          </section>
-        </div>
-      </article>
+              ) : null}
+              <div className="create-cert__contrib-actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsLocationDialogOpen(true)}
+                >
+                  <Plus size={14} strokeWidth={1.75} aria-hidden />
+                  {location ? "Change location" : "Add location"}
+                </Button>
+              </div>
+            </section>
 
-      <FormActionBar
-        submitLabel="Save changes"
-        submittingLabel="Saving…"
-        isSubmitting={isSubmitting}
-        submitDisabled={!canSubmit}
-        error={error}
-        onCancel={handleCancel}
-        identityLabel="Saving as"
-      />
+            <section className="cert-detail__section">
+              <SectionHeader
+                title={<SectionTitleCount label="Activities" count={items.length} />}
+              />
 
-      {isLocationDialogOpen && sessionDid ? (
-        <LocationPickerDialog
-          ownDid={sessionDid}
-          targetDid={activeOrg ? activeOrg.groupDid : sessionDid}
-          onClose={() => setIsLocationDialogOpen(false)}
-          onPick={(added) => {
-            markInteracted()
-            setLocation(added)
-            setIsLocationDialogOpen(false)
-          }}
+              {items.length > 0 ? (
+                <ul className="create-project__cert-list">
+                  {items.map((c) => (
+                    <li key={c.uri} className="create-project__cert-row">
+                      <span className="create-project__cert-title">
+                        {c.title || c.uri}
+                      </span>
+                      <button
+                        type="button"
+                        className="create-project__cert-remove"
+                        aria-label={`Remove ${c.title || c.uri}`}
+                        onClick={() => {
+                          markInteracted()
+                          setItems((rows) => rows.filter((r) => r.uri !== c.uri))
+                        }}
+                      >
+                        <X size={14} strokeWidth={2} aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+
+              {ownCertsLoading ? (
+                <p className="cert-detail__empty-line">Loading your activities…</p>
+              ) : ownCerts.length === 0 ? (
+                <p className="cert-detail__empty-line">
+                  You don&rsquo;t have any activities yet.{" "}
+                  <Link href="/create" className="create-project__inline-link">
+                    Create your first activity
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <>
+                  <p className="create-project__quick-pick-label">
+                    Add your activities:
+                  </p>
+                  <ul className="create-project__quick-pick-list">
+                    {ownCerts.map((c) => {
+                      const isAdded = items.some((r) => r.uri === c.uri)
+                      return (
+                        <li
+                          key={c.uri}
+                          className={
+                            isAdded
+                              ? "create-project__quick-pick-row create-project__quick-pick-row--added"
+                              : "create-project__quick-pick-row"
+                          }
+                        >
+                          <label className="create-project__quick-pick-label-inner">
+                            <input
+                              type="checkbox"
+                              checked={isAdded}
+                              onChange={() => {
+                                if (isAdded) {
+                                  setItems((rows) =>
+                                    rows.filter((r) => r.uri !== c.uri),
+                                  )
+                                } else {
+                                  setItems((rows) => [...rows, c])
+                                }
+                              }}
+                            />
+                            <span className="create-project__quick-pick-title">
+                              {c.title}
+                            </span>
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )}
+            </section>
+          </div>
+        </article>
+
+        <FormActionBar
+          submitLabel="Save changes"
+          submittingLabel="Saving…"
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit}
+          error={error}
+          onCancel={handleCancel}
+          identityLabel="Saving as"
         />
-      ) : null}
-    </form>
+
+        {isLocationDialogOpen && sessionDid ? (
+          <LocationPickerDialog
+            ownDid={sessionDid}
+            targetDid={activeOrg ? activeOrg.groupDid : sessionDid}
+            onClose={() => setIsLocationDialogOpen(false)}
+            onPick={(added) => {
+              markInteracted()
+              setLocation(added)
+              setIsLocationDialogOpen(false)
+            }}
+          />
+        ) : null}
+      </form>
     </PageContainer>
   )
 }

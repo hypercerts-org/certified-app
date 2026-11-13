@@ -12,18 +12,33 @@ import type { UploadedBlob } from "@/lib/atproto/profile"
 import type { BlobRef } from "@atproto/api"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
-import Button from "@/components/ui/button"
-import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
 import AvatarUpload from "@/components/profile/avatar-upload"
 import BannerUpload from "@/components/profile/banner-upload"
+import FormActionBar from "@/components/create/form-action-bar"
+import {
+  GroupAccessPage,
+  GroupRoleRequired,
+  useGroupAccess,
+} from "@/components/groups/group-access"
 import { getInitials } from "@/lib/utils/initials"
+import { profileUrl } from "@/lib/urls"
+import { usePageTitle } from "@/lib/navbar-context"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
 export default function EditOrgProfilePage() {
+  usePageTitle("Edit group profile")
   const router = useRouter()
   const params = useParams()
   const groupDid = decodeURIComponent(params.groupDid as string)
+  // Signed in + member (see the gate before the form below). Only owners
+  // and admins can write the profile; the form's reads wait for that too.
+  const access = useGroupAccess(groupDid)
+  const canEdit =
+    access.status === "member" &&
+    (access.org.role === "owner" || access.org.role === "admin")
 
   const [profile, setProfile] = useState<OrgProfile | null>(null)
   const [metadata, setMetadata] = useState<GroupMetadata | null>(null)
@@ -77,10 +92,11 @@ export default function EditOrgProfilePage() {
   }, [groupDid])
 
   useEffect(() => {
+    if (!canEdit) return
     const controller = new AbortController()
     fetchData(controller.signal)
     return () => controller.abort()
-  }, [fetchData])
+  }, [fetchData, canEdit])
 
   // Compute current avatar/banner URLs from the profile
   const effectivePdsUrl = pdsUrl || DEFAULT_PDS_URL
@@ -187,109 +203,125 @@ export default function EditOrgProfilePage() {
     }
   }
 
+  // Same gate as the settings page: signed in and a member of the group.
+  // Writing the profile also needs an owner or admin role.
+  if (access.status !== "member") {
+    return (
+      <GroupAccessPage
+        access={access}
+        groupDid={groupDid}
+        title="Edit group profile"
+        signedOutTitle="Sign in to edit this group"
+        signedOutDescription="Only the group's owners and admins can edit its profile."
+      />
+    )
+  }
+
+  if (!canEdit) {
+    return (
+      <GroupRoleRequired
+        groupDid={groupDid}
+        title="Edit group profile"
+        description="Ask an owner or admin of this group to change its profile."
+      />
+    )
+  }
+
   return (
-    <div className="dashboard">
-      <div className="dashboard__topbar">
-        <h1 className="dashboard__page-title">Edit group profile</h1>
-      </div>
-
-      <div className="dashboard__body dashboard__body--single">
-        <div className="dashboard__main">
-          {isLoading ? (
-            <div className="edit-profile__loading">
-              <LoadingSpinner size="md" />
-            </div>
-          ) : (
-            // A real <form> so Enter in a field submits.
-            <form
-              className="edit-profile"
-              noValidate
-              onInput={() => setHasInteracted(true)}
-              onSubmit={(e) => {
-                e.preventDefault()
-                void handleSave()
-              }}
-            >
-              {/* Banner + avatar — mirrors profile page layout */}
-              <div className="dash-card">
-                <BannerUpload
-                  currentBannerUrl={currentBannerUrl}
-                  onUpload={handleBannerUpload}
-                  isUploading={isUploadingBanner}
-                />
-                <div className="edit-profile__avatar-row">
-                  <AvatarUpload
-                    currentAvatarUrl={currentAvatarUrl}
-                    fallbackInitials={fallbackInitials}
-                    onUpload={handleAvatarUpload}
-                    isUploading={isUploadingAvatar}
-                  />
-                  <div className="edit-profile__name-field">
-                    <Input
-                      label="Display name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      maxLength={64}
-                      placeholder="Group name"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Fields */}
-              <div className="dash-card">
-                <div className="edit-profile__fields">
-                  <div>
-                    <Textarea
-                      label="About"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={4}
-                      maxLength={256}
-                      placeholder="Describe your group"
-                    />
-                    <div className="edit-profile__char-count">
-                      {description.length}/256 characters
-                    </div>
-                  </div>
-                  <Input
-                    label="Website"
-                    type="url"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    maxLength={256}
-                    placeholder="https://example.org"
-                  />
-                  <Input
-                    label="Founded date"
-                    type="date"
-                    value={foundedDate}
-                    onChange={(e) => setFoundedDate(e.target.value)}
-                  />
-                </div>
-
-                {saveError && <ErrorMessage message={saveError} />}
-
-                <div className="edit-profile__actions">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      if (confirmDiscard()) router.push(`/groups/${encodeURIComponent(groupDid)}`)
-                    }}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="primary" loading={isSaving} disabled={isSaving}>
-                    Save changes
-                  </Button>
-                </div>
-              </div>
-            </form>
-          )}
+    <PageContainer width="narrow">
+      <PageHeader
+        back={{ href: profileUrl(groupDid), label: "Group profile" }}
+        title="Edit group profile"
+        description="The group's name, picture and details, as others see them."
+      />
+      {isLoading ? (
+        <div className="edit-profile__loading">
+          <LoadingSpinner size="md" />
         </div>
-      </div>
-    </div>
+      ) : (
+        // A real <form> so Enter in a field submits.
+        <form
+          className="edit-profile"
+          noValidate
+          onInput={() => setHasInteracted(true)}
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleSave()
+          }}
+        >
+          {/* Banner + avatar — mirrors profile page layout */}
+          <div className="dash-card">
+            <BannerUpload
+              currentBannerUrl={currentBannerUrl}
+              onUpload={handleBannerUpload}
+              isUploading={isUploadingBanner}
+            />
+            <div className="edit-profile__avatar-row">
+              <AvatarUpload
+                currentAvatarUrl={currentAvatarUrl}
+                fallbackInitials={fallbackInitials}
+                onUpload={handleAvatarUpload}
+                isUploading={isUploadingAvatar}
+              />
+              <div className="edit-profile__name-field">
+                <Input
+                  label="Display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={64}
+                  placeholder="Group name"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Fields */}
+          <div className="dash-card">
+            <div className="edit-profile__fields">
+              <div>
+                <Textarea
+                  label="About"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  maxLength={256}
+                  placeholder="Describe your group"
+                />
+                <div className="edit-profile__char-count">
+                  {description.length}/256 characters
+                </div>
+              </div>
+              <Input
+                label="Website"
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                maxLength={256}
+                placeholder="https://example.org"
+              />
+              <Input
+                label="Founded date"
+                type="date"
+                value={foundedDate}
+                onChange={(e) => setFoundedDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* No "Saving as" line: the profile is written to the group
+              whichever account you are acting as. */}
+          <FormActionBar
+            submitLabel="Save changes"
+            submittingLabel="Saving…"
+            isSubmitting={isSaving}
+            error={saveError}
+            identityLabel={null}
+            onCancel={() => {
+              if (confirmDiscard()) router.push(`/groups/${encodeURIComponent(groupDid)}`)
+            }}
+          />
+        </form>
+      )}
+    </PageContainer>
   )
 }

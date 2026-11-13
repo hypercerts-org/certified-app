@@ -832,498 +832,498 @@ export default function ActivityEditRoute({
 
   return (
     <PageContainer>
-    {pageHeader}
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        void doSave()
-      }}
-    >
-      <article className="page-layout cert-detail--wide create-cert">
-        <aside className="cert-detail__aside" aria-label="Activity metadata">
-          <div className="cert-detail__image cert-detail__image--editing">
-            {displayImageUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={displayImageUrl}
-                alt=""
-                className="cert-detail__image-img"
+      {pageHeader}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void doSave()
+        }}
+      >
+        <article className="page-layout cert-detail--wide create-cert">
+          <aside className="cert-detail__aside" aria-label="Activity metadata">
+            <div className="cert-detail__image cert-detail__image--editing">
+              {displayImageUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={displayImageUrl}
+                  alt=""
+                  className="cert-detail__image-img"
+                />
+              ) : (
+                <PenLine
+                  size={32}
+                  strokeWidth={1.25}
+                  aria-hidden
+                  className="cert-detail__image-placeholder-icon"
+                />
+              )}
+              <ImageEditOverlay
+                onFile={handleImageFile}
+                hasPending={!!pendingImageBlob}
+                variant="with-remove"
+                onRemove={handleImageRemove}
+                hasImage={!!displayImageUrl}
               />
-            ) : (
-              <PenLine
-                size={32}
-                strokeWidth={1.25}
-                aria-hidden
-                className="cert-detail__image-placeholder-icon"
-              />
-            )}
-            <ImageEditOverlay
-              onFile={handleImageFile}
-              hasPending={!!pendingImageBlob}
-              variant="with-remove"
-              onRemove={handleImageRemove}
-              hasImage={!!displayImageUrl}
-            />
-          </div>
-
-          <dl className="cert-detail__meta">
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <Calendar size={12} strokeWidth={2} aria-hidden />
-                Time period
-              </dt>
-              <dd className="cert-detail__meta-value">
-                <div className="create-cert__date-row">
-                  <input
-                    type="date"
-                    aria-label="Start date"
-                    className="cert-detail__meta-input"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <span aria-hidden>→</span>
-                  <input
-                    type="date"
-                    aria-label="End date"
-                    className={
-                      datesValid
-                        ? "cert-detail__meta-input"
-                        : "cert-detail__meta-input create-cert__contrib-id-input--invalid"
-                    }
-                    aria-invalid={!datesValid}
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-                {!datesValid ? (
-                  <p className="create-cert__contrib-error" role="alert">
-                    End date must be on or after the start date.
-                  </p>
-                ) : null}
-              </dd>
             </div>
 
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <Target size={12} strokeWidth={2} aria-hidden />
-                Work scope
-              </dt>
-              <dd className="cert-detail__meta-value">
+            <dl className="cert-detail__meta">
+              <div className="cert-detail__meta-row">
+                <dt className="cert-detail__meta-label">
+                  <Calendar size={12} strokeWidth={2} aria-hidden />
+                  Time period
+                </dt>
+                <dd className="cert-detail__meta-value">
+                  <div className="create-cert__date-row">
+                    <input
+                      type="date"
+                      aria-label="Start date"
+                      className="cert-detail__meta-input"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                    <span aria-hidden>→</span>
+                    <input
+                      type="date"
+                      aria-label="End date"
+                      className={
+                        datesValid
+                          ? "cert-detail__meta-input"
+                          : "cert-detail__meta-input create-cert__contrib-id-input--invalid"
+                      }
+                      aria-invalid={!datesValid}
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                  {!datesValid ? (
+                    <p className="create-cert__contrib-error" role="alert">
+                      End date must be on or after the start date.
+                    </p>
+                  ) : null}
+                </dd>
+              </div>
+
+              <div className="cert-detail__meta-row">
+                <dt className="cert-detail__meta-label">
+                  <Target size={12} strokeWidth={2} aria-hidden />
+                  Work scope
+                </dt>
+                <dd className="cert-detail__meta-value">
+                  <input
+                    type="text"
+                    aria-label="Work scope"
+                    className="cert-detail__meta-input create-cert__field--full"
+                    placeholder="e.g. mentorship, code review…"
+                    value={workScope}
+                    maxLength={256}
+                    onChange={(e) => setWorkScope(e.target.value)}
+                  />
+                </dd>
+              </div>
+
+              <div className="cert-detail__meta-row">
+                <dt className="cert-detail__meta-label">
+                  <MapPin size={12} strokeWidth={2} aria-hidden />
+                  Locations
+                  {locations.length > 0 ? (
+                    <span className="cert-detail__meta-count">
+                      {locations.length}
+                    </span>
+                  ) : null}
+                </dt>
+                <dd className="cert-detail__meta-value">
+                  {locations.length > 0 ? (
+                    <ul className="create-cert__loc-list">
+                      {locations.map((loc) => (
+                        <li
+                          key={loc.ref.uri}
+                          className="create-cert__loc-row"
+                        >
+                          <span className="create-cert__loc-name">
+                            {loc.name}
+                          </span>
+                          <button
+                            type="button"
+                            className="create-cert__loc-remove"
+                            aria-label={`Remove ${loc.name}`}
+                            onClick={() =>
+                              setLocations((rows) =>
+                                rows.filter((r) => r.ref.uri !== loc.ref.uri),
+                              )
+                            }
+                          >
+                            <X size={12} strokeWidth={2} aria-hidden />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setIsLocationDialogOpen(true)}
+                  >
+                    <Plus size={14} strokeWidth={1.75} aria-hidden />
+                    Add location
+                  </Button>
+                </dd>
+              </div>
+
+              <div className="cert-detail__meta-row">
+                <dt className="cert-detail__meta-label">
+                  <FileText size={12} strokeWidth={2} aria-hidden />
+                  Rights
+                </dt>
+                <dd className="cert-detail__meta-value">
+                  {rightsLoading ? (
+                    <span className="cert-detail__meta-aux">Loading…</span>
+                  ) : rightsLoadError ? (
+                    <span className="cert-detail__meta-aux">
+                      Failed to load
+                    </span>
+                  ) : rightsOptions.length === 0 ? (
+                    <span className="cert-detail__meta-aux">None available</span>
+                  ) : (
+                    <select
+                      className="cert-detail__meta-input"
+                      aria-label="Rights"
+                      value={rightsUri}
+                      onChange={(e) => setRightsUri(e.target.value)}
+                    >
+                      <option value="">No rights</option>
+                      {rightsOptions.map((opt) => (
+                        <option key={opt.ref.uri} value={opt.ref.uri}>
+                          {opt.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </aside>
+
+          <div className="page-layout__main cert-detail__main">
+            <header className="cert-detail__headline">
+              <div className="create-cert__input-with-counter">
                 <input
                   type="text"
-                  aria-label="Work scope"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  placeholder="e.g. mentorship, code review…"
-                  value={workScope}
-                  maxLength={256}
-                  onChange={(e) => setWorkScope(e.target.value)}
+                  className="cert-detail__title-input"
+                  aria-label="Title"
+                  placeholder="Title for your activity"
+                  value={title}
+                  maxLength={TITLE_MAX}
+                  onChange={(e) => setTitle(e.target.value)}
+                  autoFocus
                 />
-              </dd>
-            </div>
-
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <MapPin size={12} strokeWidth={2} aria-hidden />
-                Locations
-                {locations.length > 0 ? (
-                  <span className="cert-detail__meta-count">
-                    {locations.length}
-                  </span>
-                ) : null}
-              </dt>
-              <dd className="cert-detail__meta-value">
-                {locations.length > 0 ? (
-                  <ul className="create-cert__loc-list">
-                    {locations.map((loc) => (
-                      <li
-                        key={loc.ref.uri}
-                        className="create-cert__loc-row"
-                      >
-                        <span className="create-cert__loc-name">
-                          {loc.name}
-                        </span>
-                        <button
-                          type="button"
-                          className="create-cert__loc-remove"
-                          aria-label={`Remove ${loc.name}`}
-                          onClick={() =>
-                            setLocations((rows) =>
-                              rows.filter((r) => r.ref.uri !== loc.ref.uri),
-                            )
-                          }
-                        >
-                          <X size={12} strokeWidth={2} aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsLocationDialogOpen(true)}
+                <p
+                  className={`create-cert__counter${
+                    titleOver
+                      ? " create-cert__counter--over"
+                      : titleUnder
+                        ? " create-cert__counter--under"
+                        : ""
+                  }`}
+                  aria-live="polite"
                 >
-                  <Plus size={14} strokeWidth={1.75} aria-hidden />
-                  Add location
-                </Button>
-              </dd>
-            </div>
+                  {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
+                </p>
+              </div>
+            </header>
 
-            <div className="cert-detail__meta-row">
-              <dt className="cert-detail__meta-label">
-                <FileText size={12} strokeWidth={2} aria-hidden />
-                Rights
-              </dt>
-              <dd className="cert-detail__meta-value">
-                {rightsLoading ? (
-                  <span className="cert-detail__meta-aux">Loading…</span>
-                ) : rightsLoadError ? (
-                  <span className="cert-detail__meta-aux">
-                    Failed to load
-                  </span>
-                ) : rightsOptions.length === 0 ? (
-                  <span className="cert-detail__meta-aux">None available</span>
-                ) : (
-                  <select
-                    className="cert-detail__meta-input"
-                    aria-label="Rights"
-                    value={rightsUri}
-                    onChange={(e) => setRightsUri(e.target.value)}
-                  >
-                    <option value="">No rights</option>
-                    {rightsOptions.map((opt) => (
-                      <option key={opt.ref.uri} value={opt.ref.uri}>
-                        {opt.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </dd>
-            </div>
-          </dl>
-        </aside>
+            <section className="cert-detail__section">
+              <div className="create-cert__input-with-counter">
+                <textarea
+                  className="cert-detail__short-desc-input"
+                  value={shortDescription}
+                  placeholder="A short description (one or two lines)…"
+                  aria-label="Short description"
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  rows={3}
+                />
+                <p
+                  className={`create-cert__counter${
+                    shortDescOver
+                      ? " create-cert__counter--over"
+                      : shortDescUnder
+                        ? " create-cert__counter--under"
+                        : ""
+                  }`}
+                  aria-live="polite"
+                >
+                  {shortDescCount}/{SHORT_DESC_MAX} · min. {SHORT_DESC_MIN}{" "}
+                  characters
+                </p>
+              </div>
+            </section>
 
-        <div className="page-layout__main cert-detail__main">
-          <header className="cert-detail__headline">
-            <div className="create-cert__input-with-counter">
-              <input
-                type="text"
-                className="cert-detail__title-input"
-                aria-label="Title"
-                placeholder="Title for your activity"
-                value={title}
-                maxLength={TITLE_MAX}
-                onChange={(e) => setTitle(e.target.value)}
-                autoFocus
-              />
-              <p
-                className={`create-cert__counter${
-                  titleOver
-                    ? " create-cert__counter--over"
-                    : titleUnder
-                      ? " create-cert__counter--under"
-                      : ""
-                }`}
-                aria-live="polite"
-              >
-                {titleCount}/{TITLE_MAX} · min. {TITLE_MIN} characters
-              </p>
-            </div>
-          </header>
-
-          <section className="cert-detail__section">
-            <div className="create-cert__input-with-counter">
-              <textarea
-                className="cert-detail__short-desc-input"
-                value={shortDescription}
-                placeholder="A short description (one or two lines)…"
-                aria-label="Short description"
-                onChange={(e) => setShortDescription(e.target.value)}
-                rows={3}
-              />
-              <p
-                className={`create-cert__counter${
-                  shortDescOver
-                    ? " create-cert__counter--over"
-                    : shortDescUnder
-                      ? " create-cert__counter--under"
-                      : ""
-                }`}
-                aria-live="polite"
-              >
-                {shortDescCount}/{SHORT_DESC_MAX} · min. {SHORT_DESC_MIN}{" "}
-                characters
-              </p>
-            </div>
-          </section>
-
-          <section className="cert-detail__section">
-            <SectionHeader title="Description" />
-            <LeafletEditor
-              value={description}
-              onChange={setDescription}
-              placeholder="Full description of this activity."
-              ariaLabel="Activity description"
-              did={did ?? ""}
-              onImageUpload={(file) =>
-                uploadBlob(
-                  file,
-                  activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
-                )
-              }
-            />
-          </section>
-
-          <section className="cert-detail__section">
-            <SectionHeader
-              title={<SectionTitleCount label="Contributors" count={contributors.length} />}
-            />
-
-            {contributors.length === 0 ? (
-              <p className="cert-detail__empty-line">
-                No contributors yet. Add one to credit collaborators.
-              </p>
-            ) : (
-              <ul className="create-cert__contrib-list">
-                {contributors.map((c, idx) => {
-                  const identityValid = isContributorIdentityAcceptable(
-                    c.identity,
+            <section className="cert-detail__section">
+              <SectionHeader title="Description" />
+              <LeafletEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Full description of this activity."
+                ariaLabel="Activity description"
+                did={did ?? ""}
+                onImageUpload={(file) =>
+                  uploadBlob(
+                    file,
+                    activeOrg ? { targetDid: activeOrg.groupDid } : undefined,
                   )
-                  const weightValid = isContributorWeightAcceptable(c.weight)
-                  const normalized = normalizeIdentity(c.identity).toLowerCase()
-                  const identityDuplicate =
-                    normalized.length > 0 && duplicateIdentitySet.has(normalized)
-                  const otherIdentities = new Set<string>()
-                  for (const other of contributors) {
-                    if (other.key === c.key) continue
-                    const n = normalizeIdentity(other.identity).toLowerCase()
-                    if (n) otherIdentities.add(n)
-                  }
-                  // Card vs typeahead input. Pre-filled rows arrive
-                  // with `picked: true` so they render as cards on
-                  // load; new rows start uncommitted and stay in
-                  // input mode until the user explicitly commits
-                  // (typeahead pick, Enter, or blur with a valid
-                  // identity). Without the picked gate, the input
-                  // would swap to a card mid-typing the moment the
-                  // value matched the handle regex (e.g. `alice.so`
-                  // matches; you couldn't reach `alice.social`).
-                  const normalizedIdentity = normalizeIdentity(c.identity)
-                  const showCard =
-                    c.picked &&
-                    identityValid &&
-                    !identityDuplicate &&
-                    normalizedIdentity.length > 0 &&
-                    isAtprotoIdentity(normalizedIdentity)
-                  return (
-                    <li key={c.key} className="create-cert__contrib-row">
-                      {showCard ? (
-                        <ContributorIdentityCard
-                          identity={normalizedIdentity}
-                          ariaLabel={`Contributor ${idx + 1}`}
-                          onClear={() =>
+                }
+              />
+            </section>
+
+            <section className="cert-detail__section">
+              <SectionHeader
+                title={<SectionTitleCount label="Contributors" count={contributors.length} />}
+              />
+
+              {contributors.length === 0 ? (
+                <p className="cert-detail__empty-line">
+                  No contributors yet. Add one to credit collaborators.
+                </p>
+              ) : (
+                <ul className="create-cert__contrib-list">
+                  {contributors.map((c, idx) => {
+                    const identityValid = isContributorIdentityAcceptable(
+                      c.identity,
+                    )
+                    const weightValid = isContributorWeightAcceptable(c.weight)
+                    const normalized = normalizeIdentity(c.identity).toLowerCase()
+                    const identityDuplicate =
+                      normalized.length > 0 && duplicateIdentitySet.has(normalized)
+                    const otherIdentities = new Set<string>()
+                    for (const other of contributors) {
+                      if (other.key === c.key) continue
+                      const n = normalizeIdentity(other.identity).toLowerCase()
+                      if (n) otherIdentities.add(n)
+                    }
+                    // Card vs typeahead input. Pre-filled rows arrive
+                    // with `picked: true` so they render as cards on
+                    // load; new rows start uncommitted and stay in
+                    // input mode until the user explicitly commits
+                    // (typeahead pick, Enter, or blur with a valid
+                    // identity). Without the picked gate, the input
+                    // would swap to a card mid-typing the moment the
+                    // value matched the handle regex (e.g. `alice.so`
+                    // matches; you couldn't reach `alice.social`).
+                    const normalizedIdentity = normalizeIdentity(c.identity)
+                    const showCard =
+                      c.picked &&
+                      identityValid &&
+                      !identityDuplicate &&
+                      normalizedIdentity.length > 0 &&
+                      isAtprotoIdentity(normalizedIdentity)
+                    return (
+                      <li key={c.key} className="create-cert__contrib-row">
+                        {showCard ? (
+                          <ContributorIdentityCard
+                            identity={normalizedIdentity}
+                            ariaLabel={`Contributor ${idx + 1}`}
+                            onClear={() =>
+                              setContributors((rows) =>
+                                rows.map((r) =>
+                                  r.key === c.key
+                                    ? { ...r, identity: "", picked: false }
+                                    : r,
+                                ),
+                              )
+                            }
+                          />
+                        ) : (
+                          <ContributorIdentityField
+                            value={c.identity}
+                            onChange={(nextVal) =>
+                              setContributors((rows) =>
+                                rows.map((r) =>
+                                  r.key === c.key ? { ...r, identity: nextVal } : r,
+                                ),
+                              )
+                            }
+                            onCommit={() =>
+                              setContributors((rows) =>
+                                rows.map((r) =>
+                                  r.key === c.key ? { ...r, picked: true } : r,
+                                ),
+                              )
+                            }
+                            ariaLabel={`Contributor ${idx + 1} identity`}
+                            idx={idx}
+                            invalid={!identityValid || identityDuplicate}
+                            excludeIdentities={otherIdentities}
+                          />
+                        )}
+                        <input
+                          type="text"
+                          className="cert-detail__meta-input"
+                          aria-label={`Contributor ${idx + 1} role (optional)`}
+                          placeholder="Role (optional)"
+                          value={c.role}
+                          maxLength={1000}
+                          onChange={(e) =>
                             setContributors((rows) =>
                               rows.map((r) =>
                                 r.key === c.key
-                                  ? { ...r, identity: "", picked: false }
+                                  ? { ...r, role: e.target.value }
                                   : r,
                               ),
                             )
                           }
                         />
-                      ) : (
-                        <ContributorIdentityField
-                          value={c.identity}
-                          onChange={(nextVal) =>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={
+                            weightValid
+                              ? "cert-detail__meta-input create-cert__contrib-weight"
+                              : "cert-detail__meta-input create-cert__contrib-weight create-cert__contrib-id-input--invalid"
+                          }
+                          aria-label={`Contributor ${idx + 1} weight (optional)`}
+                          aria-invalid={!weightValid}
+                          placeholder="Weight (optional)"
+                          value={c.weight}
+                          maxLength={100}
+                          onChange={(e) =>
                             setContributors((rows) =>
                               rows.map((r) =>
-                                r.key === c.key ? { ...r, identity: nextVal } : r,
+                                r.key === c.key
+                                  ? { ...r, weight: e.target.value }
+                                  : r,
                               ),
                             )
                           }
-                          onCommit={() =>
-                            setContributors((rows) =>
-                              rows.map((r) =>
-                                r.key === c.key ? { ...r, picked: true } : r,
-                              ),
-                            )
-                          }
-                          ariaLabel={`Contributor ${idx + 1} identity`}
-                          idx={idx}
-                          invalid={!identityValid || identityDuplicate}
-                          excludeIdentities={otherIdentities}
                         />
-                      )}
-                      <input
-                        type="text"
-                        className="cert-detail__meta-input"
-                        aria-label={`Contributor ${idx + 1} role (optional)`}
-                        placeholder="Role (optional)"
-                        value={c.role}
-                        maxLength={1000}
-                        onChange={(e) =>
-                          setContributors((rows) =>
-                            rows.map((r) =>
-                              r.key === c.key
-                                ? { ...r, role: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                      />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className={
-                          weightValid
-                            ? "cert-detail__meta-input create-cert__contrib-weight"
-                            : "cert-detail__meta-input create-cert__contrib-weight create-cert__contrib-id-input--invalid"
-                        }
-                        aria-label={`Contributor ${idx + 1} weight (optional)`}
-                        aria-invalid={!weightValid}
-                        placeholder="Weight (optional)"
-                        value={c.weight}
-                        maxLength={100}
-                        onChange={(e) =>
-                          setContributors((rows) =>
-                            rows.map((r) =>
-                              r.key === c.key
-                                ? { ...r, weight: e.target.value }
-                                : r,
-                            ),
-                          )
-                        }
-                      />
-                      <button
+                        <button
+                          type="button"
+                          className="create-cert__contrib-remove"
+                          aria-label={`Remove contributor ${idx + 1}`}
+                          onClick={() =>
+                            setContributors((rows) =>
+                              rows.filter((r) => r.key !== c.key),
+                            )
+                          }
+                        >
+                          <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+                        </button>
+                        {!identityValid ? (
+                          <p
+                            className="create-cert__contrib-error"
+                            role="alert"
+                          >
+                            Use a handle like alice.bsky.social.
+                          </p>
+                        ) : identityDuplicate ? (
+                          <p
+                            className="create-cert__contrib-error"
+                            role="alert"
+                          >
+                            Already added — each contributor can only appear once.
+                          </p>
+                        ) : !weightValid ? (
+                          <p
+                            className="create-cert__contrib-error"
+                            role="alert"
+                          >
+                            Weight must be a number (decimals are fine, e.g. 1.5).
+                          </p>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+
+              <div className="create-cert__contrib-actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setContributors((rows) => [...rows, freshContributor()])
+                  }
+                >
+                  <Plus size={14} strokeWidth={1.75} aria-hidden />
+                  Add contributor
+                </Button>
+                {selfInfo && (selfInfo.handle || selfInfo.did) ? (
+                  (() => {
+                    const selfIdentity =
+                      selfInfo.handle && selfInfo.handle !== selfInfo.did
+                        ? `@${selfInfo.handle}`
+                        : selfInfo.did
+                    // Match the signed-in user against contributor rows by
+                    // EITHER their handle or their DID — a row may hold
+                    // either form (an existing activity stores contributor
+                    // DIDs; a typeahead pick may store a handle), and
+                    // comparing only `selfIdentity` would miss the other
+                    // form and wrongly leave "Add me" enabled for someone
+                    // already on the list.
+                    const selfKeys = new Set(
+                      [selfInfo.handle, selfInfo.did]
+                        .filter((v): v is string => !!v)
+                        .map((v) => normalizeIdentity(v).toLowerCase()),
+                    )
+                    const alreadyAdded = contributors.some((c) =>
+                      selfKeys.has(
+                        normalizeIdentity(c.identity).toLowerCase(),
+                      ),
+                    )
+                    return (
+                      <Button
                         type="button"
-                        className="create-cert__contrib-remove"
-                        aria-label={`Remove contributor ${idx + 1}`}
+                        variant="ghost"
+                        size="sm"
+                        disabled={alreadyAdded}
                         onClick={() =>
-                          setContributors((rows) =>
-                            rows.filter((r) => r.key !== c.key),
-                          )
+                          setContributors((rows) => [
+                            ...rows,
+                            { ...freshContributor(), identity: selfIdentity, picked: true },
+                          ])
+                        }
+                        title={
+                          alreadyAdded
+                            ? "Already on the list"
+                            : `Add ${selfIdentity} as a contributor`
                         }
                       >
-                        <Trash2 size={14} strokeWidth={1.75} aria-hidden />
-                      </button>
-                      {!identityValid ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Use a handle like alice.bsky.social.
-                        </p>
-                      ) : identityDuplicate ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Already added — each contributor can only appear once.
-                        </p>
-                      ) : !weightValid ? (
-                        <p
-                          className="create-cert__contrib-error"
-                          role="alert"
-                        >
-                          Weight must be a number (decimals are fine, e.g. 1.5).
-                        </p>
-                      ) : null}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+                        Add me
+                      </Button>
+                    )
+                  })()
+                ) : null}
+              </div>
+            </section>
 
-            <div className="create-cert__contrib-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  setContributors((rows) => [...rows, freshContributor()])
-                }
-              >
-                <Plus size={14} strokeWidth={1.75} aria-hidden />
-                Add contributor
-              </Button>
-              {selfInfo && (selfInfo.handle || selfInfo.did) ? (
-                (() => {
-                  const selfIdentity =
-                    selfInfo.handle && selfInfo.handle !== selfInfo.did
-                      ? `@${selfInfo.handle}`
-                      : selfInfo.did
-                  // Match the signed-in user against contributor rows by
-                  // EITHER their handle or their DID — a row may hold
-                  // either form (an existing activity stores contributor
-                  // DIDs; a typeahead pick may store a handle), and
-                  // comparing only `selfIdentity` would miss the other
-                  // form and wrongly leave "Add me" enabled for someone
-                  // already on the list.
-                  const selfKeys = new Set(
-                    [selfInfo.handle, selfInfo.did]
-                      .filter((v): v is string => !!v)
-                      .map((v) => normalizeIdentity(v).toLowerCase()),
-                  )
-                  const alreadyAdded = contributors.some((c) =>
-                    selfKeys.has(
-                      normalizeIdentity(c.identity).toLowerCase(),
-                    ),
-                  )
-                  return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={alreadyAdded}
-                      onClick={() =>
-                        setContributors((rows) => [
-                          ...rows,
-                          { ...freshContributor(), identity: selfIdentity, picked: true },
-                        ])
-                      }
-                      title={
-                        alreadyAdded
-                          ? "Already on the list"
-                          : `Add ${selfIdentity} as a contributor`
-                      }
-                    >
-                      Add me
-                    </Button>
-                  )
-                })()
-              ) : null}
-            </div>
-          </section>
+          </div>
+        </article>
 
-        </div>
-      </article>
-
-      <FormActionBar
-        submitLabel="Save changes"
-        submittingLabel="Saving…"
-        isSubmitting={isSubmitting}
-        submitDisabled={!canSubmit}
-        error={error}
-        onCancel={handleCancel}
-        identityLabel="Saving as"
-      />
-
-      {isLocationDialogOpen && sessionDid ? (
-        <LocationPickerDialog
-          ownDid={sessionDid}
-          targetDid={effectivePublisherDid}
-          onClose={() => setIsLocationDialogOpen(false)}
-          onPick={(added: AddedLocation) => {
-            setLocations((rows) => {
-              if (rows.some((r) => r.ref.uri === added.ref.uri)) return rows
-              return [...rows, { ref: added.ref, name: added.name }]
-            })
-            setIsLocationDialogOpen(false)
-          }}
+        <FormActionBar
+          submitLabel="Save changes"
+          submittingLabel="Saving…"
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit}
+          error={error}
+          onCancel={handleCancel}
+          identityLabel="Saving as"
         />
-      ) : null}
-    </form>
+
+        {isLocationDialogOpen && sessionDid ? (
+          <LocationPickerDialog
+            ownDid={sessionDid}
+            targetDid={effectivePublisherDid}
+            onClose={() => setIsLocationDialogOpen(false)}
+            onPick={(added: AddedLocation) => {
+              setLocations((rows) => {
+                if (rows.some((r) => r.ref.uri === added.ref.uri)) return rows
+                return [...rows, { ref: added.ref, name: added.name }]
+              })
+              setIsLocationDialogOpen(false)
+            }}
+          />
+        ) : null}
+      </form>
     </PageContainer>
   )
 }
