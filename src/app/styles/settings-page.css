@@ -71,6 +71,21 @@
   max-width: 26rem;
 }
 
+/* The Edit action beside a value (handle, email, password) takes a fixed
+   column, and a value with no action (the Permanent ID) stops where that
+   column starts, so the value boxes in a section share one right edge. */
+.settings-section__body {
+  --settings-action-w: 5.5rem;
+}
+
+.settings-row__control .settings-field > button {
+  min-width: var(--settings-action-w);
+}
+
+.settings-row__control .settings-field--value-only {
+  max-width: calc(min(26rem, 100%) - var(--settings-action-w) - 8px);
+}
+
 /* ------------------------------------------------------------------------
    Legacy editor chrome strip-down. The username / email / password
    editors carry their own dash-card wrapper and a heading of their own;
@@ -595,10 +610,14 @@
   outline-offset: 2px;
 }
 
+/* A long value (the DID in a narrow column) ends in an ellipsis rather
+   than being cut under the copy icon; the button's title shows it in
+   full, and copying always copies the whole value. */
 .did-pill__value {
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.8125rem;

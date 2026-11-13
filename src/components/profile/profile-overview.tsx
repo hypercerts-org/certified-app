@@ -135,8 +135,10 @@ export default function ProfileOverview({
 
   return (
     <div className="profile-overview">
+      {/* Phones: a tidy 2×2 grid instead of wrapping 3 + 1. */}
       <StatRow
         aria-label="Counts"
+        className="max-md:grid max-md:grid-cols-2"
         items={[
           {
             label: activityCount === 1 ? "Activity" : "Activities",

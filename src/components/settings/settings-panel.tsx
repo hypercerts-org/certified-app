@@ -39,7 +39,7 @@ const OrgSettings = dynamic(
 type SectionKey =
   | "account"
   | "appearance"
-  | "social-graph"
+  | "bluesky-follows"
   | "app-passwords"
   | "group"
 
@@ -69,8 +69,8 @@ const SECTIONS: SectionDef[] = [
     description: "How Certified looks on this device.",
   },
   {
-    key: "social-graph",
-    label: "Social graph",
+    key: "bluesky-follows",
+    label: "Bluesky follows",
     icon: Share2,
     description:
       "Compare your Certified and Bluesky follows, and sync the ones missing on either side.",
@@ -93,8 +93,9 @@ const SECTIONS: SectionDef[] = [
 
 const SECTION_KEYS: readonly SectionKey[] = SECTIONS.map((s) => s.key)
 
-/** Old per-field deep links (#username / #email / #password) now land on
- *  the Account section that holds them. */
+/** Old deep links land on the section that now holds them: the per-field
+ *  ones (#username / #email / #password) on Account, #social-graph on
+ *  Bluesky follows. */
 const SECTION_ALIASES: Readonly<Record<string, SectionKey>> = {
   username: "account",
   handle: "account",
@@ -102,6 +103,8 @@ const SECTION_ALIASES: Readonly<Record<string, SectionKey>> = {
   password: "account",
   did: "account",
   theme: "appearance",
+  // The section's earlier name (the product tour still links here).
+  "social-graph": "bluesky-follows",
 }
 
 /**
@@ -170,7 +173,11 @@ export default function SettingsPanel() {
               label="Permanent ID"
               description="Your account's DID. Unlike your handle it never changes, so apps and records refer to you by it."
             >
-              <DidSection did={did || undefined} />
+              {/* No Edit action: the pill stops at the same right edge as
+                  the handle, email and password values above. */}
+              <div className="settings-field settings-field--value-only">
+                <DidSection did={did || undefined} />
+              </div>
             </SettingsRow>
           </>
         )
@@ -180,7 +187,7 @@ export default function SettingsPanel() {
             <ThemeToggle variant="cards" />
           </SettingsRow>
         )
-      case "social-graph":
+      case "bluesky-follows":
         return did ? (
           <SettingsBlock>
             <SyncSocialGraphSection did={did} ownDid={did} />

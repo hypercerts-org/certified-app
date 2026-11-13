@@ -35,7 +35,11 @@ export default function CopyPill({
         onClick={() => void copy(value)}
       >
         <span className="sr-only">Copy {label}: </span>
-        <code className="did-pill__value">{display ?? value}</code>
+        {/* A long value ends in an ellipsis; the tooltip shows all of it.
+            On the value, not the button, so it isn't read out twice. */}
+        <code className="did-pill__value" title={display ?? value}>
+          {display ?? value}
+        </code>
         <span className="did-pill__icon" aria-hidden>
           {copied ? (
             <Check size={14} strokeWidth={2} />

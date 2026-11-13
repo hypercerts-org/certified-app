@@ -61,6 +61,8 @@ export default function AppTile({
       ssoHandleUrl={"ssoHandleUrl" in app ? app.ssoHandleUrl : undefined}
       className={`${tileBase} ${tileBySize[size]}`}
     >
+      {/* /apps: everything top-aligns against the fixed logo box, so the
+          names in a row of tiles line up whatever the tagline's length. */}
       <span className={`flex gap-3 ${isLarge ? "items-start md:gap-4" : "items-center"}`}>
         <Image
           src={app.logo}
@@ -73,13 +75,20 @@ export default function AppTile({
           // over the image gives a white logo an edge against the tile.
           className={`${logo.cls} shrink-0 rounded bg-[var(--color-white)] object-cover outline outline-1 -outline-offset-1 outline-[var(--border-subtle)]`}
         />
-        <span className={`flex min-w-0 flex-1 flex-col gap-1 ${isLarge ? "self-center" : ""}`}>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span
             className={`font-semibold text-[var(--fg-primary)] ${isLarge ? "text-body leading-snug" : "text-body-sm"}`}
           >
             {app.name}
           </span>
-          <span className="line-clamp-2 text-ui text-[var(--fg-muted)]">{app.desc}</span>
+          {/* From 800px, where /apps tiles sit side by side, the tagline
+              keeps room for its two lines, so the long descriptions below
+              start at one height across the row. */}
+          <span
+            className={`line-clamp-2 text-ui text-[var(--fg-muted)] ${isLarge ? "md:min-h-[2.9em]" : ""}`}
+          >
+            {app.desc}
+          </span>
         </span>
         <ArrowUpRight
           size={16}
