@@ -44,7 +44,7 @@ function LookPreview({ id }: { id: LookId }) {
     <span
       data-look-preview={id}
       aria-hidden
-      className="flex flex-col gap-2.5 bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
+      className="flex flex-1 flex-col gap-2.5 bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
     >
       <span className="flex items-center gap-2.5">
         <PreviewAvatar initials="UT" shape="circle" size="sm" />

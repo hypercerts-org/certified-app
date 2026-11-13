@@ -551,8 +551,9 @@ html[data-theme="dark"] [data-look-preview="glass"] {
    near-opaque: panels can be see-through, a list you read from can't. */
 html[data-look="glass"] .popover-panel {
   background-color: var(--sheet-bg);
-  backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* Unprefixed last: the production CSS minifier keeps only the last of the pair. */
+  backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* --------------------------------------------------------------- Shapes
@@ -1365,4 +1366,12 @@ html [data-look-preview] [data-centerpiece="id"] [data-part="title"]::after {
 
 html [data-look-preview] [data-centerpiece="endorsement"] {
   margin-bottom: 0;
+}
+
+html [data-look-preview="linen"] [data-centerpiece="id"]::before {
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
 }

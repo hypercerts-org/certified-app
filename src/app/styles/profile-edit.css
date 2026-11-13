@@ -289,8 +289,9 @@ fieldset.pe__field > legend {
   border-top: 1px solid var(--border-subtle);
   /* A subtle blur so content scrolling under the footer doesn't read as
      hard-cut. Falls back to the solid bg when backdrop-filter is unsupported. */
-  backdrop-filter: saturate(180%) blur(8px);
   -webkit-backdrop-filter: saturate(180%) blur(8px);
+  /* Unprefixed last: the production CSS minifier keeps only the last of the pair. */
+  backdrop-filter: saturate(180%) blur(8px);
   z-index: var(--z-rail-sticky);
 }
 
