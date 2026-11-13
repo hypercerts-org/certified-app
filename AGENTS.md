@@ -206,7 +206,7 @@ Key principles:
     <Analytics />
 ```
 
-**The shell** (DESIGN.md §4). Two groups of destinations, in one order everywhere: Workspace | Feed, Explore, Apps (`src/lib/layout/destinations.ts`; Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; signed out: Explore and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
+**The shell** (DESIGN.md §4). Three destinations, in one order everywhere: Workspace | Network · Apps (`src/lib/layout/destinations.ts`; Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; Network covers Feed, Explore, Graph (`/graph`) and Map (`/map`), with `src/components/layout/network-nav.tsx` as the tab row at the top of each; signed out: Network, opening on Explore, and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
 
 - **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: the Certified.app wordmark with its Beta pill (`<Wordmark variant="certified-app" beta>`), the destinations (icon + word; word only at 800–1099px; a divider between Workspace and the network), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
 - **Phone (< 800px).** `navbar.tsx` (a `<header>`): the normal bar (the Certified.app wordmark with its Beta pill, a `+` for the New sheet, the avatar for the account sheet) on top-level pages, untitled pages and every page with a `PageHeader`; a back chevron + compact title (the h1) only on a titled page without one. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
@@ -894,7 +894,7 @@ certified-app/
     │   │   ├── acting-as-bar.tsx          # "Operating <group>" banner while acting as a group
     │   │   ├── app-shell.tsx              # .app-shell wrapper + SiteFooter, skipped on /welcome
     │   │   ├── auth-guard.tsx             # Auth redirect with loading spinner
-    │   │   ├── bottom-nav.tsx             # Phone tab bar: Workspace, Feed, Explore, Apps
+    │   │   ├── bottom-nav.tsx             # Phone tab bar: Workspace, Network, Apps
     │   │   ├── desktop-top-bar.tsx        # Desktop bar (one row): destinations, search, New, account
     │   │   ├── menu-row.ts                # Shared row styling for the shell menus
     │   │   ├── navbar.tsx                 # Phone top bar (Certified.app + Beta pill / back, title, New, account)

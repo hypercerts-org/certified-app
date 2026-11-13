@@ -100,9 +100,9 @@ export default function HelpPage() {
             <SectionHeader id="help-walk-through-title" title="Take the walk-through" />
             <p className={proseCls}>
               New here, or want a refresher? The walk-through shows you around in
-              a few quick steps: your Workspace, then Feed, Explore and Apps, how
-              to create something, your profile and Settings. You can start it
-              any time.
+              a few quick steps: your Workspace, the Network (Feed, Explore,
+              Graph and Map) and Apps, how to create something, your profile
+              and Settings. You can start it any time.
             </p>
             <div className="mt-1">
               <HelpTourButton />

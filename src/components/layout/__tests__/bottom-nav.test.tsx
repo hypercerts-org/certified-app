@@ -26,12 +26,12 @@ beforeEach(() => {
 })
 
 describe("BottomNav", () => {
-  it("shows Workspace and the network, labelled, in a phone browser tab", () => {
+  it("shows Workspace, Network and Apps, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
     const links = Array.from(nav.querySelectorAll("a"))
-    expect(links.map((a) => a.textContent)).toEqual(["Workspace", "Feed", "Explore", "Apps"])
-    expect(screen.getByRole("link", { name: "Feed" })).toHaveAttribute("aria-current", "page")
+    expect(links.map((a) => a.textContent)).toEqual(["Workspace", "Network", "Apps"])
+    expect(screen.getByRole("link", { name: "Network" })).toHaveAttribute("aria-current", "page")
     expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
   })
 
@@ -52,7 +52,7 @@ describe("BottomNav", () => {
     state.isAuthenticated = false
     state.pathname = "/explore"
     render(<BottomNav />)
-    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Explore", "Apps"])
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Network", "Apps"])
   })
 
   it("keeps its place but shows no tabs while auth resolves", () => {

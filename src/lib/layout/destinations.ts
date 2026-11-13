@@ -1,20 +1,24 @@
-import { Compass, FolderOpen, LayoutGrid, Newspaper, type LucideIcon } from "lucide-react"
+import { FolderOpen, Globe, LayoutGrid, type LucideIcon } from "lucide-react"
 
 /**
  * The app's destinations, in the one order every navigation surface uses
- * (DESIGN.md §4): the desktop top bar and the phone bottom tab bar. They
- * come in two groups:
+ * (DESIGN.md §4): the desktop top bar and the phone bottom tab bar:
+ *
+ *    Workspace | Network · Apps
  *
  *  - **Workspace**: what your account holds and what you manage (the
- *    Overview at /home, and the Records sections and Groups at /records).
- *  - **Network**: everyone else's work — Feed, Explore and Apps.
+ *    Overview at /home, and the Records sections and Groups at /records),
+ *    behind one side list (`WorkspaceShell`).
+ *  - **Network**: everyone's work, as four tabs (`NetworkNav`): Feed,
+ *    Explore, Graph and Map. It opens on Feed (Explore when signed out).
+ *  - **Apps**: other apps that work with the same account.
  *
  * Nothing else is a top-level destination; Profile, Settings and Help live
  * in the account menu. Signed-out visitors see only the public ones
- * (Explore and Apps). No destination is ever hidden per account: a section
+ * (Network, opening on Explore, and Apps). No destination is ever hidden per account: a section
  * a group can't use explains why in place.
  */
-export type DestinationKey = "workspace" | "feed" | "explore" | "apps"
+export type DestinationKey = "workspace" | "network" | "apps"
 
 export type DestinationGroup = "workspace" | "network"
 
@@ -23,7 +27,8 @@ export interface Destination {
   readonly label: string
   readonly href: string
   /** Paths the destination covers (it is current on them and below), when
-   *  more than its `href`: Workspace covers /home and /records. */
+   *  more than its `href`: Workspace covers /home and /records, Network
+   *  its four tabs. */
   readonly paths?: readonly string[]
   readonly group: DestinationGroup
   readonly icon: LucideIcon
@@ -44,14 +49,32 @@ export const DESTINATIONS: readonly Destination[] = [
     isPublic: false,
     tour: "nav-workspace",
   },
-  { key: "feed", label: "Feed", href: "/feed", group: "network", icon: Newspaper, isPublic: false, tour: "nav-feed" },
-  { key: "explore", label: "Explore", href: "/explore", group: "network", icon: Compass, isPublic: true, tour: "nav-explore" },
+  {
+    key: "network",
+    label: "Network",
+    href: "/feed",
+    paths: ["/feed", "/explore", "/graph", "/map"],
+    group: "network",
+    icon: Globe,
+    isPublic: true,
+    tour: "nav-network",
+  },
+  // Apps sits beside Network, after the divider, as its own destination.
   { key: "apps", label: "Apps", href: "/apps", group: "network", icon: LayoutGrid, isPublic: true, tour: "nav-apps" },
 ]
 
-/** The destinations to show: all of them signed in, the public two signed out. */
+/** Where Network opens for signed-out visitors: Feed follows your account. */
+const NETWORK_PUBLIC_HREF = "/explore"
+
+/**
+ * The destinations to show: all of them signed in; signed out, the public
+ * ones (Network, opening on Explore, and Apps).
+ */
 export function destinationsFor(isAuthenticated: boolean): readonly Destination[] {
-  return isAuthenticated ? DESTINATIONS : DESTINATIONS.filter((d) => d.isPublic)
+  if (isAuthenticated) return DESTINATIONS
+  return DESTINATIONS.filter((d) => d.isPublic).map((d) =>
+    d.key === "network" ? { ...d, href: NETWORK_PUBLIC_HREF } : d,
+  )
 }
 
 /** True when `pathname` is one of the destination's paths or a page under one. */

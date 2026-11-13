@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, Network } from "lucide-react";
 import Button from "@/components/ui/button";
-import EndorsementGraphModal from "./endorsement-graph-modal";
 import { helpLinkCls } from "./help-styles";
 
 /**
@@ -155,18 +154,13 @@ function FaqEntry({ item, index }: { item: FaqItem; index: number }) {
  * live endorsement network in a large dialog.
  */
 export default function HelpFaq() {
-  const [graphOpen, setGraphOpen] = useState(false);
 
   const items: FaqItem[] = HELP_FAQ_ITEMS.map((item) => {
     if (item.question === "What does it mean to endorse someone?") {
       return {
         ...item,
         cta: (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setGraphOpen(true)}
-          >
+          <Button variant="secondary" size="sm" href="/graph">
             <Network size={14} strokeWidth={1.75} aria-hidden />
             Open the endorsement network
           </Button>
@@ -180,15 +174,10 @@ export default function HelpFaq() {
   });
 
   return (
-    <>
-      <ul className="m-0 list-none border-y border-[var(--border-subtle)] p-0">
-        {items.map((item, index) => (
-          <FaqEntry key={item.question} item={item} index={index} />
-        ))}
-      </ul>
-      {graphOpen && (
-        <EndorsementGraphModal onClose={() => setGraphOpen(false)} />
-      )}
-    </>
+    <ul className="m-0 list-none border-y border-[var(--border-subtle)] p-0">
+      {items.map((item, index) => (
+        <FaqEntry key={item.question} item={item} index={index} />
+      ))}
+    </ul>
   );
 }

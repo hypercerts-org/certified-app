@@ -27,6 +27,8 @@ export default function robots(): MetadataRoute.Robots {
           "/create",
           "/endorsements",
           "/endorsement-graph",
+          "/graph",
+          "/map",
           "/groups",
           "/groups/*",
           "/oauth",

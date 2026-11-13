@@ -22,6 +22,7 @@ import EmptyState from "@/components/ui/empty-state"
 import Tooltip from "@/components/ui/tooltip"
 import Button from "@/components/ui/button"
 import PageContainer from "@/components/ui/page-container"
+import NetworkNav from "@/components/layout/network-nav"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import SideNav, { type SideNavItem } from "@/components/ui/side-nav"
@@ -340,6 +341,7 @@ function ExploreAll() {
 
   return (
     <PageContainer className="explore-page">
+      <NetworkNav current="explore" />
       <PageHeader
         title="Explore"
         description="Activities, projects and accounts across the Certified network."

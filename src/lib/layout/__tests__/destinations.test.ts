@@ -7,24 +7,21 @@ import {
 } from "../destinations"
 
 describe("destinations", () => {
-  it("lists Workspace, then the network, in the one order every surface uses", () => {
-    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Workspace", "Feed", "Explore", "Apps"])
-    expect(DESTINATIONS.map((d) => d.href)).toEqual(["/home", "/feed", "/explore", "/apps"])
-    expect(DESTINATIONS.map((d) => d.group)).toEqual(["workspace", "network", "network", "network"])
+  it("lists Workspace, then Network and Apps, in the one order every surface uses", () => {
+    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Workspace", "Network", "Apps"])
+    expect(DESTINATIONS.map((d) => d.href)).toEqual(["/home", "/feed", "/apps"])
+    expect(DESTINATIONS.map((d) => d.group)).toEqual(["workspace", "network", "network"])
   })
 
-  it("shows all four signed in and only Explore and Apps signed out", () => {
-    expect(destinationsFor(true)).toHaveLength(4)
-    expect(destinationsFor(false).map((d) => d.key)).toEqual(["explore", "apps"])
+  it("shows all three signed in; signed out, Network (opening on Explore) and Apps", () => {
+    expect(destinationsFor(true)).toHaveLength(3)
+    const out = destinationsFor(false)
+    expect(out.map((d) => d.key)).toEqual(["network", "apps"])
+    expect(out[0].href).toBe("/explore")
   })
 
   it("gives every destination a tour anchor", () => {
-    expect(DESTINATIONS.map((d) => d.tour)).toEqual([
-      "nav-workspace",
-      "nav-feed",
-      "nav-explore",
-      "nav-apps",
-    ])
+    expect(DESTINATIONS.map((d) => d.tour)).toEqual(["nav-workspace", "nav-network", "nav-apps"])
   })
 
   it("marks a destination current on its page and the pages under it", () => {
@@ -36,6 +33,14 @@ describe("destinations", () => {
     expect(isDestinationActive(apps, null)).toBe(false)
   })
 
+  it("keeps Network current on its four tabs", () => {
+    const network = DESTINATIONS.find((d) => d.key === "network")!
+    for (const p of ["/feed", "/explore", "/explore/accounts", "/graph", "/map"]) {
+      expect(isDestinationActive(network, p)).toBe(true)
+    }
+    expect(isDestinationActive(network, "/apps")).toBe(false)
+  })
+
   it("keeps Workspace current on the Overview and every Records section", () => {
     const workspace = DESTINATIONS.find((d) => d.key === "workspace")!
     expect(isDestinationActive(workspace, "/home")).toBe(true)
@@ -45,7 +50,7 @@ describe("destinations", () => {
   })
 
   it("treats the destinations, Records, Settings and Help as top-level pages", () => {
-    for (const p of ["/home", "/records", "/feed", "/explore", "/apps", "/settings", "/help"]) {
+    for (const p of ["/home", "/records", "/feed", "/explore", "/graph", "/map", "/apps", "/settings", "/help"]) {
       expect(isTopLevelPath(p)).toBe(true)
     }
     for (const p of ["/settings/edit-profile", "/create", "/alice.example/activity/3k", null]) {

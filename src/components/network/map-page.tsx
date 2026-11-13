@@ -1,0 +1,28 @@
+"use client"
+
+import { MapIcon } from "lucide-react"
+import EmptyState from "@/components/ui/empty-state"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import NetworkNav from "@/components/layout/network-nav"
+import { usePageTitle } from "@/lib/navbar-context"
+
+/**
+ * Network → Map (`/map`): a placeholder until the map exists, so the tab
+ * says what is coming instead of showing an empty page.
+ */
+export default function MapPage() {
+  usePageTitle("Map")
+  return (
+    <PageContainer className="map-page">
+      <NetworkNav current="map" />
+      <PageHeader title="Map" description="Where the work across the Certified network takes place." />
+      <EmptyState
+        icon={MapIcon}
+        headingLevel={2}
+        title="The map is on its way"
+        description="Soon you'll see activities and projects on a map, placed by the locations they record."
+      />
+    </PageContainer>
+  )
+}

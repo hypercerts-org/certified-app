@@ -25,7 +25,8 @@
  * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
  * the renderer picks the first *rendered* one, so the visible variant wins
  * per layout. Every anchor here exists in the current app:
- *   nav-workspace, nav-feed, nav-explore, nav-apps — destinations
+ *   nav-workspace, nav-network, nav-apps — destinations
+ *   nav-feed, nav-explore, nav-graph — the Network tabs (network-nav.tsx)
  *   nav-create — the New button (desktop) / the + (phone)
  *   account-menu — the account button (desktop and phone)
  *   navbar-search — the desktop search field (not on /explore)
@@ -83,7 +84,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: "nav-workspace",
     title: "Workspace",
-    body: "Your Workspace is everything your account holds: your records, what others gave you and your groups. Manage it all from the list on the side. Feed, Explore and Apps next to it are the network.",
+    body: "Your Workspace is everything your account holds: your records, what others gave you and your groups. Manage it all from the list on the side. Network, next to it, is everyone else's work.",
     placement: "bottom",
   },
   {
@@ -93,6 +94,16 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Your account",
     body: "Your profile and your ID. The ID identifies your account in every app. The rest of the page shows your records, the endorsements and follows others have given you, and apps you can use.",
     placement: "right",
+  },
+
+  // ---- Network -------------------------------------------------------
+  {
+    id: "nav-network",
+    navigateTo: "/feed",
+    anchor: "nav-network",
+    title: "Network",
+    body: "Network is everyone's work on Certified, four ways: Feed, Explore, Graph and Map. The tabs at the top switch between them.",
+    placement: "bottom",
   },
 
   // ---- Feed ----------------------------------------------------------
@@ -141,6 +152,16 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "These buttons set what you're looking through: all of it at once, or just activities, projects or accounts. Search above them to narrow it down.",
     placement: "bottom",
     align: "start",
+  },
+
+  // ---- Graph ---------------------------------------------------------
+  {
+    id: "nav-graph",
+    navigateTo: "/graph",
+    anchor: "nav-graph",
+    title: "Graph",
+    body: "Graph shows who endorses whom across the network. Each dot is an account, each line an endorsement.",
+    placement: "bottom",
   },
 
   // ---- Apps ----------------------------------------------------------

@@ -7,6 +7,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import Card from "@/components/ui/card"
 import PageContainer from "@/components/ui/page-container"
+import NetworkNav from "@/components/layout/network-nav"
 import HomeFeed, { FeedPageHeader } from "@/components/home/home-feed"
 import HomeFeedSkeleton from "@/components/home/home-feed-skeleton"
 import NewsSection from "@/components/right-rail/news-section"
@@ -41,6 +42,7 @@ export default function FeedPage() {
     // Same frame as the loaded page, so nothing jumps when it arrives.
     return (
       <PageContainer className="feed-page">
+        <NetworkNav current="feed" />
         <FeedPageHeader />
         <div className="feed-layout">
           <div className="feed-layout__main">
@@ -53,6 +55,7 @@ export default function FeedPage() {
 
   return (
     <PageContainer className="feed-page">
+      <NetworkNav current="feed" />
       {/* Keyed on the account so switching account starts a fresh feed
           instead of showing the previous account's items while it loads. */}
       <HomeFeed

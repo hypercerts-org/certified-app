@@ -19,17 +19,17 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 ## Navigation
 
-**Two groups, in the same order everywhere:** Workspace | Feed · Explore · Apps. Workspace (added after the first review) is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Feed, Explore and Apps are the network.
+**Three destinations, in the same order everywhere:** Workspace | Network · Apps (added after the first review). Workspace is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Network is everyone's work, as four tabs: Feed, Explore, Graph (the endorsement network) and Map (coming). Apps are the other apps that work with your account.
 
 **Desktop**
 
-- One top bar: the wordmark with a Beta tag, the labelled destinations (Workspace, a divider, then Feed, Explore, Apps), search, a black **New** button and your account.
+- One top bar: the wordmark with a Beta tag, the labelled destinations (Workspace, a divider, then Network and Apps), search, a black **New** button and your account.
 - New offers: New activity, New project, New group.
 - Profile, Settings and Help moved into the account menu.
 
 **Phone**
 
-- A bottom tab bar with the same four tabs (Workspace, Feed, Explore, Apps), in every browser. Before, it only appeared in the installed app.
+- A bottom tab bar with the same three tabs (Workspace, Network, Apps), in every browser. Before, it only appeared in the installed app.
 - The top bar shows the wordmark with a Beta tag, **+** (the New menu) and your avatar.
 - Detail pages get a back chevron.
 - The hamburger and the drawer are gone.

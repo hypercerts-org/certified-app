@@ -37,12 +37,13 @@ function GraphLoading() {
 }
 
 /**
- * The endorsement network: the graph plus its stats sidebar. Renders as the
- * /endorsement-graph page by default; pass `embedded` when it is hosted
- * inside something else (the Help pop-up), so the page-only layout rules
- * (`.viz--page`: full shell width, viewport-tall on wide screens) stay off
- * the page behind it. The page sets its own title; this component never
- * touches the chrome.
+ * The endorsement network: the graph plus its stats sidebar. Network →
+ * Graph (`/graph`) hosts it `embedded`, inside its page container under the
+ * Network tabs. Without `embedded` it takes the full-bleed page layout
+ * (`.viz--page`: full shell width, viewport-tall on wide screens), which no
+ * route uses at the moment (`/endorsement-graph` redirects to `/graph`).
+ * The host page sets its own title; this component never touches the
+ * chrome.
  */
 export default function Visualization({ embedded = false }: { embedded?: boolean } = {}) {
   const { graph, isLoading, error } = useEndorsementGraph()
