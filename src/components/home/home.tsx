@@ -124,7 +124,9 @@ function HomeAccount({
       {/* White boxes, so the ID and the groups stand out from the open
           sections. */}
       <div className="home__side">
-        <Card unpadded className="home__box">
+        {/* The ID card: a centerpiece every style can redraw (looks.css);
+            data-did feeds Banknote's microtext. */}
+        <Card unpadded className="home__box" data-centerpiece="id" data-did={did}>
           <HomeIdSection
             identity={identity}
             isGroup={isGroup}

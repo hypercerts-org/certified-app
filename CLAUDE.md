@@ -5,7 +5,7 @@ Claude Code reads this file at session start. The longer agent reference is `AGE
 ## Hard rules (do not violate)
 
 1. **`border-radius` is `var(--radius)` (2 px), `999px` for pills, `50%` for circles.** Never `4`, `6`, `8`, `12`, `16`, `20` px. The sign-in modal is not an exception.
-2. **No raw hex / rgb / rgba** outside `src/app/styles/tokens.css` and `src/app/styles/landing.css`. Everywhere else uses tokens (`--bg-canvas`, `--fg-primary`, `--border-default`, …).
+2. **No raw hex / rgb / rgba** outside `src/app/styles/tokens.css`, `src/app/styles/looks.css` (the experimental styles' token sets) and `src/app/styles/landing.css`. Everywhere else uses tokens (`--bg-canvas`, `--fg-primary`, `--border-default`, …).
 3. **Breakpoints are 800 / 1100 / 1300 only.** "Below desktop" → `@media (max-width: 799px)`. Don't introduce 768 / 760 / 640.
 4. **Elevation shadows are `var(--shadow-sm | --shadow-md | --shadow-lg)`, plus `var(--shadow-modal)` for dialogs only.** Rings and hairlines use the `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. Never a literal `box-shadow: 0 X Y rgba(...)`.
 5. **Z-index is a `--z-*` token.** No literal numbers.

@@ -47,25 +47,27 @@ export default {
          transform + 'case' forms to `.text-label`. Mirrored as
          --text-* size tokens in tokens.css for CSS consumers. */
       fontSize: {
+        /* Weights read a style's heading weights (looks.css), falling
+           back to 700 / 600. */
         display: [
           "3rem",
-          { lineHeight: "1.1", fontWeight: "700", letterSpacing: "-0.03em" },
+          { lineHeight: "1.1", fontWeight: "var(--weight-headline-strong, 700)", letterSpacing: "-0.03em" },
         ],
         h1: [
           "2.25rem",
-          { lineHeight: "1.15", fontWeight: "700", letterSpacing: "-0.02em" },
+          { lineHeight: "1.15", fontWeight: "var(--weight-headline-strong, 700)", letterSpacing: "-0.02em" },
         ],
         h2: [
           "1.75rem",
-          { lineHeight: "1.2", fontWeight: "600", letterSpacing: "-0.015em" },
+          { lineHeight: "1.2", fontWeight: "var(--weight-headline, 600)", letterSpacing: "-0.015em" },
         ],
         h3: [
           "1.375rem",
-          { lineHeight: "1.3", fontWeight: "600", letterSpacing: "-0.01em" },
+          { lineHeight: "1.3", fontWeight: "var(--weight-headline, 600)", letterSpacing: "-0.01em" },
         ],
         h4: [
           "1.125rem",
-          { lineHeight: "1.35", fontWeight: "600", letterSpacing: "-0.005em" },
+          { lineHeight: "1.35", fontWeight: "var(--weight-headline, 600)", letterSpacing: "-0.005em" },
         ],
         /* Section heading inside a page (SectionHeader). Inter, never
            `font-headline`: serif is kept for page titles, account names
@@ -129,7 +131,9 @@ export default {
         modal: "var(--shadow-modal)",
       },
       borderRadius: {
-        DEFAULT: "2px",
+        /* The radius token (2px), so a style (looks.css) can change the
+           corners of every `rounded` element at once. */
+        DEFAULT: "var(--radius)",
       },
       /* One pulse recipe app-wide (DESIGN.md): opacity 1 -> .5 -> 1 over
          1.5s. `animate-skeleton` is what <Skeleton> uses: it stays

@@ -415,7 +415,8 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
 ### Where styles live
 
 - `src/app/styles/` — a tree of feature-scoped CSS files, all imported by `src/app/globals.css`. The split is intentional; do not collapse it back to one file.
-  - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live.**
+  - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live**, with `looks.css`.
+  - `looks.css` — the experimental styles (Settings → Appearance → Style; `src/lib/look/looks.ts`): each style's token set on `html[data-look]`, light and dark, plus the picker's previews. DESIGN.md §2.11.
   - `components.css` — primitive component chrome (modals, app-card label, dash-card, error/empty states).
   - `layout.css` — app shell, phone top bar, desktop top bar (incl. the Workspace trigger), account button, bottom nav.
   - Per-feature: `feed.css`, `profile-*.css`, `cert-detail.css`, `project-detail.css`, `explore.css`, `home.css`, `settings-page.css`, `workspace.css`, `notifications.css`, `landing.css`, `leaflet.css`, etc.

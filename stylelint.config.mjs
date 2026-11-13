@@ -9,7 +9,7 @@
  *
  * Rules:
  *   1. No raw hex / rgb / rgba / hsl / hsla / named colors
- *      (tokens.css + landing.css are exempt via `overrides`).
+ *      (tokens.css, looks.css + landing.css are exempt via `overrides`).
  *   2. box-shadow is `var(--shadow-*)` or `none` (same exemption).
  *   3. z-index is `var(--z-*)` (optionally `calc(var(--z-*) +/- n)`),
  *      `auto`, or `0`. Local raises use `var(--z-local-raise)`.
@@ -78,8 +78,9 @@ const config = {
   },
   overrides: [
     {
-      // Token source files may hold raw color and shadow values.
-      files: ["src/app/styles/tokens.css", "src/app/styles/landing.css"],
+      // Token source files may hold raw color and shadow values (looks.css:
+      // the experimental styles' token sets).
+      files: ["src/app/styles/tokens.css", "src/app/styles/looks.css", "src/app/styles/landing.css"],
       rules: {
         "color-no-hex": null,
         "color-named": null,

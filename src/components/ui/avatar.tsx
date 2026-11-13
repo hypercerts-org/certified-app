@@ -112,9 +112,18 @@ const Avatar: React.FC<AvatarProps> = ({
   // Placeholder: a deterministic conic-gradient ring around the neutral fill
   // + initials. `overflow-hidden` and the flat border are dropped here — the
   // ring (the outer padding showing the gradient) is the visible edge.
+  // A centerpiece every style can redraw (looks.css): its shape, frame,
+  // image treatment and initials fallback.
+  const centerpiece = {
+    "data-centerpiece": "avatar",
+    "data-shape": shape,
+  } as const;
+
   if (showFallback) {
     return (
       <div
+        {...centerpiece}
+        data-fallback=""
         className={`${sizeMap[size]} shrink-0 ${radius} flex items-center justify-center ${className}`}
         style={{
           padding: ringPx[size],
@@ -142,6 +151,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
+      {...centerpiece}
       className={`${sizeMap[size]} relative shrink-0 ${radius} overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
       {/* Initials on the neutral fill until the image has loaded, so the

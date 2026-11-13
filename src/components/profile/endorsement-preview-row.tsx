@@ -22,17 +22,23 @@ export function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProp
     useEndorserIdentity(endorsement)
 
   return (
-    <li className="profile-overview__endorse-item">
+    // An endorsement: a centerpiece every style can redraw (looks.css),
+    // its parts marked with data-part.
+    <li className="profile-overview__endorse-item" data-centerpiece="endorsement">
       <Link href={href} className="profile-overview__endorse-link">
         <Avatar size="sm" src={avatarSrc} fallbackInitials={initials} />
         <span className="profile-overview__endorse-meta">
-          <span className="profile-overview__endorse-name" dir="auto">{displayName}</span>
-          <span className="profile-overview__endorse-when">
+          <span className="profile-overview__endorse-name" dir="auto" data-part="who">
+            {displayName}
+          </span>
+          <span className="profile-overview__endorse-when" data-part="when">
             {formatShortDate(endorsement.createdAt)}
           </span>
         </span>
         {endorsement.note ? (
-          <span className="profile-overview__endorse-note">{endorsement.note}</span>
+          <span className="profile-overview__endorse-note" data-part="note">
+            {endorsement.note}
+          </span>
         ) : null}
       </Link>
     </li>

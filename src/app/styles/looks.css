@@ -1,0 +1,1224 @@
+/* ========== Styles ("looks"), experimental ==========
+   Design directions for the whole app, picked in Settings → Appearance
+   (src/lib/look/looks.ts). Each style redefines the design tokens on
+   `:root[data-look="<id>"]`: typefaces, corners and heading weights in a
+   mode-independent block, then colours and shadows for light and for dark.
+   On :root, so the derived tokens (--bg-overlay, --navbar-bg, --focus-ring
+   …) follow too. Today (no attribute) is tokens.css as is.
+
+   The same blocks also apply to `[data-look-preview="<id>"]`, the live
+   previews in the picker, in the current light/dark mode. A preview sits
+   inside the page, so it inherits the active style: every block sets the
+   FULL set of look tokens, and Today has preview-only blocks with the
+   tokens.css values (looks.test.ts checks they stay equal).
+
+   Look tokens on top of tokens.css:
+     --font-inter / --font-headline / --font-mono  the UI, display, mono faces
+     --font-numeral   StatRow values (unset = the UI face)
+     --font-label     the uppercase `.text-label` step (unset = inherit)
+     --weight-headline-strong / --weight-headline  display + h1 / h2–h4
+     --look-backdrop(-size)  an image behind the page (gradient, dots, grain)
+
+   Exempt from the stylelint colour and shadow rules, like tokens.css. */
+
+html[data-look] body {
+  background-image: var(--look-backdrop, none);
+  background-size: var(--look-backdrop-size, auto);
+  background-attachment: fixed;
+}
+
+/* ---------------------------------------------------------------- Today
+   Preview only: the tokens.css values, so the Today tile looks like Today
+   whatever style is active. */
+[data-look-preview="today"] {
+  --font-inter: var(--font-inter-face), system-ui, sans-serif;
+  --font-headline: var(--font-noto-serif), Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-numeral: var(--font-inter-face), system-ui, sans-serif;
+  --font-label: var(--font-inter-face), system-ui, sans-serif;
+  --weight-headline-strong: 700;
+  --weight-headline: 600;
+  --radius: 2px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+html:not([data-theme="dark"]) [data-look-preview="today"] {
+  --bg-canvas: #f9f9f9;
+  --bg-sunken: #eeeeee;
+  --bg-elevated: #FFFFFF;
+  --fg-primary: #111111;
+  --fg-secondary: #4c4546;
+  --fg-muted: #6b6263;
+  --border-default: rgba(0, 0, 0, 0.08);
+  --btn-primary-bg: #111111;
+  --btn-primary-fg: #FFFFFF;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="dark"] [data-look-preview="today"] {
+  --bg-canvas: #18181b;
+  --bg-sunken: #111114;
+  --bg-elevated: #2d2d33;
+  --fg-primary: #f5f5f7;
+  --fg-secondary: #c7c7cc;
+  --fg-muted: #9a9aa1;
+  --border-default: rgba(255, 255, 255, 0.08);
+  --btn-primary-bg: #f5f5f7;
+  --btn-primary-fg: #0b0b0d;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* -------------------------------------------------------------- Almanac
+   Today's monochrome taken all the way: Instrument Serif (one weight) for
+   names and numbers, Geist Mono capitals for labels, ink rules, no
+   corners, no shadows. */
+:root[data-look="almanac"],
+[data-look-preview="almanac"] {
+  --font-inter: var(--font-inter-face), system-ui, sans-serif;
+  --font-headline: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-instrument-serif), Georgia, serif;
+  --font-label: var(--font-geist-mono), ui-monospace, monospace;
+  --weight-headline-strong: 400;
+  --weight-headline: 400;
+  --radius: 0px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+/* Instrument Serif has one weight: never fake a bold. */
+html[data-look="almanac"] body,
+[data-look-preview="almanac"] {
+  font-synthesis: none;
+}
+
+:root[data-look="almanac"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="almanac"] {
+  --bg-canvas: #F3F3EF;
+  --bg-sunken: #E9E9E3;
+  --bg-raised: #EDEDE8;
+  --bg-elevated: #F3F3EF;
+  --bg-selected: #E4E4DD;
+  --fg-primary: #0D0D0C;
+  --fg-secondary: #2E2E2B;
+  --fg-muted: #66665F;
+  --border-subtle: rgba(13, 13, 12, 0.14);
+  --border-default: rgba(13, 13, 12, 0.88);
+  --border-hover: #0D0D0C;
+  --border-control: rgba(13, 13, 12, 0.7);
+  --overlay-weak: rgba(13, 13, 12, 0.05);
+  --overlay-medium: rgba(13, 13, 12, 0.1);
+  --btn-primary-bg: #0D0D0C;
+  --btn-primary-bg-hover: #2E2E2B;
+  --btn-primary-fg: #F3F3EF;
+  --color-accent: #0D0D0C;
+  --color-accent-hover: #2E2E2B;
+  --selection-bg: #0D0D0C;
+  --selection-fg: #F3F3EF;
+  --color-surface-container-high: #E0E0D9;
+  --shadow-sm: none;
+  --shadow-md: 0 0 0 1px #0D0D0C;
+  --shadow-lg: 0 0 0 1px #0D0D0C;
+}
+
+:root[data-look="almanac"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="almanac"] {
+  --bg-canvas: #0D0D0C;
+  --bg-sunken: #161614;
+  --bg-raised: #121211;
+  --bg-elevated: #0D0D0C;
+  --bg-selected: #1F1F1C;
+  --fg-primary: #EEEEE8;
+  --fg-secondary: #CACAC2;
+  --fg-muted: #8E8E86;
+  --border-subtle: rgba(238, 238, 232, 0.14);
+  --border-default: rgba(238, 238, 232, 0.85);
+  --border-hover: #EEEEE8;
+  --border-control: rgba(238, 238, 232, 0.6);
+  --overlay-weak: rgba(238, 238, 232, 0.05);
+  --overlay-medium: rgba(238, 238, 232, 0.1);
+  --btn-primary-bg: #EEEEE8;
+  --btn-primary-bg-hover: #CACAC2;
+  --btn-primary-fg: #0D0D0C;
+  --color-accent: #EEEEE8;
+  --color-accent-hover: #CACAC2;
+  --selection-bg: #EEEEE8;
+  --selection-fg: #0D0D0C;
+  --color-surface-container-high: #262623;
+  --shadow-sm: none;
+  --shadow-md: 0 0 0 1px #EEEEE8;
+  --shadow-lg: 0 0 0 1px #EEEEE8;
+}
+
+/* ---------------------------------------------------------------- Linen
+   The calm of a private bank: warm neutrals, Inter Tight light for names,
+   Newsreader numerals, soft two-layer shadows, rounder corners, one muted
+   gold for focus. */
+:root[data-look="linen"],
+[data-look-preview="linen"] {
+  --font-inter: var(--font-inter-face), system-ui, sans-serif;
+  --font-headline: var(--font-inter-tight), var(--font-inter-face), sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-newsreader), Georgia, serif;
+  --font-label: var(--font-inter-face), system-ui, sans-serif;
+  --weight-headline-strong: 300;
+  --weight-headline: 400;
+  --radius: 8px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+:root[data-look="linen"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="linen"] {
+  --bg-canvas: #F6F5F2;
+  --bg-sunken: #F0EFEA;
+  --bg-raised: #F3F2EE;
+  --bg-elevated: #FDFDFB;
+  --bg-selected: #EAE8E1;
+  --fg-primary: #272735;
+  --fg-secondary: #4B4B59;
+  /* Darker than the direction's #767682, which fell below 4.5:1. */
+  --fg-muted: #676775;
+  --border-subtle: rgba(39, 39, 53, 0.06);
+  --border-default: #E6E4DD;
+  --border-hover: #D5D2C8;
+  --border-control: rgba(39, 39, 53, 0.45);
+  --overlay-weak: rgba(39, 39, 53, 0.04);
+  --overlay-medium: rgba(39, 39, 53, 0.08);
+  --btn-primary-bg: #272735;
+  --btn-primary-bg-hover: #3A3A4A;
+  --btn-primary-fg: #FDFDFB;
+  --color-accent: #8A753C;
+  --color-accent-hover: #6F5E2F;
+  --selection-bg: #272735;
+  --selection-fg: #FDFDFB;
+  --color-surface-container-high: #E9E2CF;
+  --shadow-sm: 0 1px 1px rgba(39, 39, 53, 0.03), 0 2px 6px -2px rgba(39, 39, 53, 0.08);
+  --shadow-md: 0 1px 1px rgba(39, 39, 53, 0.03), 0 8px 24px -12px rgba(39, 39, 53, 0.16);
+  --shadow-lg: 0 2px 2px rgba(39, 39, 53, 0.04), 0 18px 40px -16px rgba(39, 39, 53, 0.24);
+}
+
+:root[data-look="linen"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="linen"] {
+  --bg-canvas: #15151A;
+  --bg-sunken: #111115;
+  --bg-raised: #19191F;
+  --bg-elevated: #1D1D24;
+  --bg-selected: #25252D;
+  --fg-primary: #F2F1EC;
+  --fg-secondary: #CAC9D0;
+  --fg-muted: #9898A4;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.16);
+  --border-control: rgba(255, 255, 255, 0.35);
+  --overlay-weak: rgba(255, 255, 255, 0.04);
+  --overlay-medium: rgba(255, 255, 255, 0.08);
+  --btn-primary-bg: #F2F1EC;
+  --btn-primary-bg-hover: #DCDAD3;
+  --btn-primary-fg: #15151A;
+  --color-accent: #D2C08A;
+  --color-accent-hover: #E2D3A6;
+  --selection-bg: #F2F1EC;
+  --selection-fg: #15151A;
+  --color-surface-container-high: #2E2B22;
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+  --shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 44px -16px rgba(0, 0, 0, 0.8);
+}
+
+/* ------------------------------------------------------------- Banknote
+   Passport and banknote craft: Newsreader names and numbers, Hanken
+   Grotesk UI, IBM Plex Mono for IDs, intaglio blue on banknote paper, a
+   note-green accent. Keeps today's 2px corners. */
+:root[data-look="banknote"],
+[data-look-preview="banknote"] {
+  --font-inter: var(--font-hanken), system-ui, sans-serif;
+  --font-headline: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-newsreader), Georgia, serif;
+  --font-label: var(--font-hanken), system-ui, sans-serif;
+  --weight-headline-strong: 500;
+  --weight-headline: 500;
+  --radius: 2px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+:root[data-look="banknote"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="banknote"] {
+  --bg-canvas: #F1F0E9;
+  --bg-sunken: #E8E7DD;
+  --bg-raised: #EDECE4;
+  --bg-elevated: #FAF9F3;
+  --bg-selected: #E3E4DE;
+  --fg-primary: #16203A;
+  --fg-secondary: #333E58;
+  --fg-muted: #5C6478;
+  --border-subtle: rgba(22, 32, 58, 0.08);
+  --border-default: rgba(22, 32, 58, 0.16);
+  --border-hover: rgba(22, 32, 58, 0.34);
+  --border-control: rgba(22, 32, 58, 0.55);
+  --overlay-weak: rgba(22, 32, 58, 0.04);
+  --overlay-medium: rgba(22, 32, 58, 0.08);
+  --btn-primary-bg: #16203A;
+  --btn-primary-bg-hover: #253154;
+  --btn-primary-fg: #F1F0E9;
+  --color-accent: #2C5E4F;
+  --color-accent-hover: #234B3F;
+  --selection-bg: #16203A;
+  --selection-fg: #F1F0E9;
+  --color-surface-container-high: #DCDCD2;
+  --shadow-sm: 0 1px 2px rgba(22, 32, 58, 0.06);
+  --shadow-md: 0 4px 12px rgba(22, 32, 58, 0.1);
+  --shadow-lg: 0 12px 32px rgba(22, 32, 58, 0.14);
+}
+
+:root[data-look="banknote"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="banknote"] {
+  --bg-canvas: #0E1320;
+  --bg-sunken: #0A0E18;
+  --bg-raised: #111726;
+  --bg-elevated: #141A28;
+  --bg-selected: #1C2333;
+  --fg-primary: #ECE8DA;
+  --fg-secondary: #C7C4B7;
+  --fg-muted: #9095A4;
+  --border-subtle: rgba(236, 232, 218, 0.06);
+  --border-default: rgba(236, 232, 218, 0.12);
+  --border-hover: rgba(236, 232, 218, 0.3);
+  --border-control: rgba(236, 232, 218, 0.4);
+  --overlay-weak: rgba(236, 232, 218, 0.04);
+  --overlay-medium: rgba(236, 232, 218, 0.08);
+  --btn-primary-bg: #ECE8DA;
+  --btn-primary-bg-hover: #D8D4C4;
+  --btn-primary-fg: #0E1320;
+  --color-accent: #8FBDAA;
+  --color-accent-hover: #A9CFBF;
+  --selection-bg: #ECE8DA;
+  --selection-fg: #0E1320;
+  --color-surface-container-high: #222A3A;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* --------------------------------------------------------------- Wallet
+   The account as a pass you carry: Geist throughout, white cells on a
+   grouped grey (iOS Settings), rounder corners, a teal accent from the
+   pass gradient. */
+:root[data-look="wallet"],
+[data-look-preview="wallet"] {
+  --font-inter: var(--font-geist), system-ui, sans-serif;
+  --font-headline: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-geist), system-ui, sans-serif;
+  --font-label: var(--font-geist), system-ui, sans-serif;
+  --weight-headline-strong: 700;
+  --weight-headline: 600;
+  --radius: 10px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+:root[data-look="wallet"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="wallet"] {
+  --bg-canvas: #F2F2F7;
+  --bg-sunken: #E9E9EF;
+  --bg-raised: #EDEDF2;
+  --bg-elevated: #FFFFFF;
+  --bg-selected: #E3E3E9;
+  --fg-primary: #0B0B0F;
+  --fg-secondary: #3C3C43;
+  /* Darker than the direction's #86868C, which fell below 4.5:1. */
+  --fg-muted: #66666C;
+  --border-subtle: rgba(60, 60, 67, 0.08);
+  --border-default: rgba(60, 60, 67, 0.12);
+  --border-hover: rgba(60, 60, 67, 0.22);
+  --border-control: rgba(60, 60, 67, 0.45);
+  --overlay-weak: rgba(60, 60, 67, 0.05);
+  --overlay-medium: rgba(60, 60, 67, 0.1);
+  --btn-primary-bg: #0B0B0F;
+  --btn-primary-bg-hover: #2C2C30;
+  --btn-primary-fg: #FFFFFF;
+  --color-accent: #145B55;
+  --color-accent-hover: #0F4743;
+  --selection-bg: #0E4D5A;
+  --selection-fg: #FFFFFF;
+  --color-surface-container-high: #E3E3E9;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px -12px rgba(14, 40, 70, 0.22);
+  --shadow-lg: 0 18px 40px -18px rgba(14, 40, 70, 0.45);
+}
+
+:root[data-look="wallet"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="wallet"] {
+  --bg-canvas: #000000;
+  --bg-sunken: #2C2C2E;
+  --bg-raised: #141416;
+  --bg-elevated: #1C1C1E;
+  --bg-selected: #2C2C2E;
+  --fg-primary: #F5F5F7;
+  --fg-secondary: #D1D1D6;
+  --fg-muted: #8E8E93;
+  --border-subtle: rgba(84, 84, 88, 0.3);
+  --border-default: rgba(84, 84, 88, 0.45);
+  --border-hover: rgba(84, 84, 88, 0.65);
+  --border-control: rgba(235, 235, 245, 0.35);
+  --overlay-weak: rgba(255, 255, 255, 0.05);
+  --overlay-medium: rgba(255, 255, 255, 0.1);
+  --btn-primary-bg: #F5F5F7;
+  --btn-primary-bg-hover: #E5E5EA;
+  --btn-primary-fg: #000000;
+  --color-accent: #3AA99F;
+  --color-accent-hover: #5BBFB6;
+  --selection-bg: #F5F5F7;
+  --selection-fg: #000000;
+  --color-surface-container-high: #2C2C2E;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 18px 40px -18px rgba(0, 0, 0, 0.8);
+}
+
+/* ----------------------------------------------------------- Dot matrix
+   A calm grotesk with a signal layer: Geist for reading, Doto for numbers,
+   Geist Mono capitals for labels, a faint dot field behind the page, red
+   kept for new things (the count badge). */
+:root[data-look="dots"],
+[data-look-preview="dots"] {
+  --font-inter: var(--font-geist), system-ui, sans-serif;
+  --font-headline: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-doto), var(--font-geist-mono), monospace;
+  --font-label: var(--font-geist-mono), ui-monospace, monospace;
+  --weight-headline-strong: 600;
+  --weight-headline: 500;
+  --radius: 8px;
+  --look-backdrop-size: 11px 11px;
+}
+
+:root[data-look="dots"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="dots"] {
+  --bg-canvas: #F2F2F2;
+  --bg-sunken: #E8E8E8;
+  --bg-raised: #EDEDED;
+  --bg-elevated: #FFFFFF;
+  --bg-selected: #E2E2E2;
+  --fg-primary: #000000;
+  --fg-secondary: #333333;
+  /* Darker than the direction's #828282, which fell below 4.5:1. */
+  --fg-muted: #666666;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.2);
+  --border-control: rgba(0, 0, 0, 0.5);
+  --overlay-weak: rgba(0, 0, 0, 0.04);
+  --overlay-medium: rgba(0, 0, 0, 0.08);
+  --btn-primary-bg: #000000;
+  --btn-primary-bg-hover: #222222;
+  --btn-primary-fg: #FFFFFF;
+  --color-accent: #000000;
+  --color-accent-hover: #333333;
+  --selection-bg: #000000;
+  --selection-fg: #FFFFFF;
+  --color-surface-container-high: #E2E2E2;
+  --badge-count-bg: #D71921;
+  --shadow-sm: none;
+  --shadow-md: 0 6px 18px -8px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 16px 36px -14px rgba(0, 0, 0, 0.28);
+  --look-backdrop: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1.2px);
+}
+
+:root[data-look="dots"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="dots"] {
+  --bg-canvas: #000000;
+  --bg-sunken: #1A1A1A;
+  --bg-raised: #0A0A0A;
+  --bg-elevated: #111111;
+  --bg-selected: #222222;
+  --fg-primary: #FFFFFF;
+  --fg-secondary: #C8C8C8;
+  --fg-muted: #8F8F8F;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --border-control: rgba(255, 255, 255, 0.4);
+  --overlay-weak: rgba(255, 255, 255, 0.05);
+  --overlay-medium: rgba(255, 255, 255, 0.1);
+  --btn-primary-bg: #FFFFFF;
+  --btn-primary-bg-hover: #E0E0E0;
+  --btn-primary-fg: #000000;
+  --color-accent: #FFFFFF;
+  --color-accent-hover: #E0E0E0;
+  --selection-bg: #FFFFFF;
+  --selection-fg: #000000;
+  --color-surface-container-high: #222222;
+  --badge-count-bg: #FF3B41;
+  --shadow-sm: none;
+  --shadow-md: 0 6px 18px -8px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 16px 36px -14px rgba(0, 0, 0, 0.9);
+  --look-backdrop: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1.2px);
+}
+
+/* ---------------------------------------------------------------- Glass
+   Content leads, chrome floats: a landscape gradient behind the page
+   (sky to hills by day, dusk by night) and translucent panels with a
+   bright top edge. Inter, bold names, large corners. Menus and sheets
+   stay near-opaque (blurred) so text behind never shows through them. */
+:root[data-look="glass"],
+[data-look-preview="glass"] {
+  --font-inter: var(--font-inter-face), system-ui, sans-serif;
+  --font-headline: var(--font-inter-face), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-numeral: var(--font-inter-face), system-ui, sans-serif;
+  --font-label: var(--font-inter-face), system-ui, sans-serif;
+  --weight-headline-strong: 700;
+  --weight-headline: 700;
+  --radius: 12px;
+  --look-backdrop-size: auto;
+}
+
+:root[data-look="glass"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="glass"] {
+  --bg-canvas: #D6E8F1;
+  --bg-sunken: rgba(255, 255, 255, 0.4);
+  --bg-raised: rgba(255, 255, 255, 0.5);
+  --bg-elevated: rgba(255, 255, 255, 0.62);
+  --bg-selected: rgba(255, 255, 255, 0.78);
+  --sheet-bg: rgba(244, 248, 251, 0.96);
+  --fg-primary: #0A0B10;
+  --fg-secondary: #252832;
+  --fg-muted: #4A4F5C;
+  --border-subtle: rgba(10, 11, 16, 0.06);
+  --border-default: rgba(10, 11, 16, 0.1);
+  --border-hover: rgba(10, 11, 16, 0.2);
+  --border-control: rgba(10, 11, 16, 0.45);
+  --overlay-weak: rgba(255, 255, 255, 0.35);
+  --overlay-medium: rgba(255, 255, 255, 0.55);
+  --btn-primary-bg: #0A0B10;
+  --btn-primary-bg-hover: #22252E;
+  --btn-primary-fg: #FFFFFF;
+  --color-accent: #2F6F8F;
+  --color-accent-hover: #255A75;
+  --selection-bg: #0A0B10;
+  --selection-fg: #FFFFFF;
+  --color-surface-container-high: rgba(255, 255, 255, 0.72);
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(20, 40, 60, 0.08);
+  --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 34px -14px rgba(20, 40, 60, 0.35);
+  --shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 22px 48px -18px rgba(20, 40, 60, 0.45);
+  --look-backdrop: linear-gradient(180deg, #8FC3E0 0%, #CFE3EE 32%, #E3EDE2 64%, #F2EEE4 100%);
+}
+
+:root[data-look="glass"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="glass"] {
+  --bg-canvas: #232B40;
+  --bg-sunken: rgba(0, 0, 0, 0.25);
+  --bg-raised: rgba(20, 22, 30, 0.45);
+  --bg-elevated: rgba(20, 22, 30, 0.55);
+  --bg-selected: rgba(255, 255, 255, 0.14);
+  --sheet-bg: rgba(28, 32, 46, 0.96);
+  --fg-primary: #F4F5F8;
+  --fg-secondary: #CDD0DA;
+  --fg-muted: #A2A7B5;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.22);
+  --border-control: rgba(255, 255, 255, 0.4);
+  --overlay-weak: rgba(255, 255, 255, 0.06);
+  --overlay-medium: rgba(255, 255, 255, 0.12);
+  --btn-primary-bg: #F4F5F8;
+  --btn-primary-bg-hover: #E0E2E8;
+  --btn-primary-fg: #0A0B10;
+  --color-accent: #8FC3E0;
+  --color-accent-hover: #ABD3E9;
+  --selection-bg: #F4F5F8;
+  --selection-fg: #0A0B10;
+  --color-surface-container-high: rgba(255, 255, 255, 0.14);
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 34px -14px rgba(0, 0, 0, 0.6);
+  --shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 22px 48px -18px rgba(0, 0, 0, 0.7);
+  --look-backdrop: linear-gradient(180deg, #1F2A44 0%, #2C3550 40%, #3B3346 75%, #4A3438 100%);
+}
+
+/* Menus float over content: blur what's behind them, as glass does. */
+html[data-look="glass"] .popover-panel {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* --------------------------------------------------------------- Shapes
+   Round type and tonal colour: Google Sans Flex with its roundness axis up
+   for names and titles, a friendly purple, soft tinted surfaces, large
+   corners, no borders shouting. */
+:root[data-look="shapes"],
+[data-look-preview="shapes"] {
+  --font-inter: var(--font-sans-flex), system-ui, sans-serif;
+  --font-headline: var(--font-sans-flex), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-numeral: var(--font-sans-flex), system-ui, sans-serif;
+  --font-label: var(--font-sans-flex), system-ui, sans-serif;
+  --weight-headline-strong: 700;
+  --weight-headline: 600;
+  --radius: 12px;
+  --look-backdrop: none;
+  --look-backdrop-size: auto;
+}
+
+html[data-look="shapes"] .font-headline {
+  font-variation-settings: "ROND" 100;
+}
+
+:root[data-look="shapes"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="shapes"] {
+  --bg-canvas: #FFF7F1;
+  --bg-sunken: #FBEDE3;
+  --bg-raised: #FFEFE5;
+  --bg-elevated: #FFFFFF;
+  --bg-selected: #EAE3FF;
+  --fg-primary: #1F1630;
+  --fg-secondary: #43395A;
+  --fg-muted: #685E7D;
+  --border-subtle: rgba(64, 41, 143, 0.06);
+  --border-default: rgba(64, 41, 143, 0.1);
+  --border-hover: rgba(64, 41, 143, 0.22);
+  --border-control: rgba(31, 22, 48, 0.5);
+  --overlay-weak: rgba(64, 41, 143, 0.05);
+  --overlay-medium: rgba(64, 41, 143, 0.1);
+  --btn-primary-bg: #40298F;
+  --btn-primary-bg-hover: #34217A;
+  --btn-primary-fg: #FFFFFF;
+  --color-accent: #40298F;
+  --color-accent-hover: #34217A;
+  --selection-bg: #40298F;
+  --selection-fg: #FFFFFF;
+  --color-surface-container-high: #EAE3FF;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px -12px rgba(64, 41, 143, 0.25);
+  --shadow-lg: 0 18px 40px -16px rgba(64, 41, 143, 0.32);
+}
+
+:root[data-look="shapes"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="shapes"] {
+  --bg-canvas: #17121F;
+  --bg-sunken: #120E19;
+  --bg-raised: #1C1626;
+  --bg-elevated: #221B2E;
+  --bg-selected: #322750;
+  --fg-primary: #F6F1FF;
+  --fg-secondary: #D3CAE6;
+  --fg-muted: #A397BC;
+  --border-subtle: rgba(234, 227, 255, 0.06);
+  --border-default: rgba(234, 227, 255, 0.1);
+  --border-hover: rgba(234, 227, 255, 0.2);
+  --border-control: rgba(234, 227, 255, 0.4);
+  --overlay-weak: rgba(234, 227, 255, 0.05);
+  --overlay-medium: rgba(234, 227, 255, 0.1);
+  --btn-primary-bg: #CDBEFF;
+  --btn-primary-bg-hover: #B9A6FF;
+  --btn-primary-fg: #1F1630;
+  --color-accent: #CDBEFF;
+  --color-accent-hover: #DDD2FF;
+  --selection-bg: #CDBEFF;
+  --selection-fg: #1F1630;
+  --color-surface-container-high: #322750;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 18px 40px -16px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------------------------------------------------------------- Stamp
+   Two spot inks on newsprint: Bricolage Grotesque condensed capitals for
+   names and titles, Schibsted Grotesk for reading, DM Mono labels, riso
+   blue buttons, fluorescent pink for focus and selection, a highlighter
+   for the current item, ink frames, hard offset shadows, paper grain. */
+:root[data-look="stamp"],
+[data-look-preview="stamp"] {
+  --font-inter: var(--font-schibsted), system-ui, sans-serif;
+  --font-headline: var(--font-bricolage), system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+  --font-numeral: var(--font-bricolage), system-ui, sans-serif;
+  --font-label: var(--font-dm-mono), ui-monospace, monospace;
+  --weight-headline-strong: 800;
+  --weight-headline: 800;
+  --radius: 0px;
+  --look-backdrop-size: 160px 160px;
+}
+
+html[data-look="stamp"] .font-headline {
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+/* Previews: undo the page's heading treatment, then apply each preview's
+   own (html + attribute, so these outrank the page rules above). */
+html [data-look-preview] .font-headline {
+  font-variation-settings: normal;
+  text-transform: none;
+}
+
+html [data-look-preview="shapes"] .font-headline {
+  font-variation-settings: "ROND" 100;
+}
+
+html [data-look-preview="stamp"] .font-headline {
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+:root[data-look="stamp"]:not([data-theme="dark"]),
+html:not([data-theme="dark"]) [data-look-preview="stamp"] {
+  --bg-canvas: #F3EDE1;
+  --bg-sunken: #E9E1D1;
+  --bg-raised: #EEE7DA;
+  --bg-elevated: #F8F3E9;
+  --bg-selected: #FFE33B;
+  --fg-primary: #1C1C1A;
+  --fg-secondary: #3A3934;
+  --fg-muted: #5E5B51;
+  --border-subtle: rgba(28, 28, 26, 0.14);
+  --border-default: #1C1C1A;
+  --border-hover: #1C1C1A;
+  --border-control: rgba(28, 28, 26, 0.7);
+  --overlay-weak: rgba(28, 28, 26, 0.05);
+  --overlay-medium: rgba(28, 28, 26, 0.1);
+  --btn-primary-bg: #0A6FB0;
+  --btn-primary-bg-hover: #085C93;
+  --btn-primary-fg: #FFFFFF;
+  --color-accent: #E8338F;
+  --color-accent-hover: #C92277;
+  --selection-bg: #E8338F;
+  --selection-fg: #FFFFFF;
+  --color-surface-container-high: #E5DCC9;
+  --shadow-sm: none;
+  --shadow-md: 3px 3px 0 #1C1C1A;
+  --shadow-lg: 5px 5px 0 #1C1C1A;
+  --look-backdrop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+:root[data-look="stamp"][data-theme="dark"],
+html[data-theme="dark"] [data-look-preview="stamp"] {
+  --bg-canvas: #14161A;
+  --bg-sunken: #0F1114;
+  --bg-raised: #181B20;
+  --bg-elevated: #1C1F24;
+  --bg-selected: #6B5F12;
+  --fg-primary: #F1ECE1;
+  --fg-secondary: #CFC9BC;
+  --fg-muted: #9C968A;
+  --border-subtle: rgba(241, 236, 225, 0.12);
+  --border-default: rgba(241, 236, 225, 0.85);
+  --border-hover: #F1ECE1;
+  --border-control: rgba(241, 236, 225, 0.6);
+  --overlay-weak: rgba(241, 236, 225, 0.05);
+  --overlay-medium: rgba(241, 236, 225, 0.1);
+  --btn-primary-bg: #3A9AD9;
+  --btn-primary-bg-hover: #5AAEE3;
+  --btn-primary-fg: #0A0C0F;
+  --color-accent: #FF5FB0;
+  --color-accent-hover: #FF85C4;
+  --selection-bg: #FF5FB0;
+  --selection-fg: #14161A;
+  --color-surface-container-high: #2A2D33;
+  --shadow-sm: none;
+  --shadow-md: 3px 3px 0 rgba(241, 236, 225, 0.85);
+  --shadow-lg: 5px 5px 0 rgba(241, 236, 225, 0.85);
+  --look-backdrop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* ======================================================================
+   Centerpieces: three places every style redraws
+   ======================================================================
+   The same three places in every style, so a direction shows itself where
+   it matters most instead of in one-off spots:
+
+   1. The avatar ([data-centerpiece="avatar"], ui/avatar.tsx; data-shape
+      circle|square, data-fallback while it shows initials): shape, frame,
+      image treatment and the initials fallback. On every page.
+   2. The ID card ([data-centerpiece="id"], the Overview's ID box, with
+      data-did): the account's identity object.
+   3. An endorsement ([data-centerpiece="endorsement"], the Overview's and
+      the profile's rows; parts data-part="who|when|note"): the trust mark.
+
+   Today leaves all three as designed. Page-level only: the picker's
+   previews show tokens, not centerpieces. Scoped token overrides (e.g.
+   Wallet's white-on-gradient pass) keep the components inside working. */
+
+/* -------- Almanac: engraved images, a ruled ID frame, pull quotes ------ */
+html[data-look="almanac"] [data-centerpiece="avatar"] img {
+  filter: grayscale(1) contrast(1.15);
+}
+
+html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-fallback])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent 0 1.6px, var(--bg-canvas) 1.6px 2.7px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+html[data-look="almanac"] [data-centerpiece="avatar"][data-fallback] {
+  background: var(--fg-primary);
+}
+
+html[data-look="almanac"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: var(--bg-canvas);
+  font-family: var(--font-headline);
+  font-weight: 400;
+}
+
+html[data-look="almanac"] [data-centerpiece="id"] {
+  background: transparent;
+  border-color: var(--fg-primary);
+  box-shadow: none;
+}
+
+html[data-look="almanac"] [data-centerpiece="id"] h2 {
+  font-family: var(--font-headline);
+  font-size: var(--text-h1);
+  font-weight: 400;
+  line-height: 1;
+}
+
+html[data-look="almanac"] [data-centerpiece="id"] h2 + p {
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: var(--text-h4);
+  line-height: 1.3;
+  color: var(--fg-secondary);
+}
+
+html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"] {
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: var(--text-h4);
+  line-height: 1.25;
+  color: var(--fg-primary);
+}
+
+html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::before {
+  content: "\201C";
+}
+
+html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::after {
+  content: "\201D";
+}
+
+html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="when"] {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: var(--text-label);
+}
+
+/* -------- Linen: squircle groups, a soft panel with a gold check, gold-ruled notes */
+html[data-look="linen"] [data-centerpiece="avatar"][data-shape="square"] {
+  --radius: 30%;
+}
+
+html[data-look="linen"] [data-centerpiece="avatar"][data-fallback] {
+  background: color-mix(in srgb, var(--color-accent) 24%, var(--bg-elevated));
+}
+
+html[data-look="linen"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: var(--color-accent-hover);
+}
+
+html[data-look="linen"] [data-centerpiece="id"] {
+  --radius: 16px;
+  position: relative;
+  box-shadow: var(--shadow-md);
+}
+
+/* The one gold mark: checked by someone else. */
+html[data-look="linen"] [data-centerpiece="id"]::before {
+  content: "\2713";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+html[data-look="linen"] [data-centerpiece="id"] h2 {
+  font-family: var(--font-headline);
+  font-weight: 500;
+  font-size: var(--text-h4);
+  letter-spacing: -0.01em;
+}
+
+html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="note"] {
+  font-family: var(--font-numeral);
+  font-style: italic;
+  font-size: var(--text-body);
+  border-left: 2px solid var(--color-accent);
+  padding-left: 10px;
+}
+
+/* -------- Banknote: seal rings, the passport page, countersignatures ---- */
+html[data-look="banknote"] [data-centerpiece="avatar"] {
+  box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 3px var(--color-accent);
+}
+
+html[data-look="banknote"] [data-centerpiece="avatar"][data-fallback] {
+  background: repeating-conic-gradient(var(--color-accent) 0 3deg, transparent 3deg 9deg);
+}
+
+html[data-look="banknote"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: var(--bg-sunken);
+  color: var(--fg-primary);
+  font-family: var(--font-headline);
+  font-weight: 600;
+}
+
+/* The ID as a passport data page: a double frame, the permanent ID as
+   microtext along both edges, a guilloché watermark and one foil chip. */
+html[data-look="banknote"] [data-centerpiece="id"] {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 3px double var(--border-hover);
+  padding-block: 26px 24px;
+  background-image:
+    repeating-radial-gradient(circle at 105% 110%, transparent 0 5px, color-mix(in srgb, var(--color-accent) 16%, transparent) 5px 6px);
+}
+
+html[data-look="banknote"] [data-centerpiece="id"]::before,
+html[data-look="banknote"] [data-centerpiece="id"]::after {
+  content: attr(data-did) " \00B7 " attr(data-did) " \00B7 " attr(data-did);
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  font: 500 6px/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+html[data-look="banknote"] [data-centerpiece="id"]::before {
+  top: 8px;
+}
+
+html[data-look="banknote"] [data-centerpiece="id"]::after {
+  bottom: 8px;
+}
+
+html[data-look="banknote"] [data-centerpiece="id"] h2 {
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: var(--text-h3);
+}
+
+html[data-look="banknote"] [data-centerpiece="id"] h2::after {
+  content: "";
+  display: inline-block;
+  width: 30px;
+  height: 22px;
+  margin-left: 10px;
+  vertical-align: -3px;
+  border-radius: var(--radius);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0 1px, transparent 1px 3px),
+    conic-gradient(from 40deg at 40% 60%, #9FE6D9, #C9B6F2, #F7C6D9, #F4E3A1, #9FE6D9);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="note"] {
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: var(--text-body);
+  color: var(--fg-primary);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-hover);
+}
+
+html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="when"] {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* -------- Wallet: gradient initials, the ID as a pass, endorsements as cells */
+html[data-look="wallet"] [data-centerpiece="avatar"][data-shape="square"] {
+  --radius: 28%;
+}
+
+html[data-look="wallet"] [data-centerpiece="avatar"][data-fallback] {
+  background: linear-gradient(140deg, #0E4D5A, #1E2F63);
+}
+
+html[data-look="wallet"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: #FFFFFF;
+}
+
+/* The pass: a deep gradient with grain and a light top edge; tokens are
+   re-pointed inside it so the pills and text read white on the gradient. */
+html[data-look="wallet"] [data-centerpiece="id"] {
+  --fg-primary: #FFFFFF;
+  --fg-secondary: rgba(255, 255, 255, 0.88);
+  --fg-muted: rgba(255, 255, 255, 0.74);
+  --bg-sunken: rgba(255, 255, 255, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.18);
+  --border-default: rgba(255, 255, 255, 0.22);
+  --overlay-weak: rgba(255, 255, 255, 0.12);
+  --overlay-medium: rgba(255, 255, 255, 0.2);
+  --focus-ring: #FFFFFF;
+  --radius: 22px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--fg-secondary);
+  border: 0;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(54, 170, 160, 0.9), transparent 55%),
+    radial-gradient(90% 90% at 100% 100%, rgba(232, 148, 80, 0.85), transparent 55%),
+    linear-gradient(140deg, #0E4D5A 0%, #1E2F63 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 18px 40px -18px rgba(14, 40, 70, 0.55);
+}
+
+html[data-look="wallet"] [data-centerpiece="id"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Behind the pass's content, above its gradient (it isolates). */
+  z-index: calc(var(--z-local-raise) - 2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+html[data-look="wallet"] [data-centerpiece="endorsement"] {
+  border: 0;
+  margin-bottom: 8px;
+  padding-inline: 14px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+html[data-look="wallet"] [data-centerpiece="endorsement"]:last-child {
+  border-bottom: 0;
+}
+
+/* -------- Dot matrix: dot-screened images, a dot-field ID, mono dates --- */
+html[data-look="dots"] [data-centerpiece="avatar"] img {
+  -webkit-mask: radial-gradient(circle, #000 0.95px, transparent 1.15px) 0 0 / 2.6px 2.6px;
+  mask: radial-gradient(circle, #000 0.95px, transparent 1.15px) 0 0 / 2.6px 2.6px;
+}
+
+html[data-look="dots"] [data-centerpiece="avatar"][data-fallback] {
+  background: var(--fg-primary);
+}
+
+html[data-look="dots"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: var(--bg-canvas);
+  font-family: var(--font-label);
+  font-weight: 500;
+}
+
+html[data-look="dots"] [data-centerpiece="id"] {
+  background-image: radial-gradient(color-mix(in srgb, var(--fg-primary) 10%, transparent) 1px, transparent 1.2px);
+  background-size: 9px 9px;
+}
+
+html[data-look="dots"] [data-centerpiece="id"] h2 {
+  font-family: var(--font-numeral);
+  font-size: var(--text-h2);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="when"] {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--text-label);
+}
+
+html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  vertical-align: 2px;
+  border-radius: 50%;
+  background: var(--badge-count-bg);
+}
+
+/* -------- Glass: light-edged avatars, a frosted ID sheet, frosted chips - */
+html[data-look="glass"] [data-centerpiece="avatar"] {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 4px 12px -4px rgba(20, 40, 60, 0.35);
+}
+
+html[data-look="glass"] [data-centerpiece="avatar"][data-fallback] {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+html[data-look="glass"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+}
+
+html[data-look="glass"] [data-centerpiece="id"],
+html[data-look="glass"] [data-centerpiece="endorsement"] {
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+}
+
+html[data-look="glass"] [data-centerpiece="id"] {
+  --radius: 22px;
+  border-color: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow-md);
+}
+
+html[data-look="glass"][data-theme="dark"] [data-centerpiece="id"] {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html[data-look="glass"] [data-centerpiece="endorsement"] {
+  margin-bottom: 8px;
+  padding-inline: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+html[data-look="glass"][data-theme="dark"] [data-centerpiece="endorsement"] {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* -------- Shapes: a cookie for groups, a tonal ID, a burst per endorsement */
+html[data-look="shapes"] [data-centerpiece="avatar"][data-shape="square"] {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50.0 1.0L54.2 2.3L57.9 5.4L61.1 8.7L64.2 10.9L68.1 11.3L72.7 10.7L77.5 10.7L81.5 12.5L83.9 16.1L84.7 20.9L85.0 25.5L86.1 29.2L88.7 31.9L92.6 34.5L96.3 37.6L98.3 41.5L97.7 45.8L95.3 50.0L92.6 53.7L91.0 57.2L91.3 61.1L92.6 65.5L93.4 70.3L92.4 74.5L89.3 77.5L84.7 79.1L80.2 80.2L76.8 81.9L74.5 85.0L72.7 89.3L70.3 93.4L66.8 96.0L62.4 96.3L57.9 94.6L53.7 92.6L50.0 91.7L46.3 92.6L42.1 94.6L37.6 96.3L33.2 96.0L29.7 93.4L27.3 89.3L25.5 85.0L23.2 81.9L19.8 80.2L15.3 79.1L10.7 77.5L7.6 74.5L6.6 70.3L7.4 65.5L8.7 61.1L9.0 57.2L7.4 53.7L4.7 50.0L2.3 45.8L1.7 41.5L3.7 37.6L7.4 34.5L11.3 31.9L13.9 29.2L15.0 25.5L15.3 20.9L16.1 16.1L18.5 12.5L22.5 10.7L27.3 10.7L31.9 11.3L35.8 10.9L38.9 8.7L42.1 5.4L45.8 2.3Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50.0 1.0L54.2 2.3L57.9 5.4L61.1 8.7L64.2 10.9L68.1 11.3L72.7 10.7L77.5 10.7L81.5 12.5L83.9 16.1L84.7 20.9L85.0 25.5L86.1 29.2L88.7 31.9L92.6 34.5L96.3 37.6L98.3 41.5L97.7 45.8L95.3 50.0L92.6 53.7L91.0 57.2L91.3 61.1L92.6 65.5L93.4 70.3L92.4 74.5L89.3 77.5L84.7 79.1L80.2 80.2L76.8 81.9L74.5 85.0L72.7 89.3L70.3 93.4L66.8 96.0L62.4 96.3L57.9 94.6L53.7 92.6L50.0 91.7L46.3 92.6L42.1 94.6L37.6 96.3L33.2 96.0L29.7 93.4L27.3 89.3L25.5 85.0L23.2 81.9L19.8 80.2L15.3 79.1L10.7 77.5L7.6 74.5L6.6 70.3L7.4 65.5L8.7 61.1L9.0 57.2L7.4 53.7L4.7 50.0L2.3 45.8L1.7 41.5L3.7 37.6L7.4 34.5L11.3 31.9L13.9 29.2L15.0 25.5L15.3 20.9L16.1 16.1L18.5 12.5L22.5 10.7L27.3 10.7L31.9 11.3L35.8 10.9L38.9 8.7L42.1 5.4L45.8 2.3Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+html[data-look="shapes"] [data-centerpiece="avatar"][data-fallback] {
+  background: var(--bg-selected);
+}
+
+html[data-look="shapes"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: var(--btn-primary-bg);
+  font-variation-settings: "ROND" 100;
+}
+
+html[data-look="shapes"] [data-centerpiece="id"] {
+  --radius: 24px;
+  border: 0;
+  box-shadow: none;
+  background: var(--bg-selected);
+}
+
+html[data-look="shapes"] [data-centerpiece="id"] h2 {
+  font-variation-settings: "ROND" 100;
+  font-size: var(--text-h3);
+}
+
+/* Confirmed: the burst, the one verification mark (never a blue check). */
+html[data-look="shapes"] [data-centerpiece="id"] h2::after,
+html[data-look="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: -2px;
+  background: var(--btn-primary-bg);
+  clip-path: polygon(50.0% 0.0%, 60.1% 12.3%, 75.0% 6.7%, 77.6% 22.4%, 93.3% 25.0%, 87.7% 39.9%, 100.0% 50.0%, 87.7% 60.1%, 93.3% 75.0%, 77.6% 77.6%, 75.0% 93.3%, 60.1% 87.7%, 50.0% 100.0%, 39.9% 87.7%, 25.0% 93.3%, 22.4% 77.6%, 6.7% 75.0%, 12.3% 60.1%, 0.0% 50.0%, 12.3% 39.9%, 6.7% 25.0%, 22.4% 22.4%, 25.0% 6.7%, 39.9% 12.3%);
+}
+
+html[data-look="shapes"] [data-centerpiece="id"] h2::after {
+  margin-left: 8px;
+}
+
+html[data-look="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+  width: 13px;
+  height: 13px;
+  margin-right: 6px;
+}
+
+/* -------- Stamp: halftone avatars, a stamped ID, endorsements as stamps - */
+html[data-look="stamp"] [data-centerpiece="avatar"] {
+  box-shadow: 0 0 0 2px var(--fg-primary);
+}
+
+html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-fallback])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, transparent 38%, color-mix(in srgb, var(--fg-primary) 30%, transparent) 42%) 0 0 / 3px 3px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+html[data-look="stamp"] [data-centerpiece="avatar"][data-fallback] {
+  background: var(--color-accent);
+}
+
+html[data-look="stamp"] [data-centerpiece="avatar"][data-fallback] > div {
+  background: transparent;
+  color: #FFFFFF;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+}
+
+html[data-look="stamp"] [data-centerpiece="id"] {
+  position: relative;
+  border: 2px solid var(--fg-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* A rubber stamp pressed onto the card, a little crooked. */
+html[data-look="stamp"] [data-centerpiece="id"]::after {
+  content: "Certified";
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  padding: 3px 10px;
+  border: 2px solid var(--color-accent);
+  border-radius: 999px;
+  font: 500 11px/1.2 var(--font-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  transform: rotate(-9deg);
+  opacity: 0.88;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+html[data-look="stamp"][data-theme="dark"] [data-centerpiece="id"]::after {
+  mix-blend-mode: screen;
+}
+
+html[data-look="stamp"] [data-centerpiece="endorsement"] [data-part="who"]::after {
+  content: "Endorsed";
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border: 1.5px solid var(--btn-primary-bg);
+  border-radius: 999px;
+  font: 500 10px/1.3 var(--font-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--btn-primary-bg);
+  transform: rotate(-5deg);
+  vertical-align: 1px;
+}

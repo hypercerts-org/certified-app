@@ -293,7 +293,8 @@ function EndorsementStatement({
   const { displayName, avatarSrc, initials, href } =
     useEndorserIdentity(endorsement)
   return (
-    <li className="profile-row profile-statement">
+    // An endorsement: a centerpiece every style can redraw (looks.css).
+    <li className="profile-row profile-statement" data-centerpiece="endorsement">
       <Avatar
         size="sm"
         src={avatarSrc}
@@ -302,18 +303,18 @@ function EndorsementStatement({
       />
       <div className="profile-row__text">
         <p className="profile-statement__line">
-          <Link href={href} className="profile-statement__name" dir="auto">
+          <Link href={href} className="profile-statement__name" dir="auto" data-part="who">
             {displayName}
           </Link>{" "}
           endorsed <span dir="auto">{subjectName}</span>
         </p>
         {endorsement.note ? (
-          <p className="profile-statement__note" dir="auto">
+          <p className="profile-statement__note" dir="auto" data-part="note">
             {endorsement.note}
           </p>
         ) : null}
         <p className="profile-statement__meta">
-          <time dateTime={endorsement.createdAt}>
+          <time dateTime={endorsement.createdAt} data-part="when">
             {formatShortDate(endorsement.createdAt)}
           </time>
           {endorsement.listTitle ? (

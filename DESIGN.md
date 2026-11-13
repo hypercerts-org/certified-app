@@ -41,7 +41,7 @@ These mirror the `CLAUDE.md` hard rules. Hold every UI change to them.
 | 6 | Titles (page titles, account names, record titles, empty-state and dialog titles) use `font-headline` + `text-h1`..`text-h4`. Section headings inside a page use `text-section` (Inter 600, via `<SectionHeader>`). Never `text-xl` / `text-lg` / `text-2xl`. | `grep -rn "font-headline text-\(xl\|lg\|2xl\)" src/app/ src/components/` is silent |
 | 7 | Modals are `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` / `<FormDialog>`). Never a hand-rolled backdrop + focus trap. | `grep -rn "signin-modal__backdrop" src/components/` only hits the two allowed files |
 | 8 | Icon-only buttons are `<Button size="icon" aria-label="…">` (or `size="icon-sm"`). | TypeScript enforces the label |
-| 9 | Dark mode must work. Toggle `data-theme="dark"` on `<html>` and check. Landing uses the theme-aware `--color-navy` / `--color-off-white`, not the invariant `--color-primary` / `--color-white`. | Manual |
+| 9 | Dark mode must work. Toggle `data-theme="dark"` on `<html>` and check (and, for a token change, the experimental styles, §2.11). Landing uses the theme-aware `--color-navy` / `--color-off-white`, not the invariant `--color-primary` / `--color-white`. | Manual |
 | 10 | Reach for a primitive in `src/components/ui/` before writing a component or BEM class. | `ls src/components/ui/` |
 
 And the rules that this document adds on top:
@@ -177,6 +177,28 @@ Translucent chrome is always the surface it sits on at reduced alpha, never a se
 ### 2.10 Selection
 
 `::selection` uses `--selection-bg` / `--selection-fg`: ink on paper in light, paper on ink in dark.
+
+### 2.11 Styles (experimental)
+
+Settings → Appearance → **Style** switches the whole app between design directions, per browser: **Today** (this document) and Almanac, Linen, Banknote, Wallet, Dot matrix, Glass, Shapes and Stamp, from the design-directions exploration. A style is `data-look="<id>"` on `<html>` (`src/lib/look/looks.ts`; an inline script in the root layout restores it before first paint). Each one redefines the tokens on `:root` in `src/app/styles/looks.css`, so every page changes at once and the derived tokens follow:
+
+- **Colours**, light and dark: the surfaces, foregrounds, borders, overlays, primary button, accent / focus, selection and avatar fallback.
+- **Typefaces:** `--font-inter` (UI), `--font-headline` (titles), `--font-mono`, plus `--font-numeral` (`StatRow` values) and `--font-label` (the `.text-label` step), both unset in Today. Faces load through next/font without preloading, so only the chosen style's download.
+- **Heading weights:** `--weight-headline-strong` (display, h1) and `--weight-headline` (h2–h4), read by the Tailwind type ramp (default 700 / 600).
+- **Corners:** `--radius`, which Tailwind's `rounded` now reads too. One value per style, so small controls share the card radius.
+- **Shadows** (`--shadow-sm/md/lg`) and an optional `--look-backdrop` behind the page: Glass's landscape gradient, Dot matrix's dot field, Stamp's grain.
+
+The hard rules (§0) still hold for code, and components keep using the tokens. The picker's tiles are live previews (`[data-look-preview]`, the same blocks). Own colours (a theme the account carries for visitors) is a different feature and isn't a style.
+
+**Centerpieces.** Beyond tokens, every style redraws the same three places, and only these, so each direction shows itself where it matters most instead of in one-off spots:
+
+| Centerpiece | Hook | What a style changes |
+|---|---|---|
+| The avatar | `[data-centerpiece="avatar"]` on `<Avatar>` (`data-shape`, `data-fallback` while showing initials) | Shape, frame, image treatment, the initials fallback. On every page. |
+| The ID card | `[data-centerpiece="id"]` on the Overview's ID box (with `data-did`) | The account's identity object: frame, material, marks. |
+| An endorsement | `[data-centerpiece="endorsement"]` on the Overview's and the profile's endorsement rows; parts `data-part="who|when|note"` | How a peer's endorsement reads. |
+
+Today leaves them as designed. Per style: Almanac engraved images, a ruled ID frame and pull-quote notes; Linen squircle groups, a soft ID panel with the one gold check and gold-ruled notes; Banknote seal rings, the ID as a passport page (microtext of the DID, guilloché watermark, foil chip) and countersigned notes; Wallet gradient initials, the ID as a pass (scoped white-on-gradient tokens, grain) and endorsements as cells; Dot matrix dot-screened images, a dot-field ID with a dot-type title, mono dates and a red dot; Glass light-edged avatars, a frosted ID sheet and frosted endorsement chips; Shapes a nine-lobed cookie for groups, a tonal ID and a burst per endorsement; Stamp halftone avatars, a stamped ID and an "Endorsed" stamp per endorsement. A new style must define all three (`looks.test.ts` checks).
 
 ---
 
@@ -888,6 +910,8 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-13, Style centerpieces.** Every style redraws the same three places: the avatar, the Overview's ID card and an endorsement (`data-centerpiece` hooks on `<Avatar>`, the ID box and the endorsement rows; §2.11).
+- **2026-11-13, Styles (experimental).** Settings → Appearance → **Style**: Today plus eight design directions (Almanac, Linen, Banknote, Wallet, Dot matrix, Glass, Shapes, Stamp), each a token set in `looks.css` on `html[data-look]`, light and dark (§2.11). The next/font variables move from `<body>` to `<html>` (`--font-inter-face`, `--font-noto-serif`, plus twelve non-preloaded faces), `--font-inter` / `--font-headline` are named in tokens.css, Tailwind's `rounded` reads `var(--radius)` and the heading weights read `--weight-headline(-strong)`. stylelint exempts `looks.css` from the colour and shadow rules, like tokens.css.
 - **2026-11-13, Settings "for"; settings gears in the Workspace menu.** After the Settings title, **for [avatar] Me ▾** switches between your settings (`/settings`) and each group's (`/groups/{did}/settings`), on both pages. The Workspace menu drops its "Group settings" item; instead every workspace row has a settings gear. "Seen as" and "for" share one component, `AccountPicker` (`layout/account-picker.tsx`); `accountSettingsHref()` (`lib/groups/navigation.ts`) says where an account's settings live.
 - **2026-11-13, "Seen as" apart from the workspace; Overview column from 1100px.** "Seen as" is its own setting (`useSeenAs`, `lib/groups/seen-as.ts`, per tab, default you): it alone decides what Feed and Explore show, and neither it nor the Workspace menu changes the other. Explore's "Accounts I follow" now follows it too (it used to stay on your personal follows). The Overview's ID and Your groups column is back on the right from 1100px (280px with a 32px gap; 300px and 48px from 1300px), not only from 1300px.
 - **2026-11-13, "Seen as" on Feed and Explore.** Right after the Feed and Explore titles, **Seen as [avatar] Me ▾** shows which account the network is shown for and switches between you and your groups (`seen-as-switcher.tsx`; `<Popover>` menu on desktop, `<BottomSheet>` on phones). Same app-wide switch as the Workspace menu; hidden without groups. `<PageHeader>` gains `titleAside` for it.

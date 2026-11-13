@@ -284,6 +284,11 @@
   /* Monospace stack — additive; some CSS already references it with a fallback */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
+  /* The UI and display faces. next/font puts the face variables on <html>
+     (layout.tsx); naming them here lets a style (looks.css) swap them. */
+  --font-inter: var(--font-inter-face);
+  --font-headline: var(--font-noto-serif);
+
   /* Navbar */
   --navbar-height: 64px;
 
@@ -593,6 +598,9 @@ h1, h2, h3, h4, h5, h6 {
 .text-label {
   text-transform: uppercase;
   font-feature-settings: 'case' 1;
+  /* A style can give labels their own face (looks.css); unset, this
+     inherits like any font. */
+  font-family: var(--font-label);
 }
 
 /* Long-form paragraphs: cap the measure and avoid orphans (Tailwind

@@ -22,8 +22,10 @@ export interface StatRowProps {
 const statInner = "flex flex-col gap-1";
 
 // The value: Inter 600 at the h4 size (no serif; numbers are not titles).
+// A style may set its own numeral face (--font-numeral, looks.css);
+// unset, the value inherits the UI face.
 const valueCls =
-  "flex min-h-6 items-center text-h4 tracking-normal tabular-nums text-[var(--fg-primary)]";
+  "flex min-h-6 items-center text-h4 tracking-normal tabular-nums text-[var(--fg-primary)] font-[family-name:var(--font-numeral)]";
 const labelCls = "text-ui text-[var(--fg-muted)]";
 
 /**

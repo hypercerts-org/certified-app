@@ -19,6 +19,7 @@ import SettingsLayout, {
 } from "@/components/settings/settings-layout"
 import DidSection from "@/components/account/did-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
+import LookPicker from "@/components/settings/look-picker"
 import Button from "@/components/ui/button"
 
 const UsernameCard = dynamic(
@@ -182,9 +183,17 @@ export default function SettingsPanel() {
         )
       case "appearance":
         return (
-          <SettingsRow label="Theme" description="Light, dark, or follow your device.">
-            <ThemeToggle variant="cards" />
-          </SettingsRow>
+          <>
+            <SettingsRow label="Theme" description="Light, dark, or follow your device.">
+              <ThemeToggle variant="cards" />
+            </SettingsRow>
+            <SettingsBlock
+              title="Style"
+              description="Experimental. Try a design direction for Certified on this device: colours, typefaces and corners change everywhere, in light and dark. Only you see it."
+            >
+              <LookPicker />
+            </SettingsBlock>
+          </>
         )
       case "social-graph":
         return did ? (
