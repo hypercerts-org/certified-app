@@ -1,8 +1,23 @@
 "use client"
 
-import { Compass, MapIcon, Network, Newspaper } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  Check,
+  ChevronDown,
+  Compass,
+  Globe,
+  MapIcon,
+  Network,
+  Newspaper,
+  type LucideIcon,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
-import SideNav, { type SideNavIcon } from "@/components/ui/side-nav"
+import SideNav from "@/components/ui/side-nav"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
+import { isDestinationActive } from "@/lib/layout/destinations"
+import { MENU_ICON_CLASS, menuItemProps, menuRowClass } from "./menu-row"
 
 /** The Network's sections, in tab order. */
 export type NetworkSection = "feed" | "explore" | "graph" | "map"
@@ -11,7 +26,7 @@ export const NETWORK_SECTIONS: readonly {
   key: NetworkSection
   label: string
   href: string
-  icon: SideNavIcon
+  icon: LucideIcon
   /** Signed-in only (the Feed follows your account). */
   requiresAuth?: boolean
   /** `data-tour` anchor for the product tour. */
@@ -57,5 +72,69 @@ export default function NetworkNav({
         }),
       )}
     />
+  )
+}
+
+/** The section `pathname` is on, if it's a Network page. */
+function currentSection(pathname: string | null): NetworkSection | null {
+  return NETWORK_SECTIONS.find((s) => isDestinationActive(s, pathname))?.key ?? null
+}
+
+/**
+ * The desktop top bar's Network button: opens a menu of the four Network
+ * pages (Feed, Explore, Graph, Map; no Feed when signed out), with the
+ * current one checked. Styled like the other destinations, current on any
+ * Network page. Also the product tour's `nav-network` anchor.
+ */
+export function DesktopNetworkMenu({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const [open, setOpen] = useRouteScopedOpen()
+  const pathname = usePathname()
+  const current = currentSection(pathname)
+  const sections = NETWORK_SECTIONS.filter((s) => !s.requiresAuth || isAuthenticated)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>
+        <button
+          type="button"
+          className="desktop-top-bar__nav-link"
+          data-current={current ? "" : undefined}
+          data-tour="nav-network"
+        >
+          <Globe size={20} strokeWidth={1.5} aria-hidden />
+          <span>Network</span>
+          {/* In a span: the destination icons hide at 800-1099px, the
+              chevron that says "this opens a menu" stays. */}
+          <span className="desktop-top-bar__chevron" aria-hidden>
+            <ChevronDown size={14} strokeWidth={1.75} />
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        portal
+        side="bottom"
+        align="start"
+        offset={8}
+        minWidth={200}
+        aria-label="Network"
+        style={{ zIndex: "var(--z-chrome-menu)" }}
+      >
+        {sections.map(({ key, label, href, icon: Icon }) => (
+          <Link
+            key={key}
+            href={href}
+            {...menuItemProps("menu")}
+            className={menuRowClass("menu")}
+            aria-current={key === current ? "page" : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            <span className="flex-1">{label}</span>
+            {key === current ? (
+              <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
+            ) : null}
+          </Link>
+        ))}
+      </PopoverContent>
+    </Popover>
   )
 }

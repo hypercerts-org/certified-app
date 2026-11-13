@@ -183,7 +183,7 @@
   outline-offset: 2px;
 }
 
-/* The Certified.app wordmark with its Beta pill (top-level pages). The
+/* The faded Certified.app wordmark (top-level pages). The
    link stays a 44px-tall target; its 8px inset puts the mark on the 16px
    gutter. */
 .navbar__logo--wordmark {
@@ -1320,7 +1320,7 @@
   flex-shrink: 0;
 }
 
-/* The Certified.app wordmark with its Beta pill (to Home): a 36px-tall
+/* The faded Certified.app wordmark (to Home): a 36px-tall
    target around the 18px letters; the 4px inset puts the mark on the 16px
    page edge (the row has 12px padding). */
 .desktop-top-bar__brand {
@@ -1414,6 +1414,21 @@
   }
 }
 
+/* Network is a button (it opens a menu of its four pages): reset the
+   button chrome so it matches the links. */
+button.desktop-top-bar__nav-link {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.desktop-top-bar__chevron {
+  display: inline-flex;
+  margin-left: -2px;
+  color: var(--fg-muted);
+}
+
+.desktop-top-bar__nav-link[data-current],
 .desktop-top-bar__nav-link[aria-current="page"] {
   background: var(--bg-selected);
   color: var(--fg-primary);

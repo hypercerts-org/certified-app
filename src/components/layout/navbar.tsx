@@ -44,7 +44,7 @@ function isOwnProfilePath(
 /**
  * Phone top bar (below 800px). One bar on every page:
  *
- * - **Left:** the Certified.app wordmark with its Beta pill on the top-level pages (Home,
+ * - **Left:** the faded Certified.app wordmark on the top-level pages (Home,
  *   Feed, Explore, Records, Apps, Settings, Help and your own profile);
  *   the square brandmark instead when the compact title shares the row,
  *   so the title keeps its room. Everywhere else
@@ -128,7 +128,7 @@ const Navbar: React.FC = () => {
                 className="navbar__logo navbar__logo--wordmark"
                 aria-label="Certified home"
               >
-                <Wordmark variant="certified-app" beta faded height={18} decorative />
+                <Wordmark variant="certified-app" faded height={18} decorative />
               </Link>
             )
           ) : (
