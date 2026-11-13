@@ -802,7 +802,7 @@ certified-app/
 │   │   ├── certified-hero-1200x630.png # OG image
 │   │   └── guilloche_02.svg            # Decorative background, SVGO-optimized
 │   ├── brand/                          # Partner-facing brand assets (brandmark, poweredby, signin, wordmark variants)
-│   │   └── wordmark/                   # certified_wordmark_black (Certified); certified_app_wordmark_black (Certified.app: ".app" in Switzer 450, the wordmark's typeface; used by <Wordmark variant="certified-app">); certified_app_beta_wordmark_black (the same with a BETA pill over "app"); certified_app_faded_wordmark_black (".app" at 50% opacity). SVG + 126px-tall PNG each
+│   │   └── wordmark/                   # certified_wordmark_black (Certified); certified_app_wordmark_black (Certified.app: ".app" in Switzer 450, the wordmark's typeface; used by <Wordmark variant="certified-app">); certified_app_beta_wordmark_black (the same with a BETA pill over "app"); certified_app_faded_wordmark_black (".app" at 50% opacity); certified_app_beta_faded_wordmark_black (the Beta version with ".app" at 50%, the pill solid). SVG + 126px-tall PNG each
 │   └── email/
 │       └── otp-email-template.html     # Branded OTP email (referenced from oauth-client-metadata)
 └── src/
