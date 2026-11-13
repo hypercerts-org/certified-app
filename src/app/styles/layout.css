@@ -2231,23 +2231,3 @@ button.desktop-top-bar__nav-link {
   outline-offset: 2px;
   border-radius: var(--radius);
 }
-
-/* ========== Network tabs (network-nav.tsx) ==========
-   One row of pills (Feed, Explore, Graph, Map) at the top of each Network
-   page, above its page header. Phones show the words only, so all four
-   fit on one line. */
-.network-nav {
-  margin-bottom: 16px;
-}
-
-@media (min-width: 800px) {
-  .network-nav {
-    margin-bottom: 24px;
-  }
-}
-
-@media (max-width: 799px) {
-  .network-nav svg {
-    display: none;
-  }
-}

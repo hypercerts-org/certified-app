@@ -22,8 +22,6 @@ export interface SideNavItem {
   /** Right-aligned count. `null` / omitted shows nothing; pass "…" while loading. */
   count?: number | string | null;
   current?: boolean;
-  /** `data-tour` anchor for the product tour. */
-  tour?: string;
 }
 
 export interface SideNavProps {
@@ -42,22 +40,7 @@ export interface SideNavProps {
    * several wrapped rows would push each page down.
    */
   overflow?: "auto" | "scroll";
-  /**
-   * "auto" (default): a row of pills below 1100px, a vertical list in a
-   * sidebar column from 1100px. "horizontal": the row of pills at every
-   * width, for section tabs above a page that has columns of its own (the
-   * Network: Feed, Explore, Graph, Map).
-   */
-  orientation?: "auto" | "horizontal";
   className?: string;
-}
-
-/** The pill-row classes alone: drops the `lg:` column overrides. */
-function rowOnly(cls: string): string {
-  return cls
-    .split(" ")
-    .filter((c) => !c.startsWith("lg:"))
-    .join(" ");
 }
 
 /**
@@ -107,13 +90,8 @@ export default function SideNav({
   items,
   sticky = true,
   overflow = "auto",
-  orientation = "auto",
   className = "",
 }: SideNavProps) {
-  const row = orientation === "horizontal";
-  const listCls = row ? rowOnly(listBase) : listBase;
-  const baseCls = row ? rowOnly(itemBase) : itemBase;
-  const restCls = row ? rowOnly(itemRest) : itemRest;
   const listRef = useRef<HTMLUListElement>(null);
   const scrolls = overflow === "scroll" || items.length > SIDE_NAV_WRAP_MAX;
   const currentKey = items.find((item) => item.current)?.key ?? null;
@@ -149,7 +127,7 @@ export default function SideNav({
   // The desktop top bar scrolls away, so the column sticks 32px below the
   // fixed chrome (none on desktop) rather than below the bar's height.
   const navCls = [
-    sticky && !row ? "lg:sticky lg:top-[calc(var(--chrome-top,0px)_+_32px)]" : "",
+    sticky ? "lg:sticky lg:top-[calc(var(--chrome-top,0px)_+_32px)]" : "",
     className,
   ]
     .filter(Boolean)
@@ -157,10 +135,10 @@ export default function SideNav({
 
   return (
     <nav aria-label={ariaLabel} className={navCls || undefined}>
-      <ul ref={listRef} className={`${listCls} ${scrolls ? listScroll : listWrap}`}>
+      <ul ref={listRef} className={`${listBase} ${scrolls ? listScroll : listWrap}`}>
         {items.map((item) => {
-          const { key, label, href, onClick, icon: Icon, count, current = false, tour } = item;
-          const cls = `${baseCls} ${current ? itemCurrent : restCls}`;
+          const { key, label, href, onClick, icon: Icon, count, current = false } = item;
+          const cls = `${itemBase} ${current ? itemCurrent : itemRest}`;
           const showCount = count !== null && count !== undefined && count !== "";
           const content = (
             <>
@@ -185,7 +163,6 @@ export default function SideNav({
                   onClick={onClick}
                   className={cls}
                   aria-current={current ? "page" : undefined}
-                  data-tour={tour}
                 >
                   {content}
                 </Link>

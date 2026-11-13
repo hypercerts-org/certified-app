@@ -29,9 +29,9 @@ describe("BottomNav", () => {
   it("shows Workspace, Network and Apps, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
-    const links = Array.from(nav.querySelectorAll("a"))
-    expect(links.map((a) => a.textContent)).toEqual(["Workspace", "Network", "Apps"])
-    expect(screen.getByRole("link", { name: "Network" })).toHaveAttribute("aria-current", "page")
+    const tabs = Array.from(nav.querySelectorAll(".bottom-nav__item"))
+    expect(tabs.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
+    expect(screen.getByRole("button", { name: "Network" })).toHaveAttribute("aria-current", "page")
     expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
   })
 
@@ -41,18 +41,22 @@ describe("BottomNav", () => {
     expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
   })
 
-  it("carries no actions: no Create, no Feedback", () => {
+  it("carries no actions: no Create, no Feedback; Network is the one button (it opens its pages)", () => {
     render(<BottomNav />)
     expect(screen.queryByText("Create")).toBeNull()
     expect(screen.queryByText("Feedback")).toBeNull()
-    expect(screen.queryAllByRole("button")).toHaveLength(0)
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Network"])
   })
 
   it("shows only the public destinations to signed-out visitors", () => {
     state.isAuthenticated = false
     state.pathname = "/explore"
     render(<BottomNav />)
-    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Network", "Apps"])
+    const nav = screen.getByRole("navigation", { name: "Main navigation" })
+    expect(Array.from(nav.querySelectorAll(".bottom-nav__item")).map((t) => t.textContent)).toEqual([
+      "Network",
+      "Apps",
+    ])
   })
 
   it("keeps its place but shows no tabs while auth resolves", () => {
@@ -60,6 +64,7 @@ describe("BottomNav", () => {
     render(<BottomNav />)
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument()
     expect(screen.queryAllByRole("link")).toHaveLength(0)
+    expect(screen.queryAllByRole("button")).toHaveLength(0)
   })
 
   it("is absent on desktop and on the landing page", () => {

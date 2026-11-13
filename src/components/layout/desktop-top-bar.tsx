@@ -13,15 +13,14 @@ import Wordmark from "@/components/ui/wordmark";
 import GlobalSearch from "@/components/search/global-search";
 import { DesktopAccountMenu } from "./account-menu";
 import { DesktopNewMenu } from "./new-menu";
-import { DesktopNetworkMenu } from "./network-nav";
+import { DesktopNetworkMenu } from "./network-menu";
 
 /**
  * Desktop chrome (≥800px). One row:
  *   [Certified.app] [Workspace] | [Network ▾] [Apps]   [search] [New] [account]
  *   Signed out: [Certified.app] [Network ▾] [Apps]    [search] [Help] [Sign in]
  *
- * Network opens a menu of its four pages (Feed, Explore, Graph, Map);
- * each Network page also shows them as tabs.
+ * Network opens a menu of its four pages (Feed, Explore, Graph, Map).
  *
  * A divider separates your Workspace from the network (Feed, Explore,
  * Apps): the two groups in `destinations.ts`.

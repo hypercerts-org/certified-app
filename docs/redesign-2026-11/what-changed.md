@@ -19,7 +19,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 ## Navigation
 
-**Three destinations, in the same order everywhere:** Workspace | Network · Apps (added after the first review). Workspace is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Network is everyone's work, as four tabs: Feed, Explore, Graph (the endorsement network) and Map (coming). Apps are the other apps that work with your account.
+**Three destinations, in the same order everywhere:** Workspace | Network · Apps (added after the first review). Workspace is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Network is everyone's work, four pages: Feed, Explore, Graph (the endorsement network) and Map (coming), picked from the Network menu. Apps are the other apps that work with your account.
 
 **Desktop**
 

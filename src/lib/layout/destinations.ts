@@ -9,8 +9,10 @@ import { FolderOpen, Globe, LayoutGrid, type LucideIcon } from "lucide-react"
  *  - **Workspace**: what your account holds and what you manage (the
  *    Overview at /home, and the Records sections and Groups at /records),
  *    behind one side list (`WorkspaceShell`).
- *  - **Network**: everyone's work, as four tabs (`NetworkNav`): Feed,
- *    Explore, Graph and Map. It opens on Feed (Explore when signed out).
+ *  - **Network**: everyone's work, four pages: Feed, Explore, Graph and
+ *    Map. The Network button opens a menu of them (`network-menu.tsx`; a
+ *    bottom sheet on phones). Its `href` (Feed, or Explore signed out) is
+ *    where it leads when a surface links straight to it.
  *  - **Apps**: other apps that work with the same account.
  *
  * Nothing else is a top-level destination; Profile, Settings and Help live

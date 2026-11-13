@@ -25,8 +25,9 @@
  * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
  * the renderer picks the first *rendered* one, so the visible variant wins
  * per layout. Every anchor here exists in the current app:
- *   nav-workspace, nav-network, nav-apps — destinations
- *   nav-feed, nav-explore, nav-graph — the Network tabs (network-nav.tsx)
+ *   nav-workspace, nav-network, nav-apps — destinations (nav-network is
+ *     the Network menu button on desktop and the Network tab on phones)
+ *   graph — the endorsement graph on /graph (graph-page.tsx)
  *   nav-create — the New button (desktop) / the + (phone)
  *   account-menu — the account button (desktop and phone)
  *   navbar-search — the desktop search field (not on /explore)
@@ -102,25 +103,17 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/feed",
     anchor: "nav-network",
     title: "Network",
-    body: "Network is everyone's work on Certified, four ways: Feed, Explore, Graph and Map. The tabs at the top switch between them.",
+    body: "Network is everyone's work on Certified, four ways: Feed, Explore, Graph and Map. Open it to pick one.",
     placement: "bottom",
   },
 
   // ---- Feed ----------------------------------------------------------
   {
-    id: "nav-feed",
-    navigateTo: "/feed",
-    anchor: "nav-feed",
-    title: "Feed",
-    body: "Feed is what's happening: new work from the accounts you follow and trust.",
-    placement: "bottom",
-  },
-  {
     id: "feed",
     navigateTo: "/feed",
     anchor: "feed",
-    title: "Your feed",
-    body: "Your feed shows new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
+    title: "Feed",
+    body: "Feed is what's happening: new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
     placement: "right",
   },
   // Before Explore: the top-bar search steps aside on /explore, which has
@@ -137,31 +130,23 @@ export const TOUR_STEPS: readonly TourStep[] = [
 
   // ---- Explore -------------------------------------------------------
   {
-    id: "nav-explore",
-    navigateTo: "/explore",
-    anchor: "nav-explore",
-    title: "Explore",
-    body: "Explore is the whole network: browse activities, projects and accounts from everyone on Certified.",
-    placement: "bottom",
-  },
-  {
     id: "explore-search",
     navigateTo: "/explore",
     anchor: "explore-category",
-    title: "Activities, projects and accounts",
-    body: "These buttons set what you're looking through: all of it at once, or just activities, projects or accounts. Search above them to narrow it down.",
+    title: "Explore",
+    body: "Explore is the whole network: activities, projects and accounts from everyone on Certified. These buttons set what you're looking through; search above them to narrow it down.",
     placement: "bottom",
     align: "start",
   },
 
   // ---- Graph ---------------------------------------------------------
   {
-    id: "nav-graph",
+    id: "graph",
     navigateTo: "/graph",
-    anchor: "nav-graph",
+    anchor: "graph",
     title: "Graph",
     body: "Graph shows who endorses whom across the network. Each dot is an account, each line an endorsement.",
-    placement: "bottom",
+    placement: "top",
   },
 
   // ---- Apps ----------------------------------------------------------

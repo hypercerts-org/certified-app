@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-import { DesktopNetworkMenu } from "../network-nav"
+import { DesktopNetworkMenu, PhoneNetworkTab } from "../network-menu"
 
 beforeEach(() => {
   state.pathname = "/graph"
@@ -37,5 +37,19 @@ describe("DesktopNetworkMenu", () => {
     state.pathname = "/home"
     render(<DesktopNetworkMenu isAuthenticated />)
     expect(screen.getByRole("button", { name: /Network/ })).not.toHaveAttribute("data-current")
+  })
+})
+
+describe("PhoneNetworkTab", () => {
+  it("opens the four pages as a sheet, current on any Network page", () => {
+    render(<PhoneNetworkTab isAuthenticated />)
+    const tab = screen.getByRole("button", { name: "Network" })
+    expect(tab).toHaveAttribute("aria-current", "page")
+    fireEvent.click(tab)
+    const sheet = screen.getByRole("dialog", { name: "Network" })
+    expect(sheet).toBeInTheDocument()
+    for (const label of ["Feed", "Explore", "Graph", "Map"]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument()
+    }
   })
 })
