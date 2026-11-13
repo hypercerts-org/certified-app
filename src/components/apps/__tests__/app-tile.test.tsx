@@ -32,17 +32,37 @@ describe("AppTile", () => {
     expect(link.textContent).toContain("(opens in new tab)")
   })
 
-  it("puts logos on a white plate, except the ones with a transparent background", () => {
+  it("puts every logo on the same 44px sunken plate, at both sizes", () => {
+    for (const app of CONNECTED_APPS) {
+      for (const size of ["sm", "lg"] as const) {
+        const { container, unmount } = render(<AppTile app={app} size={size} />)
+        const img = container.querySelector("img")!
+        const plate = img.parentElement!
+        expect(plate.className, `${app.name} ${size}`).toContain("bg-[var(--bg-sunken)]")
+        expect(plate.className, `${app.name} ${size}`).toContain("h-11 w-11")
+        expect(img.className, `${app.name} ${size}`).toContain("object-contain")
+        expect(img.className, app.name).not.toContain("--color-white")
+        unmount()
+      }
+    }
+  })
+
+  it("flips only the black one-colour mark in dark mode", () => {
     for (const app of CONNECTED_APPS) {
       const { container, unmount } = render(<AppTile app={app} />)
       const img = container.querySelector("img")!
-      const transparent = "transparentLogo" in app && app.transparentLogo
-      expect(img.className.includes("bg-[var(--color-white)]"), app.name).toBe(!transparent)
+      const mono = "monochromeLogo" in app && app.monochromeLogo
+      expect(img.className.includes("dark:invert"), app.name).toBe(!!mono)
       unmount()
     }
     expect(
-      CONNECTED_APPS.filter((a) => "transparentLogo" in a && a.transparentLogo).map((a) => a.name),
-    ).toEqual(["GainForest", "Simocracy"])
+      CONNECTED_APPS.filter((a) => "monochromeLogo" in a && a.monochromeLogo).map((a) => a.name),
+    ).toEqual(["Hyperboards"])
+  })
+
+  it("balances the tagline, so a wrapped one leaves no single word on its second line", () => {
+    render(<AppTile app={plainApp} />)
+    expect(screen.getByText(plainApp.desc).className).toContain("text-balance")
   })
 
   it("shows the long description only when asked", () => {

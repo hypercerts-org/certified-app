@@ -3,9 +3,13 @@
  * by dropping a square logo (~256px) into public/assets/partners and
  * referencing it here. Order in this list is the order rendered.
  *
- * `transparentLogo`: the logo is a PNG with its white background removed,
- * so it sits straight on the tile (any style, light or dark) instead of on
- * the white plate the other logos need.
+ * Every logo sits on the same 44px plate in --bg-sunken (app-tile.tsx),
+ * full-bleed or with a transparent ground alike, so no per-app flag is
+ * needed for that.
+ *
+ * `monochromeLogo`: the logo is a black one-colour mark on a transparent
+ * ground (Hyperboards). The plate is near-black in dark mode, so this logo
+ * flips to white there (`dark:invert`, as the wordmark images do).
  */
 export const CONNECTED_APPS = [
   {
@@ -22,7 +26,6 @@ export const CONNECTED_APPS = [
     longDesc:
       "GainForest develops open nature tech that monitors ecosystems and rewards verifiable conservation outcomes.",
     logo: "/assets/partners/gainforest_logo.png",
-    transparentLogo: true,
     url: "https://gainforest.app",
   },
   {
@@ -39,7 +42,6 @@ export const CONNECTED_APPS = [
     longDesc:
       "Simocracy lets people build AI digital twins of themselves and send them into governance, deliberation, and capital allocation.",
     logo: "/assets/partners/simocracy_logo.png",
-    transparentLogo: true,
     url: "https://simocracy.org",
   },
   {
@@ -48,6 +50,7 @@ export const CONNECTED_APPS = [
     longDesc:
       "Hyperboards turn signed contributor records on AT Protocol into living, embeddable boards that show who built what.",
     logo: "/assets/partners/hyperboards_brandmark.webp",
+    monochromeLogo: true,
     url: "https://hyperboards.org",
     // Hyperboards exposes the ePDS handle-login GET endpoint with no
     // `prompt=login`, so passing the viewer's handle silently SSOs them

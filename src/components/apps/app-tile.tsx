@@ -10,8 +10,9 @@ export type AppTileSize = "sm" | "lg"
 export interface AppTileProps {
   app: ConnectedApp
   /**
-   * `sm`: 40px logo, for the short list on Home. `lg`: 56px logo and
-   * roomier padding, for the /apps directory.
+   * `sm`: compact padding, for the short list on Home. `lg`: roomier
+   * padding and a larger name, for the /apps directory. Both put the logo
+   * on the same 44px plate.
    */
   size?: AppTileSize
   /** Adds the app's longer description under the name (the /apps page). */
@@ -32,11 +33,6 @@ const tileBySize: Record<AppTileSize, string> = {
   lg: "p-4 md:p-5",
 }
 
-const logoBySize: Record<AppTileSize, { px: number; cls: string }> = {
-  sm: { px: 40, cls: "h-10 w-10" },
-  lg: { px: 56, cls: "h-14 w-14" },
-}
-
 /**
  * One partner app as a tile: logo, name, one-line description and an
  * "opens elsewhere" arrow; on /apps also the longer description. The whole
@@ -52,8 +48,8 @@ export default function AppTile({
   size = "sm",
   showLongDescription = false,
 }: AppTileProps) {
-  const logo = logoBySize[size]
   const isLarge = size === "lg"
+  const monochromeLogo = "monochromeLogo" in app && app.monochromeLogo
 
   return (
     <SsoAppLink
@@ -66,21 +62,21 @@ export default function AppTile({
           tagline's length, and the arrow sits level with the name rather
           than in the middle of the text. */}
       <span className={`flex items-start gap-3 ${isLarge ? "md:gap-4" : ""}`}>
-        <Image
-          src={app.logo}
-          alt=""
-          width={logo.px}
-          height={logo.px}
-          // Partner logos are brand assets drawn for a light ground, some
-          // with a transparent background, so they sit on an invariant
-          // white plate that doesn't flip in dark mode. A logo whose white
-          // background was removed (`transparentLogo`: GainForest,
-          // Simocracy) sits straight on the tile instead, so it never
-          // shows as a white square. No outline either way.
-          className={`${logo.cls} shrink-0 rounded object-cover ${
-            "transparentLogo" in app && app.transparentLogo ? "" : "bg-[var(--color-white)]"
-          }`}
-        />
+        {/* Every logo on one 44px plate in --bg-sunken (it follows the
+            theme), fitted 4px inside it the same way for every app, so a
+            logo with a transparent ground reads as the same size and
+            weight as a full-bleed one. A black one-colour mark
+            (`monochromeLogo`) flips to white in dark mode, where the plate
+            is near-black. */}
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded bg-[var(--bg-sunken)] p-1">
+          <Image
+            src={app.logo}
+            alt=""
+            width={36}
+            height={36}
+            className={`h-full w-full rounded object-contain ${monochromeLogo ? "dark:invert" : ""}`}
+          />
+        </span>
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span
             className={`font-semibold text-[var(--fg-primary)] ${isLarge ? "text-body leading-snug" : "text-body-sm"}`}
@@ -89,11 +85,14 @@ export default function AppTile({
           </span>
           {/* From 800px, where /apps tiles sit side by side, the tagline
               keeps room for its two lines, so the long descriptions below
-              start at one height across the row. */}
+              start at one height across the row. Balanced, so a tagline
+              that wraps splits evenly instead of leaving one word on the
+              second line; the inner block carries the balance, since the
+              clamp makes the outer span a -webkit-box. */}
           <span
             className={`line-clamp-2 text-ui text-[var(--fg-muted)] ${isLarge ? "md:min-h-[2.9em]" : ""}`}
           >
-            {app.desc}
+            <span className="block text-balance">{app.desc}</span>
           </span>
         </span>
         <ArrowUpRight
