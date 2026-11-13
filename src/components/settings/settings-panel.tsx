@@ -39,7 +39,7 @@ const OrgSettings = dynamic(
 type SectionKey =
   | "account"
   | "appearance"
-  | "bluesky-follows"
+  | "social-graph"
   | "app-passwords"
   | "group"
 
@@ -69,11 +69,10 @@ const SECTIONS: SectionDef[] = [
     description: "How Certified looks on this device.",
   },
   {
-    key: "bluesky-follows",
-    label: "Bluesky follows",
+    key: "social-graph",
+    label: "Social graph",
     icon: Share2,
-    description:
-      "Compare your Certified and Bluesky follows, and sync the ones missing on either side.",
+    description: "The accounts you follow. What they publish shows in your feed.",
   },
   {
     key: "app-passwords",
@@ -94,8 +93,8 @@ const SECTIONS: SectionDef[] = [
 const SECTION_KEYS: readonly SectionKey[] = SECTIONS.map((s) => s.key)
 
 /** Old deep links land on the section that now holds them: the per-field
- *  ones (#username / #email / #password) on Account, #social-graph on
- *  Bluesky follows. */
+ *  ones (#username / #email / #password) on Account, #bluesky-follows on
+ *  Social graph. */
 const SECTION_ALIASES: Readonly<Record<string, SectionKey>> = {
   username: "account",
   handle: "account",
@@ -103,8 +102,8 @@ const SECTION_ALIASES: Readonly<Record<string, SectionKey>> = {
   password: "account",
   did: "account",
   theme: "appearance",
-  // The section's earlier name (the product tour still links here).
-  "social-graph": "bluesky-follows",
+  // The section's earlier name.
+  "bluesky-follows": "social-graph",
 }
 
 /**
@@ -187,9 +186,12 @@ export default function SettingsPanel() {
             <ThemeToggle variant="cards" />
           </SettingsRow>
         )
-      case "bluesky-follows":
+      case "social-graph":
         return did ? (
-          <SettingsBlock>
+          <SettingsBlock
+            title="Sync with Bluesky"
+            description="Your follows on Certified and on Bluesky are kept apart. Bring in the accounts you follow on Bluesky, or follow on Bluesky the accounts you follow here. You choose which ones before anything changes."
+          >
             <SyncSocialGraphSection did={did} ownDid={did} />
           </SettingsBlock>
         ) : null

@@ -96,7 +96,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 - **Settings**
   - The header names the account the settings apply to.
   - Sections are listed down the left, and each section is a set of rows.
-  - "Social graph" is now "Bluesky follows".
+  - "Social graph" leads its section, with "Sync with Bluesky" (and what it does) under it.
 - **Help**: a contents list, an article, and a Send feedback button at the end. The content is the same.
 
 ## Accessibility and robustness (from the reviews)

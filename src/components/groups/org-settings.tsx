@@ -107,11 +107,9 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "social-graph",
-    label: "Import follows",
-    title: "Import Bluesky follows",
+    label: "Social graph",
     icon: Share2,
-    description:
-      "Compare this group's Certified follows with its Bluesky follows, and import the ones missing here.",
+    description: "The accounts this group follows. What they publish shows in the group's feed.",
   },
   {
     key: "members",
@@ -664,7 +662,10 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
       case "social-graph":
         return (
-          <SettingsBlock>
+          <SettingsBlock
+            title="Sync with Bluesky"
+            description="Compare this group's Certified follows with its Bluesky follows, and import the ones missing here."
+          >
             {did ? (
               <SyncSocialGraphSection
                 did={groupDid}
