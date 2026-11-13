@@ -123,7 +123,13 @@ function HomeAccount({
           sections. */}
       <div className="home__side">
         <Card unpadded className="home__box">
-          <HomeIdSection identity={identity} isGroup={isGroup} />
+          <HomeIdSection
+            identity={identity}
+            isGroup={isGroup}
+            canEditHandle={
+              !activeGroup || activeGroup.role === "owner" || activeGroup.role === "admin"
+            }
+          />
         </Card>
         {isGroup ? null : (
           <Card unpadded className="home__box">

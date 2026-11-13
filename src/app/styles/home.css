@@ -131,6 +131,27 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* The handle's copy box with a pencil (to Settings) inside it, left of
+   the copy icon. The pencil is a sibling of the copy button laid over its
+   right end: 32px wide, 32px in from the edge, so its 44px hit area stops
+   at the copy icon (12px padding + 14px icon); the wider gap keeps the
+   handle text clear of it. */
+.home-id__handle {
+  position: relative;
+}
+
+.home-id__handle .did-pill {
+  gap: 46px;
+}
+
+.home-id__edit {
+  position: absolute;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
+  display: inline-flex;
+}
+
 .home__main {
   display: flex;
   flex-direction: column;

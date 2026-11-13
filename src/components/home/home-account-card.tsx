@@ -2,7 +2,10 @@
 
 import { useId } from "react"
 import Link from "next/link"
+import { Pencil } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
+import Button from "@/components/ui/button"
+import Tooltip from "@/components/ui/tooltip"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
@@ -137,9 +140,13 @@ function HomeIdentityHeaderSkeleton() {
 export function HomeIdSection({
   identity,
   isGroup,
+  canEditHandle,
 }: {
   identity: HomeIdentity
   isGroup: boolean
+  /** Show the pencil that leads to the handle in Settings: your own
+   *  account, or a group you own or admin. */
+  canEditHandle: boolean
 }) {
   const { did, handle, isLoading } = identity
   const titleId = useId()
@@ -167,7 +174,23 @@ export function HomeIdSection({
             <dt className="text-ui font-medium text-[var(--fg-secondary)]">Handle</dt>
             <dd className="m-0 min-w-0">
               {handle ? (
-                <CopyPill value={handle} display={`@${handle}`} label="handle" />
+                // The pencil sits inside the copy box, left of the copy
+                // icon, but is its own control (home.css).
+                <div className={canEditHandle ? "home-id__handle" : undefined}>
+                  <CopyPill value={handle} display={`@${handle}`} label="handle" />
+                  {canEditHandle ? (
+                    <Tooltip label="Change handle" className="home-id__edit">
+                      <Button
+                        href="/settings#account"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Change handle in Settings"
+                      >
+                        <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                      </Button>
+                    </Tooltip>
+                  ) : null}
+                </div>
               ) : (
                 <Skeleton variant="line" height={36} aria-hidden />
               )}
