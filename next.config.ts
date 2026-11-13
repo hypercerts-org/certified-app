@@ -2,7 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["@atproto/oauth-client-node"],
+  serverExternalPackages: ["@atproto/oauth-client-node", "@vercel/sandbox"],
+  // The site capture script is read at runtime and sent into a Vercel
+  // Sandbox VM (src/lib/look/site-capture.ts), so the function needs it.
+  outputFileTracingIncludes: {
+    "/api/looks/site-capture": ["./scripts/site-capture/capture.mjs"],
+  },
   // Client router cache: dynamic segments (/explore, /groups, profile
   // and record-detail routes) default to staleTime 0 in Next 15/16,
   // so every repeat Link/bottom-nav navigation refetches an RSC shell

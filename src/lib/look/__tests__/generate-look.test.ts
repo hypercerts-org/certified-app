@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { SiteDesign } from "../site-design"
+import type { SiteCapture } from "../site-capture-types"
 
 // The real SDK's error classes, a fake client.
 const parse = vi.fn()
@@ -75,6 +76,28 @@ const answer = {
   endorsement: { frame: "rule", who: "plain", note: "quote", mark: "check" },
 }
 
+type Block = { type: "text"; text: string } | { type: "image"; source: { media_type: string; data: string } }
+/** The text of the user turn sent with the nth call. */
+const sentText = (n = 0) =>
+  (parse.mock.calls[n][0].messages[0].content as Block[])
+    .filter((b): b is Extract<Block, { type: "text" }> => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+
+const capture: SiteCapture = {
+  url: "https://www.example.com/",
+  screenshots: [
+    { label: "Desktop, 1280 wide: the first screen", mediaType: "image/jpeg", data: "AAAA" },
+    { label: "Phone, 390 wide: the first screen", mediaType: "image/jpeg", data: "BBBB" },
+  ],
+  logo: { label: "The site's logo", mediaType: "image/png", data: "CCCC" },
+  shareImage: null,
+  computed: [
+    { role: "h1", tag: "h1", text: "Hello", styles: { "font-family": '"Work Sans", sans-serif', "text-transform": "uppercase" } },
+  ],
+  visibleColours: [{ hex: "#F99926", share: 0.12 }],
+}
+
 beforeEach(() => {
   parse.mockReset()
   retrieve.mockReset()
@@ -95,8 +118,9 @@ describe("generateLookSpec", () => {
       output_config: { effort: "high" },
     })
     expect(params.output_config.format).toBeTruthy()
-    expect(params.messages[0].content).toContain("<site_design>")
-    expect(params.messages[0].content).toContain('"#533afd"')
+    expect(sentText()).toContain("<site_design>")
+    expect(sentText()).toContain('"#533afd"')
+    expect(sentText()).not.toContain("<rendered_styles>")
     expect(params.system).toContain("ignore it")
     expect(spec.name).toBe("Example")
     expect(spec.faces.mono).toBe("geist-mono")
@@ -107,7 +131,7 @@ describe("generateLookSpec", () => {
     const { normalizeLookSpec } = await import("../custom-look-spec")
     const previous = normalizeLookSpec(answer)
     await generateLookSpec({ apiKey: "k", design, previous, request: "Use the green from their buttons" })
-    const content: string = parse.mock.calls[0][0].messages[0].content
+    const content = sentText()
     expect(content).toContain("<previous_style>")
     expect(content).toContain('"idCard"')
     expect(content).toContain("<request>\nUse the green from their buttons\n</request>")
@@ -115,9 +139,48 @@ describe("generateLookSpec", () => {
 
     parse.mockClear()
     await generateLookSpec({ apiKey: "k", design, previous })
-    const fresh: string = parse.mock.calls[0][0].messages[0].content
+    const fresh = sentText()
     expect(fresh).not.toContain("<request>")
     expect(fresh).toContain("just as faithful")
+  })
+
+  it("shows Claude the screenshots before the digest, each after its label", async () => {
+    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: answer })
+    await generateLookSpec({ apiKey: "k", design, capture })
+    const blocks = parse.mock.calls[0][0].messages[0].content as Block[]
+    expect(blocks.map((b) => b.type)).toEqual(["text", "text", "image", "text", "image", "text", "image", "text"])
+    expect(blocks[1]).toEqual({ type: "text", text: "Desktop, 1280 wide: the first screen:" })
+    expect(blocks[2]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "AAAA" } })
+    expect(blocks[6]).toMatchObject({ source: { media_type: "image/png", data: "CCCC" } })
+    const last = blocks[7] as Extract<Block, { type: "text" }>
+    expect(last.text.indexOf("<rendered_styles>")).toBeLessThan(last.text.indexOf("<site_design>"))
+    expect(parse.mock.calls[0][0].system).toContain("including text you can read in a screenshot")
+  })
+
+  it("accepts evidence from the rendered styles and snaps to the visible colours", async () => {
+    parse.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...answer,
+        colors: { ...answer.colors, primary: "#FA9A27" },
+        idCard: { ...answer.idCard, title: "caps" },
+        evidence: [{ lever: "idCard.title", choice: "caps", quote: '"text-transform": "uppercase"' }],
+      },
+    })
+    const spec = await generateLookSpec({ apiKey: "k", design, capture })
+    expect(spec.idCard.title).toBe("caps")
+    // The orange is only on the screenshots, not in the digest: still kept.
+    const { rgbToOklch, parseCssColour } = await import("../oklch")
+    const hue = rgbToOklch(parseCssColour(spec.light.accent)!).h
+    expect(hue).toBeGreaterThan(40)
+    expect(hue).toBeLessThan(80)
+
+    // Without the capture the same quote has nothing to match.
+    parse.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: { ...answer, idCard: { ...answer.idCard, title: "caps" }, evidence: [{ lever: "idCard.title", choice: "caps", quote: '"text-transform": "uppercase"' }] },
+    })
+    expect((await generateLookSpec({ apiKey: "k", design })).idCard.title).toBe("plain")
   })
 
   it("never keeps a move the site gives no evidence for", async () => {

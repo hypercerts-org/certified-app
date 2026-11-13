@@ -559,7 +559,9 @@ function recheckPalette(raw: unknown, mode: Mode): Palette {
 
 // ---------------------------------------------------------------- ground
 
-const forMatch = (text: string) => text.toLowerCase().replace(/["'`\s]/g, "")
+// Quotes, whitespace and JSON's escaping backslashes don't count: the
+// sources are JSON text, where a font family reads \"Work Sans\".
+const forMatch = (text: string) => text.toLowerCase().replace(/["'`\s\\]/g, "")
 
 function getAt(o: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined), o)

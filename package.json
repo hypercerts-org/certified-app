@@ -39,6 +39,7 @@
     "@types/d3-hierarchy": "3.1.7",
     "@upstash/redis": "^1.36.3",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/sandbox": "^4.0.0",
     "d3-hierarchy": "3.1.2",
     "ipaddr.js": "^2.5.0",
     "leaflet": "^1.9.4",

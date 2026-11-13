@@ -196,7 +196,7 @@ export default function SettingsPanel() {
             </SettingsBlock>
             <SettingsBlock
               title="Make a style from a website"
-              description="Experimental. Claude reads a website's colours, typefaces and corners and makes a style for Certified from them, kept in this browser with the others. It runs on your own Claude API key, so Anthropic bills your account for each style."
+              description="Experimental. Certified's server opens the website to read its CSS and take screenshots, and Claude makes a style for Certified from its colours, typefaces and look, kept in this browser with the others. It runs on your own Claude API key, so Anthropic bills your account for each style."
             >
               <CustomLookMaker />
             </SettingsBlock>

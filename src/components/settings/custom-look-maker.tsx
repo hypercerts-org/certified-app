@@ -8,6 +8,7 @@ import FormDialog from "@/components/ui/form-dialog"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import type { SiteDesignResponse } from "@/app/api/looks/site-design/route"
+import type { SiteCapture, SiteCaptureResponse } from "@/lib/look/site-capture-types"
 import {
   addCustomLook,
   maskKey,
@@ -112,23 +113,31 @@ function useLookRun(apiKey: string) {
     const ctrl = new AbortController()
     abortRef.current = ctrl
     setPhase({ kind: "reading", host, refresh })
+    const site = encodeURIComponent(url.toString())
+    // Screenshots are a bonus: without them (not set up, or the site
+    // wouldn't render) the style comes from the CSS digest alone.
+    const capturing: Promise<SiteCapture | null> = fetch(`/api/looks/site-capture?url=${site}`, {
+      signal: ctrl.signal,
+    })
+      .then(async (res) => (res.ok ? (((await res.json()) as SiteCaptureResponse).capture ?? null) : null))
+      .catch(() => null)
     try {
-      const res = await fetch(`/api/looks/site-design?url=${encodeURIComponent(url.toString())}`, {
-        signal: ctrl.signal,
-      })
+      const res = await fetch(`/api/looks/site-design?url=${site}`, { signal: ctrl.signal })
       const body = (await res.json().catch(() => ({}))) as SiteDesignResponse
       if (!res.ok || !body.design) {
         throw new LookGenerationError("site", body.error ?? "Couldn't read that website.")
       }
+      const capture = await capturing
       setPhase({ kind: "designing", host, refresh })
       if (task.kind === "new") {
-        const spec = await generateLookSpec({ apiKey, design: body.design, signal: ctrl.signal })
+        const spec = await generateLookSpec({ apiKey, design: body.design, capture, signal: ctrl.signal })
         const look = addCustomLook(spec, host, url.toString())
         setPhase({ kind: "done", name: look.spec.name, host })
       } else {
         const spec = await generateLookSpec({
           apiKey,
           design: body.design,
+          capture,
           previous: task.look.spec,
           request: task.request,
           signal: ctrl.signal,
@@ -221,7 +230,7 @@ function RunStatus({ run, statusId }: { run: LookRun; statusId: string }) {
   return (
     <>
       <div id={statusId} role="status" aria-live="polite" className="text-body-sm text-[var(--fg-muted)]">
-        {phase.kind === "reading" ? <p className="m-0">Reading {phase.host}…</p> : null}
+        {phase.kind === "reading" ? <p className="m-0">Reading {phase.host} and taking screenshots…</p> : null}
         {phase.kind === "designing" ? (
           <p className="m-0">
             {LOOK_MODEL_NAME} is making {phase.refresh ? "a new version of the style" : "a style"} from {phase.host}.
@@ -357,7 +366,8 @@ function MadeLooks({ run, apiKey }: { run: LookRun; apiKey: string | null }) {
 /**
  * Settings → Appearance → Make a style from a website (experimental): the
  * person's Claude API key, a website, and the styles made so far. The
- * website is read by Certified's server (/api/looks/site-design); Claude is
+ * website is read by Certified's server (/api/looks/site-design, and
+ * screenshots from /api/looks/site-capture); Claude is
  * called from this browser with the person's key (generate-look.ts).
  */
 export default function CustomLookMaker() {
