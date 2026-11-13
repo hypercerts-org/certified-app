@@ -104,7 +104,7 @@ const VALID_EMAIL = "group@example.com"
 function fillValidForm() {
   const name = screen.getByLabelText("Display name") as HTMLInputElement
   const handle = screen.getByLabelText("Handle") as HTMLInputElement
-  const email = screen.getByLabelText("Group email") as HTMLInputElement
+  const email = screen.getByLabelText("Email") as HTMLInputElement
 
   fireEvent.change(name, { target: { value: VALID_NAME } })
   fireEvent.change(handle, { target: { value: VALID_HANDLE } })
@@ -153,7 +153,7 @@ describe("CreateGroupPage create-group confirmation modal", () => {
 
   it("confirming calls registerGroup with the handle, did, and trimmed email", async () => {
     render(<CreateGroupPage />)
-    const email = screen.getByLabelText("Group email") as HTMLInputElement
+    const email = screen.getByLabelText("Email") as HTMLInputElement
     const name = screen.getByLabelText("Display name") as HTMLInputElement
     const handle = screen.getByLabelText("Handle") as HTMLInputElement
 

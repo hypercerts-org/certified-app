@@ -71,7 +71,7 @@ afterEach(() => {
 })
 
 function getEmailInput(): HTMLInputElement {
-  return screen.getByLabelText("Group email") as HTMLInputElement
+  return screen.getByLabelText("Email") as HTMLInputElement
 }
 
 function getCreateButton(): HTMLButtonElement {
@@ -148,5 +148,48 @@ describe("CreateGroupPage email validation", () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(email)
     })
+  })
+})
+
+/**
+ * Audit X12: New group's fields were hand-rolled 27px / 13px inputs while
+ * New activity and Settings use the Input primitive. They are now the
+ * primitive at its default size (h-control-md: 44px, 14px text from 800px
+ * and 16px below), labelled by their visible labels; About is the Textarea
+ * primitive and the display name is New activity's title field.
+ */
+describe("CreateGroupPage fields", () => {
+  it("uses the Input primitive at its default size for every field", () => {
+    render(<CreateGroupPage />)
+    for (const name of ["Handle", "Email", "Website", "Founded", "Organization type"]) {
+      const field = screen.getByLabelText(name) as HTMLInputElement
+      expect(field.className).toContain("h-control-md")
+      expect(field.className).toContain("md:text-sm")
+      expect(field.className).not.toContain("cert-detail__meta-input")
+    }
+    expect((screen.getByLabelText("Founded") as HTMLInputElement).type).toBe("date")
+  })
+
+  it("keeps the display name as the serif title field, like New activity's title", () => {
+    render(<CreateGroupPage />)
+    const name = screen.getByLabelText("Display name") as HTMLInputElement
+    expect(name.className).toContain("font-headline")
+    expect(name.className).toContain("!text-h3")
+    expect(name.className).toContain("h-control-md")
+    expect(name.className).not.toContain("cert-detail__title-input")
+  })
+
+  it("shows a field's hint, and its error in place of the hint", async () => {
+    render(<CreateGroupPage />)
+    const email = getEmailInput()
+    expect(screen.getByText("Sign-in and recovery — use an address you control.").id).toBe(
+      email.getAttribute("aria-describedby"),
+    )
+
+    fireEvent.change(email, { target: { value: "bad" } })
+    fireEvent.blur(email)
+    const error = await screen.findByText("Enter a valid email address")
+    expect(email).toHaveAttribute("aria-invalid", "true")
+    expect(email.getAttribute("aria-describedby")).toBe(error.closest("p")!.id)
   })
 })

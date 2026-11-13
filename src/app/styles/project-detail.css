@@ -308,8 +308,9 @@
   min-width: 0;
 }
 
-/* Remove the boxed chrome around the Handle / Website / Founded /
-   Organization-type fields — they read as plain labelled rows. */
+/* Remove the boxed chrome around the Handle / Email and Website /
+   Founded / Organization-type fields (<Input>s with their labels) — they
+   read as plain labelled rows. */
 .create-group .project-detail__meta {
   border: 0;
   background: transparent;
@@ -334,13 +335,6 @@
   .create-group__account {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-.create-group__field-hint {
-  margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--fg-muted);
 }
 
 /* "Convert an existing account" — an alternative-path callout at the foot of
@@ -394,11 +388,6 @@
 }
 
 @media (max-width: 799px) {
-  /* Display-name field reads at the same size as the short-description
-     placeholder rather than the large serif title size. */
-  .create-group .cert-detail__title-input {
-    font-size: 1rem;
-  }
   /* Half-size avatar dropzone, centred horizontally — the full-width
      circle was oversized. */
   .create-group .create-group__avatar-tile {

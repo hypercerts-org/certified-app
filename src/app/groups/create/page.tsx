@@ -5,13 +5,8 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
   ArrowLeftRight,
-  AtSign,
-  Building2,
-  Calendar,
   FileText,
-  Globe,
   Image as ImageIcon,
-  Mail,
   Users,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -31,7 +26,9 @@ import Button from "@/components/ui/button"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Textarea from "@/components/ui/textarea"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import FormActionBar from "@/components/create/form-action-bar"
@@ -49,9 +46,10 @@ import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
  * mirror `/project/new`: full-width hero banner at the top,
  * title-style display-name input below, then short description,
  * then a meta strip with the lexicon-backed extras (handle,
- * website, founded date, organization type). Inputs reuse the
- * `cert-detail__*` and `create-cert__*` classes so the three
- * create pages read as one form family.
+ * website, founded date, organization type). The fields are the
+ * `Input` / `Textarea` primitives at their default size, as on New
+ * activity and in Settings (44px; 14px text from 800px, 16px below);
+ * the display name is New activity's title field (serif h3 role).
  *
  * Wire format: the create flow writes FIVE records on the way out —
  *   1. registerGroup           → mints the group DID
@@ -518,10 +516,13 @@ export default function CreateGroupPage() {
 
             <header className="cert-detail__headline">
               <div className="create-cert__input-with-counter">
-                <input
+                {/* The title-style field, as New activity's title: the
+                    Input primitive in the record title's serif role. */}
+                <Input
+                  flush
                   type="text"
                   id="create-group-name"
-                  className="cert-detail__title-input"
+                  className="font-headline !text-h3"
                   aria-label="Display name"
                   aria-describedby={
                     nameError ? "create-group-name-error" : "create-group-name-counter"
@@ -557,8 +558,8 @@ export default function CreateGroupPage() {
                 About
               </span>
               <div className="create-cert__input-with-counter">
-                <textarea
-                  className="cert-detail__short-desc-input"
+                <Textarea
+                  flush
                   value={shortDescription}
                   placeholder="A short description of your group (optional)"
                   aria-label="Short description"
@@ -574,141 +575,74 @@ export default function CreateGroupPage() {
             </section>
 
             <section className="project-detail__meta create-project__meta create-group__account">
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">
-                  <AtSign size={12} strokeWidth={2} aria-hidden />
-                  Handle
-                </span>
-                <input
-                  type="text"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  id="create-group-handle"
-                  aria-label="Handle"
-                  aria-describedby={
-                    handleError
-                      ? "create-group-handle-hint create-group-handle-error"
-                      : "create-group-handle-hint"
-                  }
-                  aria-invalid={!!handleError || undefined}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder="my-group"
-                  value={handle}
-                  maxLength={32}
-                  onChange={(e) => {
-                    // Force lowercase + strip spaces so the rule the
-                    // validator enforces is visible as the user types.
-                    const cleaned = e.target.value
-                      .toLowerCase()
-                      .replace(/\s+/g, "")
-                    setHandle(cleaned)
-                    if (handleError) validateHandle(cleaned)
-                  }}
-                />
-                <p className="create-group__field-hint" id="create-group-handle-hint">
-                  How people find this group on Certified.
-                </p>
-                {handleError ? (
-                  <p
-                    id="create-group-handle-error"
-                    className="create-cert__contrib-error mt-1"
-                    role="alert"
-                  >
-                    {handleError}
-                  </p>
-                ) : null}
-              </div>
+              <Input
+                type="text"
+                id="create-group-handle"
+                label="Handle"
+                helperText="How people find this group on Certified."
+                error={handleError || undefined}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="my-group"
+                value={handle}
+                maxLength={32}
+                onChange={(e) => {
+                  // Force lowercase + strip spaces so the rule the
+                  // validator enforces is visible as the user types.
+                  const cleaned = e.target.value
+                    .toLowerCase()
+                    .replace(/\s+/g, "")
+                  setHandle(cleaned)
+                  if (handleError) validateHandle(cleaned)
+                }}
+              />
 
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">
-                  <Mail size={12} strokeWidth={2} aria-hidden />
-                  Email
-                </span>
-                <input
-                  type="email"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  id="create-group-email"
-                  aria-label="Group email"
-                  aria-describedby={
-                    emailError
-                      ? "create-group-email-hint create-group-email-error"
-                      : "create-group-email-hint"
-                  }
-                  aria-invalid={!!emailError || undefined}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  placeholder="group@example.com"
-                  value={email}
-                  maxLength={254}
-                  autoComplete="off"
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    if (emailError) validateEmail(e.target.value)
-                  }}
-                  onBlur={(e) => validateEmail(e.target.value)}
-                />
-                <p className="create-group__field-hint" id="create-group-email-hint">
-                  Sign-in and recovery — use an address you control.
-                </p>
-                {emailError ? (
-                  <p
-                    id="create-group-email-error"
-                    className="create-cert__contrib-error mt-1"
-                    role="alert"
-                  >
-                    {emailError}
-                  </p>
-                ) : null}
-              </div>
+              <Input
+                type="email"
+                id="create-group-email"
+                label="Email"
+                helperText="Sign-in and recovery — use an address you control."
+                error={emailError || undefined}
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="group@example.com"
+                value={email}
+                maxLength={254}
+                autoComplete="off"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (emailError) validateEmail(e.target.value)
+                }}
+                onBlur={(e) => validateEmail(e.target.value)}
+              />
             </section>
 
             <section className="project-detail__meta create-project__meta">
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">
-                  <Globe size={12} strokeWidth={2} aria-hidden />
-                  Website
-                </span>
-                <input
-                  type="url"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  aria-label="Website"
-                  placeholder="https://your-group.org"
-                  value={website}
-                  maxLength={2048}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
+              <Input
+                type="url"
+                label="Website"
+                placeholder="https://your-group.org"
+                value={website}
+                maxLength={2048}
+                onChange={(e) => setWebsite(e.target.value)}
+                autoComplete="off"
+              />
 
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">
-                  <Calendar size={12} strokeWidth={2} aria-hidden />
-                  Founded
-                </span>
-                <input
-                  type="date"
-                  className="cert-detail__meta-input"
-                  aria-label="Founded date"
-                  value={foundedDate}
-                  onChange={(e) => setFoundedDate(e.target.value)}
-                />
-              </div>
+              <Input
+                type="date"
+                label="Founded"
+                value={foundedDate}
+                onChange={(e) => setFoundedDate(e.target.value)}
+              />
 
-              <div className="project-detail__meta-row">
-                <span className="project-detail__meta-label">
-                  <Building2 size={12} strokeWidth={2} aria-hidden />
-                  Organization type
-                </span>
-                <input
-                  type="text"
-                  className="cert-detail__meta-input create-cert__field--full"
-                  aria-label="Organization type"
-                  placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
-                  value={organizationType}
-                  onChange={(e) => setOrganizationType(e.target.value)}
-                />
-              </div>
+              <Input
+                type="text"
+                label="Organization type"
+                placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
+                value={organizationType}
+                onChange={(e) => setOrganizationType(e.target.value)}
+              />
             </section>
 
             <aside className="create-group__convert">

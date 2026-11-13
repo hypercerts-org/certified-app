@@ -1277,9 +1277,8 @@
 }
 
 /* A field's error line, under the fields it's about (spans the whole
-   contributor row). Also used by the group form. */
-.create-cert__field-error,
-.create-cert__contrib-error {
+   contributor row). */
+.create-cert__field-error {
   grid-column: 1 / -1;
   margin: 0;
   font-size: var(--text-caption);
