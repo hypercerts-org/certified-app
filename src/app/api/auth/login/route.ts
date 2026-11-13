@@ -8,6 +8,7 @@ import { parseJsonBody } from "@/lib/utils/api"
 import { logSafe } from "@/lib/utils/log-safe"
 import { enforceRateLimit, makeLimiter } from "@/lib/auth/rate-limit"
 import { clientIp } from "@/lib/utils/ip"
+import { coercePrompt } from "./coerce-prompt"
 
 // 30/min by IP. Bumped from #70's table-suggested 10/min to avoid
 // breaking shared-NAT / CGNAT users where dozens of legitimate users
@@ -15,15 +16,6 @@ import { clientIp } from "@/lib/utils/ip"
 const LIMITER = makeLimiter("auth-login", 30, 60)
 
 const HANDLE_SCOPE = "atproto transition:generic identity:handle account:email"
-
-// judgment-001: `prompt` is forwarded into client.authorize and shapes the
-// external OAuth authorization request, but the request body is untrusted.
-// Coerce anything outside the allowlist to undefined (silent — no 400) so a
-// caller can't slip in prompt=none / select_account / consent. Pure + exported
-// for unit testing.
-export function coercePrompt(prompt: unknown): "login" | "create" | undefined {
-  return prompt === "login" || prompt === "create" ? prompt : undefined
-}
 
 // Two-fallback handle authorize: try the handle as-is, then with an
 // `https://` prefix (PDS URL typed by the user), then via .well-known

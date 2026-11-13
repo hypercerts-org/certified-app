@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { coercePrompt } from "@/app/api/auth/login/route"
+import { coercePrompt } from "@/app/api/auth/login/coerce-prompt"
 
 // judgment-001: the OAuth `prompt` param is typed "login" | "create" but
 // was spread straight into client.authorize without runtime validation, so
