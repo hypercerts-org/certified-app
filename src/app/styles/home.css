@@ -1,9 +1,9 @@
 /* ---------- /home page ----------
-   The signed-in home is about the account. Its <PageHeader> is the
-   identity strip (avatar, name, bio, website; home-account-card.tsx),
-   full width in the Workspace frame above the side list. Under it the ID
-   and Your groups are white boxes in a right column (first, on phones),
-   beside the account's sections (records, from others) and Apps.
+   The signed-in home is about the account. It has no page header: the
+   account's identity (avatar, name as the h1, bio, website;
+   home-account-card.tsx) heads the ID box. The ID and Your groups are
+   white boxes in a right column (first, on phones), beside the account's
+   sections (records, from others) and Apps.
    <PageContainer> sets the width and gutters; this
    file sets the grid and the hairline rows. The follow feed lives on
    /feed; its card styles stay in this file (.home-feed*). */
@@ -94,6 +94,18 @@
 .home__box .home-id__item:last-child {
   border-bottom: none;
   padding-bottom: 0;
+}
+
+/* The top of the ID box: the account's avatar beside its name, bio and
+   website, a hairline under it before the ID. */
+.home-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* The ID's two values between hairlines. Side by side while the box

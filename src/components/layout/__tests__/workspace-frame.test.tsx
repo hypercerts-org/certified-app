@@ -179,12 +179,15 @@ describe("Records sections render the frame in every state", () => {
 })
 
 describe("Overview renders the frame", () => {
-  it("while auth loads: the header's placeholder, the side list, a spinner", () => {
+  it("while auth loads: no header (the account heads the ID box), the side list, a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<Home />)
-    const { sideList } = expectFrame(container)
+    expect(container.querySelector(".workspace__header")).toBeNull()
+    const sideList = screen.getByRole("navigation", { name: "Workspace" })
+    const main = container.querySelector(".workspace__main")!
+    expect(sideList.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(within(sideList).getByRole("link", { name: "Overview" })).toHaveAttribute(
       "aria-current",
       "page",

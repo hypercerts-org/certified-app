@@ -115,7 +115,8 @@ export default function WorkspaceShell({
  * and Help: the section's header (its `<PageHeader>`, the page's h1) full
  * width, then the Workspace side list and the content starting on one
  * line. From 1100px the list is a column; below that it is one scrolling
- * row of pills between the header and the content.
+ * row of pills between the header and the content. The Overview has no
+ * header: its account name (the h1) heads the ID box in the content.
  *
  * The header is passed in (not portalled) so the server renders it, and
  * the section keeps its own `<section aria-labelledby>` in `children`,
@@ -126,8 +127,9 @@ export function WorkspaceFrame({
   offset = true,
   children,
 }: {
-  /** The section's `<PageHeader>`; a placeholder while it loads. */
-  header: React.ReactNode
+  /** The section's `<PageHeader>`; a placeholder while it loads. Leave it
+   *  out when the content carries the page's h1 (the Overview). */
+  header?: React.ReactNode
   /**
    * From 1100px, push the content down by `SIDE_NAV_CONTENT_OFFSET` so a
    * section heading (`text-section`) at its top sits level with the first
@@ -144,7 +146,7 @@ export function WorkspaceFrame({
   }
   return (
     <>
-      <div className="workspace__header">{header}</div>
+      {header != null ? <div className="workspace__header">{header}</div> : null}
       <div className="workspace__layout">
         <SideNav
           aria-label="Workspace"

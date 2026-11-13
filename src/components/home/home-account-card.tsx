@@ -6,7 +6,6 @@ import { Pencil } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
-import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import SmartLink from "@/components/ui/smart-link"
@@ -15,6 +14,7 @@ import type { CertifiedProfile } from "@/lib/atproto/types"
 import type { Group } from "@/lib/groups/types"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
+import { useRegisterPageHeader } from "@/lib/navbar-context"
 
 /** The account Home describes, as `useUserProfile` resolved it. */
 export interface HomeIdentity {
@@ -36,19 +36,18 @@ export function bioFirstLine(text: string | undefined | null): string | null {
   )
 }
 
-/** The name and @handle in the header link to the profile. */
+/** The name and @handle link to the profile. */
 const PROFILE_LINK_CLASS =
   "rounded text-inherit no-underline decoration-[var(--fg-muted)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
 
 /**
- * Home's page header is the identity strip: the account's avatar, its name
- * as the page's h1, the bio's first line (or the @handle when there is no
- * bio) with the website under it. No buttons: the name (and the @handle)
- * open the profile, which has its own Edit button. It describes whichever
- * account the viewer is acting as, so a group admin who switched into a
- * group sees the group.
+ * The top of Home's ID box: the account's avatar, its name as the page's
+ * h1, the bio's first line (or the @handle when there is no bio) and the
+ * website. No buttons: the name (and the @handle) open the profile, which
+ * has its own Edit button. It describes whichever account the viewer is
+ * acting as, so a group admin who switched into a group sees the group.
  */
-export function HomeIdentityHeader({
+export function HomeAccountIdentity({
   identity,
   activeGroup,
 }: {
@@ -58,7 +57,7 @@ export function HomeIdentityHeader({
 }) {
   const { did, profile, avatarUrl, handle, isLoading } = identity
 
-  if (isLoading && !profile) return <HomeIdentityHeaderSkeleton />
+  if (isLoading && !profile) return <HomeAccountIdentitySkeleton />
 
   const isGroup = !!activeGroup
   const profileHref = profileUrl(handle || did)
@@ -70,63 +69,65 @@ export function HomeIdentityHeader({
   const handleLine = !bio && name && handle ? `@${handle}` : null
   const website = profile?.website?.trim() || null
 
-  const description =
-    bio || handleLine || website ? (
-      <>
+  return (
+    <div className="home-identity">
+      <Avatar
+        size="lg"
+        src={avatarUrl || activeGroup?.avatarUrl || undefined}
+        fallbackInitials={getInitials(name, handle ?? did)}
+        seed={did}
+        shape={isGroup ? "square" : "circle"}
+      />
+      <div className="flex min-w-0 flex-col gap-1">
+        <IdentityHeading>
+          <Link href={profileHref} className={PROFILE_LINK_CLASS} dir="auto">
+            {title}
+          </Link>
+        </IdentityHeading>
         {bio ? (
-          <span className="line-clamp-2" dir="auto">
+          <p className="m-0 line-clamp-2 text-body-sm text-[var(--fg-secondary)] text-pretty" dir="auto">
             {bio}
-          </span>
+          </p>
         ) : handleLine ? (
-          <span className="block min-w-0 truncate">
+          <p className="m-0 min-w-0 truncate text-body-sm text-[var(--fg-secondary)]">
             <Link href={profileHref} className={PROFILE_LINK_CLASS}>
               {handleLine}
             </Link>
-          </span>
+          </p>
         ) : null}
         {website ? (
           // SmartLink renders the site's icon and the link as siblings.
-          <span className="mt-1 flex min-w-0 items-center gap-2 text-[var(--fg-muted)] [&>svg]:shrink-0">
+          <span className="flex min-w-0 items-center gap-2 text-body-sm text-[var(--fg-muted)] [&>svg]:shrink-0">
             <SmartLink
               url={website}
               className="min-w-0 truncate text-[var(--fg-secondary)] no-underline underline-offset-4 hover:underline"
             />
           </span>
         ) : null}
-      </>
-    ) : undefined
-
-  return (
-    <PageHeader
-      visual={
-        <Avatar
-          size="lg"
-          src={avatarUrl || activeGroup?.avatarUrl || undefined}
-          fallbackInitials={getInitials(name, handle ?? did)}
-          seed={did}
-          shape={isGroup ? "square" : "circle"}
-        />
-      }
-      title={
-        <Link href={profileHref} className={PROFILE_LINK_CLASS} dir="auto">
-          {title}
-        </Link>
-      }
-      description={description}
-      className="!mb-0"
-    />
+      </div>
+    </div>
   )
 }
 
-/** The header's shape while the profile (or auth) loads: avatar, name,
- *  one line. */
-export function HomeIdentityHeaderSkeleton() {
+/** The account name: the page's visible h1. It stands in for a
+ *  `<PageHeader>`, so it registers like one and the chrome skips its own
+ *  h1 (navbar-context). */
+function IdentityHeading({ children }: { children: React.ReactNode }) {
+  useRegisterPageHeader()
   return (
-    <div className="flex items-center gap-3" aria-hidden>
+    <h1 className="m-0 break-words font-headline text-h3 text-[var(--fg-primary)] text-balance">{children}</h1>
+  )
+}
+
+/** The identity's shape while the profile (or auth) loads: avatar, name,
+ *  one line. */
+export function HomeAccountIdentitySkeleton() {
+  return (
+    <div className="home-identity" aria-hidden>
       <Skeleton variant="circle" width={64} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <Skeleton variant="line" width="min(240px, 60%)" height={28} />
-        <Skeleton variant="line" width="min(360px, 80%)" height={14} />
+        <Skeleton variant="line" width="70%" height={24} />
+        <Skeleton variant="line" width="90%" height={14} />
       </div>
     </div>
   )
@@ -135,8 +136,9 @@ export function HomeIdentityHeaderSkeleton() {
 /**
  * The ID section: the account's handle and permanent ID (DID), each
  * click-to-copy, with the note that apps use it to identify the account.
- * Home puts it in a white box above Your groups: a section header, then
- * the two values between hairlines (home.css).
+ * Home puts it in a white box above Your groups, under the account's
+ * identity: a section header, then the two values between hairlines
+ * (home.css).
  */
 export function HomeIdSection({
   identity,
@@ -153,11 +155,7 @@ export function HomeIdSection({
   const titleId = useId()
 
   return (
-    <section
-      className="flex min-w-0 flex-col gap-3"
-      aria-labelledby={titleId}
-      data-tour="home-account"
-    >
+    <section className="flex min-w-0 flex-col gap-3" aria-labelledby={titleId}>
       <SectionHeader
         id={titleId}
         title="ID"

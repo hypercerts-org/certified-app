@@ -31,7 +31,7 @@
  *   nav-create — the New button (desktop) / the + (phone)
  *   account-menu — the account button (desktop and phone)
  *   navbar-search — the desktop search field (not on /explore)
- *   home-account — Home's identity strip (home-account-card.tsx)
+ *   home-account — Home's ID box, the account on top (home.tsx)
  *   feed — the Feed column (home-feed.tsx)
  *   explore-category — Explore's type chips (explore.tsx)
  *   apps-grid — the Apps list (apps/page.tsx)

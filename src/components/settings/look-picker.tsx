@@ -36,8 +36,8 @@ function PreviewAvatar({
 /**
  * A live sample of one style, drawn with that style's own tokens and
  * centerpieces (`data-look-preview`, looks.css) in the current light/dark
- * mode: a miniature Overview with the account's avatar and name, its ID
- * card, two numbers, and an endorsement with a note. Decorative; the tile
+ * mode: a miniature Overview with its ID card (the account's avatar and
+ * name on top, then the ID), two numbers, and an endorsement with a note. Decorative; the tile
  * names the style. Every name, handle and DID here is invented (the
  * `.example` domain is reserved), never a real account.
  */
@@ -48,21 +48,21 @@ function LookPreview({ id }: { id: AnyLookId }) {
       aria-hidden
       className="flex flex-1 flex-col gap-2.5 bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
     >
-      <span className="flex items-center gap-2.5">
-        <PreviewAvatar initials="WC" shape="circle" size="sm" />
-        <span className="flex min-w-0 flex-col">
-          <span className="font-headline truncate text-body leading-tight text-[var(--fg-primary)] [font-weight:var(--weight-headline,600)]">
-            Wrenfield Collective
-          </span>
-          <span className="truncate text-caption text-[var(--fg-muted)]">@wrenfield.example</span>
-        </span>
-      </span>
-
       <span
         data-centerpiece="id"
         data-did="did:plc:q4nx7r2kd8vwm3tz5hpj"
         className="relative block overflow-hidden rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2.5 py-2"
       >
+        {/* The account on top, as on the Overview's ID box. */}
+        <span className="mb-2 flex items-center gap-2.5 border-b border-[var(--border-subtle)] pb-2">
+          <PreviewAvatar initials="WC" shape="circle" size="sm" />
+          <span className="flex min-w-0 flex-col">
+            <span className="font-headline truncate text-body leading-tight text-[var(--fg-primary)] [font-weight:var(--weight-headline,600)]">
+              Wrenfield Collective
+            </span>
+            <span className="truncate text-caption text-[var(--fg-muted)]">@wrenfield.example</span>
+          </span>
+        </span>
         <span data-part="title" className="block text-caption font-semibold text-[var(--fg-primary)]">
           ID
         </span>
