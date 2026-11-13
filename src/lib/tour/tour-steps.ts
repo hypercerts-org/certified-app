@@ -36,7 +36,7 @@
  *   create-title, create-submit — the New activity form
  *   profile-tabs, profile-edit — the profile's tab strip and Edit button
  *   settings-handle — the handle row in Settings › Account
- *   settings-bsky-sync — Settings › Social graph
+ *   settings-bsky-sync — Settings › Bluesky follows
  *
  * Copy mirrors the concept sections on /help; keep them in sync.
  */
@@ -238,7 +238,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "settings-sync",
-    navigateTo: "/settings#social-graph",
+    navigateTo: "/settings#bluesky-follows",
     anchor: "settings-bsky-sync",
     title: "Import Bluesky follows",
     body: "Certified has its own follow graph, kept separate from Bluesky. Sync here any time so you don't have to rebuild your network from scratch.",

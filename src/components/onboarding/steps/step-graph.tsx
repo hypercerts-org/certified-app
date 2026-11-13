@@ -93,8 +93,8 @@ export default function StepGraph({
       <div className="onboarding-step onboarding-step--graph">
         <p className="onboarding-step__error" role="alert">
           Your follow list is too large to compare safely (more than
-          10,000 follows). Sync is disabled — use Settings → Sync
-          social graph after onboarding to import in smaller batches.
+          10,000 follows). Sync is disabled — use Settings → Bluesky
+          follows after onboarding to import in smaller batches.
         </p>
       </div>
     )
