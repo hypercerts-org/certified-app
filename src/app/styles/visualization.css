@@ -161,15 +161,25 @@
   min-width: 200px;
 }
 
-/* Endorsement/award checkboxes float over the canvas, so give the row the
-   same card chrome as the legend for readability. */
+/* The filter checkboxes (Endorsements, Awards; Mutual only on its own
+   line, so the panel keeps its width) float over the canvas, so give them
+   the same card chrome as the legend for readability. */
 .viz__kind-toggles {
-  gap: var(--space-3, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
+}
+
+.viz__kind-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
 }
 
 /* Layout + scope switchers fill the control panel so their segments read
@@ -466,6 +476,19 @@
   flex-direction: column;
   gap: var(--space-6, 24px);
   overflow-y: auto;
+}
+
+/* While more of the sidebar is below its scrolled edge (from 1100px, where
+   it scrolls inside the graph row; `data-more-below` is set by
+   endorsement-stats.tsx), its last 48px fade out, so a cut-off row reads
+   as "scroll for more". Gone once scrolled to the end. A mask rather than
+   a gradient to a surface colour: the sidebar has no surface of its own,
+   it sits on the page canvas, which a style may paint with a backdrop
+   image (looks.css) that a solid gradient would cover. A mask reads only
+   alpha, so it is right in every style and both themes. */
+.viz__sidebar[data-more-below] {
+  -webkit-mask-image: linear-gradient(to bottom, var(--mask-opaque) calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to bottom, var(--mask-opaque) calc(100% - 48px), transparent);
 }
 
 /* The network totals are a <StatRow> (ui/stat-row.tsx) and the ranking

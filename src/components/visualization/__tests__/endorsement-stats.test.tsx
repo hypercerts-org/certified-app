@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen, within, fireEvent } from "@testing-library/react"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import EndorsementStats from "../endorsement-stats"
 import type { EndorsementGraph, GraphNode } from "@/hooks/use-endorsement-graph"
 
@@ -59,5 +61,59 @@ describe("EndorsementStats", () => {
     const ranking = screen.getByRole("region", { name: "Top endorsers" })
     fireEvent.click(within(ranking).getByRole("button", { name: /Node 1/ }))
     expect(onFocus).toHaveBeenCalledWith("did:plc:node1")
+  })
+})
+
+/** Gives the sidebar a scroll geometry jsdom doesn't lay out. */
+function setScroll(
+  el: HTMLElement,
+  geometry: { scrollHeight: number; clientHeight: number; scrollTop: number },
+) {
+  for (const [key, value] of Object.entries(geometry)) {
+    Object.defineProperty(el, key, { configurable: true, value })
+  }
+}
+
+/**
+ * Audit GP5: from 1100px the sidebar scrolls inside the graph row, and the
+ * last ranking row was cut mid-handle with no cue. While more is below, the
+ * sidebar carries `data-more-below` (a fade at its bottom edge); once
+ * scrolled to the end, it doesn't.
+ */
+describe("EndorsementStats fade", () => {
+  it("has no fade when everything fits", () => {
+    render(<EndorsementStats graph={graph} onFocus={() => {}} />)
+    expect(screen.getByRole("complementary")).not.toHaveAttribute("data-more-below")
+  })
+
+  it("fades the bottom edge while more is below, not once scrolled to the end", () => {
+    render(<EndorsementStats graph={graph} onFocus={() => {}} />)
+    const aside = screen.getByRole("complementary")
+
+    setScroll(aside, { scrollHeight: 900, clientHeight: 600, scrollTop: 0 })
+    fireEvent.scroll(aside)
+    expect(aside).toHaveAttribute("data-more-below")
+
+    setScroll(aside, { scrollHeight: 900, clientHeight: 600, scrollTop: 150 })
+    fireEvent.scroll(aside)
+    expect(aside).toHaveAttribute("data-more-below")
+
+    // At the end (allowing a fractional scroll position).
+    setScroll(aside, { scrollHeight: 900, clientHeight: 600, scrollTop: 299.5 })
+    fireEvent.scroll(aside)
+    expect(aside).not.toHaveAttribute("data-more-below")
+
+    // Back up: the fade returns.
+    setScroll(aside, { scrollHeight: 900, clientHeight: 600, scrollTop: 100 })
+    fireEvent.scroll(aside)
+    expect(aside).toHaveAttribute("data-more-below")
+  })
+
+  it("is a token mask, so it suits every style and both themes", () => {
+    const css = readFileSync(join(__dirname, "../../../app/styles/visualization.css"), "utf8")
+    const rule = css.slice(css.indexOf(".viz__sidebar[data-more-below] {"))
+    const body = rule.slice(0, rule.indexOf("}"))
+    expect(body).toContain("mask-image: linear-gradient(to bottom, var(--mask-opaque)")
+    expect(body).not.toMatch(/#[0-9a-f]{3,8}|rgba?\(/i)
   })
 })

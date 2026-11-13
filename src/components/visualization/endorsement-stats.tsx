@@ -4,9 +4,13 @@
  * Stats panel beside the endorsement graph. All figures are derived from
  * the already-loaded graph data (no extra fetch). Clicking a ranked person
  * focuses that node in the graph via `onFocus`.
+ *
+ * From 1100px the panel scrolls inside the graph row; while more of it is
+ * below the visible edge it carries `data-more-below`, which fades its
+ * bottom edge (visualization.css), so a cut-off row reads as "more below".
  */
 
-import { useId, useMemo } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import Avatar from "@/components/ui/avatar"
 import SectionHeader from "@/components/ui/section-header"
 import StatRow from "@/components/ui/stat-row"
@@ -92,8 +96,35 @@ export default function EndorsementStats({ graph, onFocus }: EndorsementStatsPro
     [nodes],
   )
 
+  // Whether more of the panel is below its scrolled edge. Re-checked on
+  // scroll, when the panel or its sections change size (a breakpoint, the
+  // window, a filter that changes the rankings), and when the data does.
+  const asideRef = useRef<HTMLElement | null>(null)
+  const [moreBelow, setMoreBelow] = useState(false)
+  const checkMoreBelow = useCallback(() => {
+    const el = asideRef.current
+    if (!el) return
+    // 1px of slack for fractional scroll positions at the end.
+    setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+  }, [])
+  useEffect(() => {
+    const el = asideRef.current
+    if (!el) return
+    checkMoreBelow()
+    if (typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(checkMoreBelow)
+    ro.observe(el)
+    for (const child of Array.from(el.children)) ro.observe(child)
+    return () => ro.disconnect()
+  }, [checkMoreBelow, graph])
+
   return (
-    <aside className="viz__sidebar">
+    <aside
+      ref={asideRef}
+      className="viz__sidebar"
+      data-more-below={moreBelow ? "" : undefined}
+      onScroll={checkMoreBelow}
+    >
       <StatRow
         aria-label="Network totals"
         items={[

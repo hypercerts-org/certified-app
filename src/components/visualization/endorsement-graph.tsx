@@ -910,30 +910,28 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             ]}
           />
         </div>
-        <div className="viz__control-row">
-          <Button
-            variant={onlyMutual ? "primary" : "secondary"}
-            size="sm"
-            pressed={onlyMutual}
-            onClick={() => setOnlyMutual((v) => !v)}
-          >
-            Mutual only
-          </Button>
-        </div>
-        {/* Badge-kind toggles. The last checked box is disabled so at
-            least one kind is always visible. */}
-        <div className="viz__control-row viz__kind-toggles">
+        {/* What the graph shows: the badge kinds, then "Mutual only", all
+            checkboxes (a state, not an action). The last checked kind is
+            disabled so at least one kind is always visible. */}
+        <div className="viz__kind-toggles">
+          <div className="viz__kind-row">
+            <Checkbox
+              label="Endorsements"
+              checked={showEndorsements}
+              disabled={showEndorsements && !showAwards}
+              onChange={(e) => setShowEndorsements(e.target.checked)}
+            />
+            <Checkbox
+              label="Awards"
+              checked={showAwards}
+              disabled={showAwards && !showEndorsements}
+              onChange={(e) => setShowAwards(e.target.checked)}
+            />
+          </div>
           <Checkbox
-            label="Endorsements"
-            checked={showEndorsements}
-            disabled={showEndorsements && !showAwards}
-            onChange={(e) => setShowEndorsements(e.target.checked)}
-          />
-          <Checkbox
-            label="Awards"
-            checked={showAwards}
-            disabled={showAwards && !showEndorsements}
-            onChange={(e) => setShowAwards(e.target.checked)}
+            label="Mutual only"
+            checked={onlyMutual}
+            onChange={(e) => setOnlyMutual(e.target.checked)}
           />
         </div>
         <div className="viz__legend" aria-hidden="true">
