@@ -12,6 +12,15 @@ type WordmarkProps = Omit<React.SVGProps<SVGSVGElement>, "height"> & {
   /** "certified" (default): the check mark and "Certified". "certified-app":
    *  the same, followed by ".app". */
   variant?: "certified" | "certified-app";
+  /**
+   * With `variant="certified-app"`: a "Beta" pill over "app", exactly as
+   * wide as "app" (the design of certified_app_beta_wordmark_black.svg).
+   * At UI sizes the artwork's own pill would be a few pixels tall, so this
+   * one is sized to be read (60% of the letter height, at least 10px) and
+   * its label is real text. It rises above the letter box without taking
+   * layout space.
+   */
+  beta?: boolean;
   title?: string;
   /**
    * Hide the wordmark from the accessibility tree when it sits inside an
@@ -23,6 +32,10 @@ type WordmarkProps = Omit<React.SVGProps<SVGSVGElement>, "height"> & {
 
 /** The artwork's letter box: "Certified" is 60 units tall. */
 const LETTER_H = 60;
+/** Where "app" sits in the certified-app artwork, and its x-height line. */
+const APP_X0 = 337.64;
+const APP_X1 = 465.15;
+const X_HEIGHT_TOP = 17.1211;
 
 const CERTIFIED_PATHS = [
   "M33.3864 30.5641L38.6253 36.1521L16.718 56.6896C14.6698 58.6101 11.4507 58.5075 9.52987 56.4598L8.2387 55.084L0 46.2953L5.58916 41.0575L13.3574 49.3404L33.3864 30.5641Z",
@@ -66,6 +79,7 @@ const ARTWORK = {
 export default function Wordmark({
   height = 20,
   variant = "certified",
+  beta = false,
   title,
   decorative = false,
   className,
@@ -76,7 +90,7 @@ export default function Wordmark({
   const scale = height / LETTER_H;
   const label = title ?? (variant === "certified-app" ? "Certified.app" : "Certified");
   const descender = (art.height - LETTER_H) * scale;
-  return (
+  const svg = (
     <svg
       height={art.height * scale}
       width={art.width * scale}
@@ -96,5 +110,34 @@ export default function Wordmark({
         <path key={i} d={d} />
       ))}
     </svg>
+  );
+  if (!beta || variant !== "certified-app") return svg;
+
+  // The pill: over "app", as wide as it, its bottom a small gap above the
+  // x-height line. Filled with the wordmark's colour (currentColor), with
+  // the label in the page colour, so it reads as cut out of the pill.
+  const pillH = Math.max(10, Math.round(height * 0.6));
+  const gap = Math.max(1.5, height * 0.1);
+  return (
+    <span className="relative inline-flex">
+      {svg}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute flex items-center justify-center rounded-[999px] bg-current"
+        style={{
+          left: APP_X0 * scale,
+          width: (APP_X1 - APP_X0) * scale,
+          top: X_HEIGHT_TOP * scale - gap - pillH,
+          height: pillH,
+        }}
+      >
+        <span
+          className="font-semibold uppercase leading-none tracking-label text-[var(--bg-canvas)] [font-feature-settings:'case'_1]"
+          style={{ fontSize: Math.round(pillH * 0.72) }}
+        >
+          Beta
+        </span>
+      </span>
+    </span>
   );
 }

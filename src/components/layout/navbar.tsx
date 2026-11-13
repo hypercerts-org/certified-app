@@ -14,7 +14,6 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 import { isTopLevelPath } from "@/lib/layout/destinations";
 import { parseActor } from "@/lib/urls";
 import Button from "@/components/ui/button";
-import Badge from "@/components/ui/badge";
 import Brandmark from "@/components/ui/brandmark";
 import Wordmark from "@/components/ui/wordmark";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
@@ -45,7 +44,7 @@ function isOwnProfilePath(
 /**
  * Phone top bar (below 800px). One bar on every page:
  *
- * - **Left:** the wordmark and its Beta tag on the top-level pages (Home,
+ * - **Left:** the Certified.app wordmark with its Beta pill on the top-level pages (Home,
  *   Feed, Explore, Records, Apps, Settings, Help and your own profile);
  *   the square brandmark instead when the compact title shares the row,
  *   so the title keeps its room. Everywhere else
@@ -124,18 +123,13 @@ const Navbar: React.FC = () => {
                 <Brandmark size={28} decorative />
               </Link>
             ) : (
-              <span className="navbar__brand-group">
-                <Link
-                  href={isAuthenticated ? "/home" : "/welcome"}
-                  className="navbar__logo navbar__logo--wordmark"
-                  aria-label="Certified home"
-                >
-                  <Wordmark variant="certified-app" height={18} decorative />
-                </Link>
-                <Badge variant="tag" compact>
-                  Beta
-                </Badge>
-              </span>
+              <Link
+                href={isAuthenticated ? "/home" : "/welcome"}
+                className="navbar__logo navbar__logo--wordmark"
+                aria-label="Certified home"
+              >
+                <Wordmark variant="certified-app" beta height={18} decorative />
+              </Link>
             )
           ) : (
             <Button

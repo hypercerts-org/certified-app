@@ -183,15 +183,9 @@
   outline-offset: 2px;
 }
 
-/* The wordmark and its Beta tag (top-level pages). The link stays a
-   44px-tall target; its 8px inset puts the mark on the 16px gutter. */
-.navbar__brand-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
+/* The Certified.app wordmark with its Beta pill (top-level pages). The
+   link stays a 44px-tall target; its 8px inset puts the mark on the 16px
+   gutter. */
 .navbar__logo--wordmark {
   width: auto;
   padding: 0 8px;
@@ -1326,18 +1320,9 @@
   flex-shrink: 0;
 }
 
-/* The wordmark (to Home) and its Beta tag. */
-.desktop-top-bar__brand-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  /* Room before the first destination. */
-  margin-right: 4px;
-}
-
-/* A 36px-tall target around the 18px wordmark; the 4px inset puts the
-   mark on the 16px page edge (the row has 12px padding). */
+/* The Certified.app wordmark with its Beta pill (to Home): a 36px-tall
+   target around the 18px letters; the 4px inset puts the mark on the 16px
+   page edge (the row has 12px padding). */
 .desktop-top-bar__brand {
   display: inline-flex;
   align-items: center;

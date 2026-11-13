@@ -19,6 +19,22 @@ describe("Wordmark", () => {
     expect(parseFloat(svg.style.marginBottom)).toBeCloseTo(-((76.31 - 60) * 30) / 60)
   })
 
+  it("adds a Beta pill over \"app\", as wide as \"app\", above the letters", () => {
+    const { container } = render(<Wordmark variant="certified-app" beta height={30} decorative />)
+    const label = screen.getByText("Beta")
+    const pill = label.parentElement as HTMLElement
+    expect(pill).toHaveAttribute("aria-hidden", "true")
+    expect(parseFloat(pill.style.left)).toBeCloseTo((337.64 * 30) / 60)
+    expect(parseFloat(pill.style.width)).toBeCloseTo(((465.15 - 337.64) * 30) / 60)
+    expect(parseFloat(pill.style.top)).toBeLessThan(0)
+    expect(container.querySelector("svg")).not.toBeNull()
+  })
+
+  it("ignores beta on the plain Certified wordmark", () => {
+    render(<Wordmark beta height={30} decorative />)
+    expect(screen.queryByText("Beta")).toBeNull()
+  })
+
   it("leaves the accessibility tree when decorative", () => {
     const { container } = render(<Wordmark variant="certified-app" decorative />)
     expect(screen.queryByRole("img")).toBeNull()

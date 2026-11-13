@@ -9,7 +9,6 @@ import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context";
 import { useMounted } from "@/hooks/use-mounted";
 import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
 import Button from "@/components/ui/button";
-import Badge from "@/components/ui/badge";
 import Wordmark from "@/components/ui/wordmark";
 import GlobalSearch from "@/components/search/global-search";
 import { DesktopAccountMenu } from "./account-menu";
@@ -17,8 +16,8 @@ import { DesktopNewMenu } from "./new-menu";
 
 /**
  * Desktop chrome (≥800px). One row:
- *   [wordmark] [Beta] [Workspace] | [Feed] [Explore] [Apps]   [search] [New] [account]
- *   Signed out: [wordmark] [Beta] [Explore] [Apps]        [search] [Help] [Sign in]
+ *   [Certified.app + Beta pill] [Workspace] | [Feed] [Explore] [Apps]   [search] [New] [account]
+ *   Signed out: [Certified.app + Beta pill] [Explore] [Apps]      [search] [Help] [Sign in]
  *
  * A divider separates your Workspace from the network (Feed, Explore,
  * Apps): the two groups in `destinations.ts`.
@@ -85,14 +84,9 @@ export default function DesktopTopBar() {
       ) : null}
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
-          <div className="desktop-top-bar__brand-group">
-            <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
-              <Wordmark variant="certified-app" height={18} decorative />
-            </Link>
-            <Badge variant="tag" compact>
-              Beta
-            </Badge>
-          </div>
+          <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
+            <Wordmark variant="certified-app" beta height={18} decorative />
+          </Link>
           {/* Destinations wait for auth, so a signed-in viewer never sees
               the signed-out set flash first. */}
           {!isLoading ? (
