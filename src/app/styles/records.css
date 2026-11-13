@@ -699,6 +699,19 @@
   flex-shrink: 0;
 }
 
+/* One width for the row's button slot, whatever it holds ("Follow" or
+   "Following", "Hide" or "Show", "Revoke"), sized to the widest
+   ("Following" with its icon) and right-aligned in it: the dates before
+   it line up down the list, and toggling a button never moves them.
+   Phones hide the date, so the slot hugs its button there. */
+@media (min-width: 800px) {
+  .records-person__action {
+    display: flex;
+    justify-content: flex-end;
+    min-width: 5.5rem;
+  }
+}
+
 /* Endorsement rows (Received and Given, one row): the account link (a
    "Hidden" tag after the name), the date, then the row's button (Hide /
    Show, Revoke). An error wraps onto its own line. */
