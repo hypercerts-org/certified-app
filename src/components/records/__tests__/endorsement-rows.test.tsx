@@ -101,9 +101,12 @@ describe("Received rows (EN1, X3)", () => {
     expect(tag.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // The shown row has no tag.
     expect(within(rows[0]).queryByText("Hidden")).toBeNull()
-    expect(
-      within(hiddenRow).getByRole("button", { name: "Show the endorsement from Ben Okafor" }),
-    ).toBeInTheDocument()
+    // The exception stands out, as Follow / Following do: a filled Show on
+    // the hidden row, an outlined Hide on the shown one.
+    const show = within(hiddenRow).getByRole("button", { name: "Show the endorsement from Ben Okafor" })
+    expect(show.className).toContain("bg-[var(--btn-primary-bg)]")
+    const hide = within(rows[0]).getByRole("button", { name: /^Hide the endorsement from/ })
+    expect(hide.className).not.toContain("bg-[var(--btn-primary-bg)]")
   })
 
   it("uses the people size: 40px avatar, the name in body, the handle in ui", () => {

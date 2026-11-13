@@ -122,8 +122,11 @@ function ReceivedRow({
         nameAside={hidden ? <Badge variant="tag">Hidden</Badge> : null}
         trailing={
           <div className="records-person__action">
+            {/* As Followers' Follow / Following: the exception (a hidden
+                endorsement) gets the filled button, so it stands out in
+                the list; the usual state is the quiet outlined one. */}
             <Button
-              variant="secondary"
+              variant={hidden ? "primary" : "secondary"}
               size="sm"
               loading={busy}
               onClick={() => void toggle()}
