@@ -4,7 +4,9 @@ import { render, screen } from "@testing-library/react"
 /**
  * The root not-found page names what's missing only when that absence is
  * established: a typo under a real profile is a plain "Page not found",
- * not "Profile not found" (Greptile on #267).
+ * not "Profile not found" (Greptile on #267). A top-level path is a
+ * missing profile only when it reads as an account (a handle has a dot,
+ * or a DID); a mistyped app address is a missing page (NF1).
  */
 
 const { pathname, lookupActor, lookupRecord, resolveHandle } = vi.hoisted(() => ({
@@ -36,6 +38,32 @@ beforeEach(() => {
 describe("not-found page", () => {
   it("a top-level actor path is a missing profile", async () => {
     expect(await renderAt("/nobody.example.com")).toBe("Profile not found")
+    expect(lookupActor).not.toHaveBeenCalled()
+  })
+
+  it("names the missing handle, kept on one line", async () => {
+    await renderAt("/this-handle-does-not-exist.example.com")
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent ===
+            "We couldn't find a Certified profile for @this-handle-does-not-exist.example.com.",
+      ),
+    ).toBeInTheDocument()
+    const handle = screen.getByText("@this-handle-does-not-exist.example.com")
+    expect(handle.tagName).toBe("SPAN")
+    expect(handle).toHaveClass("whitespace-nowrap")
+  })
+
+  it("a top-level DID path is a missing profile", async () => {
+    expect(await renderAt("/did:plc:nobody")).toBe("Profile not found")
+  })
+
+  it("a top-level path that isn't a handle is a missing page", async () => {
+    expect(await renderAt("/this-page-does-not-exist")).toBe("Page not found")
+    expect(screen.queryByText(/couldn't find a Certified profile/)).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/")
     expect(lookupActor).not.toHaveBeenCalled()
   })
 
@@ -90,6 +118,7 @@ describe("not-found page", () => {
     ["a typo under a real profile", "/alice.example.com/typo", undefined],
     ["an actor that couldn't be looked up", "/alice.example.com/typo", { status: "unknown" }],
     ["a reserved route", "/settings/nope", undefined],
+    ["a deeper path under a non-handle", "/this-page-does-not-exist/activity/3abc", undefined],
   ])("%s stays a generic page", async (_label, path, actor) => {
     if (actor) lookupActor.mockResolvedValue(actor)
     expect(await renderAt(path)).toBe("Page not found")

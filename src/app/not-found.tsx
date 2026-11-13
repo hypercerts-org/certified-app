@@ -26,17 +26,19 @@ type Missing =
 
 /**
  * What a not-found path was looking for. `/{actor}` catches every unknown
- * top-level path and only 404s for an actor that doesn't exist, so it's a
- * missing profile. Deeper paths say "profile" or "record" only when that
- * absence is established (the same per-request lookups the [actor] layouts
- * ran, src/lib/og-metadata.ts); a typo under a real profile stays generic.
+ * top-level path, but only one that reads as an account (a handle, which
+ * has a dot, or a DID) is a missing profile: `/this-page-does-not-exist`
+ * is a mistyped address, so it gets the generic page. Deeper paths say
+ * "profile" or "record" only when that absence is established (the same
+ * per-request lookups the [actor] layouts ran, src/lib/og-metadata.ts); a
+ * typo under a real profile stays generic.
  */
 async function whatIsMissing(pathname: string | null): Promise<Missing> {
   const segments = (pathname ?? "").split("/").filter(Boolean).map(safeDecode);
   if (segments.length === 0 || RESERVED_ROUTES.has(segments[0])) return null;
   const actor = parseActor(segments[0]);
-  if (segments.length === 1) return { kind: "profile", actor: actor.value };
   if (actor.kind === "invalid") return null;
+  if (segments.length === 1) return { kind: "profile", actor: actor.value };
 
   const resolved = await lookupActor(segments[0]);
   if (resolved.status === "missing") return { kind: "profile", actor: actor.value };
@@ -101,7 +103,14 @@ export default async function NotFoundPage() {
         <EmptyState
           icon={UserX}
           title="Profile not found"
-          description={`We couldn't find a Certified profile for @${missing.actor}.`}
+          description={
+            <>
+              We couldn&apos;t find a Certified profile for{" "}
+              {/* One line: a handle never breaks at its hyphens or dots;
+                  the sentence wraps around it instead. */}
+              <span className="whitespace-nowrap">@{missing.actor}</span>.
+            </>
+          }
           headingLevel={1}
           className="pt-[120px]"
         >

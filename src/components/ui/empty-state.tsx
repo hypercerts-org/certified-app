@@ -13,7 +13,9 @@ export type EmptyStateIcon = React.ComponentType<{
 export interface EmptyStateProps {
   icon?: EmptyStateIcon;
   title: string;
-  description?: string;
+  /** A string, or inline markup when part of it needs its own treatment
+   *  (e.g. a handle kept on one line with `whitespace-nowrap`). */
+  description?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
   /**

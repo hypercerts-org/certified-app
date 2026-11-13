@@ -440,7 +440,16 @@ export default function UserProfilePage() {
         <EmptyState
           icon={UserX}
           title="Profile not found"
-          description={`We couldn't find a Certified profile for ${handleOrDid ? `@${handleOrDid}` : "this user"}.`}
+          description={
+            handleOrDid ? (
+              <>
+                We couldn&apos;t find a Certified profile for{" "}
+                <span className="whitespace-nowrap">@{handleOrDid}</span>.
+              </>
+            ) : (
+              "We couldn't find a Certified profile for this user."
+            )
+          }
           className="pt-16"
         />
       </PageContainer>
