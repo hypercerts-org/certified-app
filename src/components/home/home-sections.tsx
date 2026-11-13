@@ -32,8 +32,8 @@ import { getInitials } from "@/lib/utils/initials"
 const LATEST_RECORDS = 4
 const LATEST_ENDORSEMENTS = 3
 const GROUP_PREVIEW = 5
-/** Apps shown on home; the rest are one click away under "All apps". */
-const HOME_APPS = CONNECTED_APPS.slice(0, 4)
+/** Every app, on home too (a short "featured" set may come later). */
+const HOME_APPS = CONNECTED_APPS
 
 /** A stat's label for its value: "1 List", "3 Lists" (and "Lists" while
  *  the value is unknown). */
@@ -120,7 +120,8 @@ type LatestRecord = {
   imageUrl: string | null
 }
 
-/** Where the counts and "All records" lead. The personal account manages
+/** Where the counts lead (the side list is the way to each whole list).
+ *  The personal account manages
  *  its records on /records; a group's records live on its profile (Records
  *  only explains how to switch back while acting as a group). */
 function recordsHrefs(isGroup: boolean, profileBase: string) {
@@ -215,7 +216,6 @@ export function HomeRecords({
       title="Your records"
       description="What you have published, here or in other apps."
       tour="home-records"
-      action={isEmpty ? null : <SeeAllLink href={hrefs.all} label="All records" />}
     >
       {isEmpty ? (
         <EmptyState
@@ -332,14 +332,12 @@ export function HomeEndorsements({
   const preview = endorsements.slice(0, LATEST_ENDORSEMENTS)
   const hrefs = recordsHrefs(isGroup, profileBase)
   const endorsementsLoading = isLoading && endorsements.length === 0
-  const hasAny = endorsements.length > 0 || (givenCount ?? 0) > 0
 
   return (
     <HomeSection
       title="Endorsements and followers"
       description="Received, given, and who follows you."
       tour="home-received"
-      action={hasAny ? <SeeAllLink href={hrefs.endorsements} label="All endorsements" /> : null}
     >
       <div className="flex flex-col gap-6">
         <StatRow
@@ -397,7 +395,6 @@ export function HomeApps() {
       title="Apps"
       description="Sign in to each of these with your Certified account."
       tour="home-apps"
-      action={<SeeAllLink href="/apps" label="All apps" />}
     >
       {/* One per row at every width, so each tagline gets its full line
           (two across, in the ~500px column, clamped them after a few
