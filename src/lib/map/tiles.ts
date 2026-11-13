@@ -26,6 +26,11 @@ const ESRI_WORLD_IMAGERY_URL =
 const ESRI_WORLD_IMAGERY_ATTRIBUTION =
   'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
 
+/** The same credit as plain text, for the compact credit button (Map's
+ *  `compactAttribution`), with Leaflet's own credit that the control adds. */
+export const MAP_CREDIT_TEXT =
+  "Leaflet · Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+
 const ESRI_WORLD_BOUNDARIES_AND_PLACES_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
 

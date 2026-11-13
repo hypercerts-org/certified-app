@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, Fragment } from "react"
 import {
   Camera,
   Check,
@@ -302,7 +302,14 @@ export default function ProfileHeader({
           <div className="profile-header__meta">
             {metaItems.length > 0 ? (
               <span className="profile-header__meta-text">
-                {metaItems.join(" · ")}
+                {/* Each item stays whole ("Founded Feb 2023"); the line
+                    wraps between items. */}
+                {metaItems.map((item, i) => (
+                  <Fragment key={item}>
+                    {i > 0 ? " · " : null}
+                    <span className="whitespace-nowrap">{item}</span>
+                  </Fragment>
+                ))}
               </span>
             ) : null}
             <CopyIdButton did={did} />

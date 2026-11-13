@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { Info } from "lucide-react"
+import Button from "@/components/ui/button"
 import L from "leaflet"
 import {
   MapContainer,
@@ -11,7 +13,7 @@ import {
   useMap,
   useMapEvent,
 } from "react-leaflet"
-import { getOverlayTileConfig, getTileConfig } from "@/lib/map/tiles"
+import { MAP_CREDIT_TEXT, getOverlayTileConfig, getTileConfig } from "@/lib/map/tiles"
 
 import "leaflet/dist/leaflet.css"
 
@@ -67,6 +69,9 @@ export interface MapProps {
   scrollWheelZoom?: boolean
   /** If provided, the map listens for clicks and surfaces the latlng. */
   onMapClick?: (latlng: { lat: number; lng: number }) => void
+  /** Small maps: the tile credit behind an "i" button instead of
+   *  Leaflet's two-line strip, which covers a quarter of a small map. */
+  compactAttribution?: boolean
 }
 
 /**
@@ -88,6 +93,7 @@ export default function Map({
   interactive = true,
   scrollWheelZoom,
   onMapClick,
+  compactAttribution = false,
 }: MapProps) {
   const allowScrollWheelZoom =
     scrollWheelZoom !== undefined ? scrollWheelZoom : interactive
@@ -129,6 +135,7 @@ export default function Map({
         touchZoom={interactive}
         zoomControl={interactive}
         keyboard={interactive}
+        attributionControl={!compactAttribution}
         style={{ width: "100%", height: "100%" }}
       >
         <BaseTiles />
@@ -168,6 +175,33 @@ export default function Map({
           )
         })}
       </MapContainer>
+      {compactAttribution ? <MapCredit /> : null}
+    </div>
+  )
+}
+
+/** The tile credit behind a small "i" button, bottom right (the place
+ *  Leaflet's control would take). Opens a one-line panel beside it. */
+function MapCredit() {
+  const [open, setOpen] = useState(false)
+  const panelId = useId()
+  return (
+    <div className="certs-map__credit">
+      {open ? (
+        <p id={panelId} className="certs-map__credit-text">
+          {MAP_CREDIT_TEXT}
+        </p>
+      ) : null}
+      <Button
+        size="icon-sm"
+        variant="secondary"
+        aria-label="Map credits"
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Info size={14} strokeWidth={1.75} aria-hidden />
+      </Button>
     </div>
   )
 }

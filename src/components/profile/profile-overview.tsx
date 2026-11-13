@@ -560,6 +560,7 @@ function LocationReadColumn({ name, coords }: LocationReadColumnProps) {
           // hijacked when the cursor passes over the map. +/- and
           // pinch / double-click zoom are still available.
           scrollWheelZoom={false}
+          compactAttribution
         />
       </div>
       {name ? (
@@ -787,6 +788,7 @@ function LocationPickerColumn({
           zoom={zoom}
           height={220}
           onMapClick={handleMapClick}
+          compactAttribution
         />
       </div>
       <div className="profile-overview__location-picker-row">

@@ -751,6 +751,36 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
   font-size: 0.8125rem;
 }
 
+/* Leaflet's panes and controls (z 400–1000) stay inside the map, so the
+   compact credit beside it only needs to raise itself locally. */
+.certs-map .leaflet-container {
+  isolation: isolate;
+}
+
+/* Compact credit (Map `compactAttribution`): an "i" button bottom right
+   that opens the credit as one quiet line beside it. */
+.certs-map__credit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: var(--z-local-raise);
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: calc(100% - 12px);
+}
+
+.certs-map__credit-text {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--fg-secondary);
+}
+
 /* Attribution control — readable in both themes, unobtrusive */
 .certs-map .leaflet-control-attribution {
   background: var(--navbar-bg);

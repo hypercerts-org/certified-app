@@ -11,13 +11,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 4px 16px;
-  margin-bottom: 24px;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
+  /* A quiet line of text, no fill: a grey band here stacked a second grey
+     and the white banner on the canvas. */
+  margin-bottom: 16px;
   font-size: var(--text-ui);
   line-height: 1.45;
-  color: var(--fg-secondary);
+  color: var(--fg-muted);
 }
 
 .profile-owner-bar__text {
