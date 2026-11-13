@@ -1,20 +1,19 @@
 /* ==================================================================
-   Endorsement lists (Records > Endorsements > Lists) and the endorse
-   dialogs. The profile's Endorsements tab renders its rows with the
-   shared .profile-people / .profile-person styles in profile.css.
+   Endorsement lists (Workspace > Endorsements > Endorsement lists, and
+   Lists > Endorsements) and the endorse dialogs. The profile's
+   Endorsements tab renders its rows with the shared .profile-people /
+   .profile-person styles in profile.css.
 
-   Lists: a header row with a count + sort + New list, and one row per
-   list. Clicking a row swaps the master view for an inline detail view
-   (header changes to a Back arrow + the list's name).
+   Lists: one open row per list, like the endorsement rows (the sort and
+   New list sit on the tab line above, records.css). Clicking a row
+   swaps the master view for an inline detail view (a Back arrow + the
+   list's name).
    ================================================================== */
 
 .endorsement-lists {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 28px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--border-default);
 }
 
 .endorsement-lists__header {
@@ -22,11 +21,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-/* No heading (a tab above names the view): the actions sit on the right. */
-.endorsement-lists__header--actions-only {
-  justify-content: flex-end;
 }
 
 .endorsement-lists__header--detail {
@@ -105,77 +99,52 @@
   display: inline-flex;
 }
 
-.endorsement-lists__sort-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  color: var(--fg-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.endorsement-lists__sort-btn:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.endorsement-lists__sort-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .endorsement-lists__loading {
   display: flex;
   justify-content: center;
   padding: 24px 0;
 }
 
-/* Compact "No lists yet" line for foreign profiles — the full
-   EmptyState's hero copy is irrelevant to a viewer who can't create
-   a list, so a single inline note keeps the section minimal. */
-.endorsement-lists__empty-inline {
-  margin: 0;
-  font-size: var(--text-ui);
-  color: var(--fg-muted);
-}
-
+/* Open rows between hairlines, like the endorsement rows above them:
+   no card, no fill at rest. */
 .endorsement-lists__rows {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.endorsement-lists__rows > li {
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .endorsement-lists__row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  padding: 12px 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
+  min-height: 44px;
+  padding: 12px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.endorsement-lists__row:hover {
-  border-color: var(--border-hover);
-  background: var(--overlay-weak);
-}
-
+/* Inset ring: the open rows have no side padding to hold an outer one. */
 .endorsement-lists__row:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .endorsement-lists__row:hover .endorsement-lists__row-title {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 .endorsement-lists__row-main {

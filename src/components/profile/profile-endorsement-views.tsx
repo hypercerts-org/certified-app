@@ -21,7 +21,8 @@ import { PERSON_ROW_CLASSES } from "@/components/profile/profile-person-row"
 // Presentational views below ProfileEndorsements' fold: the Received /
 // Given rows, the bulk-action bar, and the pure filter + sort helpers.
 // All state lives in the parent; every unit here receives data plus
-// stable callbacks via props. Records' Endorsements pane reuses GivenList.
+// stable callbacks via props. The Workspace's Endorsements pane reuses
+// RevokeGivenButton in its own Given rows (records/given-endorsements.tsx).
 
 export type SortKey =
   | "created-desc"
@@ -76,16 +77,20 @@ function NoMatches({
 }
 
 /**
- * The owner's revoke control on a Given row: an icon button that opens a
+ * The owner's revoke control on a Given row: a button that opens a
  * confirm dialog; on confirm every award for the recipient is deleted and
- * the parent's `onAfterRevoke` refetches so the row disappears.
+ * the parent's `onAfterRevoke` refetches so the row disappears. The
+ * profile shows it as an "×" icon button; the Workspace as a small
+ * secondary "Revoke" button, its rows' one pattern for a row's action
+ * (Received's Hide / Show). Both carry the same accessible name.
  */
-function RevokeGivenButton({
+export function RevokeGivenButton({
   viewerDid,
   rkeys,
   targetDid,
   subjectDisplay,
   onAfterRevoke,
+  appearance = "icon",
 }: {
   viewerDid: string
   /** All award rkeys for this recipient — revoke removes every one so a
@@ -94,6 +99,9 @@ function RevokeGivenButton({
   targetDid?: string
   subjectDisplay: string
   onAfterRevoke: () => void | Promise<void>
+  /** "icon": the profile's "×"; "text": a small secondary button.
+   *  @default "icon" */
+  appearance?: "icon" | "text"
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
@@ -116,17 +124,24 @@ function RevokeGivenButton({
     }
   }
 
+  const label = `Revoke endorsement of ${subjectDisplay}`
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="profile-person__action"
-        onClick={() => setConfirmOpen(true)}
-        aria-label={`Revoke endorsement of ${subjectDisplay}`}
-      >
-        <X size={16} strokeWidth={1.75} aria-hidden />
-      </Button>
+      {appearance === "text" ? (
+        <Button variant="secondary" size="sm" onClick={() => setConfirmOpen(true)} aria-label={label}>
+          Revoke
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="profile-person__action"
+          onClick={() => setConfirmOpen(true)}
+          aria-label={label}
+        >
+          <X size={16} strokeWidth={1.75} aria-hidden />
+        </Button>
+      )}
       {confirmOpen ? (
         <ConfirmDialog
           title={`Revoke endorsement of ${subjectDisplay}?`}

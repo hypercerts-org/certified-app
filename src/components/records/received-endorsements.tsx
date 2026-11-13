@@ -25,11 +25,13 @@ export function isHiddenEndorsement(endorsement: ReceivedEndorsement, ownStates:
   return resolved === "unknown" ? endorsement.responseState === "rejected" : resolved === "rejected"
 }
 
+/** The people row (Followers' size): 40px avatar, the name in `body`,
+ *  the handle in `ui`. Shared by Received and Given. */
 export const ENDORSEMENT_ROW_CLASSES: EndorsementSubjectRowClasses = {
   main: "records-person__main",
-  meta: "records-row__text",
-  name: "records-row__title",
-  handle: "records-row__meta",
+  meta: "records-person__text",
+  name: "records-person__name",
+  handle: "records-person__handle",
   note: "records-person__note",
   date: "records-person__since",
 }
@@ -56,7 +58,8 @@ function useIssuerInfo(e: ReceivedEndorsement): { info: AuthorInfo | null; isLoa
 
 /**
  * One received endorsement: who gave it, when, the note, and Hide or Show.
- * A hidden one carries a "Hidden" tag; its text keeps full contrast.
+ * A hidden one carries a "Hidden" tag after the name; its text keeps full
+ * contrast.
  * Hiding writes a "rejected" response record on your account; showing
  * again removes your responses to it (the same writes the profile's
  * controls make).
@@ -113,11 +116,12 @@ function ReceivedRow({
         isLoading={isLoading}
         createdAt={endorsement.createdAt}
         note={endorsement.note}
-        avatarSize="sm"
+        avatarSize="row"
         classes={ENDORSEMENT_ROW_CLASSES}
+        // On the name's line, so the date and the button keep their place.
+        nameAside={hidden ? <Badge variant="tag">Hidden</Badge> : null}
         trailing={
-          <div className="records-person__action records-endorsement__control">
-            {hidden ? <Badge variant="tag">Hidden</Badge> : null}
+          <div className="records-person__action">
             <Button
               variant="secondary"
               size="sm"

@@ -124,6 +124,39 @@
   padding-top: 16px;
 }
 
+/* The tab strip with the open tab's controls at its end (PaneTabBar).
+   The strip keeps its own hairline; the controls' box draws the same
+   hairline under them, so it runs the full width. */
+.records-pane__tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.records-pane__tablist {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.records-pane__tab-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  padding-left: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Phones: the strip takes the width; the controls drop under it, on the
+   right, as the panel's first line. */
+@media (max-width: 799px) {
+  .records-pane__tab-actions {
+    flex-basis: 100%;
+    padding: 16px 0 0;
+    border-bottom: 0;
+  }
+}
+
 /* An inline text action ("Clear search", "Try again"). */
 .records-link {
   padding: 0;
@@ -666,8 +699,9 @@
   flex-shrink: 0;
 }
 
-/* Received endorsement rows: the issuer link, the date, then the
-   Shown / Hidden state with its Hide / Show button. */
+/* Endorsement rows (Received and Given, one row): the account link (a
+   "Hidden" tag after the name), the date, then the row's button (Hide /
+   Show, Revoke). An error wraps onto its own line. */
 .records-person--endorsement {
   flex-wrap: wrap;
 }
@@ -683,32 +717,46 @@
   text-decoration: none;
 }
 
+/* The people row's text, the size IdentityRow "md" uses on Followers:
+   the name in `body`, the handle in `ui`. */
+.records-person__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.records-person__name,
+.records-person__handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-person__name {
+  font-size: var(--text-body);
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--fg-primary);
+}
+
+.records-person__handle {
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--fg-muted);
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .records-person__main:hover .records-row__title {
+  .records-person__main:hover .records-person__name {
     text-decoration: underline;
     text-underline-offset: 2px;
   }
 }
 
 .records-person__note {
+  margin-top: 4px;
   font-size: var(--text-body-sm);
   color: var(--fg-secondary);
   text-wrap: pretty;
-}
-
-.records-endorsement__control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Phones: the state and its button take their own line under the note,
-   so the note keeps the row's width. */
-@media (max-width: 799px) {
-  .records-person--endorsement .records-endorsement__control {
-    flex-basis: 100%;
-    padding: 0 0 4px 44px;
-  }
 }
 
 .records-person__error {

@@ -43,19 +43,6 @@ import {
   extractAwardSubjectDid,
 } from "@/lib/atproto/badges"
 
-interface EndorsementListsProps {
-  /** DID of the profile being viewed. */
-  readonly did: string
-  /** True when the viewer is the profile owner — controls whether
-   *  the "Create list" button renders. List rows are visible to
-   *  everyone (definitions are public records). */
-  readonly viewerIsOwner: boolean
-  /** Leave out the "Lists" heading when a tab above already names the
-   *  view (Records → Endorsements → Endorsement lists, Records → Lists →
-   *  Endorsements); the sort and "New list" stay. */
-  readonly hideTitle?: boolean
-}
-
 type SortKey = "created-desc" | "created-asc" | "alpha-asc" | "alpha-desc"
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
@@ -66,23 +53,108 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ]
 
 /**
- * "Lists" section on the Endorsements tab. GitHub-stars-style: a
- * collection of user-curated endorsement definitions, each grouping
- * award records that point at that definition.
+ * What the endorsement lists view shares with the tab line it sits under:
+ * the lists, the sort, whether "New list" is open, and which list is
+ * open. The pane owns it (`useEndorsementListsState`) so the tab line can
+ * carry the sort and "New list" (`EndorsementListsToolbar`) while the
+ * panel shows the lists (`EndorsementLists`).
+ */
+export interface EndorsementListsState {
+  readonly data: ReturnType<typeof useEndorsementLists>
+  readonly sort: SortKey
+  readonly setSort: (sort: SortKey) => void
+  /** The "New list" dialog is open. */
+  readonly creating: boolean
+  readonly setCreating: (open: boolean) => void
+  /** The list shown in the detail view, or null for the list of lists. */
+  readonly openUri: string | null
+  readonly setOpenUri: (uri: string | null) => void
+}
+
+export function useEndorsementListsState(did: string | null): EndorsementListsState {
+  const data = useEndorsementLists(did)
+  const [sort, setSort] = useState<SortKey>("created-desc")
+  const [creating, setCreating] = useState(false)
+  const [openUri, setOpenUri] = useState<string | null>(null)
+  return { data, sort, setSort, creating, setCreating, openUri, setOpenUri }
+}
+
+/** The tab line shows the sort and "New list" only over the list of lists
+ *  (not over an open list), and only once there is a list: an empty view
+ *  offers "New list" in its empty state. */
+export function hasEndorsementListsToolbar(state: EndorsementListsState): boolean {
+  return state.openUri === null && state.data.lists.length > 0
+}
+
+/** Sort and "New list", for the tab line above the lists. */
+export function EndorsementListsToolbar({
+  state,
+  viewerIsOwner,
+}: {
+  state: EndorsementListsState
+  viewerIsOwner: boolean
+}) {
+  const [sortOpen, setSortOpen] = useState(false)
+  return (
+    <div className="endorsement-lists__actions">
+      <div className="endorsement-lists__sort-wrap">
+        <Popover open={sortOpen} onOpenChange={setSortOpen}>
+          <PopoverTrigger>
+            <Button variant="secondary" size="icon-sm" aria-label="Sort lists" tooltip="Sort">
+              <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end">
+            {SORT_OPTIONS.map((opt) => (
+              <PopoverItem
+                key={opt.key}
+                selected={opt.key === state.sort}
+                onClick={() => {
+                  state.setSort(opt.key)
+                  setSortOpen(false)
+                }}
+              >
+                {opt.label}
+              </PopoverItem>
+            ))}
+          </PopoverContent>
+        </Popover>
+      </div>
+      {viewerIsOwner ? (
+        <Button variant="secondary" size="sm" onClick={() => state.setCreating(true)}>
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
+          New list
+        </Button>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Endorsement lists (Workspace → Endorsements → Endorsement lists, and
+ * Lists → Endorsements). GitHub-stars-style: a collection of
+ * user-curated endorsement definitions, each grouping award records that
+ * point at that definition.
  *
  * Two views in one component:
- *   - **Master**: the section header ("Lists (N)" + sort + Create)
- *     plus a row per list (title, description, created date, item
- *     count). Click a row to drill in.
- *   - **Detail**: replaces the master view inline. Header swaps the
- *     "Lists" title for a Back arrow + the list's name; the body
- *     shows the list's description and a grid of award subjects.
+ *   - **Master**: a row per list (title, description, item count,
+ *     created date), open hairline rows like the endorsement rows. Click
+ *     a row to drill in. The sort and "New list" sit on the tab line
+ *     above (`EndorsementListsToolbar`); with no list yet, the empty
+ *     state carries "New list".
+ *   - **Detail**: replaces the master view inline. A Back arrow + the
+ *     list's name; the body shows the list's description and a grid of
+ *     award subjects.
  */
 export default function EndorsementLists({
-  did,
+  state,
   viewerIsOwner,
-  hideTitle = false,
-}: EndorsementListsProps) {
+}: {
+  /** From `useEndorsementListsState`, owned by the pane. */
+  readonly state: EndorsementListsState
+  /** True when the viewer owns the lists: create, edit, delete, add. */
+  readonly viewerIsOwner: boolean
+}) {
   const {
     lists,
     isLoading,
@@ -94,9 +166,9 @@ export default function EndorsementLists({
     addSubjectToList,
     addManySubjectsToList,
     removeSubjectFromList,
-  } = useEndorsementLists(did)
+  } = state.data
   const { did: viewerDid } = useAuth()
-  const [selectedListUri, setSelectedListUri] = useState<string | null>(null)
+  const { sort, openUri: selectedListUri, setOpenUri: setSelectedListUri } = state
   // `+` button on the list-detail toolbar reuses the regular
   // endorsement modal. On confirm each subject gets a default-def
   // endorsement award (idempotency guard in `addSubjectToList`) plus
@@ -107,14 +179,9 @@ export default function EndorsementLists({
   // accepts DIDs / handles / profile URLs separated by any
   // whitespace or commas.
   const [isBulkPasting, setIsBulkPasting] = useState(false)
-  const [sort, setSort] = useState<SortKey>("created-desc")
-  const [sortOpen, setSortOpen] = useState(false)
-  // Modal mode: `null` closed, `"create"` for a fresh list, or an
-  // existing rkey for editing an existing list. Sharing one piece
-  // of state guarantees the two modes are mutually exclusive.
-  const [modalMode, setModalMode] = useState<null | "create" | { rkey: string }>(
-    null,
-  )
+  // The open list's rkey while its title and description are being
+  // edited. "New list" is `state.creating` (the tab line opens it).
+  const [editingRkey, setEditingRkey] = useState<string | null>(null)
   // Delete confirmation lives on the detail view; we lift its state
   // here so the in-flight flag (`isDeleting`) drives the modal's
   // spinner without coupling the dialog tree to the parent.
@@ -135,7 +202,7 @@ export default function EndorsementLists({
     if (selectedListUri && !lists.some((l) => l.uri === selectedListUri)) {
       setSelectedListUri(null)
     }
-  }, [lists, selectedListUri])
+  }, [lists, selectedListUri, setSelectedListUri])
 
   if (selectedList) {
     const alreadyInList = new Set<string>()
@@ -152,7 +219,7 @@ export default function EndorsementLists({
           onBack={() => setSelectedListUri(null)}
           onAdd={() => setIsAddingPeople(true)}
           onBulkPaste={() => setIsBulkPasting(true)}
-          onEdit={() => setModalMode({ rkey: selectedList.rkey })}
+          onEdit={() => setEditingRkey(selectedList.rkey)}
           onDelete={() => {
             setDeleteError(null)
             setIsConfirmingDelete(true)
@@ -204,15 +271,15 @@ export default function EndorsementLists({
             }}
           />
         ) : null}
-        {modalMode && typeof modalMode === "object" && viewerIsOwner ? (
+        {editingRkey === selectedList.rkey && viewerIsOwner ? (
           <CreateListModal
             mode="edit"
             initialTitle={selectedList.title}
             initialDescription={selectedList.description}
-            onClose={() => setModalMode(null)}
+            onClose={() => setEditingRkey(null)}
             onSubmit={async (title, description) => {
               await updateList(selectedList.rkey, title, description)
-              setModalMode(null)
+              setEditingRkey(null)
             }}
           />
         ) : null}
@@ -264,73 +331,20 @@ export default function EndorsementLists({
 
   return (
     <section className="endorsement-lists" aria-label="Lists">
-      <header
-        className={`endorsement-lists__header${hideTitle ? " endorsement-lists__header--actions-only" : ""}`}
-      >
-        {hideTitle ? null : (
-          <h2 className="endorsement-lists__title">
-            Lists
-            {!isLoading ? (
-              <span className="endorsement-lists__title-count">
-                {lists.length}
-              </span>
-            ) : null}
-          </h2>
-        )}
-        <div className="endorsement-lists__actions">
-          <div className="endorsement-lists__sort-wrap">
-            <Popover open={sortOpen} onOpenChange={setSortOpen}>
-              <PopoverTrigger>
-                <button
-                  type="button"
-                  className="endorsement-lists__sort-btn"
-                  aria-label="Sort lists"
-                  title="Sort"
-                >
-                  <ArrowUpDown size={16} strokeWidth={1.75} aria-hidden />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end">
-                {SORT_OPTIONS.map((opt) => (
-                  <PopoverItem
-                    key={opt.key}
-                    selected={opt.key === sort}
-                    onClick={() => {
-                      setSort(opt.key)
-                      setSortOpen(false)
-                    }}
-                  >
-                    {opt.label}
-                  </PopoverItem>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </div>
-          {viewerIsOwner ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setModalMode("create")}
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              New list
-            </Button>
-          ) : null}
-        </div>
-      </header>
-
       <ListsBody
         lists={sortedLists}
         isLoading={isLoading}
         error={error}
         viewerIsOwner={viewerIsOwner}
         onOpen={(uri) => setSelectedListUri(uri)}
+        onCreate={() => state.setCreating(true)}
+        onRetry={() => void refetch()}
       />
 
-      {modalMode === "create" && viewerIsOwner ? (
+      {state.creating && viewerIsOwner ? (
         <CreateListModal
           mode="create"
-          onClose={() => setModalMode(null)}
+          onClose={() => state.setCreating(false)}
           onSubmit={async (title, description) => {
             // Optimistic insert lives inside `createList` — the new
             // row appears at the top of the master view the instant
@@ -340,7 +354,7 @@ export default function EndorsementLists({
             // others. Refetch in the background to reconcile any
             // PDS-side normalization.
             await createList(title, description)
-            setModalMode(null)
+            state.setCreating(false)
             void refetch()
           }}
         />
@@ -355,6 +369,9 @@ interface ListsBodyProps {
   error: string | null
   viewerIsOwner: boolean
   onOpen: (uri: string) => void
+  /** Opens "New list" (the empty state's action). */
+  onCreate: () => void
+  onRetry: () => void
 }
 
 function ListsBody({
@@ -363,6 +380,8 @@ function ListsBody({
   error,
   viewerIsOwner,
   onOpen,
+  onCreate,
+  onRetry,
 }: ListsBodyProps) {
   if (isLoading && lists.length === 0) {
     return (
@@ -371,31 +390,33 @@ function ListsBody({
       </div>
     )
   }
-  if (error) {
+  if (error && lists.length === 0) {
+    // The hook's error text is technical; it stays out of the UI.
     return (
-      <EmptyState
-        icon={ListIcon}
-        title="Couldn't load lists"
-        description={error}
-      />
+      <EmptyState variant="inline" title="Couldn't load your endorsement lists.">
+        <Button variant="ghost" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      </EmptyState>
     )
   }
   if (lists.length === 0) {
-    // Both viewer kinds get the same compact single-line note —
-    // per #76, the large icon-card empty state ate too much
-    // vertical space for a "you can do this later" prompt. The
-    // outer section header still surfaces the "Create" CTA to
-    // owners, so the next-step affordance isn't lost. Foreign
-    // viewers see the note too (the wrapping `{viewerIsOwner ?}`
-    // in profile-endorsements gates the whole section so this
-    // branch is unreachable for them today, but keep the inner
-    // foreign-safe shape as defense in depth).
-    return (
-      <p className="endorsement-lists__empty-inline">
-        {viewerIsOwner
-          ? "No lists yet. Use lists to structure your endorsements."
-          : "No lists yet."}
-      </p>
+    // The owner's empty state carries the create action (the tab line
+    // shows the sort and "New list" only once there is a list).
+    return viewerIsOwner ? (
+      <EmptyState
+        icon={ListIcon}
+        headingLevel={2}
+        title="No endorsement lists yet"
+        description="Use lists to group the accounts you endorse."
+      >
+        <Button variant="secondary" size="sm" onClick={onCreate}>
+          <Plus size={16} strokeWidth={1.75} aria-hidden />
+          New list
+        </Button>
+      </EmptyState>
+    ) : (
+      <EmptyState variant="inline" title="No lists yet." />
     )
   }
   return (

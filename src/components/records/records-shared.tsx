@@ -87,8 +87,32 @@ export function SearchField({
 }
 
 /**
+ * A pane's tab strip with the open tab's own controls at its end (the
+ * endorsement lists' sort and "New list"), on the strip's line rather
+ * than a row of their own. Below 800px the controls drop under the strip.
+ * Give the `TabList` the `records-pane__tablist` class.
+ */
+export function PaneTabBar({
+  actions,
+  children,
+}: {
+  /** The open tab's controls; null for none. */
+  actions?: React.ReactNode
+  /** The `<TabList>`. */
+  children: React.ReactNode
+}) {
+  return (
+    <div className="records-pane__tabbar">
+      {children}
+      {actions ? <div className="records-pane__tab-actions">{actions}</div> : null}
+    </div>
+  )
+}
+
+/**
  * Loading rows shaped like the rows they stand in for: a 40px square
- * (records) or a 32px circle (people), a title line and a meta line.
+ * (records, groups) or a 40px circle (people), a title line and a meta
+ * line.
  */
 export function RowsSkeleton({
   rows = 5,
@@ -102,7 +126,7 @@ export function RowsSkeleton({
       {Array.from({ length: rows }, (_, i) => (
         <li key={i} className="records-row records-row--skeleton">
           {shape === "circle" ? (
-            <Skeleton circle width={32} />
+            <Skeleton circle width={40} />
           ) : (
             <Skeleton variant="box" width={40} height={40} />
           )}

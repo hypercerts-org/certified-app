@@ -8,9 +8,12 @@ import EmptyState from "@/components/ui/empty-state"
 import IdentityRow from "@/components/ui/identity-row"
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
-import { GivenList } from "@/components/profile/profile-endorsement-views"
 import ProfileLists from "@/components/profile/profile-lists"
-import EndorsementLists from "@/components/profile/endorsement-lists"
+import EndorsementLists, {
+  EndorsementListsToolbar,
+  hasEndorsementListsToolbar,
+  useEndorsementListsState,
+} from "@/components/profile/endorsement-lists"
 import { FollowButton } from "@/components/profile/profile-follow-endorse"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useFollowers } from "@/hooks/use-followers"
@@ -28,9 +31,10 @@ import {
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
 import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/received-endorsements"
+import GivenEndorsements from "@/components/records/given-endorsements"
 import { GroupRows } from "@/components/home/home-sections"
 import { useOrg } from "@/lib/groups/org-context"
-import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
+import { PaneHead, PaneTabBar, RowsSkeleton } from "@/components/records/records-shared"
 import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
 type FollowingState = ReturnType<typeof useFollowing>
@@ -38,7 +42,6 @@ type GivenState = ReturnType<typeof useGivenEndorsements>
 
 /** People lists render in steps of this many rows. */
 const PEOPLE_PAGE = 50
-const EMPTY_SET: Set<string> = new Set()
 
 // ------------------------------ Endorsements --------------------------------
 
@@ -86,6 +89,9 @@ export function EndorsementsPane({
     () => new Set(given.endorsements.map((e) => e.subjectDid)),
     [given.endorsements],
   )
+  // The lists tab's sort and "New list" sit on the tab line, so the pane
+  // holds that view's state.
+  const lists = useEndorsementListsState(did)
   // The panel opens on the Given tab, so from another tab the button
   // switches there first.
   const endorseOpen = panelOpen && tab === "given"
@@ -116,20 +122,28 @@ export function EndorsementsPane({
     >
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={(v) => setTabParam(v)}>
-          <TabList aria-label="Endorsements">
-            {/* Received first: it is what the pane opens on. Counts are left
-                out while their list loads. */}
-            <Tab value="received" count={receivedCount}>
-              Received
-            </Tab>
-            <Tab
-              value="given"
-              count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
-            >
-              Given
-            </Tab>
-            <Tab value="lists">Endorsement lists</Tab>
-          </TabList>
+          <PaneTabBar
+            actions={
+              tab === "lists" && hasEndorsementListsToolbar(lists) ? (
+                <EndorsementListsToolbar state={lists} viewerIsOwner />
+              ) : null
+            }
+          >
+            <TabList aria-label="Endorsements" className="records-pane__tablist">
+              {/* Received first: it is what the pane opens on. Counts are
+                  left out while their list loads. */}
+              <Tab value="received" count={receivedCount}>
+                Received
+              </Tab>
+              <Tab
+                value="given"
+                count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
+              >
+                Given
+              </Tab>
+              <Tab value="lists">Endorsement lists</Tab>
+            </TabList>
+          </PaneTabBar>
 
           <TabPanel value="given">
             <div className="records-pane__tab-body">
@@ -141,24 +155,14 @@ export function EndorsementsPane({
                   onCreated={given.refetch}
                 />
               ) : null}
-              {given.isLoading && given.endorsements.length === 0 ? (
-                <RowsSkeleton shape="circle" rows={4} />
-              ) : (
-                /* The profile's list view, with its remove action per row. */
-                <GivenList
-                  visible={given.endorsements}
-                  total={given.endorsements.length}
-                  isLoading={false}
-                  error={given.error}
-                  onRetry={given.refetch}
-                  viewerIsOwner
-                  viewerDid={did}
-                  selectable={false}
-                  selected={EMPTY_SET}
-                  onToggleOne={() => {}}
-                  onAfterRevoke={given.refetch}
-                />
-              )}
+              {/* The same rows as Received, with Revoke per row. */}
+              <GivenEndorsements
+                did={did}
+                endorsements={given.endorsements}
+                isLoading={given.isLoading}
+                error={given.error}
+                onRetry={given.refetch}
+              />
             </div>
           </TabPanel>
 
@@ -178,7 +182,7 @@ export function EndorsementsPane({
 
           <TabPanel value="lists">
             <div className="records-pane__tab-body">
-              <EndorsementLists did={did} viewerIsOwner hideTitle />
+              <EndorsementLists state={lists} viewerIsOwner />
             </div>
           </TabPanel>
         </Tabs>
@@ -479,11 +483,15 @@ export function ListsPane({ did }: { did: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const tab = parseListTab(params.get("tab"))
+  // The endorsement lists' sort and "New list" sit on the tab line, so
+  // the pane holds that view's state.
+  const endorsementLists = useEndorsementListsState(did)
   const selectTab = (next: string) => {
     const qs = new URLSearchParams(params.toString())
     if (next === "activities") qs.delete("tab")
     else qs.set("tab", next)
     qs.delete("list")
+    endorsementLists.setOpenUri(null)
     router.replace(`${pathname}?${qs.toString()}`, { scroll: false })
   }
 
@@ -491,12 +499,20 @@ export function ListsPane({ did }: { did: string }) {
     <WorkspaceFrame offset={false} header={<PaneHead titleId={titleId} section="lists" />}>
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={selectTab}>
-          <TabList aria-label="Lists">
-            <Tab value="activities">Activities</Tab>
-            <Tab value="projects">Projects</Tab>
-            <Tab value="accounts">Accounts</Tab>
-            <Tab value="endorsements">Endorsements</Tab>
-          </TabList>
+          <PaneTabBar
+            actions={
+              tab === "endorsements" && hasEndorsementListsToolbar(endorsementLists) ? (
+                <EndorsementListsToolbar state={endorsementLists} viewerIsOwner />
+              ) : null
+            }
+          >
+            <TabList aria-label="Lists" className="records-pane__tablist">
+              <Tab value="activities">Activities</Tab>
+              <Tab value="projects">Projects</Tab>
+              <Tab value="accounts">Accounts</Tab>
+              <Tab value="endorsements">Endorsements</Tab>
+            </TabList>
+          </PaneTabBar>
 
           {/* The profile's list manager, one kind per tab; it carries
               create, edit and delete. */}
@@ -517,7 +533,7 @@ export function ListsPane({ did }: { did: string }) {
           </TabPanel>
           <TabPanel value="endorsements">
             <div className="records-pane__tab-body">
-              <EndorsementLists did={did} viewerIsOwner hideTitle />
+              <EndorsementLists state={endorsementLists} viewerIsOwner />
             </div>
           </TabPanel>
         </Tabs>

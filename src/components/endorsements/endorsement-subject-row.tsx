@@ -33,17 +33,21 @@ export interface EndorsementSubjectRowProps {
   createdAt: string
   /** Optional issuer-provided note (badge.award.note). */
   note?: string
-  /** @default "md" */
-  avatarSize?: "sm" | "md"
+  /** `sm` the compact row's 32px, `row` the people row's 40px (full-page
+   *  lists of accounts), `md` 48px. @default "md" */
+  avatarSize?: "sm" | "row" | "md"
   /** Card surfaces stack the date inside the meta column; list
    *  surfaces right-align it as a sibling of the link. */
   dateInMeta?: boolean
   classes: EndorsementSubjectRowClasses
+  /** A small tag on the name's line, right after the name (e.g. "Hidden"),
+   *  so it never pushes the date or the trailing control around. */
+  nameAside?: React.ReactNode
   /** Trailing control (revoke button / response menu), rendered last. */
   trailing?: React.ReactNode
 }
 
-const skeletonPx = { sm: 32, md: 48 } as const
+const skeletonPx = { sm: 32, row: 40, md: 48 } as const
 
 /**
  * Canonical endorsement subject row: avatar + display name + @handle +
@@ -64,6 +68,7 @@ export default function EndorsementSubjectRow({
   avatarSize = "md",
   dateInMeta = false,
   classes,
+  nameAside,
   trailing,
 }: EndorsementSubjectRowProps) {
   const identity = deriveIdentity(
@@ -98,10 +103,18 @@ export default function EndorsementSubjectRow({
           src={identity.avatarUrl ?? undefined}
           alt=""
           fallbackInitials={identity.initials}
+          seed={did ?? undefined}
         />
       )}
       <span className={classes.meta}>
-        <span className={classes.name} dir="auto">{identity.displayName}</span>
+        {nameAside ? (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className={classes.name} dir="auto">{identity.displayName}</span>
+            <span className="shrink-0">{nameAside}</span>
+          </span>
+        ) : (
+          <span className={classes.name} dir="auto">{identity.displayName}</span>
+        )}
         {identity.handle ? (
           <span className={classes.handle}>@{identity.handle}</span>
         ) : null}
