@@ -46,7 +46,17 @@ export default function SectionHeader({
           </p>
         ) : null}
       </div>
-      {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
+      {/* Level with the title: the slot is pulled up by half the difference
+          between a 32px control and the title's line (text-section, leading
+          1.4), so a SeeAllLink or small button is centred on that line
+          instead of hanging 5px below it. A taller action (a 44px phone
+          button, a wrapping group) only grows downward, never over the
+          content above, and the title never moves. */}
+      {action ? (
+        <div className="mt-[calc((1.4rem_-_var(--control-h-compact))/2)] flex shrink-0 items-center">
+          {action}
+        </div>
+      ) : null}
     </div>
   );
 }

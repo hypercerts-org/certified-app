@@ -25,7 +25,7 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
 import { projectImage, projectTitle } from "@/lib/atproto/collection"
 import type { WorkspaceCounts } from "@/lib/atproto/workspace"
-import { recordUrl } from "@/lib/urls"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import { formatRelativeDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 
@@ -79,8 +79,8 @@ function ListLabel({ children }: { children: React.ReactNode }) {
   return <h3 className="m-0 text-ui font-medium text-[var(--fg-muted)]">{children}</h3>
 }
 
-/** Placeholder rows shaped like the real ones: a 40px thumb (or a 32px
- *  avatar) and two lines, between the same hairlines. */
+/** Placeholder rows shaped like the real ones: a 32px thumb or avatar
+ *  (the compact row) and two lines, between the same hairlines. */
 function RowsSkeleton({
   count,
   thumb,
@@ -93,12 +93,10 @@ function RowsSkeleton({
       {Array.from({ length: count }, (_, i) => (
         <li key={i}>
           <div className="home-row">
-            {thumb === "record" ? (
-              <Skeleton variant="box" width={40} height={40} />
-            ) : thumb === "group" ? (
-              <Skeleton variant="box" width={32} height={32} />
-            ) : (
+            {thumb === "person" ? (
               <Skeleton variant="circle" width={32} />
+            ) : (
+              <Skeleton variant="box" width={32} height={32} />
             )}
             <span className="flex min-w-0 flex-1 flex-col gap-2">
               <Skeleton variant="line" width={`${60 - i * 12}%`} height={14} />
@@ -339,7 +337,7 @@ export function HomeEndorsements({
   return (
     <HomeSection
       title="Endorsements and followers"
-      description="Endorsements you have received and given, and who follows you."
+      description="Received, given, and who follows you."
       tour="home-received"
       action={hasAny ? <SeeAllLink href={hrefs.endorsements} label="All endorsements" /> : null}
     >
@@ -401,8 +399,10 @@ export function HomeApps() {
       tour="home-apps"
       action={<SeeAllLink href="/apps" label="All apps" />}
     >
-      {/* One per row on a phone, two across from 800px. */}
-      <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 md:grid-cols-2">
+      {/* One per row at every width, so each tagline gets its full line
+          (two across, in the ~500px column, clamped them after a few
+          words). */}
+      <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0">
         {HOME_APPS.map((app) => (
           <li key={app.name} className="flex">
             <AppTile app={app} size="sm" />
@@ -437,19 +437,27 @@ function roleLabel(role: Group["role"]): string {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
+/** A group's profile: its handle once resolved, else its DID (the same
+ *  rule as `ownProfileUrl`). */
+export function groupProfileHref(group: Pick<Group, "groupDid" | "handle">): string {
+  return profileUrl(group.handle || group.groupDid)
+}
+
 /**
- * The groups the signed-in person belongs to, each with their role, and
- * "New group" in the corner. A row opens the group's profile; its Switch
- * button acts as the group (the same switch as the Workspace menu).
- * Personal account only: while acting as a group the list would be the
- * person's, not the group's.
+ * Group rows: the group's avatar, name, your role and its handle, each row
+ * linking to the group's profile. Workspace → Groups shows them all, each
+ * with a Switch button to act as it (`showSwitch`); Home's "Your groups"
+ * shows the first few without one, so the names get the row's width
+ * (switching lives in the Workspace menu).
  */
-/**
- * Group rows: the group's avatar, name, your role and its handle, linking to
- * the group, with a Switch button to act as it. Home shows the first few;
- * Workspace → Groups shows them all.
- */
-export function GroupRows({ groups }: { groups: readonly Group[] }) {
+export function GroupRows({
+  groups,
+  showSwitch = true,
+}: {
+  groups: readonly Group[]
+  /** Add a Switch button to each row. @default true */
+  showSwitch?: boolean
+}) {
   const switchActor = useSwitchActor()
   return (
     <ul className="home-rows">
@@ -457,10 +465,7 @@ export function GroupRows({ groups }: { groups: readonly Group[] }) {
         const { name, handle } = groupRowLabel(g)
         return (
           <li key={g.groupDid} className="home-group">
-            <Link
-              href={`/groups/${encodeURIComponent(g.groupDid)}`}
-              className="home-row home-group__link"
-            >
+            <Link href={groupProfileHref(g)} className="home-row home-group__link">
               <Avatar
                 size="sm"
                 shape="square"
@@ -484,14 +489,16 @@ export function GroupRows({ groups }: { groups: readonly Group[] }) {
                 </span>
               </span>
             </Link>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => switchActor(g)}
-              aria-label={`Switch to ${name}`}
-            >
-              Switch
-            </Button>
+            {showSwitch ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => switchActor(g)}
+                aria-label={`Switch to ${name}`}
+              >
+                Switch
+              </Button>
+            ) : null}
           </li>
         )
       })}
@@ -499,6 +506,12 @@ export function GroupRows({ groups }: { groups: readonly Group[] }) {
   )
 }
 
+/**
+ * The groups the signed-in person belongs to, each with their role, and
+ * "New group" in the corner. A row opens the group's profile. Personal
+ * account only: while acting as a group the list would be the person's,
+ * not the group's.
+ */
 export function HomeGroups() {
   const { groups, isLoading } = useOrg()
   const preview = groups.slice(0, GROUP_PREVIEW)
@@ -519,7 +532,7 @@ export function HomeGroups() {
       ) : groups.length === 0 ? (
         <EmptyState variant="inline" title="You're not in any groups yet." />
       ) : (
-        <GroupRows groups={preview} />
+        <GroupRows groups={preview} showSwitch={false} />
       )}
       {groups.length > GROUP_PREVIEW ? (
         <div>

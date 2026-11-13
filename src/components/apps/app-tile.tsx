@@ -61,9 +61,11 @@ export default function AppTile({
       ssoHandleUrl={"ssoHandleUrl" in app ? app.ssoHandleUrl : undefined}
       className={`${tileBase} ${tileBySize[size]}`}
     >
-      {/* /apps: everything top-aligns against the fixed logo box, so the
-          names in a row of tiles line up whatever the tagline's length. */}
-      <span className={`flex gap-3 ${isLarge ? "items-start md:gap-4" : "items-center"}`}>
+      {/* Everything top-aligns against the fixed logo box, the arrow
+          included: the names in a row of /apps tiles line up whatever the
+          tagline's length, and the arrow sits level with the name rather
+          than in the middle of the text. */}
+      <span className={`flex items-start gap-3 ${isLarge ? "md:gap-4" : ""}`}>
         <Image
           src={app.logo}
           alt=""
@@ -98,7 +100,7 @@ export default function AppTile({
           size={16}
           strokeWidth={1.75}
           aria-hidden
-          className={`shrink-0 text-[var(--fg-muted)] transition-colors duration-fast group-hover:text-[var(--fg-primary)] ${isLarge ? "self-start" : ""}`}
+          className="shrink-0 text-[var(--fg-muted)] transition-colors duration-fast group-hover:text-[var(--fg-primary)]"
         />
       </span>
       {showLongDescription ? (

@@ -202,13 +202,15 @@
   text-decoration: none;
 }
 
+/* The compact row's 32px, the size of the endorsement and group avatars
+   (DESIGN.md §4, account rows). */
 .home-row__thumb {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--bg-sunken);
@@ -258,8 +260,9 @@
   }
 }
 
-/* A group row: the link to the group's profile, then its Switch
-   button. */
+/* A group row: the link to the group's profile, then (Workspace → Groups
+   only) its Switch button. Home's rows are the link alone, which takes
+   the full width. */
 .home-group {
   display: flex;
   align-items: center;
@@ -271,7 +274,7 @@
   min-width: 0;
 }
 
-.home-group > :last-child {
+.home-group > :not(.home-group__link) {
   flex-shrink: 0;
 }
 
