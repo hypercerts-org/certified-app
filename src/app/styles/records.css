@@ -322,3 +322,117 @@
 .records-person__action {
   flex-shrink: 0;
 }
+
+.records-pane__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.records-pane__tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+/* ---------- Project folders ---------- */
+
+.records-folders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.records-folder {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.records-folder__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.records-folder__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+/* Inset ring: the folder list has no side padding to hold an outer one. */
+.records-folder__toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .records-folder__toggle:hover {
+    background-color: var(--overlay-weak);
+  }
+}
+
+.records-folder__chevron {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  transition: transform var(--transition-fast);
+}
+
+.records-folder__toggle[aria-expanded="true"] .records-folder__chevron {
+  transform: rotate(90deg);
+}
+
+.records-folder__title {
+  overflow: hidden;
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Activities sit indented under their folder's name (chevron + gap). */
+.records-folder__body {
+  padding: 0 0 12px 28px;
+}
+
+.records-folder__list > .records-row:last-child {
+  border-bottom: 0;
+}
+
+.records-folder__empty {
+  margin: 0;
+  padding: 8px 0 4px;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.records-row--missing {
+  min-height: 44px;
+  padding: 12px 4px;
+}
+
+/* On a phone the folder head keeps the name and its actions; the
+   thumbnail goes, and the activities indent less. */
+@media (max-width: 799px) {
+  .records-folder__head .records-row__thumb {
+    display: none;
+  }
+
+  .records-folder__body {
+    padding-left: 12px;
+  }
+}

@@ -4,15 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FolderGit2, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
-import CertIcon from "@/components/ui/cert-icon"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import {
-  ActivitiesPane,
   EndorsementsPane,
   FollowersPane,
   FollowingPane,
   ListsPane,
-  ProjectsPane,
+  WorkPane,
 } from "@/components/records/records-panes"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -22,22 +20,17 @@ import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useActorWorkspaceCounts } from "@/hooks/use-workspace"
 import { usePageTitle } from "@/lib/navbar-context"
 
-type RecordKind =
-  | "activities"
-  | "projects"
-  | "endorsements"
-  | "following"
-  | "followers"
-  | "lists"
+// "activities" is the projects-and-activities folder view (key kept so
+// existing ?kind=activities links still land on it).
+type RecordKind = "activities" | "endorsements" | "following" | "followers" | "lists"
 
 const KINDS: {
   key: RecordKind
   label: string
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean | "true" }>
 }[] = [
-  { key: "activities", label: "Activities", icon: CertIcon },
-  { key: "projects", label: "Projects", icon: FolderGit2 },
-  { key: "endorsements", label: "Endorsements given", icon: ThumbsUp },
+  { key: "activities", label: "Projects / Activities", icon: FolderGit2 },
+  { key: "endorsements", label: "Endorsements", icon: ThumbsUp },
   { key: "following", label: "Following", icon: UserCheck },
   { key: "followers", label: "Followers", icon: Users },
   { key: "lists", label: "Lists", icon: ListChecks },
@@ -49,8 +42,9 @@ function parseKind(value: string | null): RecordKind {
 
 /**
  * `/records` — one place to manage everything the signed-in person's
- * account holds: activities, projects, endorsements given, who they follow
- * (and, read-only, who follows them) and lists. A list of kinds (a column
+ * account holds: projects with their activities (as folders), endorsements
+ * given and received, who they follow (and, read-only, who follows them)
+ * and lists. A list of kinds (a column
  * at 1100px and wider, a scrolling row of pills below) picks the pane via
  * `?kind=`; each pane lists the records with a way to create, open, edit
  * and delete them.
@@ -70,15 +64,11 @@ export default function RecordsPage() {
   const { counts, isLoading: countsLoading } = useActorWorkspaceCounts(did ?? null)
   const following = useFollowing(did ?? null)
   const given = useGivenEndorsements(did ?? null)
-  // Records deleted on this page, by URI. Kept here (not in the panes) so
-  // a deleted row stays hidden after switching kinds and back while the
-  // indexer still lists it, and so each delete lowers the count once.
-  const [removed, setRemoved] = useState<{
-    activities: ReadonlySet<string>
-    projects: ReadonlySet<string>
-  }>({ activities: new Set(), projects: new Set() })
-  const markRemoved = (k: "activities" | "projects", uri: string) =>
-    setRemoved((prev) => ({ ...prev, [k]: new Set(prev[k]).add(uri) }))
+  // Projects and activities deleted on this page, by URI. Kept here (not
+  // in the pane) so a deleted row stays hidden after switching kinds and
+  // back while the indexer still lists it.
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set())
+  const markRemoved = (uri: string) => setRemoved((prev) => new Set(prev).add(uri))
 
   useEffect(() => {
     if (authLoading) return
@@ -96,23 +86,14 @@ export default function RecordsPage() {
     )
   }
 
-  // No count for Lists: the indexer's list count covers endorsement lists
-  // only, while the pane also holds activity, project and account lists.
-  const base: Record<RecordKind, number | null> = {
-    activities: counts.certs,
-    projects: counts.projects,
-    // Keep the last count while a refetch runs (after endorse / remove).
-    endorsements:
-      given.isLoading && given.endorsements.length === 0 ? null : given.endorsements.length,
-    following: following.isLoading && following.count === 0 ? null : following.count,
-    followers: counts.followers,
-    lists: null,
-  }
-  const countFor = (k: RecordKind): number | null => {
-    const n = base[k]
-    if (n === null) return null
-    const gone = k === "activities" || k === "projects" ? removed[k].size : 0
-    return Math.max(0, n - gone)
+  // Counts only where one number says it: the folder view counts per
+  // folder, and Endorsements counts per tab.
+  const countFor = (k: RecordKind): number | null | undefined => {
+    if (k === "following") {
+      return following.isLoading && following.count === 0 ? null : following.count
+    }
+    if (k === "followers") return counts.followers
+    return undefined
   }
   const actor = handle || did
 
@@ -133,7 +114,7 @@ export default function RecordsPage() {
                   >
                     <Icon size={16} strokeWidth={1.75} aria-hidden />
                     <span className="records-nav__label">{label}</span>
-                    {key === "lists" ? null : n !== null || countsLoading ? (
+                    {n === undefined ? null : n !== null || countsLoading ? (
                       <span className="records-nav__count">{n ?? "…"}</span>
                     ) : null}
                   </Link>
@@ -145,19 +126,7 @@ export default function RecordsPage() {
 
         <div className="records__main">
           {kind === "activities" ? (
-            <ActivitiesPane
-              did={did}
-              actor={actor}
-              removed={removed.activities}
-              onDeleted={(uri) => markRemoved("activities", uri)}
-            />
-          ) : kind === "projects" ? (
-            <ProjectsPane
-              did={did}
-              actor={actor}
-              removed={removed.projects}
-              onDeleted={(uri) => markRemoved("projects", uri)}
-            />
+            <WorkPane did={did} actor={actor} removed={removed} onDeleted={markRemoved} />
           ) : kind === "endorsements" ? (
             <EndorsementsPane did={did} given={given} />
           ) : kind === "following" ? (
