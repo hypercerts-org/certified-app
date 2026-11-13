@@ -1,361 +1,907 @@
-/* ========== Profile hero (full-bleed header for /profile/[handle]) ========== */
+/* ========== Public profile (src/app/[actor]/page.tsx) ==========
+   One layout for every width, inside <PageContainer width="wide">:
+   the owner bar (or the edit bar), the header, the section tabs, the
+   active panel. Phones stack the same pieces in one column. */
 
-.profile-hero {
-  width: 100%;
+/* ---------- Owner bar ---------- */
+
+.profile-owner-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 24px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--fg-secondary);
+}
+
+.profile-owner-bar__text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.profile-owner-bar__text svg {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.profile-owner-bar__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.profile-owner-bar__link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h-compact);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-hover);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: text-decoration-color var(--transition-fast);
 }
 
-.profile-hero__banner {
+/* 44px touch target around the 32px link. */
+.profile-owner-bar__link::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .profile-owner-bar__link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.profile-owner-bar__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ---------- Edit bar and onboarding banner ---------- */
+
+/* While editing, Save / Cancel stay in reach: the bar pins below the top
+   bar (the section tabs give up their sticky slot meanwhile). */
+.profile-page__edit-bar {
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: var(--z-rail-sticky);
+  margin-bottom: 24px;
+  padding: 8px 0;
+  background: var(--bg-canvas);
+}
+
+.profile-page .onboarding-banner {
   width: 100%;
-  height: 180px;
+  margin: 0 0 24px;
+}
+
+/* ---------- Header ---------- */
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Calm banner: a fixed, modest height rather than a 3:1 panorama. Only
+   rendered when the account has one (or while editing). */
+.profile-header__banner {
+  height: 128px;
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    var(--bg-sunken) 0%,
-    var(--bg-raised) 100%
-  );
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
 }
 
-/* Half height when the profile has no banner image. The gradient
-   panel reads as an intentional "no banner" affordance rather than
-   eating the same vertical real estate as a real banner. */
-.profile-hero__banner--empty {
-  /* The banner starts below the opaque top bar on every width, and the
-     avatar row lifts 48px into it; 96px leaves a visible strip above the
-     avatar. Desktop resets to 100px below. */
-  height: 96px;
-}
-
-.profile-hero__banner-img {
+.profile-header__banner-img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
-.profile-hero__body {
-  padding: 0 16px 16px;
+.profile-header__banner--editing {
+  height: auto;
+  overflow: visible;
+  background: none;
 }
 
-.profile-hero__row {
+.profile-header__banner--editing .profile-banner-upload__box {
+  aspect-ratio: auto;
+  height: 128px;
+  max-height: none;
+}
+
+.profile-header__staged {
+  margin: 8px 0 0;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+}
+
+/* Avatar on the left, the viewer's actions on the right, both resting on
+   the same bottom edge. With a banner, the avatar lifts halfway into it. */
+.profile-header__top {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
-  /* Lift the avatar to half-overlap the banner */
-  margin-top: -48px;
-}
-
-/* Wrap the avatar in a rounded pad that reads as a border on any banner. */
-.profile-hero__avatar-wrap {
-  flex-shrink: 0;
-  padding: 4px;
-  background: var(--bg-elevated);
-  border-radius: 999px;
-  line-height: 0;
-}
-
-.profile-hero__action {
-  flex-shrink: 0;
-  /* Sit on the same baseline as the avatar bottom edge */
-  padding-bottom: 4px;
-}
-
-.profile-hero__action-group {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.profile-hero__eyebrow {
-  /* Small "YOUR PROFILE" cue that arrives before the name, so visiting
-     `/` (which redirects to /profile/[my-handle]) reads as "yours"
-     rather than a generic profile view. */
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin: 12px 0 0;
-}
-
-.profile-hero__name {
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--fg-primary);
-  letter-spacing: -0.01em;
-  margin: 12px 0 2px;
-  line-height: 1.15;
-  /* A long unbroken name, or the `@handle` fallback, must wrap inside
-     a phone viewport instead of pushing the page wide. */
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-
-/* When the eyebrow is present, tighten the top margin on the name so
-   the eyebrow + name read as one block. */
-.profile-hero__eyebrow + .profile-hero__name {
-  margin-top: 4px;
-}
-
-.profile-hero__handle {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  font-weight: 400;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.profile-header--banner .profile-header__top {
+  margin-top: -64px;
+  padding-left: 12px;
+}
+
+.profile-header__avatar {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+/* A canvas-coloured ring separates the avatar from the banner behind it. */
+.profile-header--banner .profile-header__avatar {
+  padding: 4px;
+  background: var(--bg-canvas);
+}
+
+.profile-header__avatar--square {
+  border-radius: var(--radius);
+}
+
+.profile-header__avatar-edit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-local-raise);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--bg-canvas);
+  border-radius: 50%;
+  background: var(--scrim-pill);
+  color: var(--color-white);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+/* 44px touch target around the 36px badge. */
+.profile-header__avatar-edit::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .profile-header__avatar-edit:hover {
+    background: var(--scrim-pill-hover);
+  }
+}
+
+.profile-header__avatar-edit:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.profile-header__avatar-edit:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.profile-header__avatar-edit:disabled {
+  cursor: progress;
+}
+
+.profile-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-header__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   min-width: 0;
 }
 
-.profile-hero__handle-text {
+.profile-header__name {
+  margin: 0;
+  color: var(--fg-primary);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.profile-header__handle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: -4px 0 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.profile-header__handle-text {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* Inline tag shown next to the handle when the profile's PDS is
-   Bluesky-hosted, so visitors recognise the data origin. Quiet
-   styling — small pill, muted border. */
-.profile-hero__pds-tag {
-  flex-shrink: 0;
+/* Says where the data came from when the profile is Bluesky's (#74). */
+.profile-header__tag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--overlay-weak);
+  padding: 0 8px;
   border: 1px solid var(--border-default);
-  color: var(--fg-muted);
-  font-size: 0.6875rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-caption);
   font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1.4;
+  line-height: 1.6;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 }
 
-.profile-hero__count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 12px 0 0;
-  font-size: 0.875rem;
+@media (hover: hover) and (pointer: fine) {
+  .profile-header__tag:hover {
+    border-color: var(--border-hover);
+    color: var(--fg-primary);
+  }
 }
 
-.profile-hero__count-value {
-  font-weight: 600;
-  color: var(--fg-primary);
-  font-variant-numeric: tabular-nums;
+.profile-header__tag:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
-.profile-hero__count-label {
-  color: var(--fg-muted);
-}
-
-.profile-hero__bio {
-  margin: 12px 0 0;
-  font-size: 0.9375rem;
-  line-height: 1.55;
+.profile-header__bio {
+  max-width: var(--measure);
+  margin: 4px 0 0;
+  font-size: var(--text-body);
+  line-height: 1.6;
   color: var(--fg-secondary);
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: break-word;
   text-wrap: pretty;
 }
 
-/* Pronouns + social-graph strip. Mobile-only (this whole header is hidden at
-   ≥800px); mirrors the desktop sidebar so mobile reaches information parity. */
-.profile-hero__pronouns {
-  margin: 8px 0 0;
-  font-size: 0.8125rem;
+.profile-header__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* SmartLink renders its icon and anchor as siblings. */
+.profile-header__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
+.profile-header__link > svg {
+  flex-shrink: 0;
   color: var(--fg-muted);
 }
 
-.profile-hero__graph {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
+.profile-header__link-anchor {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-decoration: none;
 }
 
-.profile-hero__graph-row {
+@media (hover: hover) and (pointer: fine) {
+  .profile-header__link-anchor:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* "Type · Location · Founded …" (organisations) or "Joined …", then the
+   account ID with a copy button. */
+.profile-header__meta {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  min-width: 0;
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-header__id {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: color var(--transition-fast);
 }
 
-.profile-hero__graph-count {
+.profile-header__id-label {
+  font-weight: 500;
+}
+
+.profile-header__id-value {
+  min-width: 0;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-variant-numeric: slashed-zero;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .profile-header__id:hover {
+    color: var(--fg-primary);
+  }
+}
+
+.profile-header__id:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Edit mode: the identity block becomes a short form. */
+.profile-header__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.profile-header__url-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.profile-header__field-label {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
+}
+
+.profile-header__url-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-header__url-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-header__url-row input {
+  height: var(--control-h-sm);
+  padding: 0 12px;
+}
+
+/* From 800px the header reads across: the avatar on the left, name and
+   details beside it, the viewer's actions on the right, the trust line
+   under the details. With a banner, the avatar lifts into it. */
+@media (min-width: 800px) {
+  .profile-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar identity actions"
+      ". trust trust";
+    gap: 16px 24px;
+    align-items: start;
+  }
+
+  .profile-header--banner {
+    grid-template-areas:
+      "banner banner banner"
+      "avatar identity actions"
+      ". trust trust";
+  }
+
+  .profile-header__banner {
+    grid-area: banner;
+  }
+
+  .profile-header__banner,
+  .profile-header__banner--editing .profile-banner-upload__box {
+    height: 192px;
+  }
+
+  .profile-header__top,
+  .profile-header--banner .profile-header__top {
+    display: contents;
+  }
+
+  .profile-header__avatar {
+    grid-area: avatar;
+  }
+
+  .profile-header--banner .profile-header__avatar {
+    margin: -64px 0 0 20px;
+  }
+
+  .profile-header__actions {
+    grid-area: actions;
+    justify-content: flex-end;
+  }
+
+  .profile-header__identity,
+  .profile-header__fields {
+    grid-area: identity;
+    padding-top: 4px;
+  }
+
+  .profile-header .profile-trust {
+    grid-area: trust;
+  }
+}
+
+/* ---------- Trust line ---------- */
+
+.profile-trust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.profile-trust__none {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.profile-trust__endorsed {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-trust__faces {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* Overlapping faces, each ringed in the canvas colour. */
+.profile-trust__face {
+  display: inline-flex;
+  border-radius: 50%;
+  outline: 2px solid var(--bg-canvas);
+}
+
+.profile-trust__face + .profile-trust__face {
+  margin-left: -2px;
+}
+
+.profile-trust__name {
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+
+.profile-trust__counts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-trust__count {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-trust__count strong {
   font-weight: 600;
   color: var(--fg-primary);
 }
 
-.profile-hero__graph-link {
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.profile-hero__graph-link:hover,
-.profile-hero__graph-link:focus-visible {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.profile-hero__graph-sep {
+.profile-trust__sep {
   color: var(--fg-muted);
 }
 
-/* Endorsed-by count sits inside its link (unlike the followers row), so it
-   inherits the link colour and the whole string lights up together on hover. */
-.profile-hero__graph-row[aria-label="Endorsed by"] .profile-hero__graph-count {
-  color: inherit;
-}
-
-/* Desktop: banner is center-column-bleed (not viewport-bleed) and the
-   column is 600px wide. Keep close to 3:1 aspect so the banner still
-   reads as a panoramic header rather than a letterbox card. 200px on
-   600px column = 3:1, matching bsky. The wider body padding, lifted
-   avatar overlap, and larger name (previously gated at the off-spec
-   640px tablet breakpoint) fold into this canonical 800px desktop
-   step. */
-@media (min-width: 800px) {
-  .profile-hero__banner {
-    height: 200px;
-  }
-
-  .profile-hero__banner--empty {
-    height: 100px;
-  }
-
-  .profile-hero__body {
-    padding: 0 24px 24px;
-  }
-
-  .profile-hero__row {
-    margin-top: -56px;
-  }
-
-  .profile-hero__name {
-    font-size: 1.75rem;
+@media (hover: hover) and (pointer: fine) {
+  .profile-trust__endorsed:hover .profile-trust__text,
+  .profile-trust__count:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
-/* ========== Profile tabs ========== */
+.profile-trust__endorsed:focus-visible,
+.profile-trust__count:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 
+/* ---------- Section tabs ---------- */
+
+/* One underline strip on every width. It scrolls sideways when the tabs
+   don't fit (phones), running to the screen edges there, and stays pinned
+   below the top bar while the page scrolls. */
 .profile-tabs {
-  display: flex;
-  gap: 0;
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  margin: 24px -16px 0;
   padding: 0 16px;
-  margin-top: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  /* Keep a swipe at the strip's end from starting a browser back-swipe. */
   overscroll-behavior-x: contain;
-  /* Light snap so a flick settles on a tab edge, not mid-label. */
-  scroll-snap-type: x proximity;
-  scroll-padding-inline: 16px;
-  /* Edge fade: hints that the strip scrolls when a tab is cut off at
-     either side. The left fade only covers the 16px gutter at rest. */
-  -webkit-mask-image:
-    linear-gradient(
-      to right,
-      transparent,
-      var(--mask-opaque) 16px,
-      var(--mask-opaque) calc(100% - 32px),
-      transparent
-    ),
-    linear-gradient(
-      to bottom,
-      var(--mask-opaque) 1px,
-      transparent 1px,
-      transparent calc(100% - 1px),
-      var(--mask-opaque) calc(100% - 1px)
-    );
-  mask-image:
-    linear-gradient(
-      to right,
-      transparent,
-      var(--mask-opaque) 16px,
-      var(--mask-opaque) calc(100% - 32px),
-      transparent
-    ),
-    /* Second layer keeps the 1px top/bottom borders unfaded (the layers
-       add, so the hairlines stay full-width under the edge fade). */
-    linear-gradient(
-      to bottom,
-      var(--mask-opaque) 1px,
-      transparent 1px,
-      transparent calc(100% - 1px),
-      var(--mask-opaque) calc(100% - 1px)
-    );
-}
-
-/* The in-page tab strip is mobile-only — on desktop the top bar's row 2
-   carries the profile tabs. Hidden at ≥800px to avoid a duplicate strip. */
-@media (min-width: 800px) {
-  .profile-page__mobile-tabs {
-    display: none;
-  }
+  background: var(--bg-canvas);
 }
 
 .profile-tabs::-webkit-scrollbar {
   display: none;
 }
 
+.profile-tabs--sticky {
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: var(--z-rail-sticky);
+}
+
+/* The phone top bar slides away on scroll down; the pinned strip (and the
+   edit bar) then move up to the top edge instead of leaving a gap. */
+html:has(.navbar--hidden) .profile-tabs--sticky,
+html:has(.navbar--hidden) .profile-page__edit-bar {
+  top: 0;
+}
+
+.profile-tabs__list {
+  display: flex;
+  min-width: 100%;
+  width: max-content;
+  gap: 20px;
+}
+
 .profile-tabs__tab {
-  /* Fixed content width so the row can scroll horizontally as soon as
-     the tabs overflow the viewport instead of cramming them. */
   flex: 0 0 auto;
-  padding: 14px 20px;
-  background: transparent;
-  border: none;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  cursor: pointer;
-  position: relative;
-  transition: color var(--transition-fast);
   white-space: nowrap;
-  scroll-snap-align: start;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-tabs__tab:hover {
-    color: var(--fg-primary);
-  }
-}
-
-.profile-tabs__tab--active {
-  color: var(--fg-primary);
-  font-weight: 600;
-}
-
-.profile-tabs__tab--active::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 16px;
-  right: 16px;
-  height: 2px;
-  background: var(--fg-primary);
-  border-radius: var(--radius);
 }
 
 .profile-tabs__tab:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   border-radius: var(--radius);
+}
+
+@media (min-width: 800px) {
+  .profile-tabs {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+  }
+
+  .profile-tabs__list {
+    gap: 24px;
+  }
+}
+
+/* ---------- Panels ---------- */
+
+.profile-page__panel {
+  padding-top: 24px;
+  min-width: 0;
+}
+
+.profile-page__about {
+  max-width: var(--measure);
+}
+
+/* A one-line pointer at the top of a panel ("Manage endorsements"). */
+.profile-panel-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 24px;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.profile-panel-note__text {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--fg-secondary);
+}
+
+/* ---------- Overview ---------- */
+
+.profile-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+/* Organisation About: text and type on the left, the map beside it. */
+.profile-overview__about {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.profile-overview__about-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Stacked under the text (below 1100px) the map stays a modest size. */
+.profile-overview__about .profile-overview__location {
+  max-width: 480px;
+}
+
+/* About excerpt: the first lines of the long description. When it runs
+   longer, the last line fades and "Read more" opens the About tab. */
+.profile-overview__about-excerpt {
+  max-width: var(--measure);
+  max-height: 9.6em;
+  overflow: hidden;
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--fg-secondary);
+}
+
+.profile-overview__about-excerpt--clamped {
+  -webkit-mask-image: linear-gradient(to bottom, var(--mask-opaque) 70%, transparent);
+  mask-image: linear-gradient(to bottom, var(--mask-opaque) 70%, transparent);
+}
+
+.profile-overview__hint {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--fg-muted);
+}
+
+.profile-overview__columns {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+.profile-overview__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.profile-overview__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+@media (min-width: 800px) {
+  .profile-overview,
+  .profile-overview__columns {
+    gap: 48px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .profile-overview__about--with-map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  .profile-overview__columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* ---------- Rows (Overview activities and endorsements) ---------- */
+
+.profile-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.profile-rows > li,
+.profile-rows--skeleton > .profile-row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  min-width: 0;
+}
+
+.profile-row--link {
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .profile-row--link:hover .profile-row__title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.profile-row--link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.profile-row__thumb {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+}
+
+.profile-row__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-row__title {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.profile-row__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--text-ui);
+  line-height: 1.45;
+  color: var(--fg-secondary);
+  overflow-wrap: anywhere;
+}
+
+.profile-row__date {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An endorsement as a statement: "{endorser} endorsed {account}", their
+   note, the date. */
+.profile-statement__line {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  overflow-wrap: anywhere;
+}
+
+.profile-statement__name {
+  font-weight: 500;
+  color: var(--fg-primary);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .profile-statement__name:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.profile-statement__name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.profile-statement__note {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--border-default);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.profile-statement__meta {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ========== Profile › Groups tab ========== */
@@ -385,8 +931,10 @@
   transition: background var(--transition-fast);
 }
 
-.profile-groups__link:hover {
-  background: var(--overlay-weak);
+@media (hover: hover) and (pointer: fine) {
+  .profile-groups__link:hover {
+    background: var(--overlay-weak);
+  }
 }
 
 .profile-groups__meta {
@@ -397,7 +945,7 @@
 }
 
 .profile-groups__name {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -500,39 +1048,28 @@
   padding: 24px 0;
 }
 
-/* The Edit / Settings / Follow buttons in the profile hero drop the
-   global 44px mobile min tap-height (`min-h-11` on Button size="sm"),
-   which made them look oversized in the compact hero. Padding then
-   drives a tighter height, matching the desktop look. */
+/* Sub-tab strips inside a panel (Created / Contributed, Received / Given,
+   Followers / Following) read as pills on phones, so they don't look like
+   a second copy of the section tabs above. Scoped to the panel, so the
+   section tabs keep their underline. */
 @media (max-width: 799px) {
-  .profile-hero__action button {
-    min-height: 0;
-  }
-}
-
-/* Profile sub-tab strips (Created / Contributed, Received / Given,
-   Followers / Following) read as explore-style pills on mobile instead
-   of the tall underline tabs. Scoped to role="tab" so it only hits the
-   ui/Tabs sub-strips, not the main `.profile-tabs__tab` strip. */
-@media (max-width: 799px) {
-  .profile-page [role="tab"] {
+  .profile-page__panel [role="tab"] {
     padding: 4px 12px;
     border: 1px solid var(--border-default);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--bg-elevated);
     color: var(--fg-primary);
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     font-weight: 500;
-    min-height: 30px;
+    min-height: 32px;
   }
-  .profile-page [role="tab"][aria-selected="true"] {
-    background: var(--fg-primary);
-    color: var(--bg-canvas);
-    border-color: var(--fg-primary);
-    font-weight: 600;
+  .profile-page__panel [role="tab"][aria-selected="true"] {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    border-color: var(--btn-primary-bg);
   }
-  .profile-page [role="tab"][aria-disabled="true"] {
-    opacity: 0.5;
+  .profile-page__panel [role="tab"][aria-disabled="true"] {
+    opacity: var(--opacity-disabled);
   }
 }
 

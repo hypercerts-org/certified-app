@@ -36,6 +36,8 @@
  *   /dev/preview/project        — project DETAIL page (project fixture)
  *
  * `?fixture=empty` switches every list/connection to its empty variant.
+ * `?visitor=1` / `?visitor=signedout` view the profile surfaces as another
+ * signed-in account / a signed-out visitor.
  */
 
 import { Suspense, useMemo } from "react"
@@ -65,6 +67,7 @@ import { ToastProvider } from "@/components/ui/toast"
 
 import MockFetchProvider, {
   type MockScenario,
+  type MockVisitor,
 } from "@/components/dev/mock-fetch-provider"
 import {
   type ProfileScenario,
@@ -275,6 +278,16 @@ export default function PreviewPage() {
   // profile tabs can be verified with groups present.
   const managedScenario = searchParams?.get("managed") === "1"
 
+  // `?visitor=1` views the profile as another signed-in account,
+  // `?visitor=signedout` as a signed-out visitor (Follow / Endorse header).
+  const visitorParam = searchParams?.get("visitor")
+  const visitor: MockVisitor =
+    visitorParam === "signedout"
+      ? "signedout"
+      : visitorParam === "1"
+        ? "account"
+        : "owner"
+
   if (!isSurface(rawSurface)) notFound()
 
   return (
@@ -283,6 +296,7 @@ export default function PreviewPage() {
       scenario={scenario}
       managedScenario={managedScenario}
       recordsScenario={rawSurface === "records"}
+      visitor={visitor}
     >
       {/* SAME provider order as app/layout.tsx, re-instantiated under the
           fetch mock so the fixture session is the one this subtree reads. */}

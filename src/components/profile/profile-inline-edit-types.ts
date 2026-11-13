@@ -3,13 +3,13 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 
 /**
  * Shared type for the inline-edit drafts the profile page owns and the
- * sidebar / overview render. Kept in its own module to avoid a cycle
- * between the page (which imports the sidebar and overview) and the
- * sidebar / overview (which need this type to type their props).
+ * header / overview render. Kept in its own module to avoid a cycle
+ * between the page (which imports the header and overview) and the
+ * header / overview (which need this type to type their props).
  *
  * Org-only fields (everything after `website`) are populated only when
  * the page detects the `app.certified.actor.organization` marker. The
- * sidebar / overview gate their edit-mode UI on `isOrg` and skip these
+ * header / overview gate their edit-mode UI on `isOrg` and skip these
  * fields when the marker is absent.
  */
 export interface ProfileDrafts {

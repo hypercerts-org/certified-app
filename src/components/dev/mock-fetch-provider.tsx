@@ -77,6 +77,13 @@ import {
 
 export type MockScenario = "populated" | "empty"
 
+/** Who views the fixture profile: its owner (default), another signed-in
+ *  account, or a signed-out visitor. */
+export type MockVisitor = "owner" | "account" | "signedout"
+
+/** The other account in the `account` visitor scenario. */
+const MOCK_VISITOR_DID = "did:plc:previewvisitor00000000000000"
+
 interface MockFetchProviderProps {
   children: React.ReactNode
   /** Which profile identity to resolve own-profile to. */
@@ -98,6 +105,8 @@ interface MockFetchProviderProps {
    *  "Add to project" can be clicked through. Default OFF so every other
    *  preview renders byte-identically. */
   recordsScenario?: boolean
+  /** Who views the profile surfaces. Default `owner`. */
+  visitor?: MockVisitor
 }
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const
@@ -332,6 +341,11 @@ function xrpcResponse(
     if (records && collection === "org.hypercerts.claim.activity") {
       return json(empty ? { records: [] } : recordsActivities())
     }
+    if (collection === "app.certified.actor.organization") {
+      // `useOrgMarker` reads the marker through listRecords (it looks for
+      // the `self` rkey), so the org scenario serves it here too.
+      return json({ records: scenario === "org" ? [orgMarkerRecord()] : [] })
+    }
     // Memberships, activities-by-PDS, and anything else → empty list.
     return json({ records: [] })
   }
@@ -346,6 +360,7 @@ function installMockFetch(
   scenario: MockScenario,
   managed: boolean,
   records = false,
+  visitor: MockVisitor = "owner",
 ): () => void {
   if (typeof window === "undefined") return () => {}
   const realFetch = window.fetch
@@ -404,6 +419,11 @@ function installMockFetch(
     // --- same-origin API routes ---
     if (url.origin === window.location.origin) {
       if (path === "/api/auth/session") {
+        // Visitor scenarios: view the fixture profile as someone else
+        // (another signed-in account) or signed out, so the visitor
+        // header (Follow / Endorse) can be previewed.
+        if (visitor === "signedout") return json({ did: null })
+        if (visitor === "account") return json({ did: MOCK_VISITOR_DID })
         return json(sessionResponse())
       }
       if (path === "/api/auth/logout" || path === "/api/auth/login") {
@@ -519,6 +539,7 @@ export default function MockFetchProvider({
   scenario = "populated",
   managedScenario = false,
   recordsScenario = false,
+  visitor = "owner",
 }: MockFetchProviderProps) {
   // Install synchronously during the FIRST render (via the useState lazy
   // initializer) so the patch is in place before any child provider's
@@ -526,7 +547,7 @@ export default function MockFetchProvider({
   // fn, which is held in state and called on unmount. Storing it in
   // state (not a ref) keeps render side-effect-free per react-hooks/refs.
   const [teardown] = useState<() => void>(() =>
-    installMockFetch(profileScenario, scenario, managedScenario, recordsScenario),
+    installMockFetch(profileScenario, scenario, managedScenario, recordsScenario, visitor),
   )
 
   // StrictMode (dev) runs every effect's cleanup and then its setup again

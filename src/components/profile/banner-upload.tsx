@@ -18,7 +18,7 @@ const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB — Vercel serverless limit is ~4.
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
- * Banner upload control. Mirrors `AvatarEditOverlay` in the sidebar:
+ * Banner upload control. Like the header's avatar camera button, it
  * always renders a floating "Change banner" button in the corner so
  * the affordance is the same regardless of whether a banner image is
  * present or not. The button itself opens the file picker; the rest
@@ -132,7 +132,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
           // the "Change banner" button already carries the accessible
           // affordance, so the hint is decorative for screen readers.
           <span className="profile-banner-upload__hint" aria-hidden="true">
-            Add a banner image — shown across the top of your profile (3:1)
+            Add a banner image. It shows across the top of your profile.
           </span>
         )}
 

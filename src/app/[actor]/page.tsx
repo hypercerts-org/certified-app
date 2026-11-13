@@ -1,27 +1,22 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useParams, useSearchParams, useRouter } from "next/navigation"
 import { profileUrl } from "@/lib/urls"
-import {
-  useProfileNavbar,
-  usePageTitle,
-  usePageTitleBreadcrumb,
-  useProfileAboutAvailable,
-  useProfileGroupsAvailable,
-  useProfileEditing,
-} from "@/lib/navbar-context"
+import { usePageTitle, usePageTitleBreadcrumb } from "@/lib/navbar-context"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { getProfileWithCid } from "@/lib/atproto/profile"
 import type { CertifiedProfile } from "@/lib/atproto/types"
-import { useUserActivityCount } from "@/hooks/use-user-activity-count"
 import { useOrgMarker } from "@/hooks/use-org-marker"
 import { useOrg } from "@/lib/groups/org-context"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useProfileInlineEdit } from "@/hooks/use-profile-inline-edit"
 import dynamic from "next/dynamic"
-import ProfileHeader from "@/components/profile/profile-header"
-import ProfileSidebar from "@/components/profile/profile-sidebar"
+import ProfileHeader, {
+  ProfileHeaderSkeleton,
+} from "@/components/profile/profile-header"
+import ProfileOwnerBar from "@/components/profile/profile-owner-bar"
+import ProfileTabs, { type ProfileTabItem } from "@/components/profile/profile-tabs"
 import ProfileOverview from "@/components/profile/profile-overview"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
@@ -32,20 +27,19 @@ import type { LinearDocument } from "@/lib/leaflet/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EditBanner from "@/components/ui/edit-banner"
 import EmptyState from "@/components/ui/empty-state"
+import PageContainer from "@/components/ui/page-container"
+import { Tabs, TabPanel } from "@/components/ui/tabs"
 import NotFoundMarker from "@/components/layout/not-found-marker"
 import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
 import { AlignLeft, Pencil, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
-import { formatGraphCount } from "@/lib/utils/format-graph-count"
 
-// Non-default tab panels + the own-profile settings surface are
-// code-split out of the route's first-load chunk: profiles are the
-// most-shared public URL, and anonymous visitors land on the static
-// Overview tab — they should not download the endorsement/list/
-// follower panels or the settings + org-admin subtree up front.
-// Overview, header, and sidebar stay static (default-tab paint).
+// Non-default tab panels are code-split out of the route's first-load
+// chunk: profiles are the most-shared public URL, and anonymous visitors
+// land on the Overview tab, so they should not download the endorsement /
+// list / follower panels up front. Overview and the header stay static.
 const ProfileEndorsements = dynamic(
   () => import("@/components/profile/profile-endorsements"),
   { loading: () => <LoadingSpinner /> },
@@ -58,10 +52,6 @@ const ProfileLists = dynamic(
   () => import("@/components/profile/profile-lists"),
   { loading: () => <LoadingSpinner /> },
 )
-const SettingsPanel = dynamic(
-  () => import("@/components/settings/settings-panel"),
-  { loading: () => <LoadingSpinner /> },
-)
 
 type TabKey =
   | "overview"
@@ -72,38 +62,30 @@ type TabKey =
   | "endorsements"
   | "followers"
   | "lists"
-  | "settings"
 
-// Tab strip order — keep in sync with PROFILE_TABS in
-// desktop-top-bar.tsx, which is the single source the user clicks on
-// desktop. About sits right after Overview and only renders when the
-// viewed profile carries a non-empty `longDescription`; Settings is
-// own-profile only.
+// Tab strip order. About (organizations only) sits next to Overview;
+// Groups shows only while the viewer's active identity is this account.
+// Other pages link to these keys as `?tab=…`, so keep them stable. The
+// old `?tab=settings` panel is gone: that link now goes to Settings.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "about", label: "About" },
   { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "groups", label: "Groups" },
   { key: "endorsements", label: "Endorsements" },
   { key: "followers", label: "Followers" },
   { key: "lists", label: "Lists" },
-  { key: "about", label: "About" },
-  { key: "settings", label: "Settings" },
 ]
 
 // Left-to-right key order for the desktop tab-switch slide direction.
 const TAB_ORDER = TABS.map((t) => t.key)
 
-// Inline-edit state machine + display helpers live in
-// `useProfileInlineEdit` so the page reads as orchestration + tab
-// rendering only. The `ParsedLocation` type and helper functions
-// (parseLocation, readableOrgTypeTags, readableFoundedDate, etc.)
-// are exported from that hook for downstream components that still
-// need the shapes.
+// Query params that belong to one tab's panel (sub-views, view mode, the
+// open list). Switching tabs drops them so they don't leak across.
+const PANEL_PARAMS = ["tab", "sub", "view", "list"]
 
 export default function UserProfilePage() {
-  useProfileNavbar()
-
   const params = useParams()
   const router = useRouter()
   const rawHandle = params.actor as string | undefined
@@ -127,12 +109,12 @@ export default function UserProfilePage() {
 
   const { isAuthenticated, isLoading: isAuthLoading, did: sessionDid } = useAuth()
 
+  // The phone top bar's compact title (and the chrome's fallback h1 while
+  // the header is loading); the header's name is the page's h1.
   const titleForTopBar =
     profile?.displayName || resolvedHandle || "Profile"
   usePageTitle(titleForTopBar)
-  // Single-part breadcrumb: the handle (without the `@` sigil) is the
-  // only segment, but it's clickable. Matches the cert-page pattern
-  // (which uses two parts).
+  // Single-part breadcrumb: the handle (without the `@` sigil), clickable.
   usePageTitleBreadcrumb(
     resolvedHandle
       ? {
@@ -144,10 +126,9 @@ export default function UserProfilePage() {
       : null,
   )
 
-  // Detect the org marker on the viewed DID so the sidebar can switch into
-  // org-mode (extra URL list). While loading we pass isOrg=false to keep
-  // the sidebar in non-org mode; the hook caches per-DID so subsequent
-  // visits hydrate synchronously.
+  // Detect the org marker on the viewed DID so the header and Overview
+  // switch into organization mode. While loading we treat the profile as a
+  // person; the hook caches per DID so later visits hydrate synchronously.
   const {
     isOrg,
     additionalUrls,
@@ -156,7 +137,7 @@ export default function UserProfilePage() {
     isLoading: isOrgMarkerLoading,
     refresh: refreshOrgMarker,
   } = useOrgMarker(did)
-  const sidebarIsOrg = isOrgMarkerLoading ? false : isOrg
+  const viewIsOrg = isOrgMarkerLoading ? false : isOrg
 
   // Recently-viewed: record the viewed DID once it resolves so the
   // /explore "Recently viewed" filter (Accounts kind) can surface this
@@ -256,7 +237,7 @@ export default function UserProfilePage() {
     isAuthenticated,
     canEditInline,
     editTargetDid,
-    sidebarIsOrg,
+    sidebarIsOrg: viewIsOrg,
     // Editable views feed the RAW certs record (carries avatar/banner
     // blob refs) so a text-only save preserves them; read-only views
     // keep the resolved useUserProfile snapshot for display. While the
@@ -298,90 +279,67 @@ export default function UserProfilePage() {
     handleSave,
   } = inlineEdit
 
+
   // -------------------------------------------------------------------
-  // Navbar tab availability — depends on hook outputs + page-level
-  // facts (own-vs-foreign, public group memberships).
+  // Tabs: which exist for this viewer, which is shown.
   // -------------------------------------------------------------------
-  // About tab is org-only — individual profiles never expose it, even
-  // when the viewer is the profile owner. Groups still surface it
-  // when they have content OR when an admin can edit / is editing.
-  const aboutEditingForOrg = isEditing && canEditInline && sidebarIsOrg
+  // About is organization-only. It shows when there is a long description,
+  // or when the viewer is this organization (to write one), or mid-edit.
+  const aboutEditingForOrg = isEditing && canEditInline && viewIsOrg
   const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
   const aboutAvailable =
-    sidebarIsOrg &&
+    viewIsOrg &&
     (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg)
-  useProfileAboutAvailable(aboutAvailable)
-  // Gate the Groups tab: only visible when the viewer's currently
-  // *active* identity matches the viewed profile. So the personal
-  // user sees it on their own profile only when no org is active;
-  // a group sees it on its own profile only while acting as that
-  // group. A user acting as a group must NOT see the Groups tab
-  // on their personal profile — the group is the active identity,
-  // and the CGS endpoint returns the group's memberships in that
-  // session, not the personal user's.
+  // Groups only while the viewer's *active* identity is this profile: the
+  // personal user on their own profile with no group active, or a group on
+  // its own profile while acting as it. (Acting as a group on your personal
+  // profile, the CGS endpoint would return the group's memberships.)
   const isActiveIdentityThisProfile =
     (isOwnProfile && !activeOrg) || isActingAsThisGroup
-  useProfileGroupsAvailable(isActiveIdentityThisProfile)
-  // Lock the top-bar / mobile tab strips to the editable section(s)
-  // while inline-editing. Published unconditionally (before the early
-  // returns below) so the hook order stays stable across renders.
-  useProfileEditing(isEditing && canEditInline)
+  const editing = isEditing && canEditInline
+  // While editing, only the editable sections stay switchable: Overview,
+  // plus About for organizations.
+  const isTabEditable = (key: TabKey) =>
+    key === "overview" || (viewIsOrg && key === "about")
 
-  // Mobile profile tab strip. The desktop top bar's row-2 tabs are the only
-  // tab navigation, and that bar is hidden below 800px — so without this strip
-  // mobile users can't switch profile sections at all. Mirror the desktop
-  // `visibleProfileTabs` gating exactly (Settings stays drawer-only on both).
-  const mobileTabs = useMemo<{ key: TabKey; label: string }[]>(
+  const visibleTabs = useMemo<ProfileTabItem[]>(
     () =>
       TABS.filter((t) => {
-        if (t.key === "settings") return false
         if (t.key === "groups") return isActiveIdentityThisProfile
         if (t.key === "about") return aboutAvailable
         return true
-      }),
-    [isActiveIdentityThisProfile, aboutAvailable],
+      }).map((t) => ({
+        key: t.key,
+        label: t.label,
+        disabled:
+          editing && !(t.key === "overview" || (viewIsOrg && t.key === "about")),
+      })),
+    [isActiveIdentityThisProfile, aboutAvailable, editing, viewIsOrg],
   )
-
-  // Mobile <ProfileHeader> still uses the legacy edit pages as a
-  // fallback (inline edit isn't wired on the compact mobile header
-  // yet). Same gate as `canEditInline` above — the signed-in identity
-  // must match the viewed profile exactly.
-  const mobileEditHref =
-    isOwnProfile && !activeOrg
-      ? "/settings/edit-profile"
-      : isActingAsThisGroup && did
-        ? `/groups/${encodeURIComponent(did)}/edit-profile`
-        : undefined
 
   const settingsHref =
     isAdminOfThisGroup && did
       ? `/groups/${encodeURIComponent(did)}/settings`
       : undefined
 
-  const eyebrow = isOwnProfile
-    ? "Your profile"
-    : isAdminOfThisGroup
-      ? "Admin of this group"
-      : undefined
-
-  // Exact deduped count of activities this profile created or
-  // contributed to (union via the indexer's `_or` totalCount), rather
-  // than the capped "N+" a first-page fetch produced. "…" while the
-  // count resolves.
-  const activityCount = useUserActivityCount(did)
-  const activityCountLabel =
-    activityCount === null ? "…" : formatGraphCount(activityCount)
-
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const rawTab = searchParams?.get("tab") ?? null
   const tabFromUrl = useMemo<TabKey>(() => {
-    const raw = searchParams?.get("tab")
-    // Migration shim — the legacy ?tab=certs slug resolves to activities
-    // so old links / bookmarks keep working.
-    const v = raw === "certs" ? "activities" : raw
+    // Migration shim: the legacy ?tab=certs slug resolves to activities so
+    // old links and bookmarks keep working.
+    const v = rawTab === "certs" ? "activities" : rawTab
     return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
-  }, [searchParams])
-  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
+  }, [rawTab])
+
+  // The old ?tab=settings panel moved to the Settings page (or the group's
+  // settings). Send its links there; anyone else lands on the Overview.
+  useEffect(() => {
+    if (rawTab !== "settings" || isAuthLoading || !did) return
+    if (isOwnProfile && !activeOrg) router.replace("/settings")
+    else if (isActingAsThisGroup)
+      router.replace(`/groups/${encodeURIComponent(did)}/settings`)
+  }, [rawTab, isAuthLoading, did, isOwnProfile, activeOrg, isActingAsThisGroup, router])
 
   // Canonicalize the address bar to the handle form. When the profile was
   // opened by its durable DID (e.g. a shared link), swap to `/{handle}` once
@@ -403,323 +361,199 @@ export default function UserProfilePage() {
     }
   }, [handleOrDid, resolvedHandle, did, searchParams, router])
 
-  if (tabFromUrl !== activeTab && TABS.some((t) => t.key === tabFromUrl)) {
-    setActiveTab(tabFromUrl)
-  }
-
-  // A deep link can name a tab this viewer doesn't get (e.g. ?tab=groups on
-  // someone else's profile). The tab strip already hides it and the desktop
-  // bar falls back to Overview, so show Overview's content too rather than a
-  // blank panel. Wait for the session so an owner's own link isn't bounced.
+  // A deep link can name a tab this viewer doesn't get (e.g. ?tab=groups
+  // on someone else's profile, or ?tab=about on a person). Show the
+  // Overview instead of a blank panel. Wait for the session so an owner's
+  // own link isn't bounced.
   const shownTab: TabKey =
-    !isAuthLoading &&
-    ((activeTab === "groups" && !isActiveIdentityThisProfile) ||
-      (activeTab === "settings" && !isViewerThisEntity))
+    !isAuthLoading && !visibleTabs.some((t) => t.key === tabFromUrl)
       ? "overview"
-      : activeTab
+      : editing && !isTabEditable(tabFromUrl)
+        ? "overview"
+        : tabFromUrl
 
-  // Keep the active mobile tab visible in the scrolling strip — a deep
-  // link (e.g. the header's "Endorsed by" → ?tab=endorsements) can select
-  // a tab that starts off-screen. Scrolls the strip only (never the page),
-  // and is a no-op on desktop where the strip is display:none.
-  const mobileTabsRef = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    const strip = mobileTabsRef.current
-    const tab = strip?.querySelector<HTMLElement>(".profile-tabs__tab--active")
-    if (!strip || !tab || strip.clientWidth === 0) return
-    // Tab edges in the strip's scroll coordinates.
-    const tabLeft =
-      tab.getBoundingClientRect().left -
-      strip.getBoundingClientRect().left +
-      strip.scrollLeft
-    const tabRight = tabLeft + tab.offsetWidth
-    const viewLeft = strip.scrollLeft
-    const viewRight = viewLeft + strip.clientWidth
-    if (tabLeft >= viewLeft && tabRight <= viewRight) return
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches
-    // Leave room for the edge fade (16px left, 32px right).
-    strip.scrollTo({
-      left: tabLeft < viewLeft ? tabLeft - 16 : tabRight - strip.clientWidth + 32,
-      behavior: reduceMotion ? "auto" : "smooth",
-    })
-  }, [shownTab, isProfileLoading])
+  // `replace`, not `push`: switching sections doesn't stack history
+  // entries, so Back leaves the profile instead of stepping through tabs.
+  const selectTab = useCallback(
+    (next: string) => {
+      const tab = visibleTabs.find((t) => t.key === next)
+      if (!tab || tab.disabled || !pathname) return
+      const qs = new URLSearchParams(searchParams?.toString() ?? "")
+      for (const p of PANEL_PARAMS) qs.delete(p)
+      if (next !== "overview") qs.set("tab", next)
+      const query = qs.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+    },
+    [visibleTabs, pathname, searchParams, router],
+  )
 
   if (isProfileLoading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-screen__inner">
-          <LoadingSpinner size="md" />
-        </div>
-      </div>
+      <PageContainer width="wide" className="profile-page">
+        <ProfileHeaderSkeleton />
+      </PageContainer>
     )
   }
 
   if (profileError || !did) {
     return (
-      <>
+      <PageContainer width="wide" className="profile-page">
         <NotFoundMarker />
         <EmptyState
           icon={UserX}
           title="Profile not found"
           description={`We couldn't find a Certified profile for ${handleOrDid ? `@${handleOrDid}` : "this user"}.`}
-          className="pt-[120px]"
+          className="pt-16"
         />
-      </>
+      </PageContainer>
     )
   }
 
-  const editing = isEditing && canEditInline
+  const basePath = pathname || ""
+  const displayName =
+    effectiveProfile?.displayName || resolvedHandle || "this account"
 
   return (
-    <div className="profile-page">
-      {/* Mobile-only identity block. Hidden on desktop where the sidebar
-          carries the identity. The desktop top bar's row 2 is the only
-          tab strip; there is no in-page tab strip. */}
-      <div className="profile-page__mobile-header">
-        <ProfileHeader
-          profile={effectiveProfile}
-          avatarUrl={effectiveAvatarUrl}
-          bannerUrl={effectiveBannerUrl}
-          handle={resolvedHandle || (rawHandle ?? null)}
-          did={did}
-          activityCountLabel={activityCountLabel}
-          editHref={mobileEditHref}
-          settingsHref={settingsHref}
-          eyebrow={eyebrow}
-          hasCertifiedProfile={hasCertifiedProfile}
-          hasBlueskyProfile={hasBlueskyProfile}
-          basePath={pathname || ""}
-        />
-      </div>
-
-      {/* Mobile-only tab strip (hidden ≥800px, where the top bar carries the
-          tabs). Horizontally scrollable; reuses the .profile-tabs styling. */}
-      <nav
-        ref={mobileTabsRef}
-        className="profile-page__mobile-tabs profile-tabs"
-        aria-label="Profile sections"
-        data-tour="profile-tabs"
-      >
-        {mobileTabs.map((t) => {
-          // While editing, only the editable section(s) stay switchable —
-          // Overview always, plus About for orgs. Everything else is
-          // disabled so you can't tab away to a read-only section mid-edit.
-          const editable = t.key === "overview" || (sidebarIsOrg && t.key === "about")
-          const locked = editing && !editable
-          return (
-            <button
-              key={t.key}
-              type="button"
-              aria-current={shownTab === t.key ? "page" : undefined}
-              aria-disabled={locked || undefined}
-              disabled={locked}
-              className={`profile-tabs__tab${
-                shownTab === t.key ? " profile-tabs__tab--active" : ""
-              }`}
-              onClick={() => {
-                if (locked) return
-                // `replace`, not `push`, so switching profile sub-tabs
-                // doesn't stack history entries — the navbar Back button
-                // then leaves the profile entirely instead of stepping
-                // back through each tab the user opened.
-                router.replace(
-                  t.key === "overview" ? pathname : `${pathname}?tab=${t.key}`,
-                  { scroll: false },
-                )
-              }}
-            >
-              {t.label}
-            </button>
-          )
-        })}
-      </nav>
-
+    <PageContainer width="wide" className="profile-page">
       {editing ? (
-        <EditBanner
-          label="Editing profile"
-          error={saveError}
-          isSaving={isSaving}
-          onCancel={handleCancelEdit}
-          onSave={handleSave}
+        <div className="profile-page__edit-bar">
+          <EditBanner
+            label="Editing profile"
+            error={saveError}
+            isSaving={isSaving}
+            onCancel={handleCancelEdit}
+            onSave={handleSave}
+            className="!m-0"
+          />
+        </div>
+      ) : canEditInline ? (
+        <ProfileOwnerBar
+          isGroup={isActingAsThisGroup}
+          onEditClick={handleEditClick}
         />
       ) : null}
 
-      {/* Re-entry banner — only renders on the viewer's OWN profile
-          when the OnboardingContext gate holds (bsky profile present,
-          no certified profile yet). Internally self-gating. */}
+      {/* Re-entry banner: only on the viewer's own personal profile while
+          the onboarding gate holds (a Bluesky profile, no Certified one
+          yet). Gates itself. */}
       {isOwnProfile && !activeOrg ? <OnboardingBanner /> : null}
 
-      {shownTab === "settings" && isViewerThisEntity ? (
-        // Settings tab swaps the entire profile-page two-pane layout
-        // out for the settings panel's own menu+sections two-pane
-        // layout — same 296px slim rail, but the left pane carries
-        // settings categories (Username / Email / Password /
-        // Appearance) instead of the profile identity sidebar.
-        <SettingsPanel />
-      ) : (
-        <div className="page-layout">
-          <ProfileSidebar
-            profile={effectiveProfile}
-            avatarUrl={effectiveAvatarUrl}
-            handle={resolvedHandle || (rawHandle ?? null)}
-            did={did}
-            basePath={pathname || ""}
-            settingsHref={settingsHref}
-            isOrg={sidebarIsOrg}
-            additionalUrls={effectiveAdditionalUrls}
-            hasCertifiedProfile={hasCertifiedProfile}
-            hasBlueskyProfile={hasBlueskyProfile}
-            orgFoundedDate={displayFoundedDate}
-            canInlineEdit={canEditInline}
-            isEditing={editing}
-            drafts={drafts}
-            onEditClick={handleEditClick}
-            onCancelEdit={handleCancelEdit}
-            onSaveEdit={handleSave}
-            onDraftChange={handleDraftChange}
-            onAvatarFile={handleAvatarFile}
-            hasPendingAvatar={hasPendingAvatar}
-            isSaving={isSaving}
-            saveError={saveError}
-          />
+      <ProfileHeader
+        did={did}
+        handle={resolvedHandle || (rawHandle ?? null)}
+        profile={effectiveProfile}
+        avatarUrl={effectiveAvatarUrl}
+        bannerUrl={effectiveBannerUrl}
+        basePath={basePath}
+        isOrg={viewIsOrg}
+        hasCertifiedProfile={hasCertifiedProfile}
+        hasBlueskyProfile={hasBlueskyProfile}
+        orgTypeTags={displayOrgTypeTags}
+        orgLocationName={displayLocation.name}
+        orgFoundedDate={displayFoundedDate}
+        additionalUrls={effectiveAdditionalUrls}
+        canEdit={canEditInline}
+        settingsHref={canEditInline ? undefined : settingsHref}
+        onEditClick={handleEditClick}
+        isEditing={editing}
+        drafts={drafts}
+        onDraftChange={handleDraftChange}
+        onAvatarFile={handleAvatarFile}
+        hasPendingAvatar={hasPendingAvatar}
+        onBannerFile={handleBannerFile}
+        onBannerRemove={handleRemoveBanner}
+        hasPendingBanner={hasPendingBanner}
+      />
 
-          <div className="page-layout__main">
-            <TabPanelTransition activeKey={shownTab} order={TAB_ORDER}>
-            {shownTab === "overview" && (
-              <div role="region" id="tabpanel-overview" aria-label="Overview">
+      <Tabs value={shownTab} onChange={selectTab}>
+        <ProfileTabs tabs={visibleTabs} active={shownTab} sticky={!editing} />
+
+        <div className="profile-page__panel">
+          <TabPanelTransition activeKey={shownTab} order={TAB_ORDER}>
+            <TabPanel value={shownTab}>
+              {shownTab === "overview" ? (
                 <ProfileOverview
-                  bannerUrl={effectiveBannerUrl}
                   did={did}
-                  profile={effectiveProfile}
-                  basePath={pathname || ""}
+                  subjectName={displayName}
+                  basePath={basePath}
                   viewerIsOwner={isViewerThisEntity}
                   isEditing={editing}
                   drafts={drafts}
                   onDraftChange={handleDraftChange}
-                  onBannerFile={handleBannerFile}
-                  onBannerRemove={handleRemoveBanner}
-                  hasPendingBanner={hasPendingBanner}
-                  isOrg={sidebarIsOrg}
+                  isOrg={viewIsOrg}
                   orgLongDescription={displayLongDescription}
                   orgTypeTags={displayOrgTypeTags}
                   orgLocationName={displayLocation.name}
                   orgLocationCoords={displayLocation.coords}
                 />
-              </div>
-            )}
-            {shownTab === "about" ? (
-              <div
-                role="region"
-                id="tabpanel-about"
-                aria-label="About"
-                className="profile-page__about"
-              >
-                {editing && sidebarIsOrg ? (
-                  <LeafletEditor
-                    value={drafts.longDescription ?? null}
-                    onChange={(next: LinearDocument) =>
-                      handleDraftChange("longDescription", next)
-                    }
-                    placeholder="A longer, multi-line description of this group."
-                    ariaLabel="Long description"
-                    did={did}
-                    onImageUpload={handleLongDescImageUpload}
-                  />
-                ) : displayLongDescription ? (
-                  <LeafletDocument
-                    value={displayLongDescription}
-                    did={did}
-                    className="profile-page__about-doc"
-                  />
-                ) : isViewerThisEntity ? (
-                  /* Empty About tab, but the viewer is signed in as
-                     this entity — offer the edit action in place.
-                     Foreign viewers don't reach this branch because the
-                     tab gate hides the About tab when there's no content
-                     for them. */
-                  <EmptyState
-                    icon={AlignLeft}
-                    title="Nothing here yet"
-                    description="Add an About section so people know who you are."
-                  >
-                    {canEditInline ? (
-                      <Button variant="secondary" size="sm" onClick={handleEditClick}>
-                        <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                        Edit profile
-                      </Button>
-                    ) : null}
-                  </EmptyState>
-                ) : null}
-              </div>
-            ) : null}
-            {shownTab === "activities" && (
-              <div
-                role="region"
-                id="tabpanel-activities"
-                aria-label="Activities"
-              >
+              ) : null}
+              {shownTab === "about" ? (
+                <div className="profile-page__about">
+                  {editing && viewIsOrg ? (
+                    <LeafletEditor
+                      value={drafts.longDescription ?? null}
+                      onChange={(next: LinearDocument) =>
+                        handleDraftChange("longDescription", next)
+                      }
+                      placeholder="A longer description of this organization."
+                      ariaLabel="Long description"
+                      did={did}
+                      onImageUpload={handleLongDescImageUpload}
+                    />
+                  ) : displayLongDescription ? (
+                    <LeafletDocument
+                      value={displayLongDescription}
+                      did={did}
+                      className="profile-page__about-doc"
+                    />
+                  ) : isViewerThisEntity ? (
+                    // Empty About, but the viewer is this organization:
+                    // offer to write it. Other viewers never reach this
+                    // branch (the tab is hidden when there's no content).
+                    <EmptyState
+                      icon={AlignLeft}
+                      title="No About yet"
+                      description="Tell people what this organization does, in your own words."
+                      headingLevel={2}
+                    >
+                      {canEditInline ? (
+                        <Button variant="secondary" size="sm" onClick={handleEditClick}>
+                          <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                          Write About
+                        </Button>
+                      ) : null}
+                    </EmptyState>
+                  ) : null}
+                </div>
+              ) : null}
+              {shownTab === "activities" ? (
                 <ProfileCerts
                   did={did}
                   viewerIsOwner={isViewerThisEntity}
                   aggregateOwned={isOwnProfile && !activeOrg}
                 />
-              </div>
-            )}
-            {shownTab === "projects" && (
-              <div
-                role="region"
-                id="tabpanel-projects"
-                aria-label="Projects"
-              >
+              ) : null}
+              {shownTab === "projects" ? (
                 <ProfileProjects
                   did={did}
                   viewerIsOwner={isViewerThisEntity}
                   aggregateOwned={isOwnProfile && !activeOrg}
                 />
-              </div>
-            )}
-            {shownTab === "groups" && isActiveIdentityThisProfile && (
-              <div
-                role="region"
-                id="tabpanel-groups"
-                aria-label="Groups"
-              >
+              ) : null}
+              {shownTab === "groups" && isActiveIdentityThisProfile ? (
                 <ProfileGroups did={did} />
-              </div>
-            )}
-            {shownTab === "endorsements" && did && (
-              <div
-                role="region"
-                id="tabpanel-endorsements"
-                aria-label="Endorsements"
-              >
+              ) : null}
+              {shownTab === "endorsements" ? (
                 <ProfileEndorsements did={did} />
-              </div>
-            )}
-            {shownTab === "followers" && did && (
-              <div
-                role="region"
-                id="tabpanel-followers"
-                aria-label="Followers"
-              >
-                <ProfileFollowers did={did} />
-              </div>
-            )}
-            {shownTab === "lists" && did && (
-              <div
-                role="region"
-                id="tabpanel-lists"
-                aria-label="Lists"
-              >
+              ) : null}
+              {shownTab === "followers" ? <ProfileFollowers did={did} /> : null}
+              {shownTab === "lists" ? (
                 <ProfileLists did={did} viewerIsOwner={isViewerThisEntity} />
-              </div>
-            )}
-            </TabPanelTransition>
-          </div>
+              ) : null}
+            </TabPanel>
+          </TabPanelTransition>
         </div>
-      )}
-    </div>
+      </Tabs>
+    </PageContainer>
   )
 }

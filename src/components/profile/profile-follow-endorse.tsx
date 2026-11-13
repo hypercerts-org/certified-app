@@ -30,22 +30,20 @@ import {
 import { appendItemToList } from "@/lib/atproto/collection"
 
 /**
- * Shared Follow + Endorse action pair for a foreign profile. Used by both
- * the desktop sidebar (`<ProfileSidebar>`) and the mobile header
- * (`<ProfileHeader>`) so the two surfaces stay in lock-step rather than
- * one carrying the live flow and the other a dead placeholder.
+ * The Follow + Endorse action pair for someone else's profile, shown in
+ * the profile header's actions (`<ProfileHeader>`).
  *
- * Renders nothing for own-profile views; a disabled "Follow" when signed
- * out; the live Follow + Endorse toggles otherwise. Returns the buttons
- * directly — the caller supplies the row wrapper (the sidebar and header
- * style their action rows differently).
+ * Renders nothing for own-profile views; a "Follow" that opens sign-in
+ * when signed out; the live Follow + Endorse toggles otherwise. Returns
+ * the buttons directly; the caller supplies the row wrapper.
  *
  * Acting-as-group is honoured: when a group is active the writes route to
  * the group's repo and the button state tracks the group's follow /
- * endorsement sets (mirrors the sidebar's original inline wiring).
+ * endorsement sets.
  */
 export function FollowEndorseActions({ did }: { did: string }) {
-  const { did: viewerDid, isAuthenticated } = useAuth()
+  const { did: viewerDid, isAuthenticated, isLoading: authLoading, openSignIn } =
+    useAuth()
   const { handle: operatorHandle } = useSession()
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
@@ -63,8 +61,16 @@ export function FollowEndorseActions({ did }: { did: string }) {
   if (isOwnProfile) return null
 
   if (!isAuthenticated || !viewerDid || !actingDid) {
+    // Signed out: Follow asks you to sign in rather than sitting there
+    // disabled with no explanation. Disabled only while the session is
+    // still resolving.
     return (
-      <Button variant="primary" size="sm" disabled>
+      <Button
+        variant="primary"
+        size="sm"
+        disabled={authLoading}
+        onClick={openSignIn}
+      >
         <UserPlus size={14} strokeWidth={1.75} aria-hidden />
         Follow
       </Button>

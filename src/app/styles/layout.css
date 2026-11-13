@@ -1517,32 +1517,12 @@
   outline-offset: 2px;
 }
 
-/* ========== Profile page CSS scaffolding for the top-bar redesign ==========
-   On desktop the mobile-only ProfileHeader is hidden; the Overview tab's
-   left sidebar carries the identity instead, and the top bar's row 2
-   tabs are the single source of profile tab navigation (the in-page
-   tab strip was removed in the Overview rewrite). */
+/* ========== Two-column page layout ==========
+   A sidebar beside a main pane, collapsing to one column below 800px. */
 
-@media (min-width: 800px) {
-  .profile-page__mobile-header {
-    display: none;
-  }
-}
-
-/* ========== Profile page layout (GitHub-style 2-column) ==========
-   The page renders a left identity sidebar and a right main pane that
-   together carry the active tab content. The sidebar is constant; the
-   right pane swaps between Overview / Certs / Projects / Endorsements.
-
-   On mobile (<800px) the columns collapse to a single stack and the
-   sidebar is hidden — the page's <ProfileHeader> above already carries
-   identity on small viewports. */
-
-/* Shared 2-column page layout used by both the profile page and the
-   cert detail page (and any future entity detail page). The class was
-   originally `.profile-page__layout` — renamed to `.page-layout` once
-   the cert page started reusing the same grid so the naming reflects
-   the broader scope. */
+/* Shared by the activity detail and create pages and the settings
+   panels. (The public profile used it until its November 2026 redesign;
+   it now stacks a header, tabs and the panel in a <PageContainer>.) */
 .page-layout {
   display: grid;
   gap: 24px;
@@ -1583,278 +1563,8 @@
   }
 }
 
-/* ---------- Identity sidebar ---------- */
-
-.profile-sidebar {
-  display: none;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-@media (min-width: 800px) {
-  .profile-sidebar {
-    display: flex;
-  }
-}
-
-.profile-sidebar__avatar {
-  /* The inner <Avatar> is sized via Tailwind override (!h-[160px]
-     !w-[160px]); this wrapper just provides the layout slot. */
-  display: inline-flex;
-}
-
-.profile-sidebar__name-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 4px;
-  /* Let the name shrink within the sidebar so an unbreakable display name
-     truncates instead of overflowing into the main column. */
-  min-width: 0;
-}
-
-.profile-sidebar__name {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.625rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--fg-primary);
-  margin: 0;
-  line-height: 1.2;
-  /* The page's main heading: wrap long names (breaking unspaced ones anywhere)
-     and clamp at three lines; the element carries a title attribute
-     with the full name for the clamped case. */
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-/* Read-mode only: the edit-mode wrapper (a div holding the Input) keeps
-   block layout. */
-h2.profile-sidebar__name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-}
-
-.profile-sidebar__handle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 1.125rem;
-  color: var(--fg-muted);
-  margin: 0;
-  line-height: 1.2;
-  word-break: break-word;
-}
-
-.profile-sidebar__did {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  font-size: 0.6875rem;
-  color: var(--fg-muted);
-}
-
-.profile-sidebar__did-value {
-  font-family: monospace;
-  font-size: 0.6875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  user-select: all;
-}
-
-.profile-sidebar__copy-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  margin-left: 2px;
-  color: var(--fg-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.profile-sidebar__copy-btn:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.profile-sidebar__copy-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.profile-sidebar__pronouns {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  margin: 0;
-}
-
-.profile-sidebar__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  /* Reserve the action row's height even when empty — keeps the layout
-     anchored while the user is in edit mode (the "Edit profile" button
-     is hidden but its slot remains as whitespace). */
-  min-height: 36px;
-}
-
-.profile-sidebar__action-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1;
-  height: 36px;
-  padding: 0 12px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.profile-sidebar__action-primary:hover {
-  background: var(--bg-sunken);
-  border-color: var(--border-hover);
-}
-
-.profile-sidebar__action-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: var(--fg-secondary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  text-decoration: none;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.profile-sidebar__action-secondary:hover {
-  background: var(--bg-sunken);
-  color: var(--fg-primary);
-}
-
-.profile-sidebar__followers {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  /* Pull a bit of extra space above the followers row so it reads as a
-     visually-separate block from the action row, and below it to push
-     the links/joined list further down. */
-  margin: 8px 0 12px;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  flex-wrap: wrap;
-}
-
-.profile-sidebar__followers-count {
-  font-weight: 600;
-  color: var(--fg-primary);
-}
-
-/* Each count is its own deep-link into the Followers tab's matching
-   sub-tab. The link itself reads like body text — the count number
-   inside picks up the bold treatment via `.profile-sidebar__followers-
-   count`. Hovering nudges the label/count toward `--fg-primary` so
-   the affordance is discoverable without underlining everything. */
-.profile-sidebar__followers-link {
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.profile-sidebar__followers-link:hover,
-.profile-sidebar__followers-link:focus-visible {
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.profile-sidebar__followers-sep {
-  color: var(--fg-muted);
-}
-
-/* Wrapper for the followers/following + Endorsed-by rows. The parent
-   .profile-sidebar uses gap: 12px between every direct child, which
-   would force a 12px gap between the two stat rows. Wrapping them in
-   their own flex column with a smaller gap lets the URL-list cadence
-   (6px between rows) carry through here, so the two rows read as a
-   single stats block instead of two independent paragraphs. The
-   wrapper itself sits on the parent's 12px rhythm, preserving the
-   visual break to the URL list below. */
-.profile-sidebar__stats {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.profile-sidebar__stats .profile-sidebar__followers {
-  margin: 0;
-}
-
-/* In the Endorsed-by row the count lives INSIDE the link (whereas in
-   the followers row it sits outside), so override the count's primary
-   colour to inherit the link colour — that way the whole "Endorsed by
-   N" string reads as one link and lights up uniformly on hover. */
-.profile-sidebar__endorsed-by .profile-sidebar__followers-count {
-  color: inherit;
-}
-
-.profile-sidebar__details {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.profile-sidebar__details li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  color: var(--fg-secondary);
-  min-width: 0;
-}
-
-/* The "Joined" / "Founded" row sits below the URL block; push it
-   slightly farther so URLs vs. date read as two separate blocks. We
-   target the date row by class — not `:last-child` — so the visual
-   break never accidentally lands between two adjacent URL rows
-   (which used to happen when the date row was hidden). */
-.profile-sidebar__details-date {
-  margin-top: 10px;
-}
-
-.profile-sidebar__details li > svg {
-  flex-shrink: 0;
-  color: var(--fg-muted);
-}
-
+/* SmartLink's default anchor class (src/components/ui/smart-link.tsx),
+   named after the profile sidebar it was first built for. */
 .profile-sidebar__detail-link {
   color: var(--fg-secondary);
   text-decoration: none;
@@ -1865,316 +1575,15 @@ h2.profile-sidebar__name {
   transition: color var(--transition-fast);
 }
 
-.profile-sidebar__detail-link:hover {
-  color: var(--fg-primary);
-  text-decoration: underline;
-}
-
-/* Bluesky-import marker. Shown on profiles whose data was imported
-   from a bluesky-hosted PDS (no Certified-side profile record). The
-   row drops the leaf-icon left affordance so the chip reads as a
-   metadata tag rather than another entry in the link list. */
-.profile-sidebar__bsky-row {
-  /* The shared `.profile-sidebar__details li` rule pads-left for the
-     left-edge icon column; we don't render an icon here, so reset. */
-  padding-left: 0 !important;
-}
-
-.profile-sidebar__bsky-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  background: var(--overlay-weak);
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-decoration: none;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.profile-sidebar__bsky-tag:hover,
-.profile-sidebar__bsky-tag:focus-visible {
-  background: var(--overlay-medium);
-  color: var(--fg-primary);
-  /* No underline — chip semantics, not a body link. The browser-
-     native title tooltip carries the explanatory text. */
-  text-decoration: none;
-}
-
-.profile-sidebar__section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.profile-sidebar__section-title {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin: 0;
-}
-
-.profile-sidebar__section-title--link {
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.profile-sidebar__section-title--link:hover {
-  color: var(--fg-primary);
-}
-
-.profile-sidebar__see-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.profile-sidebar__see-all:hover {
-  color: var(--fg-primary);
-}
-
-.profile-sidebar__loading {
-  padding: 12px 0;
-}
-
-.profile-sidebar__empty {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  margin: 0;
-  padding: 8px 0;
-}
-
-/* Groups grid (GitHub orgs style) */
-
-.profile-sidebar__groups {
-  margin-top: 12px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.profile-sidebar__groups-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.profile-sidebar__group-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  margin: 0 -8px;
-  border-radius: var(--radius);
-  text-decoration: none;
-  color: inherit;
-  transition: background var(--transition-fast);
-}
-
-.profile-sidebar__group-row:hover {
-  background: var(--overlay-weak);
-}
-
-.profile-sidebar__group-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.profile-sidebar__group-name {
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-sidebar__group-handle {
-  font-size: 0.6875rem;
-  color: var(--fg-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ---------- Right pane: Overview tab content ---------- */
-
-.profile-overview {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-}
-
-.profile-overview__banner {
-  display: none;
-}
-
-@media (min-width: 800px) {
-  .profile-overview__banner {
-    display: block;
-    width: 100%;
-    aspect-ratio: 3 / 1;
-    max-height: 220px;
-    overflow: hidden;
-    border-radius: var(--radius);
-    background: linear-gradient(
-      135deg,
-      var(--bg-sunken) 0%,
-      var(--bg-raised) 100%
-    );
-  }
-  .profile-overview__banner--empty {
-    aspect-ratio: 6 / 1;
-    max-height: 96px;
-  }
-}
-
-.profile-overview__banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.profile-overview__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-/* On mobile three equal columns squeeze each card so the uppercase
-   letter-spaced labels ("ENDORSEMENTS") and sub-rows clip; drop to a single
-   column so each stat keeps its full label + value rows. */
-@media (max-width: 799px) {
-  .profile-overview__stats {
-    grid-template-columns: 1fr;
-  }
-}
-
-.profile-overview__stat {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  text-decoration: none;
-  color: inherit;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
 @media (hover: hover) and (pointer: fine) {
-  .profile-overview__stat:hover {
-    border-color: var(--border-hover);
-    background: var(--bg-sunken);
+  .profile-sidebar__detail-link:hover {
+    color: var(--fg-primary);
+    text-decoration: underline;
   }
 }
 
-.profile-overview__stat-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  /* Keep the uppercase letter-spaced label on one line so the tablet column
-     width doesn't break it mid-word ("ENDORSE MENTS"); ellipsize if it still
-     overflows rather than wrapping. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-/* Figures sit side by side, packed from the left; each one stacks its
-   descriptor ("created"/"received"/…) directly under the number. */
-.profile-overview__stat-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-}
-
-.profile-overview__stat-split {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.profile-overview__stat-value {
-  font-family: var(--font-headline), 'Noto Serif', serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--fg-primary);
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-}
-
-.profile-overview__stat-sub {
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-  letter-spacing: 0.01em;
-  /* Keep the descriptor ("created"/"received"/…) whole — at tablet widths the
-     split row was breaking it mid-word ("crea ted"/"recei ved"). */
-  white-space: nowrap;
-}
-
-/* ---------- About section ---------- */
-
-.profile-overview__about {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.profile-overview__about-body {
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--fg-secondary);
-  margin: 0;
-  white-space: pre-wrap;
-  max-width: var(--measure);
-  text-wrap: pretty;
-}
-
-/* About + side map. Falls back to a single column when no map is set
-   or the viewport is too narrow for the right column to read well. */
-.profile-overview__about-block {
-  display: block;
-}
-
-.profile-overview__about-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-@media (min-width: 1100px) {
-  .profile-overview__about-block--with-map {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 24px;
-    align-items: start;
-  }
-}
+/* ---------- Profile Overview: organisation type and location (the rest
+   of the Overview is in profile.css) ---------- */
 
 /* Organization type tags (read mode) */
 .profile-overview__types {
@@ -2264,13 +1673,15 @@ h2.profile-sidebar__name {
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.profile-overview__location-clear:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .profile-overview__location-clear:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
 }
 
 .profile-overview__location-attribution {
-  font-size: 0.6875rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
   margin: 0;
 }
@@ -2334,44 +1745,6 @@ h2.profile-sidebar__name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ---------- Section heads + digest lists ---------- */
-
-.profile-overview__section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.profile-overview__section-title {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin: 0;
-}
-
-.profile-overview__see-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.profile-overview__see-all:hover {
-  color: var(--fg-primary);
-}
-
-.profile-overview__loading {
-  padding: 12px 0;
 }
 
 /* ---------- Profile certs tab ---------- */
@@ -2578,27 +1951,8 @@ h2.profile-sidebar__name {
    at 1100px; the same `minmax(0, 1/3)` rule keeps cards capped to 1/3 of
    the container at every width. */
 
-.profile-overview__empty {
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  margin: 0;
-  padding: 8px 0;
-}
-
-/* Empty Recent activities + the owner-only "Create an activity" action. */
-.profile-overview__empty-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.profile-overview__digest {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-overview__activity-list,
+/* Received-endorsement rows (EndorsementPreviewRow), used by Home's
+   "From others". */
 .profile-overview__endorse-list {
   list-style: none;
   margin: 0;
@@ -2607,94 +1961,12 @@ h2.profile-sidebar__name {
   flex-direction: column;
 }
 
-.profile-overview__activity-item,
 .profile-overview__endorse-item {
   border-top: 1px solid var(--border-subtle);
 }
 
-.profile-overview__activity-item:last-child,
 .profile-overview__endorse-item:last-child {
   border-bottom: 1px solid var(--border-subtle);
-}
-
-.profile-overview__activity-link {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
-  text-decoration: none;
-  color: inherit;
-}
-
-.profile-overview__activity-link:hover .profile-overview__activity-title {
-  text-decoration: underline;
-}
-
-.profile-overview__activity-thumb {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-}
-
-.profile-overview__activity-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.profile-overview__activity-thumb--placeholder {
-  background:
-    linear-gradient(
-      135deg,
-      var(--bg-sunken) 0%,
-      var(--overlay-weak) 100%
-    );
-  color: var(--fg-muted);
-}
-
-.profile-overview__activity-thumb--placeholder svg {
-  opacity: 0.6;
-}
-
-.profile-overview__activity-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.profile-overview__activity-title {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--fg-primary);
-  /* Long unbroken titles (URLs) wrap instead of spilling out of the row. */
-  overflow-wrap: anywhere;
-}
-
-.profile-overview__activity-desc {
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow-wrap: anywhere;
-}
-
-.profile-overview__activity-meta {
-  font-size: 0.6875rem;
-  color: var(--fg-muted);
-  margin-top: 4px;
 }
 
 .profile-overview__endorse-link {
@@ -2707,8 +1979,10 @@ h2.profile-sidebar__name {
   text-decoration: none;
 }
 
-.profile-overview__endorse-link:hover .profile-overview__endorse-name {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .profile-overview__endorse-link:hover .profile-overview__endorse-name {
+    text-decoration: underline;
+  }
 }
 
 .profile-overview__endorse-meta {
@@ -2718,7 +1992,7 @@ h2.profile-sidebar__name {
 }
 
 .profile-overview__endorse-name {
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
   overflow: hidden;
@@ -2727,7 +2001,7 @@ h2.profile-sidebar__name {
 }
 
 .profile-overview__endorse-when {
-  font-size: 0.6875rem;
+  font-size: var(--text-caption);
   color: var(--fg-muted);
 }
 

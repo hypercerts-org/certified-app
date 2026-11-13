@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/popover"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import Tooltip from "@/components/ui/tooltip"
+import { SeeAllLink } from "@/components/ui/section-header"
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -335,6 +336,20 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       onChange={(v) => setTab(v as SubTab)}
       className="profile-endorsements-v2"
     >
+      {/* Records is the one place to manage your endorsements; the tab
+          links there for the owner of a personal profile. */}
+      {viewerIsOwner && !activeOrg ? (
+        <div className="profile-panel-note">
+          <p className="profile-panel-note__text">
+            Show, hide and give endorsements in Records.
+          </p>
+          <SeeAllLink
+            href="/records?kind=endorsements"
+            label="Manage endorsements"
+          />
+        </div>
+      ) : null}
+
       {/* Lists section is owner-only — per issue #72, foreign
           viewers don't see the list curation UI. Hides the
           create / rename / member-add affordances + the list

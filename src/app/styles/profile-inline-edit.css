@@ -1,82 +1,7 @@
-/* Inline profile edit — styles for the in-place editing affordances on
-   the profile page. Lives alongside the read-only sidebar / overview
-   styles in layout.css; this sheet only adds the inputs and the empty
-   banner placeholder, so the read-only layout is untouched. */
-
-/* --- Sidebar avatar slot in edit mode ------------------------------- */
-
-/* The avatar stays at its read-only size (240×240) so the layout
-   doesn't shift when entering edit mode. The <AvatarEditOverlay> sits
-   absolutely on top with a circular click affordance. */
-.profile-sidebar__avatar--editing {
-  position: relative;
-}
-
-/* Floating camera badge anchored to the bottom-right of the 240×240
-   avatar — always visible in edit mode so the affordance is
-   discoverable without needing to hover. Visual treatment matches the
-   banner's "Change banner" pill (.profile-banner-upload__btn) so both
-   image-upload affordances feel identical. */
-.profile-sidebar__avatar-edit-btn {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--scrim-pill);
-  color: var(--color-white);
-  border: none;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background var(--transition-fast);
-  z-index: var(--z-local-raise);
-}
-
-.profile-sidebar__avatar-edit-btn:hover {
-  background: var(--scrim-pill-hover);
-}
-
-.profile-sidebar__avatar-edit-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.profile-sidebar__avatar-edit-btn:disabled {
-  cursor: progress;
-  opacity: 0.9;
-}
-
-.profile-sidebar__avatar-edit-label {
-  white-space: nowrap;
-}
-
-.profile-sidebar__avatar-edit-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
-/* --- Sidebar website edit ------------------------------------------- */
-
-/* The website input sits exactly where the read-only SmartLink renders
-   (inside `.profile-sidebar__details > li`). The icon stays on the
-   left; the input fills the remaining space. */
-.profile-sidebar__website-edit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* Inline profile edit: the edit bar hook, the banner upload control, and
+   the organization type and location pickers on the Overview. The header
+   fields (name, bio, website, links) use the Input / Textarea primitives
+   and the .profile-header__* rules in profile.css. */
 
 /* --- Page-level edit banner -----------------------------------------
 
@@ -105,26 +30,10 @@
   border-radius: var(--radius);
 }
 
-/* --- Overview banner in edit mode -----------------------------------
-   The wrapper passes its 3:1 / 220px-max box shape through to the
-   inner BannerUpload — which renders its own grey-gradient empty
-   state and a floating "Change banner" button (mirroring the
-   sidebar's avatar-edit overlay, so both affordances feel the same). */
-
-.profile-overview__banner--editing {
-  background: transparent !important;
-  margin-bottom: 16px;
-}
-
-.profile-overview__banner-edit-slot {
-  height: 100%;
-}
-
-.profile-overview__banner-edit-slot .profile-banner-upload,
-.profile-overview__banner-edit-slot .profile-banner-upload__box {
-  width: 100%;
-  height: 100%;
-}
+/* --- Banner upload (header, edit mode) ------------------------------
+   BannerUpload renders its own grey empty state and a floating "Change
+   banner" button. The profile header sets the box height
+   (.profile-header__banner--editing in profile.css). */
 
 .profile-banner-upload {
   display: flex;
@@ -210,8 +119,10 @@
   transition: background var(--transition-fast), transform var(--transition-fast);
 }
 
-.profile-banner-upload__btn:hover {
-  background: var(--scrim-pill-hover);
+@media (hover: hover) and (pointer: fine) {
+  .profile-banner-upload__btn:hover {
+    background: var(--scrim-pill-hover);
+  }
 }
 
 /* Quiet variant for the Remove action — same shape, lower-contrast
@@ -225,8 +136,10 @@
   color: var(--color-primary);
 }
 
-.profile-banner-upload__btn--ghost:hover {
-  background: var(--color-white);
+@media (hover: hover) and (pointer: fine) {
+  .profile-banner-upload__btn--ghost:hover {
+    background: var(--color-white);
+  }
 }
 
 .profile-banner-upload__btn:focus-visible {
@@ -260,177 +173,6 @@
   margin: 0;
 }
 
-/* --- Overview About textarea --------------------------------------- */
-
-.profile-overview__about-textarea {
-  width: 100%;
-  min-height: 96px;
-  font: inherit;
-  color: var(--fg-primary);
-  background: var(--bg-elevated);
-  border: 1.5px solid var(--border-hover);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  resize: none;
-  /* The textarea auto-grows via JS on input; overflow stays visible
-     for short content and shouldn't show a scrollbar. */
-  overflow: hidden;
-}
-
-.profile-overview__about-textarea:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: var(--shadow-ring-weak);
-}
-
-/* --- Sidebar org-only field edits ----------------------------------- */
-
-/* Generic input shell used by the org-only edit rows (location, type,
-   founded date, additional URLs). Mirrors `.profile-sidebar__website-
-   input` but lives on a more generic class so multiple field types can
-   share it without dragging website-specific styles. */
-.profile-sidebar__org-field-edit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-sidebar__org-field-label {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  flex-shrink: 0;
-}
-
-/* Section sub-heading inside the .profile-sidebar__details list — used
-   above the website input and the additional-links editor in edit
-   mode so each block has a clear label. Uppercase + tracking matches
-   the existing section titles ("Groups", etc.). */
-.profile-sidebar__details-header {
-  list-style: none;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin: 8px 0 4px;
-}
-
-.profile-sidebar__details-header:first-child {
-  margin-top: 0;
-}
-
-/* --- Sidebar additional-URL list editor ----------------------------- */
-
-/* One row per additional URL. The icon stays on the left to match the
-   read-only SmartLink layout; the trailing remove button sits flush to
-   the right. Each row is a <li> in the existing details list so the
-   surrounding spacing is inherited. */
-.profile-sidebar__org-url-edit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-sidebar__org-url-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex: 0 0 auto;
-}
-
-.profile-sidebar__org-url-remove,
-.profile-sidebar__org-url-move {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast);
-  flex: 0 0 auto;
-}
-
-.profile-sidebar__org-url-remove:hover,
-.profile-sidebar__org-url-move:hover:not(:disabled) {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-}
-
-.profile-sidebar__org-url-move:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-/* "+ Add URL" trigger row. Renders as its own list item below the
-   editable URL rows so the affordance is reachable even when the list
-   starts empty. */
-.profile-sidebar__org-url-add-row {
-  list-style: none;
-  /* Override any inherited bullet-row padding from the details list. */
-  padding-left: 0;
-}
-
-.profile-sidebar__org-url-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg-secondary, var(--fg-primary));
-  background: transparent;
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.profile-sidebar__org-url-add:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
-  border-color: var(--fg-primary);
-}
-
-.profile-sidebar__org-url-add:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* --- Overview long-description textarea ----------------------------- */
-
-/* Slightly taller than the short-about textarea so the multi-line
-   intent is obvious. Inherits the rest of its visual style from
-   `.profile-overview__about-textarea` above. */
-.profile-overview__long-desc-textarea {
-  min-height: 180px;
-}
-
-.profile-overview__long-desc-body {
-  /* Preserve in-text newlines so the multi-line content reads as the
-     author wrote it. We don't sanitise HTML — the field is plain text. */
-  white-space: pre-wrap;
-}
-
-.profile-overview__website-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--fg-secondary);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-}
-
 /* --- Org-type chip picker (edit mode) ------------------------------- */
 
 .profile-overview__type-chip-list {
@@ -457,9 +199,11 @@
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.profile-overview__type-chip:hover {
-  background: var(--overlay-weak);
-  color: var(--fg-primary);
+@media (hover: hover) and (pointer: fine) {
+  .profile-overview__type-chip:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
 }
 
 .profile-overview__type-chip--active,
