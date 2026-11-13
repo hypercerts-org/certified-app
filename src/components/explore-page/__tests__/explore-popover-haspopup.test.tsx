@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { render, screen, cleanup } from "@testing-library/react"
 
+// "Seen as" reads the signed-in account and groups; it has its own tests
+// (seen-as-switcher.test.tsx), so it stays out of this page's.
+vi.mock("@/components/network/seen-as-switcher", () => ({ default: () => null }))
+
 // quality-056 / explore-3: the Sort and quality popover *trigger*
 // buttons in Explore omitted `aria-haspopup`, unlike the sibling
 // sub-prefix dropdown trigger (and the home-feed menu buttons) which

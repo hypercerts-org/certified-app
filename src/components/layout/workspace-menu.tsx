@@ -26,7 +26,7 @@ import { ORG_ROLE_LABEL } from "./role-label"
 const WORKSPACE = DESTINATIONS.find((d) => d.key === "workspace")!
 
 /** A group as a workspace row: its name, @handle and square avatar. */
-function groupIdentity(group: Group): AccountIdentity {
+export function groupIdentity(group: Group): AccountIdentity {
   return {
     kind: "group",
     name: group.displayName || group.handle,
@@ -89,8 +89,8 @@ function useOpenWorkspace() {
 }
 
 /** One workspace in the menu: avatar, name, @handle, role, a check on the
- *  current one. */
-function WorkspaceRow({
+ *  current one. Also the rows of Feed and Explore's "Seen as" switcher. */
+export function WorkspaceRow({
   mode,
   identity,
   current,

@@ -25,6 +25,12 @@ export interface PageHeaderProps {
   back?: PageHeaderBack;
   /** Optional leading avatar or icon beside the title. */
   visual?: React.ReactNode;
+  /**
+   * A small control right after the title, on its line (e.g. Feed and
+   * Explore's "Seen as" switcher). Wraps under the title when the line is
+   * too narrow. Keep it out of `title`, so the `<h1>` stays just the name.
+   */
+  titleAside?: React.ReactNode;
   className?: string;
   /** Id for the `<h1>`, so a region can point `aria-labelledby` at it. */
   titleId?: string;
@@ -47,6 +53,7 @@ export default function PageHeader({
   actions,
   back,
   visual,
+  titleAside,
   className = "",
   titleId,
 }: PageHeaderProps) {
@@ -69,12 +76,24 @@ export default function PageHeader({
         <div className="flex min-w-0 items-center gap-3 md:flex-1">
           {visual ? <div className="shrink-0">{visual}</div> : null}
           <div className="min-w-0">
-            <h1
-              id={titleId}
-              className="m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance"
-            >
-              {title}
-            </h1>
+            {titleAside ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h1
+                  id={titleId}
+                  className="m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance"
+                >
+                  {title}
+                </h1>
+                {titleAside}
+              </div>
+            ) : (
+              <h1
+                id={titleId}
+                className="m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance"
+              >
+                {title}
+              </h1>
+            )}
             {description ? (
               <p className="mb-0 mt-1 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty">
                 {description}

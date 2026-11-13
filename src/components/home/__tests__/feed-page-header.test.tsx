@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 
+// "Seen as" reads the signed-in account and groups; it has its own tests
+// (seen-as-switcher.test.tsx), so it stays out of this page's.
+vi.mock("@/components/network/seen-as-switcher", () => ({ default: () => null }))
+
 // The /feed page header's Filters button: it opens the filters below
 // 1100px, and once any filter differs from its default it says how many
 // ("Filters · 2"). While the page is still loading it renders disabled.

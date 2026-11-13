@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import EmptyState from "@/components/ui/empty-state"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import PageHeader from "@/components/ui/page-header"
+import SeenAsSwitcher from "@/components/network/seen-as-switcher"
 import ResponsiveDialog from "@/components/ui/responsive-dialog"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useEvaluatorEndorsements } from "@/hooks/use-evaluator-endorsements"
@@ -133,6 +134,7 @@ export function FeedPageHeader({
   return (
     <PageHeader
       title="Feed"
+      titleAside={<SeenAsSwitcher />}
       description={FEED_DESCRIPTION}
       actions={
         <Button

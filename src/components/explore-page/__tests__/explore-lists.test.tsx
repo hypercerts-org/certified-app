@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import { render, screen, cleanup, within } from "@testing-library/react"
 
+// "Seen as" reads the signed-in account and groups; it has its own tests
+// (seen-as-switcher.test.tsx), so it stays out of this page's.
+vi.mock("@/components/network/seen-as-switcher", () => ({ default: () => null }))
+
 // The Explore list navigation (SideNav): "Whole network" is listed first and is
 // current by default, the featured Ma Earth set counts as it, and
 // "Recently viewed" only appears once this browser has viewed something.

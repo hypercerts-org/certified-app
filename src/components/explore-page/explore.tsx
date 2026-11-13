@@ -23,6 +23,7 @@ import Tooltip from "@/components/ui/tooltip"
 import Button from "@/components/ui/button"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
+import SeenAsSwitcher from "@/components/network/seen-as-switcher"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import SideNav, { type SideNavItem } from "@/components/ui/side-nav"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
@@ -342,6 +343,7 @@ function ExploreAll() {
     <PageContainer className="explore-page">
       <PageHeader
         title="Explore"
+        titleAside={<SeenAsSwitcher />}
         description="Activities, projects and accounts across the Certified network."
       />
       <div className="explore__layout">
