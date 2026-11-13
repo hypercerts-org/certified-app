@@ -182,7 +182,9 @@
   align-items: center;
   gap: 12px;
   min-height: 44px;
-  padding: 12px 0;
+  /* Block padding only: the side padding is the hover tint's bleed
+     (.hover-tint--bleed), which this file loads after. */
+  padding-block: 12px;
   color: inherit;
   text-decoration: none;
 }

@@ -773,7 +773,7 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 0;
+  padding-block: 12px;
   min-width: 0;
 }
 
@@ -973,7 +973,7 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   gap: 12px;
   min-width: 0;
   min-height: var(--control-h-md);
-  padding: 4px 0;
+  padding-block: 4px;
   color: inherit;
   text-decoration: none;
 }

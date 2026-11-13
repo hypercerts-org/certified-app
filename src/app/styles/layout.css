@@ -1938,7 +1938,9 @@ button.desktop-top-bar__nav-link {
   column-gap: 12px;
   row-gap: 2px;
   min-height: 44px;
-  padding: 12px 0;
+  /* Block padding only, as .home-row: the side padding is the hover
+     tint's bleed (.hover-tint--bleed). */
+  padding-block: 12px;
   color: inherit;
   text-decoration: none;
 }
