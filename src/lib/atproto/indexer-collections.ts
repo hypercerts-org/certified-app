@@ -301,6 +301,10 @@ export async function fetchIndexerProjectsByUris(
  * src/app/api/indexer/operations.ts for why. The
  * Projects tab renders "Untitled project" / no banner for those so
  * authors notice and republish on the canonical shape.
+ *
+ * One page per call (`hasMore` / `endCursor` to go on). A failed load
+ * throws — HTTP failures and GraphQL errors alike — so callers can tell
+ * it apart from an account with no projects.
  */
 export async function fetchUserProjects(
   did: string,
@@ -318,24 +322,18 @@ export async function fetchUserProjects(
     { signal },
   )
 
-  const empty: UserProjectsResult = {
-    records: [],
-    hasMore: false,
-    endCursor: null,
-    totalCount: null,
-  }
-
+  // No connection is a failed load, never "no projects": callers (Records'
+  // folders, the "Add to project" picker) would otherwise file every
+  // activity under "Without a project" and offer to create duplicates.
   const connection = res.data?.orgHypercertsCollection
   if (!connection) {
     if (res.errors.length > 0) {
-      console.warn(
-        "[Indexer] UserProjects GraphQL error:",
-        res.errors[0].message,
-      )
-    } else if (!res.ok) {
+      throw new Error(`Indexer error: ${res.errors[0].message}`)
+    }
+    if (!res.ok) {
       throw new Error(`Indexer request failed: ${res.status}`)
     }
-    return empty
+    throw new Error("Indexer returned no projects")
   }
 
   const records: CollectionRecord[] = []

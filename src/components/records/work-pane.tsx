@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronRight,
@@ -19,7 +19,7 @@ import EmptyState from "@/components/ui/empty-state"
 import RowThumb from "@/components/ui/row-thumb"
 import { useToast } from "@/components/ui/toast"
 import { useProjectItems } from "@/hooks/use-project-items"
-import { useUserProjects } from "@/hooks/use-user-projects"
+import { USER_PROJECTS_MAX, useUserProjects } from "@/hooks/use-user-projects"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { projectImage, projectTitle, type CollectionRecord } from "@/lib/atproto/collection"
@@ -44,6 +44,7 @@ import ProjectPickerDialog, {
 import {
   PaneHead,
   RowMenu,
+  type RowMenuEntry,
   RowsSkeleton,
   SearchField,
   count,
@@ -158,8 +159,18 @@ export default function WorkPane({
   const titleId = useId()
   const router = useRouter()
   const { toast } = useToast()
-  const { projects: indexed, isLoading: projectsLoading, error: projectsError } = useUserProjects(did)
+  const {
+    projects: indexed,
+    isLoading: projectsLoading,
+    error: projectsError,
+    truncated: projectsTruncated,
+  } = useUserProjects(did)
   const own = useOwnActivities(did)
+  // The row menu's trigger that opened the current dialog: on phones the
+  // menu is a sheet whose item unmounts, so without this focus would fall
+  // to <body> when the dialog closes. Null when a dialog opens from a
+  // button that stays put (it gets focus back by itself).
+  const returnFocus = useRef<HTMLElement | null>(null)
 
   const [query, setQuery] = useState("")
   const q = query.trim().toLowerCase()
@@ -347,7 +358,15 @@ export default function WorkPane({
 
   const savePicker = async (changes: ProjectChange[]): Promise<string | null> => {
     const { done, error } = await applyChanges(changes)
-    if (error) return error
+    if (error) {
+      // What did go through gets its toast and Undo now; the picker stays
+      // open with the error, and saving again writes only the rest (the
+      // written projects already hold their change).
+      const wrote = done.some((d) => d.added.length > 0 || d.removed.length > 0)
+      announce(done)
+      if (!wrote) return error
+      return `${/[.!?]$/.test(error) ? error : `${error}.`} The other changes were saved.`
+    }
     setPicking(null)
     clearSelection()
     announce(done)
@@ -412,24 +431,55 @@ export default function WorkPane({
       const a = ownByUri.get(uri)
       return !!a && matches(a.value.title ?? "", q)
     })
+  const projectsPending = projectsLoading && indexed.length === 0
+  const isLoading = projectsPending || own.isLoading
+  // Either list can fail while the other loads. "Without a project" needs
+  // both, and the "Add to project" picker needs the projects: without
+  // them every activity would look loose, and the picker would offer to
+  // start a project that may already exist.
+  const projectsFailed = !isLoading && !!projectsError
+  const activitiesFailed = !isLoading && own.error
+  const projectsReady = !isLoading && !projectsFailed
+  const looseKnown = projectsReady && !activitiesFailed
   const shownProjects = q ? liveProjects.filter(folderMatches) : liveProjects
-  const shownLoose = loose.filter((a) => matches(a.value.title ?? "", q))
+  const shownLoose = looseKnown ? loose.filter((a) => matches(a.value.title ?? "", q)) : []
+  const showLooseFolder = looseKnown && (shownLoose.length > 0 || (!q && loose.length > 0))
+  const loadError =
+    projectsFailed && activitiesFailed
+      ? "Couldn't load your projects and activities."
+      : projectsFailed
+        ? "Couldn't load your projects."
+        : activitiesFailed
+          ? "Couldn't load your activities."
+          : null
 
-  const isLoading = (projectsLoading && indexed.length === 0) || own.isLoading
-  const nothingYet = !isLoading && liveProjects.length === 0 && loose.length === 0
+  const nothingYet =
+    !isLoading && !loadError && liveProjects.length === 0 && loose.length === 0
   // A few folders start open so their activities show at once; a long list
   // starts closed so the projects can be scanned. Searching opens every
   // folder that matches.
-  const defaultOpen = liveProjects.length + (loose.length > 0 ? 1 : 0) <= 3
+  const defaultOpen = liveProjects.length + (showLooseFolder ? 1 : 0) <= 3
   const isFolderOpen = (key: string) => !!q || (folderOverrides.get(key) ?? defaultOpen)
   const toggleFolder = (key: string) => setFolderOpen(key, !isFolderOpen(key))
 
+  /** Remember the row menu that opened a dialog (see `returnFocus`). */
+  const fromMenu = (trigger: HTMLElement | null) => {
+    returnFocus.current = trigger
+  }
   const rowProps = {
     did,
     actor,
     onToggleSelect: toggleSelect,
-    onDelete: deleteActivity.ask,
-    onAddToProject: (a: ActivityRecord) => openPicker([a]),
+    onDelete: (a: ActivityRecord, trigger: HTMLElement | null) => {
+      fromMenu(trigger)
+      deleteActivity.ask(a)
+    },
+    onAddToProject: projectsReady
+      ? (a: ActivityRecord, trigger: HTMLElement | null) => {
+          fromMenu(trigger)
+          openPicker([a])
+        }
+      : undefined,
   }
 
   return (
@@ -474,7 +524,14 @@ export default function WorkPane({
         <div className="records-selection" role="region" aria-label="Selected activities">
           <span className="records-selection__count">{selectedLive.length} selected</span>
           <div className="records-selection__actions">
-            <Button variant="primary" size="sm" onClick={() => openPicker(selectedLive)}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                fromMenu(null)
+                openPicker(selectedLive)
+              }}
+            >
               <FolderPlus size={16} strokeWidth={1.75} aria-hidden />
               Add to project…
             </Button>
@@ -485,14 +542,18 @@ export default function WorkPane({
         </div>
       ) : null}
 
-      {isLoading ? (
-        <RowsSkeleton rows={5} />
-      ) : (projectsError || own.error) && nothingYet ? (
-        <EmptyState variant="inline" title="Couldn't load your projects and activities.">
+      {/* A list that failed: said above whatever did load, with one retry
+          (it loads both lists again). */}
+      {loadError ? (
+        <EmptyState variant="inline" title={loadError}>
           <Button variant="ghost" size="sm" onClick={onRetry}>
             Try again
           </Button>
         </EmptyState>
+      ) : null}
+
+      {isLoading ? (
+        <RowsSkeleton rows={5} />
       ) : nothingYet ? (
         <EmptyState
           icon={FolderGit2}
@@ -511,7 +572,7 @@ export default function WorkPane({
             Clear search
           </Button>
         </EmptyState>
-      ) : (
+      ) : shownProjects.length === 0 && !showLooseFolder ? null : (
         <ul className="records-folders">
           {shownProjects.map((p) => (
             <ProjectFolder
@@ -524,8 +585,20 @@ export default function WorkPane({
               ownByUri={ownByUri}
               isOpen={isFolderOpen(p.uri)}
               onToggle={() => toggleFolder(p.uri)}
-              onDeleteProject={deleteProject.ask}
-              onAddActivities={() => setAdding(p)}
+              onDeleteProject={(project, trigger) => {
+                fromMenu(trigger)
+                deleteProject.ask(project)
+              }}
+              // "Add activities" lists your activities: not offered while
+              // they couldn't be loaded.
+              onAddActivities={
+                activitiesFailed
+                  ? undefined
+                  : (trigger) => {
+                      fromMenu(trigger)
+                      setAdding(p)
+                    }
+              }
               renderRow={(record) => (
                 <ActivityRow
                   key={record.uri}
@@ -540,7 +613,7 @@ export default function WorkPane({
               )}
             />
           ))}
-          {shownLoose.length > 0 || (!q && loose.length > 0) ? (
+          {showLooseFolder ? (
             <LooseFolder
               count={shownLoose.length}
               isOpen={isFolderOpen("loose")}
@@ -559,19 +632,24 @@ export default function WorkPane({
           ) : null}
         </ul>
       )}
-      {own.truncated ? (
+      {own.truncated || projectsTruncated ? (
         <p className="records-pane__note">
-          Showing your newest {ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities.
+          {own.truncated && projectsTruncated
+            ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities and first ${USER_PROJECTS_MAX} projects.`
+            : own.truncated
+              ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities.`
+              : `Showing your first ${USER_PROJECTS_MAX} projects.`}
         </p>
       ) : null}
 
-      {picking ? (
+      {picking && projectsReady ? (
         <ProjectPickerDialog
           activities={picking}
           projects={liveProjects}
           onClose={() => setPicking(null)}
           onSave={savePicker}
           onCreateProject={createFromSelection}
+          returnFocusRef={returnFocus}
         />
       ) : null}
       {adding ? (
@@ -580,6 +658,7 @@ export default function WorkPane({
           activities={ownActivities}
           onClose={() => setAdding(null)}
           onSave={saveAdder}
+          returnFocusRef={returnFocus}
         />
       ) : null}
       {deleteActivity.target ? (
@@ -591,6 +670,7 @@ export default function WorkPane({
           errorMessage={deleteActivity.error}
           onCancel={deleteActivity.cancel}
           onConfirm={deleteActivity.confirm}
+          returnFocusRef={returnFocus}
         />
       ) : null}
       {deleteProject.target ? (
@@ -602,6 +682,7 @@ export default function WorkPane({
           errorMessage={deleteProject.error}
           onCancel={deleteProject.cancel}
           onConfirm={deleteProject.confirm}
+          returnFocusRef={returnFocus}
         />
       ) : null}
     </section>
@@ -671,8 +752,10 @@ function ProjectFolder({
   ownByUri: ReadonlyMap<string, ActivityRecord>
   isOpen: boolean
   onToggle: () => void
-  onDeleteProject: (p: CollectionRecord) => void
-  onAddActivities: () => void
+  /** `trigger` is the folder menu's button, for the dialog's focus return. */
+  onDeleteProject: (p: CollectionRecord, trigger: HTMLElement | null) => void
+  /** Left out while your activities couldn't be loaded. */
+  onAddActivities?: (trigger: HTMLElement | null) => void
   renderRow: (record: ActivityRecord) => React.ReactNode
 }) {
   const bodyId = useId()
@@ -680,6 +763,17 @@ function ProjectFolder({
   const href = recordUrl(actor, "project", rkeyFromUri(project.uri))
   const n = activityUrisOf(project).filter((u) => !removed.has(u)).length
   const raw = projectImage(project.value, "thumb")
+  const addEntry: RowMenuEntry[] = onAddActivities
+    ? [
+        {
+          kind: "action",
+          key: "add",
+          label: "Add activities…",
+          icon: Plus,
+          onSelect: (trigger) => onAddActivities(trigger),
+        },
+      ]
+    : []
   return (
     <li className="records-folder">
       <FolderHead
@@ -697,7 +791,14 @@ function ProjectFolder({
         meta={`Project · ${count(n, "activity", "activities")}`}
         actions={
           <>
-            <Button href={`${href}/edit`} variant="ghost" size="icon-sm" aria-label={`Edit ${title}`} tooltip="Edit">
+            <Button
+              href={`${href}/edit`}
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Edit ${title}`}
+              tooltip="Edit"
+              className="records-row__edit"
+            >
               <Pencil size={16} strokeWidth={1.75} aria-hidden />
             </Button>
             <RowMenu
@@ -705,13 +806,16 @@ function ProjectFolder({
               title={title}
               entries={[
                 { kind: "link", key: "open", label: "Open project", href, icon: ExternalLink },
+                // The pencil beside the menu from 800px.
                 {
-                  kind: "action",
-                  key: "add",
-                  label: "Add activities…",
-                  icon: Plus,
-                  onSelect: onAddActivities,
+                  kind: "link",
+                  key: "edit",
+                  label: "Edit project",
+                  href: `${href}/edit`,
+                  icon: Pencil,
+                  phoneOnly: true,
                 },
+                ...addEntry,
                 { kind: "separator", key: "sep" },
                 {
                   kind: "action",
@@ -719,7 +823,7 @@ function ProjectFolder({
                   label: "Delete",
                   icon: Trash2,
                   destructive: true,
-                  onSelect: () => onDeleteProject(project),
+                  onSelect: (trigger) => onDeleteProject(project, trigger),
                 },
               ]}
             />
@@ -735,17 +839,19 @@ function ProjectFolder({
             ownByUri={ownByUri}
             renderRow={renderRow}
           />
-          <div className="records-folder__foot">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onAddActivities}
-              aria-label={`Add activities to ${title}`}
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              Add activities
-            </Button>
-          </div>
+          {onAddActivities ? (
+            <div className="records-folder__foot">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onAddActivities(null)}
+                aria-label={`Add activities to ${title}`}
+              >
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                Add activities
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>

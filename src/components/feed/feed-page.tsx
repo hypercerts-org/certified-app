@@ -58,6 +58,8 @@ export default function FeedPage() {
       <HomeFeed
         key={activeDid}
         activeDid={activeDid}
+        // The box hides itself while the account has no posts
+        // (feed.css); the column stays.
         news={
           <Card unpadded className="feed-layout__box feed-page__news">
             <NewsSection actor={NEWS_ACTOR_DID} heading="News from Certified" />

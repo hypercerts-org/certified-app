@@ -18,7 +18,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useContributorInfo } from "@/hooks/use-contributor-info"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import type { ActivityContributor, ActivityRecord } from "@/lib/atproto/activity-types"
-import { formatShortDate, formatTimePeriod } from "@/lib/utils/format-date"
+import { formatShortDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { RowMenu, type RowMenuEntry } from "@/components/records/records-shared"
@@ -104,10 +104,45 @@ export function ProjectChips({ titles }: { titles: string[] }) {
   )
 }
 
-function activityMeta(record: ActivityRecord): string {
-  const period = formatTimePeriod(record.value.startDate ?? null, record.value.endDate ?? null)
-  if (period) return period
-  return record.value.createdAt ? `Created ${formatShortDate(record.value.createdAt)}` : "Activity"
+/** One date that never breaks at its hyphens (a narrow row wraps between
+ *  the dates of a range instead). */
+function NoBreakDate({ iso }: { iso: string }) {
+  return <span className="records-row__date">{formatShortDate(iso)}</span>
+}
+
+/** The row's second line: the work's dates (the same wording as
+ *  `formatTimePeriod`), else when it was created. */
+function ActivityMeta({ record }: { record: ActivityRecord }) {
+  const start = record.value.startDate || null
+  const end = record.value.endDate || null
+  if (start && end) {
+    return (
+      <>
+        <NoBreakDate iso={start} /> – <NoBreakDate iso={end} />
+      </>
+    )
+  }
+  if (start) {
+    return (
+      <>
+        <NoBreakDate iso={start} /> (ongoing)
+      </>
+    )
+  }
+  if (end) {
+    return (
+      <>
+        Until <NoBreakDate iso={end} />
+      </>
+    )
+  }
+  return record.value.createdAt ? (
+    <>
+      Created <NoBreakDate iso={record.value.createdAt} />
+    </>
+  ) : (
+    <>Activity</>
+  )
 }
 
 export interface ActivityRowProps {
@@ -120,8 +155,11 @@ export interface ActivityRowProps {
   otherProjects: string[]
   selected: boolean
   onToggleSelect: (uri: string) => void
-  onDelete: (record: ActivityRecord) => void
-  onAddToProject: (record: ActivityRecord) => void
+  /** `trigger` is the row menu's button, for the dialog's focus return. */
+  onDelete: (record: ActivityRecord, trigger: HTMLElement | null) => void
+  /** Left out while the viewer's projects aren't known (still loading or
+   *  failed): the row then has no select box and no "Add to project…". */
+  onAddToProject?: (record: ActivityRecord, trigger: HTMLElement | null) => void
   /** Set inside a project folder: removes it from that project. */
   onRemoveFromProject?: (record: ActivityRecord) => void
   /** The folder's project name, for the remove action's wording. */
@@ -135,7 +173,11 @@ export interface ActivityRowProps {
  * always shown), the thumbnail and title over its dates (both open the
  * activity), chips for the other projects it sits in, contributor
  * avatars, then Edit and a "More actions" menu (Open, Contributors…, Add
- * to project…, Remove from project, Delete), at every width.
+ * to project…, Remove from project, Delete).
+ *
+ * Below 800px the row keeps the checkbox, the title (up to two lines) and
+ * the menu: the thumbnail and the Edit button go (records.css), and Edit
+ * moves into the menu.
  *
  * An activity another account published can sit in your project: it
  * reads "By @handle", can't be selected, and offers Open and Remove from
@@ -161,9 +203,12 @@ export default function ActivityRow({
   const href = recordUrl(isOwn ? actor : ownerDid, "activity", rkey)
   const title = record.value.title || "Untitled activity"
   const { info: owner } = useAuthorInfo(isOwn ? null : ownerDid)
-  const meta = isOwn
-    ? activityMeta(record)
-    : `By ${owner?.handle ? `@${owner.handle}` : "another account"}`
+  const meta = isOwn ? (
+    <ActivityMeta record={record} />
+  ) : (
+    `By ${owner?.handle ? `@${owner.handle}` : "another account"}`
+  )
+  const selectable = isOwn && !!onAddToProject
 
   const removeEntry: RowMenuEntry[] = onRemoveFromProject
     ? [
@@ -177,9 +222,22 @@ export default function ActivityRow({
         },
       ]
     : []
+  const addEntry: RowMenuEntry[] = onAddToProject
+    ? [
+        {
+          kind: "action",
+          key: "add",
+          label: "Add to project…",
+          icon: FolderPlus,
+          onSelect: (trigger) => onAddToProject(record, trigger),
+        },
+      ]
+    : []
   const entries: RowMenuEntry[] = isOwn
     ? [
         { kind: "link", key: "open", label: "Open", href, icon: ExternalLink },
+        // The pencil beside the menu from 800px.
+        { kind: "link", key: "edit", label: "Edit", href: `${href}/edit`, icon: Pencil, phoneOnly: true },
         {
           kind: "link",
           key: "contributors",
@@ -187,13 +245,7 @@ export default function ActivityRow({
           href: `${href}/edit#contributors`,
           icon: Users,
         },
-        {
-          kind: "action",
-          key: "add",
-          label: "Add to project…",
-          icon: FolderPlus,
-          onSelect: () => onAddToProject(record),
-        },
+        ...addEntry,
         ...removeEntry,
         { kind: "separator", key: "sep" },
         {
@@ -202,7 +254,7 @@ export default function ActivityRow({
           label: "Delete",
           icon: Trash2,
           destructive: true,
-          onSelect: () => onDelete(record),
+          onSelect: (trigger) => onDelete(record, trigger),
         },
       ]
     : [{ kind: "link", key: "open", label: "Open", href, icon: ExternalLink }, ...removeEntry]
@@ -213,7 +265,7 @@ export default function ActivityRow({
       data-selected={selected || undefined}
       aria-busy={busy || undefined}
     >
-      {isOwn ? (
+      {selectable ? (
         <label className="records-row__check">
           <Checkbox
             checked={selected}
@@ -247,6 +299,7 @@ export default function ActivityRow({
             size="icon-sm"
             aria-label={`Edit ${title}`}
             tooltip="Edit"
+            className="records-row__edit"
           >
             <Pencil size={16} strokeWidth={1.75} aria-hidden />
           </Button>

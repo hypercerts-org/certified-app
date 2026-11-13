@@ -10,6 +10,7 @@ import {
   useState,
 } from "react"
 import { AlertCircle, ChevronDown, Filter, Inbox, Info, Users } from "lucide-react"
+import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
 import Checkbox from "@/components/ui/checkbox"
@@ -25,7 +26,6 @@ import { useHomeFeed, type HomeFeedEvent } from "@/hooks/use-home-feed"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { groupConsecutiveEndorsements } from "@/lib/utils/group-feed"
 import { useFollowing } from "@/hooks/use-following"
-import { hideBrokenThumb } from "@/lib/utils/image-fallback"
 import {
   DEFAULT_HIDDEN_CERT_LABELS,
   DEFAULT_HIDDEN_ORG_LABELS,
@@ -38,6 +38,7 @@ import {
 } from "@/lib/atproto/labels"
 import { fetchOrgDidsByLabel } from "@/lib/atproto/workspace"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
+import { getInitials } from "@/lib/utils/initials"
 import EvaluatorPreview from "./evaluator-preview"
 import HomeFeedSkeleton from "./home-feed-skeleton"
 import { EndorsementGroupRow, HomeFeedRow } from "./home-feed-rows"
@@ -890,19 +891,12 @@ function EvaluatorRow({
 
   const person = (
     <>
-      {info?.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={info.avatarUrl}
-          alt=""
-          className="feed-evaluators__avatar"
-          width={24}
-          height={24}
-          onError={hideBrokenThumb}
-        />
-      ) : (
-        <span className="feed-evaluators__avatar feed-evaluators__avatar--placeholder" />
-      )}
+      <Avatar
+        size="xs"
+        src={info?.avatarUrl ?? undefined}
+        seed={did}
+        fallbackInitials={getInitials(info?.displayName, info?.handle)}
+      />
       <span className="feed-evaluators__name" dir="auto">{label}</span>
     </>
   )

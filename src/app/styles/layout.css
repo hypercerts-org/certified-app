@@ -1997,14 +1997,23 @@ html:is(:has(.form-action-bar), :has(.records-page)) .feedback-trigger {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Avatar, then the endorser's name and the date on one line, and the note
+   on its own line under them (up to two lines), as on the profile. */
 .profile-overview__endorse-link {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 12px 0;
   color: inherit;
   text-decoration: none;
+}
+
+/* With a note the avatar spans both lines and sits at the top. */
+.profile-overview__endorse-link:has(.profile-overview__endorse-note) > :first-child {
+  grid-row: 1 / span 2;
+  align-self: start;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -2015,11 +2024,14 @@ html:is(:has(.form-action-bar), :has(.records-page)) .feedback-trigger {
 
 .profile-overview__endorse-meta {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
+/* The name gives way before the date does. */
 .profile-overview__endorse-name {
+  min-width: 0;
   font-size: var(--text-body-sm);
   font-weight: 500;
   color: var(--fg-primary);
@@ -2029,19 +2041,24 @@ html:is(:has(.form-action-bar), :has(.records-page)) .feedback-trigger {
 }
 
 .profile-overview__endorse-when {
+  flex-shrink: 0;
   font-size: var(--text-caption);
   color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .profile-overview__endorse-note {
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
-  font-style: italic;
-  text-align: right;
+  grid-column: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
+  font-size: var(--text-body-sm);
+  line-height: 1.45;
+  color: var(--fg-secondary);
+  overflow-wrap: anywhere;
 }
 
 /* ============================================================

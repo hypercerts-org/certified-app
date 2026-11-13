@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useState, type RefObject } from "react"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
@@ -45,6 +45,7 @@ export default function ActivityPickerDialog({
   activities,
   onClose,
   onSave,
+  returnFocusRef,
 }: {
   project: CollectionRecord
   /** The viewer's own activities. */
@@ -52,6 +53,8 @@ export default function ActivityPickerDialog({
   onClose: () => void
   /** Resolves to an error message, or null once written. */
   onSave: (change: ProjectChange) => Promise<string | null>
+  /** Where focus goes on close when the opener is gone (a row menu item). */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const name = projectTitle(project.value)
   const [checked, setChecked] = useState<ReadonlySet<string>>(
@@ -97,6 +100,7 @@ export default function ActivityPickerDialog({
       header={<AppDialogHeader title="Add activities" onClose={close} disabled={busy} />}
       maxWidth={480}
       disableBackdropClose={busy}
+      returnFocusRef={returnFocusRef}
     >
       <AppDialogBody>
         <div className="records-picker">

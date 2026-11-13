@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { MoreHorizontal, type LucideIcon } from "lucide-react"
 import Button from "@/components/ui/button"
@@ -115,12 +115,18 @@ export type RowMenuEntry =
       label: string
       href: string
       icon: LucideIcon
+      /** Only in the phone sheet: for an action the row shows as its own
+       *  button from 800px (Edit) and leaves to the menu on phones. */
+      phoneOnly?: boolean
     }
   | {
       kind: "action"
       key: string
       label: string
-      onSelect: () => void
+      /** Gets the menu's trigger, which stays mounted after the menu
+       *  closes: pass it as a dialog's `returnFocusRef` so focus goes back
+       *  to the row, not to `<body>`, when the dialog closes. */
+      onSelect: (trigger: HTMLElement | null) => void
       icon: LucideIcon
       /** Shown under the label, muted, e.g. what an action keeps. */
       hint?: string
@@ -132,10 +138,12 @@ function RowMenuItems({
   entries,
   mode,
   onDone,
+  trigger,
 }: {
   entries: RowMenuEntry[]
   mode: MenuMode
   onDone: () => void
+  trigger: React.RefObject<HTMLButtonElement | null>
 }) {
   return (
     <>
@@ -175,7 +183,7 @@ function RowMenuItems({
             className={menuRowClass(mode, tone)}
             onClick={() => {
               onDone()
-              e.onSelect()
+              e.onSelect(trigger.current)
             }}
           >
             {icon}
@@ -194,7 +202,8 @@ function RowMenuItems({
 
 /**
  * A row's "More actions" menu: a popover menu on desktop and the same
- * entries in a bottom sheet on phones (DESIGN.md §9.7).
+ * entries in a bottom sheet on phones (DESIGN.md §9.7). Entries marked
+ * `phoneOnly` show in the sheet only.
  */
 export function RowMenu({
   label,
@@ -209,8 +218,13 @@ export function RowMenu({
 }) {
   const { isDesktop } = useLayoutBreakpoints()
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const shown = isDesktop
+    ? entries.filter((e) => !(e.kind === "link" && e.phoneOnly))
+    : entries
   const trigger = (
     <Button
+      ref={triggerRef}
       variant="ghost"
       size="icon-sm"
       aria-label={label}
@@ -228,7 +242,12 @@ export function RowMenu({
         {trigger}
         <BottomSheet open={open} onClose={() => setOpen(false)} title={title}>
           <div className="flex flex-col gap-0.5 px-2 pb-4">
-            <RowMenuItems entries={entries} mode="sheet" onDone={() => setOpen(false)} />
+            <RowMenuItems
+              entries={shown}
+              mode="sheet"
+              onDone={() => setOpen(false)}
+              trigger={triggerRef}
+            />
           </div>
         </BottomSheet>
       </>
@@ -238,7 +257,12 @@ export function RowMenu({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>{trigger}</PopoverTrigger>
       <PopoverContent portal side="bottom" align="end" offset={4} minWidth={220} aria-label={label}>
-        <RowMenuItems entries={entries} mode="menu" onDone={() => setOpen(false)} />
+        <RowMenuItems
+          entries={shown}
+          mode="menu"
+          onDone={() => setOpen(false)}
+          trigger={triggerRef}
+        />
       </PopoverContent>
     </Popover>
   )

@@ -34,6 +34,12 @@ const GROUP_PREVIEW = 5
 /** Apps shown on home; the rest are one click away under "All apps". */
 const HOME_APPS = CONNECTED_APPS.slice(0, 4)
 
+/** A stat's label for its value: "1 List", "3 Lists" (and "Lists" while
+ *  the value is unknown). */
+function byCount(n: number | null, one: string, many: string): string {
+  return n === 1 ? one : many
+}
+
 // ---------------------------- Shared shell ----------------------------------
 
 /**
@@ -146,14 +152,12 @@ export function HomeRecords({
   profileBase,
   counts,
   countsLoading,
-  canCreate,
 }: {
   did: string
   isGroup: boolean
   profileBase: string
   counts: WorkspaceCounts
   countsLoading: boolean
-  canCreate: boolean
 }) {
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
   const { created, isLoading: activitiesLoading } = useUserIndexerActivities(did)
@@ -217,12 +221,12 @@ export function HomeRecords({
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
         >
-          {canCreate ? (
-            <Button href="/create" variant="primary" size="md">
-              <Plus size={16} aria-hidden />
-              New activity
-            </Button>
-          ) : null}
+          {/* Groups can create too, as in the New menu: /create writes as
+              the account being acted as. */}
+          <Button href="/create" variant="primary" size="md">
+            <Plus size={16} aria-hidden />
+            New activity
+          </Button>
         </EmptyState>
       ) : (
         <div className="flex flex-col gap-6">
@@ -230,19 +234,19 @@ export function HomeRecords({
             aria-label="Records by kind"
             items={[
               {
-                label: "Activities",
+                label: byCount(counts.certs, "Activity", "Activities"),
                 value: counts.certs,
                 loading: countsLoading && counts.certs === null,
                 href: hrefs.activities,
               },
               {
-                label: "Projects",
+                label: byCount(counts.projects, "Project", "Projects"),
                 value: counts.projects,
                 loading: countsLoading && counts.projects === null,
                 href: hrefs.projects,
               },
               {
-                label: "Lists",
+                label: byCount(counts.lists, "List", "Lists"),
                 value: counts.lists,
                 loading: countsLoading && counts.lists === null,
                 href: hrefs.lists,
@@ -334,13 +338,13 @@ export function HomeReceived({
           aria-label="Received, by kind"
           items={[
             {
-              label: "Endorsements",
+              label: byCount(endorsementsLoading ? null : endorsements.length, "Endorsement", "Endorsements"),
               value: endorsementsLoading ? null : endorsements.length,
               loading: endorsementsLoading,
               href: hrefs.endorsements,
             },
             {
-              label: "Followers",
+              label: byCount(counts.followers, "Follower", "Followers"),
               value: counts.followers,
               loading: countsLoading && counts.followers === null,
               href: hrefs.followers,

@@ -47,9 +47,12 @@ export function useOwnActivities(did: string): OwnActivitiesState {
           limit: String(ACTIVITY_PAGE),
         })
         if (cursor) params.set("cursor", cursor)
+        // no-store: the proxy lets the browser keep a same-session list
+        // for a few seconds, which would hide an activity created or
+        // deleted just before this page opened.
         const res = await authFetch(
           `/api/xrpc/com/atproto/repo/listRecords?${params.toString()}`,
-          { signal: controller.signal },
+          { signal: controller.signal, cache: "no-store" },
         )
         // A repo that has never written an activity answers 400/404.
         if (res.status === 400 || res.status === 404) break

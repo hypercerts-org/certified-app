@@ -334,9 +334,10 @@
   padding-top: 2px;
 }
 
-/* Line 1: display name, @handle, relative time. The handle gives way
-   first (it truncates); the name truncates only when it alone is too
-   long; the time never shrinks. */
+/* Line 1: display name, @handle, relative time. The name comes first: it
+   keeps its full width (up to two thirds of the line, then it truncates),
+   the handle takes what is left and truncates, and the time never
+   shrinks. Below 800px the handle is left out, so the name has the line. */
 .home-feed__byline {
   margin: 0;
   display: flex;
@@ -347,9 +348,11 @@
   line-height: 1.4;
 }
 
+/* Not shrinkable (a sub-pixel shrink clipped the last letter); capped
+   instead, so a very long name still leaves room for the time. */
 .home-feed__actor {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  max-width: 65%;
   font-weight: 600;
   color: var(--fg-primary);
   text-decoration: none;
@@ -359,12 +362,24 @@
 }
 
 .home-feed__handle {
-  flex: 0 100 auto;
+  flex: 0 1 auto;
   min-width: 0;
   color: var(--fg-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 799px) {
+  .home-feed__handle {
+    display: none;
+  }
+
+  .home-feed__actor {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 .home-feed__dot {

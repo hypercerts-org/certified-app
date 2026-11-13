@@ -188,19 +188,6 @@
   font-size: inherit;
 }
 
-.feed-evaluators__avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.feed-evaluators__avatar--placeholder {
-  display: inline-block;
-  background: var(--bg-sunken);
-}
-
 .feed-evaluators__name {
   font-family: var(--font-inter), system-ui, sans-serif;
   font-weight: 500;
@@ -1468,11 +1455,14 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
    256, 24px apart, the filters box sticky below the fixed chrome. */
 
 /* Below 1100px the whole page (header included) is the 600px reading
-   column, so the title lines up with the list. Two classes to win over
-   PageContainer's width utility. */
+   column, so the title lines up with the list. It starts at the left
+   gutter like every other page (not centred), so the title doesn't jump
+   when switching destinations. Two classes to win over PageContainer's
+   width and centring utilities. */
 @media (max-width: 1099px) {
   .feed-page.page-container {
     --page-width: 600px;
+    margin-inline: 0;
   }
 }
 
@@ -1553,4 +1543,11 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
 .feed-page__news .right-rail__empty {
   border-top: 0;
   padding: 4px 0 0;
+}
+
+/* No posts: no box (the column stays). NewsSection's empty state is its
+   "No posts yet." line alone; its error line is followed by "Try again",
+   so a failed load still shows. */
+.feed-page__news:has(.right-rail__empty:last-child) {
+  display: none;
 }

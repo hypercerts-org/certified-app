@@ -18,6 +18,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import Button from "@/components/ui/button"
+import ResponsiveDialog from "@/components/ui/responsive-dialog"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 /** Sentinel slug for the "no label yet" checkbox that sits at the
  *  end of every labeler popover. Backed by an `includeLabels` /
@@ -272,6 +275,9 @@ export type QualityFilters = ReturnType<typeof useQualityFilters>
  * activities); false on accounts/projects single-kind views, where only
  * the author-org tier applies. The trigger reads "Filters", and
  * "Filters · N" once N checkboxes differ from the defaults, like /feed.
+ *
+ * Below 800px the same checkboxes open in a bottom sheet, the way /feed's
+ * Filters do (a popover there ran under the tab bar).
  */
 export function QualityFilterPopover({
   q,
@@ -284,9 +290,21 @@ export function QualityFilterPopover({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
+  const { isDesktop } = useLayoutBreakpoints()
   const changed = (showCertSection ? q.qualityChangedCount : 0) + q.orgQualityChangedCount
   const certHeadingId = useId()
   const orgHeadingId = useId()
+  if (!isDesktop) {
+    return (
+      <QualityFilterSheet
+        q={q}
+        showCertSection={showCertSection}
+        open={open}
+        onOpenChange={onOpenChange}
+        changed={changed}
+      />
+    )
+  }
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger>
@@ -361,5 +379,127 @@ export function QualityFilterPopover({
         </button>
       </PopoverContent>
     </UiPopover>
+  )
+}
+
+/** One checkbox row in the phone sheet (the /feed sheet's row styles). */
+function SheetCheckRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="feed-evaluators__row">
+      <Checkbox
+        checked={checked}
+        onChange={onToggle}
+        label={<span className="feed-evaluators__name">{label}</span>}
+      />
+    </div>
+  )
+}
+
+/**
+ * Phones: the Filters button opens the quality checkboxes in a bottom
+ * sheet with Reset and Done, the same pattern (and styles) as /feed's
+ * Filters sheet. Changes apply as they are made; Done closes.
+ */
+function QualityFilterSheet({
+  q,
+  showCertSection,
+  open,
+  onOpenChange,
+  changed,
+}: {
+  q: QualityFilters
+  showCertSection: boolean
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  changed: number
+}) {
+  const close = () => onOpenChange(false)
+  const isDefault = (!showCertSection || q.qualityIsDefault) && q.orgQualityIsDefault
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="md"
+        className="explore__filters-btn"
+        aria-label={changed > 0 ? `Filters, ${changed} changed` : "Filters"}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => onOpenChange(true)}
+      >
+        <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
+        <span className="tabular-nums">
+          {changed > 0 ? `Filters · ${changed}` : "Filters"}
+        </span>
+      </Button>
+      <ResponsiveDialog
+        open={open}
+        onClose={close}
+        ariaLabel="Filters"
+        header={<AppDialogHeader title="Filters" onClose={close} />}
+        className="feed-filter-dialog"
+      >
+        <div className="feed-filter-dialog__body">
+          <div className="feed-evaluator-panel">
+            {showCertSection ? (
+              <>
+                <fieldset className="feed-evaluators__group">
+                  <legend className="feed-evaluator-panel__heading">Activity quality</legend>
+                  <div className="feed-evaluators__list">
+                    {HYPERLABEL_DISPLAY_ORDER.map((tier) => (
+                      <SheetCheckRow
+                        key={tier}
+                        label={HYPERLABEL_DISPLAY_LABELS[tier]}
+                        checked={q.qualityIncluded.has(tier)}
+                        onToggle={() => q.onQualityToggle(tier)}
+                      />
+                    ))}
+                    <SheetCheckRow
+                      label={UNLABELED_LABEL}
+                      checked={q.qualityIncluded.has(UNLABELED_SLUG)}
+                      onToggle={() => q.onQualityToggle(UNLABELED_SLUG)}
+                    />
+                  </div>
+                </fieldset>
+                <div className="feed-evaluators__separator" aria-hidden="true" />
+              </>
+            ) : null}
+            <fieldset className="feed-evaluators__group">
+              <legend className="feed-evaluator-panel__heading">Account quality</legend>
+              <div className="feed-evaluators__list">
+                {ORG_TIER_SLUGS.map((slug) => (
+                  <SheetCheckRow
+                    key={slug}
+                    label={ORG_TIER_DISPLAY_LABEL[slug]}
+                    checked={q.orgQualityIncluded.has(slug)}
+                    onToggle={() => q.onOrgQualityToggle(slug)}
+                  />
+                ))}
+                <SheetCheckRow
+                  label={UNLABELED_LABEL}
+                  checked={q.orgQualityIncluded.has(UNLABELED_SLUG)}
+                  onToggle={() => q.onOrgQualityToggle(UNLABELED_SLUG)}
+                />
+              </div>
+            </fieldset>
+          </div>
+        </div>
+        <div className="feed-filter-dialog__footer">
+          <Button variant="secondary" onClick={q.onResetQuality} disabled={isDefault}>
+            Reset
+          </Button>
+          <Button variant="primary" onClick={close}>
+            Done
+          </Button>
+        </div>
+      </ResponsiveDialog>
+    </>
   )
 }

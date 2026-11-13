@@ -26,6 +26,7 @@ import PageHeader from "@/components/ui/page-header"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import SideNav, { type SideNavItem } from "@/components/ui/side-nav"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
+import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import CertListRow from "./cert-list-row"
 import ProjectListRow from "./project-list-row"
@@ -164,9 +165,9 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
 /**
  * /explore entry point: the page header, the list navigation (All,
  * Accounts I follow, Endorsed accounts, Recently viewed) and the main
- * column. The main column starts with the search field, then the type
- * chips (All · Activities · Projects · Accounts · Funding, `?show=`),
- * then the results: on "All", one short section per type (Featured
+ * column. The main column starts with the type tabs (All · Activities ·
+ * Projects · Accounts · Funding, `?show=`), then the type's panel: the
+ * search field and the results: on "All", one short section per type (Featured
  * first on the plain All list); on a single type, that type in full.
  * Public: signed-out visitors can browse everything except the lists
  * built from their own follows and endorsements.
@@ -304,7 +305,7 @@ const LIST_LABEL: Record<string, string> = {
 
 function ExploreAll() {
   const view = useAllView()
-  const { filter, show, hrefWith } = view
+  const { filter, show, hrefWith, setShow } = view
   const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth()
   const hasRecent = useHasRecentlyViewed()
 
@@ -369,15 +370,39 @@ function ExploreAll() {
                 Sign in
               </Button>
             </EmptyState>
-          ) : show === "all" ? (
-            <ExploreAllBlocks view={view} />
           ) : (
-            <ExploreMain
-              key={show}
-              kind={show}
-              filter={viewFilterToKindFilter(filter, show)}
-              view={view}
-            />
+            // The type tabs (`?show=`) stay mounted while the panel under
+            // them is replaced, so a keyboard user's focus stays on the tab
+            // they moved to.
+            <Tabs
+              value={show}
+              onChange={(next) => setShow(parseAllShow(next))}
+              className="explore__tabs"
+            >
+              {/* data-tour anchors the product tour's "Activities,
+                  projects, and accounts" step on the tabs' wrapper. */}
+              <div className="explore__types" data-tour="explore-category">
+                <TabList aria-label="Type" className="explore__type-tabs">
+                  {SHOW_OPTIONS.map((o) => (
+                    <Tab key={o.key} value={o.key}>
+                      {o.label}
+                    </Tab>
+                  ))}
+                </TabList>
+              </div>
+              <TabPanel value={show} className="explore__panel">
+                {show === "all" ? (
+                  <ExploreAllBlocks view={view} />
+                ) : (
+                  <ExploreMain
+                    key={show}
+                    kind={show}
+                    filter={viewFilterToKindFilter(filter, show)}
+                    view={view}
+                  />
+                )}
+              </TabPanel>
+            </Tabs>
           )}
         </div>
       </div>
@@ -386,8 +411,8 @@ function ExploreAll() {
 }
 
 /**
- * The top of the main column: the search field with the result actions
- * (view, sort, filters) beside it, then the type chips.
+ * The top of a type's panel: the search field with the result actions
+ * (view, sort, filters) beside it. The type tabs sit above the panel.
  */
 function ExploreToolbar({
   view,
@@ -398,7 +423,7 @@ function ExploreToolbar({
   placeholder: string
   actions: React.ReactNode
 }) {
-  const { search, setUrl, show, setShow } = view
+  const { search, setUrl } = view
   // Debounced search — ExploreSearchField owns the keystroke state so
   // typing re-renders the input alone, not the results below.
   const onSearchCommit = useCallback(
@@ -414,19 +439,6 @@ function ExploreToolbar({
           onCommit={onSearchCommit}
         />
         <div className="explore__actions">{actions}</div>
-      </div>
-      {/* data-tour anchors the product tour's "Activities, projects, and
-          accounts" step on a real box (the chips' own wrapper). */}
-      <div className="explore__types" data-tour="explore-category">
-        <SegmentedControl
-          aria-label="Type"
-          value={show}
-          onValueChange={(next) => setShow(parseAllShow(next))}
-          options={SHOW_OPTIONS.map((o) => ({ value: o.key, label: o.label }))}
-          size="md"
-          joined
-          shape="square"
-        />
       </div>
     </div>
   )

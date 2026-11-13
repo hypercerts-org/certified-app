@@ -8,7 +8,6 @@ import { useUserProfile } from "@/hooks/use-user-profile"
 import { useOrg } from "@/lib/groups/org-context"
 import { useActorWorkspaceCounts } from "@/hooks/use-workspace"
 import { usePageTitle } from "@/lib/navbar-context"
-import { isRouteVisibleToActor } from "@/lib/groups/personal-only"
 import { ownProfileUrl } from "@/lib/urls"
 import type { Group } from "@/lib/groups/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
@@ -106,7 +105,6 @@ function HomeAccount({
   // One profile fetch feeds both the header and the ID card.
   const { profile, avatarUrl, handle, isLoading } = useUserProfile(did)
   const { counts, isLoading: countsLoading } = useActorWorkspaceCounts(did)
-  const canCreate = isRouteVisibleToActor("create", isGroup)
   const identity = { did, profile, avatarUrl, handle, isLoading }
 
   return (
@@ -128,7 +126,6 @@ function HomeAccount({
             profileBase={profileBase}
             counts={counts}
             countsLoading={countsLoading}
-            canCreate={canCreate}
           />
           <HomeReceived
             did={did}

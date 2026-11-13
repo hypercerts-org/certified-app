@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useId, useMemo, useState, type RefObject } from "react"
 import { Plus } from "lucide-react"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
@@ -80,6 +80,7 @@ export default function ProjectPickerDialog({
   onClose,
   onSave,
   onCreateProject,
+  returnFocusRef,
 }: {
   activities: PickedActivity[]
   projects: CollectionRecord[]
@@ -87,6 +88,8 @@ export default function ProjectPickerDialog({
   /** Resolves to an error message, or null once everything is written. */
   onSave: (changes: ProjectChange[]) => Promise<string | null>
   onCreateProject: (title: string) => Promise<string | null>
+  /** Where focus goes on close when the opener is gone (a row menu item). */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }) {
   const [mode, setMode] = useState<"pick" | "create">(projects.length === 0 ? "create" : "pick")
   const [query, setQuery] = useState("")
@@ -163,6 +166,7 @@ export default function ProjectPickerDialog({
       header={header}
       maxWidth={480}
       disableBackdropClose={busy}
+      returnFocusRef={returnFocusRef}
     >
       <AppDialogBody>
         {mode === "pick" ? (

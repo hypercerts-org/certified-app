@@ -2,9 +2,12 @@
    A <PageContainer> (`.explore-page`, the default 1120px; it also joins the
    shell's page-frame layout in layout.css): the page header, then the
    layout. Below 1100px one column: the list pills (SideNav), then the
-   main column. From 1100px the lists are a sticky column on the left.
-   The main column: the search row (field + result actions), the type
-   chips, optional inline controls, then the sections or results. */
+   main column. From 1100px the lists are a sticky column on the left,
+   48px from the content like the other SideNav pages (Records, Settings,
+   Help), so the content starts at the same x.
+   The main column: the type tabs, then the type's panel: the search row
+   (field + result actions), optional inline controls, then the sections
+   or results. */
 
 .explore__layout {
   display: flex;
@@ -17,7 +20,7 @@
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
     align-items: start;
-    gap: 32px;
+    gap: 48px;
   }
 }
 
@@ -36,7 +39,51 @@
   flex-direction: column;
 }
 
-/* ---------- Toolbar: search + actions, then type chips ---------- */
+/* ---------- Type tabs, then the type's panel ---------- */
+
+/* <Tabs> wrapper and the <TabPanel>: the main column's flex column
+   carries on through both. */
+.explore__tabs,
+.explore__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.explore__panel {
+  padding-top: 16px;
+}
+
+/* The underline tabs, with the hairline across the whole column like the
+   record and profile tabs. The strip scrolls sideways when it can't fit
+   (narrow phones); 4px of padding keeps the focus rings inside the
+   scroller. Two classes to win over the TabList's own `inline-flex`. */
+.explore__types {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: -4px;
+  padding: 4px;
+}
+
+.explore__types::-webkit-scrollbar {
+  display: none;
+}
+
+.explore__types .explore__type-tabs {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Phones: a little closer, so all five fit a 375px screen. */
+@media (max-width: 799px) {
+  .explore__types .explore__type-tabs {
+    column-gap: 12px;
+  }
+}
+
+/* ---------- Toolbar: search + actions ---------- */
 
 .explore__toolbar {
   display: flex;
@@ -83,33 +130,12 @@
   height: calc(var(--control-h-md) - 2px);
 }
 
-/* Type chips. The strip scrolls sideways when it can't fit (narrow
-   phones); 4px of padding keeps the inset focus rings visible. */
-.explore__types {
-  display: flex;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: -4px;
-  padding: 4px;
-}
-
-.explore__types::-webkit-scrollbar {
-  display: none;
-}
-
 /* Phones: every chip and action is a 44px target (the primitives are
    32 / 36px on desktop). */
 @media (max-width: 799px) {
-  .explore__types [role="radio"],
   .explore__inline-controls [role="radio"],
   .explore__degree-pills [aria-pressed] {
     min-height: 44px;
-  }
-
-  /* Tighter chips so all five types fit a 360px phone. */
-  .explore__types [role="radio"] {
-    padding-inline: 10px;
   }
 }
 

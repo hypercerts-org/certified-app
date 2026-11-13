@@ -210,6 +210,11 @@
   min-width: 0;
 }
 
+/* A date never breaks at its hyphens; a range wraps between its dates. */
+.records-row__date {
+  white-space: nowrap;
+}
+
 /* Edit and the "More actions" menu, 12px apart so the buttons' enlarged
    touch targets don't overlap. */
 .records-row__actions {
@@ -291,8 +296,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Phones: the contributors drop under the title so the title keeps its
-   width. */
+/* Phones: a row is the checkbox, the title (up to two lines) over its
+   dates, and the "More actions" menu. The thumbnail and the Edit button go
+   (Edit is in the menu there), and the contributors drop under the title,
+   so the title keeps the row's width. Folder heads lose their Edit too. */
 @media (max-width: 799px) {
   .records-row--activity {
     display: grid;
@@ -315,10 +322,29 @@
     grid-area: actions;
   }
 
+  .records-row--activity .records-row__thumb {
+    display: none;
+  }
+
+  /* The button, and the tooltip wrapper it sits in with a mouse. */
+  .records-row__actions .records-row__edit,
+  .records-row__actions > :has(> .records-row__edit) {
+    display: none;
+  }
+
+  .records-row--activity .records-row__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .records-row--activity .records-contributors {
     grid-area: contributors;
     margin-top: -8px;
-    padding: 0 0 12px 56px;
+    padding: 0 0 12px 4px;
   }
 }
 

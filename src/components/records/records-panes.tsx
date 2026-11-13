@@ -34,18 +34,19 @@ const EMPTY_SET: Set<string> = new Set()
 
 // ------------------------------ Endorsements --------------------------------
 
-const ENDORSEMENT_TABS = ["given", "received", "lists"] as const
+const ENDORSEMENT_TABS = ["received", "given", "lists"] as const
 type EndorsementsTab = (typeof ENDORSEMENT_TABS)[number]
 
 function parseTab(value: string | null): EndorsementsTab {
   return (ENDORSEMENT_TABS as readonly string[]).includes(value ?? "")
     ? (value as EndorsementsTab)
-    : "given"
+    : "received"
 }
 
 /**
- * Endorsements given and received, and the lists of endorsed accounts.
- * The open tab lives in the URL (`?kind=endorsements&tab=received`).
+ * Endorsements received and given, and the lists of endorsed accounts.
+ * Opens on Received; another tab lives in the URL
+ * (`?kind=endorsements&tab=given`), and `&tab=received` still works.
  */
 export function EndorsementsPane({
   did,
@@ -57,7 +58,7 @@ export function EndorsementsPane({
   given: GivenState
 }) {
   const titleId = useId()
-  const [tabParam, setTabParam] = useUrlParam("tab", { defaultValue: "given" })
+  const [tabParam, setTabParam] = useUrlParam("tab", { defaultValue: "received" })
   const tab = parseTab(tabParam)
   const [panelOpen, setPanelOpen] = useState(false)
   // Hidden ones included: this is where you can show them again.
@@ -94,13 +95,8 @@ export function EndorsementsPane({
       />
       <Tabs value={tab} onChange={(v) => setTabParam(v)}>
         <TabList aria-label="Endorsements">
-          {/* Counts are left out while their list loads. */}
-          <Tab
-            value="given"
-            count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
-          >
-            Given
-          </Tab>
+          {/* Received first: it is what the pane opens on. Counts are left
+              out while their list loads. */}
           <Tab
             value="received"
             count={
@@ -110,6 +106,12 @@ export function EndorsementsPane({
             }
           >
             Received
+          </Tab>
+          <Tab
+            value="given"
+            count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
+          >
+            Given
           </Tab>
           <Tab value="lists">Endorsement lists</Tab>
         </TabList>
