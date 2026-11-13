@@ -295,25 +295,17 @@
   }
 }
 
+/* The <Wordmark> (faded Certified.app, 18px letters, as in the app's top
+   bars) paints in currentColor; --color-navy flips it with the theme. */
 .lp-topbar__home {
   display: inline-flex;
   align-items: center;
+  color: var(--color-navy);
 }
 
-.lp-topbar__wordmark {
-  display: block;
-  height: 22px;
-  width: auto;
-}
-
-/* Flip the black wordmark to white in dark mode. */
-:root[data-theme="dark"] .lp-topbar__wordmark {
-  filter: invert(1);
-}
-
-/* Theme switch + sign-in / open-app button: fixed top-right at every width.
-   Persists on scroll while the wordmark above scrolls away. The container
-   owns the fixed position so its children sit side by side. */
+/* Sign-in / open-app button: fixed top-right at every width. Persists on
+   scroll while the wordmark above scrolls away. No theme switch here: the
+   theme lives in Settings, as in the app. */
 .lp-topbar__actions {
   position: fixed;
   /* Center the row's box on the topbar's 32px midline (the 64px bar's
@@ -334,20 +326,20 @@
   }
 }
 
-/* Sign-in / open-app button.
-   Styled after the guilloche-lab controls: small mono text, hairline border. */
+/* Sign-in / open-app button: small Inter text (the app's button face and
+   weight), hairline border. */
 .lp-topbar__btn {
   display: inline-flex;
   align-items: center;
-  /* Match the square theme toggle's height so the two read as siblings. */
   height: 34px;
   padding: 0 14px;
   background: var(--color-off-white);
   border: 1px solid var(--color-light-gray);
   border-radius: var(--radius);
-  font-family: var(--font-mono);
+  font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--color-mid-gray);
   text-decoration: none;
   cursor: pointer;
@@ -357,25 +349,6 @@
 .lp-topbar__btn:hover {
   color: var(--color-navy);
   border-color: var(--color-mid-gray);
-}
-
-/* Light/dark switch — a canonical <Button size="icon" variant="secondary">
-   re-skinned to the sign-in button's off-white surface and 34px square so
-   the two read as siblings. Scoped under .lp-topbar__actions so the skin
-   outranks the primitive's single-class utilities regardless of load order. */
-.lp-topbar__actions .lp-topbar__theme {
-  width: 34px;
-  height: 34px;
-  background: var(--color-off-white);
-  border: 1px solid var(--color-light-gray);
-  color: var(--color-mid-gray);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .lp-topbar__actions .lp-topbar__theme:hover {
-    color: var(--color-navy);
-    border-color: var(--color-mid-gray);
-  }
 }
 
 /* Account variant: avatar + label, tighter left padding so the
@@ -389,15 +362,10 @@
   flex: none;
 }
 
-/* Touch sizes: on phones these fixed controls are the page's only chrome,
-   so lift them to the 44px tap target. */
+/* Touch size: on phones this fixed button is the page's only control in
+   the chrome, so lift it to the 44px tap target. */
 @media (max-width: 799px) {
   .lp-topbar__btn {
-    height: 44px;
-  }
-
-  .lp-topbar__actions .lp-topbar__theme {
-    width: 44px;
     height: 44px;
   }
 }
