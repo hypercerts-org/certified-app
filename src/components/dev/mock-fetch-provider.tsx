@@ -61,6 +61,11 @@ import {
 } from "@/lib/dev/fixtures/groups"
 import { searchActorsResponse } from "@/lib/dev/fixtures/search"
 import {
+  recordsActivities,
+  recordsProjectRecord,
+  recordsProjectsConnection,
+} from "@/lib/dev/fixtures/records"
+import {
   isManagedAuthorsRequest,
   managedProjectsConnection,
   managedActivitiesConnection,
@@ -85,6 +90,13 @@ interface MockFetchProviderProps {
    *  OFF so every existing preview (profile / feed / settings / workspace)
    *  renders byte-identically. */
   managedScenario?: boolean
+  /** Records scenario (`/dev/preview/records`): the viewer's own
+   *  activities (PDS listRecords, contributors included) and projects
+   *  holding some of them, plus accepting stubs for the project writes
+   *  (getRecord / putRecord / createRecord on org.hypercerts.collection) so
+   *  "Add to project" can be clicked through. Default OFF so every other
+   *  preview renders byte-identically. */
+  recordsScenario?: boolean
 }
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const
@@ -104,7 +116,7 @@ type IndexerBody = { operationName?: string; variables?: Record<string, unknown>
  *  fetchers treat a missing root field as an empty result). */
 function indexerResponse(
   body: IndexerBody,
-  opts: { empty: boolean; managed: boolean },
+  opts: { empty: boolean; managed: boolean; records?: boolean },
 ): Response {
   const op = body.operationName
   const vars = body.variables ?? {}
@@ -213,6 +225,9 @@ function indexerResponse(
       })
     case "UserProjects":
     case "Projects":
+      if (opts.records && op === "UserProjects" && !opts.empty) {
+        return json({ data: { orgHypercertsCollection: recordsProjectsConnection() } })
+      }
       return json({
         data: {
           orgHypercertsCollection: opts.empty
@@ -271,6 +286,7 @@ function xrpcResponse(
   scenario: ProfileScenario,
   empty: boolean,
   managed: boolean,
+  records = false,
 ): Response {
   const method = url.pathname.replace(/^\/api\/xrpc\//, "").replace(/\//g, ".")
   const params = url.searchParams
@@ -291,6 +307,10 @@ function xrpcResponse(
       if (scenario === "org") return json(orgMarkerRecord())
       return json({ error: "RecordNotFound" }, 400)
     }
+    if (records && collection === "org.hypercerts.collection") {
+      const project = recordsProjectRecord(params.get("rkey") ?? "")
+      return project ? json(project) : json({ error: "RecordNotFound" }, 400)
+    }
     if (collection === "org.hypercerts.claim.activity") {
       // Hydrates the `/dev/preview/activity-edit` surface: `useActivity`
       // reads the record to edit. Any rkey resolves to the one fixture.
@@ -303,6 +323,9 @@ function xrpcResponse(
   if (method === "com.atproto.repo.listRecords") {
     if (collection === "app.certified.graph.follow") {
       return json(empty ? { records: [] } : followRecords())
+    }
+    if (records && collection === "org.hypercerts.claim.activity") {
+      return json(empty ? { records: [] } : recordsActivities())
     }
     // Memberships, activities-by-PDS, and anything else → empty list.
     return json({ records: [] })
@@ -317,6 +340,7 @@ function installMockFetch(
   profileScenario: ProfileScenario,
   scenario: MockScenario,
   managed: boolean,
+  records = false,
 ): () => void {
   if (typeof window === "undefined") return () => {}
   const realFetch = window.fetch
@@ -387,7 +411,7 @@ function installMockFetch(
         // the response body is identical by contract.
         const opParam = url.searchParams.get("op")
         if (opParam) {
-          return indexerResponse({ operationName: opParam }, { empty, managed })
+          return indexerResponse({ operationName: opParam }, { empty, managed, records })
         }
         let parsed: IndexerBody = {}
         try {
@@ -401,7 +425,7 @@ function installMockFetch(
         } catch {
           /* fall through with empty body → default op */
         }
-        return indexerResponse(parsed, { empty, managed })
+        return indexerResponse(parsed, { empty, managed, records })
       }
       if (path === "/api/resolve-did") {
         // Single resolve — the viewer's own profile (or org variant).
@@ -421,8 +445,27 @@ function installMockFetch(
         }
         return json({ results: resolveDidsResults(identities) })
       }
+      if (
+        records &&
+        (path === "/api/xrpc/com/atproto/repo/putRecord" ||
+          path === "/api/xrpc/com/atproto/repo/createRecord")
+      ) {
+        // Accept the project writes so the Records flows can be clicked
+        // through; nothing is stored.
+        let body: { repo?: string; collection?: string; rkey?: string } = {}
+        try {
+          body = JSON.parse(typeof init?.body === "string" ? init.body : "{}")
+        } catch {
+          /* empty */
+        }
+        const rkey = body.rkey ?? `preview${Date.now()}`
+        return json({
+          uri: `at://${body.repo ?? MOCK_DID}/${body.collection ?? "unknown"}/${rkey}`,
+          cid: `bafypreviewwrite${Date.now()}`,
+        })
+      }
       if (path.startsWith("/api/xrpc/")) {
-        return xrpcResponse(url, profileScenario, empty, managed)
+        return xrpcResponse(url, profileScenario, empty, managed, records)
       }
       if (path === "/api/search-actors") {
         return json(searchActorsResponse(url.searchParams.get("q") ?? ""))
@@ -470,6 +513,7 @@ export default function MockFetchProvider({
   profileScenario = "individual",
   scenario = "populated",
   managedScenario = false,
+  recordsScenario = false,
 }: MockFetchProviderProps) {
   // Install synchronously during the FIRST render (via the useState lazy
   // initializer) so the patch is in place before any child provider's
@@ -477,7 +521,7 @@ export default function MockFetchProvider({
   // fn, which is held in state and called on unmount. Storing it in
   // state (not a ref) keeps render side-effect-free per react-hooks/refs.
   const [teardown] = useState<() => void>(() =>
-    installMockFetch(profileScenario, scenario, managedScenario),
+    installMockFetch(profileScenario, scenario, managedScenario, recordsScenario),
   )
 
   // StrictMode (dev) runs every effect's cleanup and then its setup again

@@ -30,6 +30,7 @@
  *   /dev/preview/create         — cert/activity CREATE form
  *   /dev/preview/profile-edit   — profile inline-edit form
  *   /dev/preview/activity-edit  — activity EDIT form (hydrated from a fixture)
+ *   /dev/preview/records        — Records (projects as folders, ?kind= panes)
  *
  * `?fixture=empty` switches every list/connection to its empty variant.
  */
@@ -75,6 +76,7 @@ import UserProfilePage from "@/app/[actor]/page"
 import Home from "@/components/home/home"
 import SettingsPanel from "@/components/settings/settings-panel"
 import Workspace from "@/components/workspace/workspace"
+import RecordsPage from "@/components/records/records-page"
 // Real auth-gated forms (CREATE / EDIT). Their READ dependencies are all
 // mocked; the WRITE paths (createRecord / putRecord / blob upload) only
 // fire on submit, which a screenshot pass never triggers.
@@ -91,6 +93,7 @@ const SURFACES = [
   "create",
   "profile-edit",
   "activity-edit",
+  "records",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -182,6 +185,14 @@ function SurfaceBody({
           </PathParamsContext.Provider>
         </NavigationPromisesContext.Provider>
       )
+    case "records":
+      // Reads `?kind=` / `?tab=` from this preview URL. Own activities and
+      // projects come from the records fixtures (`recordsScenario`).
+      return (
+        <Suspense fallback={null}>
+          <RecordsPage />
+        </Suspense>
+      )
     case "profile-edit":
       // The inline-edit form mounted by profile-sidebar when isEditing.
       // It's fully controlled by props and fetches nothing itself (the
@@ -243,6 +254,7 @@ export default function PreviewPage() {
       profileScenario={profileScenario}
       scenario={scenario}
       managedScenario={managedScenario}
+      recordsScenario={rawSurface === "records"}
     >
       {/* SAME provider order as app/layout.tsx, re-instantiated under the
           fetch mock so the fixture session is the one this subtree reads. */}

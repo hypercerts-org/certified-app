@@ -1,17 +1,9 @@
 /* ---------- /records ----------
-   The signed-in person's record manager. Page-frame page (layout.css lifts
-   the shell's 600px cap on desktop). Below 1100px: a scrolling row of kind
-   pills above the pane. From 1100px: a sticky column of kinds beside it. */
-
-.records-page {
-  padding: 8px 0 32px;
-}
-
-@media (min-width: 800px) {
-  .records-page {
-    padding: 32px 24px 64px;
-  }
-}
+   The signed-in person's record manager. <PageContainer> frames the page
+   (its `.page-container` class lifts the shell's 600px column) and
+   <PageHeader> carries the title and the New menu. Below 1100px the
+   <SideNav> of kinds is a scrolling row of pills above the pane; from
+   1100px it is a sticky column beside it. */
 
 .records-page__loading {
   display: flex;
@@ -24,8 +16,6 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 760px;
-  margin-inline: auto;
 }
 
 @media (min-width: 1100px) {
@@ -34,110 +24,20 @@
     grid-template-columns: 220px minmax(0, 1fr);
     gap: 48px;
     align-items: start;
-    max-width: 1080px;
+  }
+}
+
+/* The pill row bleeds into the phone gutter so the last pill can scroll
+   fully into view. */
+@media (max-width: 799px) {
+  .records__nav {
+    margin-inline: -16px;
+    padding-inline: 12px;
   }
 }
 
 .records__main {
   min-width: 0;
-}
-
-/* ---------- Kinds ---------- */
-
-/* The 4px padding keeps focus rings inside the scrolling row. */
-.records-nav__list {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 4px;
-  overflow-x: auto;
-  list-style: none;
-  scrollbar-width: none;
-}
-
-.records-nav__list::-webkit-scrollbar {
-  display: none;
-}
-
-.records-nav__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-pill);
-  background: var(--bg-elevated);
-  color: var(--fg-secondary);
-  font-size: var(--text-ui);
-  font-weight: 500;
-  white-space: nowrap;
-  text-decoration: none;
-  transition:
-    background-color var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
-}
-
-.records-nav__link[aria-current="page"] {
-  border-color: var(--btn-primary-bg);
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-}
-
-.records-nav__count {
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-muted);
-}
-
-.records-nav__link[aria-current="page"] .records-nav__count {
-  color: inherit;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .records-nav__link:not([aria-current="page"]):hover {
-    border-color: var(--border-hover);
-    color: var(--fg-primary);
-  }
-}
-
-@media (min-width: 1100px) {
-  .records-nav {
-    position: sticky;
-    top: calc(var(--top-bar-total) + 32px);
-  }
-
-  .records-nav__list {
-    flex-direction: column;
-    gap: 2px;
-    padding: 0;
-    overflow: visible;
-  }
-
-  .records-nav__link {
-    display: flex;
-    min-height: 40px;
-    padding: 8px 12px;
-    border: 0;
-    border-radius: var(--radius);
-    background: transparent;
-  }
-
-  .records-nav__link[aria-current="page"] {
-    background: var(--bg-sunken);
-    color: var(--fg-primary);
-    font-weight: 600;
-  }
-
-  .records-nav__count {
-    margin-left: auto;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .records-nav__link:not([aria-current="page"]):hover {
-      background: var(--overlay-weak);
-    }
-  }
 }
 
 /* ---------- Pane ---------- */
@@ -149,51 +49,17 @@
   min-width: 0;
 }
 
+/* The section header's description wraps before the action does. */
 .records-pane__head {
-  display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px 16px;
-}
-
-.records-pane__heading {
-  min-width: 0;
-  flex: 1 1 280px;
-}
-
-.records-pane__title {
-  margin: 0;
-  color: var(--fg-primary);
-  text-wrap: balance;
-}
-
-.records-pane__desc {
-  max-width: var(--measure);
-  margin: 4px 0 0;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-muted);
-  text-wrap: pretty;
-}
-
-.records-pane__action {
-  flex-shrink: 0;
 }
 
 .records-pane__search {
   max-width: 360px;
 }
 
-.records-pane__loading {
-  display: flex;
-  justify-content: center;
-  padding: 24px 0;
-}
-
 .records-pane__note {
   margin: 0;
-  padding: 16px 0;
   font-size: var(--text-body-sm);
   color: var(--fg-muted);
 }
@@ -204,10 +70,36 @@
   padding: 8px 0 16px;
 }
 
-.records-pane__lists {
+.records-tab-count {
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-pane__tab-body {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+/* An inline text action ("Clear search", "Try again"). */
+.records-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.records-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 /* ---------- Rows ---------- */
@@ -225,6 +117,12 @@
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.records-row--skeleton {
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 4px;
 }
 
 .records-row__main {
@@ -269,7 +167,7 @@
 .records-row__text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -283,57 +181,149 @@
 }
 
 .records-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
   font-size: var(--text-caption);
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
 
-/* 12px apart so the buttons' enlarged touch targets don't overlap. */
-.records-row__actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 12px;
-}
-
-.records-person {
-  gap: 12px;
-  padding: 8px 4px;
-}
-
-.records-person__identity {
-  flex: 1;
+.records-row__meta-text {
   min-width: 0;
 }
 
-.records-person__since {
+/* 12px apart so the buttons' enlarged touch targets don't overlap. */
+.records-row__actions,
+.records-row__inline-actions {
+  display: flex;
   flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.records-row[aria-busy="true"] {
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+/* The select checkbox: a column the height of the row, so the whole strip
+   is the hit area. With a pointer it shows on hover or focus (and stays
+   while anything is selected); on touch it always shows. */
+.records-row__check {
+  display: flex;
+  flex-shrink: 0;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .records-row--activity .records-row__check > * {
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .records-row--activity:hover .records-row__check > *,
+  .records-row--activity:focus-within .records-row__check > *,
+  .records-row--activity[data-selected] .records-row__check > *,
+  .records-work[data-selecting] .records-row__check > * {
+    opacity: 1;
+  }
+}
+
+.records-row[data-selected] {
+  background: var(--overlay-weak);
+}
+
+/* ---------- Project chips ---------- */
+
+.records-chips {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  gap: 4px;
+}
+
+.records-chip {
+  overflow: hidden;
+  max-width: 160px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-chip--count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Contributor avatars ---------- */
+
+.records-contributors {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.records-contributors__item {
+  display: inline-flex;
+}
+
+.records-contributors__item + .records-contributors__item {
+  margin-left: -2px;
+}
+
+.records-contributors__more {
+  margin-left: 4px;
   font-size: var(--text-caption);
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
 }
 
-/* The date is the first thing to give way on a phone. */
+/* Phones: Edit and Delete move into the row's menu, and the contributors
+   drop under the title so the title keeps its width. */
 @media (max-width: 799px) {
-  .records-person__since {
+  .records-row__inline-actions {
     display: none;
   }
-}
 
-.records-person__action {
-  flex-shrink: 0;
-}
+  .records-row--activity {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "check main actions"
+      "check contributors actions";
+    column-gap: 8px;
+  }
 
-.records-pane__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+  .records-row--activity .records-row__check {
+    grid-area: check;
+  }
 
-.records-pane__tab-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-top: 16px;
+  .records-row--activity .records-row__main {
+    grid-area: main;
+  }
+
+  .records-row--activity .records-row__actions {
+    grid-area: actions;
+  }
+
+  .records-row--activity .records-contributors {
+    grid-area: contributors;
+    margin-top: -8px;
+    padding: 0 0 12px 56px;
+  }
 }
 
 /* ---------- Project folders ---------- */
@@ -395,6 +385,12 @@
   transform: rotate(90deg);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .records-folder__chevron {
+    transition: none;
+  }
+}
+
 .records-folder__title {
   overflow: hidden;
   font-size: var(--text-body-sm);
@@ -420,6 +416,10 @@
   color: var(--fg-muted);
 }
 
+.records-folder__foot {
+  padding-top: 8px;
+}
+
 .records-row--missing {
   min-height: 44px;
   padding: 12px 4px;
@@ -435,4 +435,218 @@
   .records-folder__body {
     padding-left: 12px;
   }
+}
+
+/* ---------- Selection bar ----------
+   Floats at the bottom of the viewport while anything is selected: sticky
+   inside the pane on desktop, fixed above the bottom tab bar on phones. */
+
+/* Centred and capped on desktop so it stays clear of the floating
+   Feedback button in the bottom-right corner. */
+.records-selection {
+  position: sticky;
+  bottom: 16px;
+  z-index: var(--z-rail-sticky);
+  align-self: center;
+  width: min(100%, 560px);
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.records-selection__count {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-selection__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 799px) {
+  .records-selection {
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
+    left: 16px;
+    z-index: var(--z-rail);
+    width: auto;
+    flex-wrap: nowrap;
+  }
+
+  /* Room under the last row so the fixed bar never covers it. */
+  .records-work[data-selecting] {
+    padding-bottom: 80px;
+  }
+}
+
+/* ---------- Pickers (Add to project, Add activities) ---------- */
+
+.records-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.records-picker__lead {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.records-picker__list {
+  max-height: min(50vh, 360px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.records-picker__item {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.records-picker__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.records-picker__name {
+  font-weight: 500;
+  color: var(--fg-primary);
+}
+
+.records-picker__meta {
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-picker__empty {
+  padding: 12px 4px;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.records-picker__new {
+  align-self: flex-start;
+}
+
+.records-picker__error {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-error);
+}
+
+/* ---------- People and endorsements ---------- */
+
+.records-person {
+  gap: 12px;
+  padding: 8px 4px;
+}
+
+.records-person__identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.records-person__since {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The date is the first thing to give way on a phone. */
+@media (max-width: 799px) {
+  .records-person__since {
+    display: none;
+  }
+}
+
+.records-person__action {
+  flex-shrink: 0;
+}
+
+/* Received endorsement rows: the issuer link, the date, then the
+   Shown / Hidden state with its Hide / Show button. */
+.records-person--endorsement {
+  flex-wrap: wrap;
+}
+
+.records-person__main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .records-person__main:hover .records-row__title {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.records-person__note {
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+  text-wrap: pretty;
+}
+
+.records-endorsement__control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.records-endorsement__state {
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+/* Phones: the state and its button take their own line under the note,
+   so the note keeps the row's width. */
+@media (max-width: 799px) {
+  .records-person--endorsement .records-endorsement__control {
+    flex-basis: 100%;
+    padding: 0 0 4px 44px;
+  }
+}
+
+.records-person[data-hidden] .records-person__main {
+  opacity: 0.6;
+}
+
+.records-person__error {
+  flex-basis: 100%;
+  margin: 0 0 8px;
+  font-size: var(--text-caption);
+  color: var(--color-error);
 }
