@@ -1,8 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { ThumbsUp, X } from "lucide-react"
 import Button from "@/components/ui/button"
+import Select from "@/components/ui/select"
+import Textarea from "@/components/ui/textarea"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 
 /** Shape of one selectable list — kept structurally compatible with
@@ -78,6 +80,7 @@ export default function EndorseReasonModal({
   onClose,
 }: EndorseReasonModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const counterId = useId()
   const [note, setNote] = useState("")
   const [selectedListRkey, setSelectedListRkey] = useState<string>("")
   const [isWriting, setIsWriting] = useState(false)
@@ -137,49 +140,43 @@ export default function EndorseReasonModal({
             </p>
           ) : null}
 
-          <label className="endorse-reason-modal__field">
-            <span className="endorse-reason-modal__prompt">
-              Briefly explain your endorsement, e.g. do you know them
-              directly?
-            </span>
-            <textarea
+          {/* The field primitives: canonical label, chrome and focus
+              (DESIGN.md §6.2, field geometry), 16px text below 800px. */}
+          <div className="endorse-reason-modal__field">
+            <Textarea
               ref={textareaRef}
-              className="endorse-reason-modal__textarea"
+              label="Why do you endorse them? (optional)"
               value={note}
               onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
               maxLength={NOTE_MAX}
               rows={4}
               disabled={isWriting}
-              placeholder="Optional — leave blank to skip"
+              aria-describedby={counterId}
             />
             <span
+              id={counterId}
               className={`endorse-reason-modal__counter${
                 remaining <= 25 ? " endorse-reason-modal__counter--warn" : ""
               }`}
             >
               {remaining} character{remaining === 1 ? "" : "s"} left
             </span>
-          </label>
+          </div>
 
           {showListPicker ? (
-            <label className="endorse-reason-modal__field">
-              <span className="endorse-reason-modal__prompt">
-                Add to a list (optional)
-              </span>
-              <select
-                className="endorse-reason-modal__select"
-                value={selectedListRkey}
-                onChange={(e) => setSelectedListRkey(e.target.value)}
-                disabled={isWriting}
-              >
-                <option value="">None</option>
-                {lists!.map((l) => (
-                  <option key={l.rkey} value={l.rkey}>
-                    {l.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select
+              label="Add to a list (optional)"
+              value={selectedListRkey}
+              onChange={(e) => setSelectedListRkey(e.target.value)}
+              disabled={isWriting}
+            >
+              <option value="">None</option>
+              {lists!.map((l) => (
+                <option key={l.rkey} value={l.rkey}>
+                  {l.title}
+                </option>
+              ))}
+            </Select>
           ) : null}
 
           {error ? (

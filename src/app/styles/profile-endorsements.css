@@ -767,9 +767,10 @@
 
 /* ==================================================================
    EndorseReasonModal — single-target reason capture opened from the
-   sidebar EndorseButton. Layout: prompt line, full-width textarea,
-   right-aligned character counter beneath, footer with Cancel +
-   Endorse.
+   sidebar EndorseButton. Layout: the note (<Textarea> primitive, with
+   its label), right-aligned character counter beneath, the list picker
+   (<Select> primitive), footer with Cancel + Endorse. The fields draw
+   their own chrome and focus; only the layout lives here.
    ================================================================== */
 
 .endorse-reason-modal__body {
@@ -782,12 +783,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.endorse-reason-modal__prompt {
-  font-size: var(--text-body-sm);
-  color: var(--fg-secondary);
-  line-height: 1.45;
 }
 
 /* Delegation header shown when the viewer endorses AS a group: names
@@ -809,35 +804,14 @@
   font-weight: 600;
 }
 
-.endorse-reason-modal__textarea {
-  width: 100%;
-  font: inherit;
-  font-size: var(--text-body-sm);
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  resize: vertical;
-  min-height: 96px;
-  line-height: 1.45;
-}
-
 /* 16px keeps iOS Safari from zooming the page on focus. */
 @media (max-width: 799px) {
-  .endorse-reason-modal__textarea,
   .endorse-people-modal__reason-textarea,
   .endorse-people-modal__search-input,
   .endorsement-lists__create-input,
   .endorsement-lists__create-textarea {
     font-size: 16px;
   }
-}
-
-.endorse-reason-modal__textarea:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: var(--shadow-ring-weak);
 }
 
 /* Right-aligned counter beneath the textarea. Small font so it
@@ -851,36 +825,6 @@
 
 .endorse-reason-modal__counter--warn {
   color: var(--color-warning);
-}
-
-.endorse-reason-modal__select {
-  width: 100%;
-  font: inherit;
-  font-size: var(--text-body-sm);
-  color: var(--fg-primary);
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  line-height: 1.45;
-  appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  padding-right: 32px;
-}
-
-.endorse-reason-modal__select:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: var(--shadow-ring-weak);
-}
-
-.endorse-reason-modal__select:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .endorse-reason-modal__error {
