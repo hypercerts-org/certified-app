@@ -61,6 +61,38 @@ describe("CustomLookMaker: a new version of a made style", () => {
     expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))[0].spec.name).toBe("Guardian")
   })
 
+  it("makes the style from the screenshots when the site refuses the CSS read", async () => {
+    const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    generate.mockResolvedValue(spec("Guardian, from screenshots"))
+    const capture = {
+      url: "https://www.theguardian.com/",
+      screenshots: [{ label: "Desktop", mediaType: "image/jpeg", data: "AAAA" }],
+      logo: null,
+      shareImage: null,
+      computed: [],
+      visibleColours: [{ hex: "#052962", share: 0.4 }],
+    }
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) =>
+        input.startsWith("/api/looks/site-capture")
+          ? new Response(JSON.stringify({ capture }), { status: 200 })
+          : new Response(JSON.stringify({ error: "The website answered with an error (403)." }), { status: 502 }),
+      ),
+    )
+    render(<CustomLookMaker />)
+    fireEvent.click(screen.getByRole("button", { name: "New version of Guardian" }))
+    fireEvent.click(screen.getByRole("button", { name: "Make new version", hidden: true }))
+
+    await waitFor(() => expect(generate).toHaveBeenCalled())
+    const args = generate.mock.calls[0][0]
+    expect(args.capture.visibleColours[0].hex).toBe("#052962")
+    expect(args.design.url).toBe("https://www.theguardian.com/")
+    expect(args.design.colours.light).toEqual([])
+    await screen.findByText(/Made version 2 of/)
+    expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))[0].id).toBe(look.id)
+  })
+
   it("can't make a new version without a key", () => {
     window.localStorage.removeItem(CLAUDE_KEY_STORAGE_KEY)
     addCustomLook(spec("Guardian"), "theguardian.com")

@@ -21,7 +21,7 @@ import {
 } from "@/lib/look/custom-looks"
 import type { CustomLookId } from "@/lib/look/looks"
 import { LookGenerationError, LOOK_MODEL_NAME, generateLookSpec, toLookError, verifyClaudeKey } from "@/lib/look/generate-look"
-import { normalizeSiteUrl } from "@/lib/look/site-design"
+import { emptyDesign, normalizeSiteUrl } from "@/lib/look/site-design"
 
 const KEYS_PAGE = "https://platform.claude.com/settings/keys"
 
@@ -124,19 +124,20 @@ function useLookRun(apiKey: string) {
     try {
       const res = await fetch(`/api/looks/site-design?url=${site}`, { signal: ctrl.signal })
       const body = (await res.json().catch(() => ({}))) as SiteDesignResponse
-      if (!res.ok || !body.design) {
-        throw new LookGenerationError("site", body.error ?? "Couldn't read that website.")
-      }
       const capture = await capturing
+      // Some sites refuse plain fetches but render for a browser: the
+      // screenshots and rendered styles are then enough on their own.
+      const design = res.ok && body.design ? body.design : capture ? emptyDesign(capture.url) : null
+      if (!design) throw new LookGenerationError("site", body.error ?? "Couldn't read that website.")
       setPhase({ kind: "designing", host, refresh })
       if (task.kind === "new") {
-        const spec = await generateLookSpec({ apiKey, design: body.design, capture, signal: ctrl.signal })
+        const spec = await generateLookSpec({ apiKey, design, capture, signal: ctrl.signal })
         const look = addCustomLook(spec, host, url.toString())
         setPhase({ kind: "done", name: look.spec.name, host })
       } else {
         const spec = await generateLookSpec({
           apiKey,
-          design: body.design,
+          design,
           capture,
           previous: task.look.spec,
           request: task.request,

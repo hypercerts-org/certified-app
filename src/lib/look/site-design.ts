@@ -56,6 +56,10 @@ export interface SiteDesign {
   hardShadows: number
   italics: number
   classNames: Counted[]
+  /** File names of decorative images: images the page marks as decoration
+   *  (alt="", aria-hidden) and CSS background images. Patterns and
+   *  textures often show only here ("guilloche_01.svg", "noise.png"). */
+  decorativeImages: Counted[]
   stylesheets: { read: number; failed: number }
 }
 
@@ -71,6 +75,8 @@ export interface HtmlParts {
   /** `style=""` attribute contents. */
   styleAttributes: string[]
   classNames: Counted[]
+  /** Names of images marked as decoration (alt="", aria-hidden). */
+  decorativeImages: Counted[]
 }
 
 // ------------------------------------------------------------------ HTML
@@ -133,6 +139,7 @@ export function parseHtml(html: string, baseUrl: string): HtmlParts {
     inlineCss: [],
     styleAttributes: [],
     classNames: [],
+    decorativeImages: [],
   }
 
   for (const m of head.matchAll(/<meta\b[^>]*>/gi)) {
@@ -186,8 +193,26 @@ export function parseHtml(html: string, baseUrl: string): HtmlParts {
     }
   }
   parts.classNames = top(classCounts, 60)
+
+  const images = new Map<string, number>()
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+    const a = attributes(m[0])
+    const decorative = a.alt === "" || a["aria-hidden"] === "true" || a.role === "presentation"
+    const name = decorative ? imageName(a.src ?? "") : null
+    if (name) images.set(name, (images.get(name) ?? 0) + 1)
+  }
+  parts.decorativeImages = top(images, 12)
   parts.googleFonts = [...new Set(parts.googleFonts)].slice(0, 8)
   return parts
+}
+
+/** An image URL's file name, without folders or query ("guilloche_01.svg");
+ *  null for data: URLs and anything that isn't a file name. */
+export function imageName(src: string): string | null {
+  const path = src.trim().replace(/^url\(\s*["']?|["']?\s*\)$/g, "")
+  if (!path || /^data:/i.test(path)) return null
+  const name = path.split(/[?#]/)[0].split("/").pop() ?? ""
+  return /^[\w.-]{1,80}\.(svg|png|jpe?g|webp|gif|avif)$/i.test(name) ? name.toLowerCase() : null
 }
 
 // ------------------------------------------------------------------- CSS
@@ -342,6 +367,7 @@ export function digestSite(
   const weights = new Map<string, number>()
   const fontFaces = new Set<string>()
   const gradients = new Map<string, number>()
+  const backgroundImages = new Map<string, number>(html.decorativeImages.map((c) => [c.value, c.count]))
   const transforms = new Map<string, number>()
   const spacings = new Map<string, number>()
   const borderStyles = new Map<string, number>()
@@ -402,6 +428,12 @@ export function digestSite(
       const v = short(value, 200)
       gradients.set(v, (gradients.get(v) ?? 0) + 1)
     }
+    if (/^(background(-image)?|mask(-image)?|-webkit-mask(-image)?)$/.test(d.property)) {
+      for (const u of value.match(/url\([^)]*\)/gi) ?? []) {
+        const name = imageName(u)
+        if (name) backgroundImages.set(name, (backgroundImages.get(name) ?? 0) + 1)
+      }
+    }
     if (/^border(-(top|right|bottom|left))?(-style)?$/.test(d.property)) {
       for (const kind of value.match(/\b(dashed|dotted|double|groove|ridge)\b/g) ?? []) {
         borderStyles.set(kind, (borderStyles.get(kind) ?? 0) + 1)
@@ -455,8 +487,16 @@ export function digestSite(
     hardShadows,
     italics,
     classNames: html.classNames,
+    decorativeImages: top(backgroundImages, 12),
     stylesheets: stats,
   }
+}
+
+/** The digest of a site whose HTML and CSS couldn't be read (a bot wall on
+ *  plain fetches): empty, so a style comes from the screenshots and
+ *  rendered styles alone. */
+export function emptyDesign(url: string): SiteDesign {
+  return digestSite(url, parseHtml("", url), [], { read: 0, failed: 0 })
 }
 
 // ------------------------------------------------------------------- URL

@@ -160,6 +160,16 @@ export function dominantColours(pixels, max = 12) {
     }))
 }
 
+/** Bot checks and block pages some sites show a headless browser instead
+ *  of the site. A capture of one would describe the check, not the site, so
+ *  it fails instead (nothing is clicked or solved). */
+const BOT_CHECK =
+  /(additional security check|security check is required|checking your browser|verify you are (a )?human|are you a robot|attention required|just a moment\.\.\.|access denied|request unsuccessful|enable javascript and cookies to continue|ddos protection by|captcha)/i
+
+export function looksLikeBotCheck(title, text) {
+  return BOT_CHECK.test(`${title}\n${String(text).slice(0, 3000)}`)
+}
+
 /** Hides the usual consent banners so they don't cover the screenshots
  *  (nothing is accepted or clicked). */
 const HIDE_OVERLAYS = `
@@ -168,6 +178,43 @@ const HIDE_OVERLAYS = `
   [id*="consent" i][role="dialog"], [aria-label*="cookie" i][role="dialog"], .qc-cmp2-container,
   #usercentrics-root, .osano-cm-window { display: none !important; }
 `
+
+/** Runs in the page: hides fixed or sticky boxes that talk about cookies or
+ *  consent (banners the selectors above don't know), modal consent dialogs,
+ *  and, once one was found, the full-screen layer that dims the page behind
+ *  it. Nothing is clicked or accepted. Run again before each screenshot,
+ *  since banners often arrive late. */
+function hideConsentBoxes() {
+  const consent = (el) => /cookie|consent|gdpr/i.test((el.textContent || "").slice(0, 4000))
+  let hidden = 0
+  const hide = (el) => {
+    el.style.setProperty("display", "none", "important")
+    hidden++
+  }
+  for (const dialog of document.querySelectorAll("dialog[open]")) {
+    if (!consent(dialog)) continue
+    dialog.close?.()
+    hide(dialog)
+  }
+  const layers = []
+  for (const el of document.querySelectorAll("body *")) {
+    const cs = getComputedStyle(el)
+    if (cs.position !== "fixed" && cs.position !== "sticky") continue
+    if (el.closest("header, nav")) continue
+    if (consent(el)) hide(el)
+    else layers.push(el)
+  }
+  if (hidden) {
+    for (const el of layers) {
+      const r = el.getBoundingClientRect()
+      const covers = r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9
+      if (covers && !(el.textContent || "").trim()) hide(el)
+    }
+    document.documentElement.style.setProperty("overflow", "auto", "important")
+    document.body.style.setProperty("overflow", "auto", "important")
+  }
+  return hidden
+}
 
 /** Runs in the page: the computed look of its real elements. */
 function readComputed(properties) {
@@ -200,10 +247,19 @@ function readComputed(properties) {
   first("footer, [role=contentinfo]", "footer")
   first("main p, article p, p", "paragraph")
   first("main a:not(nav a), a:not(nav a)", "link")
+  // Buttons with a fill or a border first (the calls to action), then the
+  // rest; up to four.
+  const drawn = (el) => {
+    const cs = getComputedStyle(el)
+    const fill = cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent"
+    return fill || parseFloat(cs.borderTopWidth) > 0 ? 1 : 0
+  }
   const buttons = Array.from(document.querySelectorAll("button, a[class*=btn i], a[class*=button i], [role=button], input[type=submit]"))
     .filter(visible)
-    .slice(0, 3)
-  for (const b of buttons) out.push(sample(b, "button"))
+    .map((el, i) => ({ el, i, drawn: drawn(el) }))
+    .sort((a, b) => b.drawn - a.drawn || a.i - b.i)
+    .slice(0, 4)
+  for (const b of buttons) out.push(sample(b.el, "button"))
   first("input:not([type=hidden]):not([type=submit]), textarea", "input")
   const cards = Array.from(document.querySelectorAll("article, section, li, div"))
     .filter((el) => {
@@ -356,9 +412,18 @@ export async function capture(url, { chromium, executablePath } = {}) {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: Math.min(10_000, left()) })
     await page.waitForLoadState("load", { timeout: Math.min(5_000, left()) }).catch(() => {})
     await page.waitForLoadState("networkidle", { timeout: Math.min(2_500, left()) }).catch(() => {})
+    const shown = await page
+      .evaluate(() => ({ title: document.title, text: document.body?.innerText ?? "" }))
+      .catch(() => ({ title: "", text: "" }))
+    if (looksLikeBotCheck(shown.title, shown.text)) {
+      throw new Error("the site showed a bot check instead of its page")
+    }
     await page.addStyleTag({ content: HIDE_OVERLAYS }).catch(() => {})
+    const tidy = () => page.evaluate(hideConsentBoxes).catch(() => 0)
+    await tidy()
     await Promise.race([page.evaluate(() => document.fonts.ready.then(() => true)), page.waitForTimeout(1_500)]).catch(() => {})
 
+    await tidy()
     const desktopTop = await page.screenshot({ type: "jpeg", quality: 72 })
     const computed = await page.evaluate(readComputed, PROPERTIES).catch(() => [])
     const logo = await captureLogo(page)
@@ -371,11 +436,13 @@ export async function capture(url, { chromium, executablePath } = {}) {
 
     await page.evaluate(() => window.scrollTo(0, window.innerHeight)).catch(() => {})
     await page.waitForTimeout(500)
+    await tidy()
     const desktopScrolled = await page.screenshot({ type: "jpeg", quality: 72 })
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.evaluate(() => window.scrollTo(0, 0)).catch(() => {})
     await page.waitForTimeout(700)
+    await tidy()
     const phone = await page.screenshot({ type: "jpeg", quality: 72 })
 
     const shareImage = shareUrl && /^https?:/.test(shareUrl) && left() > 2_000 ? await captureShareImage(context, shareUrl) : null

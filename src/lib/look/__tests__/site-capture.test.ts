@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { dominantColours, isPrivateAddress } from "../../../../scripts/site-capture/capture.mjs"
+import { dominantColours, isPrivateAddress, looksLikeBotCheck } from "../../../../scripts/site-capture/capture.mjs"
 
 describe("site capture: which addresses a page may reach", () => {
   it.each([
@@ -43,5 +43,14 @@ describe("site capture: the colours covering the screens", () => {
     expect(dominantColours(pixels([50, [255, 0, 0, 0]]))).toEqual([])
     const many = pixels(...Array.from({ length: 20 }, (_, i) => [10, [i * 12, 255 - i * 12, (i * 50) % 255, 255]] as [number, [number, number, number, number]]))
     expect(dominantColours(many, 5)).toHaveLength(5)
+  })
+})
+
+describe("site capture: bot checks", () => {
+  it("knows a bot check from the site", () => {
+    expect(looksLikeBotCheck("", "www.givewell.org - Additional security check is required")).toBe(true)
+    expect(looksLikeBotCheck("Just a moment...", "")).toBe(true)
+    expect(looksLikeBotCheck("Attention Required! | Cloudflare", "")).toBe(true)
+    expect(looksLikeBotCheck("Women Win", "We believe in a future where every girl and woman exercises their rights")).toBe(false)
   })
 })

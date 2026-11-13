@@ -45,6 +45,7 @@ const design: SiteDesign = {
   hardShadows: 0,
   italics: 0,
   classNames: [],
+  decorativeImages: [],
   stylesheets: { read: 1, failed: 0 },
 }
 

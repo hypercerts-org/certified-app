@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { digestSite, googleFontFamilies, normalizeSiteUrl, parseCss, parseHtml } from "../site-design"
+import { digestSite, googleFontFamilies, imageName, normalizeSiteUrl, parseCss, parseHtml } from "../site-design"
 
 const HTML = `<!doctype html><html><head>
 <title>Example &amp; Co</title>
@@ -13,6 +13,9 @@ const HTML = `<!doctype html><html><head>
 </head><body class="bg-zinc-950 text-white antialiased">
 <a class="rounded-xl bg-violet-600 hover:bg-violet-500 px-4" style="color: #FAFAFA">Go</a>
 <div class="md:text-lg rounded-xl grid"></div>
+<img src="/img/guilloche/guilloche_01.svg?v=2" alt="" class="absolute">
+<img src="/img/Team.JPG" alt="Our team">
+<img src="data:image/png;base64,AAAA" aria-hidden="true">
 </body></html>`
 
 describe("parseHtml", () => {
@@ -39,6 +42,26 @@ describe("parseHtml", () => {
     expect(names).not.toContain("antialiased")
     expect(names).not.toContain("grid")
     expect(parts.classNames.find((c) => c.value === "rounded-xl")?.count).toBe(2)
+  })
+})
+
+describe("decorative images", () => {
+  it("names the images a page marks as decoration, not its content pictures", () => {
+    expect(parseHtml(HTML, "https://example.com/").decorativeImages).toEqual([{ value: "guilloche_01.svg", count: 1 }])
+  })
+
+  it("adds CSS background and mask images to the digest", () => {
+    const parts = parseHtml(HTML, "https://example.com/")
+    const design = digestSite("https://example.com/", parts, [
+      `.hero{background:url("/a/noise.png") repeat, #fff} .x{mask-image:url(dots.svg)} .y{background-image:url(data:image/svg+xml,abc)}`,
+    ], { read: 1, failed: 0 })
+    expect(design.decorativeImages.map((c) => c.value).sort()).toEqual(["dots.svg", "guilloche_01.svg", "noise.png"])
+  })
+
+  it("keeps only plain file names", () => {
+    expect(imageName("url('https://cdn.example.com/x/Grain-Texture.WEBP?w=2')")).toBe("grain-texture.webp")
+    expect(imageName("/fonts/inter.woff2")).toBeNull()
+    expect(imageName("data:image/svg+xml;utf8,<svg/>")).toBeNull()
   })
 })
 
