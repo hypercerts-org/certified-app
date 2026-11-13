@@ -25,21 +25,23 @@ There are five destinations, in the same order everywhere: **Home · Feed · Exp
 
 - On the left, the brandmark (linking to Home), then the five destinations as labelled links (icon plus word). The current one gets a sunken pill and the primary text colour, with no weight change.
 - On the right, in order:
-  - the search field (`/` focuses it);
+  - the search field (`/` focuses it; not on Explore, which has its own);
   - a **New** button that opens a menu: New activity, New project, New group;
   - the **account button**: avatar, name and handle. While acting as a group it shows the group (square avatar) and "as @you".
+  - Signed out: search, Help and Sign in.
 - Profile, Settings, Help and the desktop hamburger leave the bar.
+- The bar is one row on every page. Back links and section tabs belong to the page (`PageHeader`, in-page tabs), not to a second chrome row (review round 1).
 
 **Phone (below 800px)**
 
-- The top bar shows the brandmark on Home and the page title elsewhere. Detail pages show a back chevron. On the right are a `+` (the New menu, as a bottom sheet) and the avatar (the account sheet).
-- The bottom tab bar has Home, Feed, Explore, Records and Apps, each with a 24px icon over a label and at least 44px tall. It never hides tabs.
+- The top bar shows the brandmark, a `+` (the New menu, as a bottom sheet) and the avatar (the account sheet). A page with a `PageHeader` carries its own title and back link, so the bar doesn't repeat them; only a titled page without one gets a back chevron and its title in the bar.
+- The bottom tab bar has Home, Feed, Explore, Records and Apps, each with a 24px icon over a label and at least 44px tall. It never hides tabs per account; it steps aside on create and edit forms, which pin their own action bar.
 - No hamburger, and no drawer.
 
 **Account menu** (a popover on desktop, a bottom sheet on phones), in this order:
 
 1. **Current account:** avatar, name, handle, a "Personal" or "Group · role" tag, and **View profile**.
-2. **Switch account:** your personal account first, then each group with your role, with a check on the current one. Then **New group**.
+2. **Switch account:** your personal account first, then each group with your role, with a check on the current one. Then, after a separator, **New group**.
 3. **Settings**, **Help** and **Send feedback**.
 4. **Sign out**.
 
@@ -94,8 +96,8 @@ On phones the actions wrap below the title.
 
 **`PageContainer` widths**
 
-- `narrow`: 720px, for Help and forms.
-- `default`: 1120px.
+- `narrow`: 720px, for single-column forms.
+- `default`: 1120px, the one width for the five destinations, Settings and Help (review round 1: the h1 must not jump between them).
 - `wide`: 1280px, for the profile.
 
 All use the same gutters: 16px on phones, 24px on tablets, 32px on desktop.
@@ -113,9 +115,11 @@ All use the same gutters: 16px on phones, 24px on tablets, 32px on desktop.
 
 **Icons.** Lucide, 20px in navigation, 16px inline. A navigation icon always has a label, and headings have none.
 
-**Empty states.** A 32px icon, a title, one sentence and one Verb + Noun action. "Nothing matches" names the filter and offers to clear it. Never show "0" or "none" while loading; show skeletons shaped like the content instead.
+**Empty states.** A 40px icon (what `EmptyState` draws), a title, one sentence and one Verb + Noun action. "Nothing matches" names the filter and offers to clear it. Never show "0" or "none" while loading; show skeletons shaped like the content instead.
 
-**Motion.** 150–250ms with ease-out, on transform and opacity only. Press feedback is scale 0.97. Reduced motion falls back to a fade.
+**Motion.** 150–250ms with ease-out, on transform and opacity only. Press feedback is scale 0.97, the one press scale (buttons via `.press-scale` and the phone tab bar). Reduced motion falls back to a fade.
+
+**Counts, errors, primaries (review round 1).** Counts in tabs and side navs are muted tabular numbers, never badges. A load failure is an inline block with a "Try again" button, never a warning banner. A page's content has at most one primary (black) button; the top bar's New is the global one.
 
 ## 4. Pages
 

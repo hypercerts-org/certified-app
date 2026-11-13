@@ -51,6 +51,11 @@ And the rules that this document adds on top:
 - Hover styles exist only on devices that hover (§6.1).
 - Name transition properties; never `transition: all` (§7).
 - Cards never carry shadows, including on hover (§5).
+- At most one primary (black) button in a page's content; the top bar's New is the global one (§9.1).
+- Counts (tabs, side nav, beside headings) are muted tabular numbers; red is only for notifications (§9.6).
+- A load failure is an inline block with a "Try again" button, never a warning banner (§10.1).
+- Sticky elements sit at `top: var(--chrome-top, var(--navbar-height))` (§4.1).
+- Anything a person needs to find is visible at rest; hover may only enhance (row checkboxes, edit).
 
 ---
 
@@ -247,7 +252,7 @@ Rules:
 Every page has exactly one `<h1>`.
 
 - **A page with a `<PageHeader>`:** the header's title is the page's visible `<h1>`. `PageHeader` registers itself through `navbar-context` (`useRegisterPageHeader()`, ref-counted). The chrome reads `useHasPageHeader()` and, while it is true, renders no h1 of its own, visible or visually hidden. It may still show the title as plain text (a compact phone title).
-- **A page without a `PageHeader` (fallback):** the chrome renders the page title (`usePageTitle`; `AuthGuard` sets it when signed out) as the `<h1>`: visually hidden in the desktop top bar, and the phone bar's compact title (centred next to the brandmark on top-level pages, next to the back chevron on detail pages). While a `PageHeader` is mounted the desktop bar renders no h1 and the phone bar renders nothing (top-level) or a plain `<span>` (detail).
+- **A page without a `PageHeader` (fallback):** the chrome renders the page title (`usePageTitle`; `AuthGuard` sets it when signed out) as the `<h1>`: visually hidden in the desktop top bar, and the phone bar's compact title (centred next to the brandmark on top-level pages, next to the back chevron on other pages). While a `PageHeader` is mounted the desktop bar renders no h1 and the phone bar shows its normal layout with no title (§4.2).
 - Under the h1, section headings are `<h2>` (`<SectionHeader>`, or `as="h3"` inside an h2 section); card and empty-state titles take the next level down (the level passed via `headingLevel`).
 - Visual size and DOM level are independent: pick the ramp step for the look and the element for the outline.
 
@@ -268,7 +273,11 @@ The app shell (`src/components/layout/app-shell.tsx`) is a single centered colum
 
 Profile, Settings, Help, feedback, appearance and signing out live in the **account menu** (§4.4.1), opened from the account button on desktop and the avatar on phones. Creating lives in **New** (desktop button, phone `+`).
 
-**Acting as a group** shows in three places: the account button (the group's square avatar, its name and "as @you"), the acting-as bar (`acting-as-bar.tsx`: in flow above the desktop bar; fixed under the phone bar, which then stops hiding on scroll), and the Create forms' "publishing as" line.
+**Acting as a group** shows in three places: the account button (the group's square avatar, its name and "as @you"), the acting-as bar (`acting-as-bar.tsx`: "Acting as {Group} · {Role}" with **Switch to personal account**; in flow above the desktop bar; fixed under the phone bar, which then stops hiding on scroll), and the Create forms' "publishing as" line. In navigation, menus and buttons the account kind is a **group**, never "organization".
+
+**`--chrome-top`** (tokens.css) is the bottom edge of the fixed top chrome: `--navbar-height` (64px on phones, 0 on desktop, where the top bar scrolls with the page) plus `--acting-as-height` (44px while the phone acting-as bar shows, set by `html.has-acting-as-bar`). Every sticky element uses `top: var(--chrome-top, var(--navbar-height))`. The root's `scroll-padding-top` is `--chrome-top` and its `scroll-padding-bottom` the tab bar's height + safe area + 16px, so a control reached by Tab never sits under the fixed bars (WCAG 2.4.11); pages with a sticky form action bar add its height. A phone bar hidden on scroll comes back while it holds focus.
+
+**Landmarks:** the top bars are `<header>`s (banner), the page is `<main id="main-content">` (the skip link's target; `AppShell` renders it), and the site footer follows `<main>`, so it is the contentinfo landmark on every page, including `/welcome` and the legal pages. The footer links Welcome, Help, Docs, Terms, Privacy and Imprint for everyone (signed-out visitors have no account menu), 44px tall on phones.
 
 ### 4.2 Phone top bar (< 800px)
 
@@ -276,32 +285,35 @@ Profile, Settings, Help, feedback, appearance and signing out live in the **acco
 
 | Page | Left | Center | Right |
 |---|---|---|---|
-| Top-level: the five destinations, `/settings`, `/help`, your own profile, untitled pages | Brandmark (to Home; `/welcome` signed out) | The title as the h1 when no `PageHeader` is mounted, else nothing | `+` (`<Button size="icon" aria-label="New">`, opens the New sheet) and the avatar (opens the account sheet). Signed out: "Sign in". |
-| Detail (anything else with a title) | Back chevron (`<Button size="icon" aria-label="Go back">`) | Compact title: `text-section` (Inter 600, 1rem), truncated; the h1 unless a `PageHeader` owns it | The record menu, when the page publishes one |
+| **Normal bar:** the five destinations, `/settings`, `/help`, your own profile, untitled pages, and **every page with a `PageHeader`** | Brandmark (to Home; `/welcome` signed out) | The title as the h1 when no `PageHeader` is mounted, else nothing | `+` (`<Button size="icon" aria-label="New">`, opens the New sheet) and the avatar (opens the account sheet). Signed out: "Sign in". |
+| **Fallback detail bar:** a titled page with no `PageHeader` | Back chevron (`<Button size="icon" aria-label="Go back">`) | Compact title: `text-section` (Inter 600, 1rem), truncated; the page's h1 | The record menu, when the page still publishes one (deprecated) |
 
-The avatar is square (2px) while acting as a group. Profile pages get the normal bar; the full-bleed banner starts below it.
+A page with a `PageHeader` carries its own title and back link (and a record page its own menu, beside the title), so the bar doesn't repeat them. The bar is a `<header>`, not a `<nav>`. The avatar is square (2px) while acting as a group. Profile pages get the normal bar; the full-bleed banner starts below it.
 
 ### 4.3 Bottom tab bar (< 800px)
 
-`bottom-nav.tsx`. Shows in every phone browser, installed app or not; hidden only on `/welcome` and `/embed` (`bottom-nav-visibility.ts`). Fixed bottom, `--bottom-nav-height` + `env(safe-area-inset-bottom)`; zeroed on desktop and whenever the bar is absent. Opaque `--bg-elevated` surface with a 1px `--border-subtle` top line (not translucent).
+`bottom-nav.tsx`. Shows in every phone browser, installed app or not; hidden on `/welcome`, `/embed`, and on create and edit forms (`isFormRoute`: `/create`, `/project/new`, `/groups/create`, `/groups/import`, `/settings/edit-profile`, any `…/edit`, `…/edit-profile` and `…/update/new`), which pin their own action bar to the bottom (`bottom-nav-visibility.ts`). Fixed bottom, `--bottom-nav-height` + `env(safe-area-inset-bottom)`; zeroed on desktop and whenever the bar is absent. Opaque `--bg-elevated` surface with a 1px `--border-subtle` top line (not translucent).
 
-Items: Home (`House`), Feed (`Newspaper`), Explore (`Compass`), Records (`Library`), Apps (`LayoutGrid`); signed out, Explore and Apps. Tabs are destinations only: no Create, no Feedback. Each item is a 24px icon over a one-word label, at least 44px tall. The label is Inter 0.6875rem (the `label` size) / 500 / leading 1, mixed case with no tracking. Active: `--fg-primary` and a heavier icon stroke (1.5 → 2.5), never a fill or tint pill; `aria-current="page"`. Inactive: `--fg-muted`. Press: `scale(0.95)`. Re-tapping the current tab on its own page scrolls to the top. While auth resolves the bar keeps its height with no tabs.
+Items: Home (`House`), Feed (`Newspaper`), Explore (`Compass`), Records (`FolderOpen`), Apps (`LayoutGrid`); signed out, Explore and Apps. Tabs are destinations only: no Create, no Feedback. Each item is a 24px icon over a one-word label, at least 44px tall. The label is Inter 0.6875rem (the `label` size) / 500 / leading 1, mixed case with no tracking. Active: `--fg-primary` and a heavier icon stroke (1.5 → 2.5), never a fill or tint pill; `aria-current="page"`. Inactive: `--fg-muted`. Press: `scale(0.97)`. Re-tapping the current tab on its own page scrolls to the top. While auth resolves the bar keeps its height with no tabs.
 
 ### 4.4 Desktop top bar (≥ 800px)
 
-`desktop-top-bar.tsx`, mounted in the root layout as a sibling to `<main>`. Translucent chrome with a 1px bottom line; scrolls with the page.
+`desktop-top-bar.tsx`, mounted in the root layout before `<main>`. Translucent chrome with a 1px bottom line; scrolls with the page (so `--chrome-top` is 0 on desktop). **One row** (`--top-bar-row1`, 52px), the same on every page: nothing page-specific lives in the chrome. Pages carry their own back link and title (`PageHeader`) and their own section tabs, in the page, at every width.
 
-- **Row 1** (`--top-bar-row1`). Left: the brandmark (to Home; `/welcome` signed out), then the destinations as labelled links: 20px icon + word, `text-ui` / 500, 36px tall. Current: `--bg-sunken` pill (`--radius-pill`) + `--fg-primary`; others `--fg-secondary`; hover `--overlay-weak` (hover devices only); never a weight change; `aria-current="page"`. Right: the search field (`/` or Cmd/Ctrl+K focuses it; up to 300px, shrinking to 120px so the destinations never clip), **New** (`<Button variant="primary" size="sm">` with a Plus icon; a `<Popover>` menu: New activity, New project, New group), and the **account button** (avatar, then name and @handle from 1100px; acting as a group, the group's square avatar, its name and "as @you"). Signed out: Search and "Sign in". Row 1 shows no page title; a page without a `PageHeader` gets a visually hidden h1 here (§3.6).
-- **Row 2** (`--top-bar-row2`), only where it applies: the profile tabs on `/{actor}` and the edit-profile pages; Back + the record's section tabs on record detail pages; Back on `/create` and `/project/new`. `--top-bar-total` is row 1, or row 1 + row 2 when row 2 renders.
+- Left: the brandmark (to Home; `/welcome` signed out), then the destinations as labelled links: 20px icon + word, `text-ui` / 500, 36px tall. Current: `--bg-sunken` pill (`--radius-pill`) + `--fg-primary`; others `--fg-secondary`; hover `--overlay-weak` (hover devices only); never a weight change; `aria-current="page"`.
+- Right: the search field (`/` or Cmd/Ctrl+K focuses it; up to 300px, shrinking to 120px so the destinations never clip; not shown on `/explore`, which has its own search), **New** (`<Button variant="primary" size="sm">` with a Plus icon; a `<Popover>` menu: New activity, New project, New group), and the **account button** (avatar, then name and @handle from 1100px; acting as a group, the group's square avatar, its name and "as @you"). Signed out: search, **Help** (styled like a destination link) and "Sign in".
+- No page title; a page without a `PageHeader` gets a visually hidden h1 here (§3.6).
+
+The floating **Feedback** button (`feedback-trigger.tsx`, desktop only) is a secondary control: `--bg-elevated`, a `--border-default` hairline, `--shadow-sm`, `text-ui`, with a small muted "Beta" tag. It lifts above the site footer when that scrolls into view, and is hidden on create and edit forms, whose action bar is pinned where it would float. "Send feedback" is also in the account menu.
 
 #### 4.4.1 Account menu
 
-`account-menu.tsx`. One component, two presentations: a `<Popover>` menu (`role="menu"`, 336px, arrow-key roving, Esc returns focus to the button) on desktop, and a `<BottomSheet>` titled "Account" with a close button on phones. In order:
+`account-menu.tsx`. One component, two presentations: a `<Popover>` menu (`role="menu"`, 336px; focus lands on the first item, arrow keys rove, Tab or Esc closes it and returns focus to the button) on desktop, and a `<BottomSheet>` titled "Account" with a close button on phones. In order:
 
 1. **The current account:** avatar (square for a group), name in `font-headline text-h4`, @handle, "as @you" while acting as a group, a tag ("Personal", "Group · Admin", or "Group account"), then **View profile**.
-2. **Switch account:** your personal account first, then each group (name, @handle, role tag), sorted accepted → owner/admin/member → name, with a check on the current one (`menuitemradio` + `aria-checked` in the menu, `aria-current` in the sheet). Then **New group**. Hidden when the signed-in account is itself a group.
-3. **Settings**, **Help**, **Send feedback** (opens the feedback modal), and **Appearance** (Light / Dark / System).
-4. **Sign in with another account** (it replaces the current session, and says so under the label) and **Sign out**, behind a `<ConfirmDialog>` ("Sign out of Certified?").
+2. **Switch account:** your personal account first, then each group (name, @handle, role tag), sorted accepted → owner/admin/member → name, with a check on the current one (`menuitemradio` + `aria-checked` in the menu, `aria-current` in the sheet). Then, after its own separator so it doesn't read as an account to switch to, **New group**. Hidden when the signed-in account is itself a group.
+3. **Settings**, **Help**, **Send feedback** (opens the feedback modal), and **Appearance** (Light / Dark / System; 44px buttons in the sheet).
+4. **Sign in with another account** (it replaces the current session, and says so under the label) and **Sign out**, behind a `<ConfirmDialog>` ("Sign out of Certified?") that returns focus to the account button (`returnFocusRef`).
 
 The sheet ends with the legal links (Terms, Privacy, Imprint); the desktop keeps them in the site footer. Menus opened from the top bar sit at `--z-chrome-menu`, above the floating Feedback button. Switching goes through `useSwitchActor()`, shared with the acting-as bar and Records: the viewer stays on the page unless it is personal-only.
 
@@ -323,10 +335,11 @@ Write mobile first: base styles, then `@media (min-width: 800px)`. "Below deskto
 | Context | Width | Notes |
 |---|---|---|
 | Reading column, mobile | 720px max | `.app-shell__content` |
-| Reading column, desktop | 600px | Narrower on purpose; the column is editorial, not stretched |
-| Fullbleed pages | 1280px | Profile, settings, workspace, cert detail, project detail. Opt in with `.app-shell--fullbleed`. |
-| `<PageContainer>` | `narrow` 720px / `default` 1120px / `wide` 1280px content (`--page-width-*`) | The page frame for top-level pages. Gutters sit outside the width: the shell's 16px below 800px, 24px from 800px, 32px from 1100px. Its `.page-container` class opts into the page-frame shell layout below. |
-| Page-frame pages | Edge to edge (shell) | Explore carries its own sidebar/main split. Home sets its own width: one 640px column, then a 320px account column beside the sections up to 1120px at ≥ 1100px |
+| Reading column, desktop | 600px | Pages not yet in a `<PageContainer>` (fallback). Narrower on purpose; the column is editorial, not stretched |
+| **Top-level pages** | `<PageContainer width="default">`, 1120px | **One width** for the five destinations (Home, Feed, Explore, Records, Apps), Settings and Help, so the h1's left edge doesn't jump between them. Multi-column pages (Feed's three columns, Explore's list nav, Settings' section nav) fit inside it. |
+| Forms | `<PageContainer>` at the width each form has today | Create and edit forms keep their widths (`narrow` 720px for single-column forms). |
+| Profile | `wide`, 1280px, full-bleed banner (`.app-shell--fullbleed`) | The banner runs edge to edge; the content under it uses the wide container. |
+| `<PageContainer>` | `narrow` 720px / `default` 1120px / `wide` 1280px content (`--page-width-*`) | Gutters sit outside the width: the shell's 16px below 800px, 24px from 800px, 32px from 1100px. Its `.page-container` class opts into the page-frame shell layout. |
 | Grid wrapper | 1300px | Ultra-wide screens get passive gutters |
 
 Multi-column layouts are explicit opt-ins on wide pages (the profile Overview is an intentional two-column layout). The reading column never gets a second column.
@@ -412,7 +425,7 @@ Rules:
 | State | Neutral (ghost, row, menu item, tab) | Filled (primary) | Outlined (secondary, field, elevated card) |
 |---|---|---|---|
 | Hover | bg `--overlay-weak`, text → `--fg-primary` | bg `--btn-primary-bg-hover` | border → `--border-hover` |
-| Active (press) | `.press-scale`: `scale(0.98)`, `--duration-instant` | same | same |
+| Active (press) | `.press-scale`: `scale(0.97)`, `--duration-instant` (the one press scale, also the tab bar's) | same | same |
 | Selected / pressed toggle | bg `--overlay-medium` + `--fg-primary` + weight 600 | n/a | border `--fg-primary` |
 | Focus-visible | §6.2 | same | same |
 | Disabled | `opacity: var(--opacity-disabled)`, `cursor: not-allowed`, no hover | `--bg-sunken` fill + `--fg-muted` text + `--border-default` | opacity + `--bg-sunken` fill |
@@ -448,7 +461,7 @@ The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind 
 - `<Button size="icon-sm">` is 32 visual, with its hit area expanded to 44 by a transparent `::after` (inset -6px).
 - Dismiss and close controls in Dialog, Sheet, Banner and Toast are `<Button size="icon-sm" variant="ghost" aria-label="Close">`, never hand-rolled.
 - Button heights are `min-h-control-*` (not padding): `sm` 32 / `md` 36 / `lg` 44 on desktop, every size 44 below 800px. `min-h` rather than `h`, so a wrapped label grows instead of clipping. Borders sit inside the height, so outlined and filled buttons of one size match.
-- `<SegmentedControl>` is off the scale too: `sm` 28px, `md` 32px.
+- `<SegmentedControl>` / `<ToggleGroup>` are off the scale on desktop (`sm` 28px, `md` 32px) and 44px tall below 800px (icon-only segments 44px wide).
 
 ### 6.4 Touch
 
@@ -487,8 +500,8 @@ The scale is `--control-h-compact` / `-sm` / `-md` / `-lg`, exposed as Tailwind 
 
 | Element | Enter | Exit |
 |---|---|---|
-| Button / card press | `scale(0.98)`, instant, `--ease-out` | eases back on release |
-| Bottom-nav press | `scale(0.95)` | eases back |
+| Button / card press | `scale(0.97)`, instant, `--ease-out` | eases back on release |
+| Bottom-nav press | `scale(0.97)` (the same press scale) | eases back |
 | Popover | `--duration-fast` (150ms) fade + `scale(0.97)` + 2px drop from the trigger side, via `@starting-style` | unmount |
 | Tooltip | appears after a 300ms hover delay, no fade | unmount |
 | Toast | `--duration-fast` (150ms) fade + 8px rise | 150ms fade + 8px drop, then removed on `transitionend` |
@@ -544,7 +557,7 @@ All icons are Lucide React (`lucide-react`). The cert icon is Tabler, wrapped by
 
 | Variant | Rest | Hover | Use |
 |---|---|---|---|
-| `primary` | `--btn-primary-bg` / `--btn-primary-fg` | `--btn-primary-bg-hover` | Main action, form submit. One per view. |
+| `primary` | `--btn-primary-bg` / `--btn-primary-fg` | `--btn-primary-bg-hover` | Main action, form submit. **At most one in a page's content**; the top bar's New is the global one, so a page's own "New" menu is `secondary`. |
 | `secondary` | transparent, `--fg-primary`, `--border-default` | border `--border-hover` | Cancel, secondary actions |
 | `ghost` | transparent, `--fg-muted` | `--overlay-weak`, `--fg-primary` | Toolbar actions |
 | `destructive` | `--color-error-bg`, `--color-error`, `--color-error-border` | slightly stronger tint | Delete, remove |
@@ -606,24 +619,28 @@ The feed card is the `row` pattern: no fill, a hairline below, generous vertical
 
 ### 9.5 Avatar and IdentityRow
 
-- `<Avatar size="xs|sm|md|lg|xl|2xl" shape="circle|square">` (20 / 32 / 48 / 64 / 96 / 240). A circle for people; `shape="square"` (the 2px `--radius`) for groups, so an organisation never reads as a person (the account button and menu use it). Fallback: `--color-surface-container-high` with initials from `getInitials()`.
+- `<Avatar size="xs|sm|md|lg|xl|2xl" shape="circle|square">` (20 / 32 / 48 / 64 / 96 / 240). A circle for people; `shape="square"` (the 2px `--radius`) for groups, so an organisation never reads as a person (the account button and menu use it). Fallback: `--color-surface-container-high` with initials from `getInitials()` (`xs` at `text-micro`). An image avatar shows the same initials until its image has loaded, never a blank circle. The initials are `aria-hidden` (the name is always written beside the avatar); with an `alt` the avatar is an `img` named by it.
 - `<IdentityRow did handle displayName avatarUrl href size loading>` is the one avatar + name + `@handle` byline. Primary line resolves `displayName` → `handle` → truncated DID, `font-medium` `--fg-primary`; the handle line shows only when a real handle exists, `--fg-muted`. Both truncate.
 
 ### 9.6 Tabs, SegmentedControl, Pagination
 
-- `<Tabs>` / `<TabList>` / `<Tab>` / `<TabPanel>`: ARIA tablist with arrow keys. Active tab: `--fg-primary`, weight 600, underline indicator. Wrap panels in `<TabPanelTransition>` for the desktop slide.
-- `<SegmentedControl>`: active segment on `--bg-elevated` with `--shadow-sm`.
+- `<Tabs>` / `<TabList>` / `<Tab>` / `<TabPanel>`: ARIA tablist with arrow keys. Active tab: `--fg-primary`, weight 600, underline indicator. Wrap panels in `<TabPanelTransition>` for the desktop slide. `<Tab count>` renders the count as a **muted tabular number** after the label (weight 400, `--fg-muted`; read as "Funding 3"). Counts are never badges: the red `Badge variant="count"` is for notifications only. Use the prop rather than a hand-made span.
+- Section tabs belong to the page, under its header, at every width (the profile's and record pages' strips); the chrome never carries them.
+- `<SegmentedControl>`: active segment on `--bg-elevated` with `--shadow-sm`; 44px tall below 800px.
 - `<Pagination>`: Previous / "Page X of Y" / Next with `tabular-nums` and `aria-live="polite"`; returns `null` for one page. It is the explicit pager; `<LoadMoreSentinel>` is the infinite-scroll alternative. Pick one per surface.
 
 ### 9.7 Popover, Tooltip
 
 - `<Popover>` + `<PopoverTrigger>` / `<PopoverContent>` / `<PopoverItem>` for menus: `role="menu"`, click-outside, Esc, focus restore. Floating level (§5). A menu that also has a phone presentation renders the same content in a `<BottomSheet>` below 800px (the New and account menus, §4.4.1).
+- Keyboard (in-flow and `portal` alike): opening moves focus to the first item (a portaled menu waits until it is positioned), arrows / Home / End rove, Tab or Esc closes it and returns focus to the trigger, and choosing an item returns focus to the trigger rather than `<body>`. A ref on the trigger child is kept, so a menu item that opens a dialog can pass the trigger as the dialog's `returnFocusRef`.
 - A panel holding form controls (filters) is a `role="dialog"` wrapper with `useClickOutsideClose`. Those are the only two popover patterns.
 - `<Tooltip>` is suppressed on touch; never put essential information only in a tooltip.
 
 ### 9.8 Dialogs
 
 All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, wrapping Tab trap, focus restore, backdrop-click close (suppressible with `disableBackdropClose`), `autoFocusFirst` / `initialFocusRef`. It is `position: fixed` in the top layer; don't make it relative.
+
+- **Focus:** put focus on a field with `initialFocusRef` (+ `autoFocusFirst`), never React's `autoFocus` inside a dialog. The dialog records its opener during its first render; on close focus goes to `returnFocusRef` if given, else that opener, else what had focus when it opened, skipping anything no longer in the page. A dialog opened from a menu item passes the menu's trigger as `returnFocusRef` (the item unmounts with the menu). `ConfirmDialog`, `DeleteRecordDialog`, `FormDialog` and `ResponsiveDialog` forward it.
 
 - Surface `--bg-overlay`, `--border-default`, `var(--radius)`, `--shadow-modal`, over `--scrim`. Max width 420px; full width below 800px.
 - Slots: `<AppDialogHeader title onClose? disabled?>` (always left-aligned; the old `center` prop is removed), `<AppDialogBody>` (the padded region; the dialog owns scroll). The consumer provides the footer. Omit `onClose` for `alertdialog` flows whose only exits are footer buttons.
@@ -640,7 +657,7 @@ All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, 
 
 ### 9.9 Bottom sheet and drawer
 
-- `<BottomSheet>` (< 800px): fixed bottom, `--bg-elevated`, `var(--radius)` top corners, serif `text-h4` title with a close button, drag handle, swipe down to dismiss, swipe up to expand, max 70vh, safe-area padding, over `--scrim`. Used for the account sheet, the New sheet and mobile feedback. Never stack one sheet on another.
+- `<BottomSheet>` (< 800px): fixed bottom, `--bg-elevated`, `var(--radius)` top corners, serif `text-h4` title with a close button, drag handle, swipe down to dismiss, swipe up to expand, max 70vh, safe-area padding, over `--scrim`. Used for the account sheet, the New sheet and mobile feedback. Never stack one sheet on another. It is modal: on open focus moves in (`initialFocusRef`, else the first control that isn't a text field so the keyboard doesn't jump up, else the sheet; `autoFocusFirst` takes the very first control), the page behind is `inert` (`useInertOutside`), Tab is trapped, and on close focus returns to the trigger (or `returnFocusRef`).
 - `<Drawer>`: side panel (83.33% wide, max 320px), `--bg-elevated`, `--shadow-lg`, over `--scrim`. The app has no drawer navigation (the hamburger and site drawer were removed); the primitive stays for future side panels.
 - Both lock body scroll via `use-body-scroll-lock` (which toggles `html` overflow; `scrollbar-gutter: stable` keeps the page from shifting).
 
@@ -649,7 +666,7 @@ All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, 
 | Primitive | When |
 |---|---|
 | `<ErrorMessage title message onRetry>` | A section failed to load. Replaces the section in place. Error-tinted surface with an icon. |
-| `<Banner variant>` | Page-level degraded or info state that persists while it is true. |
+| `<Banner variant>` | Page-level degraded or info state that persists while it is true. Never for a load failure (that is the inline block with "Try again", §10.1). |
 | `toast` | Transient result of an action. Errors that need action stay until dismissed; others auto-dismiss. |
 | `<EditBanner>` | Sticky edit-mode chrome (Cancel + Save) on profile, project and cert edit pages. |
 | `<ErrorBoundaryFallback>` | A render crash. |
@@ -661,7 +678,7 @@ All modals are `<AppDialog>`: native `<dialog>` + `showModal()`, per-layer Esc, 
 
 ### 9.12 Distinctive patterns
 
-- **Phone top bar:** two layouts (§4.2), top-level and detail, switching instantly on route change.
+- **Phone top bar:** the normal bar (brandmark, `+`, avatar) almost everywhere, and a fallback back-chevron bar only on titled pages without a `PageHeader` (§4.2), switching instantly on route change.
 - **Account menu:** a sheet on phones, a popover menu on desktop (§4.4.1); reflects the acting identity (`useOrg().activeOrg`).
 - **Feed with evaluator filter:** tapping the active "For you" tab opens an inline filter panel; a non-default filter renames the tab "Custom" and the unfiltered state shows a caution banner.
 - **Profile hero:** full-bleed banner below the top bar, with the avatar overlapping downward.
@@ -672,11 +689,11 @@ One page pattern for every top-level page (November 2026 redesign). Build a page
 
 | Primitive | Use it for | Contract |
 |---|---|---|
-| `<PageContainer width as>` | The outer frame of every top-level page. `narrow` (720) for Help and forms, `default` (1120), `wide` (1280) for the profile. | Centred, max width plus gutters (§4.6). Top space: 8px on phones (24px below the navbar in all), 32px from 800px; bottom 32px / 64px. Lifts the shell's 600px desktop column via `.page-container`. |
+| `<PageContainer width as>` | The outer frame of every top-level page. `default` (1120) for the five destinations, Settings and Help (one width, §4.6); `narrow` (720) for single-column forms; `wide` (1280) for the profile. | Centred, max width plus gutters (§4.6). Top space: 8px on phones (24px below the navbar in all), 32px from 800px; bottom 32px / 64px. Lifts the shell's 600px desktop column via `.page-container`. |
 | `<PageHeader title description actions back visual titleId>` | The first thing in the container, once per page. | Optional back link (chevron + parent name, `text-ui` muted) above; optional `visual` (avatar or icon) beside the title; title as the `<h1>` in `font-headline text-h2`, balanced; one line of description in `body-sm` `--fg-secondary`, capped at the measure; actions on the right with at most one `primary`, wrapping under the title below 800px. 16px below the block. Registers with the chrome (§3.6). |
 | `<SectionHeader title description action as id>` | The heading of a section inside a page. | Title in `text-section`, `<h2>` by default (`as="h3"` when nested); optional muted description; `action` on the right. No outer margin: the section puts its content 12px below (`gap-3`). Pass `id` and point the section's `aria-labelledby` at it. |
 | `<SeeAllLink href label>` | The one "See all" link, usually a `SectionHeader` action. | `text-ui` 500 `--fg-secondary` + 14px chevron-right; 32px tall with a 44px hit area. Name the destination ("All apps") when "See all" is unclear. |
-| `<SideNav aria-label items sticky>` | Navigation between the sections of one page: Records kinds, Settings sections, Help contents, Explore lists. | Below 1100px a horizontally scrolling row of 44px pills (4px row padding so focus rings aren't clipped, no visible scrollbar; current = filled `--btn-primary-*` pill). From 1100px a vertical list of 40px rows (current = `--bg-sunken` + `--fg-primary` + 600), sticky below the top bar unless `sticky={false}`. Items: `label`, optional 16px `icon`, optional right-aligned tabular `count`, `href` (link, `aria-current="page"`) or `onClick` (button, `aria-current="true"`). |
+| `<SideNav aria-label items sticky>` | Navigation between the sections of one page: Records kinds, Settings sections, Help contents, Explore lists. | Below 1100px a horizontally scrolling row of 44px pills (4px row padding so focus rings aren't clipped, no visible scrollbar; current = `--bg-sunken` pill with a `--border-hover` edge, `--fg-primary`, weight 600 — like the top bar, never a black fill). From 1100px a vertical list of 40px rows (current = `--bg-sunken` + `--fg-primary` + 600), sticky 32px below `--chrome-top` unless `sticky={false}`. Items: `label`, optional 16px `icon`, optional right-aligned muted tabular `count`, `href` (link, `aria-current="page"`) or `onClick` (button, `aria-current="true"`). |
 | `<StatRow items aria-label>` | A quiet row of counts (Home's records, endorsements, followers), in place of boxed count tiles. | Each stat is its value (Inter 600 at the h4 size, tabular) over a `text-ui` muted label; stats separated by 32px, wrapping on phones. Linked stats underline on hover (hover devices only). `loading` shows a skeleton, never "0"; a loaded `null` shows an en dash. |
 
 ---
@@ -693,7 +710,7 @@ One page pattern for every top-level page (November 2026 redesign). Build a page
 | Empty because the owner has made nothing yet | `<EmptyState variant="rich">` **with an action** (the CTA that creates the first item) |
 | Empty on someone else's profile | `<EmptyState>` with plain text, no action |
 | Empty because of a filter or search | `<EmptyState variant="inline">` plus a "Clear filters" action |
-| A section failed to load | `<ErrorMessage onRetry>` in place of the section |
+| A page or section failed to load | **One pattern:** an inline block in place of the content — `<EmptyState>`-style (title, one sentence) or `<ErrorMessage>` — with a "Try again" button. Never a warning `<Banner>` for a load error. |
 | Page-level degraded or info state | `<Banner>` |
 | An action failed or succeeded | `toast` |
 
@@ -788,13 +805,13 @@ Prompts name tokens, not hex. Look values up in `tokens.css` if you need them.
 
 **Feed card:** "`<Card variant="row">`: no fill, hairline `--border-subtle` below, 20px vertical padding (24 on desktop). `<IdentityRow size="sm">` byline. Optional 1:1 image at `var(--radius)`. Title serif 700 at `text-h4` (1.25rem on desktop), `--fg-primary`, balanced. Description `body-sm` `--fg-secondary`, three-line clamp, `text-wrap: pretty`. Meta row `text-ui` `--fg-muted` with dot separators, `tabular-nums` timestamps, compact badges."
 
-**Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.98)`. Disabled: sunken fill, muted text, default border. `loading` shows a spinner and sets `aria-busy`."
+**Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.97)`. Disabled: sunken fill, muted text, default border. `loading` shows a spinner and sets `aria-busy`."
 
 **Settings card:** "`<Card variant="elevated">`, 24px padding. Eyebrow above in `text-label` `--fg-muted`. Fields with sentence-case `text-ui` 500 labels in `--fg-secondary`, 16px between fields."
 
 **Confirm dialog:** "`<ConfirmDialog>`: serif `text-h4` title naming the action, one sentence of consequence in `body-sm` `--fg-secondary`, `secondary` Cancel and a primary (or destructive) button that repeats the verb. Actions stack below 800px."
 
-**Bottom nav:** "Fixed bottom, `--bottom-nav-height` + safe area, opaque `--bg-elevated` with a `--border-subtle` top line. Five items, each a 24px icon over a short 0.6875rem / 500 mixed-case label, at least 44px tall. Active: `--fg-primary` and a heavier stroke (2.5). Inactive: `--fg-muted`. Press `scale(0.95)`."
+**Bottom nav:** "Fixed bottom, `--bottom-nav-height` + safe area, opaque `--bg-elevated` with a `--border-subtle` top line. Five items, each a 24px icon over a short 0.6875rem / 500 mixed-case label, at least 44px tall. Active: `--fg-primary` and a heavier stroke (2.5). Inactive: `--fg-muted`. Press `scale(0.97)`."
 
 **Skeleton:** "`<Skeleton>` shapes mirroring the feed card: 1:1 box, 70% title line, full and 45% description lines, a row of small pills. Fill `--overlay-weak`, the shared `animate-skeleton` recipe."
 
@@ -842,7 +859,7 @@ Names only; values are in `tokens.css`.
 | Foregrounds | `--fg-primary`, `--fg-secondary`, `--fg-muted` |
 | Borders | `--border-subtle`, `--border-default`, `--border-hover`, `--border-control` |
 | Overlays | `--overlay-weak`, `--overlay-medium`, `--scrim`, `--scrim-pill`, `--scrim-pill-hover`, `--scrim-pill-ghost`, `--media-letterbox` |
-| Chrome | `--navbar-bg`, `--navbar-border`, `--sheet-bg`, `--navbar-height`, `--bottom-nav-height`, `--top-bar-row1`, `--top-bar-row2`, `--top-bar-total` |
+| Chrome | `--navbar-bg`, `--navbar-border`, `--sheet-bg`, `--navbar-height`, `--acting-as-height`, `--chrome-top`, `--bottom-nav-height`, `--top-bar-row1`, `--top-bar-total` |
 | Shadows | `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-modal`; rings and hairlines `--shadow-ring-{weak,medium,focus,error,elevated}`, `--shadow-outline-subtle`, `--shadow-inset-{subtle,hover,indicator}`, `--shadow-navbar-hairline` |
 | Utility (invariant) | `--mask-opaque` (mask-image fill), `--mix-shade` (`color-mix()` darkening partner), `--confetti-0`..`--confetti-9` (group-result confetti) |
 | Focus and selection | `--focus-ring`, `--selection-bg`, `--selection-fg` |
@@ -859,6 +876,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-13, redesign review fixes: shell, primitives, accessibility.** **`--chrome-top`** (navbar height + the phone acting-as bar) is the one top edge for sticky elements and the root's `scroll-padding-top`; `scroll-padding-bottom` clears the tab bar, so focused controls never land under fixed chrome (§4.1). The **desktop top bar is one row**: row 2 (record tabs + Back, Back on create pages) and `--top-bar-row2` are gone, pages carry their own back link and tabs; signed-out visitors get Help there; the search steps aside on `/explore` (§4.4). On phones a page with a `PageHeader` gets the **normal bar**, with no second back link or title (§4.2). The tab bar is hidden on create and edit forms (§4.3), and Records uses `FolderOpen`. The site footer sits after `<main>` (contentinfo), links Help for everyone and has 44px links on phones. **Counts are neutral:** `<Tab count>` is a muted tabular number, never the red badge (§9.6). **One error pattern:** a load failure is an inline block with "Try again", never a warning banner (§10.1). **One primary per page:** at most one black button in a page's content; the top bar's New is the global one (§9.1). **Page widths:** the five destinations, Settings and Help share `PageContainer width="default"` (1120); forms keep theirs (§4.6). SideNav's current item on phones is a sunken pill (not black). Card hover is a border change only. SegmentedControl / ToggleGroup and `Input size="sm"` are 44px / 16px below 800px. Avatar initials are `aria-hidden` and show while an image loads. **Focus:** portaled menus focus their first item once positioned, close on Tab and return focus to the trigger; bottom sheets move focus in, make the page inert and trap Tab; dialogs record their opener at first render and take `returnFocusRef`; use `initialFocusRef`, not `autoFocus`, in dialogs (§9.7–§9.9). Acting as a group reads "Acting as {Group} · {Role}" with "Switch to personal account"; "New group" sits after its own separator in the account menu. The floating Feedback button is secondary and hidden on forms. **Docs reconciled with code:** the one press scale is `0.97` (buttons via `.press-scale` and the tab bar; the plan's value); the EmptyState icon is 40px (the code's value, now also in the plan).
 - **2026-11-13, redesign foundation: the shell and navigation.** One set of five destinations everywhere: Home, Feed, Explore, Records, Apps (signed out: Explore, Apps). **Desktop top bar** row 1 is now brandmark + the destinations (20px icon + word; current = sunken pill, no weight change) on the left, and search (`/` focuses it), a primary **New** button (New activity / project / group) and the **account button** on the right; the page title, the Profile / Settings / Help links and the dormant hamburger + site drawer are gone; a page without a `PageHeader` keeps a visually hidden h1 there (§3.6). **Phone top bar**: brandmark, `+` and avatar on top-level pages; back chevron + compact `text-section` title on detail pages; no hamburger, no profile overlay (profile pages get the normal bar and the banner starts below it). **Bottom tab bar** in every phone browser (not only the installed app) with the five destinations; Create and Feedback left it. **Account menu** (§4.4.1), one component as a desktop popover and a phone sheet: current account + View profile, Switch account (personal, groups with handle and role, New group), Settings, Help, Send feedback, Appearance, Sign in with another account (labelled as replacing the session) and Sign out behind a confirmation. Groups draw square avatars (`<Avatar shape="square">`). The floating Feedback button is desktop-only. New `--z-chrome-menu` layer for the top-bar menus. Records stays in the navigation while acting as a group and explains itself. `/endorsements` → `/records?kind=endorsements` and `/workspace` → `/records`. `/create` and `/project/new` show a Sign in button when signed out. The Help graph pop-up no longer blanks the page title or widens the Help page.
 - **2026-11-13, redesign foundation: page primitives and type roles.** New `text-section` type role (Inter 600, 1rem, leading 1.4; `--text-section`) for section headings inside a page. Serif `font-headline` + `text-h1`..`text-h4` is kept for titles of named things: page titles, account names, record titles, empty-state and dialog titles. New primitives (§9.13): `<PageContainer>` (narrow 720 / default 1120 / wide 1280, `--page-width-*`, joins the page-frame shell layout via `.page-container`), `<PageHeader>` (the page's visible `<h1>`), `<SectionHeader>` + `<SeeAllLink>`, `<SideNav>` (the Records kinds nav, generalised) and `<StatRow>` (replaces boxed count tiles). The chrome h1 contract (§3.6): `PageHeader` registers through `navbar-context` (`useRegisterPageHeader`), and the chrome reads `useHasPageHeader()` to skip its own h1; the chrome starts reading it in the shell step that follows, so pages adopt `PageHeader` after that. Rule 6 (§0 and `CLAUDE.md`) allows `text-section` for section headings.
 - **2026-11-13, Records.** New `/records` page (Records, a `Library` icon, between Apps and Profile in the top bar; personal account only) where the signed-in person manages what their account holds. Kinds: Projects / Activities (each project a folder of its activities, plus "Without a project"; search, open, edit, delete with the type-the-name dialog), Endorsements (tabs: Given, with "Endorse someone" and remove; Received, with show/hide; Lists, the endorsement lists), Following (unfollow, kept as a Follow row until you leave), Followers (read-only, follow back) and Lists (lists of activities, projects and accounts). Kinds sit in a sticky column from 1100px and a scrolling row of pills below; `?kind=` picks the pane.
