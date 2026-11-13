@@ -462,7 +462,7 @@
 }
 
 .viz__profile-link:hover {
-  background: var(--bg-elevated);
+  background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
   border-color: var(--border-hover);
 }
 

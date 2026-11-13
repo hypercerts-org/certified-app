@@ -20,10 +20,10 @@ export interface AppTileProps {
 }
 
 const tileBase =
-  // One object surface (DESIGN.md §9.4 elevated): no shadow, a border that
-  // darkens on hover (hover devices only, via Tailwind's
-  // hoverOnlyWhenSupported) and a small press.
-  "group flex h-full w-full flex-col rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] text-inherit no-underline " +
+  // One object surface (DESIGN.md §9.4 elevated): no shadow; on hover the
+  // shared tint (`.hover-tint`) and a darker border (hover devices only)
+  // and a small press.
+  "hover-tint group flex h-full w-full flex-col rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] text-inherit no-underline " +
   "transition-[border-color,transform] duration-fast ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 " +
   "select-none [-webkit-touch-callout:none] hover:border-[var(--border-hover)] " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"

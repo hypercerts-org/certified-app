@@ -251,7 +251,7 @@ function ProjectRow({ project, owner }: { project: CollectionRecord; owner?: Own
   return (
     <li>
       {href ? (
-        <Link href={href} className="profile-row profile-row--link">
+        <Link href={href} className="profile-row profile-row--link hover-tint hover-tint--bleed">
           {body}
         </Link>
       ) : (

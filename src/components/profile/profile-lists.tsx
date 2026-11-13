@@ -265,7 +265,7 @@ function ListSection({
             <li key={list.rkey}>
               <button
                 type="button"
-                className="profile-lists__row"
+                className="profile-lists__row hover-tint hover-tint--bleed"
                 onClick={() => onOpen(list.rkey)}
               >
                 <span className="profile-lists__row-body">

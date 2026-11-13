@@ -940,7 +940,7 @@ function EvaluatorRow({
           {checkbox}
           <button
             type="button"
-            className="feed-evaluators__person"
+            className="feed-evaluators__person hover-tint"
             aria-expanded={expanded}
             aria-controls={previewId}
             aria-label={`Profile preview: ${label}`}
@@ -971,7 +971,7 @@ function EvaluatorRow({
         <PopoverTrigger>
           <button
             type="button"
-            className="feed-evaluators__person"
+            className="feed-evaluators__person hover-tint"
             aria-label={`Show profile preview: ${label}`}
           >
             {person}

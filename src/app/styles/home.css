@@ -254,12 +254,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .home-row:hover .home-row__title {
-    text-decoration: underline;
-  }
-}
-
 /* A group row: the link to the group's profile, then (Workspace → Groups
    only) its Switch button. Home's rows are the link alone, which takes
    the full width. */
@@ -547,14 +541,6 @@
 a.home-feed__card-body:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  a.home-feed__card-body:hover .home-feed__card-title {
-    text-decoration: underline;
-    text-decoration-color: var(--fg-muted);
-    text-underline-offset: 3px;
-  }
 }
 
 /* The full width of the text column at every width, so the image and the

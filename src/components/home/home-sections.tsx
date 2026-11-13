@@ -264,7 +264,7 @@ export function HomeRecords({
               <ul className="home-rows">
                 {latest.map((r) => (
                   <li key={r.uri}>
-                    <Link href={r.href} className="home-row">
+                    <Link href={r.href} className="home-row hover-tint hover-tint--bleed">
                       <RowThumb
                         className="home-row__thumb"
                         src={r.imageUrl}
@@ -465,7 +465,7 @@ export function GroupRows({
         const { name, handle } = groupRowLabel(g)
         return (
           <li key={g.groupDid} className="home-group">
-            <Link href={groupProfileHref(g)} className="home-row home-group__link">
+            <Link href={groupProfileHref(g)} className="home-row home-group__link hover-tint hover-tint--bleed">
               <Avatar
                 size="sm"
                 shape="square"

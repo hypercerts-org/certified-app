@@ -198,7 +198,7 @@ export function ProfileActivityRow({
     <li>
       <Link
         href={activityDetailHref(authorDid, uriToRkey(activity.uri))}
-        className="profile-row profile-row--link"
+        className="profile-row profile-row--link hover-tint hover-tint--bleed"
       >
         <RowThumb
           src={imageUrl}

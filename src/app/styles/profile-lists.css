@@ -59,11 +59,10 @@
   cursor: pointer;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .profile-lists__row:hover .profile-lists__row-title {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
+/* A full-width button: with the hover tint's 8px bleed it must also grow
+   by the bleed on both sides, or it would only shift left. */
+.profile-lists__row.hover-tint--bleed {
+  width: calc(100% + 16px);
 }
 
 .profile-lists__row:focus-visible {

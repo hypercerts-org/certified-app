@@ -1947,12 +1947,6 @@ button.desktop-top-bar__nav-link {
   align-self: start;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .profile-overview__endorse-link:hover .profile-overview__endorse-name {
-    text-decoration: underline;
-  }
-}
-
 .profile-overview__endorse-meta {
   display: flex;
   align-items: baseline;

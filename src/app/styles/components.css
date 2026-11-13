@@ -1,3 +1,24 @@
+/* ========== Hover: one treatment for what you click as a whole ==========
+   Rows, linked stats, cards and tiles take a faint tint, layered over their
+   own background; a bordered one also darkens its border (its own rule).
+   Text links in running text underline instead. `--bleed` (rows with no
+   side padding) lets the tint reach 8px past the text so nothing moves.
+   Pointer devices only, like every hover in the app (DESIGN.md §6). */
+.hover-tint {
+  border-radius: var(--radius);
+}
+
+.hover-tint--bleed {
+  margin-inline: -8px;
+  padding-inline: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-tint:hover {
+    background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
+  }
+}
+
 /* ========== Empty State ========== */
 /* The base `.empty-state` rule is kept as a styling/override hook: the
    EmptyState primitive still emits the bare `empty-state` class on its
@@ -1892,7 +1913,7 @@
 
 .onboarding-banner:hover {
   border-color: var(--border-hover);
-  background: var(--bg-raised);
+  background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
 }
 
 .onboarding-banner:focus-visible {

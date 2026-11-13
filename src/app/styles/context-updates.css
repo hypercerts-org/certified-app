@@ -269,7 +269,7 @@
 .context-updates__attachment--file .context-updates__attachment-link:hover,
 .context-updates__attachment--uri .context-updates__attachment-link:hover {
   border-color: var(--border-hover);
-  background: var(--bg-sunken);
+  background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
 }
 
 .context-updates__attachment-icon {

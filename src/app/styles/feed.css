@@ -254,13 +254,6 @@
   outline-offset: 2px;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .feed-evaluators__person:hover .feed-evaluators__name {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-}
-
 /* Disclosure chevron on the sheet's evaluator rows. */
 .feed-evaluators__chevron {
   flex-shrink: 0;

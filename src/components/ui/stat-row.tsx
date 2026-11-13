@@ -31,7 +31,8 @@ const labelCls = "text-ui text-[var(--fg-muted)]";
 /**
  * A quiet inline row of statistics (DESIGN.md §9.13), in place of boxed
  * count tiles: each stat is its value over a muted label, separated by
- * space and wrapping on phones. Linked stats underline on hover (hover
+ * space and wrapping on phones. A linked stat takes the shared hover tint
+ * (`.hover-tint`, padded so the numbers don't move) on hover (hover
  * devices only). While `loading`, the value is a skeleton.
  */
 export default function StatRow({
@@ -61,7 +62,7 @@ export default function StatRow({
             {item.href ? (
               <Link
                 href={item.href}
-                className={`${statInner} rounded no-underline underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2`}
+                className={`${statInner} hover-tint -mx-2 -my-1.5 px-2 py-1.5 no-underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2`}
               >
                 {content}
               </Link>

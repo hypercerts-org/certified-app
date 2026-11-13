@@ -8,7 +8,7 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 /** The classes the shared subject row wears in the profile's people
  *  lists (endorsements, followers, following). Styles: profile.css. */
 export const PERSON_ROW_CLASSES: EndorsementSubjectRowClasses = {
-  main: "profile-person__main",
+  main: "profile-person__main hover-tint hover-tint--bleed",
   meta: "profile-person__text",
   name: "profile-person__name",
   handle: "profile-person__handle",

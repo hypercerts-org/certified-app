@@ -863,10 +863,12 @@
   outline-offset: 2px;
 }
 
-/* Cards never carry shadows (DESIGN.md §5); hover is the border only. */
+/* Cards never carry shadows (DESIGN.md §5); hover is the shared tint and
+   a darker border (DESIGN.md §6.1). */
 @media (hover: hover) and (pointer: fine) {
   .explore-user-card:hover {
     border-color: var(--border-hover);
+    background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
   }
 }
 
@@ -951,7 +953,7 @@
    (of any width) doesn't leave the row stuck in its hover state. */
 @media (hover: hover) {
   .funding-receipt-row:hover {
-    background: var(--bg-sunken);
+    background: var(--overlay-weak);
   }
 }
 
@@ -1367,7 +1369,8 @@
 @media (hover: hover) and (pointer: fine) {
   .explore-project-card:hover {
     border-color: var(--border-hover);
-  }
+      background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
+}
 }
 
 .explore-project-card__image-wrap {

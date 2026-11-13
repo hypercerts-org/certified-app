@@ -179,7 +179,7 @@ function GroupRow({ group }: { group: UserGroup }) {
     <li className="profile-row profile-group-row">
       <Link
         href={profileUrl(group.handle)}
-        className="profile-group-row__main"
+        className="profile-group-row__main hover-tint hover-tint--bleed"
         title={`${name} (@${group.handle})`}
       >
         <Avatar

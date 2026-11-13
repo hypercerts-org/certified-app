@@ -751,7 +751,7 @@ function PreviewCard({
 
   if (href) {
     return (
-      <Link href={href} className="home-feed__card-body">
+      <Link href={href} className="home-feed__card-body hover-tint hover-tint--bleed">
         {body}
       </Link>
     )

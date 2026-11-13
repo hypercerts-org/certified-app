@@ -26,7 +26,7 @@ export function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProp
     // An endorsement: a centerpiece every style can redraw (looks.css),
     // its parts marked with data-part.
     <li className="profile-overview__endorse-item" data-centerpiece="endorsement">
-      <Link href={href} className="profile-overview__endorse-link">
+      <Link href={href} className="profile-overview__endorse-link hover-tint hover-tint--bleed">
         <Avatar
           size="sm"
           src={avatarSrc}

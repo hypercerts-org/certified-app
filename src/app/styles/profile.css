@@ -780,14 +780,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
 .profile-row--link {
   color: inherit;
   text-decoration: none;
-  transition: background-color var(--transition-fast);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-row--link:hover .profile-row__title {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
 }
 
 .profile-row--link:focus-visible {
@@ -986,13 +978,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   text-decoration: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  a.profile-person__main:hover .profile-person__name {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-}
-
 .profile-person__main:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
@@ -1068,13 +1053,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   min-width: 0;
   color: inherit;
   text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-group-row__main:hover .profile-row__title {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
 }
 
 .profile-group-row__main:focus-visible {
