@@ -63,9 +63,11 @@ export function identityTag(identity: Pick<AccountIdentity, "kind" | "role">): s
 }
 
 /**
- * Everything the account button and menu need: the personal identity, the
- * identity being acted as (the personal one, or the active group), the
- * groups to switch between (sorted), and the current profile link.
+ * The signed-in account and who it acts as: `personal` (the person signed
+ * in; what the account button and menu show) and `current` (the personal
+ * account, or the group whose workspace is open; what the Workspace menu
+ * shows), the groups to switch between (sorted), and the personal
+ * profile link.
  */
 export function useAccountState() {
   const { did } = useAuth()
@@ -97,8 +99,10 @@ export function useAccountState() {
       }
     : personal
 
+  // The account menu's "View profile": always your own profile, whichever
+  // workspace is open.
   const profileHref = ownProfileUrl({
-    activeGroup: activeOrg,
+    activeGroup: null,
     personalHandle: handle,
     personalDid: did,
   })
@@ -178,10 +182,12 @@ export interface AccountMenuContentProps {
 }
 
 /**
- * The account menu (DESIGN.md §4): the current account and its profile,
- * Settings, Help and feedback, then signing in as someone else or out.
- * Switching between your personal account and your groups is the
- * Workspace menu's job (`workspace-menu.tsx`); Appearance is in Settings.
+ * The account menu (DESIGN.md §4): the signed-in account and its profile,
+ * Settings, Help and feedback, then signing in as someone else or out. It
+ * is always about you, the person signed in, whichever workspace is open:
+ * switching between your account and your groups (and a group's settings)
+ * is the Workspace menu's job (`workspace-menu.tsx`). Appearance is in
+ * Settings.
  *
  * One component for both presentations: inside `<PopoverContent>`
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
@@ -189,7 +195,7 @@ export interface AccountMenuContentProps {
 export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountMenuContentProps) {
   const { openSignInAnotherAccount } = useAuth()
   const { openFeedback } = useFeedback()
-  const { personal, current, activeOrg, profileHref } = useAccountState()
+  const { personal, profileHref } = useAccountState()
   const isMenu = mode === "menu"
   const item = menuItemProps(mode)
   const row = (extra?: string) => menuRowClass(mode, extra)
@@ -201,25 +207,20 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
 
   return (
     <div className="flex flex-col">
-      {/* 1. The current account. Presentational inside the menu: the
-          trigger's label already names it, and View profile is the first
-          item. */}
+      {/* 1. You, the signed-in account. Presentational inside the menu:
+          the trigger's label already names it, and View profile is the
+          first item. */}
       <div className="flex items-start gap-3 px-3 pb-2 pt-2" role={isMenu ? "none" : undefined}>
-        <IdentityAvatar identity={current} size="md" />
+        <IdentityAvatar identity={personal} size="md" />
         <div className="min-w-0 flex-1">
           <p className="m-0 truncate font-headline text-h4 text-[var(--fg-primary)]">
-            {current.name}
+            {personal.name}
           </p>
-          {current.handle ? (
-            <p className="m-0 truncate text-ui text-[var(--fg-muted)]">@{current.handle}</p>
-          ) : null}
-          {activeOrg && personal.handle ? (
-            <p className="m-0 truncate text-ui text-[var(--fg-muted)]">
-              as @{personal.handle}
-            </p>
+          {personal.handle ? (
+            <p className="m-0 truncate text-ui text-[var(--fg-muted)]">@{personal.handle}</p>
           ) : null}
           <div className="mt-1.5">
-            <Badge variant="tag">{identityTag(current)}</Badge>
+            <Badge variant="tag">{identityTag(personal)}</Badge>
           </div>
         </div>
       </div>
@@ -319,30 +320,21 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
 // Triggers
 // ---------------------------------------------------------------------------
 
-/** The account button's second line: the handle, or "as @you" while
- *  acting as a group. */
-function accountButtonSub(current: AccountIdentity, personalHandle: string | null): string | null {
-  if (current.kind === "group") return personalHandle ? `as @${personalHandle}` : null
-  return current.handle ? `@${current.handle}` : null
-}
-
 /** Accessible name for the account button: the visible text first. */
-function accountButtonLabel(current: AccountIdentity, personalHandle: string | null): string {
-  const sub = accountButtonSub(current, personalHandle)
-  return `${current.name}${sub ? `, ${sub}` : ""}, account menu`
+function accountButtonLabel(personal: AccountIdentity): string {
+  return `${personal.name}${personal.handle ? `, @${personal.handle}` : ""}, account menu`
 }
 
 /**
- * Desktop account button (≥800px): avatar, name and handle (the text from
- * 1100px). Acting as a group it shows the group, its avatar square, and
- * "as @you". Opens the account menu in a popover.
+ * Desktop account button (≥800px): your avatar, name and handle (the text
+ * from 1100px), whichever workspace is open: the Workspace button names
+ * the group you act as. Opens the account menu in a popover.
  */
 export function DesktopAccountMenu() {
   const [open, setOpen] = useRouteScopedOpen()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const signOut = useSignOutConfirm(triggerRef)
-  const { current, personal } = useAccountState()
-  const sub = accountButtonSub(current, personal.handle)
+  const { personal } = useAccountState()
 
   return (
     <>
@@ -352,13 +344,15 @@ export function DesktopAccountMenu() {
             ref={triggerRef}
             type="button"
             className="account-button"
-            aria-label={accountButtonLabel(current, personal.handle)}
+            aria-label={accountButtonLabel(personal)}
             data-tour="account-menu"
           >
-            <IdentityAvatar identity={current} size="sm" />
+            <IdentityAvatar identity={personal} size="sm" />
             <span className="account-button__meta" aria-hidden>
-              <span className="account-button__name">{current.name}</span>
-              {sub ? <span className="account-button__sub">{sub}</span> : null}
+              <span className="account-button__name">{personal.name}</span>
+              {personal.handle ? (
+                <span className="account-button__sub">@{personal.handle}</span>
+              ) : null}
             </span>
             <ChevronDown size={14} strokeWidth={1.75} aria-hidden className="account-button__chevron" />
           </button>
@@ -386,15 +380,15 @@ export function DesktopAccountMenu() {
 }
 
 /**
- * Phone account button (below 800px): the acting account's avatar (square
- * for a group) in the top bar. Opens the account menu as a bottom sheet
+ * Phone account button (below 800px): your avatar in the top bar,
+ * whichever workspace is open. Opens the account menu as a bottom sheet
  * titled "Account".
  */
 export function PhoneAccountMenu() {
   const [open, setOpen] = useRouteScopedOpen()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const signOut = useSignOutConfirm(triggerRef)
-  const { current, personal } = useAccountState()
+  const { personal } = useAccountState()
 
   return (
     <>
@@ -402,13 +396,13 @@ export function PhoneAccountMenu() {
         ref={triggerRef}
         variant="ghost"
         size="icon"
-        aria-label={accountButtonLabel(current, personal.handle)}
+        aria-label={accountButtonLabel(personal)}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
         data-tour="account-menu"
       >
-        <IdentityAvatar identity={current} size="sm" />
+        <IdentityAvatar identity={personal} size="sm" />
       </Button>
       <BottomSheet
         open={open}

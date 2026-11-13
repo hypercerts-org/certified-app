@@ -49,13 +49,13 @@ describe("BottomNav", () => {
     const labels = Array.from(nav.querySelectorAll(".bottom-nav__item .bottom-nav__label"))
     expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
     expect(screen.getByRole("button", { name: "Network" })).toHaveAttribute("aria-current", "page")
-    expect(screen.getByRole("link", { name: "Workspace, Maya Lin" })).not.toHaveAttribute("aria-current")
+    expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
   })
 
   it("keeps Workspace current on the Records sections", () => {
     state.pathname = "/records"
     render(<BottomNav />)
-    expect(screen.getByRole("link", { name: "Workspace, Maya Lin" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
   })
 
   it("carries no actions: no Create, no Feedback; Network is the one button (it opens its pages)", () => {

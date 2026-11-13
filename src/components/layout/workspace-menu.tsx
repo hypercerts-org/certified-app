@@ -3,7 +3,7 @@
 import { useId, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Check, ChevronDown, Plus } from "lucide-react"
+import { Check, ChevronDown, FolderOpen, Plus, Settings } from "lucide-react"
 import Badge from "@/components/ui/badge"
 import BottomSheet from "@/components/ui/bottom-sheet"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -38,16 +38,28 @@ function groupIdentity(group: Group): AccountIdentity {
   }
 }
 
+/** What your own workspace is called. Not your name: the account button,
+ *  right beside it, already shows that. */
+export const PERSONAL_WORKSPACE_LABEL = "Personal workspace"
+
 /**
  * The workspace being worked in (the personal account, or the group acted
- * as), the ones to switch between, and whether there is a choice at all:
- * an account that belongs to no group, or is itself a group, has one
- * workspace, so Workspace stays a plain link.
+ * as), what to call it, the ones to switch between, and whether there is a
+ * choice at all: an account that belongs to no group, or is itself a
+ * group, has one workspace, so Workspace stays a plain link.
  */
 export function useWorkspaceState() {
   const { current, personal, groups, activeOrg, selfGroup } = useAccountState()
   const canSwitch = !selfGroup && groups.length > 0
-  return { current, personal, groups, activeOrg, canSwitch }
+  // A group's workspace is named after the group; yours is "Personal
+  // workspace"; an account that is itself a group just has "Workspace".
+  const isGroup = current.kind === "group"
+  const label = isGroup
+    ? current.name
+    : current.kind === "personal"
+      ? PERSONAL_WORKSPACE_LABEL
+      : "Workspace"
+  return { current, personal, groups, activeOrg, canSwitch, isGroup, label }
 }
 
 /**
@@ -123,7 +135,9 @@ function WorkspaceRow({
 
 /**
  * The menu (desktop popover) or sheet (phones) content: your personal
- * workspace, then each group's, the current one checked; then New group.
+ * workspace, then each group's, the current one checked; then, in a
+ * group's workspace, its settings (the account menu's Settings are always
+ * yours); then New group.
  */
 export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose: () => void }) {
   const { personal, groups, activeOrg } = useWorkspaceState()
@@ -144,7 +158,7 @@ export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose:
         </Heading>
         <WorkspaceRow
           mode={mode}
-          identity={personal}
+          identity={{ ...personal, name: PERSONAL_WORKSPACE_LABEL }}
           current={!activeOrg}
           onSelect={() => select(null)}
         />
@@ -163,6 +177,17 @@ export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose:
       ) : (
         <hr className={MENU_SEPARATOR_CLASS} />
       )}
+      {activeOrg ? (
+        <Link
+          href={`/groups/${encodeURIComponent(activeOrg.groupDid)}/settings`}
+          {...menuItemProps(mode)}
+          className={menuRowClass(mode)}
+          onClick={onClose}
+        >
+          <Settings size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+          Group settings
+        </Link>
+      ) : null}
       <Link href="/groups/create" {...menuItemProps(mode)} className={menuRowClass(mode)} onClick={onClose}>
         <Plus size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
         New group
@@ -171,31 +196,47 @@ export function WorkspaceMenuItems({ mode, onClose }: { mode: MenuMode; onClose:
   )
 }
 
-/** The trigger's text: the workspace's avatar and name. The accessible
- *  name starts with the visible name and says what it is. */
-function WorkspaceLabel({ identity }: { identity: AccountIdentity }) {
+/** The trigger's content: the workspace icon (yours) or the group's square
+ *  avatar, then its name. The visual hides at 800–1099px, like the other
+ *  destinations' icons. */
+function WorkspaceLabel({
+  identity,
+  isGroup,
+  label,
+}: {
+  identity: AccountIdentity
+  isGroup: boolean
+  label: string
+}) {
   return (
     <>
-      <IdentityAvatar identity={identity} size="xs" />
-      <span className="desktop-top-bar__workspace-name">{identity.name}</span>
+      <span className="desktop-top-bar__workspace-visual" aria-hidden>
+        {isGroup ? (
+          <IdentityAvatar identity={identity} size="xs" />
+        ) : (
+          <FolderOpen size={20} strokeWidth={1.5} />
+        )}
+      </span>
+      <span className="desktop-top-bar__workspace-name">{label}</span>
     </>
   )
 }
 
 /**
- * The desktop top bar's Workspace (DESIGN.md §4): it names the workspace
- * you are in (your personal account, or the group you act as) with its
- * avatar, and opens a menu to switch between your workspaces, like
- * Network opens its pages. With only one workspace it is a plain link to
- * the Overview. Current on the Overview and the Records sections; the
- * tour's `nav-workspace` anchor.
+ * The desktop top bar's Workspace (DESIGN.md §4): a fixed-width pill
+ * naming the workspace you are in ("Personal workspace", or the group you
+ * act as, with its avatar), that opens a menu to switch between your
+ * workspaces, like Network opens its pages. With only one workspace it is
+ * a plain link to the Overview. Current on the Overview and the Records
+ * sections; the tour's `nav-workspace` anchor.
  */
 export function DesktopWorkspaceMenu() {
   const [open, setOpen] = useRouteScopedOpen()
   const pathname = usePathname()
-  const { current, canSwitch } = useWorkspaceState()
+  const { current, canSwitch, isGroup, label: text } = useWorkspaceState()
   const active = isDestinationActive(WORKSPACE, pathname)
-  const label = `${current.name}, workspace`
+  // The visible text first; a group's name says it's a workspace.
+  const label = isGroup ? `${text}, workspace` : text
 
   if (!canSwitch) {
     return (
@@ -206,7 +247,7 @@ export function DesktopWorkspaceMenu() {
         aria-label={label}
         data-tour="nav-workspace"
       >
-        <WorkspaceLabel identity={current} />
+        <WorkspaceLabel identity={current} isGroup={isGroup} label={text} />
       </Link>
     )
   }
@@ -221,7 +262,7 @@ export function DesktopWorkspaceMenu() {
           aria-label={`${label}, switch workspace`}
           data-tour="nav-workspace"
         >
-          <WorkspaceLabel identity={current} />
+          <WorkspaceLabel identity={current} isGroup={isGroup} label={text} />
           <span className="desktop-top-bar__chevron" aria-hidden>
             <ChevronDown size={14} strokeWidth={1.75} />
           </span>
@@ -244,28 +285,33 @@ export function DesktopWorkspaceMenu() {
 }
 
 /**
- * The phone tab bar's Workspace tab: the workspace's avatar over
- * "Workspace", so the tab shows whose workspace it is. With more than one
- * workspace it opens them as a bottom sheet (like the Network tab);
- * otherwise it goes straight to the Overview.
+ * The phone tab bar's Workspace tab: the workspace icon over "Workspace"
+ * in your own workspace, the group's square avatar in a group's, so the
+ * tab shows when you act as a group. With more than one workspace it
+ * opens them as a bottom sheet (like the Network tab); otherwise it goes
+ * straight to the Overview.
  */
 export function PhoneWorkspaceTab() {
   const [open, setOpen] = useRouteScopedOpen()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
-  const { current, canSwitch } = useWorkspaceState()
+  const { current, canSwitch, isGroup, label: text } = useWorkspaceState()
   const active = isDestinationActive(WORKSPACE, pathname)
   const className = `bottom-nav__item${active ? " bottom-nav__item--active" : ""}`
   const icon = (
     <span className="bottom-nav__icon-wrap">
-      <span className="bottom-nav__avatar">
-        <IdentityAvatar identity={current} size="xs" />
-      </span>
+      {isGroup ? (
+        <span className="bottom-nav__avatar">
+          <IdentityAvatar identity={current} size="xs" />
+        </span>
+      ) : (
+        <FolderOpen size={24} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
+      )}
     </span>
   )
   // The visible label stays "Workspace" (one word per tab), so it leads
-  // the accessible name, followed by whose workspace it is.
-  const label = `Workspace, ${current.name}`
+  // the accessible name; in a group's workspace, the group follows.
+  const label = isGroup ? `Workspace, ${text}` : undefined
 
   if (!canSwitch) {
     return (
@@ -297,7 +343,7 @@ export function PhoneWorkspaceTab() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-current={active ? "page" : undefined}
-        aria-label={`${label}, switch workspace`}
+        aria-label={label}
         onClick={() => setOpen(true)}
         data-tour="nav-workspace"
       >

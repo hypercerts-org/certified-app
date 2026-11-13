@@ -59,6 +59,7 @@ vi.mock("@/hooks/use-org-profile", () => ({
 
 import {
   AccountMenuContent,
+  DesktopAccountMenu,
   PhoneAccountMenu,
   identityTag,
 } from "../account-menu"
@@ -156,15 +157,18 @@ describe("AccountMenuContent", () => {
     expect(screen.queryByRole("menuitem", { name: "New group" })).toBeNull()
   })
 
-  it("shows the group, its role tag and who is acting while acting as a group", () => {
+  it("stays on you while a group's workspace is open", () => {
     state.activeOrg = EARTH
     renderMenu("menu")
-    expect(screen.getByText("Group · Admin")).toBeInTheDocument()
-    expect(screen.getByText("as @maya.certified.app")).toBeInTheDocument()
+    expect(screen.getByText("Maya Lin")).toBeInTheDocument()
+    expect(screen.getByText("Personal")).toBeInTheDocument()
+    expect(screen.queryByText("Ma Earth")).toBeNull()
+    expect(screen.queryByText(/^as @/)).toBeNull()
     expect(screen.getByRole("menuitem", { name: "View profile" })).toHaveAttribute(
       "href",
-      "/earth.example",
+      "/maya.certified.app",
     )
+    expect(screen.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/settings")
   })
 
   it("tags an account that is itself a group", () => {
@@ -209,6 +213,19 @@ describe("AccountMenuContent", () => {
     expect(screen.queryByRole("button", { name: "Dark" })).toBeNull()
     const legal = screen.getByRole("navigation", { name: "Legal" })
     expect(within(legal).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
+  })
+})
+
+describe("DesktopAccountMenu", () => {
+  it("shows you, not the group, while a group's workspace is open", () => {
+    state.activeOrg = EARTH
+    render(<DesktopAccountMenu />)
+    const trigger = screen.getByRole("button", {
+      name: "Maya Lin, @maya.certified.app, account menu",
+    })
+    expect(trigger).toHaveTextContent("Maya Lin")
+    expect(trigger).toHaveTextContent("@maya.certified.app")
+    expect(trigger).not.toHaveTextContent("Ma Earth")
   })
 })
 

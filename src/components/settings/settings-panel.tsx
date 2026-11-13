@@ -108,25 +108,24 @@ const SECTION_ALIASES: Readonly<Record<string, SectionKey>> = {
 
 /**
  * Settings for the signed-in account. Renders on `/settings` (and the
- * legacy own-profile `?tab=settings`). While acting as a group, or when the
- * signed-in account is itself a group, it shows the group's settings.
+ * legacy own-profile `?tab=settings`), reached from the account menu, so
+ * it is always yours, whichever workspace is open. A group's settings are
+ * at `/groups/{did}/settings` (the Workspace menu's "Group settings").
+ * When the signed-in account is itself a group, its settings are the
+ * group's.
  */
 export default function SettingsPanel() {
   const { did, pdsUrl } = useAuth()
   const { handle, email } = useSession()
-  const { activeOrg, selfGroup } = useOrg()
+  const { selfGroup } = useOrg()
   const [active, select] = useHashSection(SECTION_KEYS, SECTION_ALIASES)
 
-  // Acting as a group, OR the logged-in account is itself a group (you
-  // promoted your own account) — either way show the group settings. For a
-  // self-owned group the resolved handle can lag (DID-doc resolution), so
-  // prefer the session handle (it's our own account) — otherwise settings and
-  // the delete-confirm would show the raw DID instead of @handle.
-  const settingsOrg =
-    activeOrg ??
-    (selfGroup
-      ? { ...selfGroup, handle: handle || selfGroup.handle }
-      : null)
+  // The logged-in account is itself a group (you promoted your own
+  // account): its settings are the group settings. The resolved handle can
+  // lag (DID-doc resolution), so prefer the session handle (it's our own
+  // account) — otherwise settings and the delete-confirm would show the raw
+  // DID instead of @handle.
+  const settingsOrg = selfGroup ? { ...selfGroup, handle: handle || selfGroup.handle } : null
   if (settingsOrg) {
     return <OrgSettings groupDid={settingsOrg.groupDid} org={settingsOrg} />
   }

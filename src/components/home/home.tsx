@@ -62,7 +62,7 @@ export default function Home() {
     }
   }, [authLoading, isAuthenticated, router])
 
-  // Same target as the account menu's "View profile": the acting-as
+  // The profile of the account the Overview is about: the acting-as
   // identity's handle URL, falling back to its DID so links work before
   // the handle has resolved.
   const profileBase = ownProfileUrl({

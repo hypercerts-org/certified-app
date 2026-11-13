@@ -91,26 +91,28 @@ beforeEach(() => {
 
 function openDesktopMenu() {
   render(<DesktopWorkspaceMenu />)
-  fireEvent.click(screen.getByRole("button", { name: /workspace, switch workspace/ }))
+  fireEvent.click(screen.getByRole("button", { name: /switch workspace/ }))
 }
 
 describe("DesktopWorkspaceMenu", () => {
-  it("names the workspace you are in and lists yours, the current one checked", () => {
+  it("calls yours Personal workspace (not your name, which the account button shows)", () => {
     state.pathname = "/home"
     render(<DesktopWorkspaceMenu />)
-    const trigger = screen.getByRole("button", { name: "Maya Lin, workspace, switch workspace" })
-    expect(trigger).toHaveTextContent("Maya Lin")
+    const trigger = screen.getByRole("button", { name: "Personal workspace, switch workspace" })
+    expect(trigger).toHaveTextContent("Personal workspace")
+    expect(trigger).not.toHaveTextContent("Maya Lin")
     expect(trigger).toHaveAttribute("data-current")
     fireEvent.click(trigger)
 
     const rows = screen.getAllByRole("menuitemradio")
-    // You first, then the groups you run before the ones you're in.
+    // Yours first, then the groups you run before the ones you're in.
     expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringContaining("Maya Lin"),
+      expect.stringContaining("Personal workspace"),
       expect.stringContaining("River Trust"),
       expect.stringContaining("Ma Earth"),
     ])
     expect(rows[0]).toHaveAttribute("aria-checked", "true")
+    expect(within(rows[0]).getByText("@maya.certified.app")).toBeInTheDocument()
     expect(within(rows[2]).getByText("@earth.example")).toBeInTheDocument()
     expect(within(rows[2]).getByText("Admin")).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "New group" })).toHaveAttribute(
@@ -135,7 +137,7 @@ describe("DesktopWorkspaceMenu", () => {
 
   it("picking the current workspace from outside just opens it", () => {
     openDesktopMenu()
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Personal workspace/ }))
     expect(state.switchOrg).not.toHaveBeenCalled()
     expect(state.push).toHaveBeenCalledWith("/home")
   })
@@ -144,7 +146,7 @@ describe("DesktopWorkspaceMenu", () => {
     state.pathname = "/records"
     state.activeOrg = EARTH
     openDesktopMenu()
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Personal workspace/ }))
     expect(state.switchOrg).toHaveBeenCalledWith(null)
     expect(state.push).not.toHaveBeenCalled()
   })
@@ -157,12 +159,21 @@ describe("DesktopWorkspaceMenu", () => {
     expect(state.push).toHaveBeenCalledWith("/home")
   })
 
-  it("shows the group while acting as it", () => {
+  it("shows the group while acting as it, with its settings in the menu", () => {
     state.activeOrg = EARTH
     render(<DesktopWorkspaceMenu />)
-    expect(
-      screen.getByRole("button", { name: "Ma Earth, workspace, switch workspace" }),
-    ).toHaveTextContent("Ma Earth")
+    const trigger = screen.getByRole("button", { name: "Ma Earth, workspace, switch workspace" })
+    expect(trigger).toHaveTextContent("Ma Earth")
+    fireEvent.click(trigger)
+    expect(screen.getByRole("menuitem", { name: "Group settings" })).toHaveAttribute(
+      "href",
+      "/groups/did%3Aplc%3Aearth/settings",
+    )
+  })
+
+  it("has no Group settings in your personal workspace (yours are in the account menu)", () => {
+    openDesktopMenu()
+    expect(screen.queryByRole("menuitem", { name: "Group settings" })).toBeNull()
   })
 
   it("is a plain link to the Overview with only one workspace", () => {
@@ -170,7 +181,7 @@ describe("DesktopWorkspaceMenu", () => {
     state.pathname = "/home"
     render(<DesktopWorkspaceMenu />)
     expect(screen.queryByRole("button")).toBeNull()
-    const link = screen.getByRole("link", { name: "Maya Lin, workspace" })
+    const link = screen.getByRole("link", { name: "Personal workspace" })
     expect(link).toHaveAttribute("href", "/home")
     expect(link).toHaveAttribute("aria-current", "page")
   })
@@ -180,19 +191,25 @@ describe("DesktopWorkspaceMenu", () => {
     state.groups = []
     render(<DesktopWorkspaceMenu />)
     expect(screen.queryByRole("button")).toBeNull()
-    expect(screen.getByRole("link", { name: /workspace/ })).toHaveAttribute("href", "/home")
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("href", "/home")
   })
 })
 
 describe("PhoneWorkspaceTab", () => {
+  it("names the group in a group's workspace", () => {
+    state.activeOrg = EARTH
+    render(<PhoneWorkspaceTab />)
+    expect(screen.getByRole("button", { name: "Workspace, Ma Earth" })).toBeInTheDocument()
+  })
+
   it("opens your workspaces as a sheet, and switches from it", () => {
     render(<PhoneWorkspaceTab />)
-    const tab = screen.getByRole("button", { name: "Workspace, Maya Lin, switch workspace" })
+    const tab = screen.getByRole("button", { name: "Workspace" })
     expect(tab).not.toHaveAttribute("aria-current")
     fireEvent.click(tab)
     const sheet = screen.getByRole("dialog", { name: "Workspace" })
     const earth = within(sheet).getByRole("button", { name: /Ma Earth/ })
-    expect(within(sheet).getByRole("button", { name: /Maya Lin/ })).toHaveAttribute(
+    expect(within(sheet).getByRole("button", { name: /Personal workspace/ })).toHaveAttribute(
       "aria-current",
       "true",
     )
@@ -205,7 +222,7 @@ describe("PhoneWorkspaceTab", () => {
     state.groups = []
     state.pathname = "/records"
     render(<PhoneWorkspaceTab />)
-    const tab = screen.getByRole("link", { name: "Workspace, Maya Lin" })
+    const tab = screen.getByRole("link", { name: "Workspace" })
     expect(tab).toHaveAttribute("href", "/home")
     expect(tab).toHaveAttribute("aria-current", "page")
   })

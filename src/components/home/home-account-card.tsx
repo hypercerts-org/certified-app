@@ -181,7 +181,11 @@ export function HomeIdSection({
                   {canEditHandle ? (
                     <Tooltip label="Change handle" className="home-id__edit">
                       <Button
-                        href="/settings#account"
+                        href={
+                          isGroup
+                            ? `/groups/${encodeURIComponent(did)}/settings#account`
+                            : "/settings#account"
+                        }
                         variant="ghost"
                         size="icon-sm"
                         aria-label="Change handle in Settings"

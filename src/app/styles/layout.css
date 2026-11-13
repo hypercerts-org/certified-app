@@ -326,10 +326,9 @@
   color: var(--fg-primary);
 }
 
-/* Workspace tab: the avatar of the workspace you are in (round for you,
-   square for a group) instead of an icon. Current: a ring in the tab's
-   colour, following the avatar's shape, in place of the heavier stroke
-   the icons get. */
+/* Workspace tab in a group's workspace: the group's square avatar instead
+   of the icon. Current: a ring in the tab's colour, following the
+   avatar's shape, in place of the heavier stroke the icons get. */
 .bottom-nav__avatar {
   display: inline-flex;
 }
@@ -1333,23 +1332,37 @@ button.desktop-top-bar__nav-link {
   color: var(--fg-muted);
 }
 
-/* Workspace: the avatar and name of the workspace you are in, in place of
-   an icon and "Workspace". The avatar stays at 800–1099px (only icons
-   hide); a long name truncates so the row still fits. */
+/* Workspace: one fixed width, whatever the workspace is called
+   ("Personal workspace", or a group's name, which truncates), so the row
+   never shifts when you switch. 176px at 800–1099px, words only like the
+   other destinations (the bar fits up to ~188px there); 200px from 1100px
+   with the icon or the group's avatar. Both fit "Personal workspace"
+   (126px in Inter 500 at 13px) whole. */
 .desktop-top-bar__workspace {
-  min-width: 0;
+  flex-shrink: 0;
+  width: 176px;
+}
+
+.desktop-top-bar__workspace-visual {
+  display: none;
+  flex-shrink: 0;
 }
 
 .desktop-top-bar__workspace-name {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 96px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
 @media (min-width: 1100px) {
-  .desktop-top-bar__workspace-name {
-    max-width: 160px;
+  .desktop-top-bar__workspace {
+    width: 200px;
+  }
+
+  .desktop-top-bar__workspace-visual {
+    display: inline-flex;
   }
 }
 
