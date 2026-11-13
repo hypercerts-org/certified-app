@@ -115,7 +115,7 @@ export default function ThemeToggle({
         {OPTIONS.map((opt) => {
           const selected = current === opt.value;
           const cardClassName = [
-            "flex-col justify-center gap-2 rounded border px-5 py-4 min-w-[96px] font-medium text-[13px]",
+            "flex-col justify-center gap-2 rounded border px-5 py-4 min-w-[96px] font-medium text-ui",
             selected
               ? "border-[var(--fg-primary)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
               : "border-[var(--border-default)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:border-[var(--fg-muted)]",
@@ -136,7 +136,10 @@ export default function ThemeToggle({
 
   // Segmented (default): a sunken, bordered track holding the three options.
   // `compact` drops the max-width + labels so it hugs its content (former
-  // `.theme-toggle--compact`).
+  // `.theme-toggle--compact`); each icon then carries its name as
+  // `aria-label`, and is a 44px square below 800px (the touch minimum).
+  // The selected option is the raised surface; in dark mode `--bg-selected`,
+  // a step above elevated, so it reads as on.
   const groupClassName = [
     "inline-flex items-stretch gap-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-sunken)] p-[3px]",
     compact ? "w-auto" : "w-full max-w-[360px]",
@@ -155,15 +158,22 @@ export default function ThemeToggle({
       {OPTIONS.map((opt) => {
         const selected = current === opt.value;
         const optionClassName = [
-          "flex-1 justify-center font-medium text-[13px]",
-          compact ? "px-2.5 py-1.5" : "px-3 py-2",
+          "flex-1 justify-center font-medium text-ui",
+          compact
+            ? "px-2.5 py-1.5 max-[799px]:min-h-control-md max-[799px]:min-w-11"
+            : "px-3 py-2",
           selected
-            ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
+            ? "bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
             : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]",
         ].join(" ");
 
         return (
-          <Radio key={opt.value} value={opt.value} className={optionClassName}>
+          <Radio
+            key={opt.value}
+            value={opt.value}
+            aria-label={compact ? opt.label : undefined}
+            className={optionClassName}
+          >
             <span className="inline-flex items-center" aria-hidden="true">
               {opt.icon}
             </span>

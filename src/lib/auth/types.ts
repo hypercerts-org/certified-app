@@ -18,6 +18,11 @@ export interface AuthState {
    *  the PDS the user is signed in without seeing any UI. Falls back
    *  to opening the modal on error. */
   openSignIn: () => Promise<void>;
+  /** "Sign in with another account": the same bounce with
+   *  `prompt: "login"`, so the PDS asks who is signing in even when the
+   *  browser already has a session there (instead of returning the same
+   *  account). The new session replaces the current one on callback. */
+  openSignInAnotherAccount: () => Promise<void>;
   /** Open the sign-in modal directly (email-first UX — no silent
    *  bounce). Records the pre-signin location like openSignIn so the
    *  post-signin handler can return the user to where they were. */

@@ -163,6 +163,10 @@ function Toaster({
 
   return createPortal(
     <div
+      // A bottom sheet makes the rest of the page inert (useInertOutside);
+      // the toasts stay live, so an Undo is still tappable and new toasts
+      // are announced.
+      data-inert-exempt=""
       // Bottom-right stack on desktop; full-width on narrow viewports,
       // lifted by the bottom-nav height + safe-area inset so it clears the
       // bar instead of covering it.

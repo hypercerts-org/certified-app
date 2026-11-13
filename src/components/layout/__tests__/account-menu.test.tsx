@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   activeOrg: null as Group | null,
   groups: [] as Group[],
   selfGroup: null as Group | null,
-  openSignIn: vi.fn(),
+  openSignInAnotherAccount: vi.fn(),
   signOut: vi.fn(),
   openFeedback: vi.fn(),
   switchActor: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock("@/lib/auth/auth-context", () => ({
     did: "did:plc:me",
     isAuthenticated: true,
     isLoading: false,
-    openSignIn: state.openSignIn,
+    openSignInAnotherAccount: state.openSignInAnotherAccount,
     signOut: state.signOut,
   }),
 }))
@@ -109,7 +109,7 @@ beforeEach(() => {
   state.activeOrg = null
   state.groups = [EARTH, RIVER]
   state.selfGroup = null
-  state.openSignIn.mockReset()
+  state.openSignInAnotherAccount.mockReset()
   state.signOut.mockReset().mockResolvedValue(undefined)
   state.openFeedback.mockReset()
   state.switchActor.mockReset()
@@ -231,7 +231,7 @@ describe("AccountMenuContent", () => {
     expect(state.openFeedback).toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole("menuitem", { name: /Sign in with another account/ }))
-    expect(state.openSignIn).toHaveBeenCalled()
+    expect(state.openSignInAnotherAccount).toHaveBeenCalled()
     expect(screen.getByText("Signs you out of @maya.certified.app")).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }))

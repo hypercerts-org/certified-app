@@ -204,7 +204,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // from another partner app). Otherwise it shows its own login UI.
   // On any failure we fall back to opening the modal so the user can
   // still type an email or handle by hand.
-  const submitDefault = useCallback(async () => {
+  //
+  // `prompt: "login"` turns the silent bounce off: the PDS asks who is
+  // signing in even when the browser already has a session there.
+  const submitDefault = useCallback(async (prompt?: "login") => {
     try {
       clearErrors();
       setIsRedirectingToProvider(true);
@@ -212,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "default" }),
+        body: JSON.stringify(prompt ? { mode: "default", prompt } : { mode: "default" }),
       });
       await handleLoginResponse(res);
     } catch (err) {
@@ -231,6 +234,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // having to thread it through every call site.
     recordPreSigninLocation(peekSessionHandle());
     await submitDefault();
+  }, [submitDefault]);
+
+  // "Sign in with another account" (account menu): the same bounce, but
+  // the PDS must ask who is signing in. Without `prompt: "login"` a
+  // browser that already has a PDS session gets a code straight back and
+  // lands on the same account. The new session replaces this one when the
+  // callback completes.
+  const openSignInAnotherAccount = useCallback(async () => {
+    recordPreSigninLocation(peekSessionHandle());
+    await submitDefault("login");
   }, [submitDefault]);
 
   // Email-first entry point: skip the silent-default bounce and open
@@ -379,13 +392,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
     isRedirectingToProvider,
     openSignIn,
+    openSignInAnotherAccount,
     openSignInModal,
     closeModal,
     submitEmail,
     submitHandle,
     submitGoogle,
     signOut,
-  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInModal, closeModal, submitEmail, submitHandle, submitGoogle, signOut]);
+  }), [isLoading, isAuthenticated, did, pdsUrl, error, isModalOpen, isRedirectingToProvider, openSignIn, openSignInAnotherAccount, openSignInModal, closeModal, submitEmail, submitHandle, submitGoogle, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

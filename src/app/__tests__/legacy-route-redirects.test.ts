@@ -10,7 +10,16 @@ vi.mock("next/navigation", () => ({ redirect }))
 describe("retired routes redirect to Records", () => {
   it("/endorsements goes to the Endorsements kind in Records", async () => {
     const { default: Page } = await import("../endorsements/page")
-    expect(() => Page()).toThrow("NEXT_REDIRECT /records?kind=endorsements")
+    await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow(
+      "NEXT_REDIRECT /records?kind=endorsements",
+    )
+  })
+
+  it("/endorsements keeps the tab it was opened on", async () => {
+    const { default: Page } = await import("../endorsements/page")
+    await expect(
+      Page({ searchParams: Promise.resolve({ tab: "received" }) }),
+    ).rejects.toThrow("NEXT_REDIRECT /records?kind=endorsements&tab=received")
   })
 
   it("/workspace goes to Records", async () => {

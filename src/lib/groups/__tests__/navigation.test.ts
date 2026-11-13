@@ -22,9 +22,13 @@ describe("routeForActorSwitch", () => {
     expect(routeForActorSwitch("/records", org)).toBe("/records")
   })
 
+  it("keeps the create form when switching to a group (groups can create)", () => {
+    expect(routeForActorSwitch("/create", org)).toBe("/create")
+  })
+
   it("leaves personal-only pages for Home when switching to a group", () => {
-    expect(routeForActorSwitch("/create", org)).toBe("/home")
     expect(routeForActorSwitch("/groups/create", org)).toBe("/home")
+    expect(routeForActorSwitch("/endorsements", org)).toBe("/home")
   })
 })
 

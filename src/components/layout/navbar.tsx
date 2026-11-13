@@ -41,20 +41,22 @@ function isOwnProfilePath(
 }
 
 /**
- * Phone top bar (below 800px). Two layouts:
+ * Phone top bar (below 800px). One bar on every page:
  *
- * - **The normal bar**: the brandmark on the left; on the right a `+` (the
- *   New menu, as a sheet) and the avatar (the account sheet), or "Sign in"
- *   when signed out. Used on the top-level pages (Home, Feed, Explore,
- *   Records, Apps, Settings, Help, your own profile), on any page without
- *   a title, and on every page that renders a `<PageHeader>` — the page
- *   header already carries the title and its own back link, so the bar
- *   doesn't repeat them.
- * - **Fallback detail bar** (a titled page with no PageHeader): a back
- *   chevron and the compact title, which is then the page's h1.
+ * - **Left:** the brandmark on the top-level pages (Home, Feed, Explore,
+ *   Records, Apps, Settings, Help and your own profile). Everywhere else
+ *   (a record, someone else's profile, a group page, a form) a back
+ *   chevron, whether or not the page renders a `<PageHeader>`: the
+ *   installed app has no browser Back, so this is the way back to where
+ *   you were (your feed and its scroll position, say).
+ * - **Center:** the compact title, as the page's h1, only when no
+ *   `<PageHeader>` is mounted (the header already carries the title).
+ * - **Right:** a `+` (the New menu, as a sheet) and the avatar (the
+ *   account sheet), or "Sign in" when signed out. A page that still
+ *   publishes a record menu gets it first.
  *
  * It's a `<header>` (the banner landmark), not a `<nav>`: it holds the
- * brand and two buttons, not a list of links.
+ * brand and a few buttons, not a list of links.
  *
  * Fixed, translucent, hides on scroll down and returns on scroll up — except
  * while acting as a group, when it stays put with the acting-as bar below.
@@ -85,9 +87,7 @@ const Navbar: React.FC = () => {
       { handle, did },
       ...(activeOrg ? [{ handle: activeOrg.handle, did: activeOrg.groupDid }] : []),
     ]);
-  const hasTitle = !!(pageTitle || breadcrumb);
-  const isTopLevel =
-    isTopLevelPath(pathname) || isOwnProfile || !hasTitle || hasPageHeader;
+  const isTopLevel = isTopLevelPath(pathname) || isOwnProfile;
 
   const navClasses = [
     "navbar",
@@ -99,17 +99,14 @@ const Navbar: React.FC = () => {
     .filter(Boolean)
     .join(" ");
 
-  const titleText =
-    pageTitle ??
-    (breadcrumb
-      ? [breadcrumb.left.text, breadcrumb.right?.text].filter(Boolean).join(" / ")
-      : null);
+  // The compact title is the page's h1 only while no PageHeader owns it.
+  const showTitle = !hasPageHeader && !!(pageTitle || breadcrumb);
 
-  if (isTopLevel) {
-    return (
-      <header className={navClasses}>
-        <div className="navbar__inner">
-          <div className="navbar__left">
+  return (
+    <header className={navClasses}>
+      <div className="navbar__inner">
+        <div className="navbar__left">
+          {isTopLevel ? (
             <Link
               href={isAuthenticated ? "/home" : "/welcome"}
               className="navbar__logo"
@@ -117,63 +114,40 @@ const Navbar: React.FC = () => {
             >
               <Brandmark size={28} decorative />
             </Link>
-          </div>
-          {!hasPageHeader && titleText ? (
-            <h1 className="navbar__title">{titleText}</h1>
           ) : (
-            <span />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Go back"
+              onClick={() => transitionBack()}
+            >
+              <ChevronLeft size={24} strokeWidth={1.5} aria-hidden />
+            </Button>
           )}
-          <div className="navbar__right">
-            {isAuthenticated ? (
+        </div>
+        {showTitle ? (
+          <h1 className="navbar__title">
+            {breadcrumb ? (
               <>
-                <PhoneNewMenu />
-                <PhoneAccountMenu />
+                <Link href={breadcrumb.left.href} className="navbar__title-part">
+                  {breadcrumb.left.text}
+                </Link>
+                {breadcrumb.right ? (
+                  <>
+                    <span className="navbar__title-sep" aria-hidden="true"> / </span>
+                    <Link href={breadcrumb.right.href} className="navbar__title-part">
+                      {breadcrumb.right.text}
+                    </Link>
+                  </>
+                ) : null}
               </>
             ) : (
-              <Button variant="secondary" size="sm" onClick={() => void openSignIn()}>
-                Sign in
-              </Button>
+              pageTitle
             )}
-          </div>
-        </div>
-      </header>
-    );
-  }
-
-  // Fallback detail bar (no PageHeader): back chevron + compact title, which
-  // is the page's h1 (+ the record menu, if a page still publishes one).
-  return (
-    <header className={navClasses}>
-      <div className="navbar__inner">
-        <div className="navbar__left">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Go back"
-            onClick={() => transitionBack()}
-          >
-            <ChevronLeft size={24} strokeWidth={1.5} aria-hidden />
-          </Button>
-        </div>
-        <h1 className="navbar__title">
-          {breadcrumb ? (
-            <>
-              <Link href={breadcrumb.left.href} className="navbar__title-part">
-                {breadcrumb.left.text}
-              </Link>
-              {breadcrumb.right ? (
-                <>
-                  <span className="navbar__title-sep" aria-hidden="true"> / </span>
-                  <Link href={breadcrumb.right.href} className="navbar__title-part">
-                    {breadcrumb.right.text}
-                  </Link>
-                </>
-              ) : null}
-            </>
-          ) : (
-            pageTitle
-          )}
-        </h1>
+          </h1>
+        ) : (
+          <span />
+        )}
         <div className="navbar__right">
           {recordMenu ? (
             <span className="navbar__action">
@@ -186,6 +160,16 @@ const Navbar: React.FC = () => {
               />
             </span>
           ) : null}
+          {isAuthenticated ? (
+            <>
+              <PhoneNewMenu />
+              <PhoneAccountMenu />
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={() => void openSignIn()}>
+              Sign in
+            </Button>
+          )}
         </div>
       </div>
     </header>

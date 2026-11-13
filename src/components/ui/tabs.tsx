@@ -152,11 +152,13 @@ export function TabList({
   // The TabList prop (if any) wins, otherwise inherit the Tabs-level variant.
   const resolved = variant ?? ctx.variant;
 
-  // Underline path is byte-for-byte identical to today.
+  // Underline: a block-level strip, so its hairline runs the full width of
+  // the content (not stopping after the last tab), like the profile's and
+  // record pages' strips. Segmented: a track that hugs its tabs.
   const variantClassName =
     resolved === "segmented"
       ? "inline-flex gap-1 p-1 bg-[var(--bg-sunken)] rounded"
-      : "inline-flex gap-4 border-b border-[var(--border-subtle)]";
+      : "flex gap-4 border-b border-[var(--border-subtle)]";
 
   return (
     <TabListVariantContext.Provider value={resolved}>
@@ -287,13 +289,14 @@ export function Tab({
         : "text-[var(--fg-muted)] border-transparent hover:text-[var(--fg-primary)] cursor-pointer"
   }`;
 
-  // Segmented: the active tab is a raised pill (elevated bg + small shadow),
+  // Segmented: the active tab is a raised pill (elevated bg + small shadow;
+  // in dark mode `--bg-selected`, a step lighter still, so it reads as on),
   // inactive tabs are flat within the sunken container.
   const segmentedClassName = `inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded transition-colors duration-fast motion-reduce:transition-none ${
     disabled
       ? "text-[var(--fg-muted)] opacity-50 cursor-not-allowed"
       : isActive
-        ? "text-[var(--fg-primary)] bg-[var(--bg-elevated)] shadow-[var(--shadow-sm)] font-semibold cursor-pointer"
+        ? "text-[var(--fg-primary)] bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] shadow-[var(--shadow-sm)] font-semibold cursor-pointer"
         : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)] cursor-pointer"
   }`;
 

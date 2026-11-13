@@ -19,11 +19,11 @@ import {
  *   - whether a `<PageHeader>` is mounted (`useRegisterPageHeader`);
  *   - the full-bleed shell flag for the profile (`useProfileNavbar`).
  *
- * The phone bar picks its layout itself: the normal bar (brandmark, New and
- * account buttons) on top-level pages, untitled pages and every page with
- * a PageHeader; a back chevron and the compact title only on a titled page
- * without one. The hooks below only toggle their own flag so multiple pages
- * can coexist without stepping on each other.
+ * The phone bar picks its layout itself: the brandmark on top-level pages
+ * and a back chevron everywhere else (PageHeader or not); the compact title
+ * only on a titled page without a PageHeader. The hooks below only toggle
+ * their own flag so multiple pages can coexist without stepping on each
+ * other.
  */
 export interface PageTitleBreadcrumbPart {
   text: string;
@@ -83,9 +83,9 @@ interface NavbarValues {
    *  the active tab). Falls back to `pageTitle` when unset. */
   desktopTitle: string | null;
   breadcrumb: PageTitleBreadcrumb | null;
-  /** Record-level overflow menu, rendered only in the phone *fallback*
-   *  detail bar (a titled page without a PageHeader). Record pages now
-   *  carry their menu beside the title, so this is on its way out. */
+  /** Record-level overflow menu, rendered in the phone bar's right slot
+   *  when a page publishes one. Record pages now carry their menu beside
+   *  the title, so this is on its way out (no page publishes it). */
   recordMenu: PageRecordMenu | null;
   /** The page wants the full-bleed shell (the profile: banner edge to
    *  edge). Read by `AppShell`. Set via `useProfileNavbar`. */
@@ -243,7 +243,8 @@ export function usePageTitle(title: string) {
  * - A page that renders `<PageHeader>` owns it: the header's title is the
  *   visible h1. While a PageHeader is mounted, the chrome (mobile navbar,
  *   desktop top bar) renders no h1 of its own, visible or visually hidden,
- *   and the phone bar shows its normal layout (no second title or back).
+ *   and the phone bar shows no compact title (it keeps its back chevron on
+ *   pages that aren't top-level).
  * - A page without a PageHeader keeps the chrome's h1 (the `usePageTitle`
  *   value) as the fallback.
  *
@@ -302,8 +303,7 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
 
 /**
  * Publish the record-level overflow menu (Share / Add to list / Copy AT
- * URI) to the phone bar. It only renders in the *fallback* detail bar (a
- * titled page with no PageHeader); record pages render a PageHeader, so
+ * URI) to the phone bar's right slot. Record pages render a PageHeader, so
  * their menu belongs beside the title in the page at every width.
  *
  * @deprecated Put the record menu in the page; this is kept only until the

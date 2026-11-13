@@ -54,9 +54,10 @@ export function isDestinationActive(
 
 /**
  * Pages that are a place of their own rather than a detail of something
- * else. On phones their top bar shows the brandmark (not a back chevron),
- * the New button and the account button. The user's own profile counts too;
- * the navbar checks that separately because it depends on the session.
+ * else. On phones their top bar starts with the brandmark; every other page
+ * gets a back chevron there instead, PageHeader or not. The user's own
+ * profile counts too; the navbar checks that separately because it depends
+ * on the session.
  */
 const TOP_LEVEL_PATHS: ReadonlySet<string> = new Set([
   ...DESTINATIONS.map((d) => d.href),

@@ -8,23 +8,24 @@
  * in place instead (Records does this).
  *
  * The constraints are real, not cosmetic:
- *   - "create"       : xrpc proxy validates `repo === sessionDid` for
- *                      write methods, so a group-acting user can't
- *                      write a record to the group repo here.
  *   - "groups"       : would be self-referential when already in a
  *                      group context — the group is reachable via the
  *                      account menu.
  *   - "endorsements" : the underlying record lives in the personal
  *                      repo only; no group analogue exists.
  *
- * Records is deliberately NOT listed: it stays reachable while acting as a
- * group and shows "Records are managed on your personal account" with a
- * switch button, so switching accounts on /records doesn't redirect.
+ * Not listed:
+ *   - Records stays reachable while acting as a group and shows "Records
+ *     are managed on your personal account" with a switch button, so
+ *     switching accounts on /records doesn't redirect.
+ *   - Create (`/create`): a group can create activities; the create flow
+ *     writes as the group being acted as. Switching accounts on /create
+ *     keeps the form. "create" stays in the type so existing callers that
+ *     ask about it get `true`.
  */
 export type PersonalOnlyRoute = "create" | "groups" | "endorsements"
 
 const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = [
-  "create",
   "groups",
   "endorsements",
 ]
@@ -46,7 +47,7 @@ export function isRouteVisibleToActor(
  * Classify a pathname against the personal-only registry. Returns
  * the matching route key (so callers can pass it to
  * `isRouteVisibleToActor`) or null when the route is allowed for any
- * actor (profile views, search, home, records, etc.).
+ * actor (profile views, search, home, records, create, etc.).
  *
  * Used by the actor switcher to decide whether to stay on the user's
  * current pathname after a persona switch, or redirect to /home
@@ -55,7 +56,6 @@ export function isRouteVisibleToActor(
 export function pathnameToPersonalOnlyRoute(
   pathname: string,
 ): PersonalOnlyRoute | null {
-  if (pathname === "/create" || pathname.startsWith("/create/")) return "create"
   if (pathname === "/groups" || pathname.startsWith("/groups/")) return "groups"
   if (pathname === "/endorsements" || pathname.startsWith("/endorsements/")) {
     return "endorsements"

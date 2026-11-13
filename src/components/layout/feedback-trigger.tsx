@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { MessageSquare } from "lucide-react"
 import { useFeedback } from "@/lib/feedback-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { isFeedbackTriggerVisible } from "@/lib/layout/feedback-trigger-visibility"
 
 /**
  * Floating "Feedback" button, pinned bottom-right on desktop (≥800px), in
@@ -13,9 +14,10 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
  * only owns the trigger and its placement.
  *
  * Phones don't get it: the bottom tab bar sits where it would float, and
- * "Send feedback" lives in the account sheet (as it does in the desktop
- * account menu). Create and edit forms hide it too (CSS), since their
- * action bar is pinned where it floats.
+ * "Send feedback" lives in the account sheet and the site footer. It also
+ * stays off the pages that keep their own controls in that corner: Records
+ * (row actions, the selection bar), record pages and create and edit forms
+ * (`isFeedbackTriggerVisible`; CSS covers any page with a form action bar).
  *
  * When the <SiteFooter> scrolls into view the button lifts above it so it
  * never covers the footer links; otherwise it rests at the default offset.
@@ -74,16 +76,9 @@ export default function FeedbackTrigger() {
     }
   }, [updatePosition, isDesktop])
 
-  // Hidden on phones (see above), on the marketing landing page (/welcome
-  // has its own contact CTA), on /embed (bare board inside a third-party
-  // iframe), and while the feedback modal is open.
-  if (
-    !isDesktop ||
-    isOpen ||
-    pathname === "/welcome" ||
-    pathname.startsWith("/embed")
-  )
-    return null
+  // Hidden on phones (see above), on the pages listed in
+  // `isFeedbackTriggerVisible`, and while the feedback modal is open.
+  if (!isDesktop || isOpen || !isFeedbackTriggerVisible(pathname)) return null
 
   return (
     <button

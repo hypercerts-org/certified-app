@@ -103,9 +103,10 @@
 }
 
 /* ========== Navbar (phone top bar, < 800px) ==========
-   See navbar.tsx. Two layouts: top-level pages (brandmark | title | New +
-   account) and detail pages (back | title | record menu). The grid keeps
-   the title centred whatever the side slots hold. */
+   See navbar.tsx. One bar: brandmark (top-level pages) or back chevron
+   (everything else) | the compact title when no PageHeader owns it | New +
+   account (or Sign in). The grid keeps the title centred whatever the
+   side slots hold. */
 .navbar {
   position: fixed;
   top: 0;
@@ -195,7 +196,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60vw;
+  /* Centred between two equal side columns, each as wide as the widest
+     slot (New + account: 2 x 44px + 4px). 100vw minus both, the 8px
+     inner padding and the two 8px gaps. */
+  max-width: min(60vw, calc(100vw - 216px));
 }
 
 .navbar__title-part {
@@ -808,9 +812,11 @@
 }
 
 /* Create and edit forms pin their action bar to the bottom edge, where the
-   button would sit on Cancel / Publish. Feedback stays in the account
-   menu. */
-html:has(.form-action-bar) .feedback-trigger {
+   button would sit on Cancel / Publish; Records keeps row actions and its
+   selection bar there. Feedback stays in the account menu and the footer.
+   feedback-trigger.tsx hides it on these routes; this covers the same
+   pages wherever else they render (the dev previews). */
+html:is(:has(.form-action-bar), :has(.records-page)) .feedback-trigger {
   display: none;
 }
 
@@ -1399,9 +1405,10 @@ html:has(.form-action-bar) .feedback-trigger {
   outline-offset: 2px;
 }
 
-/* The five destinations: icon + word. Current = sunken pill + primary
-   text; others secondary. No weight change on current or hover, so the
-   row never shifts. */
+/* The five destinations: icon + word. Current = a `--bg-selected` pill
+   (grey in light, a lighter step in dark) + primary text; others
+   secondary. No weight change on current or hover, so the row never
+   shifts. */
 .desktop-top-bar__nav {
   display: flex;
   align-items: center;
@@ -1449,7 +1456,7 @@ html:has(.form-action-bar) .feedback-trigger {
 }
 
 .desktop-top-bar__nav-link[aria-current="page"] {
-  background: var(--bg-sunken);
+  background: var(--bg-selected);
   color: var(--fg-primary);
 }
 
@@ -2095,6 +2102,21 @@ html:has(.form-action-bar) .feedback-trigger {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* The links and the theme switch, together on the right; centred and
+   wrapping on phones. */
+.site-footer__end {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+@media (max-width: 799px) {
+  .site-footer__end {
+    justify-content: center;
+  }
 }
 
 /* Legal pages and /help widen the reading column past the default

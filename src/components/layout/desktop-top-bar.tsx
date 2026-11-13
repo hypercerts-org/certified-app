@@ -107,10 +107,12 @@ export default function DesktopTopBar() {
 
         <div className="desktop-top-bar__right">
           {/* `/` and Cmd/Ctrl+K focus it. Also the tour's "search the
-              network" spotlight. */}
+              network" spotlight. "Search", not "Search Certified": the
+              field shrinks to 120px at 800px, which clipped the longer
+              placeholder. */}
           {showSearch ? (
             <div className="desktop-top-bar__search" data-tour="navbar-search">
-              <GlobalSearch placeholder="Search Certified" />
+              <GlobalSearch placeholder="Search" />
             </div>
           ) : null}
 

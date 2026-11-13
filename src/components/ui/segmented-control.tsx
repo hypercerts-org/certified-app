@@ -230,8 +230,10 @@ const SegmentedControl = React.forwardRef<HTMLDivElement, SegmentedControlProps>
       >
         {options.map((opt, i) => {
           const selected = value === opt.value;
+          // Raised on the sunken track; in dark mode `--bg-selected`, a step
+          // above elevated, so the active segment clearly reads as on.
           const stateClass = selected
-            ? "bg-[var(--bg-elevated)] text-[var(--fg-primary)]"
+            ? "bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] text-[var(--fg-primary)]"
             : "bg-transparent text-[var(--fg-muted)] hover:text-[var(--fg-primary)]";
           const radio = (
             <Radio
@@ -283,7 +285,7 @@ SegmentedControl.displayName = "SegmentedControl";
 
 /** Active-state classes per semantic tone. Tints flip in dark via the tokens. */
 const TONE_ACTIVE: Record<Tone, string> = {
-  neutral: "bg-[var(--bg-elevated)] text-[var(--fg-primary)]",
+  neutral: "bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] text-[var(--fg-primary)]",
   success:
     "bg-[var(--color-success-bg)] text-[var(--color-success-text)] border-[var(--color-success-text)]",
   warn:

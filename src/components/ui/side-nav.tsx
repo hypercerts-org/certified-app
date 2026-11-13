@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 
 /** Structural icon type: lucide icons and wrappers like `CertIcon`. */
@@ -36,21 +36,33 @@ export interface SideNavProps {
   className?: string;
 }
 
-// Below 1100px: a horizontally scrolling row of pills. The 4px row padding
-// keeps focus rings inside the scroll box; the scrollbar is hidden (the row
-// still scrolls by touch, wheel and keyboard focus).
-// From 1100px: a vertical list of 40px rows.
-const listCls =
-  "m-0 flex list-none gap-2 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:gap-0.5 lg:overflow-visible lg:p-0";
+/**
+ * Below 1100px, up to this many items wrap onto more lines, so every
+ * section is in view; a longer list scrolls sideways instead (and keeps
+ * the current item in view).
+ */
+export const SIDE_NAV_WRAP_MAX = 6;
+
+// Below 1100px a row of pills: wrapping (short lists) or a horizontally
+// scrolling row (long lists). The 4px row padding keeps focus rings inside
+// the scroll box; the scrollbar is hidden (the row still scrolls by touch,
+// wheel and keyboard focus). From 1100px: a vertical list of 40px rows.
+const listBase =
+  "m-0 flex list-none gap-2 p-1 lg:flex-col lg:flex-nowrap lg:gap-0.5 lg:overflow-visible lg:p-0";
+const listWrap = "flex-wrap";
+const listScroll =
+  "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 const itemBase =
   "inline-flex min-h-control-md items-center gap-2 whitespace-nowrap rounded-[999px] border px-3.5 py-2 text-left text-ui font-medium no-underline transition-[background-color,border-color,color] duration-fast motion-reduce:transition-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 lg:flex lg:w-full lg:min-h-10 lg:rounded lg:border-0 lg:px-3";
 
-// Current: sunken, primary text, weight 600 — a sunken pill in the row, a
-// sunken row in the column, like the top bar's current destination. Black
-// fill is kept for the page's one primary action.
+// Current: `--bg-selected`, primary text, weight 600 — a filled pill in the
+// row, a filled row in the column, like the top bar's current destination.
+// `--bg-selected` is grey in light mode and a step lighter than the resting
+// pill in dark mode, so the current item never reads as a hole. Black fill
+// is kept for the page's one primary action.
 const itemCurrent =
-  "border-[var(--border-hover)] bg-[var(--bg-sunken)] font-semibold text-[var(--fg-primary)]";
+  "border-[var(--border-hover)] bg-[var(--bg-selected)] font-semibold text-[var(--fg-primary)]";
 
 // Rest: an outlined pill in the row; a bare row in the column. `hover:`
 // only fires on hover-capable devices (tailwind hoverOnlyWhenSupported).
@@ -60,8 +72,10 @@ const itemRest =
 /**
  * Navigation between the sections of one page (DESIGN.md §9.13): Records
  * kinds, Settings sections, Help contents, Explore lists. Below 1100px it is
- * a scrolling row of pills above the content; from 1100px a vertical list
- * in a sidebar column. Items are links (`href`) or buttons (`onClick`); the
+ * a row of pills above the content: up to `SIDE_NAV_WRAP_MAX` items wrap
+ * onto more lines (nothing hidden off-screen); more scroll sideways, with
+ * the current item scrolled into view. From 1100px a vertical list in a
+ * sidebar column. Items are links (`href`) or buttons (`onClick`); the
  * current one carries `aria-current` ("page" on links, "true" on buttons).
  */
 export default function SideNav({
@@ -70,6 +84,38 @@ export default function SideNav({
   sticky = true,
   className = "",
 }: SideNavProps) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const scrolls = items.length > SIDE_NAV_WRAP_MAX;
+  const currentKey = items.find((item) => item.current)?.key ?? null;
+  const hasScrolledRef = useRef(false);
+
+  // A scrolling row keeps the current item in view: on mount and whenever
+  // the current item changes. Sets the row's own scrollLeft (not
+  // scrollIntoView, which would also scroll the page). A no-op in the
+  // column layout, where the list doesn't overflow.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!scrolls || !list || currentKey === null) return;
+    if (list.scrollWidth <= list.clientWidth) return;
+    const current = list.querySelector<HTMLElement>("[aria-current]");
+    if (!current) return;
+    const left =
+      current.getBoundingClientRect().left -
+      list.getBoundingClientRect().left +
+      list.scrollLeft -
+      16;
+    const smooth =
+      hasScrolledRef.current &&
+      typeof window.matchMedia === "function" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    hasScrolledRef.current = true;
+    if (typeof list.scrollTo === "function") {
+      list.scrollTo({ left: Math.max(0, left), behavior: smooth ? "smooth" : "auto" });
+    } else {
+      list.scrollLeft = Math.max(0, left);
+    }
+  }, [scrolls, currentKey]);
+
   // The desktop top bar scrolls away, so the column sticks 32px below the
   // fixed chrome (none on desktop) rather than below the bar's height.
   const navCls = [
@@ -81,7 +127,7 @@ export default function SideNav({
 
   return (
     <nav aria-label={ariaLabel} className={navCls || undefined}>
-      <ul className={listCls}>
+      <ul ref={listRef} className={`${listBase} ${scrolls ? listScroll : listWrap}`}>
         {items.map((item) => {
           const { key, label, href, onClick, icon: Icon, count, current = false } = item;
           const cls = `${itemBase} ${current ? itemCurrent : itemRest}`;

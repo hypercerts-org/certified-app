@@ -294,7 +294,7 @@ export interface AccountMenuContentProps {
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
  */
 export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountMenuContentProps) {
-  const { openSignIn } = useAuth()
+  const { openSignInAnotherAccount } = useAuth()
   const { openFeedback } = useFeedback()
   const switchActor = useSwitchActor()
   const { personal, current, groups, activeOrg, selfGroup, profileHref } = useAccountState()
@@ -420,8 +420,9 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
       </button>
       <AppearanceRow mode={mode} />
 
-      {/* 4. Session. "Sign in with another account" replaces this session,
-          so it says so. */}
+      {/* 4. Session. "Sign in with another account" asks the PDS who is
+          signing in (never the silent bounce back into this account) and
+          replaces this session, so it says so. */}
       {separator}
       <button
         type="button"
@@ -429,7 +430,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         className={row()}
         onClick={() => {
           onClose()
-          void openSignIn()
+          void openSignInAnotherAccount()
         }}
       >
         <LogIn size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />

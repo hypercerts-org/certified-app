@@ -67,6 +67,13 @@
      so it reads the canvas value; controls inside it sit on --bg-elevated.
      Derived, so it needs no dark override. */
   --bg-overlay: var(--bg-canvas);
+  /* The current / selected item's fill: the SideNav's current section, the
+     top bar's current destination, and (dark only) the active segment of a
+     segmented control. Light: a grey step in from the white pill or the
+     canvas. Dark: a step ABOVE --bg-elevated, because in dark mode lighter
+     reads as raised; --bg-sunken there is darker than the canvas and made
+     the current item look like a hole. */
+  --bg-selected: #eeeeee;
 
   /* Foregrounds */
   --fg-primary: #111111;
@@ -364,6 +371,9 @@
   --bg-sunken: #111114;
   --bg-raised: #26262b;
   --bg-elevated: #2d2d33;
+  /* One step above elevated, so the current item is lighter than a resting
+     pill (#2d2d33) and than the canvas. */
+  --bg-selected: #3a3a40;
 
   /* Foregrounds */
   --fg-primary: #f5f5f7;
