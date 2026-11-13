@@ -40,7 +40,7 @@ function groupIdentity(group: Group): AccountIdentity {
 
 /** What your own workspace is called. Not your name: the account button,
  *  right beside it, already shows that. */
-export const PERSONAL_WORKSPACE_LABEL = "Personal workspace"
+export const PERSONAL_WORKSPACE_LABEL = "My workspace"
 
 /**
  * The workspace being worked in (the personal account, or the group acted
@@ -51,7 +51,7 @@ export const PERSONAL_WORKSPACE_LABEL = "Personal workspace"
 export function useWorkspaceState() {
   const { current, personal, groups, activeOrg, selfGroup } = useAccountState()
   const canSwitch = !selfGroup && groups.length > 0
-  // A group's workspace is named after the group; yours is "Personal
+  // A group's workspace is named after the group; yours is "My
   // workspace"; an account that is itself a group just has "Workspace".
   const isGroup = current.kind === "group"
   const label = isGroup
@@ -224,7 +224,7 @@ function WorkspaceLabel({
 
 /**
  * The desktop top bar's Workspace (DESIGN.md §4): a fixed-width pill
- * naming the workspace you are in ("Personal workspace", or the group you
+ * naming the workspace you are in ("My workspace", or the group you
  * act as, with its avatar), that opens a menu to switch between your
  * workspaces, like Network opens its pages. With only one workspace it is
  * a plain link to the Overview. Current on the Overview and the Records

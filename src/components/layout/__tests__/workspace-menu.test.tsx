@@ -95,11 +95,11 @@ function openDesktopMenu() {
 }
 
 describe("DesktopWorkspaceMenu", () => {
-  it("calls yours Personal workspace (not your name, which the account button shows)", () => {
+  it("calls yours My workspace (not your name, which the account button shows)", () => {
     state.pathname = "/home"
     render(<DesktopWorkspaceMenu />)
-    const trigger = screen.getByRole("button", { name: "Personal workspace, switch workspace" })
-    expect(trigger).toHaveTextContent("Personal workspace")
+    const trigger = screen.getByRole("button", { name: "My workspace, switch workspace" })
+    expect(trigger).toHaveTextContent("My workspace")
     expect(trigger).not.toHaveTextContent("Maya Lin")
     expect(trigger).toHaveAttribute("data-current")
     fireEvent.click(trigger)
@@ -107,7 +107,7 @@ describe("DesktopWorkspaceMenu", () => {
     const rows = screen.getAllByRole("menuitemradio")
     // Yours first, then the groups you run before the ones you're in.
     expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringContaining("Personal workspace"),
+      expect.stringContaining("My workspace"),
       expect.stringContaining("River Trust"),
       expect.stringContaining("Ma Earth"),
     ])
@@ -137,7 +137,7 @@ describe("DesktopWorkspaceMenu", () => {
 
   it("picking the current workspace from outside just opens it", () => {
     openDesktopMenu()
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Personal workspace/ }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /My workspace/ }))
     expect(state.switchOrg).not.toHaveBeenCalled()
     expect(state.push).toHaveBeenCalledWith("/home")
   })
@@ -146,7 +146,7 @@ describe("DesktopWorkspaceMenu", () => {
     state.pathname = "/records"
     state.activeOrg = EARTH
     openDesktopMenu()
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Personal workspace/ }))
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /My workspace/ }))
     expect(state.switchOrg).toHaveBeenCalledWith(null)
     expect(state.push).not.toHaveBeenCalled()
   })
@@ -181,7 +181,7 @@ describe("DesktopWorkspaceMenu", () => {
     state.pathname = "/home"
     render(<DesktopWorkspaceMenu />)
     expect(screen.queryByRole("button")).toBeNull()
-    const link = screen.getByRole("link", { name: "Personal workspace" })
+    const link = screen.getByRole("link", { name: "My workspace" })
     expect(link).toHaveAttribute("href", "/home")
     expect(link).toHaveAttribute("aria-current", "page")
   })
@@ -209,7 +209,7 @@ describe("PhoneWorkspaceTab", () => {
     fireEvent.click(tab)
     const sheet = screen.getByRole("dialog", { name: "Workspace" })
     const earth = within(sheet).getByRole("button", { name: /Ma Earth/ })
-    expect(within(sheet).getByRole("button", { name: /Personal workspace/ })).toHaveAttribute(
+    expect(within(sheet).getByRole("button", { name: /My workspace/ })).toHaveAttribute(
       "aria-current",
       "true",
     )

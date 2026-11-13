@@ -1332,15 +1332,15 @@ button.desktop-top-bar__nav-link {
   color: var(--fg-muted);
 }
 
-/* Workspace: one fixed width, whatever the workspace is called
-   ("Personal workspace", or a group's name, which truncates), so the row
-   never shifts when you switch. 176px at 800–1099px, words only like the
-   other destinations (the bar fits up to ~188px there); 200px from 1100px
-   with the icon or the group's avatar. Both fit "Personal workspace"
-   (126px in Inter 500 at 13px) whole. */
+/* Workspace: one fixed width, whatever the workspace is called ("My
+   workspace", or a group's name, which truncates), so the row never
+   shifts when you switch. Sized to "My workspace" (91px in Inter 500 at
+   13px) plus the padding and chevron, with a few px to spare: 128px at
+   800–1099px, words only like the other destinations; 162px from 1100px
+   with the icon or the group's avatar. */
 .desktop-top-bar__workspace {
   flex-shrink: 0;
-  width: 176px;
+  width: 128px;
 }
 
 .desktop-top-bar__workspace-visual {
@@ -1358,7 +1358,7 @@ button.desktop-top-bar__nav-link {
 
 @media (min-width: 1100px) {
   .desktop-top-bar__workspace {
-    width: 200px;
+    width: 162px;
   }
 
   .desktop-top-bar__workspace-visual {
