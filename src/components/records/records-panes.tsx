@@ -31,6 +31,7 @@ import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/
 import { GroupRows } from "@/components/home/home-sections"
 import { useOrg } from "@/lib/groups/org-context"
 import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
+import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
 type FollowingState = ReturnType<typeof useFollowing>
 type GivenState = ReturnType<typeof useGivenEndorsements>
@@ -98,86 +99,91 @@ export function EndorsementsPane({
   }
 
   return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Endorsements"
-        description="Endorsements you gave and received, and your lists of endorsed accounts."
-        action={
-          <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-            Endorse someone
-          </Button>
-        }
-      />
-      <Tabs value={tab} onChange={(v) => setTabParam(v)}>
-        <TabList aria-label="Endorsements">
-          {/* Received first: it is what the pane opens on. Counts are left
-              out while their list loads. */}
-          <Tab value="received" count={receivedCount}>
-            Received
-          </Tab>
-          <Tab
-            value="given"
-            count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
-          >
-            Given
-          </Tab>
-          <Tab value="lists">Endorsement lists</Tab>
-        </TabList>
+    <WorkspaceFrame
+      offset={false}
+      header={
+        <PaneHead
+          titleId={titleId}
+          section="endorsements"
+          action={
+            <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              Endorse someone
+            </Button>
+          }
+        />
+      }
+    >
+      <section className="records-pane" aria-labelledby={titleId}>
+        <Tabs value={tab} onChange={(v) => setTabParam(v)}>
+          <TabList aria-label="Endorsements">
+            {/* Received first: it is what the pane opens on. Counts are left
+                out while their list loads. */}
+            <Tab value="received" count={receivedCount}>
+              Received
+            </Tab>
+            <Tab
+              value="given"
+              count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
+            >
+              Given
+            </Tab>
+            <Tab value="lists">Endorsement lists</Tab>
+          </TabList>
 
-        <TabPanel value="given">
-          <div className="records-pane__tab-body">
-            {endorseOpen ? (
-              <NewEndorsementPanel
-                ownDid={did}
-                existingSubjectDids={existing}
-                onClose={() => setPanelOpen(false)}
-                onCreated={given.refetch}
+          <TabPanel value="given">
+            <div className="records-pane__tab-body">
+              {endorseOpen ? (
+                <NewEndorsementPanel
+                  ownDid={did}
+                  existingSubjectDids={existing}
+                  onClose={() => setPanelOpen(false)}
+                  onCreated={given.refetch}
+                />
+              ) : null}
+              {given.isLoading && given.endorsements.length === 0 ? (
+                <RowsSkeleton shape="circle" rows={4} />
+              ) : (
+                /* The profile's list view, with its remove action per row. */
+                <GivenList
+                  visible={given.endorsements}
+                  total={given.endorsements.length}
+                  isLoading={false}
+                  error={given.error}
+                  onRetry={given.refetch}
+                  viewerIsOwner
+                  viewerDid={did}
+                  selectable={false}
+                  selected={EMPTY_SET}
+                  onToggleOne={() => {}}
+                  onAfterRevoke={given.refetch}
+                />
+              )}
+            </div>
+          </TabPanel>
+
+          <TabPanel value="received">
+            <div className="records-pane__tab-body">
+              <ReceivedEndorsements
+                did={did}
+                profileHref={profileUrl(actor)}
+                endorsements={received.endorsements}
+                isLoading={received.isLoading}
+                error={received.error}
+                onRetry={() => void received.refetch()}
+                ownStates={ownStates}
               />
-            ) : null}
-            {given.isLoading && given.endorsements.length === 0 ? (
-              <RowsSkeleton shape="circle" rows={4} />
-            ) : (
-              /* The profile's list view, with its remove action per row. */
-              <GivenList
-                visible={given.endorsements}
-                total={given.endorsements.length}
-                isLoading={false}
-                error={given.error}
-                onRetry={given.refetch}
-                viewerIsOwner
-                viewerDid={did}
-                selectable={false}
-                selected={EMPTY_SET}
-                onToggleOne={() => {}}
-                onAfterRevoke={given.refetch}
-              />
-            )}
-          </div>
-        </TabPanel>
+            </div>
+          </TabPanel>
 
-        <TabPanel value="received">
-          <div className="records-pane__tab-body">
-            <ReceivedEndorsements
-              did={did}
-              profileHref={profileUrl(actor)}
-              endorsements={received.endorsements}
-              isLoading={received.isLoading}
-              error={received.error}
-              onRetry={() => void received.refetch()}
-              ownStates={ownStates}
-            />
-          </div>
-        </TabPanel>
-
-        <TabPanel value="lists">
-          <div className="records-pane__tab-body">
-            <EndorsementLists did={did} viewerIsOwner hideTitle />
-          </div>
-        </TabPanel>
-      </Tabs>
-    </section>
+          <TabPanel value="lists">
+            <div className="records-pane__tab-body">
+              <EndorsementLists did={did} viewerIsOwner hideTitle />
+            </div>
+          </TabPanel>
+        </Tabs>
+      </section>
+    </WorkspaceFrame>
   )
 }
 
@@ -254,48 +260,53 @@ export function FollowersPane({
   const followers = useFollowers(did)
 
   return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Followers"
-        description="Accounts that follow you, and accounts you follow. What the accounts you follow publish shows in your feed."
-        action={
-          <Button href="/explore" variant="secondary" size="sm">
-            <Compass size={16} strokeWidth={1.75} aria-hidden />
-            Find accounts
-          </Button>
-        }
-      />
-      <Tabs value={tab} onChange={(v) => setTabParam(v)}>
-        <TabList aria-label="Followers">
-          {/* Counts are left out while their list loads. */}
-          <Tab
-            value="followers"
-            count={followers.isLoading && followers.entries.length === 0 ? undefined : followers.entries.length}
-          >
-            Followers
-          </Tab>
-          <Tab
-            value="following"
-            count={following.isLoading && following.count === 0 ? undefined : following.count}
-          >
-            Following
-          </Tab>
-        </TabList>
+    <WorkspaceFrame
+      offset={false}
+      header={
+        <PaneHead
+          titleId={titleId}
+          section="followers"
+          action={
+            <Button href="/explore" variant="secondary" size="sm">
+              <Compass size={16} strokeWidth={1.75} aria-hidden />
+              Find accounts
+            </Button>
+          }
+        />
+      }
+    >
+      <section className="records-pane" aria-labelledby={titleId}>
+        <Tabs value={tab} onChange={(v) => setTabParam(v)}>
+          <TabList aria-label="Followers">
+            {/* Counts are left out while their list loads. */}
+            <Tab
+              value="followers"
+              count={followers.isLoading && followers.entries.length === 0 ? undefined : followers.entries.length}
+            >
+              Followers
+            </Tab>
+            <Tab
+              value="following"
+              count={following.isLoading && following.count === 0 ? undefined : following.count}
+            >
+              Following
+            </Tab>
+          </TabList>
 
-        <TabPanel value="followers">
-          <div className="records-pane__tab-body">
-            <FollowersList did={did} actor={actor} followers={followers} following={following} />
-          </div>
-        </TabPanel>
+          <TabPanel value="followers">
+            <div className="records-pane__tab-body">
+              <FollowersList did={did} actor={actor} followers={followers} following={following} />
+            </div>
+          </TabPanel>
 
-        <TabPanel value="following">
-          <div className="records-pane__tab-body">
-            <FollowingList did={did} following={following} />
-          </div>
-        </TabPanel>
-      </Tabs>
-    </section>
+          <TabPanel value="following">
+            <div className="records-pane__tab-body">
+              <FollowingList did={did} following={following} />
+            </div>
+          </TabPanel>
+        </Tabs>
+      </section>
+    </WorkspaceFrame>
   )
 }
 
@@ -477,44 +488,41 @@ export function ListsPane({ did }: { did: string }) {
   }
 
   return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Lists"
-        description="Your lists of activities, projects, accounts and endorsements. Open a list to rename it, delete it, or add to it: one at a time, or many at once by pasting handles, DIDs or links."
-      />
-      <Tabs value={tab} onChange={selectTab}>
-        <TabList aria-label="Lists">
-          <Tab value="activities">Activities</Tab>
-          <Tab value="projects">Projects</Tab>
-          <Tab value="accounts">Accounts</Tab>
-          <Tab value="endorsements">Endorsements</Tab>
-        </TabList>
+    <WorkspaceFrame offset={false} header={<PaneHead titleId={titleId} section="lists" />}>
+      <section className="records-pane" aria-labelledby={titleId}>
+        <Tabs value={tab} onChange={selectTab}>
+          <TabList aria-label="Lists">
+            <Tab value="activities">Activities</Tab>
+            <Tab value="projects">Projects</Tab>
+            <Tab value="accounts">Accounts</Tab>
+            <Tab value="endorsements">Endorsements</Tab>
+          </TabList>
 
-        {/* The profile's list manager, one kind per tab; it carries
-            create, edit and delete. */}
-        <TabPanel value="activities">
-          <div className="records-pane__tab-body">
-            <ProfileLists did={did} viewerIsOwner only={LIST_CERTS_TYPE} />
-          </div>
-        </TabPanel>
-        <TabPanel value="projects">
-          <div className="records-pane__tab-body">
-            <ProfileLists did={did} viewerIsOwner only={LIST_PROJECTS_TYPE} />
-          </div>
-        </TabPanel>
-        <TabPanel value="accounts">
-          <div className="records-pane__tab-body">
-            <ProfileLists did={did} viewerIsOwner only={LIST_ACCOUNTS_TYPE} />
-          </div>
-        </TabPanel>
-        <TabPanel value="endorsements">
-          <div className="records-pane__tab-body">
-            <EndorsementLists did={did} viewerIsOwner hideTitle />
-          </div>
-        </TabPanel>
-      </Tabs>
-    </section>
+          {/* The profile's list manager, one kind per tab; it carries
+              create, edit and delete. */}
+          <TabPanel value="activities">
+            <div className="records-pane__tab-body">
+              <ProfileLists did={did} viewerIsOwner only={LIST_CERTS_TYPE} />
+            </div>
+          </TabPanel>
+          <TabPanel value="projects">
+            <div className="records-pane__tab-body">
+              <ProfileLists did={did} viewerIsOwner only={LIST_PROJECTS_TYPE} />
+            </div>
+          </TabPanel>
+          <TabPanel value="accounts">
+            <div className="records-pane__tab-body">
+              <ProfileLists did={did} viewerIsOwner only={LIST_ACCOUNTS_TYPE} />
+            </div>
+          </TabPanel>
+          <TabPanel value="endorsements">
+            <div className="records-pane__tab-body">
+              <EndorsementLists did={did} viewerIsOwner hideTitle />
+            </div>
+          </TabPanel>
+        </Tabs>
+      </section>
+    </WorkspaceFrame>
   )
 }
 
@@ -529,30 +537,35 @@ export function GroupsPane() {
   const titleId = useId()
   const { groups, isLoading } = useOrg()
   return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Groups"
-        description="Groups you belong to. Switch to one to act as it, or open its profile."
-        action={
-          <Button href="/groups/create" variant="secondary" size="sm">
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-            New group
-          </Button>
-        }
-      />
-      {isLoading && groups.length === 0 ? (
-        <RowsSkeleton shape="square" rows={3} />
-      ) : groups.length === 0 ? (
-        <EmptyState
-          icon={UsersRound}
-          headingLevel={2}
-          title="You're not in any groups yet"
-          description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
+    <WorkspaceFrame
+      offset={false}
+      header={
+        <PaneHead
+          titleId={titleId}
+          section="groups"
+          action={
+            <Button href="/groups/create" variant="secondary" size="sm">
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New group
+            </Button>
+          }
         />
-      ) : (
-        <GroupRows groups={groups} />
-      )}
-    </section>
+      }
+    >
+      <section className="records-pane" aria-labelledby={titleId}>
+        {isLoading && groups.length === 0 ? (
+          <RowsSkeleton shape="square" rows={3} />
+        ) : groups.length === 0 ? (
+          <EmptyState
+            icon={UsersRound}
+            headingLevel={2}
+            title="You're not in any groups yet"
+            description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
+          />
+        ) : (
+          <GroupRows groups={groups} />
+        )}
+      </section>
+    </WorkspaceFrame>
   )
 }

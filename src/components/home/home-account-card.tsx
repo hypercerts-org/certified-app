@@ -118,8 +118,9 @@ export function HomeIdentityHeader({
   )
 }
 
-/** The header's shape while the profile loads: avatar, name, one line. */
-function HomeIdentityHeaderSkeleton() {
+/** The header's shape while the profile (or auth) loads: avatar, name,
+ *  one line. */
+export function HomeIdentityHeaderSkeleton() {
   return (
     <div className="flex items-center gap-3" aria-hidden>
       <Skeleton variant="circle" width={64} />

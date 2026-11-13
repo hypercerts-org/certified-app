@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 
 /** Structural icon type: lucide icons and wrappers like `CertIcon`. */
@@ -108,8 +108,10 @@ export default function SideNav({
   // A scrolling row keeps the current item in view: on mount and whenever
   // the current item changes. Sets the row's own scrollLeft (not
   // scrollIntoView, which would also scroll the page). A no-op in the
-  // column layout, where the list doesn't overflow.
-  useEffect(() => {
+  // column layout, where the list doesn't overflow. A layout effect, so a
+  // freshly mounted row (a page that renders its own nav, like each
+  // Workspace section) never paints scrolled to the start first.
+  useLayoutEffect(() => {
     const list = listRef.current;
     if (!scrolls || !list || currentKey === null) return;
     if (list.scrollWidth <= list.clientWidth) return;

@@ -10,6 +10,7 @@ import Button from "@/components/ui/button"
 import { SeeAllLink } from "@/components/ui/section-header"
 import WorkspaceShell, {
   WORKSPACE_SECTIONS,
+  WorkspaceFrame,
   workspaceSectionLabel,
   type WorkspaceSection,
 } from "@/components/layout/workspace-shell"
@@ -29,6 +30,7 @@ import { useFollowing } from "@/hooks/use-following"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
+import { PaneHead } from "@/components/records/records-shared"
 
 /** The Workspace sections this page renders (the Overview is /home). */
 type RecordKind = Exclude<WorkspaceSection, "overview">
@@ -48,11 +50,12 @@ function parseKind(value: string | null): RecordKind {
  * person's account holds: projects with their activities (as folders),
  * endorsements given and received, followers and who they follow, lists,
  * and their groups. `?kind=` picks the section; Endorsements, Followers
- * and Lists have tabs (`&tab=`). The Workspace frame (`WorkspaceShell`)
- * carries the side list, shared with the Overview (`/home`).
+ * and Lists have tabs (`&tab=`). The Workspace frame (`WorkspaceShell`
+ * and `WorkspaceFrame`) carries the side list, shared with the Overview
+ * (`/home`).
  *
- * Each section opens with its own `<PageHeader>` and carries its own
- * create action (New activity and New project, Endorse someone, Find
+ * Each section passes its own `<PageHeader>` to the frame and carries its
+ * own create action (New activity and New project, Endorse someone, Find
  * accounts, New list, New group); the top bar's New is the global one.
  *
  * Personal account only: the sections write to the session DID's repo.
@@ -100,24 +103,31 @@ export default function RecordsPage() {
     if (kindParam === "following") router.replace("/records?kind=followers&tab=following")
   }, [kindParam, router])
 
+  // Every state renders the Workspace frame (header, side list, content):
+  // the panes their own, with their actions; the states below a plain
+  // header.
   const content = (() => {
+    // While auth resolves (also on the server) and while the signed-out
+    // redirect runs: the section's header, the side list and a spinner.
     if (authLoading || !isAuthenticated || !did) {
       return (
-        <div className="records-page__loading">
-          <LoadingSpinner size="md" />
-        </div>
+        <WorkspaceFrame header={<PaneHead section={kind} />}>
+          <div className="records-page__loading">
+            <LoadingSpinner size="md" />
+          </div>
+        </WorkspaceFrame>
       )
     }
 
     // Acting as a group: the sections stay in the side list and explain
     // themselves. The group's records live on its profile (the same target
     // as the Overview's "All records"); switching back is the way to manage
-    // your own. Groups are a personal list.
+    // your own. Groups are a personal list. No description: it speaks of
+    // your own account.
     if (activeOrg) {
       const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
       return (
-        <>
-          <PageHeader title={workspaceSectionLabel(kind)} />
+        <WorkspaceFrame header={<PageHeader title={workspaceSectionLabel(kind)} className="!mb-0" />}>
           {kind === "groups" ? (
             <EmptyState
               icon={UsersRound}
@@ -149,7 +159,7 @@ export default function RecordsPage() {
               </div>
             </EmptyState>
           )}
-        </>
+        </WorkspaceFrame>
       )
     }
 

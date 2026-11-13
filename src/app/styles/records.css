@@ -1,7 +1,8 @@
 /* ---------- /records ----------
    The Workspace sections that manage what the account holds. The
-   Workspace frame (below) sets the side list; each pane opens with its
-   <PageHeader> (the page's h1) and carries its own create action. */
+   Workspace frame (below) sets the header and the side list; each pane
+   passes its <PageHeader> (the page's h1) to the frame and carries its
+   own create action. */
 
 .records-page__loading {
   display: flex;
@@ -11,9 +12,17 @@
 }
 
 /* ---------- Workspace frame (workspace-shell.tsx) ----------
-   The Overview (/home) and the Records sections share one frame: the
-   Workspace side list beside the section. Below 1100px the list is one
-   scrolling row of pills above the section. */
+   The Overview (/home) and the Records sections share one frame, the
+   same as Settings and Help: the section's header full width, then the
+   Workspace side list and the section starting on one line. Below 1100px
+   the list is one scrolling row of pills between the header and the
+   section. The headers carry no margin of their own (`!mb-0`); this sets
+   the 16px a PageHeader keeps below it. */
+.workspace__header {
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
 .workspace__layout {
   display: flex;
   flex-direction: column;

@@ -11,9 +11,13 @@ import { usePageTitle } from "@/lib/navbar-context"
 import { ownProfileUrl } from "@/lib/urls"
 import type { Group } from "@/lib/groups/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import WorkspaceShell from "@/components/layout/workspace-shell"
+import WorkspaceShell, { WorkspaceFrame } from "@/components/layout/workspace-shell"
 import Card from "@/components/ui/card"
-import { HomeIdSection, HomeIdentityHeader } from "@/components/home/home-account-card"
+import {
+  HomeIdSection,
+  HomeIdentityHeader,
+  HomeIdentityHeaderSkeleton,
+} from "@/components/home/home-account-card"
 import {
   HomeApps,
   HomeEndorsements,
@@ -22,19 +26,20 @@ import {
 } from "@/components/home/home-sections"
 
 /**
- * Workspace → Overview (`/home`): the account and what it holds, inside
- * the Workspace frame (its side list leads to the Records sections and
- * Groups). The follow feed has its own page, /feed.
+ * Workspace → Overview (`/home`): the account and what it holds, in the
+ * Workspace frame (the header full width, then its side list, which leads
+ * to the Records sections and Groups, beside the content). The follow
+ * feed has its own page, /feed.
  *
- *   ≥ 1100px (beside the side list)             < 1100px (one column)
- *   ┌──────────────────────┐ ┌───────────┐      header
- *   │ header: avatar, name │ │ ID (box)  │      ID (box)
- *   │ bio, website         │ └───────────┘      Your groups (box)
- *   │ Your records         │ ┌───────────┐      Your records
- *   │ Endorsements and     │ │ Your      │      Endorsements and
- *   │   followers          │ │ groups    │        followers
- *   │ Apps                 │ └───────────┘      Apps
- *   └──────────────────────┘
+ *   ≥ 1100px                                      < 1100px (one column)
+ *   header: avatar, name, bio, website            header
+ *   ┌──────┐ ┌──────────────────┐ ┌───────────┐   side list (pills)
+ *   │ side │ │ Your records     │ │ ID (box)  │   ID (box)
+ *   │ list │ │ Endorsements and │ └───────────┘   Your groups (box)
+ *   │      │ │   followers      │ ┌───────────┐   Your records
+ *   │      │ │ Apps             │ │ Your      │   Endorsements and
+ *   └──────┘ └──────────────────┘ │ groups    │     followers
+ *                                 └───────────┘   Apps
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the Workspace menu. "Your groups" is
@@ -72,15 +77,18 @@ export default function Home() {
   })
 
   return (
-    // The Workspace frame (its side list, width and gutters); `home-page`
-    // scopes the Overview's own rules in home.css.
+    // The Workspace page (width and gutters); `home-page` scopes the
+    // Overview's own rules in home.css.
     <WorkspaceShell current="overview" className="home-page">
-      {/* Spinner while auth resolves, while the signed-out redirect is in
-          flight, or while the acting-as DID is still resolving. */}
+      {/* While auth resolves, while the signed-out redirect is in flight,
+          or while the acting-as DID is still resolving: the header's
+          placeholder, the side list and a spinner. */}
       {authLoading || !isAuthenticated || !activeDid ? (
-        <div className="flex justify-center py-16">
-          <LoadingSpinner size="md" />
-        </div>
+        <WorkspaceFrame header={<HomeIdentityHeaderSkeleton />}>
+          <div className="flex justify-center py-16">
+            <LoadingSpinner size="md" />
+          </div>
+        </WorkspaceFrame>
       ) : (
         // Keyed on the account: switching account keeps the /home path,
         // so without a remount every section would keep showing the
@@ -112,56 +120,57 @@ function HomeAccount({
   const identity = { did, profile, avatarUrl, handle, isLoading }
 
   return (
-    // DOM order is the phone order: header, the ID and Your groups boxes,
-    // the sections (records, from others), Apps. From 1100px (beside the
-    // Workspace side list) a grid puts the two boxes in a column on the
-    // right, level with the header (home.css).
-    <div className="home__layout">
-      <div className="home__header">
-        <HomeIdentityHeader identity={identity} activeGroup={activeGroup} />
-      </div>
-
-      {/* White boxes, so the ID and the groups stand out from the open
-          sections. */}
-      <div className="home__side">
-        {/* The ID card: a centerpiece every style can redraw (looks.css);
-            data-did feeds Banknote's microtext. */}
-        <Card unpadded className="home__box" data-centerpiece="id" data-did={did}>
-          <HomeIdSection
-            identity={identity}
-            isGroup={isGroup}
-            canEditHandle={
-              !activeGroup || activeGroup.role === "owner" || activeGroup.role === "admin"
-            }
-          />
-        </Card>
-        {isGroup ? null : (
-          <Card unpadded className="home__box">
-            <HomeGroups />
+    // The header is the frame's (full width, above the side list). The
+    // content opens with "Your records" (a section heading), so it takes
+    // the frame's offset and sits level with the first side-list label.
+    <WorkspaceFrame header={<HomeIdentityHeader identity={identity} activeGroup={activeGroup} />}>
+      {/* DOM order is the phone order: the ID and Your groups boxes, the
+          sections (records, from others), Apps. From 1100px a grid puts
+          the two boxes in a column on the right, its top level with the
+          sections (home.css). */}
+      <div className="home__layout">
+        {/* White boxes, so the ID and the groups stand out from the open
+            sections. */}
+        <div className="home__side">
+          {/* The ID card: a centerpiece every style can redraw (looks.css);
+              data-did feeds Banknote's microtext. */}
+          <Card unpadded className="home__box" data-centerpiece="id" data-did={did}>
+            <HomeIdSection
+              identity={identity}
+              isGroup={isGroup}
+              canEditHandle={
+                !activeGroup || activeGroup.role === "owner" || activeGroup.role === "admin"
+              }
+            />
           </Card>
-        )}
-      </div>
+          {isGroup ? null : (
+            <Card unpadded className="home__box">
+              <HomeGroups />
+            </Card>
+          )}
+        </div>
 
-      <div className="home__main">
-        <HomeRecords
-          did={did}
-          isGroup={isGroup}
-          profileBase={profileBase}
-          counts={counts}
-          countsLoading={countsLoading}
-        />
-        <HomeEndorsements
-          did={did}
-          isGroup={isGroup}
-          profileBase={profileBase}
-          counts={counts}
-          countsLoading={countsLoading}
-        />
-      </div>
+        <div className="home__main">
+          <HomeRecords
+            did={did}
+            isGroup={isGroup}
+            profileBase={profileBase}
+            counts={counts}
+            countsLoading={countsLoading}
+          />
+          <HomeEndorsements
+            did={did}
+            isGroup={isGroup}
+            profileBase={profileBase}
+            counts={counts}
+            countsLoading={countsLoading}
+          />
+        </div>
 
-      <div className="home__apps">
-        <HomeApps />
+        <div className="home__apps">
+          <HomeApps />
+        </div>
       </div>
-    </div>
+    </WorkspaceFrame>
   )
 }

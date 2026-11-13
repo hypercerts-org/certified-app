@@ -1,34 +1,24 @@
 /* ---------- /home page ----------
    The signed-in home is about the account. Its <PageHeader> is the
-   identity strip (avatar, name, bio, website; home-account-card.tsx);
-   the ID and Your groups are white boxes beside it (under it on phones),
-   then come the account's sections (records, from others) and Apps.
+   identity strip (avatar, name, bio, website; home-account-card.tsx),
+   full width in the Workspace frame above the side list. Under it the ID
+   and Your groups are white boxes in a right column (first, on phones),
+   beside the account's sections (records, from others) and Apps.
    <PageContainer> sets the width and gutters; this
    file sets the grid and the hairline rows. The follow feed lives on
    /feed; its card styles stay in this file (.home-feed*). */
 
-/* One column below 1100px, in DOM order: header, the ID and Your groups
-   boxes, the sections, Apps. The header's negative bottom margin pulls the
-   first box to 24px (phone) / 32px (desktop) below it; the rest keep the
-   full gap. */
+/* One column below 1100px, in DOM order: the ID and Your groups boxes,
+   the sections, Apps. */
 .home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 32px;
 }
 
-.home__header {
-  min-width: 0;
-  margin-bottom: -8px;
-}
-
 @media (min-width: 800px) {
   .home__layout {
     gap: 48px;
-  }
-
-  .home__header {
-    margin-bottom: -16px;
   }
 }
 
@@ -41,28 +31,23 @@
 }
 
 /* From 1100px, beside the Workspace side list (268px of the row): the
-   header, the sections and Apps in the left column; the boxes in a column
-   on the right, its top level with the header. 280px with a 32px gap at
-   1100–1299px, which leaves the left column about 460px at 1100px (the
-   record counts, latest rows and two app tiles fit); 300px and 48px from
-   1300px.
-   The side column spans every row and the last row is 1fr, so a tall
+   sections and Apps in the left column; the boxes in a column on the
+   right, its top level with the sections (and the first side-list
+   label). 280px with a 32px gap at 1100–1299px, which leaves the left
+   column about 460px at 1100px (the record counts, latest rows and two
+   app tiles fit); 300px and 48px from 1300px.
+   The side column spans both rows and the last row is 1fr, so a tall
    side column lengthens only that row (under Apps), never the space
-   between the header and the sections. */
+   between the sections and Apps. */
 @media (min-width: 1100px) {
   .home__layout {
     grid-template-columns: minmax(0, 1fr) 280px;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto 1fr;
     grid-template-areas:
-      "header side"
       "main side"
       "apps side";
     column-gap: 32px;
     align-items: start;
-  }
-
-  .home__header {
-    grid-area: header;
   }
 
   .home__side {

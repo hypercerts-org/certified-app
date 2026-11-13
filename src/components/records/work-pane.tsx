@@ -55,6 +55,7 @@ import {
   ACTIVITY_PAGE,
   useOwnActivities,
 } from "@/components/records/use-own-activities"
+import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
 const EMPTY_SET: ReadonlySet<string> = new Set()
 
@@ -483,209 +484,215 @@ export default function WorkPane({
   }
 
   return (
-    <section
-      className="records-pane records-work"
-      aria-labelledby={titleId}
-      data-selecting={hasSelection || undefined}
+    <WorkspaceFrame
+      // The content opens with the search, a control row, not a heading.
+      offset={false}
+      header={
+        <PaneHead
+          titleId={titleId}
+          section="activities"
+          action={
+            // Hidden while loading and when there is nothing yet: the empty
+            // state below carries its own "New activity".
+            !isLoading && !nothingYet ? (
+              <div className="records-pane__actions">
+                <Button href="/create" variant="primary" size="sm">
+                  <Plus size={16} strokeWidth={1.75} aria-hidden />
+                  New activity
+                </Button>
+                <Button href="/project/new" variant="secondary" size="sm">
+                  <Plus size={16} strokeWidth={1.75} aria-hidden />
+                  New project
+                </Button>
+              </div>
+            ) : null
+          }
+        />
+      }
     >
-      <PaneHead
-        titleId={titleId}
-        title="Projects and activities"
-        description="Each project is a folder of its activities. One activity can sit in several projects."
-        action={
-          // Hidden while loading and when there is nothing yet: the empty
-          // state below carries its own "New activity".
-          !isLoading && !nothingYet ? (
-            <div className="records-pane__actions">
-              <Button href="/create" variant="primary" size="sm">
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-                New activity
+      <section
+        className="records-pane records-work"
+        aria-labelledby={titleId}
+        data-selecting={hasSelection || undefined}
+      >
+        {!isLoading && !nothingYet ? (
+          <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
+        ) : null}
+
+        {/* Announces the selection count; the bar itself mounts and unmounts. */}
+        <p className="sr-only" aria-live="polite">
+          {hasSelection ? `${count(selectedLive.length, "activity", "activities")} selected` : ""}
+        </p>
+        {/* Before the list in the DOM, so "Add to project…" is the next Tab
+            stop after the search rather than after every row; CSS still
+            shows it at the bottom of the pane (records.css). */}
+        {hasSelection ? (
+          <div className="records-selection" role="region" aria-label="Selected activities">
+            <span className="records-selection__count">{selectedLive.length} selected</span>
+            <div className="records-selection__actions">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  fromMenu(null)
+                  openPicker(selectedLive)
+                }}
+              >
+                <FolderPlus size={16} strokeWidth={1.75} aria-hidden />
+                Add to project…
               </Button>
-              <Button href="/project/new" variant="secondary" size="sm">
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-                New project
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
               </Button>
             </div>
-          ) : null
-        }
-      />
-      {!isLoading && !nothingYet ? (
-        <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
-      ) : null}
-
-      {/* Announces the selection count; the bar itself mounts and unmounts. */}
-      <p className="sr-only" aria-live="polite">
-        {hasSelection ? `${count(selectedLive.length, "activity", "activities")} selected` : ""}
-      </p>
-      {/* Before the list in the DOM, so "Add to project…" is the next Tab
-          stop after the search rather than after every row; CSS still
-          shows it at the bottom of the pane (records.css). */}
-      {hasSelection ? (
-        <div className="records-selection" role="region" aria-label="Selected activities">
-          <span className="records-selection__count">{selectedLive.length} selected</span>
-          <div className="records-selection__actions">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                fromMenu(null)
-                openPicker(selectedLive)
-              }}
-            >
-              <FolderPlus size={16} strokeWidth={1.75} aria-hidden />
-              Add to project…
-            </Button>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear
-            </Button>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* A list that failed: said above whatever did load, with one retry
-          (it loads both lists again). */}
-      {loadError ? (
-        <EmptyState variant="inline" title={loadError}>
-          <Button variant="ghost" size="sm" onClick={onRetry}>
-            Try again
-          </Button>
-        </EmptyState>
-      ) : null}
+        {/* A list that failed: said above whatever did load, with one retry
+            (it loads both lists again). */}
+        {loadError ? (
+          <EmptyState variant="inline" title={loadError}>
+            <Button variant="ghost" size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          </EmptyState>
+        ) : null}
 
-      {isLoading ? (
-        <RowsSkeleton rows={5} />
-      ) : nothingYet ? (
-        <EmptyState
-          icon={FolderGit2}
-          headingLevel={2}
-          title="No projects or activities yet"
-          description="An activity records a piece of work. Group activities into projects to show how they fit together."
-        >
-          <Button href="/create" variant="secondary" size="sm">
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-            New activity
-          </Button>
-        </EmptyState>
-      ) : q && shownProjects.length === 0 && shownLoose.length === 0 ? (
-        <EmptyState variant="inline" title={`Nothing matches "${query.trim()}".`}>
-          <Button variant="ghost" size="sm" onClick={() => setQuery("")}>
-            Clear search
-          </Button>
-        </EmptyState>
-      ) : shownProjects.length === 0 && !showLooseFolder ? null : (
-        <ul className="records-folders">
-          {shownProjects.map((p) => (
-            <ProjectFolder
-              key={p.uri}
-              project={p}
-              did={did}
-              actor={actor}
-              removed={removed}
-              query={q}
-              ownByUri={ownByUri}
-              isOpen={isFolderOpen(p.uri)}
-              onToggle={() => toggleFolder(p.uri)}
-              onDeleteProject={(project, trigger) => {
-                fromMenu(trigger)
-                deleteProject.ask(project)
-              }}
-              // "Add activities" lists your activities: not offered while
-              // they couldn't be loaded.
-              onAddActivities={
-                activitiesFailed
-                  ? undefined
-                  : (trigger) => {
-                      fromMenu(trigger)
-                      setAdding(p)
-                    }
-              }
-              renderRow={(record) => (
-                <ActivityRow
-                  key={record.uri}
-                  record={record}
-                  {...rowProps}
-                  otherProjects={otherProjects(record.uri, p)}
-                  selected={selected.has(record.uri)}
-                  onRemoveFromProject={(r) => void removeFromProject(p, r)}
-                  folderTitle={projectTitle(p.value)}
-                  busy={busyRows.has(`${p.uri}|${record.uri}`)}
-                />
-              )}
-            />
-          ))}
-          {showLooseFolder ? (
-            <LooseFolder
-              count={shownLoose.length}
-              isOpen={isFolderOpen("loose")}
-              onToggle={() => toggleFolder("loose")}
-            >
-              {shownLoose.map((a) => (
-                <ActivityRow
-                  key={a.uri}
-                  record={a}
-                  {...rowProps}
-                  otherProjects={[]}
-                  selected={selected.has(a.uri)}
-                />
-              ))}
-            </LooseFolder>
-          ) : null}
-        </ul>
-      )}
-      {own.truncated || projectsTruncated ? (
-        <p className="records-pane__note">
-          {own.truncated && projectsTruncated
-            ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities and first ${USER_PROJECTS_MAX} projects.`
-            : own.truncated
-              ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities.`
-              : `Showing your first ${USER_PROJECTS_MAX} projects.`}
-        </p>
-      ) : null}
+        {isLoading ? (
+          <RowsSkeleton rows={5} />
+        ) : nothingYet ? (
+          <EmptyState
+            icon={FolderGit2}
+            headingLevel={2}
+            title="No projects or activities yet"
+            description="An activity records a piece of work. Group activities into projects to show how they fit together."
+          >
+            <Button href="/create" variant="secondary" size="sm">
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New activity
+            </Button>
+          </EmptyState>
+        ) : q && shownProjects.length === 0 && shownLoose.length === 0 ? (
+          <EmptyState variant="inline" title={`Nothing matches "${query.trim()}".`}>
+            <Button variant="ghost" size="sm" onClick={() => setQuery("")}>
+              Clear search
+            </Button>
+          </EmptyState>
+        ) : shownProjects.length === 0 && !showLooseFolder ? null : (
+          <ul className="records-folders">
+            {shownProjects.map((p) => (
+              <ProjectFolder
+                key={p.uri}
+                project={p}
+                did={did}
+                actor={actor}
+                removed={removed}
+                query={q}
+                ownByUri={ownByUri}
+                isOpen={isFolderOpen(p.uri)}
+                onToggle={() => toggleFolder(p.uri)}
+                onDeleteProject={(project, trigger) => {
+                  fromMenu(trigger)
+                  deleteProject.ask(project)
+                }}
+                // "Add activities" lists your activities: not offered while
+                // they couldn't be loaded.
+                onAddActivities={
+                  activitiesFailed
+                    ? undefined
+                    : (trigger) => {
+                        fromMenu(trigger)
+                        setAdding(p)
+                      }
+                }
+                renderRow={(record) => (
+                  <ActivityRow
+                    key={record.uri}
+                    record={record}
+                    {...rowProps}
+                    otherProjects={otherProjects(record.uri, p)}
+                    selected={selected.has(record.uri)}
+                    onRemoveFromProject={(r) => void removeFromProject(p, r)}
+                    folderTitle={projectTitle(p.value)}
+                    busy={busyRows.has(`${p.uri}|${record.uri}`)}
+                  />
+                )}
+              />
+            ))}
+            {showLooseFolder ? (
+              <LooseFolder
+                count={shownLoose.length}
+                isOpen={isFolderOpen("loose")}
+                onToggle={() => toggleFolder("loose")}
+              >
+                {shownLoose.map((a) => (
+                  <ActivityRow
+                    key={a.uri}
+                    record={a}
+                    {...rowProps}
+                    otherProjects={[]}
+                    selected={selected.has(a.uri)}
+                  />
+                ))}
+              </LooseFolder>
+            ) : null}
+          </ul>
+        )}
+        {own.truncated || projectsTruncated ? (
+          <p className="records-pane__note">
+            {own.truncated && projectsTruncated
+              ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities and first ${USER_PROJECTS_MAX} projects.`
+              : own.truncated
+                ? `Showing your newest ${ACTIVITY_PAGE * ACTIVITY_MAX_PAGES} activities.`
+                : `Showing your first ${USER_PROJECTS_MAX} projects.`}
+          </p>
+        ) : null}
 
-      {picking && projectsReady ? (
-        <ProjectPickerDialog
-          activities={picking}
-          projects={liveProjects}
-          onClose={() => setPicking(null)}
-          onSave={savePicker}
-          onCreateProject={createFromSelection}
-          returnFocusRef={returnFocus}
-        />
-      ) : null}
-      {adding ? (
-        <ActivityPickerDialog
-          project={written.get(adding.uri) ?? adding}
-          activities={ownActivities}
-          onClose={() => setAdding(null)}
-          onSave={saveAdder}
-          returnFocusRef={returnFocus}
-        />
-      ) : null}
-      {deleteActivity.target ? (
-        <DeleteRecordDialog
-          title="Delete activity"
-          recordName={deleteActivity.target.value.title || "Untitled activity"}
-          recordTypeLabel="activity"
-          isDeleting={deleteActivity.isDeleting}
-          errorMessage={deleteActivity.error}
-          onCancel={deleteActivity.cancel}
-          onConfirm={deleteActivity.confirm}
-          returnFocusRef={returnFocus}
-        />
-      ) : null}
-      {deleteProject.target ? (
-        <DeleteRecordDialog
-          title="Delete project"
-          recordName={projectTitle(deleteProject.target.value)}
-          recordTypeLabel="project"
-          isDeleting={deleteProject.isDeleting}
-          errorMessage={deleteProject.error}
-          onCancel={deleteProject.cancel}
-          onConfirm={deleteProject.confirm}
-          returnFocusRef={returnFocus}
-        />
-      ) : null}
-    </section>
+        {picking && projectsReady ? (
+          <ProjectPickerDialog
+            activities={picking}
+            projects={liveProjects}
+            onClose={() => setPicking(null)}
+            onSave={savePicker}
+            onCreateProject={createFromSelection}
+            returnFocusRef={returnFocus}
+          />
+        ) : null}
+        {adding ? (
+          <ActivityPickerDialog
+            project={written.get(adding.uri) ?? adding}
+            activities={ownActivities}
+            onClose={() => setAdding(null)}
+            onSave={saveAdder}
+            returnFocusRef={returnFocus}
+          />
+        ) : null}
+        {deleteActivity.target ? (
+          <DeleteRecordDialog
+            title="Delete activity"
+            recordName={deleteActivity.target.value.title || "Untitled activity"}
+            recordTypeLabel="activity"
+            isDeleting={deleteActivity.isDeleting}
+            errorMessage={deleteActivity.error}
+            onCancel={deleteActivity.cancel}
+            onConfirm={deleteActivity.confirm}
+            returnFocusRef={returnFocus}
+          />
+        ) : null}
+        {deleteProject.target ? (
+          <DeleteRecordDialog
+            title="Delete project"
+            recordName={projectTitle(deleteProject.target.value)}
+            recordTypeLabel="project"
+            isDeleting={deleteProject.isDeleting}
+            errorMessage={deleteProject.error}
+            onCancel={deleteProject.cancel}
+            onConfirm={deleteProject.confirm}
+            returnFocusRef={returnFocus}
+          />
+        ) : null}
+      </section>
+    </WorkspaceFrame>
   )
 }
 
