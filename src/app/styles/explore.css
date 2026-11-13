@@ -405,18 +405,38 @@
   padding: 0;
 }
 
+/* The hairline between rows. A pseudo-element rather than a border, so
+   it can stop at the content edges (`--explore-row-inset`, the row's
+   side padding) while the hover wash still runs the row's full width:
+   the line lines up with the section title, the tab rule and the search
+   field, not 8px past them. */
 .explore__list > li + li .cert-list-row,
 .explore__list > li + li .account-list-row,
-.explore__list > li + li .explore-skeleton-row {
+.explore__list > li + li .explore-skeleton-row,
+.explore__list > li + li .funding-receipt-row {
+  position: relative;
+}
+
+.explore__list > li + li .cert-list-row::before,
+.explore__list > li + li .account-list-row::before,
+.explore__list > li + li .explore-skeleton-row::before,
+.explore__list > li + li .funding-receipt-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--explore-row-inset, 0);
+  right: var(--explore-row-inset, 0);
   border-top: 1px solid var(--border-subtle);
+  pointer-events: none;
 }
 
 /* From 800px rows carry 8px of side padding for the hover wash; pull the
    list out by the same amount so row text lines up with the section
-   heading above. */
+   heading above, and inset the hairlines by it. */
 @media (min-width: 800px) {
   .explore-page .explore__list {
     margin-inline: -8px;
+    --explore-row-inset: 8px;
   }
 
   .explore-page .cert-list-row,
@@ -937,10 +957,6 @@
   transition: background var(--transition-fast);
 }
 
-.explore__list > li + li .funding-receipt-row {
-  border-top: 1px solid var(--border-subtle);
-}
-
 /* Hover wash only on hover-capable pointers, so a tap on a touch screen
    (of any width) doesn't leave the row stuck in its hover state. */
 @media (hover: hover) {
@@ -1269,7 +1285,9 @@
   }
   /* The list now spaces cards via its own gap; drop the desktop inter-row
      hairline (it would draw a line through the card border). */
-  .explore__list > li + li .funding-receipt-row,
+  .explore__list > li + li .funding-receipt-row::before {
+    content: none;
+  }
   .cert-detail__funding-list > li + li .funding-receipt-row {
     border-top: none;
   }
