@@ -4,8 +4,6 @@ import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "rea
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
-  Globe,
-  History,
   LayoutGrid,
   List as ListIcon,
   SearchX,
@@ -25,7 +23,7 @@ import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SeenAsSwitcher from "@/components/network/seen-as-switcher"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
-import SideNav, { type SideNavItem } from "@/components/ui/side-nav"
+import Select from "@/components/ui/select"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
@@ -164,12 +162,13 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
 }
 
 /**
- * /explore entry point: the page header, the list navigation (All,
- * Accounts I follow, Endorsed accounts, Recently viewed) and the main
- * column. The main column starts with the type tabs (All · Activities ·
- * Projects · Accounts · Funding, `?show=`), then the type's panel: the
- * search field and the results: on "All", one short section per type (Featured
- * first on the plain All list); on a single type, that type in full.
+ * /explore entry point: the page header, then the type tabs (All ·
+ * Activities · Projects · Accounts · Funding, `?show=`) and the type's
+ * panel: the toolbar (search, the result actions and the "Show" select
+ * of lists: Whole network, Accounts I follow, Endorsed accounts,
+ * Recently viewed, `?filter=`) and the results: on "All", one short
+ * section per type (Featured first on the plain All list); on a single
+ * type, that type in full. The results take the page's full width.
  * Public: signed-out visitors can browse everything except the lists
  * built from their own follows and endorsements.
  */
@@ -186,7 +185,7 @@ export default function Explore() {
  *  client-side trimming without pulling a full 50-row page for 5 rows. */
 const ALL_VIEW_BLOCK_SIZE = 5
 
-/** Filter keys accepted in `?filter=`: the SideNav lists plus the
+/** Filter keys accepted in `?filter=`: the "Show" lists plus the
  *  featured Ma Earth set (reached from the Featured section). */
 function isValidViewFilter(filter: string): boolean {
   return filtersForView("all").some((f) => f.key === filter)
@@ -217,8 +216,8 @@ const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
 ]
 
 /** Shared URL state: the list (`?filter=`), the type (`?show=`), the
- *  search (`?q=`), a replace-in-place writer and an href builder for
- *  links that change one of them. */
+ *  search (`?q=`), a replace-in-place writer, a list switcher and an href
+ *  builder for links that change one of them. */
 function useAllView() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -245,7 +244,7 @@ function useAllView() {
     [pathname, searchParams, router],
   )
 
-  /** The current URL with `patch` applied — for links (SideNav, See all). */
+  /** The current URL with `patch` applied — for links (See all). */
   const hrefWith = useCallback(
     (patch: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -265,7 +264,24 @@ function useAllView() {
     [setUrl],
   )
 
-  return { filter, show, search, setUrl, hrefWith, setShow }
+  // List selection ("Show"). Navigates to the URL the old side list's
+  // links did (the other params kept, "Whole network" clears the param)
+  // and, like them, adds a history entry, so Back returns to the previous
+  // list. The page stays where it is: the select sits in the toolbar,
+  // above the results it changes.
+  const setList = useCallback(
+    (next: string) => {
+      router.push(
+        hrefWith({
+          filter: next === defaultFilterForView("all") ? null : next,
+        }),
+        { scroll: false },
+      )
+    },
+    [router, hrefWith],
+  )
+
+  return { filter, show, search, setUrl, hrefWith, setShow, setList }
 }
 
 type AllView = ReturnType<typeof useAllView>
@@ -306,31 +322,8 @@ const LIST_LABEL: Record<string, string> = {
 
 function ExploreAll() {
   const view = useAllView()
-  const { filter, show, hrefWith, setShow } = view
+  const { filter, show, setShow } = view
   const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth()
-  const hasRecent = useHasRecentlyViewed()
-
-  // The lists. "Whole network" first: it is the default, so it is the
-  // one in view when the phone pill row loads. Featured
-  // (`?filter=ma-earth`) is part of it, so it stays current while that
-  // is shown. Recently viewed appears once this browser has viewed
-  // something (or when linked to).
-  const listItems: SideNavItem[] = [
-    { key: "all", label: LIST_LABEL.all, icon: Globe },
-    { key: "follows", label: LIST_LABEL.follows, icon: UserCheck },
-    { key: "endorsed", label: LIST_LABEL.endorsed, icon: ThumbsUp },
-    ...(hasRecent || filter === "recent"
-      ? [{ key: "recent", label: LIST_LABEL.recent, icon: History }]
-      : []),
-  ].map((item) => ({
-    ...item,
-    href: hrefWith({
-      filter: item.key === defaultFilterForView("all") ? null : item.key,
-    }),
-    current:
-      item.key === filter ||
-      (item.key === "all" && filter === MA_EARTH_FILTER),
-  }))
 
   // "Accounts I follow" and "Endorsed accounts" are built from the
   // viewer's own graph: signed out, explain and offer to sign in.
@@ -346,75 +339,71 @@ function ExploreAll() {
         titleAside={<SeenAsSwitcher />}
         description="Activities, projects and accounts across the Certified network."
       />
-      <div className="explore__layout">
-        <SideNav
-          aria-label="Explore lists"
-          items={listItems}
-          className="explore__lists"
-        />
-        <div className="explore__main">
-          {needsSignIn ? (
-            <EmptyState
-              icon={filter === "follows" ? UserCheck : ThumbsUp}
-              headingLevel={2}
-              title={
-                filter === "follows"
-                  ? "Sign in to see the accounts you follow"
-                  : "Sign in to see endorsed accounts"
-              }
-              description={
-                filter === "follows"
-                  ? "This list shows activities, projects and accounts from the accounts you follow."
-                  : "This list starts from the accounts you have endorsed, and the accounts they endorsed."
-              }
-            >
-              <Button variant="primary" onClick={() => void openSignIn?.()}>
-                Sign in
-              </Button>
-            </EmptyState>
-          ) : (
-            // The type tabs (`?show=`) stay mounted while the panel under
-            // them is replaced, so a keyboard user's focus stays on the tab
-            // they moved to.
-            <Tabs
-              value={show}
-              onChange={(next) => setShow(parseAllShow(next))}
-              className="explore__tabs"
-            >
-              {/* data-tour anchors the product tour's "Activities,
-                  projects, and accounts" step on the tabs' wrapper. */}
-              <div className="explore__types" data-tour="explore-category">
-                <TabList aria-label="Type" className="explore__type-tabs">
-                  {SHOW_OPTIONS.map((o) => (
-                    <Tab key={o.key} value={o.key}>
-                      {o.label}
-                    </Tab>
-                  ))}
-                </TabList>
-              </div>
-              <TabPanel value={show} className="explore__panel">
-                {show === "all" ? (
-                  <ExploreAllBlocks view={view} />
-                ) : (
-                  <ExploreMain
-                    key={show}
-                    kind={show}
-                    filter={viewFilterToKindFilter(filter, show)}
-                    view={view}
-                  />
-                )}
-              </TabPanel>
-            </Tabs>
-          )}
+      {/* The type tabs (`?show=`) stay mounted while the panel under them
+          is replaced, so a keyboard user's focus stays on the tab they
+          moved to. */}
+      <Tabs
+        value={show}
+        onChange={(next) => setShow(parseAllShow(next))}
+        className="explore__tabs"
+      >
+        {/* data-tour anchors the product tour's "Activities,
+            projects, and accounts" step on the tabs' wrapper. */}
+        <div className="explore__types" data-tour="explore-category">
+          <TabList aria-label="Type" className="explore__type-tabs">
+            {SHOW_OPTIONS.map((o) => (
+              <Tab key={o.key} value={o.key}>
+                {o.label}
+              </Tab>
+            ))}
+          </TabList>
         </div>
-      </div>
+        <TabPanel value={show} className="explore__panel">
+          {needsSignIn ? (
+            <>
+              {/* Only the "Show" select, where it always is: the way to a
+                  list that works signed out. */}
+              <ExploreToolbar view={view} />
+              <EmptyState
+                icon={filter === "follows" ? UserCheck : ThumbsUp}
+                headingLevel={2}
+                title={
+                  filter === "follows"
+                    ? "Sign in to see the accounts you follow"
+                    : "Sign in to see endorsed accounts"
+                }
+                description={
+                  filter === "follows"
+                    ? "This list shows activities, projects and accounts from the accounts you follow."
+                    : "This list starts from the accounts you have endorsed, and the accounts they endorsed."
+                }
+              >
+                <Button variant="primary" onClick={() => void openSignIn?.()}>
+                  Sign in
+                </Button>
+              </EmptyState>
+            </>
+          ) : show === "all" ? (
+            <ExploreAllBlocks view={view} />
+          ) : (
+            <ExploreMain
+              key={show}
+              kind={show}
+              filter={viewFilterToKindFilter(filter, show)}
+              view={view}
+            />
+          )}
+        </TabPanel>
+      </Tabs>
     </PageContainer>
   )
 }
 
 /**
- * The top of a type's panel: the search field with the result actions
- * (view, sort, filters) beside it. The type tabs sit above the panel.
+ * The top of a type's panel: the search field, the result actions (view,
+ * sort, filters) and the "Show" select of lists. The type tabs sit above
+ * the panel. Without a `placeholder` there is no search field (the
+ * sign-in prompt keeps only the select).
  */
 function ExploreToolbar({
   view,
@@ -422,8 +411,8 @@ function ExploreToolbar({
   actions,
 }: {
   view: AllView
-  placeholder: string
-  actions: React.ReactNode
+  placeholder?: string
+  actions?: React.ReactNode
 }) {
   const { search, setUrl } = view
   // Debounced search — ExploreSearchField owns the keystroke state so
@@ -435,19 +424,64 @@ function ExploreToolbar({
   return (
     <div className="explore__toolbar">
       <div className="explore__search-row">
-        <ExploreSearchField
-          search={search}
-          placeholder={placeholder}
-          onCommit={onSearchCommit}
-        />
-        <div className="explore__actions">{actions}</div>
+        {placeholder !== undefined ? (
+          <ExploreSearchField
+            search={search}
+            placeholder={placeholder}
+            onCommit={onSearchCommit}
+          />
+        ) : null}
+        {actions ? <div className="explore__actions">{actions}</div> : null}
+        <ExploreShowSelect view={view} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Show": which list Explore looks through (`?filter=`), in place of the
+ * old side list, with the same options. Whole network first (the
+ * default); Featured (`?filter=ma-earth`, reached from the Featured
+ * section) is part of it, so it stays selected while that is shown.
+ * Recently viewed appears once this browser has viewed something (or
+ * when linked to). The `Select` primitive (a native select) with a
+ * visible label, so it works from the keyboard and names itself.
+ */
+function ExploreShowSelect({ view }: { view: AllView }) {
+  const { filter, setList } = view
+  const hasRecent = useHasRecentlyViewed()
+  const id = useId()
+  const keys = [
+    "all",
+    "follows",
+    "endorsed",
+    ...(hasRecent || filter === "recent" ? ["recent"] : []),
+  ]
+  const value = filter === MA_EARTH_FILTER ? "all" : filter
+  return (
+    <div className="explore__show">
+      <label htmlFor={id} className="explore__show-label">
+        Show
+      </label>
+      <div className="explore__show-field">
+        <Select
+          id={id}
+          value={value}
+          onChange={(e) => setList(e.target.value)}
+        >
+          {keys.map((k) => (
+            <option key={k} value={k}>
+              {LIST_LABEL[k]}
+            </option>
+          ))}
+        </Select>
       </div>
     </div>
   )
 }
 
 /** A short line above the results while the featured Ma Earth set is
- *  shown (it is reached from the Featured section, not the list nav). */
+ *  shown (it is reached from the Featured section, not the Show select). */
 function FeaturedNote({ view }: { view: AllView }) {
   return (
     <div className="explore__note">

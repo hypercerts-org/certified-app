@@ -1,43 +1,9 @@
 /* ---------- /explore page ----------
    A <PageContainer> (`.explore-page`, the default 1120px; it also joins the
-   shell's page-frame layout in layout.css): the page header, then the
-   layout. Below 1100px one column: the list pills (SideNav), then the
-   main column. From 1100px the lists are a sticky column on the left,
-   48px from the content like the other SideNav pages (Records, Settings,
-   Help), so the content starts at the same x.
-   The main column: the type tabs, then the type's panel: the search row
-   (field + result actions), optional inline controls, then the sections
-   or results. */
-
-.explore__layout {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-@media (min-width: 1100px) {
-  .explore__layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    align-items: start;
-    gap: 48px;
-  }
-}
-
-/* The SideNav pill row scrolls inside the gutter on phones; pull it out
-   by the row's own 4px focus padding so the first pill lines up with
-   the text above. */
-@media (max-width: 1099px) {
-  .explore__lists {
-    margin-inline: -4px;
-  }
-}
-
-.explore__main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
+   shell's page-frame layout in layout.css): the page header, then one
+   full-width column: the type tabs, then the type's panel: the search
+   row (field, result actions and the "Show" select of lists), optional
+   inline controls, then the sections or results. */
 
 /* ---------- Type tabs, then the type's panel ---------- */
 
@@ -128,6 +94,46 @@
 .explore__actions [role="radio"] {
   width: 42px;
   height: calc(var(--control-h-md) - 2px);
+}
+
+/* "Show" (the list: Whole network, Accounts I follow, ...): a visible
+   label beside the Select primitive, last in the row so it sits next to
+   Filters. The select keeps its natural width (its longest option), so
+   it doesn't resize as the choice changes. From 800px it ends the row
+   (pushed there when the sign-in prompt leaves it alone); on phones it
+   takes its own line under the search. */
+.explore__show {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.explore__show-label {
+  font-size: var(--text-ui);
+  font-weight: 500;
+  color: var(--fg-secondary);
+  white-space: nowrap;
+}
+
+.explore__show-field {
+  flex: none;
+}
+
+@media (min-width: 800px) {
+  .explore__show {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 799px) {
+  .explore__search-row {
+    flex-wrap: wrap;
+  }
+
+  .explore__show {
+    flex: 1 1 100%;
+  }
 }
 
 /* Phones: every chip and action is a 44px target (the primitives are
