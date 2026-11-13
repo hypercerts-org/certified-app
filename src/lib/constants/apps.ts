@@ -18,7 +18,7 @@ export const CONNECTED_APPS = [
     longDesc:
       "GainForest develops open nature tech that monitors ecosystems and rewards verifiable conservation outcomes.",
     logo: "/assets/partners/gainforest_logo.jpeg",
-    url: "https://gainforest.earth",
+    url: "https://gainforest.app",
   },
   {
     name: "Silvi",

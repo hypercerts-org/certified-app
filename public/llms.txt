@@ -21,6 +21,6 @@
 ## Partner Apps
 
 - [Ma Earth](https://maearth.com): Collective funding for regenerating Earth
-- [GainForest](https://gainforest.earth): AI-powered forest monitoring and conservation rewards
+- [GainForest](https://gainforest.app): AI-powered forest monitoring and conservation rewards
 - [Simocracy](https://simocracy.org): Democratic governance with verifiable identity
 - [Hyperboards](https://hyperboards.org): Visual leaderboards for impact contributions
