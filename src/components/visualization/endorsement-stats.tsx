@@ -6,8 +6,10 @@
  * focuses that node in the graph via `onFocus`.
  */
 
-import { useMemo } from "react"
+import { useId, useMemo } from "react"
 import Avatar from "@/components/ui/avatar"
+import SectionHeader from "@/components/ui/section-header"
+import StatRow from "@/components/ui/stat-row"
 import { getInitials } from "@/lib/utils/initials"
 import type { EndorsementGraph, GraphNode } from "@/hooks/use-endorsement-graph"
 
@@ -27,9 +29,10 @@ function Rank({
   metric: (n: GraphNode) => number
   onFocus: (did: string) => void
 }) {
+  const titleId = useId()
   return (
-    <section className="viz__rank">
-      <h2 className="font-headline text-h4">{title}</h2>
+    <section className="viz__rank" aria-labelledby={titleId}>
+      <SectionHeader id={titleId} title={title} />
       <div className="viz__rank-list">
         {nodes.map((n) => (
           <button
@@ -91,28 +94,16 @@ export default function EndorsementStats({ graph, onFocus }: EndorsementStatsPro
 
   return (
     <aside className="viz__sidebar">
-      <div className="viz__stats-grid">
-        <div className="viz__stat">
-          <span className="viz__stat-value">{totalEndorsements.toLocaleString()}</span>
-          <span className="viz__stat-label">Endorsements</span>
-        </div>
-        <div className="viz__stat">
-          <span className="viz__stat-value">{totalAwards.toLocaleString()}</span>
-          <span className="viz__stat-label">Awards</span>
-        </div>
-        <div className="viz__stat">
-          <span className="viz__stat-value">{stats.participants.toLocaleString()}</span>
-          <span className="viz__stat-label">People</span>
-        </div>
-        <div className="viz__stat">
-          <span className="viz__stat-value">{mutualPairs.toLocaleString()}</span>
-          <span className="viz__stat-label">Mutual pairs</span>
-        </div>
-        <div className="viz__stat">
-          <span className="viz__stat-value">{stats.reciprocity}%</span>
-          <span className="viz__stat-label">Reciprocity</span>
-        </div>
-      </div>
+      <StatRow
+        aria-label="Network totals"
+        items={[
+          { label: "Endorsements", value: totalEndorsements.toLocaleString() },
+          { label: "Awards", value: totalAwards.toLocaleString() },
+          { label: "People", value: stats.participants.toLocaleString() },
+          { label: "Mutual pairs", value: mutualPairs.toLocaleString() },
+          { label: "Reciprocity", value: `${stats.reciprocity}%` },
+        ]}
+      />
 
       {topEndorsers.length > 0 && (
         <Rank

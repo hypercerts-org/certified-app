@@ -464,50 +464,17 @@
   flex: 0 0 320px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4, 16px);
+  gap: var(--space-6, 24px);
   overflow-y: auto;
 }
 
-.viz__stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3, 12px);
-}
-
-/* With an odd cell count (5 since the Awards stat) the last cell spans the
-   2-column grid instead of orphaning at half width. The tablet range
-   overrides this — there the five cells share one row. */
-.viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-.viz__stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1, 4px);
-  padding: var(--space-3, 12px);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-}
-
-.viz__stat-value {
-  font-family: var(--font-headline);
-  font-size: var(--text-h3, 1.5rem);
-  color: var(--fg-primary);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-
-.viz__stat-label {
-  font-size: var(--text-caption, 0.75rem);
-  color: var(--fg-muted);
-}
+/* The network totals are a <StatRow> (ui/stat-row.tsx) and the ranking
+   titles are <SectionHeader>s, like everywhere else; no tile chrome. */
 
 .viz__rank {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2, 8px);
+  gap: var(--space-3, 12px);
 }
 
 .viz__rank-list {
@@ -604,29 +571,11 @@
     flex: 1 1 auto;
     overflow-y: visible;
   }
-
-  .viz__stats-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-
-  .viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 799px) {
   .viz {
     padding: var(--space-2, 8px);
-  }
-
-  .viz__stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* Back to 2 columns here, so the odd-count span applies again (the
-     tablet block above also matches this range and would otherwise win). */
-  .viz__stats-grid > .viz__stat:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
   }
 
   .viz__panel {
