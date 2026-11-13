@@ -30,7 +30,7 @@ function block(source: string, selector: string): Record<string, string> {
   return out
 }
 
-/** Tokens every style sets for itself (and Today's preview resets). */
+/** Tokens every style sets for itself (and Neutral's preview resets). */
 const MODE_TOKENS = [
   "--font-inter",
   "--font-headline",
@@ -73,23 +73,23 @@ beforeEach(() => {
 })
 
 describe("looks", () => {
-  it("knows its styles, Today first", () => {
-    expect(LOOKS[0].id).toBe("today")
+  it("knows its styles, Neutral first", () => {
+    expect(LOOKS[0].id).toBe("neutral")
     expect(isLookId("linen")).toBe(true)
     expect(isLookId("own")).toBe(false)
     expect(isLookId(null)).toBe(false)
   })
 
-  it("applies a style to <html> and remembers it; Today clears both", () => {
+  it("applies a style to <html> and remembers it; Neutral clears both", () => {
     applyLook("stamp")
     expect(document.documentElement.getAttribute("data-look")).toBe("stamp")
     expect(window.localStorage.getItem(LOOK_STORAGE_KEY)).toBe("stamp")
     expect(currentLook()).toBe("stamp")
 
-    applyLook("today")
+    applyLook("neutral")
     expect(document.documentElement.hasAttribute("data-look")).toBe(false)
     expect(window.localStorage.getItem(LOOK_STORAGE_KEY)).toBeNull()
-    expect(currentLook()).toBe("today")
+    expect(currentLook()).toBe("neutral")
   })
 
   it("restores a remembered style before paint, and ignores anything unknown", () => {
@@ -98,7 +98,7 @@ describe("looks", () => {
     expect(document.documentElement.getAttribute("data-look")).toBe("glass")
 
     document.documentElement.removeAttribute("data-look")
-    for (const value of ["today", "evil\" onload=", "own"]) {
+    for (const value of ["neutral", "evil\" onload=", "own"]) {
       window.localStorage.setItem(LOOK_STORAGE_KEY, value)
       new Function(LOOK_INIT_SCRIPT)()
       expect(document.documentElement.hasAttribute("data-look")).toBe(false)
@@ -107,7 +107,7 @@ describe("looks", () => {
 })
 
 describe("looks.css", () => {
-  for (const { id } of LOOKS.filter((l) => l.id !== "today")) {
+  for (const { id } of LOOKS.filter((l) => l.id !== "neutral")) {
     it(`${id}: sets its faces, weights and corners, and every colour in light and dark`, () => {
       const modeless = block(LOOKS_CSS, `:root[data-look="${id}"],\n[data-look-preview="${id}"]`)
       for (const token of MODE_TOKENS) expect(modeless, token).toHaveProperty(token)
@@ -124,21 +124,25 @@ describe("looks.css", () => {
     })
   }
 
-  for (const { id } of LOOKS.filter((l) => l.id !== "today")) {
+  for (const { id } of LOOKS.filter((l) => l.id !== "neutral")) {
     it(`${id}: redraws all three centerpieces (avatar, ID card, endorsement)`, () => {
       for (const piece of ["avatar", "id", "endorsement"]) {
+        // On the page (skipping previews) and in its own preview.
         expect(LOOKS_CSS, `${id} ${piece}`).toContain(
-          `html[data-look="${id}"] [data-centerpiece="${piece}"]`,
+          `html[data-look="${id}"] [data-centerpiece="${piece}"]:not([data-look-preview] *)`,
+        )
+        expect(LOOKS_CSS, `${id} ${piece} preview`).toContain(
+          `[data-look-preview="${id}"] [data-centerpiece="${piece}"]`,
         )
       }
     })
   }
 
-  it("keeps Today's preview equal to tokens.css", () => {
+  it("keeps Neutral's preview equal to tokens.css", () => {
     const root = block(TOKENS_CSS, ":root {")
     const rootDark = block(TOKENS_CSS, ':root[data-theme="dark"] {')
-    const light = block(LOOKS_CSS, 'html:not([data-theme="dark"]) [data-look-preview="today"] {')
-    const dark = block(LOOKS_CSS, 'html[data-theme="dark"] [data-look-preview="today"] {')
+    const light = block(LOOKS_CSS, 'html:not([data-theme="dark"]) [data-look-preview="neutral"] {')
+    const dark = block(LOOKS_CSS, 'html[data-theme="dark"] [data-look-preview="neutral"] {')
     for (const [token, value] of Object.entries(light)) {
       if (token === "--btn-primary-bg" || token === "--btn-primary-fg") continue // var() aliases in tokens.css
       expect(value, `light ${token}`).toBe(root[token])
@@ -146,6 +150,6 @@ describe("looks.css", () => {
     for (const [token, value] of Object.entries(dark)) {
       expect(value, `dark ${token}`).toBe(rootDark[token])
     }
-    expect(block(LOOKS_CSS, '[data-look-preview="today"] {')["--radius"]).toBe(root["--radius"])
+    expect(block(LOOKS_CSS, '[data-look-preview="neutral"] {')["--radius"]).toBe(root["--radius"])
   })
 })

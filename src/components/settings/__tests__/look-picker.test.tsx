@@ -8,11 +8,11 @@ beforeEach(() => {
 })
 
 describe("LookPicker", () => {
-  it("offers every style, Today picked by default, each with a live preview", () => {
+  it("offers every style, Neutral picked by default, each with a live preview", () => {
     const { container } = render(<LookPicker />)
     const radios = screen.getAllByRole("radio")
     expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Today",
+      "Neutral",
       "Almanac",
       "Linen",
       "Banknote",
@@ -22,20 +22,20 @@ describe("LookPicker", () => {
       "Shapes",
       "Stamp",
     ])
-    expect(screen.getByRole("radio", { name: "Today" })).toHaveAttribute("aria-checked", "true")
+    expect(screen.getByRole("radio", { name: "Neutral" })).toHaveAttribute("aria-checked", "true")
     expect(container.querySelectorAll("[data-look-preview]")).toHaveLength(9)
     expect(screen.getByRole("radio", { name: "Linen" })).toHaveAccessibleDescription(
       /private bank/,
     )
   })
 
-  it("applies a style at once, and Today takes it off", () => {
+  it("applies a style at once, and Neutral takes it off", () => {
     render(<LookPicker />)
     fireEvent.click(screen.getByRole("radio", { name: "Banknote" }))
     expect(document.documentElement.getAttribute("data-look")).toBe("banknote")
     expect(screen.getByRole("radio", { name: "Banknote" })).toHaveAttribute("aria-checked", "true")
 
-    fireEvent.click(screen.getByRole("radio", { name: "Today" }))
+    fireEvent.click(screen.getByRole("radio", { name: "Neutral" }))
     expect(document.documentElement.hasAttribute("data-look")).toBe(false)
   })
 })

@@ -3,7 +3,6 @@
 import { useId, useRef } from "react"
 import { ChevronDown } from "lucide-react"
 import BottomSheet from "@/components/ui/bottom-sheet"
-import Button from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useAuth } from "@/lib/auth/auth-context"
 import type { Group } from "@/lib/groups/types"
@@ -107,9 +106,13 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
       <span className="font-normal text-[var(--fg-muted)]">{prefix}</span>
       <IdentityAvatar identity={identity} size="xs" />
       <span className="max-w-[160px] truncate">{name}</span>
-      <ChevronDown size={14} strokeWidth={1.75} aria-hidden className="text-[var(--fg-muted)]" />
+      <ChevronDown size={12} strokeWidth={2} aria-hidden className="text-[var(--fg-muted)]" />
     </>
   )
+  // A compact chip (28px), so it sits beside a page title without
+  // outweighing it; the ::after keeps a 44px hit area for touch.
+  const triggerClass =
+    "relative inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-[var(--border-default)] bg-transparent pl-2 pr-1.5 text-caption font-medium text-[var(--fg-primary)] transition-colors duration-fast hover:border-[var(--border-hover)] hover:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 after:absolute after:-inset-x-0 after:-inset-y-2 after:content-[''] motion-reduce:transition-none"
   const items = (mode: MenuMode) => (
     <AccountPickerItems mode={mode} label={label} current={current} note={note} onSelect={select} />
   )
@@ -118,9 +121,9 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger>
-          <Button ref={triggerRef} variant="secondary" size="sm" className="gap-1.5">
+          <button ref={triggerRef} type="button" className={triggerClass}>
             {content}
-          </Button>
+          </button>
         </PopoverTrigger>
         <PopoverContent
           portal
@@ -139,17 +142,16 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
 
   return (
     <>
-      <Button
+      <button
         ref={triggerRef}
-        variant="secondary"
-        size="sm"
-        className="gap-1.5"
+        type="button"
+        className={triggerClass}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
         {content}
-      </Button>
+      </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={label} returnFocusRef={triggerRef}>
         <div className="px-2 pb-4">{items("sheet")}</div>
       </BottomSheet>

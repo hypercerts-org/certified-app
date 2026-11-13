@@ -7,7 +7,7 @@ import { useCallback, useSyncExternalStore } from "react"
  * in Settings → Appearance and kept in this browser. Each one redefines the
  * design tokens (colours light and dark, typefaces, corners, shadows) in
  * src/app/styles/looks.css under `html[data-look="<id>"]`, so every page
- * changes at once. "today" is the app as designed (no attribute).
+ * changes at once. "neutral" is the app as designed (no attribute).
  *
  * From the design-directions exploration (Almanac … Stamp). This is the
  * token level only: the directions' signature pieces (Banknote's seal,
@@ -15,9 +15,9 @@ import { useCallback, useSyncExternalStore } from "react"
  */
 export const LOOKS = [
   {
-    id: "today",
-    name: "Today",
-    description: "Certified as designed: monochrome, serif names, 2px corners.",
+    id: "neutral",
+    name: "Neutral",
+    description: "Certified's own look: monochrome, serif names, 2px corners.",
   },
   {
     id: "almanac",
@@ -63,7 +63,7 @@ export const LOOKS = [
 
 export type LookId = (typeof LOOKS)[number]["id"]
 
-export const DEFAULT_LOOK: LookId = "today"
+export const DEFAULT_LOOK: LookId = "neutral"
 
 /** Where the choice is kept (this browser only). */
 export const LOOK_STORAGE_KEY = "certified_look"

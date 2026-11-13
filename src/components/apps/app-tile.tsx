@@ -71,9 +71,10 @@ export default function AppTile({
           height={logo.px}
           // Partner logos are brand assets drawn for a light ground, some
           // with a transparent background, so they sit on an invariant
-          // white plate that doesn't flip in dark mode. The hairline drawn
-          // over the image gives a white logo an edge against the tile.
-          className={`${logo.cls} shrink-0 rounded bg-[var(--color-white)] object-cover outline outline-1 -outline-offset-1 outline-[var(--border-subtle)]`}
+          // white plate that doesn't flip in dark mode. No outline: on a
+          // white logo (GainForest, Simocracy) it read as a box drawn
+          // around white on white.
+          className={`${logo.cls} shrink-0 rounded bg-[var(--color-white)] object-cover`}
         />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span

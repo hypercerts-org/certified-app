@@ -4,12 +4,12 @@
    `:root[data-look="<id>"]`: typefaces, corners and heading weights in a
    mode-independent block, then colours and shadows for light and for dark.
    On :root, so the derived tokens (--bg-overlay, --navbar-bg, --focus-ring
-   …) follow too. Today (no attribute) is tokens.css as is.
+   …) follow too. Neutral (no attribute) is tokens.css as is.
 
    The same blocks also apply to `[data-look-preview="<id>"]`, the live
    previews in the picker, in the current light/dark mode. A preview sits
    inside the page, so it inherits the active style: every block sets the
-   FULL set of look tokens, and Today has preview-only blocks with the
+   FULL set of look tokens, and Neutral has preview-only blocks with the
    tokens.css values (looks.test.ts checks they stay equal).
 
    Look tokens on top of tokens.css:
@@ -33,10 +33,10 @@ html[data-look] .app-shell {
   background-color: transparent;
 }
 
-/* ---------------------------------------------------------------- Today
-   Preview only: the tokens.css values, so the Today tile looks like Today
-   whatever style is active. */
-[data-look-preview="today"] {
+/* -------------------------------------------------------------- Neutral
+   Preview only: the tokens.css values, so the Neutral tile looks like
+   Neutral whatever style is active. */
+[data-look-preview="neutral"] {
   --font-inter: var(--font-inter-face), system-ui, sans-serif;
   --font-headline: var(--font-noto-serif), Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -49,7 +49,7 @@ html[data-look] .app-shell {
   --look-backdrop-size: auto;
 }
 
-html:not([data-theme="dark"]) [data-look-preview="today"] {
+html:not([data-theme="dark"]) [data-look-preview="neutral"] {
   --bg-canvas: #f9f9f9;
   --bg-sunken: #eeeeee;
   --bg-elevated: #FFFFFF;
@@ -62,7 +62,7 @@ html:not([data-theme="dark"]) [data-look-preview="today"] {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-html[data-theme="dark"] [data-look-preview="today"] {
+html[data-theme="dark"] [data-look-preview="neutral"] {
   --bg-canvas: #18181b;
   --bg-sunken: #111114;
   --bg-elevated: #2d2d33;
@@ -76,7 +76,7 @@ html[data-theme="dark"] [data-look-preview="today"] {
 }
 
 /* -------------------------------------------------------------- Almanac
-   Today's monochrome taken all the way: Instrument Serif (one weight) for
+   Neutral's monochrome taken all the way: Instrument Serif (one weight) for
    names and numbers, Geist Mono capitals for labels, ink rules, no
    corners, no shadows. */
 :root[data-look="almanac"],
@@ -237,7 +237,7 @@ html[data-theme="dark"] [data-look-preview="linen"] {
 /* ------------------------------------------------------------- Banknote
    Passport and banknote craft: Newsreader names and numbers, Hanken
    Grotesk UI, IBM Plex Mono for IDs, intaglio blue on banknote paper, a
-   note-green accent. Keeps today's 2px corners. */
+   note-green accent. Keeps Neutral's 2px corners. */
 :root[data-look="banknote"],
 [data-look-preview="banknote"] {
   --font-inter: var(--font-hanken), system-ui, sans-serif;
@@ -547,8 +547,10 @@ html[data-theme="dark"] [data-look-preview="glass"] {
   --look-backdrop: linear-gradient(180deg, #1F2A44 0%, #2C3550 40%, #3B3346 75%, #4A3438 100%);
 }
 
-/* Menus float over content: blur what's behind them, as glass does. */
+/* Menus (Workspace, Network, account, New, pickers) are frosted but
+   near-opaque: panels can be see-through, a list you read from can't. */
 html[data-look="glass"] .popover-panel {
+  background-color: var(--sheet-bg);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
@@ -748,16 +750,21 @@ html[data-theme="dark"] [data-look-preview="stamp"] {
    3. An endorsement ([data-centerpiece="endorsement"], the Overview's and
       the profile's rows; parts data-part="who|when|note"): the trust mark.
 
-   Today leaves all three as designed. Page-level only: the picker's
-   previews show tokens, not centerpieces. Scoped token overrides (e.g.
-   Wallet's white-on-gradient pass) keep the components inside working. */
+   Neutral leaves all three as designed. Each rule comes twice: for the
+   page (skipping anything inside a picker preview, so the active style
+   never restyles another style's preview) and for that style's own
+   preview ([data-look-preview], whose spans use data-part="title" where
+   the page has an h2). Scoped token overrides (e.g. Wallet's
+   white-on-gradient pass) keep the components inside working. */
 
 /* -------- Almanac: engraved images, a ruled ID frame, pull quotes ------ */
-html[data-look="almanac"] [data-centerpiece="avatar"] img {
+html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-look-preview] *) img,
+[data-look-preview="almanac"] [data-centerpiece="avatar"] img {
   filter: grayscale(1) contrast(1.15);
 }
 
-html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-fallback])::after {
+html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-look-preview] *):not([data-fallback])::after,
+[data-look-preview="almanac"] [data-centerpiece="avatar"]:not([data-fallback])::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -766,31 +773,36 @@ html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-fallback])::afte
   pointer-events: none;
 }
 
-html[data-look="almanac"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="almanac"] [data-centerpiece="avatar"][data-fallback] {
   background: var(--fg-primary);
 }
 
-html[data-look="almanac"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="almanac"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="almanac"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: var(--bg-canvas);
   font-family: var(--font-headline);
   font-weight: 400;
 }
 
-html[data-look="almanac"] [data-centerpiece="id"] {
+html[data-look="almanac"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="almanac"] [data-centerpiece="id"] {
   background: transparent;
   border-color: var(--fg-primary);
   box-shadow: none;
 }
 
-html[data-look="almanac"] [data-centerpiece="id"] h2 {
+html[data-look="almanac"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"]),
+[data-look-preview="almanac"] [data-centerpiece="id"] :is(h2, [data-part="title"]) {
   font-family: var(--font-headline);
   font-size: var(--text-h1);
   font-weight: 400;
   line-height: 1;
 }
 
-html[data-look="almanac"] [data-centerpiece="id"] h2 + p {
+html[data-look="almanac"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2 + p, [data-part="desc"]),
+[data-look-preview="almanac"] [data-centerpiece="id"] :is(h2 + p, [data-part="desc"]) {
   font-family: var(--font-headline);
   font-style: italic;
   font-size: var(--text-h4);
@@ -798,7 +810,8 @@ html[data-look="almanac"] [data-centerpiece="id"] h2 + p {
   color: var(--fg-secondary);
 }
 
-html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"] {
+html[data-look="almanac"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="note"],
+[data-look-preview="almanac"] [data-centerpiece="endorsement"] [data-part="note"] {
   font-family: var(--font-headline);
   font-style: italic;
   font-size: var(--text-h4);
@@ -806,21 +819,25 @@ html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"] {
   color: var(--fg-primary);
 }
 
-html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::before {
+html[data-look="almanac"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="note"]::before,
+[data-look-preview="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::before {
   content: "\201C";
 }
 
-html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::after {
+html[data-look="almanac"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="note"]::after,
+[data-look-preview="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::after {
   content: "\201D";
 }
 
-html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="who"] {
+html[data-look="almanac"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"],
+[data-look-preview="almanac"] [data-centerpiece="endorsement"] [data-part="who"] {
   font-family: var(--font-headline);
   font-size: var(--text-h4);
   font-weight: 400;
 }
 
-html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="when"] {
+html[data-look="almanac"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="when"],
+[data-look-preview="almanac"] [data-centerpiece="endorsement"] [data-part="when"] {
   font-family: var(--font-label);
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -828,27 +845,32 @@ html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="when"] {
 }
 
 /* -------- Linen: squircle groups, a soft panel with a gold check, gold-ruled notes */
-html[data-look="linen"] [data-centerpiece="avatar"][data-shape="square"] {
+html[data-look="linen"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-shape="square"],
+[data-look-preview="linen"] [data-centerpiece="avatar"][data-shape="square"] {
   --radius: 30%;
 }
 
-html[data-look="linen"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="linen"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="linen"] [data-centerpiece="avatar"][data-fallback] {
   background: color-mix(in srgb, var(--color-accent) 24%, var(--bg-elevated));
 }
 
-html[data-look="linen"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="linen"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="linen"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: var(--color-accent-hover);
 }
 
-html[data-look="linen"] [data-centerpiece="id"] {
+html[data-look="linen"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="linen"] [data-centerpiece="id"] {
   --radius: 16px;
   position: relative;
   box-shadow: var(--shadow-md);
 }
 
 /* The one gold mark: checked by someone else. */
-html[data-look="linen"] [data-centerpiece="id"]::before {
+html[data-look="linen"] [data-centerpiece="id"]:not([data-look-preview] *)::before,
+[data-look-preview="linen"] [data-centerpiece="id"]::before {
   content: "\2713";
   position: absolute;
   top: 14px;
@@ -864,7 +886,8 @@ html[data-look="linen"] [data-centerpiece="id"]::before {
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
-html[data-look="linen"] [data-centerpiece="id"] h2 {
+html[data-look="linen"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"]),
+[data-look-preview="linen"] [data-centerpiece="id"] :is(h2, [data-part="title"]) {
   font-family: var(--font-headline);
   font-weight: 500;
   font-size: var(--text-h4);
@@ -872,7 +895,8 @@ html[data-look="linen"] [data-centerpiece="id"] h2 {
 }
 
 /* The gold check: checked by someone else, which is what an endorsement is. */
-html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+html[data-look="linen"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"]::before,
+[data-look-preview="linen"] [data-centerpiece="endorsement"] [data-part="who"]::before {
   content: "\2713";
   display: inline-grid;
   place-items: center;
@@ -887,7 +911,8 @@ html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="who"]::befo
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
-html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="note"] {
+html[data-look="linen"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="note"],
+[data-look-preview="linen"] [data-centerpiece="endorsement"] [data-part="note"] {
   font-family: var(--font-numeral);
   font-style: italic;
   font-size: var(--text-body);
@@ -896,15 +921,18 @@ html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="note"] {
 }
 
 /* -------- Banknote: seal rings, the passport page, countersignatures ---- */
-html[data-look="banknote"] [data-centerpiece="avatar"] {
+html[data-look="banknote"] [data-centerpiece="avatar"]:not([data-look-preview] *),
+[data-look-preview="banknote"] [data-centerpiece="avatar"] {
   box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 3px var(--color-accent);
 }
 
-html[data-look="banknote"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="banknote"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="banknote"] [data-centerpiece="avatar"][data-fallback] {
   background: repeating-conic-gradient(var(--color-accent) 0 3deg, transparent 3deg 9deg);
 }
 
-html[data-look="banknote"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="banknote"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="banknote"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: var(--bg-sunken);
   color: var(--fg-primary);
   font-family: var(--font-headline);
@@ -913,7 +941,8 @@ html[data-look="banknote"] [data-centerpiece="avatar"][data-fallback] > div {
 
 /* The ID as a passport data page: a double frame, the permanent ID as
    microtext along both edges, a guilloché watermark and one foil chip. */
-html[data-look="banknote"] [data-centerpiece="id"] {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="banknote"] [data-centerpiece="id"] {
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -924,8 +953,10 @@ html[data-look="banknote"] [data-centerpiece="id"] {
     repeating-radial-gradient(circle at 100% 100%, transparent 0 4px, color-mix(in srgb, var(--color-accent) 22%, transparent) 4px 5px);
 }
 
-html[data-look="banknote"] [data-centerpiece="id"]::before,
-html[data-look="banknote"] [data-centerpiece="id"]::after {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *)::before,
+[data-look-preview="banknote"] [data-centerpiece="id"]::before,
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *)::after,
+[data-look-preview="banknote"] [data-centerpiece="id"]::after {
   content: attr(data-did) " \00B7 " attr(data-did) " \00B7 " attr(data-did);
   position: absolute;
   left: 8px;
@@ -939,21 +970,25 @@ html[data-look="banknote"] [data-centerpiece="id"]::after {
   pointer-events: none;
 }
 
-html[data-look="banknote"] [data-centerpiece="id"]::before {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *)::before,
+[data-look-preview="banknote"] [data-centerpiece="id"]::before {
   top: 8px;
 }
 
-html[data-look="banknote"] [data-centerpiece="id"]::after {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *)::after,
+[data-look-preview="banknote"] [data-centerpiece="id"]::after {
   bottom: 8px;
 }
 
-html[data-look="banknote"] [data-centerpiece="id"] h2 {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"]),
+[data-look-preview="banknote"] [data-centerpiece="id"] :is(h2, [data-part="title"]) {
   font-family: var(--font-headline);
   font-weight: 600;
   font-size: var(--text-h3);
 }
 
-html[data-look="banknote"] [data-centerpiece="id"] h2::after {
+html[data-look="banknote"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"])::after,
+[data-look-preview="banknote"] [data-centerpiece="id"] :is(h2, [data-part="title"])::after {
   content: "";
   display: inline-block;
   width: 30px;
@@ -967,7 +1002,8 @@ html[data-look="banknote"] [data-centerpiece="id"] h2::after {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
-html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="note"] {
+html[data-look="banknote"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="note"],
+[data-look-preview="banknote"] [data-centerpiece="endorsement"] [data-part="note"] {
   font-family: var(--font-headline);
   font-style: italic;
   font-size: var(--text-body);
@@ -977,35 +1013,41 @@ html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="note"] {
 }
 
 /* A countersignature: the endorser's name set like a signature. */
-html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="who"] {
+html[data-look="banknote"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"],
+[data-look-preview="banknote"] [data-centerpiece="endorsement"] [data-part="who"] {
   font-family: var(--font-headline);
   font-style: italic;
   font-size: var(--text-h4);
   font-weight: 500;
 }
 
-html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="when"] {
+html[data-look="banknote"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="when"],
+[data-look-preview="banknote"] [data-centerpiece="endorsement"] [data-part="when"] {
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
 }
 
 /* -------- Wallet: gradient initials, the ID as a pass, endorsements as cells */
-html[data-look="wallet"] [data-centerpiece="avatar"][data-shape="square"] {
+html[data-look="wallet"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-shape="square"],
+[data-look-preview="wallet"] [data-centerpiece="avatar"][data-shape="square"] {
   --radius: 28%;
 }
 
-html[data-look="wallet"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="wallet"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="wallet"] [data-centerpiece="avatar"][data-fallback] {
   background: linear-gradient(140deg, #0E4D5A, #1E2F63);
 }
 
-html[data-look="wallet"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="wallet"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="wallet"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: #FFFFFF;
 }
 
 /* The pass: a deep gradient with grain and a light top edge; tokens are
    re-pointed inside it so the pills and text read white on the gradient. */
-html[data-look="wallet"] [data-centerpiece="id"] {
+html[data-look="wallet"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="wallet"] [data-centerpiece="id"] {
   --fg-primary: #FFFFFF;
   --fg-secondary: rgba(255, 255, 255, 0.88);
   --fg-muted: rgba(255, 255, 255, 0.74);
@@ -1028,7 +1070,8 @@ html[data-look="wallet"] [data-centerpiece="id"] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 18px 40px -18px rgba(14, 40, 70, 0.55);
 }
 
-html[data-look="wallet"] [data-centerpiece="id"]::after {
+html[data-look="wallet"] [data-centerpiece="id"]:not([data-look-preview] *)::after,
+[data-look-preview="wallet"] [data-centerpiece="id"]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1040,7 +1083,8 @@ html[data-look="wallet"] [data-centerpiece="id"]::after {
   pointer-events: none;
 }
 
-html[data-look="wallet"] [data-centerpiece="endorsement"] {
+html[data-look="wallet"] [data-centerpiece="endorsement"]:not([data-look-preview] *),
+[data-look-preview="wallet"] [data-centerpiece="endorsement"] {
   border: 0;
   margin-bottom: 8px;
   padding-inline: 14px;
@@ -1048,40 +1092,47 @@ html[data-look="wallet"] [data-centerpiece="endorsement"] {
   background: var(--bg-elevated);
 }
 
-html[data-look="wallet"] [data-centerpiece="endorsement"]:last-child {
+html[data-look="wallet"] [data-centerpiece="endorsement"]:not([data-look-preview] *):last-child,
+[data-look-preview="wallet"] [data-centerpiece="endorsement"]:last-child {
   border-bottom: 0;
 }
 
 /* -------- Dot matrix: dot-screened images, a dot-field ID, mono dates --- */
-html[data-look="dots"] [data-centerpiece="avatar"] img {
+html[data-look="dots"] [data-centerpiece="avatar"]:not([data-look-preview] *) img,
+[data-look-preview="dots"] [data-centerpiece="avatar"] img {
   -webkit-mask: radial-gradient(circle, #000 0.95px, transparent 1.15px) 0 0 / 2.6px 2.6px;
   mask: radial-gradient(circle, #000 0.95px, transparent 1.15px) 0 0 / 2.6px 2.6px;
 }
 
-html[data-look="dots"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="dots"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="dots"] [data-centerpiece="avatar"][data-fallback] {
   background: var(--fg-primary);
 }
 
-html[data-look="dots"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="dots"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="dots"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: var(--bg-canvas);
   font-family: var(--font-label);
   font-weight: 500;
 }
 
-html[data-look="dots"] [data-centerpiece="id"] {
+html[data-look="dots"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="dots"] [data-centerpiece="id"] {
   background-image: radial-gradient(color-mix(in srgb, var(--fg-primary) 10%, transparent) 1px, transparent 1.2px);
   background-size: 9px 9px;
 }
 
-html[data-look="dots"] [data-centerpiece="id"] h2 {
+html[data-look="dots"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"]),
+[data-look-preview="dots"] [data-centerpiece="id"] :is(h2, [data-part="title"]) {
   font-family: var(--font-numeral);
   font-size: var(--text-h2);
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
-html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="when"] {
+html[data-look="dots"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="when"],
+[data-look-preview="dots"] [data-centerpiece="endorsement"] [data-part="when"] {
   font-family: var(--font-label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1089,7 +1140,8 @@ html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="when"] {
 }
 
 /* A dot-matrix bullet (3x3 dots, in ink: red means new only). */
-html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+html[data-look="dots"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"]::before,
+[data-look-preview="dots"] [data-centerpiece="endorsement"] [data-part="who"]::before {
   content: "";
   display: inline-block;
   width: 8px;
@@ -1100,35 +1152,43 @@ html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="who"]::befor
 }
 
 /* -------- Glass: light-edged avatars, a frosted ID sheet, frosted chips - */
-html[data-look="glass"] [data-centerpiece="avatar"] {
+html[data-look="glass"] [data-centerpiece="avatar"]:not([data-look-preview] *),
+[data-look-preview="glass"] [data-centerpiece="avatar"] {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 4px 12px -4px rgba(20, 40, 60, 0.35);
 }
 
-html[data-look="glass"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="glass"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="glass"] [data-centerpiece="avatar"][data-fallback] {
   background: rgba(255, 255, 255, 0.5);
 }
 
-html[data-look="glass"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="glass"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="glass"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
 }
 
-html[data-look="glass"] [data-centerpiece="id"],
-html[data-look="glass"] [data-centerpiece="endorsement"] {
+html[data-look="glass"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="glass"] [data-centerpiece="id"],
+html[data-look="glass"] [data-centerpiece="endorsement"]:not([data-look-preview] *),
+[data-look-preview="glass"] [data-centerpiece="endorsement"] {
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   backdrop-filter: blur(22px) saturate(180%);
 }
 
-html[data-look="glass"] [data-centerpiece="id"] {
+html[data-look="glass"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="glass"] [data-centerpiece="id"] {
   --radius: 22px;
   border-color: rgba(255, 255, 255, 0.62);
   box-shadow: var(--shadow-md);
 }
 
-html[data-look="glass"][data-theme="dark"] [data-centerpiece="id"] {
+html[data-look="glass"][data-theme="dark"] [data-centerpiece="id"]:not([data-look-preview] *),
+html[data-theme="dark"] [data-look-preview="glass"] [data-centerpiece="id"] {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-html[data-look="glass"] [data-centerpiece="endorsement"] {
+html[data-look="glass"] [data-centerpiece="endorsement"]:not([data-look-preview] *),
+[data-look-preview="glass"] [data-centerpiece="endorsement"] {
   margin-bottom: 8px;
   padding-inline: 12px;
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -1137,41 +1197,49 @@ html[data-look="glass"] [data-centerpiece="endorsement"] {
   box-shadow: var(--shadow-sm);
 }
 
-html[data-look="glass"][data-theme="dark"] [data-centerpiece="endorsement"] {
+html[data-look="glass"][data-theme="dark"] [data-centerpiece="endorsement"]:not([data-look-preview] *),
+html[data-theme="dark"] [data-look-preview="glass"] [data-centerpiece="endorsement"] {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* -------- Shapes: a cookie for groups, a tonal ID, a burst per endorsement */
-html[data-look="shapes"] [data-centerpiece="avatar"][data-shape="square"] {
+html[data-look="shapes"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-shape="square"],
+[data-look-preview="shapes"] [data-centerpiece="avatar"][data-shape="square"] {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50.0 1.0L54.2 2.3L57.9 5.4L61.1 8.7L64.2 10.9L68.1 11.3L72.7 10.7L77.5 10.7L81.5 12.5L83.9 16.1L84.7 20.9L85.0 25.5L86.1 29.2L88.7 31.9L92.6 34.5L96.3 37.6L98.3 41.5L97.7 45.8L95.3 50.0L92.6 53.7L91.0 57.2L91.3 61.1L92.6 65.5L93.4 70.3L92.4 74.5L89.3 77.5L84.7 79.1L80.2 80.2L76.8 81.9L74.5 85.0L72.7 89.3L70.3 93.4L66.8 96.0L62.4 96.3L57.9 94.6L53.7 92.6L50.0 91.7L46.3 92.6L42.1 94.6L37.6 96.3L33.2 96.0L29.7 93.4L27.3 89.3L25.5 85.0L23.2 81.9L19.8 80.2L15.3 79.1L10.7 77.5L7.6 74.5L6.6 70.3L7.4 65.5L8.7 61.1L9.0 57.2L7.4 53.7L4.7 50.0L2.3 45.8L1.7 41.5L3.7 37.6L7.4 34.5L11.3 31.9L13.9 29.2L15.0 25.5L15.3 20.9L16.1 16.1L18.5 12.5L22.5 10.7L27.3 10.7L31.9 11.3L35.8 10.9L38.9 8.7L42.1 5.4L45.8 2.3Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50.0 1.0L54.2 2.3L57.9 5.4L61.1 8.7L64.2 10.9L68.1 11.3L72.7 10.7L77.5 10.7L81.5 12.5L83.9 16.1L84.7 20.9L85.0 25.5L86.1 29.2L88.7 31.9L92.6 34.5L96.3 37.6L98.3 41.5L97.7 45.8L95.3 50.0L92.6 53.7L91.0 57.2L91.3 61.1L92.6 65.5L93.4 70.3L92.4 74.5L89.3 77.5L84.7 79.1L80.2 80.2L76.8 81.9L74.5 85.0L72.7 89.3L70.3 93.4L66.8 96.0L62.4 96.3L57.9 94.6L53.7 92.6L50.0 91.7L46.3 92.6L42.1 94.6L37.6 96.3L33.2 96.0L29.7 93.4L27.3 89.3L25.5 85.0L23.2 81.9L19.8 80.2L15.3 79.1L10.7 77.5L7.6 74.5L6.6 70.3L7.4 65.5L8.7 61.1L9.0 57.2L7.4 53.7L4.7 50.0L2.3 45.8L1.7 41.5L3.7 37.6L7.4 34.5L11.3 31.9L13.9 29.2L15.0 25.5L15.3 20.9L16.1 16.1L18.5 12.5L22.5 10.7L27.3 10.7L31.9 11.3L35.8 10.9L38.9 8.7L42.1 5.4L45.8 2.3Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 
-html[data-look="shapes"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="shapes"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="shapes"] [data-centerpiece="avatar"][data-fallback] {
   background: var(--bg-selected);
 }
 
-html[data-look="shapes"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="shapes"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="shapes"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: var(--btn-primary-bg);
   font-variation-settings: "ROND" 100;
 }
 
-html[data-look="shapes"] [data-centerpiece="id"] {
+html[data-look="shapes"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="shapes"] [data-centerpiece="id"] {
   --radius: 24px;
   border: 0;
   box-shadow: none;
   background: var(--bg-selected);
 }
 
-html[data-look="shapes"] [data-centerpiece="id"] h2 {
+html[data-look="shapes"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"]),
+[data-look-preview="shapes"] [data-centerpiece="id"] :is(h2, [data-part="title"]) {
   font-variation-settings: "ROND" 100;
   font-size: var(--text-h3);
 }
 
 /* Confirmed: the burst, the one verification mark (never a blue check). */
-html[data-look="shapes"] [data-centerpiece="id"] h2::after,
-html[data-look="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+html[data-look="shapes"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"])::after,
+[data-look-preview="shapes"] [data-centerpiece="id"] :is(h2, [data-part="title"])::after,
+html[data-look="shapes"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"]::before,
+[data-look-preview="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
   content: "";
   display: inline-block;
   width: 16px;
@@ -1181,22 +1249,26 @@ html[data-look="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::bef
   clip-path: polygon(50.0% 0.0%, 60.1% 12.3%, 75.0% 6.7%, 77.6% 22.4%, 93.3% 25.0%, 87.7% 39.9%, 100.0% 50.0%, 87.7% 60.1%, 93.3% 75.0%, 77.6% 77.6%, 75.0% 93.3%, 60.1% 87.7%, 50.0% 100.0%, 39.9% 87.7%, 25.0% 93.3%, 22.4% 77.6%, 6.7% 75.0%, 12.3% 60.1%, 0.0% 50.0%, 12.3% 39.9%, 6.7% 25.0%, 22.4% 22.4%, 25.0% 6.7%, 39.9% 12.3%);
 }
 
-html[data-look="shapes"] [data-centerpiece="id"] h2::after {
+html[data-look="shapes"] [data-centerpiece="id"]:not([data-look-preview] *) :is(h2, [data-part="title"])::after,
+[data-look-preview="shapes"] [data-centerpiece="id"] :is(h2, [data-part="title"])::after {
   margin-left: 8px;
 }
 
-html[data-look="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+html[data-look="shapes"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"]::before,
+[data-look-preview="shapes"] [data-centerpiece="endorsement"] [data-part="who"]::before {
   width: 13px;
   height: 13px;
   margin-right: 6px;
 }
 
 /* -------- Stamp: halftone avatars, a stamped ID, endorsements as stamps - */
-html[data-look="stamp"] [data-centerpiece="avatar"] {
+html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-look-preview] *),
+[data-look-preview="stamp"] [data-centerpiece="avatar"] {
   box-shadow: 0 0 0 2px var(--fg-primary);
 }
 
-html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-fallback])::after {
+html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-look-preview] *):not([data-fallback])::after,
+[data-look-preview="stamp"] [data-centerpiece="avatar"]:not([data-fallback])::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1205,25 +1277,29 @@ html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-fallback])::after 
   pointer-events: none;
 }
 
-html[data-look="stamp"] [data-centerpiece="avatar"][data-fallback] {
+html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback],
+[data-look-preview="stamp"] [data-centerpiece="avatar"][data-fallback] {
   background: var(--color-accent);
 }
 
-html[data-look="stamp"] [data-centerpiece="avatar"][data-fallback] > div {
+html[data-look="stamp"] [data-centerpiece="avatar"]:not([data-look-preview] *)[data-fallback] > :first-child,
+[data-look-preview="stamp"] [data-centerpiece="avatar"][data-fallback] > :first-child {
   background: transparent;
   color: #FFFFFF;
   font-family: var(--font-label);
   text-transform: uppercase;
 }
 
-html[data-look="stamp"] [data-centerpiece="id"] {
+html[data-look="stamp"] [data-centerpiece="id"]:not([data-look-preview] *),
+[data-look-preview="stamp"] [data-centerpiece="id"] {
   position: relative;
   border: 2px solid var(--fg-primary);
   box-shadow: var(--shadow-md);
 }
 
 /* A rubber stamp pressed onto the card, a little crooked. */
-html[data-look="stamp"] [data-centerpiece="id"]::after {
+html[data-look="stamp"] [data-centerpiece="id"]:not([data-look-preview] *)::after,
+[data-look-preview="stamp"] [data-centerpiece="id"]::after {
   content: "Certified";
   position: absolute;
   top: 14px;
@@ -1241,11 +1317,13 @@ html[data-look="stamp"] [data-centerpiece="id"]::after {
   pointer-events: none;
 }
 
-html[data-look="stamp"][data-theme="dark"] [data-centerpiece="id"]::after {
+html[data-look="stamp"][data-theme="dark"] [data-centerpiece="id"]:not([data-look-preview] *)::after,
+html[data-theme="dark"] [data-look-preview="stamp"] [data-centerpiece="id"]::after {
   mix-blend-mode: screen;
 }
 
-html[data-look="stamp"] [data-centerpiece="endorsement"] [data-part="who"]::after {
+html[data-look="stamp"] [data-centerpiece="endorsement"]:not([data-look-preview] *) [data-part="who"]::after,
+[data-look-preview="stamp"] [data-centerpiece="endorsement"] [data-part="who"]::after {
   content: "Endorsed";
   display: inline-block;
   margin-left: 8px;
@@ -1258,4 +1336,33 @@ html[data-look="stamp"] [data-centerpiece="endorsement"] [data-part="who"]::afte
   color: var(--btn-primary-bg);
   transform: rotate(-5deg);
   vertical-align: 1px;
+}
+
+/* -------- Previews: the page treatments at tile scale -----------------
+   A style's centerpieces are sized for the page (a 36px serif ID title, an
+   18px signature); in the picker's tile the same treatments run at the
+   preview's small sizes. After every style's rules, and more specific. */
+html [data-look-preview] [data-centerpiece="id"] [data-part="title"] {
+  font-size: var(--text-body-sm);
+  line-height: 1.2;
+}
+
+html [data-look-preview] [data-centerpiece="endorsement"] [data-part="who"],
+html [data-look-preview] [data-centerpiece="endorsement"] [data-part="note"] {
+  font-size: var(--text-caption);
+  line-height: 1.35;
+}
+
+html [data-look-preview] [data-centerpiece="endorsement"] [data-part="when"] {
+  font-size: var(--text-micro);
+}
+
+html [data-look-preview] [data-centerpiece="id"] [data-part="title"]::after {
+  width: 20px;
+  height: 14px;
+  margin-left: 6px;
+}
+
+html [data-look-preview] [data-centerpiece="endorsement"] {
+  margin-bottom: 0;
 }

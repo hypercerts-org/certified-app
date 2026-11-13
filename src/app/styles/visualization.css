@@ -79,10 +79,35 @@
 }
 
 /* Network → Graph (/graph): the graph inside the page container, under
-   the Network tabs and the page header, a little taller than its
-   standalone 60vh minimum. */
+   the page header. It fits the window instead of running past it: from
+   1100px the graph + sidebar row takes the height left below the header
+   (the sidebar scrolls inside it); below 1100px, where the sidebar stacks
+   under it, the graph alone does. A taller window gives it more room;
+   400px / 320px is the floor on a short one. The offsets are the chrome
+   and header above it (the top bar, the container's padding, the page
+   header) plus a little air below. */
 .graph-page .viz__graph {
-  min-height: 70vh;
+  min-height: 0;
+}
+
+@media (min-width: 1100px) {
+  .graph-page .viz {
+    height: max(400px, calc(100dvh - 184px));
+  }
+}
+
+@media (max-width: 1099px) {
+  .graph-page .viz__graph {
+    flex: none;
+    height: max(320px, calc(100dvh - 216px));
+  }
+}
+
+@media (max-width: 799px) {
+  /* The phone top bar and tab bar are fixed over the page. */
+  .graph-page .viz__graph {
+    height: max(300px, calc(100dvh - var(--navbar-height) - var(--bottom-nav-height) - 200px));
+  }
 }
 
 .viz__canvas-host {

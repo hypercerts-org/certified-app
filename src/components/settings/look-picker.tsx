@@ -3,34 +3,104 @@
 import { Radio, RadioGroup } from "@/components/ui/radio"
 import { LOOKS, isLookId, useLook, type LookId } from "@/lib/look/looks"
 
+/** An initials avatar shaped like `<Avatar>`'s fallback (a ring around a
+ *  fill), carrying the avatar centerpiece hooks so each style redraws it.
+ *  Spans, since the preview sits inside the tile's button. */
+function PreviewAvatar({
+  initials,
+  shape,
+  size,
+}: {
+  initials: string
+  shape: "circle" | "square"
+  size: "sm" | "xs"
+}) {
+  const round = shape === "circle" ? "rounded-full" : "rounded"
+  return (
+    <span
+      data-centerpiece="avatar"
+      data-shape={shape}
+      data-fallback=""
+      className={`relative inline-flex shrink-0 items-center justify-center bg-[var(--border-hover)] p-[1.5px] ${round} ${size === "sm" ? "size-8" : "size-5"}`}
+    >
+      <span
+        className={`flex size-full items-center justify-center bg-[var(--color-surface-container-high)] font-semibold text-[var(--fg-primary)] ${round} ${size === "sm" ? "text-[0.625rem]" : "text-[0.5rem]"}`}
+      >
+        {initials}
+      </span>
+    </span>
+  )
+}
+
 /**
- * A live sample of one style, drawn with that style's own tokens
- * (`data-look-preview`, looks.css) in the current light/dark mode: its
- * page, a card with a title in its display face, a number in its numeral
- * face, a button and a label. Decorative; the tile names the style.
+ * A live sample of one style, drawn with that style's own tokens and
+ * centerpieces (`data-look-preview`, looks.css) in the current light/dark
+ * mode: a miniature Overview with the account's avatar and name, its ID
+ * card, two numbers, and an endorsement with a note. Decorative; the tile
+ * names the style.
  */
 function LookPreview({ id }: { id: LookId }) {
   return (
     <span
       data-look-preview={id}
       aria-hidden
-      className="block bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
+      className="flex flex-col gap-2.5 bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
     >
-      <span className="flex items-center gap-3 rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] p-2.5 shadow-[var(--shadow-sm)]">
-        <span className="font-headline text-h4 leading-none text-[var(--fg-primary)]">Aa</span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="block h-1.5 w-4/5 rounded bg-[var(--fg-primary)] opacity-80" />
-          <span className="block h-1.5 w-3/5 rounded bg-[var(--fg-muted)] opacity-60" />
-        </span>
-        <span className="text-h4 tabular-nums leading-none text-[var(--fg-primary)] [font-family:var(--font-numeral)]">
-          128
+      <span className="flex items-center gap-2.5">
+        <PreviewAvatar initials="UT" shape="circle" size="sm" />
+        <span className="flex min-w-0 flex-col">
+          <span className="font-headline truncate text-body leading-tight text-[var(--fg-primary)] [font-weight:var(--weight-headline,600)]">
+            Upper Tana Trust
+          </span>
+          <span className="truncate text-caption text-[var(--fg-muted)]">@uppertana.org</span>
         </span>
       </span>
-      <span className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="rounded bg-[var(--btn-primary-bg)] px-2.5 py-1 text-caption font-medium text-[var(--btn-primary-fg)]">
-          Endorse
+
+      <span
+        data-centerpiece="id"
+        data-did="did:plc:7xq3m2k4vb5ntq2a6wze"
+        className="relative block overflow-hidden rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2.5 py-2"
+      >
+        <span data-part="title" className="block text-caption font-semibold text-[var(--fg-primary)]">
+          ID
         </span>
-        <span className="text-label text-[var(--fg-muted)]">Activity</span>
+        <span className="mt-1 block truncate rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[0.6875rem] text-[var(--fg-primary)] [font-family:var(--font-mono)]">
+          did:plc:7xq3m2k4vb5ntq2a6wze
+        </span>
+      </span>
+
+      <span className="flex gap-5">
+        {[
+          ["128", "Activities"],
+          ["14", "Endorsed"],
+        ].map(([value, label]) => (
+          <span key={label} className="flex flex-col gap-0.5">
+            <span className="text-h4 leading-none tabular-nums text-[var(--fg-primary)] [font-family:var(--font-numeral)]">
+              {value}
+            </span>
+            <span className="text-label text-[var(--fg-muted)]">{label}</span>
+          </span>
+        ))}
+      </span>
+
+      <span
+        data-centerpiece="endorsement"
+        className="flex items-start gap-2 border-t border-[var(--border-subtle)] pt-2"
+      >
+        <PreviewAvatar initials="ME" shape="square" size="xs" />
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-caption">
+            <span data-part="who" className="font-medium text-[var(--fg-primary)]">
+              Ma Earth
+            </span>{" "}
+            <span data-part="when" className="text-[var(--fg-muted)]">
+              2026-11-04
+            </span>
+          </span>
+          <span data-part="note" className="text-caption text-[var(--fg-secondary)]">
+            A reliable partner on the tree nursery.
+          </span>
+        </span>
       </span>
     </span>
   )
