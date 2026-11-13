@@ -8,7 +8,7 @@ import EmptyState from "@/components/ui/empty-state"
 import IdentityRow from "@/components/ui/identity-row"
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
-import ProfileLists from "@/components/profile/profile-lists"
+import ProfileLists, { LIST_SECTIONS } from "@/components/profile/profile-lists"
 import EndorsementLists, {
   EndorsementListsToolbar,
   hasEndorsementListsToolbar,
@@ -27,7 +27,9 @@ import {
   LIST_ACCOUNTS_TYPE,
   LIST_CERTS_TYPE,
   LIST_PROJECTS_TYPE,
+  type TypedListType,
 } from "@/lib/atproto/typed-lists"
+import { useTypedLists } from "@/hooks/use-typed-lists"
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
 import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/received-endorsements"
@@ -471,20 +473,44 @@ function parseListTab(value: string | null): ListTab {
     : "activities"
 }
 
+/** The typed-list tabs: the kind each one shows. */
+const TYPED_LIST_TABS: Partial<Record<ListTab, TypedListType>> = {
+  activities: LIST_CERTS_TYPE,
+  projects: LIST_PROJECTS_TYPE,
+  accounts: LIST_ACCOUNTS_TYPE,
+}
+
 /**
  * Lists, one tab per kind: activities, projects, accounts and endorsement
- * lists (which also stay under Endorsements). Each tab has its own "New
- * list". The tab lives in the URL (`?kind=lists&tab=projects`); switching
- * tabs closes an open list (`?list=`).
+ * lists (which also stay under Endorsements). The tab lives in the URL
+ * (`?kind=lists&tab=projects`); switching tabs closes an open list
+ * (`?list=`).
+ *
+ * Each tab's "New … list" (and the endorsement lists' sort) sits on the
+ * tab line, over the list of lists once there is one; with none, the
+ * empty state carries it. So the pane holds the lists and the "New …
+ * list" state the tabs show.
  */
 export function ListsPane({ did }: { did: string }) {
   const titleId = useId()
+  // "Try again" on a failed load remounts the tabs, which loads again.
+  const [attempt, setAttempt] = useState(0)
+  return (
+    <WorkspaceFrame offset={false} header={<PaneHead titleId={titleId} section="lists" />}>
+      <section className="records-pane" aria-labelledby={titleId}>
+        <ListsTabs key={attempt} did={did} onRetry={() => setAttempt((n) => n + 1)} />
+      </section>
+    </WorkspaceFrame>
+  )
+}
+
+function ListsTabs({ did, onRetry }: { did: string; onRetry: () => void }) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
   const tab = parseListTab(params.get("tab"))
-  // The endorsement lists' sort and "New list" sit on the tab line, so
-  // the pane holds that view's state.
+  const typed = useTypedLists(did)
+  const [creating, setCreating] = useState<TypedListType | null>(null)
   const endorsementLists = useEndorsementListsState(did)
   const selectTab = (next: string) => {
     const qs = new URLSearchParams(params.toString())
@@ -495,50 +521,60 @@ export function ListsPane({ did }: { did: string }) {
     router.replace(`${pathname}?${qs.toString()}`, { scroll: false })
   }
 
-  return (
-    <WorkspaceFrame offset={false} header={<PaneHead titleId={titleId} section="lists" />}>
-      <section className="records-pane" aria-labelledby={titleId}>
-        <Tabs value={tab} onChange={selectTab}>
-          <PaneTabBar
-            actions={
-              tab === "endorsements" && hasEndorsementListsToolbar(endorsementLists) ? (
-                <EndorsementListsToolbar state={endorsementLists} viewerIsOwner />
-              ) : null
-            }
-          >
-            <TabList aria-label="Lists" className="records-pane__tablist">
-              <Tab value="activities">Activities</Tab>
-              <Tab value="projects">Projects</Tab>
-              <Tab value="accounts">Accounts</Tab>
-              <Tab value="endorsements">Endorsements</Tab>
-            </TabList>
-          </PaneTabBar>
+  const typedType = TYPED_LIST_TABS[tab]
+  const typedSection = LIST_SECTIONS.find((s) => s.type === typedType)
+  const actions =
+    tab === "endorsements" ? (
+      hasEndorsementListsToolbar(endorsementLists) ? (
+        <EndorsementListsToolbar state={endorsementLists} viewerIsOwner />
+      ) : null
+    ) : typedType && typedSection && !params.get("list") && typed.byType[typedType].length > 0 ? (
+      <Button variant="secondary" size="sm" onClick={() => setCreating(typedType)}>
+        <Plus size={16} strokeWidth={1.75} aria-hidden />
+        New {typedSection.noun} list
+      </Button>
+    ) : null
 
-          {/* The profile's list manager, one kind per tab; it carries
-              create, edit and delete. */}
-          <TabPanel value="activities">
-            <div className="records-pane__tab-body">
-              <ProfileLists did={did} viewerIsOwner only={LIST_CERTS_TYPE} />
-            </div>
-          </TabPanel>
-          <TabPanel value="projects">
-            <div className="records-pane__tab-body">
-              <ProfileLists did={did} viewerIsOwner only={LIST_PROJECTS_TYPE} />
-            </div>
-          </TabPanel>
-          <TabPanel value="accounts">
-            <div className="records-pane__tab-body">
-              <ProfileLists did={did} viewerIsOwner only={LIST_ACCOUNTS_TYPE} />
-            </div>
-          </TabPanel>
-          <TabPanel value="endorsements">
-            <div className="records-pane__tab-body">
-              <EndorsementLists state={endorsementLists} viewerIsOwner />
-            </div>
-          </TabPanel>
-        </Tabs>
-      </section>
-    </WorkspaceFrame>
+  // The profile's list manager, one kind per tab, on the pane's lists; it
+  // carries edit and delete, and "New … list" when there is none yet.
+  const typedLists = (type: TypedListType) => (
+    <ProfileLists
+      did={did}
+      viewerIsOwner
+      only={type}
+      source={typed}
+      onRetry={onRetry}
+      creating={creating}
+      onCreatingChange={setCreating}
+    />
+  )
+
+  return (
+    <Tabs value={tab} onChange={selectTab}>
+      <PaneTabBar actions={actions}>
+        <TabList aria-label="Lists" className="records-pane__tablist">
+          <Tab value="activities">Activities</Tab>
+          <Tab value="projects">Projects</Tab>
+          <Tab value="accounts">Accounts</Tab>
+          <Tab value="endorsements">Endorsements</Tab>
+        </TabList>
+      </PaneTabBar>
+
+      <TabPanel value="activities">
+        <div className="records-pane__tab-body">{typedLists(LIST_CERTS_TYPE)}</div>
+      </TabPanel>
+      <TabPanel value="projects">
+        <div className="records-pane__tab-body">{typedLists(LIST_PROJECTS_TYPE)}</div>
+      </TabPanel>
+      <TabPanel value="accounts">
+        <div className="records-pane__tab-body">{typedLists(LIST_ACCOUNTS_TYPE)}</div>
+      </TabPanel>
+      <TabPanel value="endorsements">
+        <div className="records-pane__tab-body">
+          <EndorsementLists state={endorsementLists} viewerIsOwner />
+        </div>
+      </TabPanel>
+    </Tabs>
   )
 }
 

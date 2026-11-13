@@ -200,6 +200,15 @@
   color: var(--fg-secondary);
 }
 
+/* The owner's line on adding (one at a time, or Paste many). */
+.endorsement-lists__detail-tip {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--text-ui);
+  color: var(--fg-muted);
+  text-wrap: pretty;
+}
+
 .endorsement-lists__detail-date {
   font-size: var(--text-caption);
   color: var(--fg-muted);

@@ -47,34 +47,47 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { deriveIdentity } from "@/lib/utils/identity"
 
-const SECTIONS: {
+export const LIST_SECTIONS: readonly {
   type: TypedListType
   title: string
   noun: string
+  /** Plural, for the empty state's line. */
+  plural: string
   emptyHint: string
 }[] = [
-  { type: LIST_CERTS_TYPE, title: "Activities", noun: "activity", emptyHint: "No activity lists yet." },
-  { type: LIST_PROJECTS_TYPE, title: "Projects", noun: "project", emptyHint: "No project lists yet." },
-  { type: LIST_ACCOUNTS_TYPE, title: "Accounts", noun: "account", emptyHint: "No account lists yet." },
+  { type: LIST_CERTS_TYPE, title: "Activities", noun: "activity", plural: "activities", emptyHint: "No activity lists yet." },
+  { type: LIST_PROJECTS_TYPE, title: "Projects", noun: "project", plural: "projects", emptyHint: "No project lists yet." },
+  { type: LIST_ACCOUNTS_TYPE, title: "Accounts", noun: "account", plural: "accounts", emptyHint: "No account lists yet." },
 ]
 
 interface ProfileListsProps {
   did: string
   viewerIsOwner: boolean
   /** Show only this kind of list, without a section heading (a tab above
-   *  names it) and with a "New list" button above the rows. Records →
+   *  names it) and without its "New … list" button, which the tab line
+   *  carries; with no list yet the empty state offers it. Workspace →
    *  Lists has a tab per kind. */
   only?: TypedListType
+  /** The lists, when the page above holds them (`useTypedLists`), so its
+   *  tab line knows whether there are any. Without it this loads them. */
+  source?: ReturnType<typeof useTypedLists>
+  /** With `source`: load the lists again ("Try again"). */
+  onRetry?: () => void
+  /** The kind whose "New … list" dialog is open, when the page above
+   *  controls it (its tab line opens it). */
+  creating?: TypedListType | null
+  onCreatingChange?: (type: TypedListType | null) => void
 }
 
 export default function ProfileLists(props: ProfileListsProps) {
-  // The lists hook exposes no refetch, so "Try again" remounts the body.
+  // The lists hook exposes no refetch, so "Try again" remounts the body
+  // (or, when the page above holds the lists, asks it to).
   const [attempt, setAttempt] = useState(0)
   return (
     <ProfileListsBody
       key={attempt}
       {...props}
-      onRetry={() => setAttempt((n) => n + 1)}
+      onRetry={props.source ? props.onRetry : () => setAttempt((n) => n + 1)}
     />
   )
 }
@@ -83,8 +96,13 @@ function ProfileListsBody({
   did,
   viewerIsOwner,
   only,
+  source,
   onRetry,
-}: ProfileListsProps & { onRetry: () => void }) {
+  creating: creatingProp,
+  onCreatingChange,
+}: ProfileListsProps) {
+  // Loads its own lists only when the page above doesn't hold them.
+  const own = useTypedLists(source ? null : did)
   const {
     byType,
     isLoading,
@@ -96,7 +114,7 @@ function ProfileListsBody({
     addManyItems,
     removeItem,
     removeManyItems,
-  } = useTypedLists(did)
+  } = source ?? own
   // Selection lives in `?list=<rkey>` so a) refreshing keeps you on
   // the same list, b) clicking through to an item and pressing back
   // returns to the detail view rather than the section list, and
@@ -109,7 +127,9 @@ function ProfileListsBody({
   // record).
   const [selectedRkey, setSelectedRkey] = useUrlParam("list", { mode: "push" })
   const router = useRouter()
-  const [creating, setCreating] = useState<TypedListType | null>(null)
+  const [ownCreating, setOwnCreating] = useState<TypedListType | null>(null)
+  const creating = creatingProp !== undefined ? creatingProp : ownCreating
+  const setCreating = onCreatingChange ?? setOwnCreating
 
   // Drop selection if the selected list disappears (deletion, refetch
   // showing it never existed for this DID, etc.).
@@ -137,9 +157,11 @@ function ProfileListsBody({
         title="Couldn't load lists"
         description="Something went wrong on our side. Try again in a moment."
       >
-        <Button variant="secondary" size="sm" onClick={onRetry}>
-          Try again
-        </Button>
+        {onRetry ? (
+          <Button variant="secondary" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        ) : null}
       </EmptyState>
     )
   }
@@ -169,12 +191,13 @@ function ProfileListsBody({
 
   return (
     <div className="profile-lists">
-      {SECTIONS.filter((section) => !only || section.type === only).map((section) => (
+      {LIST_SECTIONS.filter((section) => !only || section.type === only).map((section) => (
         <ListSection
           key={section.type}
           headless={!!only}
           title={section.title}
           noun={section.noun}
+          plural={section.plural}
           emptyHint={section.emptyHint}
           lists={byType[section.type]}
           canCreate={viewerIsOwner}
@@ -206,35 +229,48 @@ function ListSection({
   headless = false,
   title,
   noun,
+  plural,
   emptyHint,
   lists,
   canCreate,
   onCreate,
   onOpen,
 }: {
-  /** No heading: a tab names the section; "New list" sits above the rows. */
+  /** No heading and no "New … list" button: a tab names the section and
+   *  its line carries the button; with no list yet the empty state does. */
   headless?: boolean
   title: string
   /** Singular noun for the "New … list" button, e.g. "activity". */
   noun: string
+  plural: string
   emptyHint: string
   lists: TypedListRecord[]
   canCreate: boolean
   onCreate: () => void
   onOpen: (rkey: string) => void
 }) {
-  return (
-    <section className="profile-lists__section" aria-label={title}>
-      {headless ? (
-        canCreate ? (
-          <div className="profile-lists__toolbar">
+  if (headless && lists.length === 0) {
+    return (
+      <section className="profile-lists__section" aria-label={title}>
+        <EmptyState
+          icon={ListIcon}
+          headingLevel={2}
+          title={`No ${noun} lists yet`}
+          description={`Make a list to keep ${plural} together.`}
+        >
+          {canCreate ? (
             <Button variant="secondary" size="sm" onClick={onCreate}>
               <Plus size={16} strokeWidth={1.75} aria-hidden />
               New {noun} list
             </Button>
-          </div>
-        ) : null
-      ) : (
+          ) : null}
+        </EmptyState>
+      </section>
+    )
+  }
+  return (
+    <section className="profile-lists__section" aria-label={title}>
+      {headless ? null : (
         <SectionHeader
           title={
             <>
@@ -288,6 +324,16 @@ function ListSection({
 }
 
 // ----------------------------- List detail -----------------------------
+
+/** The open list's line on adding: one at a time (Add items) or many at
+ *  once (Paste many), and what Paste many takes. */
+export function pasteTip(type: TypedListType): string {
+  if (type === LIST_ACCOUNTS_TYPE) {
+    return "Add accounts one at a time, or paste many handles, DIDs or links at once with Paste many."
+  }
+  const plural = LIST_SECTIONS.find((s) => s.type === type)?.plural ?? "items"
+  return `Add ${plural} one at a time, or paste many links at once with Paste many.`
+}
 
 function ListDetail({
   list,
@@ -446,6 +492,8 @@ function ListDetail({
       {list.description ? (
         <p className="profile-lists__detail-desc">{list.description}</p>
       ) : null}
+      {/* Where adding happens, so the tip lives here (not on the page). */}
+      {viewerIsOwner ? <p className="profile-lists__detail-tip">{pasteTip(list.type)}</p> : null}
       {list.items.length === 0 ? (
         <EmptyState
           icon={ListIcon}

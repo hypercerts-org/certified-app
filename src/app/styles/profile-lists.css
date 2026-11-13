@@ -22,13 +22,6 @@
   gap: 12px;
 }
 
-/* A section shown on its own under a tab (Records → Lists): its "New …
-   list" button sits on the right, above the rows. */
-.profile-lists__toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
-
 /* ---------- List summary rows ---------- */
 
 .profile-lists__rows {
@@ -151,6 +144,15 @@
   font-size: var(--text-body-sm);
   line-height: 1.5;
   color: var(--fg-secondary);
+}
+
+/* The owner's line on adding (one at a time, or Paste many). */
+.profile-lists__detail-tip {
+  margin: 0 0 12px;
+  max-width: var(--measure);
+  font-size: var(--text-ui);
+  color: var(--fg-muted);
+  text-wrap: pretty;
 }
 
 /* ---------- Bulk-select toolbar ---------- */

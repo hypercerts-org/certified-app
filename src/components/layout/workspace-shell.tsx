@@ -57,7 +57,7 @@ export const WORKSPACE_SECTIONS: readonly {
     href: "/records?kind=lists",
     icon: ListChecks,
     description:
-      "Your lists of activities, projects, accounts and endorsements. Open a list to rename it, delete it, or add to it: one at a time, or many at once by pasting handles, DIDs or links.",
+      "Your lists of activities, projects, accounts and endorsements. Open a list to rename, delete or add to it.",
   },
   {
     key: "groups",

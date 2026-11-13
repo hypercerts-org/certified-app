@@ -542,6 +542,12 @@ function ListDetail({
         {list.description ? (
           <p className="endorsement-lists__detail-desc">{list.description}</p>
         ) : null}
+        {/* Where adding happens, so the tip lives here (not on the page). */}
+        {canEdit ? (
+          <p className="endorsement-lists__detail-tip">
+            Add people one at a time, or paste many handles, DIDs or links at once with Paste many.
+          </p>
+        ) : null}
         <span className="endorsement-lists__detail-date">
           Created{" "}
           <time
