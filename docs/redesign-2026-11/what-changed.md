@@ -72,10 +72,12 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
   - Filters opens a sheet on phones.
 - **Apps**: one app tile, shared with Home, in a grid.
 - **Records** (the workspace)
-  - Kinds down the left: Projects and activities, Endorsements, Following, Followers, Lists.
+  - Kinds down the left: Projects and activities, Endorsements, Followers, Lists.
   - Projects are folders of their activities, plus "Without a project". Each activity row shows contributor avatars and tags for its other projects.
   - **Select several activities, then "Add to project…"**: a picker with "New project from selection". Saving is immediate and comes with Undo. Each folder has "Add activities" and "Remove from project".
   - Endorsements has Received, Given and Endorsement lists, with Show and Hide for received ones.
+  - Followers has two tabs: Followers (who follows you) and Following (who you follow). Old `?kind=following` links open the Following tab.
+  - Lists has a tab per kind: Activities, Projects, Accounts and Endorsements (endorsement lists, also under Endorsements). Each tab has its own "New list".
   - While acting as a group, Records points you to the group's profile.
 - **Public profile**
   - The header shows banner, avatar, name, handle, bio, links, the Permanent ID, and an organisation's type, location and founding date.
@@ -128,7 +130,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 ## Open questions and follow-ups
 
 - **Radius**: still 2px. A more "modern" look could use a softer radius; that's a brand decision for you.
-- **Records on phones**: the five section buttons wrap onto three rows. Shorter labels, or a select menu, would make them more compact.
+- **Records on phones**: the section buttons wrap onto more than one row (five wrapped onto three; there are four now). Shorter labels, or a select menu, would make them more compact.
 - **Profile**: the endorsement-list manager moved from the profile's Endorsements tab to Records. The tab now links there.
 - **Group profile editing**: `/groups/{did}/edit-profile` remains for admins who aren't currently acting as the group.
 - **Not redesigned**:

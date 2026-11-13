@@ -50,6 +50,10 @@ interface EndorsementListsProps {
    *  the "Create list" button renders. List rows are visible to
    *  everyone (definitions are public records). */
   readonly viewerIsOwner: boolean
+  /** Leave out the "Lists" heading when a tab above already names the
+   *  view (Records → Endorsements → Endorsement lists, Records → Lists →
+   *  Endorsements); the sort and "New list" stay. */
+  readonly hideTitle?: boolean
 }
 
 type SortKey = "created-desc" | "created-asc" | "alpha-asc" | "alpha-desc"
@@ -77,6 +81,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 export default function EndorsementLists({
   did,
   viewerIsOwner,
+  hideTitle = false,
 }: EndorsementListsProps) {
   const {
     lists,
@@ -259,15 +264,19 @@ export default function EndorsementLists({
 
   return (
     <section className="endorsement-lists" aria-label="Lists">
-      <header className="endorsement-lists__header">
-        <h2 className="endorsement-lists__title">
-          Lists
-          {!isLoading ? (
-            <span className="endorsement-lists__title-count">
-              {lists.length}
-            </span>
-          ) : null}
-        </h2>
+      <header
+        className={`endorsement-lists__header${hideTitle ? " endorsement-lists__header--actions-only" : ""}`}
+      >
+        {hideTitle ? null : (
+          <h2 className="endorsement-lists__title">
+            Lists
+            {!isLoading ? (
+              <span className="endorsement-lists__title-count">
+                {lists.length}
+              </span>
+            ) : null}
+          </h2>
+        )}
         <div className="endorsement-lists__actions">
           <div className="endorsement-lists__sort-wrap">
             <Popover open={sortOpen} onOpenChange={setSortOpen}>

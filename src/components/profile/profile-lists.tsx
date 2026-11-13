@@ -61,6 +61,10 @@ const SECTIONS: {
 interface ProfileListsProps {
   did: string
   viewerIsOwner: boolean
+  /** Show only this kind of list, without a section heading (a tab above
+   *  names it) and with a "New list" button above the rows. Records →
+   *  Lists has a tab per kind. */
+  only?: TypedListType
 }
 
 export default function ProfileLists(props: ProfileListsProps) {
@@ -78,6 +82,7 @@ export default function ProfileLists(props: ProfileListsProps) {
 function ProfileListsBody({
   did,
   viewerIsOwner,
+  only,
   onRetry,
 }: ProfileListsProps & { onRetry: () => void }) {
   const {
@@ -164,9 +169,10 @@ function ProfileListsBody({
 
   return (
     <div className="profile-lists">
-      {SECTIONS.map((section) => (
+      {SECTIONS.filter((section) => !only || section.type === only).map((section) => (
         <ListSection
           key={section.type}
+          headless={!!only}
           title={section.title}
           noun={section.noun}
           emptyHint={section.emptyHint}
@@ -197,6 +203,7 @@ function ProfileListsBody({
 // ----------------------------- Section -----------------------------
 
 function ListSection({
+  headless = false,
   title,
   noun,
   emptyHint,
@@ -205,6 +212,8 @@ function ListSection({
   onCreate,
   onOpen,
 }: {
+  /** No heading: a tab names the section; "New list" sits above the rows. */
+  headless?: boolean
   title: string
   /** Singular noun for the "New … list" button, e.g. "activity". */
   noun: string
@@ -216,27 +225,38 @@ function ListSection({
 }) {
   return (
     <section className="profile-lists__section" aria-label={title}>
-      <SectionHeader
-        title={
-          <>
-            {title} <PanelCount n={lists.length} />
-          </>
-        }
-        action={
-          canCreate ? (
-            <Tooltip label="New list">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onCreate}
-                aria-label={`New ${noun} list`}
-              >
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-              </Button>
-            </Tooltip>
-          ) : null
-        }
-      />
+      {headless ? (
+        canCreate ? (
+          <div className="profile-lists__toolbar">
+            <Button variant="secondary" size="sm" onClick={onCreate}>
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New {noun} list
+            </Button>
+          </div>
+        ) : null
+      ) : (
+        <SectionHeader
+          title={
+            <>
+              {title} <PanelCount n={lists.length} />
+            </>
+          }
+          action={
+            canCreate ? (
+              <Tooltip label="New list">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onCreate}
+                  aria-label={`New ${noun} list`}
+                >
+                  <Plus size={16} strokeWidth={1.75} aria-hidden />
+                </Button>
+              </Tooltip>
+            ) : null
+          }
+        />
+      )}
       {lists.length === 0 ? (
         <EmptyState variant="inline" title={emptyHint} />
       ) : (

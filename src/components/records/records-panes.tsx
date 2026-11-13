@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Compass, Plus, Users } from "lucide-react"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
@@ -19,9 +20,13 @@ import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import { useUrlParam } from "@/hooks/use-url-param"
 import type { FollowRecord } from "@/lib/atproto/follow"
+import {
+  LIST_ACCOUNTS_TYPE,
+  LIST_CERTS_TYPE,
+  LIST_PROJECTS_TYPE,
+} from "@/lib/atproto/typed-lists"
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
-import NewListMenu from "@/components/records/new-list-menu"
 import ReceivedEndorsements from "@/components/records/received-endorsements"
 import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
 
@@ -163,7 +168,7 @@ export function EndorsementsPane({
 
         <TabPanel value="lists">
           <div className="records-pane__tab-body">
-            <EndorsementLists did={did} viewerIsOwner />
+            <EndorsementLists did={did} viewerIsOwner hideTitle />
           </div>
         </TabPanel>
       </Tabs>
@@ -215,11 +220,84 @@ function ShowMore({ onClick }: { onClick: () => void }) {
   )
 }
 
-export function FollowingPane({ did, following }: { did: string; following: FollowingState }) {
+const PEOPLE_TABS = ["followers", "following"] as const
+type PeopleTab = (typeof PEOPLE_TABS)[number]
+
+function parsePeopleTab(value: string | null): PeopleTab {
+  return (PEOPLE_TABS as readonly string[]).includes(value ?? "")
+    ? (value as PeopleTab)
+    : "followers"
+}
+
+/**
+ * Followers: the accounts that follow you and the accounts you follow, as
+ * two tabs (like Endorsements: what others gave you first). Opens on
+ * Followers; the other tab lives in the URL (`?kind=followers&tab=following`).
+ */
+export function FollowersPane({
+  did,
+  actor,
+  following,
+}: {
+  did: string
+  actor: string
+  following: FollowingState
+}) {
   const titleId = useId()
+  const [tabParam, setTabParam] = useUrlParam("tab", { defaultValue: "followers" })
+  const tab = parsePeopleTab(tabParam)
+  const followers = useFollowers(did)
+
+  return (
+    <section className="records-pane" aria-labelledby={titleId}>
+      <PaneHead
+        titleId={titleId}
+        title="Followers"
+        description="Accounts that follow you, and accounts you follow. What the accounts you follow publish shows in your feed."
+        action={
+          <Button href="/explore" variant="secondary" size="sm">
+            <Compass size={16} strokeWidth={1.75} aria-hidden />
+            Find accounts
+          </Button>
+        }
+      />
+      <Tabs value={tab} onChange={(v) => setTabParam(v)}>
+        <TabList aria-label="Followers">
+          {/* Counts are left out while their list loads. */}
+          <Tab
+            value="followers"
+            count={followers.isLoading && followers.entries.length === 0 ? undefined : followers.entries.length}
+          >
+            Followers
+          </Tab>
+          <Tab
+            value="following"
+            count={following.isLoading && following.count === 0 ? undefined : following.count}
+          >
+            Following
+          </Tab>
+        </TabList>
+
+        <TabPanel value="followers">
+          <div className="records-pane__tab-body">
+            <FollowersList did={did} actor={actor} followers={followers} following={following} />
+          </div>
+        </TabPanel>
+
+        <TabPanel value="following">
+          <div className="records-pane__tab-body">
+            <FollowingList did={did} following={following} />
+          </div>
+        </TabPanel>
+      </Tabs>
+    </section>
+  )
+}
+
+function FollowingList({ did, following }: { did: string; following: FollowingState }) {
   const [shown, setShown] = useState(PEOPLE_PAGE)
   // Accounts unfollowed on this page keep their row (with a Follow button)
-  // until the pane closes, so an accidental unfollow can be undone.
+  // until the tab closes, so an accidental unfollow can be undone.
   const [unfollowed, setUnfollowed] = useState<ReadonlyMap<string, FollowRecord>>(new Map())
   const rows = useMemo(() => {
     const bySubject = new Map<string, FollowRecord>()
@@ -234,164 +312,203 @@ export function FollowingPane({ did, following }: { did: string; following: Foll
     )
   }, [following.records, following.subjects, unfollowed])
 
-  return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Following"
-        description="Accounts you follow. What they publish shows in your feed."
-        action={
-          rows.length > 0 ? (
-            <Button href="/explore" variant="secondary" size="sm">
-              <Compass size={16} strokeWidth={1.75} aria-hidden />
-              Find accounts
-            </Button>
-          ) : null
-        }
+  if (following.isLoading && rows.length === 0) return <RowsSkeleton shape="circle" />
+  if (following.error && rows.length === 0) {
+    return (
+      <EmptyState variant="inline" title="Couldn't load who you follow.">
+        <Button variant="ghost" size="sm" onClick={() => void following.refetch()}>
+          Try again
+        </Button>
+      </EmptyState>
+    )
+  }
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        icon={Compass}
+        headingLevel={3}
+        title="You're not following anyone yet"
+        description="Follow accounts to see what they publish in your feed. Find them with Find accounts."
       />
-      {following.isLoading && rows.length === 0 ? (
-        <RowsSkeleton shape="circle" />
-      ) : following.error && rows.length === 0 ? (
-        <EmptyState variant="inline" title="Couldn't load who you follow.">
-          <Button variant="ghost" size="sm" onClick={() => void following.refetch()}>
-            Try again
-          </Button>
-        </EmptyState>
-      ) : rows.length === 0 ? (
-        <EmptyState
-          icon={Compass}
-          headingLevel={3}
-          title="You're not following anyone yet"
-          description="Follow accounts to see what they publish in your feed."
-        >
-          <Button href="/explore" variant="secondary" size="sm">
-            Find accounts
-          </Button>
-        </EmptyState>
-      ) : (
-        <ul className="records-list">
-          {rows.slice(0, shown).map((r) => {
-            const subject = r.value.subject
-            return (
-              <PersonRow
-                key={subject}
-                did={subject}
-                since={r.value.createdAt}
-                action={(name) => (
-                  <FollowButton
-                    viewerDid={did}
-                    subjectDid={subject}
-                    subjectName={name}
-                    isFollowing={following.subjects.has(subject)}
-                    isLoading={false}
-                    onFollowed={(uri, cid) => {
-                      following.addFollow(subject, uri, cid)
-                      setUnfollowed((prev) => {
-                        const next = new Map(prev)
-                        next.delete(subject)
-                        return next
-                      })
-                    }}
-                    onUnfollowed={() => {
-                      following.removeFollow(subject)
-                      setUnfollowed((prev) => new Map(prev).set(subject, r))
-                    }}
-                  />
-                )}
-              />
-            )
-          })}
-        </ul>
-      )}
+    )
+  }
+  return (
+    <>
+      <ul className="records-list">
+        {rows.slice(0, shown).map((r) => {
+          const subject = r.value.subject
+          return (
+            <PersonRow
+              key={subject}
+              did={subject}
+              since={r.value.createdAt}
+              action={(name) => (
+                <FollowButton
+                  viewerDid={did}
+                  subjectDid={subject}
+                  subjectName={name}
+                  isFollowing={following.subjects.has(subject)}
+                  isLoading={false}
+                  onFollowed={(uri, cid) => {
+                    following.addFollow(subject, uri, cid)
+                    setUnfollowed((prev) => {
+                      const next = new Map(prev)
+                      next.delete(subject)
+                      return next
+                    })
+                  }}
+                  onUnfollowed={() => {
+                    following.removeFollow(subject)
+                    setUnfollowed((prev) => new Map(prev).set(subject, r))
+                  }}
+                />
+              )}
+            />
+          )
+        })}
+      </ul>
       {rows.length > shown ? <ShowMore onClick={() => setShown((n) => n + PEOPLE_PAGE)} /> : null}
-    </section>
+    </>
   )
 }
 
-export function FollowersPane({
+/** A follow is the follower's record, so it can't be removed here; you
+ *  can follow them back. */
+function FollowersList({
   did,
   actor,
+  followers,
   following,
 }: {
   did: string
   actor: string
+  followers: ReturnType<typeof useFollowers>
   following: FollowingState
 }) {
-  const titleId = useId()
-  const followers = useFollowers(did)
   const [shown, setShown] = useState(PEOPLE_PAGE)
 
+  if (followers.isLoading && followers.entries.length === 0) return <RowsSkeleton shape="circle" />
+  if (followers.error && followers.entries.length === 0) {
+    return (
+      <EmptyState variant="inline" title="Couldn't load your followers.">
+        <Button variant="ghost" size="sm" onClick={() => void followers.refetch()}>
+          Try again
+        </Button>
+      </EmptyState>
+    )
+  }
+  if (followers.entries.length === 0) {
+    return (
+      <EmptyState
+        icon={Users}
+        headingLevel={3}
+        title="No followers yet"
+        description="When another account follows yours, it shows here."
+      >
+        <Button href={profileUrl(actor)} variant="secondary" size="sm">
+          View your profile
+        </Button>
+      </EmptyState>
+    )
+  }
   return (
-    <section className="records-pane" aria-labelledby={titleId}>
-      <PaneHead
-        titleId={titleId}
-        title="Followers"
-        description="Accounts that follow you. A follow is the follower's record, so it can't be removed here; you can follow them back."
-      />
-      {followers.isLoading && followers.entries.length === 0 ? (
-        <RowsSkeleton shape="circle" />
-      ) : followers.error && followers.entries.length === 0 ? (
-        <EmptyState variant="inline" title="Couldn't load your followers.">
-          <Button variant="ghost" size="sm" onClick={() => void followers.refetch()}>
-            Try again
-          </Button>
-        </EmptyState>
-      ) : followers.entries.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          headingLevel={3}
-          title="No followers yet"
-          description="When another account follows yours, it shows here."
-        >
-          <Button href={profileUrl(actor)} variant="secondary" size="sm">
-            View your profile
-          </Button>
-        </EmptyState>
-      ) : (
-        <ul className="records-list">
-          {followers.entries.slice(0, shown).map((f) => (
-            <PersonRow
-              key={f.uri}
-              did={f.followerDid}
-              since={f.createdAt}
-              action={(name) => (
-                <FollowButton
-                  viewerDid={did}
-                  subjectDid={f.followerDid}
-                  subjectName={name}
-                  isFollowing={following.subjects.has(f.followerDid)}
-                  isLoading={following.isLoading}
-                  onFollowed={(uri, cid) => following.addFollow(f.followerDid, uri, cid)}
-                  onUnfollowed={() => following.removeFollow(f.followerDid)}
-                />
-              )}
-            />
-          ))}
-        </ul>
-      )}
+    <>
+      <ul className="records-list">
+        {followers.entries.slice(0, shown).map((f) => (
+          <PersonRow
+            key={f.uri}
+            did={f.followerDid}
+            since={f.createdAt}
+            action={(name) => (
+              <FollowButton
+                viewerDid={did}
+                subjectDid={f.followerDid}
+                subjectName={name}
+                isFollowing={following.subjects.has(f.followerDid)}
+                isLoading={following.isLoading}
+                onFollowed={(uri, cid) => following.addFollow(f.followerDid, uri, cid)}
+                onUnfollowed={() => following.removeFollow(f.followerDid)}
+              />
+            )}
+          />
+        ))}
+      </ul>
       {followers.entries.length > shown ? (
         <ShowMore onClick={() => setShown((n) => n + PEOPLE_PAGE)} />
       ) : null}
-    </section>
+    </>
   )
 }
 
 // --------------------------------- Lists ------------------------------------
 
-/** Lists of activities, projects and accounts (endorsement lists live
- *  under Endorsements). */
+const LIST_TABS = ["activities", "projects", "accounts", "endorsements"] as const
+type ListTab = (typeof LIST_TABS)[number]
+
+function parseListTab(value: string | null): ListTab {
+  return (LIST_TABS as readonly string[]).includes(value ?? "")
+    ? (value as ListTab)
+    : "activities"
+}
+
+/**
+ * Lists, one tab per kind: activities, projects, accounts and endorsement
+ * lists (which also stay under Endorsements). Each tab has its own "New
+ * list". The tab lives in the URL (`?kind=lists&tab=projects`); switching
+ * tabs closes an open list (`?list=`).
+ */
 export function ListsPane({ did }: { did: string }) {
   const titleId = useId()
+  const router = useRouter()
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const tab = parseListTab(params.get("tab"))
+  const selectTab = (next: string) => {
+    const qs = new URLSearchParams(params.toString())
+    if (next === "activities") qs.delete("tab")
+    else qs.set("tab", next)
+    qs.delete("list")
+    router.replace(`${pathname}?${qs.toString()}`, { scroll: false })
+  }
+
   return (
     <section className="records-pane" aria-labelledby={titleId}>
       <PaneHead
         titleId={titleId}
         title="Lists"
-        description="Your lists of activities, projects and accounts. Open a list to rename it, add to it or delete it."
-        action={<NewListMenu did={did} />}
+        description="Your lists of activities, projects, accounts and endorsements. Open a list to rename it, add to it or delete it."
       />
-      {/* The profile's list manager, which carries create, edit and delete. */}
-      <ProfileLists did={did} viewerIsOwner />
+      <Tabs value={tab} onChange={selectTab}>
+        <TabList aria-label="Lists">
+          <Tab value="activities">Activities</Tab>
+          <Tab value="projects">Projects</Tab>
+          <Tab value="accounts">Accounts</Tab>
+          <Tab value="endorsements">Endorsements</Tab>
+        </TabList>
+
+        {/* The profile's list manager, one kind per tab; it carries
+            create, edit and delete. */}
+        <TabPanel value="activities">
+          <div className="records-pane__tab-body">
+            <ProfileLists did={did} viewerIsOwner only={LIST_CERTS_TYPE} />
+          </div>
+        </TabPanel>
+        <TabPanel value="projects">
+          <div className="records-pane__tab-body">
+            <ProfileLists did={did} viewerIsOwner only={LIST_PROJECTS_TYPE} />
+          </div>
+        </TabPanel>
+        <TabPanel value="accounts">
+          <div className="records-pane__tab-body">
+            <ProfileLists did={did} viewerIsOwner only={LIST_ACCOUNTS_TYPE} />
+          </div>
+        </TabPanel>
+        <TabPanel value="endorsements">
+          <div className="records-pane__tab-body">
+            <EndorsementLists did={did} viewerIsOwner hideTitle />
+          </div>
+        </TabPanel>
+      </Tabs>
     </section>
   )
 }

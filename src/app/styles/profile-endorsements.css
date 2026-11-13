@@ -24,6 +24,11 @@
   gap: 12px;
 }
 
+/* No heading (a tab above names the view): the actions sit on the right. */
+.endorsement-lists__header--actions-only {
+  justify-content: flex-end;
+}
+
 .endorsement-lists__header--detail {
   /* Detail view keeps the same row layout but the back arrow +
      title + counter live in `.endorsement-lists__detail-lede` so

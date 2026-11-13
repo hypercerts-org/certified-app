@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FolderGit2, FolderOpen, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
+import { FolderGit2, FolderOpen, ListChecks, ThumbsUp, Users } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
@@ -16,7 +16,6 @@ import WorkPane from "@/components/records/work-pane"
 import {
   EndorsementsPane,
   FollowersPane,
-  FollowingPane,
   ListsPane,
 } from "@/components/records/records-panes"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -24,23 +23,24 @@ import { useOrg } from "@/lib/groups/org-context"
 import { useSession } from "@/hooks/use-session"
 import { useFollowing } from "@/hooks/use-following"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
-import { useActorWorkspaceCounts } from "@/hooks/use-workspace"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 // "activities" is the projects-and-activities folder view (key kept so
 // existing ?kind=activities links still land on it).
-type RecordKind = "activities" | "endorsements" | "following" | "followers" | "lists"
+// "followers" holds both Followers and Following, as tabs.
+type RecordKind = "activities" | "endorsements" | "followers" | "lists"
 
 const KINDS: { key: RecordKind; label: string; icon: SideNavIcon }[] = [
   { key: "activities", label: "Projects and activities", icon: FolderGit2 },
   { key: "endorsements", label: "Endorsements", icon: ThumbsUp },
-  { key: "following", label: "Following", icon: UserCheck },
   { key: "followers", label: "Followers", icon: Users },
   { key: "lists", label: "Lists", icon: ListChecks },
 ]
 
 function parseKind(value: string | null): RecordKind {
+  // The old Following section is now a tab of Followers.
+  if (value === "following") return "followers"
   return KINDS.some((k) => k.key === value) ? (value as RecordKind) : "activities"
 }
 
@@ -50,9 +50,9 @@ const DESCRIPTION = "Everything your account holds. Create, change and organise 
 /**
  * `/records` — one place to manage everything the signed-in person's
  * account holds: projects with their activities (as folders), endorsements
- * given and received, who they follow (and, read-only, who follows them)
- * and lists. A `SideNav` of kinds (a column from 1100px, a scrolling row
- * of pills below) picks the pane via `?kind=`.
+ * given and received, followers and who they follow, and lists. A
+ * `SideNav` of kinds (a column from 1100px, pills below) picks the pane
+ * via `?kind=`; Endorsements, Followers and Lists have tabs (`&tab=`).
  *
  * Personal account only: the page writes to the session DID's repo. While
  * acting as a group the page stays in the navigation, points to the
@@ -66,7 +66,8 @@ export default function RecordsPage() {
   usePageTitle(TITLE)
   const router = useRouter()
   const params = useSearchParams()
-  const kind = parseKind(params.get("kind"))
+  const kindParam = params.get("kind")
+  const kind = parseKind(kindParam)
   const { isLoading: authLoading, isAuthenticated, did } = useAuth()
   const { handle } = useSession()
   const { activeOrg } = useOrg()
@@ -75,7 +76,6 @@ export default function RecordsPage() {
   // so both of its loads run again.
   const [workAttempt, setWorkAttempt] = useState(0)
 
-  const { counts, isLoading: countsLoading } = useActorWorkspaceCounts(did ?? null)
   const following = useFollowing(did ?? null)
   const given = useGivenEndorsements(did ?? null)
 
@@ -97,6 +97,11 @@ export default function RecordsPage() {
     if (authLoading) return
     if (!isAuthenticated) router.replace("/welcome")
   }, [authLoading, isAuthenticated, router])
+
+  // Old links to the Following section open the Following tab.
+  useEffect(() => {
+    if (kindParam === "following") router.replace("/records?kind=followers&tab=following")
+  }, [kindParam, router])
 
   if (authLoading || !isAuthenticated || !did) {
     return (
@@ -139,17 +144,8 @@ export default function RecordsPage() {
     )
   }
 
-  // Counts only where one number says it: the folder view counts per
-  // folder, and Endorsements counts per tab.
-  const countFor = (k: RecordKind): number | string | null => {
-    if (k === "following") {
-      return following.isLoading && following.count === 0 ? "…" : following.count
-    }
-    if (k === "followers") {
-      return counts.followers ?? (countsLoading ? "…" : null)
-    }
-    return null
-  }
+  // No counts in the side list: the folder view counts per folder, and
+  // Endorsements, Followers and Lists count per tab.
   const actor = handle || did
 
   return (
@@ -164,7 +160,6 @@ export default function RecordsPage() {
             label,
             icon,
             href: `/records?kind=${key}`,
-            count: countFor(key),
             current: key === kind,
           }))}
         />
@@ -182,8 +177,6 @@ export default function RecordsPage() {
             />
           ) : kind === "endorsements" ? (
             <EndorsementsPane did={did} actor={actor} given={given} />
-          ) : kind === "following" ? (
-            <FollowingPane did={did} following={following} />
           ) : kind === "followers" ? (
             <FollowersPane did={did} actor={actor} following={following} />
           ) : (
