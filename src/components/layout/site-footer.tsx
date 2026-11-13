@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useFeedback } from "@/lib/feedback-context"
+import Wordmark from "@/components/ui/wordmark"
 
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
@@ -29,12 +30,7 @@ export default function SiteFooter() {
     <footer className="site-footer" aria-label="Site footer">
       <div className="site-footer__row">
         <div className="site-footer__left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/wordmark/certified_wordmark_black.svg"
-            alt="Certified"
-            className="site-footer__wordmark"
-          />
+          <Wordmark variant="certified-app" height={14} className="site-footer__wordmark" />
           <span className="site-footer__copy">
             © {year} Hypercerts Foundation
           </span>

@@ -87,7 +87,7 @@ export default function DesktopTopBar() {
         <div className="desktop-top-bar__left">
           <div className="desktop-top-bar__brand-group">
             <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
-              <Wordmark height={18} decorative />
+              <Wordmark variant="certified-app" height={18} decorative />
             </Link>
             <Badge variant="tag" compact>
               Beta
