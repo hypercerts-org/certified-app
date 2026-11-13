@@ -7,12 +7,14 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility";
 import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
 import { PhoneNetworkTab } from "./network-menu";
+import { PhoneWorkspaceTab } from "./workspace-menu";
 
 /**
  * Phone bottom tab bar (below 800px), in every phone browser: Workspace,
  * Network and Apps — the same destinations, in the same order, as the
- * desktop top bar. Network opens a sheet of its four pages (Feed,
- * Explore, Graph, Map). Signed out it shows Network and Apps.
+ * desktop top bar. Workspace shows the avatar of the workspace you are in
+ * and, with groups to switch to, opens a sheet of your workspaces; Network
+ * opens a sheet of its five pages (Feed, Explore, Graph, Map, Funding). Signed out it shows Network and Apps.
  * Tabs are destinations only: creating lives in the top bar's `+`, and
  * feedback in the account sheet. No tab is ever hidden per account.
  *
@@ -43,7 +45,10 @@ export default function BottomNav() {
         {isLoading
           ? null
           : destinationsFor(isAuthenticated).map((dest) => {
-              // Network opens a sheet of its four pages.
+              if (dest.key === "workspace") {
+                return <PhoneWorkspaceTab key={dest.key} />;
+              }
+              // Network opens a sheet of its pages.
               if (dest.key === "network") {
                 return <PhoneNetworkTab key={dest.key} isAuthenticated={isAuthenticated} />;
               }

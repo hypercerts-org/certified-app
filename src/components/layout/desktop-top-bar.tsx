@@ -14,13 +14,16 @@ import GlobalSearch from "@/components/search/global-search";
 import { DesktopAccountMenu } from "./account-menu";
 import { DesktopNewMenu } from "./new-menu";
 import { DesktopNetworkMenu } from "./network-menu";
+import { DesktopWorkspaceMenu } from "./workspace-menu";
 
 /**
  * Desktop chrome (≥800px). One row:
- *   [Certified.app] [Workspace] | [Network ▾] [Apps]   [search] [New] [account]
+ *   [Certified.app] [(o) Maya ▾] | [Network ▾] [Apps]  [search] [New] [account]
  *   Signed out: [Certified.app] [Network ▾] [Apps]    [search] [Help] [Sign in]
  *
- * Network opens a menu of its four pages (Feed, Explore, Graph, Map).
+ * Workspace names the workspace you are in (you, or a group you act as)
+ * and opens a menu to switch workspaces; Network opens a menu of its five
+ * pages (Feed, Explore, Graph, Map, Funding).
  *
  * A divider separates your Workspace from the network (Feed, Explore,
  * Apps): the two groups in `destinations.ts`.
@@ -103,8 +106,11 @@ export default function DesktopTopBar() {
                     {startsGroup ? (
                       <span className="desktop-top-bar__divider" aria-hidden />
                     ) : null}
-                    {dest.key === "network" ? (
-                      // Network opens a menu of its four pages.
+                    {dest.key === "workspace" ? (
+                      // Names the workspace you are in; switches workspaces.
+                      <DesktopWorkspaceMenu />
+                    ) : dest.key === "network" ? (
+                      // Network opens a menu of its pages.
                       <DesktopNetworkMenu isAuthenticated={isAuthenticated} />
                     ) : (
                       <Link

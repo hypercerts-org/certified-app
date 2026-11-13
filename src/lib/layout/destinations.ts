@@ -9,8 +9,8 @@ import { FolderOpen, Globe, LayoutGrid, type LucideIcon } from "lucide-react"
  *  - **Workspace**: what your account holds and what you manage (the
  *    Overview at /home, and the Records sections and Groups at /records),
  *    behind one side list (`WorkspaceShell`).
- *  - **Network**: everyone's work, four pages: Feed, Explore, Graph and
- *    Map. The Network button opens a menu of them (`network-menu.tsx`; a
+ *  - **Network**: everyone's work, five pages: Feed, Explore, Graph, Map
+ *    and Funding. The Network button opens a menu of them (`network-menu.tsx`; a
  *    bottom sheet on phones). Its `href` (Feed, or Explore signed out) is
  *    where it leads when a surface links straight to it.
  *  - **Apps**: other apps that work with the same account.
@@ -30,7 +30,7 @@ export interface Destination {
   readonly href: string
   /** Paths the destination covers (it is current on them and below), when
    *  more than its `href`: Workspace covers /home and /records, Network
-   *  its four tabs. */
+   *  its five pages. */
   readonly paths?: readonly string[]
   readonly group: DestinationGroup
   readonly icon: LucideIcon
@@ -55,7 +55,7 @@ export const DESTINATIONS: readonly Destination[] = [
     key: "network",
     label: "Network",
     href: "/feed",
-    paths: ["/feed", "/explore", "/graph", "/map"],
+    paths: ["/feed", "/explore", "/graph", "/map", "/funding"],
     group: "network",
     icon: Globe,
     isPublic: true,

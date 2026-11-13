@@ -31,11 +31,11 @@ export function routeForActorSwitch(
   return pathname
 }
 
-/** Display order of roles in the account menu: the groups you run first. */
+/** Display order of roles in the Workspace menu: the groups you run first. */
 const ROLE_ORDER: Record<OrgRole, number> = { owner: 0, admin: 1, member: 2 }
 
 /**
- * The groups list as the account menu shows it: accepted memberships
+ * The groups list as the Workspace menu shows it: accepted memberships
  * first, then by role (owner, admin, member), then by name. Returns a new
  * array; the input is not mutated.
  */

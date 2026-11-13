@@ -1,15 +1,13 @@
 "use client"
 
-import { useId, useMemo, useRef, useState, type RefObject } from "react"
+import { useMemo, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import {
-  Check,
   ChevronDown,
   CircleHelp,
   LogIn,
   LogOut,
   MessageSquare,
-  Plus,
   Settings,
   UserRound,
 } from "lucide-react"
@@ -17,8 +15,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useFeedback } from "@/lib/feedback-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { sortGroupsForSwitcher } from "@/lib/groups/navigation"
-import { useSwitchActor } from "@/lib/groups/use-switch-actor"
-import type { Group, OrgRole } from "@/lib/groups/types"
+import type { OrgRole } from "@/lib/groups/types"
 import { useOrgProfile } from "@/hooks/use-org-profile"
 import { useProfile } from "@/hooks/use-profile"
 import { useSession } from "@/hooks/use-session"
@@ -109,12 +106,13 @@ export function useAccountState() {
   return { personal, current, groups: sortedGroups, activeOrg, selfGroup, profileHref }
 }
 
-function IdentityAvatar({
+/** An account's avatar: round for a person, square for a group. */
+export function IdentityAvatar({
   identity,
   size,
 }: {
   identity: AccountIdentity
-  size: "sm" | "md"
+  size: "xs" | "sm" | "md"
 }) {
   return (
     <Avatar
@@ -171,50 +169,6 @@ function useSignOutConfirm(returnFocusRef: RefObject<HTMLElement | null>) {
 // Menu content (shared by the desktop popover and the phone sheet)
 // ---------------------------------------------------------------------------
 
-/** One account in the "Switch account" list. */
-function AccountRow({
-  mode,
-  identity,
-  role,
-  current,
-  onSelect,
-}: {
-  mode: MenuMode
-  identity: AccountIdentity
-  role?: OrgRole
-  current: boolean
-  onSelect: () => void
-}) {
-  const isMenu = mode === "menu"
-  return (
-    <button
-      type="button"
-      {...(isMenu
-        ? { role: "menuitemradio", "aria-checked": current, tabIndex: -1 }
-        : { "aria-current": current ? ("true" as const) : undefined })}
-      onClick={onSelect}
-      className={menuRowClass(mode)}
-    >
-      <IdentityAvatar identity={identity} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{identity.name}</span>
-        {identity.handle ? (
-          <span className="block truncate text-caption text-[var(--fg-muted)]">
-            @{identity.handle}
-          </span>
-        ) : null}
-      </span>
-      {role ? <Badge variant="role">{ROLE_LABEL[role]}</Badge> : null}
-      <Check
-        size={16}
-        strokeWidth={2}
-        aria-hidden
-        className={`shrink-0 ${current ? "text-[var(--fg-primary)]" : "invisible"}`}
-      />
-    </button>
-  )
-}
-
 export interface AccountMenuContentProps {
   mode: MenuMode
   /** Close the popover / sheet (called before every action). */
@@ -225,9 +179,9 @@ export interface AccountMenuContentProps {
 
 /**
  * The account menu (DESIGN.md §4): the current account and its profile,
- * switching between your personal account and your groups, Settings, Help
- * and feedback, then signing in as someone else or out. Appearance is in
- * Settings.
+ * Settings, Help and feedback, then signing in as someone else or out.
+ * Switching between your personal account and your groups is the
+ * Workspace menu's job (`workspace-menu.tsx`); Appearance is in Settings.
  *
  * One component for both presentations: inside `<PopoverContent>`
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
@@ -235,9 +189,7 @@ export interface AccountMenuContentProps {
 export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountMenuContentProps) {
   const { openSignInAnotherAccount } = useAuth()
   const { openFeedback } = useFeedback()
-  const switchActor = useSwitchActor()
-  const { personal, current, groups, activeOrg, selfGroup, profileHref } = useAccountState()
-  const switchHeadingId = useId()
+  const { personal, current, activeOrg, profileHref } = useAccountState()
   const isMenu = mode === "menu"
   const item = menuItemProps(mode)
   const row = (extra?: string) => menuRowClass(mode, extra)
@@ -246,14 +198,6 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
   ) : (
     <hr className={MENU_SEPARATOR_CLASS} />
   )
-
-  const select = (next: Group | null) => {
-    onClose()
-    const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
-    if (!isCurrent) switchActor(next)
-  }
-
-  const SwitchHeading = isMenu ? "p" : "h3"
 
   return (
     <div className="flex flex-col">
@@ -284,58 +228,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         View profile
       </Link>
 
-      {/* 2. Switch account: personal first, then groups; New group after
-          a separator. Hidden for an account that is itself a group
-          (nothing to switch to inside it). */}
-      {!selfGroup ? (
-        <>
-          {separator}
-          <div
-            role={isMenu ? "group" : undefined}
-            aria-labelledby={switchHeadingId}
-            className="flex flex-col"
-          >
-            <SwitchHeading
-              id={switchHeadingId}
-              className="m-0 px-3 pb-1 pt-2 text-label text-[var(--fg-muted)]"
-            >
-              Switch account
-            </SwitchHeading>
-            <AccountRow
-              mode={mode}
-              identity={personal}
-              current={!activeOrg}
-              onSelect={() => select(null)}
-            />
-            {groups.map((group) => (
-              <AccountRow
-                key={group.groupDid}
-                mode={mode}
-                identity={{
-                  kind: "group",
-                  name: group.displayName || group.handle,
-                  handle: group.handle,
-                  avatarUrl: group.avatarUrl,
-                  initials: getInitials(group.displayName, group.handle),
-                  seed: group.groupDid,
-                }}
-                role={group.role}
-                current={activeOrg?.groupDid === group.groupDid}
-                onSelect={() => select(group)}
-              />
-            ))}
-          </div>
-          {/* After its own hairline, so it doesn't read as an account to
-              switch to. */}
-          {separator}
-          <Link href="/groups/create" {...item} className={row()} onClick={onClose}>
-            <Plus size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-            New group
-          </Link>
-        </>
-      ) : null}
-
-      {/* 3. Settings, Help, feedback. Appearance (light, dark, system) is
+      {/* 2. Settings, Help, feedback. Appearance (light, dark, system) is
           in Settings only. */}
       {separator}
       <Link href="/settings" {...item} className={row()} onClick={onClose}>
@@ -359,7 +252,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
         Send feedback
       </button>
 
-      {/* 4. Session. "Sign in with another account" asks the PDS who is
+      {/* 3. Session. "Sign in with another account" asks the PDS who is
           signing in (never the silent bounce back into this account) and
           replaces this session, so it says so. */}
       {separator}

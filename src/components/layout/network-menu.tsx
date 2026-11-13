@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Compass,
   Globe,
+  HandCoins,
   MapIcon,
   Network,
   Newspaper,
@@ -19,7 +20,7 @@ import { isDestinationActive } from "@/lib/layout/destinations"
 import { MENU_ICON_CLASS, menuItemProps, menuRowClass, type MenuMode } from "./menu-row"
 
 /** The Network's pages, in menu order. */
-export type NetworkSection = "feed" | "explore" | "graph" | "map"
+export type NetworkSection = "feed" | "explore" | "graph" | "map" | "funding"
 
 export const NETWORK_SECTIONS: readonly {
   key: NetworkSection
@@ -33,6 +34,7 @@ export const NETWORK_SECTIONS: readonly {
   { key: "explore", label: "Explore", href: "/explore", icon: Compass },
   { key: "graph", label: "Graph", href: "/graph", icon: Network },
   { key: "map", label: "Map", href: "/map", icon: MapIcon },
+  { key: "funding", label: "Funding", href: "/funding", icon: HandCoins },
 ]
 
 /** The Network page `pathname` is on, if any. */
@@ -40,7 +42,7 @@ function currentSection(pathname: string | null): NetworkSection | null {
   return NETWORK_SECTIONS.find((s) => isDestinationActive(s, pathname))?.key ?? null
 }
 
-/** The four pages as menu rows (no Feed signed out), the current one checked. */
+/** The pages as menu rows (no Feed signed out), the current one checked. */
 function NetworkMenuItems({
   mode,
   isAuthenticated,
@@ -78,7 +80,7 @@ function NetworkMenuItems({
 
 /**
  * The desktop top bar's Network button (DESIGN.md §4): opens a menu of the
- * Network's four pages (Feed, Explore, Graph, Map). Styled like the other
+ * Network's five pages (Feed, Explore, Graph, Map, Funding). Styled like the other
  * destinations, and current on any Network page. Also the product tour's
  * `nav-network` anchor.
  */
@@ -125,7 +127,7 @@ export function DesktopNetworkMenu({ isAuthenticated }: { isAuthenticated: boole
 
 /**
  * The phone tab bar's Network tab: looks like the other tabs (and is
- * current on any Network page), but opens the four pages as a bottom
+ * current on any Network page), but opens the five pages as a bottom
  * sheet, the same list as the desktop menu. Also the tour's `nav-network`
  * anchor on phones.
  */

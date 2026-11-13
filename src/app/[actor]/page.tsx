@@ -159,7 +159,7 @@ export default function UserProfilePage() {
   //   - Own profile: only when no org is currently active.
   //   - Group profile: only when activeOrg.groupDid === viewed DID.
   // Group admins who want to edit a group switch into it from the
-  // account switcher.
+  // Workspace menu.
   const isActingAsThisGroup =
     !!activeOrg && !!did && activeOrg.groupDid === did
   const canEditInline =

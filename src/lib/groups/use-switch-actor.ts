@@ -8,9 +8,9 @@ import type { Group } from "./types"
 
 /**
  * Switch who the viewer acts as: `null` for the personal account, or one
- * of their groups. Used by the account menu, the acting-as bar and the
- * Records "Switch to personal account" button, so every switch behaves
- * the same way.
+ * of their groups. Used by the Records "Switch to personal account"
+ * button and the Groups list; the Workspace menu (`workspace-menu.tsx`)
+ * switches with the same rules and also opens the workspace.
  *
  * The viewer stays on the current page (query string included) unless the
  * page is personal-only and the new actor is a group, in which case

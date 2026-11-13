@@ -28,7 +28,7 @@ import {
  *
  * Unlike the standalone `/groups/import` page, this stays inline (no
  * redirect): on success it shows a confirmation and the new group appears in
- * the account switcher via `refetchOrgs`.
+ * the Workspace menu via `refetchOrgs`.
  */
 export default function ImportAsGroupSection({ did }: { did: string }) {
   const { refetchOrgs } = useOrg()

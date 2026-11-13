@@ -33,9 +33,9 @@ describe("destinations", () => {
     expect(isDestinationActive(apps, null)).toBe(false)
   })
 
-  it("keeps Network current on its four tabs", () => {
+  it("keeps Network current on its five pages", () => {
     const network = DESTINATIONS.find((d) => d.key === "network")!
-    for (const p of ["/feed", "/explore", "/explore/accounts", "/graph", "/map"]) {
+    for (const p of ["/feed", "/explore", "/explore/accounts", "/graph", "/map", "/funding"]) {
       expect(isDestinationActive(network, p)).toBe(true)
     }
     expect(isDestinationActive(network, "/apps")).toBe(false)
@@ -50,7 +50,7 @@ describe("destinations", () => {
   })
 
   it("treats the destinations, Records, Settings and Help as top-level pages", () => {
-    for (const p of ["/home", "/records", "/feed", "/explore", "/graph", "/map", "/apps", "/settings", "/help"]) {
+    for (const p of ["/home", "/records", "/feed", "/explore", "/graph", "/map", "/funding", "/apps", "/settings", "/help"]) {
       expect(isTopLevelPath(p)).toBe(true)
     }
     for (const p of ["/settings/edit-profile", "/create", "/alice.example/activity/3k", null]) {

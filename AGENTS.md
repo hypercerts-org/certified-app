@@ -193,7 +193,6 @@ Key principles:
           <NavbarProvider>             // Page title, PageHeader registry, record menu, profile flags
             <FeedbackProvider> <ViewTransitionProvider>
             <a class="skip-nav">       // Skip-to-main link
-            <ActingAsBar />            // Only while acting as a group
             <Navbar />                 // Phone top bar (< 800px)
             <Suspense><DesktopTopBar /></Suspense>   // Desktop top bar (≥ 800px)
             <main id="main-content">
@@ -206,15 +205,16 @@ Key principles:
     <Analytics />
 ```
 
-**The shell** (DESIGN.md §4). Three destinations, in one order everywhere: Workspace | Network · Apps (`src/lib/layout/destinations.ts`; Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; Network covers Feed, Explore, Graph (`/graph`) and Map (`/map`); its button opens a menu of them (`src/components/layout/network-menu.tsx`: a popover on desktop, a bottom sheet from the phone tab); signed out: Network, opening on Explore, and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
+**The shell** (DESIGN.md §4). Three destinations, in one order everywhere: Workspace | Network · Apps (`src/lib/layout/destinations.ts`; Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; Workspace names the workspace you are in and opens a menu to switch between your personal workspace and your groups' (`src/components/layout/workspace-menu.tsx`); Network covers Feed, Explore, Graph (`/graph`), Map (`/map`) and Funding (`/funding`, a placeholder); its button opens a menu of them (`src/components/layout/network-menu.tsx`: a popover on desktop, a bottom sheet from the phone tab); signed out: Network, opening on Explore, and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
 
-- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: the faded Certified.app wordmark (`<Wordmark variant="certified-app" faded>`), the destinations (icon + word; word only at 800–1099px; a divider between Workspace and the network), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
+- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: the faded Certified.app wordmark (`<Wordmark variant="certified-app" faded>`), the destinations (Workspace as the current workspace's avatar and name; the others icon + word, word only at 800–1099px; a divider between Workspace and the network), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
 - **Phone (< 800px).** `navbar.tsx` (a `<header>`): the normal bar (the faded Certified.app wordmark, a `+` for the New sheet, the avatar for the account sheet) on top-level pages, untitled pages and every page with a `PageHeader`; a back chevron + compact title (the h1) only on a titled page without one. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
 - **`<main>` and the footer.** `AppShell` renders `<main id="main-content">` and, after it, `SiteFooter` (the contentinfo landmark), on every route except `/embed`; `/welcome` and the legal pages skip the app column but keep the footer.
-- **`--chrome-top`** (tokens.css): the bottom edge of the fixed top chrome (navbar + the phone acting-as bar; 0 on desktop, where the bar scrolls). Sticky elements use `top: var(--chrome-top, var(--navbar-height))`; the root's `scroll-padding-top` uses it.
-- **Account menu**, `account-menu.tsx`: one `AccountMenuContent` rendered in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones. Current account (+ View profile), Switch account (personal first, then groups sorted by `sortGroupsForSwitcher`), New group (after a separator), Settings, Help, Send feedback, Sign in with another account (replaces the session), Sign out (behind a `ConfirmDialog` that returns focus to the account button). Switching goes through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`), which the acting-as bar and Records also use.
+- **`--chrome-top`** (tokens.css): the bottom edge of the fixed top chrome (the phone navbar; 0 on desktop, where the bar scrolls). Sticky elements use `top: var(--chrome-top, var(--navbar-height))`; the root's `scroll-padding-top` uses it.
+- **Account menu**, `account-menu.tsx`: one `AccountMenuContent` rendered in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones. Current account (+ View profile), Settings, Help, Send feedback, Sign in with another account (replaces the session), Sign out (behind a `ConfirmDialog` that returns focus to the account button). No switching here.
+- **Workspace menu**, `workspace-menu.tsx`: Workspace in both bars names the workspace you are in (desktop: avatar + name; phone tab: avatar over "Workspace") and opens your workspaces (popover on desktop, sheet titled "Workspace" on phones): personal first, then groups sorted by `sortGroupsForSwitcher`, then New group. Picking one switches who you act as everywhere and opens it (its Overview from outside the Workspace; the same section inside, unless it is personal-only). With one workspace (no groups, or the account is itself a group) it is a plain link to `/home`. Records' "Switch to personal account" and the Groups list switch through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`).
 - **The h1.** A page with `<PageHeader>` owns its h1. Otherwise the chrome renders `usePageTitle`'s value as the h1: visually hidden in the desktop bar, the compact title in the phone bar (DESIGN.md §3.6).
-- **Acting as a group** shows in the account button (square group avatar, "as @you"), in `ActingAsBar` ("Acting as {Group} · {Role}", "Switch to personal account"; in flow above the desktop bar; fixed under the phone bar, which then stops hiding on scroll), and in the Create forms.
+- **Acting as a group** (being in a group's workspace) shows in Workspace (the group's square avatar and name), the account button (square group avatar, "as @you") and the Create forms. There is no acting-as banner.
 
 Scoped providers (mounted only where used):
 
@@ -417,7 +417,7 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
 - `src/app/styles/` — a tree of feature-scoped CSS files, all imported by `src/app/globals.css`. The split is intentional; do not collapse it back to one file.
   - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live.**
   - `components.css` — primitive component chrome (modals, app-card label, dash-card, error/empty states).
-  - `layout.css` — app shell, phone top bar, desktop top bar, account button, bottom nav, acting-as bar.
+  - `layout.css` — app shell, phone top bar, desktop top bar (incl. the Workspace trigger), account button, bottom nav.
   - Per-feature: `feed.css`, `profile-*.css`, `cert-detail.css`, `project-detail.css`, `explore.css`, `home.css`, `settings-page.css`, `workspace.css`, `notifications.css`, `landing.css`, `leaflet.css`, etc.
 - Tailwind utilities are used freely *inside* JSX for one-off layout (`flex`, `mt-4`, `max-w-3xl`, …).
 - Tailwind theme is small: `screens` replaced with `md` 800 / `lg` 1100 / `xl` 1300 · `future.hoverOnlyWhenSupported` · `colors.{success, warning, error}` · `fontFamily.{sans, headline, mono}` · the full `fontSize` type ramp (`display`, `h1`-`h4`, `section`, `body`, `body-sm`, `ui`, `caption`, `label`, `micro`) · `letterSpacing.label` · `transitionDuration.{instant, fast, base, slow}` + `transitionTimingFunction.{out, emphasized, in-out}` (defaults: fast + `--ease-out`) · `height` / `minHeight` `control-{compact, sm, md, lg}` · `maxWidth.measure` · `boxShadow.{sm, md, lg, modal}` aliasing the CSS vars · `borderRadius.DEFAULT: 2px` · the `pulse` / `skeleton` animations. See `tailwind.config.ts`.
@@ -891,15 +891,16 @@ certified-app/
     │   │       └── what-you-get.tsx
     │   ├── layout/
     │   │   ├── account-menu.tsx           # Account menu: desktop popover + phone sheet, sign-out confirm
-    │   │   ├── acting-as-bar.tsx          # "Operating <group>" banner while acting as a group
     │   │   ├── app-shell.tsx              # .app-shell wrapper + SiteFooter, skipped on /welcome
     │   │   ├── auth-guard.tsx             # Auth redirect with loading spinner
     │   │   ├── bottom-nav.tsx             # Phone tab bar: Workspace, Network, Apps
     │   │   ├── desktop-top-bar.tsx        # Desktop bar (one row): destinations, search, New, account
     │   │   ├── menu-row.ts                # Shared row styling for the shell menus
     │   │   ├── navbar.tsx                 # Phone top bar (faded Certified.app / back, title, New, account)
+    │   │   ├── network-menu.tsx           # Network menu (Feed, Explore, Graph, Map, Funding): popover + phone sheet
     │   │   ├── new-menu.tsx               # New activity / project / group: popover + phone sheet
-    │   │   └── site-footer.tsx            # Global footer
+    │   │   ├── site-footer.tsx            # Global footer
+    │   │   └── workspace-menu.tsx         # Workspace switcher (personal + groups): popover + phone sheet
     │   ├── dashboard/
     │   │   ├── custom-domain-modal.tsx
     │   │   └── username-card.tsx

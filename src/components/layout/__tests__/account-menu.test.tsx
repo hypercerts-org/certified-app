@@ -4,8 +4,9 @@ import type { Group } from "@/lib/groups/types"
 
 // --- Module mocks ---------------------------------------------------------
 // The menu reads who is signed in (auth, session, profile), who they act as
-// (org context) and a few actions (feedback, switching). Each is a
+// (org context) and a few actions (feedback, sign-in, sign-out). Each is a
 // hoisted latch so a test can set the account state before rendering.
+// Switching workspaces is the Workspace menu's (workspace-menu.test.tsx).
 
 const state = vi.hoisted(() => ({
   activeOrg: null as Group | null,
@@ -14,7 +15,6 @@ const state = vi.hoisted(() => ({
   openSignInAnotherAccount: vi.fn(),
   signOut: vi.fn(),
   openFeedback: vi.fn(),
-  switchActor: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -43,10 +43,6 @@ vi.mock("@/lib/groups/org-context", () => ({
     selfGroup: state.selfGroup,
     switchOrg: vi.fn(),
   }),
-}))
-
-vi.mock("@/lib/groups/use-switch-actor", () => ({
-  useSwitchActor: () => state.switchActor,
 }))
 
 vi.mock("@/hooks/use-session", () => ({
@@ -107,7 +103,6 @@ beforeEach(() => {
   state.openSignInAnotherAccount.mockReset()
   state.signOut.mockReset().mockResolvedValue(undefined)
   state.openFeedback.mockReset()
-  state.switchActor.mockReset()
 })
 
 function renderMenu(mode: "menu" | "sheet" = "menu") {
@@ -131,22 +126,11 @@ describe("identityTag", () => {
 })
 
 describe("AccountMenuContent", () => {
-  it("lists the sections in order: profile, switch account, settings/help/feedback, session", () => {
+  it("lists the sections in order: profile, settings/help/feedback, session", () => {
     renderMenu("menu")
-    const labels = [
-      ...screen.getAllByRole("menuitem"),
-      ...screen.getAllByRole("menuitemradio"),
-    ]
-      .sort((a, b) =>
-        a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
-      )
-      .map((el) => el.textContent?.trim())
+    const labels = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim())
     expect(labels).toEqual([
       "View profile",
-      expect.stringContaining("Maya Lin"),
-      expect.stringContaining("River Trust"),
-      expect.stringContaining("Ma Earth"),
-      "New group",
       "Settings",
       "Help",
       "Send feedback",
@@ -165,29 +149,11 @@ describe("AccountMenuContent", () => {
     )
   })
 
-  it("checks the current account and shows each group's handle and role", () => {
+  it("leaves switching workspaces to the Workspace menu", () => {
     renderMenu("menu")
-    const personal = screen.getByRole("menuitemradio", { name: /Maya Lin/ })
-    const earth = screen.getByRole("menuitemradio", { name: /Ma Earth/ })
-    expect(personal).toHaveAttribute("aria-checked", "true")
-    expect(earth).toHaveAttribute("aria-checked", "false")
-    expect(within(earth).getByText("@earth.example")).toBeInTheDocument()
-    expect(within(earth).getByText("Admin")).toBeInTheDocument()
-    expect(screen.getByRole("group", { name: "Switch account" })).toBeInTheDocument()
-  })
-
-  it("switches to a group and closes the menu", () => {
-    const { onClose } = renderMenu("menu")
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
-    expect(onClose).toHaveBeenCalled()
-    expect(state.switchActor).toHaveBeenCalledWith(EARTH)
-  })
-
-  it("does not switch when picking the current account", () => {
-    const { onClose } = renderMenu("menu")
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
-    expect(onClose).toHaveBeenCalled()
-    expect(state.switchActor).not.toHaveBeenCalled()
+    expect(screen.queryAllByRole("menuitemradio")).toHaveLength(0)
+    expect(screen.queryByRole("group", { name: "Switch account" })).toBeNull()
+    expect(screen.queryByRole("menuitem", { name: "New group" })).toBeNull()
   })
 
   it("shows the group, its role tag and who is acting while acting as a group", () => {
@@ -195,25 +161,17 @@ describe("AccountMenuContent", () => {
     renderMenu("menu")
     expect(screen.getByText("Group · Admin")).toBeInTheDocument()
     expect(screen.getByText("as @maya.certified.app")).toBeInTheDocument()
-    expect(screen.getByRole("menuitemradio", { name: /Ma Earth/ })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    )
     expect(screen.getByRole("menuitem", { name: "View profile" })).toHaveAttribute(
       "href",
       "/earth.example",
     )
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
-    expect(state.switchActor).toHaveBeenCalledWith(null)
   })
 
-  it("hides the switch section for an account that is itself a group", () => {
+  it("tags an account that is itself a group", () => {
     state.selfGroup = { ...RIVER, groupDid: "did:plc:me" }
     state.groups = []
     renderMenu("menu")
     expect(screen.getByText("Group account")).toBeInTheDocument()
-    expect(screen.queryByRole("group", { name: "Switch account" })).toBeNull()
-    expect(screen.queryByRole("menuitem", { name: "New group" })).toBeNull()
   })
 
   it("opens feedback, signs in as someone else and asks before signing out", () => {
@@ -247,8 +205,7 @@ describe("AccountMenuContent", () => {
   it("renders plain, tabbable controls in sheet mode, with the legal links", () => {
     renderMenu("sheet")
     expect(screen.queryAllByRole("menuitem")).toHaveLength(0)
-    expect(screen.getByRole("heading", { level: 3, name: "Switch account" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /Maya Lin/ })).toHaveAttribute("aria-current", "true")
+    expect(screen.getByRole("link", { name: "View profile" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Dark" })).toBeNull()
     const legal = screen.getByRole("navigation", { name: "Legal" })
     expect(within(legal).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")

@@ -30,7 +30,7 @@ import FormActionBar from "@/components/create/form-action-bar"
  *
  * The caller supplies an app password for the account (CGS stores it
  * encrypted to act on the account's behalf). After import we stitch the
- * owner membership marker so the group appears in the account switcher,
+ * owner membership marker so the group appears in the Workspace menu,
  * mirroring the create flow's final step.
  */
 export default function ImportGroupPage() {

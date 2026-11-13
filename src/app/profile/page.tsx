@@ -12,7 +12,7 @@ import { profileUrl } from "@/lib/urls"
 /**
  * `/profile` — redirect stub. The canonical profile view lives at the
  * root, `/{handle}`. When authenticated we resolve the **active**
- * identity (the group from the account switcher, or the personal
+ * identity (the group from the Workspace menu, or the personal
  * handle when no group is active) and forward there. Unauthenticated
  * visitors get bounced to `/`.
  *

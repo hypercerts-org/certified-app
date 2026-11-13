@@ -69,6 +69,7 @@ export const RESERVED_ROUTES: ReadonlySet<string> = new Set([
   "explore",
   "graph",
   "map",
+  "funding",
   "profile",
   "groups",
   "apps",

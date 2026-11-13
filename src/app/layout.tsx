@@ -18,7 +18,6 @@ import ProductTour from "@/components/tour/product-tour";
 import FeedbackModal from "@/components/ui/feedback-modal";
 import { FeedbackProvider } from "@/lib/feedback-context";
 import BottomNav from "@/components/layout/bottom-nav";
-import ActingAsBar from "@/components/layout/acting-as-bar";
 import PwaInstallGuard from "@/components/layout/pwa-install-guard";
 import { ToastProvider } from "@/components/ui/toast";
 import { Analytics } from "@vercel/analytics/next";
@@ -175,7 +174,6 @@ export default async function RootLayout({
                 <FeedbackProvider>
                 <ViewTransitionProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
-                <ActingAsBar />
                 <Navbar />
                 {/* Suspense is required because DesktopTopBar reads
                     useSearchParams() to highlight the active profile tab.

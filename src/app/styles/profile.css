@@ -73,8 +73,7 @@
 /* ---------- Edit bar and onboarding banner ---------- */
 
 /* While editing, Save / Cancel stay in reach: the bar pins below the top
-   chrome, under the acting-as bar when it shows (the section tabs give up
-   their sticky slot meanwhile). */
+   chrome (the section tabs give up their sticky slot meanwhile). */
 .profile-page__edit-bar {
   position: sticky;
   top: var(--chrome-top, var(--navbar-height));
@@ -604,8 +603,7 @@
   display: none;
 }
 
-/* Pinned below the top chrome: the top bar, plus the acting-as bar when
-   it shows. */
+/* Pinned below the top chrome (the phone top bar). */
 .profile-tabs--sticky {
   position: sticky;
   top: var(--chrome-top, var(--navbar-height));

@@ -133,7 +133,7 @@
 }
 
 /* Focus never lands under the fixed chrome (WCAG 2.4.11): when Tab moves
-   to a control behind the top bar (and the acting-as bar) or the phone
+   to a control behind the top bar or the phone
    tab bar, the browser scrolls it clear of them. `--chrome-top` lives in
    tokens.css; `--bottom-nav-height` is 0 on desktop and wherever the tab
    bar isn't shown. Pages with a form action bar add its height. */
@@ -326,6 +326,19 @@
   color: var(--fg-primary);
 }
 
+/* Workspace tab: the avatar of the workspace you are in (round for you,
+   square for a group) instead of an icon. Current: a ring in the tab's
+   colour, following the avatar's shape, in place of the heavier stroke
+   the icons get. */
+.bottom-nav__avatar {
+  display: inline-flex;
+}
+
+.bottom-nav__item--active .bottom-nav__avatar > * {
+  outline: 1.5px solid currentColor;
+  outline-offset: 1.5px;
+}
+
 /* One-word label under each icon, so ambiguous glyphs like Apps / Home
    read on touch, where tooltips are suppressed. */
 .bottom-nav__label {
@@ -378,7 +391,7 @@
   display: flex;
   flex-direction: column;
   /* Fill `<main>` (a flex column that already grows to the viewport
-     height MINUS the sticky top bar / acting-as bar) rather than minting
+     height MINUS the sticky top bar) rather than minting
      a fresh 100vh. The old `min-height: 100vh` stacked on top of the
      in-flow top bar, so the document was `100vh + navbar` tall — a
      navbar-height overflow that pushed the footer below the fold on
@@ -655,114 +668,6 @@
 /* Utility */
 .mt-4 {
   margin-top: 16px;
-}
-
-/* Acting-as-group delegation bar. Mounted above all page chrome whenever
-   the viewer is operating a group, so the elevated, inverted treatment
-   reads as a persistent "you are not yourself right now" reminder.
-   Mirrors the primary button: dark bg / light text in light theme, and
-   inverts under [data-theme="dark"] via the same --btn-primary-* tokens.
-   Desktop: in flow above the desktop top bar, scrolling with it (both
-   scroll with the page), so no fixed bars stack. Phones: fixed under the
-   fixed top bar (below). */
-.acting-as-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  width: 100%;
-  padding: 8px 16px;
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-fg);
-}
-
-.acting-as-bar__text {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-}
-
-.acting-as-bar__text b {
-  font-weight: 600;
-}
-
-/* Outlined control that stays legible against the inverted bar — borrows
-   the bar's own foreground for border + text so it tracks the theme flip. */
-.acting-as-bar__switch {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--btn-primary-fg);
-  background: transparent;
-  border: 1px solid var(--btn-primary-fg);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .acting-as-bar__switch:hover {
-    opacity: 0.8;
-  }
-}
-
-/* The global --focus-ring is too low-contrast on the inverted bar; use the
-   bar's own foreground instead. */
-.acting-as-bar__switch:focus-visible {
-  outline: 2px solid var(--btn-primary-fg);
-  outline-offset: 2px;
-}
-
-/* Phones: the bar is fixed just below the fixed top bar. While acting as
-   a group the top bar doesn't hide on scroll (navbar.tsx), so the two stay
-   pinned together and never overlap. One row only — the group line
-   truncates rather than wrapping. */
-@media (max-width: 799px) {
-  .acting-as-bar {
-    position: fixed;
-    top: var(--navbar-height);
-    left: 0;
-    right: 0;
-    z-index: var(--z-navbar);
-    height: 44px;
-    flex-wrap: nowrap;
-  }
-  /* 44px touch target without growing the 28px outlined control: an
-     invisible hit area extends 8px above and below (filling the bar). */
-  .acting-as-bar__switch {
-    position: relative;
-  }
-  .acting-as-bar__switch::before {
-    content: "";
-    position: absolute;
-    inset: -8px 0;
-  }
-  .acting-as-bar__text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  /* The fixed bar adds to the pinned chrome: `--chrome-top` (tokens.css)
-     grows by its height, so sticky elements and scroll-padding clear it. */
-  html.has-acting-as-bar {
-    --acting-as-height: 44px;
-  }
-  /* Reserve the fixed bar's height so it doesn't overlay the top of the
-     page content. Applied to `.app-shell` (not `.app-shell__content`,
-     whose top padding is overridden per-page by higher-specificity
-     `:has()` rules) so it stacks on top of whatever navbar offset each
-     page already carries. */
-  html.has-acting-as-bar .app-shell {
-    padding-top: var(--acting-as-height);
-  }
 }
 
 /* ========== Desktop Right Rail ==========
@@ -1414,8 +1319,8 @@
   }
 }
 
-/* Network is a button (it opens a menu of its four pages): reset the
-   button chrome so it matches the links. */
+/* Workspace and Network can be buttons (they open menus): reset the
+   button chrome so they match the links. */
 button.desktop-top-bar__nav-link {
   border: 0;
   background: transparent;
@@ -1426,6 +1331,26 @@ button.desktop-top-bar__nav-link {
   display: inline-flex;
   margin-left: -2px;
   color: var(--fg-muted);
+}
+
+/* Workspace: the avatar and name of the workspace you are in, in place of
+   an icon and "Workspace". The avatar stays at 800–1099px (only icons
+   hide); a long name truncates so the row still fits. */
+.desktop-top-bar__workspace {
+  min-width: 0;
+}
+
+.desktop-top-bar__workspace-name {
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 1100px) {
+  .desktop-top-bar__workspace-name {
+    max-width: 160px;
+  }
 }
 
 .desktop-top-bar__nav-link[data-current],

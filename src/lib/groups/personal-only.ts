@@ -1,6 +1,6 @@
 /**
  * Single source of truth for which routes are personal-only — i.e. the
- * account switcher leaves them (for /home) when you switch to acting as a
+ * Workspace menu leaves them (for /home) when you switch to acting as a
  * group, and the few remaining surfaces that gate on them hide the entry.
  *
  * The primary navigation (Home, Feed, Explore, Records, Apps) never hides

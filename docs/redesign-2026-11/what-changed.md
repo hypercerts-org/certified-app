@@ -19,7 +19,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 ## Navigation
 
-**Three destinations, in the same order everywhere:** Workspace | Network · Apps (added after the first review). Workspace is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Network is everyone's work, four pages: Feed, Explore, Graph (the endorsement network) and Map (coming), picked from the Network menu. Apps are the other apps that work with your account.
+**Three destinations, in the same order everywhere:** Workspace | Network · Apps (added after the first review). Workspace is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Your personal account and each of your groups is a workspace: Workspace in the navigation shows the one you are in and switches between them (there is no separate "acting as" banner). Network is everyone's work, five pages: Feed, Explore, Graph (the endorsement network), Map (coming) and Funding (coming), picked from the Network menu. Apps are the other apps that work with your account.
 
 **Desktop**
 
@@ -55,7 +55,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 - **Home**
   - The header is you: avatar, name, bio and website. No buttons: the name opens your profile, which has Edit.
-  - Then Your records, as counts plus the latest items, and From others: endorsements and followers.
+  - Then Your records, as counts plus the latest items, and Endorsements and followers: endorsements received and given side by side, and followers.
   - Apps shows the first four partner apps.
   - On the right, level with the header, sit two white boxes: your ID (handle and Permanent ID, each copyable) and Your groups, each group with a Switch button.
   - On phones the order is: header, ID, groups, records, from others, apps.

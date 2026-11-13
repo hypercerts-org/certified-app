@@ -61,8 +61,7 @@ function isOwnProfilePath(
  * It's a `<header>` (the banner landmark), not a `<nav>`: it holds the
  * brand and a few buttons, not a list of links.
  *
- * Fixed, translucent, hides on scroll down and returns on scroll up — except
- * while acting as a group, when it stays put with the acting-as bar below.
+ * Fixed, translucent, hides on scroll down and returns on scroll up.
  */
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
@@ -101,9 +100,7 @@ const Navbar: React.FC = () => {
   const navClasses = [
     "navbar",
     scrolled ? "navbar--scrolled" : "",
-    // Acting as a group keeps the bar (and the acting-as bar under it)
-    // pinned, so who you are acting as is never out of sight.
-    navHidden && !activeOrg ? "navbar--hidden" : "",
+    navHidden ? "navbar--hidden" : "",
   ]
     .filter(Boolean)
     .join(" ");

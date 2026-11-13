@@ -17,7 +17,7 @@
  * whichever is visible), routes to that page, then shows what you can do
  * there. The order mirrors the navigation: Home, Feed, Explore, Records,
  * Apps, then the New button and the account menu (profile, settings,
- * help, switching to a group). The top-bar search step comes on Feed,
+ * help). The top-bar search step comes on Feed,
  * because the top bar hides its search on /explore (Explore has its own).
  *
  * Anchors are matched against `data-tour="<anchor>"` attributes placed on
@@ -85,7 +85,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: "nav-workspace",
     title: "Workspace",
-    body: "Your Workspace is everything your account holds: your records, what others gave you and your groups. Manage it all from the list on the side. Network, next to it, is everyone else's work.",
+    body: "Your Workspace is everything your account holds: your records, endorsements and groups, managed from the list on the side. This button shows whose workspace you're in; if you belong to a group, open it to switch to the group's workspace and act as the group. Network, next to it, is everyone else's work.",
     placement: "bottom",
   },
   {
@@ -103,7 +103,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/feed",
     anchor: "nav-network",
     title: "Network",
-    body: "Network is everyone's work on Certified, four ways: Feed, Explore, Graph and Map. Open it to pick one.",
+    body: "Network is everyone's work on Certified, five ways: Feed, Explore, Graph, Map and Funding. Open it to pick one.",
     placement: "bottom",
   },
 
@@ -200,7 +200,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: null,
     anchor: "account-menu",
     title: "Your account menu",
-    body: "Open this for your public profile, Settings, Help and feedback. If you belong to a group, switch into it here to post and act as the group — then switch back to yourself any time.",
+    body: "Open this for your public profile, Settings, Help and feedback, or to sign out.",
     placement: "bottom",
     align: "end",
   },

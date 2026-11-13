@@ -34,7 +34,7 @@ const SECTIONS: HelpSection[] = [
 
 // A contents link lands a section 24px below the fixed top chrome: the
 // root's `scroll-padding-top: var(--chrome-top)` (layout.css) clears the
-// top bar and the acting-as bar; this adds the breathing room.
+// top bar; this adds the breathing room.
 const sectionCls = "flex scroll-mt-6 flex-col gap-3";
 const proseCls = "m-0 text-body text-[var(--fg-secondary)] text-pretty";
 const strongCls = "font-semibold text-[var(--fg-primary)]";

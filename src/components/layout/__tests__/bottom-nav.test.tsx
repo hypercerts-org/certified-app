@@ -8,10 +8,27 @@ const state = vi.hoisted(() => ({
   isDesktop: false,
 }))
 
-vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }))
-vi.mock("@/lib/auth/auth-context", () => ({
-  useAuth: () => ({ isAuthenticated: state.isAuthenticated, isLoading: state.isLoading }),
+vi.mock("next/navigation", () => ({
+  usePathname: () => state.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
+vi.mock("@/lib/auth/auth-context", () => ({
+  useAuth: () => ({
+    did: "did:plc:me",
+    isAuthenticated: state.isAuthenticated,
+    isLoading: state.isLoading,
+  }),
+}))
+// The Workspace tab shows whose workspace it is; no groups here, so it is
+// a plain link (workspace-menu.test.tsx covers the switcher).
+vi.mock("@/lib/groups/org-context", () => ({
+  useOrg: () => ({ activeOrg: null, groups: [], selfGroup: null, switchOrg: vi.fn() }),
+}))
+vi.mock("@/hooks/use-session", () => ({ useSession: () => ({ handle: "maya.certified.app" }) }))
+vi.mock("@/hooks/use-profile", () => ({
+  useProfile: () => ({ profile: { displayName: "Maya Lin" }, avatarUrl: null }),
+}))
+vi.mock("@/hooks/use-org-profile", () => ({ useOrgProfile: () => ({ orgAvatarUrl: null }) }))
 vi.mock("@/hooks/use-layout-breakpoints", () => ({
   useLayoutBreakpoints: () => ({ isDesktop: state.isDesktop, isStandalone: false }),
 }))
@@ -29,16 +46,16 @@ describe("BottomNav", () => {
   it("shows Workspace, Network and Apps, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
-    const tabs = Array.from(nav.querySelectorAll(".bottom-nav__item"))
-    expect(tabs.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
+    const labels = Array.from(nav.querySelectorAll(".bottom-nav__item .bottom-nav__label"))
+    expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
     expect(screen.getByRole("button", { name: "Network" })).toHaveAttribute("aria-current", "page")
-    expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
+    expect(screen.getByRole("link", { name: "Workspace, Maya Lin" })).not.toHaveAttribute("aria-current")
   })
 
   it("keeps Workspace current on the Records sections", () => {
     state.pathname = "/records"
     render(<BottomNav />)
-    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByRole("link", { name: "Workspace, Maya Lin" })).toHaveAttribute("aria-current", "page")
   })
 
   it("carries no actions: no Create, no Feedback; Network is the one button (it opens its pages)", () => {
