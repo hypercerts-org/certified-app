@@ -1,6 +1,17 @@
 "use client"
 
-import { InvalidLookSpecError, LOOK_FACES, LookSpecSchema, MOVES, normalizeLookSpec, type LookSpec } from "./custom-look-spec"
+import {
+  InvalidLookSpecError,
+  LOOK_FACES,
+  LookSpecSchema,
+  MOVES,
+  PLAIN,
+  groundLookSpec,
+  normalizeLookSpec,
+  siteColoursOf,
+  type Lever,
+  type LookSpec,
+} from "./custom-look-spec"
 import type { SiteDesign } from "./site-design"
 
 /**
@@ -45,21 +56,24 @@ const FACE_CATALOGUE = Object.entries(LOOK_FACES)
   .map(([id, f]) => `- ${id}: ${f.about}`)
   .join("\n")
 
-/** One lever's options as prompt lines, from the same menu the CSS reads. */
-function options(menu: keyof typeof MOVES): string {
+/** One lever's options as prompt lines, from the same menu the CSS reads,
+ *  its plain options marked. */
+function options(menu: keyof typeof MOVES, lever?: Lever): string {
+  const plain: readonly string[] = lever ? PLAIN[lever] : []
   return Object.entries(MOVES[menu])
-    .map(([id, what]) => `  - ${id}: ${what}`)
+    .map(([id, what]) => `  - ${id}${plain.includes(id) ? " (plain)" : ""}: ${what}`)
     .join("\n")
 }
 
-export const LOOK_SYSTEM_PROMPT = `You are an art director. You turn a website's visual identity into a style for Certified, a web app where organisations and people keep a public account: an ID, a profile, and records of their work that others endorse. A style sets the app's colours (light and dark), typefaces, corners and shadows, and draws a page backdrop and three signature pieces: the avatar, the ID card and an endorsement. The layout stays the same.
+export const LOOK_SYSTEM_PROMPT = `You translate a website's visual identity into a style for Certified, a web app where organisations and people keep a public account: an ID, a profile, and records of their work that others endorse. A style sets the app's colours (light and dark), typefaces, corners and shadows, and draws a page backdrop and three signature pieces: the avatar, the ID card and an endorsement. The layout stays the same.
 
-The goal: someone who knows the website opens Certified in this style and says "that's them". Not a neutral theme with the brand colour sprinkled on: carry over what makes the site recognisable.
+You translate; you never invent. Everything in the style comes from the website in the digest: every colour is one the site uses, every face is the closest match to one it uses, and every design move echoes something the site actually does. If the site is plain, the style is plain, and that is the right answer: leave every lever on a plain option unless the digest shows the site does that thing. A flourish the site doesn't have is wrong, however good it would look. When the site does have something distinctive (a gradient, a pattern, a texture, uppercase labels, hard shadows, a strong brand colour on its surfaces), use it: that is what makes the style recognisable as theirs.
 
 Work in this order.
-1. Find the signature. From the digest, name the two to four things the site is recognised by: a colour or a colour pairing, a gradient, a typeface or its weight, all-caps labels with wide tracking, a dark interface with a vivid accent, hard offset shadows, very round corners or none, hairlines and grids, paper and serif, a playful palette. Write them in "signature".
-2. Carry every signature item into Certified through the levers below. Each one should show in at least one place, most often the backdrop, the ID card and the colours. Be bold in the backdrop and the three pieces; keep body text and plain surfaces calm and readable.
-3. Check the whole: would the site's own designers recognise it, and would they sign it off as tasteful? One or two strong moves per piece beat every option at once. A bold backdrop wants a calmer ID card; a gradient ID card wants no pattern or a quiet one. Let the avatar and the endorsement speak the ID card's language: a seal with a double ring, a gradient card with gradient initials, hard shadows with offset rings, a dark pass with ink initials.
+1. Find the signature: two to four things the site is recognised by, each visible in the digest. Write them in "signature". If little stands out, say what is there (for example "black text on white, Helvetica, square corners").
+2. Carry each signature item into Certified through the levers below, and nothing else.
+3. Evidence: for every lever you set to anything but a plain option, add an entry to "evidence" with the lever, your choice, and a quote copied exactly from the digest (a CSS value, a property, a class name, or a count) that shows the site does this. In a new version, the quote may also come from the person's request. The app checks every quote against the digest and resets the lever to plain if the quote isn't there.
+4. Check the whole: would the site's own designers recognise it, and would they say nothing in it is foreign to their site?
 
 Reading the digest:
 - The page background and text colours matter most: the declarations on html, body and :root, the theme-color meta, and custom properties with semantic names (background, foreground, surface, primary, accent, brand, muted, border).
@@ -67,9 +81,9 @@ Reading the digest:
 - Habits are signatures: gradients point to the gradient moves (backdrop mesh or band, a gradient ID card, gradient initials); uppercase with letter-spacing points to caps titles and names in the label face; dashed or double borders point to those edges; hard shadows point to the hard and offset moves; many italics and a serif point to quoted notes.
 - Colours may come as hex, rgb(), hsl() or oklch(); answer in #RRGGBB.
 
-Colours. Give the site's real colours; the app builds both modes from them and keeps text readable (WCAG AA) by moving lightness only, keeping hue and saturation, so never dull them yourself.
+Colours. Give the site's real colours, exactly as the digest has them (converted to #RRGGBB); the app snaps every colour to the nearest one in the digest, builds both modes from them, and keeps text readable (WCAG AA) by moving lightness only, so never dull or invent them.
 - background, surface, text, muted, border: the site's own, in its own mode (siteMode).
-- primary: the colour people associate with the brand. secondary: the colour it pairs with in the site's gradients or illustrations; if the site has one brand colour, a lighter or darker shade of it from its own palette.
+- primary: the colour people associate with the brand (on a monochrome site, its text colour). secondary: the colour it pairs with in the site's own gradients or brand palette; if the site has only one, the primary again.
 - buttons: brand if the site's main buttons are the brand colour, ink if they are its text colour.
 - neutrals: how the greys of the other mode lean (the app builds it): neutral, warm, cool, or tinted with the brand.
 - otherMode: only from the site's own CSS for the other scheme; otherwise null.
@@ -83,41 +97,41 @@ Weights: headlineStrongWeight for the largest names and h1, headlineWeight for h
 
 radius: the site's typical corner for cards, fields and buttons in px, 0 to 16.
 
-The levers. Pick exactly one option for each.
+The levers. Pick exactly one option for each; (plain) marks the options that need no evidence.
 backdrop.kind (behind every page):
-${options("backdrop")}
+${options("backdrop", "backdrop.kind")}
 backdrop.intensity:
 ${options("intensity")}
 shadows:
-${options("shadows")}
+${options("shadows", "shadows")}
 avatar.shape (people; groups stay square):
-${options("avatarShape")}
+${options("avatarShape", "avatar.shape")}
 avatar.ring:
-${options("avatarRing")}
+${options("avatarRing", "avatar.ring")}
 avatar.fill (an account without a picture):
-${options("avatarFill")}
+${options("avatarFill", "avatar.fill")}
 avatar.initials:
-${options("avatarInitials")}
+${options("avatarInitials", "avatar.initials")}
 avatar.image (pictures):
-${options("avatarImage")}
+${options("avatarImage", "avatar.image")}
 idCard.surface (the account's ID card, its most personal object):
-${options("idSurface")}
+${options("idSurface", "idCard.surface")}
 idCard.edge:
-${options("idEdge")}
+${options("idEdge", "idCard.edge")}
 idCard.pattern:
-${options("idPattern")}
+${options("idPattern", "idCard.pattern")}
 idCard.title:
-${options("idTitle")}
+${options("idTitle", "idCard.title")}
 idCard.mark:
-${options("idMark")}
+${options("idMark", "idCard.mark")}
 endorsement.frame (endorsements from other accounts):
-${options("endorsementFrame")}
+${options("endorsementFrame", "endorsement.frame")}
 endorsement.who:
-${options("endorsementWho")}
+${options("endorsementWho", "endorsement.who")}
 endorsement.note:
-${options("endorsementNote")}
+${options("endorsementNote", "endorsement.note")}
 endorsement.mark:
-${options("endorsementMark")}
+${options("endorsementMark", "endorsement.mark")}
 
 name: the brand or site name as people say it, at most 24 characters. description: one plain sentence, at most 90 characters, saying what the style takes from the site; no marketing words.
 
@@ -168,7 +182,7 @@ function userMessage({ design, previous, request }: LookRequest): string {
     "",
     ask
       ? "Make the new version: do what they ask, check it against the site's design above, and keep what worked in the previous version unless the request changes it."
-      : "Make a real alternative: keep the site's signature, but try other moves (another backdrop, another ID card surface or edge, other avatar and endorsement choices) and re-check the colours against the site.",
+      : "Make an alternative that is just as faithful: look at the site's design again for things the previous version missed, and use other moves only where the digest supports them. If the site gives nothing more, keep the previous choices and refine the colours.",
   )
   return lines.join("\n")
 }
@@ -280,7 +294,14 @@ export async function generateLookSpec({
     if (message.stop_reason === "max_tokens" || !message.parsed_output) {
       throw new LookGenerationError("incomplete", "Claude's answer was cut short. Try again.")
     }
-    return normalizeLookSpec(message.parsed_output, fallbackName)
+    // Nothing invented: unsupported moves fall back to plain, colours snap
+    // to the site's own (groundLookSpec).
+    const digest = JSON.stringify(design)
+    const { spec } = groundLookSpec(message.parsed_output, {
+      sources: [digest, request ?? ""],
+      siteColours: siteColoursOf(digest),
+    })
+    return normalizeLookSpec(spec, fallbackName)
   } catch (err) {
     throw toLookError(err, Anthropic)
   }

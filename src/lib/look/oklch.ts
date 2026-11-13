@@ -150,3 +150,65 @@ export function textOn(bgs: readonly Rgb[], min = 4.5): Rgb {
   const best = score(WHITE) >= score(ink) ? WHITE : ink
   return score(best) >= min ? best : ensureContrast(best, bgs, min)
 }
+
+// ------------------------------------------------------------ CSS colours
+
+const num = (s: string, scale = 1) => {
+  const t = s.trim()
+  return t.endsWith("%") ? (parseFloat(t) / 100) * scale : parseFloat(t)
+}
+
+function hslToRgb(h: number, s: number, l: number): Rgb {
+  const k = (n: number) => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
+}
+
+/**
+ * One CSS colour as sRGB: #rgb(a), #rrggbb(aa), rgb()/rgba(), hsl()/hsla()
+ * and oklch(), in comma or space syntax. Alpha is ignored. Null for
+ * anything else (named colours, var(), color-mix()).
+ */
+export function parseCssColour(value: string): Rgb | null {
+  const v = value.trim().toLowerCase()
+  const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.exec(v)
+  if (hex) {
+    const h = hex[1].length <= 4 ? hex[1].slice(0, 3).replace(/./g, (c) => c + c) : hex[1].slice(0, 6)
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+  }
+  const fn = /^(rgba?|hsla?|oklch)\(([^()]*)\)$/.exec(v)
+  if (!fn) return null
+  const parts = fn[2].split(/[\s,/]+/).filter(Boolean)
+  if (parts.length < 3) return null
+  const [a, b, c] = parts
+  let out: Rgb | null = null
+  if (fn[1].startsWith("rgb")) out = [num(a, 255), num(b, 255), num(c, 255)]
+  else if (fn[1].startsWith("hsl")) out = hslToRgb(parseFloat(a), num(b.endsWith("%") ? b : `${b}%`), num(c.endsWith("%") ? c : `${c}%`))
+  // oklch(L C H): L as 0–1 or a percentage; C as a number or a percentage
+  // of 0.4 (the CSS reference range).
+  else out = oklchToRgb({ l: num(a), c: num(b, 0.4), h: parseFloat(c) || 0 })
+  if (!out || out.some((x) => !Number.isFinite(x))) return null
+  return out.map((x) => Math.round(clamp(x, 0, 255))) as unknown as Rgb
+}
+
+/** Every colour written in a piece of CSS text. */
+export function coloursIn(text: string): Rgb[] {
+  const out: Rgb[] = []
+  for (const m of text.matchAll(/#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b|\b(?:rgba?|hsla?|oklch)\([^()]*\)/gi)) {
+    const rgb = parseCssColour(m[0])
+    if (rgb) out.push(rgb)
+  }
+  return out
+}
+
+/** Perceptual distance (OKLab), about 0.02 for "the same colour". */
+export function distance(a: Rgb, b: Rgb): number {
+  const p = rgbToOklch(a)
+  const q = rgbToOklch(b)
+  const pa = p.c * Math.cos((p.h * Math.PI) / 180)
+  const pb = p.c * Math.sin((p.h * Math.PI) / 180)
+  const qa = q.c * Math.cos((q.h * Math.PI) / 180)
+  const qb = q.c * Math.sin((q.h * Math.PI) / 180)
+  return Math.hypot(p.l - q.l, pa - qa, pb - qb)
+}

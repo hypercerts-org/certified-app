@@ -1,7 +1,9 @@
 import * as z from "zod/v4"
 import {
   BLACK,
+  coloursIn,
   contrast,
+  distance,
   ensureContrast,
   lightness,
   luminance,
@@ -214,6 +216,33 @@ const pick = <M extends Menu>(m: M, value: unknown, fallback: Choice<M>): Choice
   typeof value === "string" && value in MOVES[m] ? (value as Choice<M>) : fallback
 const menu = <M extends Menu>(m: M) => z.enum(keys(m))
 
+/**
+ * Each lever's plain options: what a style does when the site gives no
+ * reason for more. The first is what an unsupported choice falls back to.
+ * Anything else needs evidence from the site (`groundLookSpec`).
+ */
+export const PLAIN = {
+  "backdrop.kind": ["none"],
+  shadows: ["soft", "none", "crisp"],
+  "avatar.shape": ["circle"],
+  "avatar.ring": ["hairline", "none"],
+  "avatar.fill": ["tint"],
+  "avatar.initials": ["ui"],
+  "avatar.image": ["natural"],
+  "idCard.surface": ["plain"],
+  "idCard.edge": ["hairline", "none"],
+  "idCard.pattern": ["none"],
+  "idCard.title": ["plain"],
+  "idCard.mark": ["none"],
+  "endorsement.frame": ["row"],
+  "endorsement.who": ["plain"],
+  "endorsement.note": ["plain"],
+  "endorsement.mark": ["none"],
+} as const
+
+export type Lever = keyof typeof PLAIN
+export const LEVERS = Object.keys(PLAIN) as [Lever, ...Lever[]]
+
 // ----------------------------------------------------------------- schema
 
 const hex = z.string().describe("#RRGGBB")
@@ -246,7 +275,18 @@ const ColorsSchema = z.object({
 export const LookSpecSchema = z.object({
   signature: z
     .array(z.string())
-    .describe("Two to four short phrases: the things someone would recognise the site by."),
+    .describe("Two to four short phrases: the things someone would recognise the site by, all visible in the digest."),
+  evidence: z
+    .array(
+      z.object({
+        lever: z.enum(LEVERS),
+        choice: z.string(),
+        quote: z
+          .string()
+          .describe("Copied exactly from the digest (or the person's request): the CSS value, property, class name or count that shows the site does this."),
+      }),
+    )
+    .describe("One entry for every lever set to anything but a plain option."),
   name: z.string().describe("The brand or site name as people say it, at most 24 characters."),
   description: z
     .string()
@@ -515,6 +555,113 @@ function recheckPalette(raw: unknown, mode: Mode): Palette {
   c.buttonText = ensureContrast(c.buttonText, [c.button], 4.5)
   c.accent = ensureContrast(c.accent, [c.canvas], 3)
   return Object.fromEntries(PALETTE_KEYS.map((k) => [k, toHex(c[k])])) as Palette
+}
+
+// ---------------------------------------------------------------- ground
+
+const forMatch = (text: string) => text.toLowerCase().replace(/["'`\s]/g, "")
+
+function getAt(o: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string, unknown>)[k] : undefined), o)
+}
+
+function setAt(o: Record<string, unknown>, path: string, value: unknown) {
+  const keys = path.split(".")
+  let cur = o
+  for (const k of keys.slice(0, -1)) {
+    if (!cur[k] || typeof cur[k] !== "object") cur[k] = {}
+    cur = cur[k] as Record<string, unknown>
+  }
+  cur[keys[keys.length - 1]] = value
+}
+
+/**
+ * Holds a spec from Claude to the website it was made from, so nothing in
+ * the style is invented:
+ * - every lever set to anything but a plain option (PLAIN) needs an
+ *   evidence quote that is really there, in the digest or the person's
+ *   request (`sources`); without one it falls back to plain;
+ * - every colour is snapped to the nearest colour the site uses
+ *   (`siteColours`); a second brand colour the site doesn't have becomes
+ *   the first.
+ * Returns the grounded spec (still to be normalised) and what was dropped.
+ */
+export function groundLookSpec(
+  raw: unknown,
+  { sources, siteColours }: { sources: string[]; siteColours: Rgb[] },
+): { spec: Record<string, unknown>; dropped: string[] } {
+  const spec = JSON.parse(JSON.stringify(raw ?? {})) as Record<string, unknown>
+  const dropped: string[] = []
+  const corpus = sources.map(forMatch).join("\n")
+  const evidence = (Array.isArray(spec.evidence) ? spec.evidence : []) as Record<string, unknown>[]
+  const supported = (lever: string, choice: unknown) =>
+    evidence.some((e) => {
+      if (e.lever !== lever || e.choice !== choice || typeof e.quote !== "string") return false
+      const quote = forMatch(e.quote)
+      return quote.length >= 5 && corpus.includes(quote)
+    })
+
+  for (const lever of LEVERS) {
+    const value = getAt(spec, lever)
+    const plain = PLAIN[lever] as readonly string[]
+    if (typeof value === "string" && plain.includes(value)) continue
+    if (supported(lever, value)) continue
+    setAt(spec, lever, plain[0])
+    dropped.push(`${lever}: ${String(value)}`)
+  }
+
+  const c = spec.colors && typeof spec.colors === "object" ? (spec.colors as Record<string, unknown>) : null
+  if (c && siteColours.length) {
+    const nearest = (hex: unknown) => {
+      const rgb = parseHex(hex)
+      if (!rgb) return null
+      let best = siteColours[0]
+      let d = Infinity
+      for (const sc of siteColours) {
+        const dd = distance(rgb, sc)
+        if (dd < d) {
+          d = dd
+          best = sc
+        }
+      }
+      return { hex: toHex(best), d }
+    }
+    for (const key of ["background", "surface", "text", "muted", "border", "primary"]) {
+      const n = nearest(c[key])
+      if (!n) continue
+      if (n.d > 0.02) dropped.push(`colors.${key}: ${String(c[key])} → ${n.hex}`)
+      c[key] = n.hex
+    }
+    const sec = nearest(c.secondary)
+    if (!sec || sec.d > 0.1) {
+      dropped.push(`colors.secondary: ${String(c.secondary)} (not on the site)`)
+      c.secondary = c.primary
+    } else {
+      c.secondary = sec.hex
+    }
+    if (c.otherMode && typeof c.otherMode === "object") {
+      const o = c.otherMode as Record<string, unknown>
+      for (const key of ["background", "surface", "text"]) {
+        const n = nearest(o[key])
+        if (n) o[key] = n.hex
+      }
+    }
+  }
+  return { spec, dropped }
+}
+
+/** The colours a digest mentions anywhere: the site's palette. */
+export function siteColoursOf(digestJson: string): Rgb[] {
+  const seen = new Set<string>()
+  const out: Rgb[] = []
+  for (const rgb of coloursIn(digestJson)) {
+    const key = rgb.join(",")
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push(rgb)
+    }
+  }
+  return out
 }
 
 // ------------------------------------------------------------- normalise

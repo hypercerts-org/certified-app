@@ -117,7 +117,16 @@ describe("generateLookSpec", () => {
     await generateLookSpec({ apiKey: "k", design, previous })
     const fresh: string = parse.mock.calls[0][0].messages[0].content
     expect(fresh).not.toContain("<request>")
-    expect(fresh).toContain("Make a real alternative")
+    expect(fresh).toContain("just as faithful")
+  })
+
+  it("never keeps a move the site gives no evidence for", async () => {
+    // The answer sets a brand ID card with dots and a mark, but cites nothing.
+    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { ...answer, evidence: [] } })
+    const spec = await generateLookSpec({ apiKey: "k", design })
+    expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
+    expect(spec.backdrop.kind).toBe("none")
+    expect(parse.mock.calls[0][0].system).toContain("You translate; you never invent.")
   })
 
   it("names the site when Claude gives no name", async () => {

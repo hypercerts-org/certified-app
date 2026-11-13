@@ -5,6 +5,8 @@ import {
   buildCustomLookCss,
   contrast,
   derivePalettes,
+  groundLookSpec,
+  siteColoursOf,
   lookTokens,
   normalizeLookSpec,
   parseHex,
@@ -237,5 +239,69 @@ describe("buildCustomLookCss", () => {
 
   it("exposes hex for the colour helpers", () => {
     expect(toHex(parseHex("#533afd")!)).toBe("#533AFD")
+  })
+})
+
+describe("groundLookSpec: nothing invented", () => {
+  const digest = JSON.stringify({
+    colours: { light: [{ value: "#533afd" }, { value: "#061b31" }, { value: "#ffffff" }, { value: "#f6f9fc" }, { value: "#64748d" }, { value: "#e5edf5" }] },
+    gradients: [{ value: "linear-gradient(90deg, #533afd 0%, #ff6ec7 100%)", count: 4 }],
+    textTransforms: [{ value: "uppercase", count: 12 }],
+    hardShadows: 0,
+  })
+  const ground = (spec: unknown, request = "") =>
+    groundLookSpec(spec, { sources: [digest, request], siteColours: siteColoursOf(digest) })
+
+  it("resets every move without evidence to plain", () => {
+    const { spec, dropped } = ground({ ...stripe(), evidence: [] })
+    expect(spec.backdrop).toEqual({ kind: "none", intensity: "medium" })
+    // "none" is itself a plain edge, so it stays.
+    expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
+    expect((spec.avatar as Record<string, string>).ring).toBe("hairline")
+    expect((spec.endorsement as Record<string, string>).frame).toBe("row")
+    expect(dropped).toContain("idCard.mark: chip")
+  })
+
+  it("keeps a move whose quote is really in the digest, not one with a made-up quote", () => {
+    const { spec, dropped } = ground({
+      ...stripe(),
+      evidence: [
+        { lever: "idCard.surface", choice: "gradient", quote: "linear-gradient(90deg, #533afd 0%, #ff6ec7 100%)" },
+        { lever: "idCard.title", choice: "caps", quote: '"uppercase"' },
+        { lever: "idCard.mark", choice: "chip", quote: "a card chip in the hero" },
+        { lever: "backdrop.kind", choice: "band", quote: "#ff" },
+      ],
+    })
+    const id = spec.idCard as Record<string, string>
+    expect(id.surface).toBe("gradient")
+    expect(id.title).toBe("caps")
+    expect(id.mark).toBe("none")
+    // Too short to count as evidence.
+    expect((spec.backdrop as Record<string, string>).kind).toBe("none")
+    expect(dropped).toContain("backdrop.kind: band")
+  })
+
+  it("accepts the person's own request as evidence in a new version", () => {
+    const { spec } = ground(
+      { ...stripe(), evidence: [{ lever: "backdrop.kind", choice: "band", quote: "a band like their hero" }] },
+      "Please add a band like their hero",
+    )
+    expect((spec.backdrop as Record<string, string>).kind).toBe("band")
+  })
+
+  it("snaps colours to the site's own and drops a second colour the site doesn't have", () => {
+    const { spec, dropped } = ground({
+      ...stripe(),
+      colors: { ...stripe().colors, primary: "#5539FC", secondary: "#00FF88" },
+    })
+    const c = spec.colors as Record<string, string>
+    expect(c.primary).toBe("#533AFD")
+    expect(c.secondary).toBe("#533AFD")
+    expect(dropped.some((d) => d.startsWith("colors.secondary"))).toBe(true)
+  })
+
+  it("keeps a second colour from the site's gradient", () => {
+    const { spec } = ground({ ...stripe(), colors: { ...stripe().colors, secondary: "#FF6EC7" } })
+    expect((spec.colors as Record<string, string>).secondary).toBe("#FF6EC7")
   })
 })

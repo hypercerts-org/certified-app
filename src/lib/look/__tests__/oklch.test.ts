@@ -43,3 +43,18 @@ describe("oklch", () => {
     expect(contrast(textOn([[255, 229, 0]]), [255, 229, 0])).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+describe("parseCssColour", () => {
+  it("reads the colour syntaxes sites use", async () => {
+    const { parseCssColour, coloursIn } = await import("../oklch")
+    expect(parseCssColour("#fff")).toEqual([255, 255, 255])
+    expect(parseCssColour("#533afdcc")).toEqual([83, 58, 253])
+    expect(parseCssColour("rgb(83, 58, 253)")).toEqual([83, 58, 253])
+    expect(parseCssColour("rgba(83 58 253 / 0.5)")).toEqual([83, 58, 253])
+    expect(parseCssColour("hsl(0, 100%, 50%)")).toEqual([255, 0, 0])
+    const ok = parseCssColour("oklch(0.62 0.21 275)")!
+    expect(rgbToOklch(ok).h).toBeGreaterThan(260)
+    expect(parseCssColour("var(--x)")).toBeNull()
+    expect(coloursIn('{"bg":"#061b31","g":"linear-gradient(90deg, #533afd 0%, rgb(255,110,199) 100%)"}')).toHaveLength(3)
+  })
+})
