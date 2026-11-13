@@ -132,7 +132,7 @@ describe("EndorsementSubjectRow", () => {
     )
   })
 
-  it("emits a <time> with dateTime, tooltip title, and the short date", () => {
+  it("emits a <time> with dateTime, tooltip title, and the date by the one rule", () => {
     const { container } = render(
       <EndorsementSubjectRow
         did={info.did}
@@ -146,7 +146,8 @@ describe("EndorsementSubjectRow", () => {
     expect(time?.getAttribute("title")).toBe(
       new Date(CREATED_AT).toLocaleString(),
     )
-    expect(time?.textContent).toBe("2024-01-02")
+    // Older than a week: the absolute date.
+    expect(time?.textContent).toBe("2 Jan 2024")
     // Default placement: the date is a sibling of the link, not link
     // content.
     expect(time?.closest("a")).toBeNull()

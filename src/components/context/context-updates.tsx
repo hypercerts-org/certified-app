@@ -33,7 +33,7 @@ import {
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { recordUrlFromAtUri } from "@/lib/urls"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 
 interface ContextUpdatesProps {
   /** at:// URI of the cert or project these updates target. */
@@ -294,7 +294,7 @@ function UpdateCard({
       : null
   const createdAt =
     typeof value.createdAt === "string" ? value.createdAt : null
-  const createdLabel = createdAt ? formatShortDate(createdAt) : null
+  const createdLabel = createdAt ? formatRelativeDate(createdAt) : null
 
   // Normalize the heterogeneous content[] union into render-ready
   // attachment shapes. Filters out malformed entries silently —

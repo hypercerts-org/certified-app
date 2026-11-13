@@ -4,7 +4,7 @@ import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Skeleton from "@/components/ui/skeleton"
 import { deriveIdentity } from "@/lib/utils/identity"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import type { AuthorInfo } from "@/hooks/use-author-info"
 
 /** Per-surface BEM class hooks. Each endorsement surface keeps its
@@ -79,7 +79,7 @@ export default function EndorsementSubjectRow({
       dateTime={createdAt}
       title={new Date(createdAt).toLocaleString()}
     >
-      {formatShortDate(createdAt)}
+      {formatRelativeDate(createdAt)}
     </time>
   )
 

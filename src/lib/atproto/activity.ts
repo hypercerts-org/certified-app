@@ -1,5 +1,5 @@
 import { authFetch } from "@/lib/auth/fetch"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import { getBlobRefLink } from "./types"
 import type { HypercertsUri, HypercertsSmallImage } from "./types"
 import type { ListActivitiesResponse } from "./activity-types"
@@ -169,24 +169,8 @@ function tryEvalCelHasAny(expression: string): string | null {
   return items.join(", ")
 }
 
-/**
- * Format an ISO date string as a relative time ("2m ago", "5h ago", "3d ago")
- * or an absolute date ("Jan 15, 2026") for dates older than 7 days.
- */
+/** When something happened, by the app's one date rule
+ *  (`formatRelativeDate`: relative up to 7 days, then "13 Nov 2026"). */
 export function formatRelativeTime(isoDate: string): string {
-  const now = Date.now()
-  const then = new Date(isoDate).getTime()
-  if (isNaN(then)) return ""
-
-  const diffMs = Math.max(0, now - then)
-  const diffMinutes = Math.floor(diffMs / 60_000)
-  const diffHours = Math.floor(diffMs / 3_600_000)
-  const diffDays = Math.floor(diffMs / 86_400_000)
-
-  if (diffMinutes < 1) return "just now"
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  return formatShortDate(isoDate)
+  return formatRelativeDate(isoDate)
 }

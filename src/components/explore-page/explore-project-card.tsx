@@ -6,7 +6,7 @@ import Link from "next/link"
 import { FolderGit2 } from "lucide-react"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import {
   asString,
   projectImage,
@@ -35,7 +35,7 @@ function ExploreProjectCard({
   const title = projectTitle(value)
   const shortDesc = asString(value.shortDescription)
   const createdAt = asString(value.createdAt)
-  const createdLabel = createdAt ? formatShortDate(createdAt) : null
+  const createdLabel = createdAt ? formatRelativeDate(createdAt) : null
 
   // Wide gallery card — the image-wrap is a hero slot, so this stays
   // banner-first (an avatar is a small square, never a hero image).

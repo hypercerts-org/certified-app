@@ -92,9 +92,10 @@
   --border-default: rgba(0, 0, 0, 0.08);
   --border-hover: rgba(0, 0, 0, 0.15);
   /* Image avatars: hairline + backdrop behind transparent logos. Light mode
-     keeps the plain subtle border; dark mode lifts both so dark or
-     transparent logos don't vanish into the canvas. */
-  --avatar-ring: var(--border-subtle);
+     uses the default border (the subtle one let white pictures vanish on
+     the light canvas); dark mode lifts both so dark or transparent logos
+     don't vanish into the canvas. */
+  --avatar-ring: var(--border-default);
   --avatar-backdrop: transparent;
   --border-control: rgba(0, 0, 0, 0.45);
 

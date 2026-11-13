@@ -4,7 +4,6 @@ import { useId, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Check, ChevronDown, FolderOpen, Plus, Settings } from "lucide-react"
-import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import BottomSheet from "@/components/ui/bottom-sheet"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -90,7 +89,7 @@ function useOpenWorkspace() {
   }
 }
 
-/** One workspace in the menu: avatar, name, @handle, role, a check on the
+/** One workspace in the menu: avatar, name, then @handle · role, a check on the
  *  current one. Also the rows of the account pickers ("Seen as", Settings'
  *  "for"). With `settings`, a gear after the row opens that account's
  *  settings (the Workspace menu): its own menu item, not part of the row,
@@ -109,6 +108,10 @@ export function WorkspaceRow({
   settings?: { href: string; label: string; onNavigate: () => void }
 }) {
   const isMenu = mode === "menu"
+  // The role is quiet, in the secondary line ("@earth.org · Owner"), so it
+  // doesn't outshout the names.
+  const role = identity.kind === "group" && identity.role ? ORG_ROLE_LABEL[identity.role] : null
+  const secondary = [identity.handle ? `@${identity.handle}` : null, role].filter(Boolean).join(" · ")
   const row = (
     <button
       type="button"
@@ -121,15 +124,10 @@ export function WorkspaceRow({
       <IdentityAvatar identity={identity} size="sm" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{identity.name}</span>
-        {identity.handle ? (
-          <span className="block truncate text-caption text-[var(--fg-muted)]">
-            @{identity.handle}
-          </span>
+        {secondary ? (
+          <span className="block truncate text-caption text-[var(--fg-muted)]">{secondary}</span>
         ) : null}
       </span>
-      {identity.kind === "group" && identity.role ? (
-        <Badge variant="role">{ORG_ROLE_LABEL[identity.role]}</Badge>
-      ) : null}
       <Check
         size={16}
         strokeWidth={2}

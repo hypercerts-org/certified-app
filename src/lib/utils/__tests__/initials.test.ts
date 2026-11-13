@@ -42,4 +42,12 @@ describe("getInitials", () => {
     expect(getInitials(null, null)).toBe("?")
     expect(getInitials("", "")).toBe("?")
   })
+
+  it("skips leading symbols, so a handle written as a name isn't '@h'", () => {
+    expect(getInitials("@holke.xyz")).toBe("ho")
+    expect(getInitials("@luis @sara")).toBe("ls")
+    expect(getInitials("(Ma) Earth")).toBe("ME")
+    // Nothing but symbols: fall back to the handle.
+    expect(getInitials("@@", "maya.example")).toBe("ma")
+  })
 })

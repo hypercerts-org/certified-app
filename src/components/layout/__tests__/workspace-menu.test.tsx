@@ -113,8 +113,8 @@ describe("DesktopWorkspaceMenu", () => {
     ])
     expect(rows[0]).toHaveAttribute("aria-checked", "true")
     expect(within(rows[0]).getByText("@maya.certified.app")).toBeInTheDocument()
-    expect(within(rows[2]).getByText("@earth.example")).toBeInTheDocument()
-    expect(within(rows[2]).getByText("Admin")).toBeInTheDocument()
+    // The role is quiet text in the secondary line, not a badge.
+    expect(within(rows[2]).getByText("@earth.example · Admin")).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "New group" })).toHaveAttribute(
       "href",
       "/groups/create",

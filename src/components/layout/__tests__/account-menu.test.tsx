@@ -140,10 +140,11 @@ describe("AccountMenuContent", () => {
     ])
   })
 
-  it("shows the current personal account with its tag and profile link", () => {
+  it("shows the current personal account and its profile link, with no tag", () => {
     renderMenu("menu")
     expect(screen.getAllByText("Maya Lin")[0]).toBeInTheDocument()
-    expect(screen.getByText("Personal")).toBeInTheDocument()
+    // Always the signed-in person, so "Personal" would say nothing.
+    expect(screen.queryByText("Personal")).toBeNull()
     expect(screen.getByRole("menuitem", { name: "View profile" })).toHaveAttribute(
       "href",
       "/maya.certified.app",
@@ -161,7 +162,6 @@ describe("AccountMenuContent", () => {
     state.activeOrg = EARTH
     renderMenu("menu")
     expect(screen.getByText("Maya Lin")).toBeInTheDocument()
-    expect(screen.getByText("Personal")).toBeInTheDocument()
     expect(screen.queryByText("Ma Earth")).toBeNull()
     expect(screen.queryByText(/^as @/)).toBeNull()
     expect(screen.getByRole("menuitem", { name: "View profile" })).toHaveAttribute(

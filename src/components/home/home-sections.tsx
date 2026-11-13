@@ -26,7 +26,7 @@ import { activityDetailHref, parseAtUri } from "@/lib/atproto/activity-uri"
 import { projectImage, projectTitle } from "@/lib/atproto/collection"
 import type { WorkspaceCounts } from "@/lib/atproto/workspace"
 import { recordUrl } from "@/lib/urls"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import { getInitials } from "@/lib/utils/initials"
 
 const LATEST_RECORDS = 4
@@ -287,7 +287,7 @@ export function HomeRecords({
                           {r.createdAt ? (
                             <>
                               <span aria-hidden> · </span>
-                              {formatShortDate(r.createdAt)}
+                              {formatRelativeDate(r.createdAt)}
                             </>
                           ) : null}
                         </span>

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
 
 /**
@@ -32,7 +32,7 @@ export function EndorsementPreviewRow({ endorsement }: EndorsementPreviewRowProp
             {displayName}
           </span>
           <span className="profile-overview__endorse-when" data-part="when">
-            {formatShortDate(endorsement.createdAt)}
+            {formatRelativeDate(endorsement.createdAt)}
           </span>
         </span>
         {endorsement.note ? (

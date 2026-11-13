@@ -219,9 +219,13 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
           {personal.handle ? (
             <p className="m-0 truncate text-ui text-[var(--fg-muted)]">@{personal.handle}</p>
           ) : null}
-          <div className="mt-1.5">
-            <Badge variant="tag">{identityTag(personal)}</Badge>
-          </div>
+          {/* The menu is always the signed-in person, so "Personal" would
+              say nothing; a group signed in as itself still says so. */}
+          {personal.kind === "group-account" ? (
+            <div className="mt-1.5">
+              <Badge variant="tag">{identityTag(personal)}</Badge>
+            </div>
+          ) : null}
         </div>
       </div>
       <Link href={profileHref} {...item} className={row()} onClick={onClose}>

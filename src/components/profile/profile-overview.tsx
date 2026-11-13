@@ -25,7 +25,7 @@ import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useUserActivityCount } from "@/hooks/use-user-activity-count"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
@@ -315,7 +315,7 @@ function EndorsementStatement({
         ) : null}
         <p className="profile-statement__meta">
           <time dateTime={endorsement.createdAt} data-part="when">
-            {formatShortDate(endorsement.createdAt)}
+            {formatRelativeDate(endorsement.createdAt)}
           </time>
           {endorsement.listTitle ? (
             <>

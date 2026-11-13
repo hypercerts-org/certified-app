@@ -19,7 +19,7 @@ import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { activityDetailHref } from "@/lib/atproto/activity-uri"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { deriveIdentity } from "@/lib/utils/identity"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 
 // The building blocks every profile tab panel shares, so the tabs read
 // like the Overview: a section header, a search field and a sort menu when
@@ -218,7 +218,7 @@ export function ProfileActivityRow({
         </span>
         {value.createdAt ? (
           <time className="profile-row__date" dateTime={value.createdAt}>
-            {formatShortDate(value.createdAt)}
+            {formatRelativeDate(value.createdAt)}
           </time>
         ) : null}
       </Link>

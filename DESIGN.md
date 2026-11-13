@@ -269,6 +269,7 @@ Rules:
 ### 3.4 Numerals and OpenType
 
 - Any number that changes or sits in a column uses `font-variant-numeric: tabular-nums` (Tailwind `tabular-nums`): counts, badges, pagination, timestamps, funding amounts, stats, table cells. Never `font-feature-settings` for this; it replaces other features on the element.
+- **Dates, one rule everywhere** (`src/lib/utils/format-date.ts`). When something happened (a post, an endorsement, a record made) is relative up to 7 days ("just now", "5m ago", "3h ago", "2d ago", `formatRelativeDate`), then the absolute date. An absolute date is "13 Nov 2026" (`formatShortDate`; month precision "Nov 2026", `formatMonthYear`), in UTC, never ISO "2026-11-13" in the UI. A label with a prefix ("Since", "Joined", "Created", "Until") and a work period use the absolute date. Dates are set in the surrounding face with tabular figures, never mono.
 - `'case' 1` is part of `text-label`, not a per-class list.
 - DIDs, AT URIs and wallet addresses use `slashed-zero` (`<WalletAddress>`).
 

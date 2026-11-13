@@ -7,7 +7,7 @@ import {
   FundingForActivity,
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import { formatAbsoluteDateTime, formatAmount } from "./format-display"
 import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
@@ -63,7 +63,7 @@ function FundingReceiptRow({
     : null
   const detailsLabel = [
     "View funding receipt details",
-    [amountLabel, receipt.occurredAt ? formatShortDate(receipt.occurredAt) : null]
+    [amountLabel, receipt.occurredAt ? formatRelativeDate(receipt.occurredAt) : null]
       .filter(Boolean)
       .join(", "),
   ]
@@ -85,7 +85,7 @@ function FundingReceiptRow({
           dateTime={receipt.occurredAt}
           title={formatAbsoluteDateTime(receipt.occurredAt)}
         >
-          {formatShortDate(receipt.occurredAt)}
+          {formatRelativeDate(receipt.occurredAt)}
         </time>
       ) : (
         <span className="funding-receipt-row__date" aria-hidden />

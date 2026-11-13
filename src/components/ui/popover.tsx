@@ -625,7 +625,7 @@ export function PopoverContent({
         onBlur={trackFocusOut}
         data-side={side}
         data-align={align}
-        className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${className}`}
+        className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${className}`}
         style={{
           position: "fixed",
           top: coords?.top ?? 0,
@@ -656,7 +656,7 @@ export function PopoverContent({
       onFocus={trackFocusIn}
       onBlur={trackFocusOut}
       data-align={align}
-      className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
+      className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}
       {...props}
     >
@@ -712,7 +712,7 @@ export function PopoverItem({
       // isn't dragged into uppercase/semibold/letter-spaced styling by
       // an ambient container (e.g. the cert-detail meta-label <dt> that
       // hosts the "Add to list" menu).
-      className={`flex w-full items-center gap-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-left text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-left text-[var(--fg-primary)] rounded hover:bg-[var(--overlay-weak)] focus:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-[-2px] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
       {isRadio && (

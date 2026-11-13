@@ -20,7 +20,7 @@ import { useUserProjects } from "@/hooks/use-user-projects"
 import { useManagedProjects } from "@/hooks/use-managed-projects"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import {
   asString,
   projectImage,
@@ -242,7 +242,7 @@ function ProjectRow({ project, owner }: { project: CollectionRecord; owner?: Own
       </span>
       {createdAt ? (
         <time className="profile-row__date" dateTime={createdAt}>
-          {formatShortDate(createdAt)}
+          {formatRelativeDate(createdAt)}
         </time>
       ) : null}
     </>

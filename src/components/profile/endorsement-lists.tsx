@@ -35,7 +35,7 @@ import {
 } from "@/hooks/use-endorsement-lists"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { formatRelativeDate } from "@/lib/utils/format-date"
 import { deriveIdentity } from "@/lib/utils/identity"
 import { rkeyFromUri } from "@/lib/urls"
 import {
@@ -424,7 +424,7 @@ function ListsBody({
                 dateTime={list.createdAt}
                 title={new Date(list.createdAt).toLocaleString()}
               >
-                {formatShortDate(list.createdAt)}
+                {formatRelativeDate(list.createdAt)}
               </time>
             </div>
           </button>
@@ -527,7 +527,7 @@ function ListDetail({
             dateTime={list.createdAt}
             title={new Date(list.createdAt).toLocaleString()}
           >
-            {formatShortDate(list.createdAt)}
+            {formatRelativeDate(list.createdAt)}
           </time>
         </span>
       </div>

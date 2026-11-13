@@ -102,13 +102,13 @@ describe("transferViewerRole", () => {
 describe("transferPendingNote", () => {
   it("keeps both dates spaced away from the surrounding words", () => {
     // Regression: assembled as JSX text around expressions, the space after
-    // the expiry date was dropped ("2026-09-24if it isn't accepted").
+    // the expiry date was dropped ("24 Sep 2026if it isn't accepted").
     expect(
       transferPendingNote({
         createdAt: "2026-09-17T10:00:00.000Z",
         expiresAt: "2026-09-24T10:00:00.000Z",
       }),
-    ).toBe("Proposed 2026-09-17 — expires 2026-09-24 if it isn't accepted.")
+    ).toBe("Proposed 17 Sep 2026 — expires 24 Sep 2026 if it isn't accepted.")
   })
 })
 

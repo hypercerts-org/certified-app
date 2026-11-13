@@ -29,8 +29,8 @@ describe("avatar tokens", () => {
   const css = readFileSync(join(__dirname, "../../../app/styles/tokens.css"), "utf8")
   const dark = css.slice(css.indexOf(':root[data-theme="dark"]'))
 
-  it("are transparent / subtle in light mode and lifted in dark mode", () => {
-    expect(css).toMatch(/--avatar-ring: var\(--border-subtle\)/)
+  it("are a default hairline in light mode (white pictures stay visible) and lifted in dark mode", () => {
+    expect(css).toMatch(/--avatar-ring: var\(--border-default\)/)
     expect(css).toMatch(/--avatar-backdrop: transparent/)
     expect(dark).toMatch(/--avatar-ring: var\(--border-hover\)/)
     expect(dark).toMatch(/--avatar-backdrop: var\(--color-surface-container-high\)/)
