@@ -277,7 +277,8 @@ function RefreshDialog({
       maxWidth={480}
       autoFocusFirst
     >
-      <div className="flex flex-col gap-3">
+      {/* FormDialog's footer brings no space of its own: 24px to the buttons. */}
+      <div className="mb-6 flex flex-col gap-4">
         <p className="m-0 text-body-sm text-[var(--fg-secondary)] text-pretty">
           {LOOK_MODEL_NAME} reads {look.source} again and makes a new version from this one. You can go back to
           this version afterwards.

@@ -17,6 +17,7 @@ import { rgbToOklch } from "../oklch"
 
 const stripe = (over: Partial<LookSpecInput> = {}): LookSpecInput => ({
   signature: ["violet-to-pink gradients", "Söhne-like grotesk", "navy text on white"],
+  evidence: [],
   name: "Stripe",
   description: "Stripe's navy and violet with its hero gradient.",
   colors: {
