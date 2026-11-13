@@ -6,7 +6,9 @@ import Image from "next/image";
 export interface AvatarProps {
   src?: string;
   alt?: string;
-  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+  /** `sm` (32px) is the compact-row avatar, `row` (40px) the people-row
+   *  avatar (DESIGN.md §4, account rows). */
+  size?: "xs" | "sm" | "row" | "md" | "lg" | "xl" | "2xl";
   fallbackInitials?: string;
   /** Stable identity string (ideally the DID) the placeholder ring's gradient
    *  is derived from. Falls back to the initials, so the ring is at least
@@ -22,6 +24,7 @@ export interface AvatarProps {
 const sizeMap = {
   xs: "h-5 w-5 text-micro",
   sm: "h-8 w-8 text-body-sm",
+  row: "h-10 w-10 text-body-sm",
   md: "h-12 w-12 text-body",
   lg: "h-16 w-16 text-h4",
   xl: "h-24 w-24 text-h3",
@@ -36,6 +39,7 @@ const sizeMap = {
 const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
   xs: 20,
   sm: 32,
+  row: 40,
   md: 48,
   lg: 64,
   xl: 96,
@@ -47,6 +51,7 @@ const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
 const ringPx: Record<NonNullable<AvatarProps["size"]>, number> = {
   xs: 1.5,
   sm: 2,
+  row: 2.25,
   md: 2.5,
   lg: 3,
   xl: 3.5,

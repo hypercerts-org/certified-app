@@ -20,20 +20,24 @@ export interface IdentityRowProps {
    *  handle is present). Pass an explicit string to override it — e.g.
    *  "Third party" — rendered in the same muted style. */
   subtitle?: string;
-  /** @default "md" */
+  /** "sm" = compact row (lists inside a section), "md" = people row
+   *  (full-page lists of accounts). @default "md" */
   size?: "sm" | "md";
   /** Render the skeleton placeholder instead of resolved content. */
   loading?: boolean;
   className?: string;
 }
 
-const avatarSizeMap = { sm: "sm", md: "md" } as const;
-const gapMap = { sm: "gap-2", md: "gap-3" } as const;
-// sm = the dense-list scale (body-sm name, caption handle); md keeps the
-// larger body scale used on roomier surfaces. Both on the type ramp.
+// The two account-row sizes (DESIGN.md §4, account rows):
+//   sm = compact, for lists inside a page section: 32px avatar, 14px name,
+//        12px secondary line;
+//   md = people, for full-page lists of accounts: 40px avatar, 16px name,
+//        13px secondary line.
+const avatarSizeMap = { sm: "sm", md: "row" } as const;
+const gapMap = { sm: "gap-3", md: "gap-3" } as const;
 const nameSizeMap = { sm: "text-body-sm", md: "text-body" } as const;
-const handleSizeMap = { sm: "text-caption", md: "text-body-sm" } as const;
-const skelAvatarPx = { sm: 32, md: 48 } as const;
+const handleSizeMap = { sm: "text-caption", md: "text-ui" } as const;
+const skelAvatarPx = { sm: 32, md: 40 } as const;
 
 /**
  * Presentational avatar + name + @handle row.
