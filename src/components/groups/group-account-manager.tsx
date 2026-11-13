@@ -17,6 +17,7 @@ import ErrorMessage from "@/components/ui/error-message"
 import CopyPill from "@/components/account/copy-pill"
 import { useUnlockSession } from "@/components/settings/unlock-app-passwords-fields"
 import { UnlockSessionDialog } from "@/components/settings/unlock-app-passwords-dialog"
+import { SettingsRow } from "@/components/settings/settings-layout"
 
 /**
  * Owner/admin handle + email management for a non-self group. Unlock once with
@@ -151,16 +152,12 @@ export default function GroupAccountManager({
   return (
     <>
       {/* Handle */}
-      <div className="sx-subsection">
-        <div className="sx-subsection__head">
-          <h3 className="sx-subsection__title">Handle</h3>
-          <p className="sx-subsection__desc">
-            The @handle people use to find this group on Certified.
-            {!unlocked
-              ? " Unlock with the group's password to change it."
-              : ""}
-          </p>
-        </div>
+      <SettingsRow
+        label="Handle"
+        description={`The @handle people use to find this group on Certified.${
+          !unlocked ? " Unlock with the group's password to change it." : ""
+        }`}
+      >
         {unlocked && editingHandle ? (
           <form
             className="group-acct__form"
@@ -227,26 +224,24 @@ export default function GroupAccountManager({
             ) : (
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 size="sm"
                 onClick={() => setUnlockOpen(true)}
               >
-                <Unlock size={14} /> Unlock
+                <Unlock size={14} aria-hidden /> Unlock
               </Button>
             )}
           </div>
         )}
-      </div>
+      </SettingsRow>
 
       {/* Email */}
-      <div className="sx-subsection">
-        <div className="sx-subsection__head">
-          <h3 className="sx-subsection__title">Email</h3>
-          <p className="sx-subsection__desc">
-            Used to sign in and recover this account.
-            {!unlocked ? " Unlock to view or change it." : ""}
-          </p>
-        </div>
+      <SettingsRow
+        label="Email"
+        description={`Used to sign in and to recover this account.${
+          !unlocked ? " Unlock to view or change it." : ""
+        }`}
+      >
         {unlocked ? (
           editingEmail ? (
             <form
@@ -324,15 +319,15 @@ export default function GroupAccountManager({
             </span>
             <Button
               type="button"
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={() => setUnlockOpen(true)}
             >
-              <Unlock size={14} /> Unlock
+              <Unlock size={14} aria-hidden /> Unlock
             </Button>
           </div>
         )}
-      </div>
+      </SettingsRow>
 
       {unlockOpen ? (
         <UnlockSessionDialog

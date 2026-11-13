@@ -20,7 +20,6 @@ export default function HelpTourButton() {
   return (
     <Button
       variant="secondary"
-      size="sm"
       onClick={isAuthenticated ? start : openSignIn}
     >
       {isAuthenticated ? "Start the walk-through" : "Sign in to start the walk-through"}

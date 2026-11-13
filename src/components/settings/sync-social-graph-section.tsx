@@ -14,6 +14,7 @@ import Checkbox from "@/components/ui/checkbox"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
+import StatRow from "@/components/ui/stat-row"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   useSocialGraphSync,
@@ -105,25 +106,26 @@ export default function SyncSocialGraphSection({
 
   return (
     <div className="social-graph-sync" data-tour="settings-bsky-sync">
-      <div className="social-graph-sync__stats">
-        <StatTile
-          label="Followed on both"
-          value={sync.stats.inBoth.length}
-          isLoading={sync.isLoading}
-        />
-        <StatTile
-          label="Only on Certified"
-          value={onlyCertified}
-          isLoading={sync.isLoading}
-          highlight={onlyCertified > 0}
-        />
-        <StatTile
-          label="Only on Bluesky"
-          value={onlyBluesky}
-          isLoading={sync.isLoading}
-          highlight={onlyBluesky > 0}
-        />
-      </div>
+      <StatRow
+        aria-label="Follows compared"
+        items={[
+          {
+            label: "Followed on both",
+            value: formatCount(sync.stats.inBoth.length),
+            loading: sync.isLoading,
+          },
+          {
+            label: "Only on Certified",
+            value: formatCount(onlyCertified),
+            loading: sync.isLoading,
+          },
+          {
+            label: "Only on Bluesky",
+            value: formatCount(onlyBluesky),
+            loading: sync.isLoading,
+          },
+        ]}
+      />
 
       {sync.error ? (
         <p className="social-graph-sync__error" role="alert">
@@ -195,27 +197,8 @@ export default function SyncSocialGraphSection({
   )
 }
 
-interface StatTileProps {
-  label: string
-  value: number
-  isLoading: boolean
-  highlight?: boolean
-}
-
-function StatTile({ label, value, isLoading, highlight }: StatTileProps) {
-  return (
-    <div
-      className={`social-graph-sync__tile${
-        highlight ? " social-graph-sync__tile--highlight" : ""
-      }`}
-    >
-      <span className="social-graph-sync__tile-value">
-        {isLoading ? "—" : new Intl.NumberFormat().format(value)}
-      </span>
-      <span className="social-graph-sync__tile-label">{label}</span>
-    </div>
-  )
-}
+const countFormat = new Intl.NumberFormat()
+const formatCount = (n: number) => countFormat.format(n)
 
 // ========================= Sync flow (inline) =========================
 

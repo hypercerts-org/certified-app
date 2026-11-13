@@ -158,12 +158,13 @@ export default function GroupPasswordReset({ groupDid }: { groupDid: string }) {
         <div className="group-pw-reset__actions">
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => {
               setError(null)
               setStep("request")
             }}
           >
-            <KeyRound size={16} strokeWidth={1.75} aria-hidden />
+            <KeyRound size={14} strokeWidth={1.75} aria-hidden />
             Reset password
           </Button>
         </div>

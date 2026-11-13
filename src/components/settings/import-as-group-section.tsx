@@ -117,7 +117,7 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       }}
       className="import-group"
     >
-      <p className="text-sm text-[var(--fg-secondary)]">
+      <p className="m-0 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty">
         Converts the account you&apos;re signed in as —{" "}
         <strong>{accountLabel}</strong> — into a group, with you as its owner.
         The account, its handle, and its records are kept; nothing is deleted.

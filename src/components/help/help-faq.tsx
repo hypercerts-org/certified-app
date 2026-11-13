@@ -1,21 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Network } from "lucide-react";
-import FaqAccordion from "@/components/landing/sections/faq-accordion";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, Network } from "lucide-react";
 import Button from "@/components/ui/button";
 import EndorsementGraphModal from "./endorsement-graph-modal";
+import { helpLinkCls } from "./help-styles";
 
 /**
- * The Help-page FAQ. Reuses the landing `FaqAccordion` (the hairline,
- * 0fr→1fr accordion) so the question/answer pattern stays consistent
- * across the site. Kept in its own client file so the Help page can
- * remain a server component and keep exporting `metadata`.
- *
- * Blank lines in an answer become separate paragraphs (see FaqAccordion).
- * The literal phrase "get in touch" in an answer becomes a contact-modal
- * trigger, so we use the feedback form link in the page intro instead and
- * keep these answers self-contained.
+ * The Help page's questions. Blank lines in an answer become separate
+ * paragraphs. Answers stay self-contained; the page ends with a Send
+ * feedback action for anything they don't cover.
  */
 const HELP_FAQ_ITEMS = [
   {
@@ -66,12 +60,12 @@ const HELP_FAQ_ITEMS = [
 ];
 
 const BUILD_LINKS = (
-  <div className="flex flex-wrap gap-4">
+  <div className="flex flex-wrap gap-x-6 gap-y-2 text-body">
     <a
       href="https://docs.hypercerts.org/"
       target="_blank"
       rel="noopener noreferrer"
-      className="legal-link"
+      className={helpLinkCls}
     >
       docs.hypercerts.org
     </a>
@@ -79,19 +73,91 @@ const BUILD_LINKS = (
       href="https://t.me/+o4wPsJ7yEZYzNGFk"
       target="_blank"
       rel="noopener noreferrer"
-      className="legal-link"
+      className={helpLinkCls}
     >
       Telegram group
     </a>
   </div>
 );
 
+interface FaqItem {
+  question: string;
+  answer: string;
+  /** Rendered after the answer, e.g. a button that opens a live demo. */
+  cta?: ReactNode;
+}
+
+/**
+ * One question: a button (inside an h3, so questions show up in heading
+ * navigation) that opens its answer. The answer collapses with the
+ * grid-template-rows 0fr→1fr technique; `visibility` follows the collapse
+ * so a closed answer leaves the accessibility tree and find-in-page.
+ */
+function FaqEntry({ item, index }: { item: FaqItem; index: number }) {
+  const [open, setOpen] = useState(false);
+  const questionId = `help-faq-q-${index}`;
+  const answerId = `help-faq-a-${index}`;
+  return (
+    <li className="border-b border-[var(--border-subtle)] last:border-b-0">
+      <h3 className="m-0">
+        <button
+          type="button"
+          id={questionId}
+          aria-expanded={open}
+          aria-controls={answerId}
+          onClick={() => setOpen((v) => !v)}
+          className="group flex w-full cursor-pointer items-center justify-between gap-4 rounded py-4 text-left text-body font-medium text-[var(--fg-primary)] select-none [-webkit-tap-highlight-color:transparent] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+        >
+          <span className="text-pretty">{item.question}</span>
+          <ChevronDown
+            size={16}
+            strokeWidth={1.75}
+            aria-hidden
+            className={`shrink-0 text-[var(--fg-muted)] transition-[transform,color] duration-fast ease-out motion-reduce:transition-none group-hover:text-[var(--fg-primary)] ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      </h3>
+      <div
+        id={answerId}
+        role="region"
+        aria-labelledby={questionId}
+        className={`grid motion-reduce:transition-none ${
+          open
+            ? "visible grid-rows-[1fr] [transition:grid-template-rows_var(--duration-base)_var(--ease-out),visibility_0s]"
+            : "invisible grid-rows-[0fr] [transition:grid-template-rows_var(--duration-base)_var(--ease-out),visibility_0s_var(--duration-base)]"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="flex flex-col gap-4 pb-5">
+            {/* Blank lines in an answer become paragraphs. */}
+            {item.answer.split("\n\n").map((paragraph, p) => (
+              <p
+                key={p}
+                className="m-0 max-w-measure text-body text-[var(--fg-secondary)] text-pretty"
+              >
+                {paragraph}
+              </p>
+            ))}
+            {item.cta ? <div>{item.cta}</div> : null}
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The Help page's questions and answers: hairline rows that open in place.
+ * Kept in its own client file so the Help page can stay a server component
+ * and keep exporting `metadata`. One answer carries a button that opens the
+ * live endorsement network in a large dialog.
+ */
 export default function HelpFaq() {
   const [graphOpen, setGraphOpen] = useState(false);
 
-  // Inject a "see it live" button into the endorsement answer that opens the
-  // graph in a large modal (the cta lives here so it can drive modal state).
-  const items = HELP_FAQ_ITEMS.map((item) => {
+  const items: FaqItem[] = HELP_FAQ_ITEMS.map((item) => {
     if (item.question === "What does it mean to endorse someone?") {
       return {
         ...item,
@@ -115,7 +181,11 @@ export default function HelpFaq() {
 
   return (
     <>
-      <FaqAccordion items={items} />
+      <ul className="m-0 list-none border-y border-[var(--border-subtle)] p-0">
+        {items.map((item, index) => (
+          <FaqEntry key={item.question} item={item} index={index} />
+        ))}
+      </ul>
       {graphOpen && (
         <EndorsementGraphModal onClose={() => setGraphOpen(false)} />
       )}

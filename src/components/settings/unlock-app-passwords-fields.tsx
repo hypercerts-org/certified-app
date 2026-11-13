@@ -151,7 +151,7 @@ export function UnlockAppPasswordFields({
   codeHelper?: string
 }) {
   const defaultHint = (
-    <p className="text-xs text-[var(--fg-muted)]">
+    <p className="text-caption text-[var(--fg-muted)]">
       Don&apos;t know it? Set or reset it under{" "}
       <a
         href="#account"
@@ -181,7 +181,7 @@ export function UnlockAppPasswordFields({
 
   return (
     <>
-      <p className="mb-4 text-sm text-[var(--fg-secondary)]">{intro}</p>
+      <p className="mb-4 text-body-sm text-[var(--fg-secondary)]">{intro}</p>
 
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">

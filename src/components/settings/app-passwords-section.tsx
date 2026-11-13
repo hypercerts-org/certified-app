@@ -14,9 +14,10 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import ErrorMessage from "@/components/ui/error-message"
-import LoadingSpinner from "@/components/ui/loading-spinner"
+import Skeleton from "@/components/ui/skeleton"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import UnlockAppPasswordsDialog from "./unlock-app-passwords-dialog"
+import { SettingsRow } from "./settings-layout"
 
 /**
  * Create / list / revoke atproto app passwords (`com.atproto.server.*`).
@@ -142,33 +143,27 @@ export default function AppPasswordsSection() {
   // ---- Checking (initial probe) -------------------------------------------
   if (status === "checking") {
     return (
-      <div className="app-passwords">
-        <div className="app-passwords__loading">
-          <LoadingSpinner size="sm" />
-        </div>
-      </div>
+      <SettingsRow label="Access" description="Checking whether app passwords are unlocked.">
+        <Skeleton variant="box" width={132} height={32} />
+      </SettingsRow>
     )
   }
 
   // ---- Locked gate --------------------------------------------------------
   if (status === "locked") {
     return (
-      <div className="app-passwords">
-        <p className="settings__note">
-          App passwords are protected. Unlock with your account password to
-          view, create, or revoke them — the session locks itself again about
-          10 minutes after you unlock.
-        </p>
-        <div className="org-members__add-submit">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => setUnlockOpen(true)}
-          >
-            <Unlock size={14} /> Unlock
-          </Button>
-        </div>
+      <SettingsRow
+        label="Access"
+        description="App passwords are protected. Unlock with your account password to view, create or revoke them; they lock again after about 10 minutes."
+      >
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          onClick={() => setUnlockOpen(true)}
+        >
+          <Unlock size={14} aria-hidden /> Unlock
+        </Button>
         {unlockOpen && (
           <UnlockAppPasswordsDialog
             onUnlocked={() => {
@@ -178,83 +173,88 @@ export default function AppPasswordsSection() {
             onClose={() => setUnlockOpen(false)}
           />
         )}
-      </div>
+      </SettingsRow>
     )
   }
 
   // ---- Unlocked (manage) --------------------------------------------------
   return (
-    <div className="app-passwords">
-      {/* One-time reveal of a freshly created password. */}
-      {created ? (
-        <div className="app-passwords__created">
-          <p className="settings__note">
-            Copy <strong>{created.name}</strong> now — this password won&apos;t
-            be shown again.
-          </p>
-          <div className="app-passwords__secret">
-            <code className="app-passwords__secret-value">
-              {created.password}
-            </code>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => copy(created.password)}
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
+    <>
+      <SettingsRow
+        label="New app password"
+        description="Name it after the app that will use it. The password is shown once."
+      >
+        {/* One-time reveal of a freshly created password. */}
+        {created ? (
+          <div className="app-passwords__created">
+            <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
+              Copy <strong className="font-medium text-[var(--fg-primary)]">{created.name}</strong> now.
+              It won&apos;t be shown again.
+            </p>
+            <div className="app-passwords__secret">
+              <code className="app-passwords__secret-value">
+                {created.password}
+              </code>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => copy(created.password)}
+              >
+                {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setCreated(null)}
+              >
+                Done
+              </Button>
+            </div>
           </div>
-          <div className="org-members__add-submit">
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => setCreated(null)}
-            >
-              Done
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={handleCreate} className="app-passwords__create">
-          <Input
-            label="Name"
-            size="md"
-            autoComplete="off"
-            leadingIcon={<KeyRound size={16} aria-hidden="true" />}
-            placeholder="e.g. my-other-client"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {createError && <ErrorMessage message={createError} />}
-          <div className="org-members__add-submit">
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={isCreating}
-              disabled={!name.trim() || isCreating}
-            >
-              <Plus size={14} /> Create app password
-            </Button>
-          </div>
-        </form>
-      )}
+        ) : (
+          <form onSubmit={handleCreate} className="app-passwords__create">
+            <Input
+              label="Name"
+              size="md"
+              autoComplete="off"
+              leadingIcon={<KeyRound size={16} aria-hidden="true" />}
+              placeholder="e.g. my-other-client"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            {createError && <ErrorMessage message={createError} />}
+            <div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={isCreating}
+                disabled={!name.trim() || isCreating}
+              >
+                <Plus size={14} aria-hidden /> Create app password
+              </Button>
+            </div>
+          </form>
+        )}
+      </SettingsRow>
 
       {/* Existing app passwords. */}
-      {isLoading ? (
-        <div className="app-passwords__loading">
-          <LoadingSpinner size="sm" />
-        </div>
-      ) : loadError ? (
-        <ErrorMessage message={loadError} />
-      ) : items.length === 0 ? (
-        <p className="settings__note">No app passwords yet.</p>
-      ) : (
-        <div className="app-passwords__existing">
-          <h3 className="app-passwords__heading">Your app passwords</h3>
+      <SettingsRow
+        label="Your app passwords"
+        description="Revoking one signs out every app that uses it."
+      >
+        {isLoading ? (
+          <Skeleton variant="line" width="100%" height={20} count={2} />
+        ) : loadError ? (
+          <ErrorMessage message={loadError} />
+        ) : items.length === 0 ? (
+          <p className="m-0 text-body-sm text-[var(--fg-muted)]">None yet.</p>
+        ) : (
           <ul className="app-passwords__list">
             {items.map((p) => (
               <li key={p.name} className="app-passwords__row">
@@ -273,8 +273,8 @@ export default function AppPasswordsSection() {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </SettingsRow>
 
       {confirmRevoke !== null ? (
         <ConfirmDialog
@@ -286,6 +286,6 @@ export default function AppPasswordsSection() {
           onConfirm={() => handleRevoke(confirmRevoke)}
         />
       ) : null}
-    </div>
+    </>
   )
 }
