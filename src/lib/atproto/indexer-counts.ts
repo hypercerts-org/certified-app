@@ -36,9 +36,9 @@ const COUNT_OPERATIONS = [
 ] as const
 
 /**
- * Exact deduped count of the activities a profile CREATED or
- * CONTRIBUTED to (the union, via the indexer's `_or` filter — see the
- * `UserActivityCount` op). One cheap `first: 1` query that reads only
+ * Exact count of the activities a profile created (its own; see the
+ * `UserActivityCount` op), the same definition as the workspace counts.
+ * One cheap `first: 1` query that reads only
  * `totalCount`. Returns null on any failure so callers fall back
  * gracefully instead of rendering a wrong number.
  */

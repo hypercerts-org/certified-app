@@ -92,9 +92,11 @@ export default function ProfileOverview({
   const received = useReceivedEndorsements(did)
   const given = useGivenEndorsements(did)
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
-  // Exact deduped count of activities this account created or contributed
-  // to (the indexer's `_or` totalCount). Falls back to the first page's
-  // count (with "+") if the count query comes back empty.
+  // The account's own activities (the indexer's totalCount), the same
+  // number the Workspace Overview and Records show and the Activities
+  // tab opens on (Created). Activities it only contributed to stay in the
+  // list below and under Activities → Contributed. Falls back to the first
+  // page's count (with "+") if the count query comes back empty.
   const activityCount = useUserActivityCount(did)
   const {
     created,
@@ -131,7 +133,7 @@ export default function ProfileOverview({
 
   const activityValue =
     activityCount ??
-    `${mergedActivities.length}${activitiesHasMore ? "+" : ""}`
+    `${created.length}${activitiesHasMore ? "+" : ""}`
 
   return (
     <div className="profile-overview">

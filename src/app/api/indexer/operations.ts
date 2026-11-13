@@ -162,7 +162,7 @@ ${ACTIVITY_NODE_SELECTION}
     query UserActivityCount($did: String!) {
       orgHypercertsClaimActivity(
         first: 1
-        where: { _or: [{ did: { eq: $did } }, { contributor: { eq: $did } }] }
+        where: { did: { eq: $did } }
       ) {
         totalCount
         edges { node { uri } }

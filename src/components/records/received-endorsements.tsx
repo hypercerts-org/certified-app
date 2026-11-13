@@ -18,6 +18,13 @@ import { RowsSkeleton } from "@/components/records/records-shared"
 
 type OwnStates = ReturnType<typeof useOwnResponseStates>
 
+/** Hidden by you: your "rejected" response, or the stored state while your
+ *  responses are still loading. */
+export function isHiddenEndorsement(endorsement: ReceivedEndorsement, ownStates: OwnStates): boolean {
+  const resolved = ownStates.resolve(endorsement.uri).state
+  return resolved === "unknown" ? endorsement.responseState === "rejected" : resolved === "rejected"
+}
+
 export const ENDORSEMENT_ROW_CLASSES: EndorsementSubjectRowClasses = {
   main: "records-person__main",
   meta: "records-row__text",
@@ -65,9 +72,7 @@ function ReceivedRow({
 }) {
   const { info, isLoading } = useIssuerInfo(endorsement)
   const { displayName } = deriveIdentity(info, endorsement.issuerDid)
-  const resolved = ownStates.resolve(endorsement.uri).state
-  const storedHidden =
-    resolved === "unknown" ? endorsement.responseState === "rejected" : resolved === "rejected"
+  const storedHidden = isHiddenEndorsement(endorsement, ownStates)
   // Optimistic until the refetched responses agree (AGENTS.md §15a).
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
   const hidden = optimistic ?? storedHidden

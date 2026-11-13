@@ -4,10 +4,11 @@ import { useEffect, useState } from "react"
 import { fetchUserActivityCount } from "@/lib/atproto/indexer"
 
 /**
- * Exact deduped count of the activities a profile (`did`) CREATED or
- * CONTRIBUTED to — the union of both buckets, counted once each. Backed
- * by the indexer's `_or` totalCount (see `fetchUserActivityCount`), so
- * it's a precise number rather than the "N+" a capped page fetch gives.
+ * Exact count of the activities a profile (`did`) created: its own, the
+ * same number as the Workspace Overview and Records → Activities (one
+ * definition of "Activities" everywhere). Backed by the indexer's
+ * totalCount (see `fetchUserActivityCount`), so it's a precise number
+ * rather than the "N+" a capped page fetch gives.
  *
  * Returns null while loading or on failure; callers should fall back to
  * a neutral label (or hide the count) in that case.

@@ -27,7 +27,7 @@ import {
 } from "@/lib/atproto/typed-lists"
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
-import ReceivedEndorsements from "@/components/records/received-endorsements"
+import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/received-endorsements"
 import { GroupRows } from "@/components/home/home-sections"
 import { useOrg } from "@/lib/groups/org-context"
 import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
@@ -71,6 +71,16 @@ export function EndorsementsPane({
   // Hidden ones included: this is where you can show them again.
   const received = useReceivedEndorsements(did, { includeRejected: true })
   const ownStates = useOwnResponseStates()
+  // The count is the shown ones, the same number as the Overview and the
+  // profile; hidden ones are named beside it ("3 · 1 hidden").
+  const hiddenCount = received.endorsements.filter((e) => isHiddenEndorsement(e, ownStates)).length
+  const shownCount = received.endorsements.length - hiddenCount
+  const receivedCount =
+    received.isLoading && received.endorsements.length === 0
+      ? undefined
+      : hiddenCount > 0
+        ? `${shownCount} · ${hiddenCount} hidden`
+        : shownCount
   const existing = useMemo(
     () => new Set(given.endorsements.map((e) => e.subjectDid)),
     [given.endorsements],
@@ -104,14 +114,7 @@ export function EndorsementsPane({
         <TabList aria-label="Endorsements">
           {/* Received first: it is what the pane opens on. Counts are left
               out while their list loads. */}
-          <Tab
-            value="received"
-            count={
-              received.isLoading && received.endorsements.length === 0
-                ? undefined
-                : received.endorsements.length
-            }
-          >
+          <Tab value="received" count={receivedCount}>
             Received
           </Tab>
           <Tab
