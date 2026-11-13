@@ -67,8 +67,9 @@ export function useWorkspaceState() {
  * it goes to that workspace's Overview. Inside it, it stays on the same
  * section when the section works for the new account: the Records
  * sections and Groups are personal-only, so picking a group there goes to
- * its Overview. Switching changes who you act as everywhere (the Feed
- * follows it too).
+ * its Overview. Switching changes who you act as (what you create, follow
+ * and endorse as); what Feed and Explore show is "Seen as", a separate
+ * setting (lib/groups/seen-as).
  */
 function useOpenWorkspace() {
   const { activeOrg, switchOrg } = useOrg()

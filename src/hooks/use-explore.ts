@@ -18,6 +18,7 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
+import { useSeenAs } from "@/lib/groups/seen-as"
 import { managedAuthorDids as computeManagedAuthorDids } from "@/lib/groups/managed"
 import { useFollowing } from "@/hooks/use-following"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
@@ -174,18 +175,14 @@ export function useExploreData(opts: {
     [includeOrgLabels],
   )
   const { did: personalDid } = useAuth()
-  const { activeOrg, groups } = useOrg()
-  // "My X" — records OWNED by the current identity. Switches with the
-  // org context: a group admin browsing while acting as the group
-  // should see the group's records here.
-  const viewerDid = activeOrg?.groupDid ?? personalDid
-  // "Accounts I follow" — the human's social graph. Stays anchored on
-  // the personal DID even when acting as a group, because follows are
-  // a per-human relationship (mirrors bsky/twitter semantics) and
-  // groups typically don't maintain their own follow lists. If we read
-  // the group's follows when acting-as, the filter goes empty for
-  // most admins.
-  const { subjects: followedDids } = useFollowing(personalDid)
+  const { groups } = useOrg()
+  // Explore is shown for the account picked in "Seen as" (you or one of
+  // your groups), never the workspace: the two are separate settings
+  // (lib/groups/seen-as). "My X", "Accounts I follow" and "Endorsed
+  // accounts" are all that account's: seen as a group, they are the
+  // group's records, follows and endorsements, as on the Feed.
+  const { seenAs, viewerDid } = useSeenAs()
+  const { subjects: followedDids } = useFollowing(viewerDid)
   // "My organizations" — DIDs of every group the human belongs to.
   // Always personal-scoped (membership is a human relationship).
   // Memoized on the groups array reference so the effect below
@@ -206,14 +203,14 @@ export function useExploreData(opts: {
       })),
     [groups],
   )
-  // Author set for the "My projects" / "My activities" filters. Acting-as
-  // a group keeps the current behaviour (just that group's records). In the
-  // personal context it aggregates the viewer's own records PLUS every
-  // group they own or admin, so group-owned records surface under "My X"
-  // attributed to the group (the row's author column shows the owning DID).
+  // Author set for the "My projects" / "My activities" filters. Seen as a
+  // group: just that group's records. Seen as you: your own records PLUS
+  // every group you own or admin, so group-owned records surface under "My
+  // X" attributed to the group (the row's author column shows the owning
+  // DID).
   const managedAuthorDids = useMemo<string[]>(
-    () => computeManagedAuthorDids(activeOrg, personalDid, groups),
-    [activeOrg, personalDid, groups],
+    () => computeManagedAuthorDids(seenAs, personalDid, groups),
+    [seenAs, personalDid, groups],
   )
 
   // Subscribe to the closure-cache invalidation token. When an

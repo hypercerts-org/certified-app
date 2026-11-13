@@ -9,7 +9,7 @@ import { IdentityAvatar } from "@/components/layout/account-menu"
 import type { MenuMode } from "@/components/layout/menu-row"
 import { groupIdentity, useWorkspaceState, WorkspaceRow } from "@/components/layout/workspace-menu"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useSwitchActor } from "@/lib/groups/use-switch-actor"
+import { useSeenAs } from "@/lib/groups/seen-as"
 import type { Group } from "@/lib/groups/types"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
@@ -19,16 +19,15 @@ export const SEEN_AS_ME = "Me"
 
 /**
  * The list: you ("Me") first, then each of your groups, the current one
- * checked, and a line saying the choice is the app-wide one.
+ * checked, and a line saying it leaves the workspace alone.
  */
 function SeenAsItems({ mode, onClose }: { mode: MenuMode; onClose: () => void }) {
-  const { personal, groups, activeOrg } = useWorkspaceState()
-  const switchActor = useSwitchActor()
+  const { personal, groups } = useWorkspaceState()
+  const { seenAs, setSeenAs } = useSeenAs()
   const noteId = useId()
   const select = (next: Group | null) => {
     onClose()
-    const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
-    if (!isCurrent) switchActor(next)
+    setSeenAs(next)
   }
   return (
     <div className="flex flex-col">
@@ -41,7 +40,7 @@ function SeenAsItems({ mode, onClose }: { mode: MenuMode; onClose: () => void })
         <WorkspaceRow
           mode={mode}
           identity={{ ...personal, name: SEEN_AS_ME }}
-          current={!activeOrg}
+          current={!seenAs}
           onSelect={() => select(null)}
         />
         {groups.map((group) => (
@@ -49,13 +48,13 @@ function SeenAsItems({ mode, onClose }: { mode: MenuMode; onClose: () => void })
             key={group.groupDid}
             mode={mode}
             identity={groupIdentity(group)}
-            current={activeOrg?.groupDid === group.groupDid}
+            current={seenAs?.groupDid === group.groupDid}
             onSelect={() => select(group)}
           />
         ))}
       </div>
       <p id={noteId} className="m-0 px-3 pb-1 pt-2 text-caption text-[var(--fg-muted)]">
-        Also switches your workspace.
+        Changes what Feed and Explore show, not your workspace.
       </p>
     </div>
   )
@@ -64,27 +63,29 @@ function SeenAsItems({ mode, onClose }: { mode: MenuMode; onClose: () => void })
 /**
  * "Seen as", right after the Feed and Explore titles: which account the
  * network is shown for, you ("Me") or one of your groups, and a way to
- * switch. It is the same switch as the Workspace menu (who you act as,
- * app-wide), so the page stays put and the Workspace pill follows. Shown
- * only to a signed-in person in at least one group: with one account
- * there is nothing to pick. A `<Popover>` menu on desktop, a
- * `<BottomSheet>` on phones.
+ * switch. Its own setting (`useSeenAs`), separate from the workspace:
+ * picking here never changes the workspace, and the Workspace menu never
+ * changes this. Shown only to a signed-in person in at least one group:
+ * with one account there is nothing to pick. A `<Popover>` menu on
+ * desktop, a `<BottomSheet>` on phones.
  */
 export default function SeenAsSwitcher() {
   const { isAuthenticated } = useAuth()
-  const { current, canSwitch, isGroup } = useWorkspaceState()
+  const { personal, canSwitch } = useWorkspaceState()
+  const { seenAs } = useSeenAs()
   const { isDesktop } = useLayoutBreakpoints()
   const [open, setOpen] = useRouteScopedOpen()
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   if (!isAuthenticated || !canSwitch) return null
 
-  const name = isGroup ? current.name : SEEN_AS_ME
+  const identity = seenAs ? groupIdentity(seenAs) : personal
+  const name = seenAs ? identity.name : SEEN_AS_ME
   // The visible text is the accessible name: "Seen as Me".
   const content = (
     <>
       <span className="font-normal text-[var(--fg-muted)]">Seen as</span>
-      <IdentityAvatar identity={current} size="xs" />
+      <IdentityAvatar identity={identity} size="xs" />
       <span className="max-w-[160px] truncate">{name}</span>
       <ChevronDown size={14} strokeWidth={1.75} aria-hidden className="text-[var(--fg-muted)]" />
     </>
