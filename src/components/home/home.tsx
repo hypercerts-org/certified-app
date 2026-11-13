@@ -26,7 +26,7 @@ import {
  * the Workspace frame (its side list leads to the Records sections and
  * Groups). The follow feed has its own page, /feed.
  *
- *   ≥ 1300px (beside the side list)             < 1300px (one column)
+ *   ≥ 1100px (beside the side list)             < 1100px (one column)
  *   ┌──────────────────────┐ ┌───────────┐      header
  *   │ header: avatar, name │ │ ID (box)  │      ID (box)
  *   │ bio, website         │ └───────────┘      Your groups (box)
@@ -113,7 +113,7 @@ function HomeAccount({
 
   return (
     // DOM order is the phone order: header, the ID and Your groups boxes,
-    // the sections (records, from others), Apps. From 1300px (beside the
+    // the sections (records, from others), Apps. From 1100px (beside the
     // Workspace side list) a grid puts the two boxes in a column on the
     // right, level with the header (home.css).
     <div className="home__layout">

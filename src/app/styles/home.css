@@ -7,7 +7,7 @@
    file sets the grid and the hairline rows. The follow feed lives on
    /feed; its card styles stay in this file (.home-feed*). */
 
-/* One column below 1300px, in DOM order: header, the ID and Your groups
+/* One column below 1100px, in DOM order: header, the ID and Your groups
    boxes, the sections, Apps. The header's negative bottom margin pulls the
    first box to 24px (phone) / 32px (desktop) below it; the rest keep the
    full gap. */
@@ -40,21 +40,24 @@
   min-width: 0;
 }
 
-/* From 1300px (the Workspace side list takes 268px of the row): the
-   header, the sections and Apps in the left column; the boxes in a 300px
-   column on the right, its top level with the header.
+/* From 1100px, beside the Workspace side list (268px of the row): the
+   header, the sections and Apps in the left column; the boxes in a column
+   on the right, its top level with the header. 280px with a 32px gap at
+   1100–1299px, which leaves the left column about 460px at 1100px (the
+   record counts, latest rows and two app tiles fit); 300px and 48px from
+   1300px.
    The side column spans every row and the last row is 1fr, so a tall
    side column lengthens only that row (under Apps), never the space
    between the header and the sections. */
-@media (min-width: 1300px) {
+@media (min-width: 1100px) {
   .home__layout {
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-rows: auto auto 1fr;
     grid-template-areas:
       "header side"
       "main side"
       "apps side";
-    column-gap: 48px;
+    column-gap: 32px;
     align-items: start;
   }
 
@@ -73,6 +76,13 @@
 
   .home__apps {
     grid-area: apps;
+  }
+}
+
+@media (min-width: 1300px) {
+  .home__layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 48px;
   }
 }
 
@@ -102,7 +112,7 @@
 }
 
 /* The ID's two values between hairlines. Side by side while the box
-   spans the one column (800-1299px). */
+   spans the one column (800-1099px). */
 .home-id {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -110,7 +120,7 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-@media (min-width: 800px) and (max-width: 1299px) {
+@media (min-width: 800px) and (max-width: 1099px) {
   .home-id {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 24px;
