@@ -17,6 +17,7 @@ import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
+import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useOrg } from "@/lib/groups/org-context"
 import type { Group } from "@/lib/groups/types"
 import { CONNECTED_APPS } from "@/lib/constants/apps"
@@ -132,6 +133,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         projects: `${profileBase}?tab=projects`,
         lists: `${profileBase}?tab=lists`,
         endorsements: `${profileBase}?tab=endorsements&sub=received`,
+        endorsementsGiven: `${profileBase}?tab=endorsements&sub=given`,
         followers: `${profileBase}?tab=followers`,
       }
     : {
@@ -140,8 +142,10 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: "/records?kind=activities",
         projects: "/records?kind=activities",
         lists: "/records?kind=lists",
-        // "From others" is about what was received.
+        // "From others" is about what was received; "Your records" counts
+        // the ones given.
         endorsements: "/records?kind=endorsements&tab=received",
+        endorsementsGiven: "/records?kind=endorsements&tab=given",
         followers: "/records?kind=followers",
       }
 }
@@ -161,6 +165,10 @@ export function HomeRecords({
 }) {
   const { projects, isLoading: projectsLoading } = useUserProjects(did)
   const { created, isLoading: activitiesLoading } = useUserIndexerActivities(did)
+  // The same source as Records → Endorsements → Given, so the two counts
+  // agree: one per account endorsed.
+  const given = useGivenEndorsements(did)
+  const givenCount = given.error && given.endorsements.length === 0 ? null : given.endorsements.length
   const hrefs = recordsHrefs(isGroup, profileBase)
 
   // Newest first across both kinds, so the list reads as "what was added
@@ -206,7 +214,9 @@ export function HomeRecords({
     latest.length === 0 &&
     !hasCount(counts.certs) &&
     !hasCount(counts.projects) &&
-    !hasCount(counts.lists)
+    !hasCount(counts.lists) &&
+    !given.isLoading &&
+    !hasCount(givenCount)
 
   return (
     <HomeSection
@@ -250,6 +260,12 @@ export function HomeRecords({
                 value: counts.lists,
                 loading: countsLoading && counts.lists === null,
                 href: hrefs.lists,
+              },
+              {
+                label: byCount(givenCount, "Endorsement given", "Endorsements given"),
+                value: givenCount,
+                loading: given.isLoading && given.endorsements.length === 0,
+                href: hrefs.endorsementsGiven,
               },
             ]}
           />
