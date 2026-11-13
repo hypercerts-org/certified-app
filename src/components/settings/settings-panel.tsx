@@ -20,6 +20,7 @@ import SettingsLayout, {
 import DidSection from "@/components/account/did-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import LookPicker from "@/components/settings/look-picker"
+import CustomLookMaker from "@/components/settings/custom-look-maker"
 import Button from "@/components/ui/button"
 
 const UsernameCard = dynamic(
@@ -192,6 +193,12 @@ export default function SettingsPanel() {
               description="Experimental. Try a design direction for Certified on this device: colours, typefaces and corners change everywhere, in light and dark. Only you see it."
             >
               <LookPicker />
+            </SettingsBlock>
+            <SettingsBlock
+              title="Make a style from a website"
+              description="Experimental. Claude reads a website's colours, typefaces and corners and makes a style for Certified from them, kept in this browser with the others. It runs on your own Claude API key, so Anthropic bills your account for each style."
+            >
+              <CustomLookMaker />
             </SettingsBlock>
           </>
         )

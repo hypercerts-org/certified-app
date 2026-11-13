@@ -22,6 +22,7 @@
     "styleguide:generate": "node scripts/generate-styleguide.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@atproto/api": "^0.13.20",
     "@atproto/crypto": "^0.5.7",
     "@atproto/jwk-jose": "^0.1.11",
@@ -50,7 +51,8 @@
     "react-leaflet": "^5.0.0",
     "resend": "^6.35.0",
     "server-only": "^0.0.1",
-    "undici": "^7.30.1"
+    "undici": "^7.30.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

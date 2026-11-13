@@ -1,7 +1,8 @@
 "use client"
 
 import { Radio, RadioGroup } from "@/components/ui/radio"
-import { LOOKS, isLookId, useLook, type LookId } from "@/lib/look/looks"
+import { useCustomLooks } from "@/lib/look/custom-looks"
+import { LOOKS, isLookId, useLook, type AnyLookId } from "@/lib/look/looks"
 
 /** An initials avatar shaped like `<Avatar>`'s fallback (a ring around a
  *  fill), carrying the avatar centerpiece hooks so each style redraws it.
@@ -39,7 +40,7 @@ function PreviewAvatar({
  * card, two numbers, and an endorsement with a note. Decorative; the tile
  * names the style.
  */
-function LookPreview({ id }: { id: LookId }) {
+function LookPreview({ id }: { id: AnyLookId }) {
   return (
     <span
       data-look-preview={id}
@@ -106,48 +107,75 @@ function LookPreview({ id }: { id: LookId }) {
   )
 }
 
+function LookTile({
+  id,
+  name,
+  description,
+  selected,
+}: {
+  id: AnyLookId
+  name: string
+  description: string
+  selected: boolean
+}) {
+  const descId = `look-${id}-description`
+  return (
+    <Radio
+      value={id}
+      aria-label={name}
+      aria-describedby={descId}
+      className={[
+        "flex-col items-stretch gap-0 overflow-hidden border p-0 text-left",
+        selected
+          ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
+          : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
+      ].join(" ")}
+    >
+      <LookPreview id={id} />
+      <span className="flex flex-col gap-0.5 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2.5">
+        <span className="text-body-sm font-medium text-[var(--fg-primary)]">{name}</span>
+        <span id={descId} className="text-caption text-[var(--fg-muted)]">
+          {description}
+        </span>
+      </span>
+    </Radio>
+  )
+}
+
 /**
  * Settings → Appearance → Style: one tile per style, each a live preview
- * over its name and one line about it. Picking applies the style at once
- * and keeps it in this browser (`useLook`).
+ * over its name and one line about it, then the styles made from websites
+ * in this browser (custom-look-maker.tsx). Picking applies the style at
+ * once and keeps it in this browser (`useLook`).
  */
 export default function LookPicker() {
   const [look, setLook] = useLook()
+  const made = useCustomLooks()
   return (
     <RadioGroup
       value={look}
       onValueChange={(v) => {
         if (isLookId(v)) setLook(v)
+        else {
+          const custom = made.find((l) => l.id === v)
+          if (custom) setLook(custom.id)
+        }
       }}
       aria-label="Style"
       className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
     >
-      {LOOKS.map(({ id, name, description }) => {
-        const selected = look === id
-        const descId = `look-${id}-description`
-        return (
-          <Radio
-            key={id}
-            value={id}
-            aria-label={name}
-            aria-describedby={descId}
-            className={[
-              "flex-col items-stretch gap-0 overflow-hidden border p-0 text-left",
-              selected
-                ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
-                : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
-            ].join(" ")}
-          >
-            <LookPreview id={id} />
-            <span className="flex flex-col gap-0.5 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2.5">
-              <span className="text-body-sm font-medium text-[var(--fg-primary)]">{name}</span>
-              <span id={descId} className="text-caption text-[var(--fg-muted)]">
-                {description}
-              </span>
-            </span>
-          </Radio>
-        )
-      })}
+      {LOOKS.map(({ id, name, description }) => (
+        <LookTile key={id} id={id} name={name} description={description} selected={look === id} />
+      ))}
+      {made.map(({ id, spec, source }) => (
+        <LookTile
+          key={id}
+          id={id}
+          name={spec.name}
+          description={spec.description ? `${spec.description} From ${source}.` : `Made from ${source}.`}
+          selected={look === id}
+        />
+      ))}
     </RadioGroup>
   )
 }
