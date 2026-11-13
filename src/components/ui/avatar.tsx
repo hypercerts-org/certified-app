@@ -87,6 +87,15 @@ function conicRingFor(seed: string): string {
   return `conic-gradient(from ${h % 360}deg, hsl(${a} 38% 58%), hsl(${b} 36% 55%), hsl(${c} 34% 52%), hsl(${a} 38% 58%))`;
 }
 
+/**
+ * How long a picture may take before its initials show. Most pictures
+ * arrive sooner (cache, CDN), and for those the letters would only flash
+ * ("HO" for a second, then the photo): until then the avatar is the plain
+ * neutral fill. A picture still missing after this shows the initials; one
+ * that fails shows them at once; no picture at all shows them at once.
+ */
+export const INITIALS_DELAY_MS = 300;
+
 const Avatar: React.FC<AvatarProps> = ({
   src,
   alt = "",
@@ -98,14 +107,26 @@ const Avatar: React.FC<AvatarProps> = ({
   shape = "circle",
 }) => {
   // Load state per src, so a new src starts over without an effect: the
-  // image failed / finished loading only if it's the one that's showing.
+  // image failed / finished loading / is late only if it's the one that's
+  // showing.
   const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
   const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
+  const [lateSrc, setLateSrc] = React.useState<string | null>(null);
   const radius = shape === "square" ? "rounded" : "rounded-full";
 
   const imageError = !!src && failedSrc === src;
   const loaded = !!src && loadedSrc === src;
+  // Still loading after INITIALS_DELAY_MS. Starts false on the server and
+  // on the client's first render alike (the timer only runs in an effect),
+  // so hydration always agrees: a picture renders as the blank fill first.
+  const late = !!src && lateSrc === src;
   const showFallback = !src || imageError;
+
+  React.useEffect(() => {
+    if (!src || loaded || imageError) return;
+    const timer = window.setTimeout(() => setLateSrc(src), INITIALS_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [src, loaded, imageError]);
   const initials = fallbackInitials.slice(0, 2).toUpperCase();
   // The initials are a picture of the name, which is always written out
   // next to the avatar. With no `alt` they are hidden from assistive tech
@@ -154,21 +175,29 @@ const Avatar: React.FC<AvatarProps> = ({
     ? "border-2 border-[var(--bg-elevated)] bg-[var(--avatar-backdrop)]"
     : "border border-[var(--avatar-ring)] bg-[var(--avatar-backdrop)]";
 
+  // The initials show once the picture is late, and only then is this an
+  // initials avatar for the styles (`data-fallback`, looks.css): the blank
+  // fill before it is not.
+  const lateInitials = !loaded && late;
+
   return (
     <div
       {...centerpiece}
+      {...(lateInitials ? { "data-fallback": "" } : {})}
       className={`${sizeMap[size]} relative shrink-0 ${radius} overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
-      {/* Initials on the neutral fill until the image has loaded, so the
-          avatar is never a blank circle (e.g. the top-bar account button
-          on a slow connection). Removed once loaded, so a transparent
-          logo doesn't show letters through it. */}
+      {/* The neutral fill until the image has loaded, so the avatar is
+          never an empty ring; the initials join it only once the picture
+          is late (INITIALS_DELAY_MS), so a picture that arrives in time
+          never flashes letters first. Same box either way (absolute, the
+          avatar's size), so nothing shifts. Removed once loaded, so a
+          transparent logo doesn't show the fill or letters through it. */}
       {!loaded ? (
         <span
           className={`absolute inset-0 ${radius} bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center`}
           aria-hidden="true"
         >
-          {initials}
+          {late ? initials : null}
         </span>
       ) : null}
       <Image

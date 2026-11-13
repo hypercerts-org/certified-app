@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import Avatar from "../avatar"
+import { describe, it, expect, vi } from "vitest"
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
+import Avatar, { INITIALS_DELAY_MS } from "../avatar"
 
 /**
  * The initials are a picture of a name that is always written out next to
- * the avatar, so a screen reader shouldn't read "AP Ada Pollen". And an
- * image avatar shows the initials until its image has loaded, never a
- * blank circle.
+ * the avatar, so a screen reader shouldn't read "AP Ada Pollen". An image
+ * avatar is the neutral fill while its image loads, with the initials once
+ * the image is late (avatar-initials-delay.test.tsx has the timing).
  */
 describe("Avatar initials", () => {
   it("hides the fallback initials from assistive tech when there's no alt", () => {
@@ -21,14 +21,24 @@ describe("Avatar initials", () => {
     expect(screen.getByRole("img", { name: "Ada Pollen" })).toBeTruthy()
   })
 
-  it("shows the initials until the image loads, then drops them", async () => {
-    render(<Avatar src="https://example.com/a.png" fallbackInitials="AP" />)
-    const initials = screen.getByText("AP")
-    expect(initials.getAttribute("aria-hidden")).toBe("true")
+  it("shows the initials, hidden from assistive tech, once a slow image is late, then drops them on load", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    try {
+      render(<Avatar src="https://example.com/a.png" fallbackInitials="AP" />)
+      act(() => {
+        vi.advanceTimersByTime(INITIALS_DELAY_MS)
+      })
+      const initials = screen.getByText("AP")
+      expect(initials.getAttribute("aria-hidden")).toBe("true")
 
-    const img = document.querySelector("img") as HTMLImageElement
-    fireEvent.load(img)
-    await waitFor(() => expect(screen.queryByText("AP")).toBeNull())
+      const img = document.querySelector("img") as HTMLImageElement
+      await act(async () => {
+        fireEvent.load(img)
+      })
+      expect(screen.queryByText("AP")).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("falls back to the ringed initials when the image fails", async () => {
