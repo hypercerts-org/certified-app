@@ -219,7 +219,7 @@ Made styles change tokens only; the three centerpieces keep Neutral's drawing.
 | Var | Family | Loaded weights | Role |
 |---|---|---|---|
 | `--font-inter` | Inter | Variable font (every weight in one file); the system uses 400 / 500 / 600 | Everything that isn't a title: section headings, buttons, nav, labels, body, meta. |
-| `--font-headline` | Noto Serif (normal + italic) | 300 / 400 / 600 / 700 | Titles of named things: page titles, account names, record titles, empty-state and dialog titles. 300 is landing display only; 400 is landing item titles; 600 is app titles h2-h4; 700 is display, h1 and feed card titles. |
+| `--font-headline` | Noto Serif (normal + italic) | 300 / 400 / 600 / 700 | Titles of named things: page titles, account names, record titles, empty-state and dialog titles. 300 is landing display only; 400 is landing item titles; 600 is app titles h2-h4 and feed card titles; 700 is display and h1. |
 | `--font-mono` | System stack (`ui-monospace, SFMono-Regular, …`) | n/a | DIDs, AT URIs, code; on landing also registry numerals and stats. No web font. |
 
 Inter and Noto Serif load via `next/font/google` with `display: swap`. A spec may only name a loaded weight: an unloaded serif weight silently renders as the nearest loaded face. Inter is loaded as a variable font, so 700 would render; the system still never uses it.
@@ -256,7 +256,7 @@ Five roles cover the app:
 Rules:
 
 - Sizes not in this table are not allowed in new code. Snap 0.9375 / 0.85 / 0.9 / 0.95rem to `body-sm`; 0.7 / 0.78rem to `caption`.
-- Feed card title is serif 700 at `h4` size on mobile, 1.25rem on desktop. It is the one sanctioned responsive app title.
+- Feed card title is serif at the `h4` step (1.125rem, `--weight-headline` 600, leading 1.35) at every width, two-line clamp, `text-wrap: pretty` (not balanced: balancing a clamped title spreads it over short lines).
 - App type does not scale with the viewport. Landing display type is fluid via `clamp()` (§11).
 - Two serif voices: the app speaks firm serif (600/700); the landing speaks light serif (300 display, 400 item titles). Don't mix them on one surface.
 
@@ -848,7 +848,7 @@ Prompts name tokens, not hex. Look values up in `tokens.css` if you need them.
 
 ### 13.1 Example prompts
 
-**Feed card:** "`<Card variant="row">`: no fill, hairline `--border-subtle` below, 20px vertical padding (24 on desktop). `<IdentityRow size="sm">` byline. Optional 1:1 image at `var(--radius)`. Title serif 700 at `text-h4` (1.25rem on desktop), `--fg-primary`, balanced. Description `body-sm` `--fg-secondary`, three-line clamp, `text-wrap: pretty`. Meta row `text-ui` `--fg-muted` with dot separators, `tabular-nums` timestamps, compact badges."
+**Feed card:** "`<Card variant="row">`: no fill, hairline `--border-subtle` below, 20px vertical padding (24 on desktop). `<IdentityRow size="sm">` byline. Optional 1:1 image at `var(--radius)`, the full width of the text column. Title serif at `text-h4` (all widths, 600), `--fg-primary`, `text-wrap: pretty`. Description `body-sm` `--fg-secondary`, three-line clamp, `text-wrap: pretty`. Meta row `text-ui` `--fg-muted` with dot separators, `tabular-nums` timestamps, compact badges."
 
 **Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.97)`. Disabled: sunken fill, muted text, default border. `loading` shows a spinner and sets `aria-busy`."
 
@@ -922,6 +922,7 @@ Names only; values are in `tokens.css`.
 ## 15. Changelog
 
 - **2026-11-13, styles: Neutral, live previews, polish.** The default style is **Neutral** (was Today). Picker tiles are a miniature Overview drawn in each style, centerpieces included: every centerpiece rule exists for the page (`:not([data-look-preview] *)`, so the active style never restyles another tile) and for its own preview. "Seen as" and "for" are a 28px chip (`AccountPicker`). Partner logos lose their outline. Glass menus are near-opaque. The Graph fits the window height. Every `backdrop-filter` puts the unprefixed property after `-webkit-backdrop-filter`: the production minifier keeps only the last of the pair, which had dropped the blur of the form action bars.
+- **2026-11-13, Feed polish (audit FE1-FE4).** Feed images and titles take the full text column; card titles are the h4 step (18px, 600) at every width with `text-wrap: pretty`. From 1100px the columns are filters 240 | feed up to 576 | News 256; the filters column fades its bottom 48px while more is below (`useMoreBelow`, `data-more-below`, a mask so it fades into the canvas). News's "More" sits left-aligned on the posts' edge.
 - **2026-11-13, Floating layers are always opaque.** New token `--bg-floating` (`--bg-elevated`, or a solid colour in a style with translucent cards) for menus, dropdowns, sheets, the drawer, toasts, the walkthrough card, sticky bars and the phone tab bar. In Glass these were see-through (the walkthrough card most of all); now only its cards and the blurred top bar are.
 - **2026-11-13, Styles made from a website (experimental).** Settings → Appearance → **Make a style from a website**: a person's own Claude API key and a website address give a new style, made by Claude from the site's design digest, checked and compiled in the browser, kept there and applied (§2.11).
 - **2026-11-13, Style centerpieces.** Every style redraws the same three places: the avatar, the Overview's ID card and an endorsement (`data-centerpiece` hooks on `<Avatar>`, the ID box and the endorsement rows; §2.11).
