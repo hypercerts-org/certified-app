@@ -1,41 +1,15 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  useLayoutEffect,
-} from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { profileUrl, recordUrl } from "@/lib/urls"
-import {
-  usePageTitle,
-  usePageRecordMenu,
-  useRegisterPageHeader,
-} from "@/lib/navbar-context"
+import { usePageTitle, useRegisterPageHeader } from "@/lib/navbar-context"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
-import {
-  AlignLeft,
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  Coins,
-  FileText,
-  MapPin,
-  Plus,
-  RefreshCw,
-  ScrollText,
-  Target,
-  Users,
-} from "lucide-react"
-import CertIcon from "@/components/ui/cert-icon"
-import ImageEditOverlay from "@/components/feed/image-edit-overlay"
+import { ChevronDown, Pencil, Plus, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import {
@@ -45,10 +19,10 @@ import {
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import { useRights } from "@/hooks/use-rights"
 import { formatShortDate } from "@/lib/utils/format-date"
-import Input from "@/components/ui/input"
-import LoadingSpinner from "@/components/ui/loading-spinner"
-import EditBanner from "@/components/ui/edit-banner"
 import Banner from "@/components/ui/banner"
+import EmptyState from "@/components/ui/empty-state"
+import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
+import Skeleton from "@/components/ui/skeleton"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
 import { useActivityFunding } from "@/hooks/use-activity-funding"
@@ -65,39 +39,26 @@ import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-c
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
-import { TransitionLink } from "@/lib/view-transitions"
 import LeafletDocument, {
   isRenderableDescription,
 } from "@/components/leaflet/leaflet-document"
-import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import CertLocationsMap from "./cert-locations-map"
 import {
+  ActivityProjectField,
   ContributorWeightHeader,
   ContributorRow,
-  SlimTabHeadline,
-  CertHeadlineColumns,
+  RecordByline,
+  RecordHeader,
   RecordSectionTabs,
 } from "./cert-detail-parts"
-import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
+import { SectionTitleCount } from "@/components/create/form-action-bar"
 import {
   contributorKey,
   contributionRoleText,
   buildWeightPercents,
 } from "@/lib/atproto/contributor-display"
 import ContextUpdates from "@/components/context/context-updates"
-import {
-  uploadBlob,
-  type UploadedBlob,
-} from "@/lib/atproto/profile"
-import { putCertRecord } from "@/lib/atproto/cert"
-import { InvalidSwapError } from "@/lib/atproto/repo-write"
-import { saveWithSwap } from "@/lib/atproto/save-with-swap"
-import { asLinearDocument } from "@/lib/leaflet/guards"
-import { isEmptyLongDescription } from "@/lib/leaflet/guards"
-import type { LinearDocument } from "@/lib/leaflet/types"
 import type { ClaimActivity } from "@/lib/atproto/activity-types"
-import type { HypercertsSmallImage } from "@/lib/atproto/types"
-import type { BlobRef } from "@atproto/api"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_CERTS_TYPE } from "@/lib/atproto/typed-lists"
 
@@ -112,44 +73,44 @@ const ActivityFancyBoard = dynamic(
   { ssr: false },
 )
 
+/** Contributors previewed in the Overview's details column. */
+const ASIDE_CONTRIB_PREVIEW = 5
+/** Funding receipts previewed on the Overview. */
+const OVERVIEW_FUNDING_PREVIEW = 5
+
 interface ActivityDetailProps {
   did: string
   value: ClaimActivity
-  /** CID of the record at read time. Threaded into `putRecord` as
-   *  `swapRecord` so a concurrent edit in another tab can't silently
-   *  clobber this save (issue #71). */
+  /** CID of the record at read time (the list / funding strongRefs). */
   cid: string
-  /** Resolved handle, for the navbar breadcrumb (overview tab). */
+  /** Resolved handle of the author. */
   handle: string | null
 }
 
 // Single date format used throughout this view: "Mon D, YYYY".
-// Identical output to lib/utils/format-date.ts#formatShortDate, which
-// also handles invalid input by returning the raw string.
 const formatDate = formatShortDate
 
 /**
  * Detail view of a single activity claim.
  *
- * Layout:
- *   - Left aside: square cert image, optional "Project" section, then
- *     a small Created / Time period / Work scope / Rights meta list.
- *   - Main pane: title, then a date+author byline, then the full
- *     `shortDescription`, an optional disclosure to reveal the rich
- *     `description`, contributors, and a single map for all locations.
+ * Layout, the same at every width:
+ *   - The record header: "Activity" eyebrow, the title (the page's h1)
+ *     with the owner's Edit button and the ⋯ record menu beside it, and
+ *     the byline (author, date created, project).
+ *   - The section tabs (Overview / Contributors / Funding / Updates).
+ *   - The tab content. On Overview, from 800px, a two-column body: the
+ *     summary, updates, funding and locations on the left; the image and
+ *     the details (time period, work scope, contributors, rights) on the
+ *     right. Phones stack the two into one reading order (cert-detail.css).
  *
- * The `.cert-detail--wide` modifier on the root opts this page's
- * `.app-shell__content` parent into a wider max-width via a `:has()`
- * rule in `cert-detail.css` — scoped, so every other page keeps the
- * 600px reading cap.
+ * Editing happens on the edit page (`/{actor}/activity/{rkey}/edit`).
  */
 export default function ActivityDetail({
   did,
   value,
   cid,
-  handle,
 }: ActivityDetailProps) {
-  const baseImageUrl = value.image
+  const imageUrl = value.image
     ? resolveActivityImageUrl(value.image, did)
     : null
 
@@ -159,7 +120,7 @@ export default function ActivityDetail({
   const { evaluatorDids: trustedEvaluatorDids } = useTrustedEvaluators()
   useEffect(() => {
     setImageFailed(false)
-  }, [baseImageUrl])
+  }, [imageUrl])
 
   const workScopeLabel = evaluateWorkScope(value.workScope)
 
@@ -181,16 +142,13 @@ export default function ActivityDetail({
     timePeriodLabel = "Unspecified"
   }
 
-  const createdAbsolute = formatDate(value.createdAt)
-
   const contributors = useMemo(
     () => value.contributors ?? [],
     [value.contributors],
   )
   const contributorCount = contributors.length
-  // Percentages are a full pass over the contributor list; keying the
-  // memo on `contributors` keeps it stable across edit-form keystrokes
-  // (which re-render this component but never touch the contributor set).
+  // Percentages are a full pass over the contributor list; keyed on
+  // `contributors` so unrelated re-renders reuse them.
   const weightPercents = useMemo(
     () => buildWeightPercents(contributors),
     [contributors],
@@ -198,19 +156,14 @@ export default function ActivityDetail({
   const locations = value.locations ?? []
   const showFullDescription = isRenderableDescription(value.description)
   // Overview "Read full description": reveals the full description inline as
-  // its own Description section (the user stays on Overview). The Description
-  // tab remains reachable from the top-bar tab strip for deep links.
+  // its own Description section (the user stays on Overview).
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 
-  // ClaimActivity doesn't carry its own rkey. The page route at
-  // /[actor]/[type]/[rkey] does, and we want to pass it to the
-  // Projects section. Rather than threading another prop from the
-  // page (the page file is carved out beyond the breadcrumb wiring),
-  // we derive it from the trailing pathname segment — same value the
-  // page already decoded via `useParams`. Derived during render (not
-  // in a mount effect) so rkey is available on the first commit: the
-  // funding/updates/projects fetches and the record-menu publication
-  // start immediately instead of after a guaranteed second render.
+  // ClaimActivity doesn't carry its own rkey; the route at
+  // /[actor]/[type]/[rkey] does. Derived from the trailing pathname
+  // segment during render (not in a mount effect) so rkey is available on
+  // the first commit and the funding / updates / projects fetches start
+  // immediately.
   const pathname = usePathname()
   const rkey = useMemo(() => {
     const segments = (pathname ?? "").split("/").filter(Boolean)
@@ -222,6 +175,9 @@ export default function ActivityDetail({
       return last
     }
   }, [pathname])
+  const recordUri = rkey
+    ? `at://${did}/org.hypercerts.claim.activity/${rkey}`
+    : null
 
   const { name: rightsName, isLoading: rightsLoading } = useRights(
     value.rights?.uri ?? null,
@@ -229,26 +185,20 @@ export default function ActivityDetail({
 
   // Funding receipts whose `for` strongRef points at this activity.
   // Loaded once (first: 100) and shared by the overview preview (up to
-  // 5 + "See all") and the Funding tab (all of them). Read-only — no
-  // bearing on the inline-edit state machine.
+  // 5 + "See all") and the Funding tab (all of them).
   const {
     receipts: fetchedFunding,
     isLoading: fundingLoading,
     refetch: refetchFunding,
   } = useActivityFunding(did, rkey)
-  // Updates count — drives the "Updates (N)" mobile navbar title, mirroring
-  // the funding-count pattern.
-  const { updates } = useContextUpdates(
-    rkey ? `at://${did}/org.hypercerts.claim.activity/${rkey}` : null,
-  )
+  // Updates count — shown on the Updates tab.
+  const { updates } = useContextUpdates(recordUri)
   const updatesCount = updates.length
   // Overlay the viewer's optimistic confirmations + collapse matchingReceipt
   // pairs so a just-confirmed payment shows as one confirmed row immediately
   // (issue #186). A *recorded* (non-confirmation) receipt is not optimistically
   // inserted — its provenance must come only from the indexer.
-  const fundingForUri =
-    did && rkey ? `at://${did}/org.hypercerts.claim.activity/${rkey}` : null
-  const fundingReceipts = useMergedFunding(fetchedFunding, fundingForUri)
+  const fundingReceipts = useMergedFunding(fetchedFunding, recordUri)
 
   // Record-funding modal (opener gating is derived after `useAuth` below).
   const [recordFundingOpen, setRecordFundingOpen] = useState(false)
@@ -294,7 +244,7 @@ export default function ActivityDetail({
   const [recordIdentityOpen, setRecordIdentityOpen] = useState(false)
   const [recordFundingAs, setRecordFundingAs] =
     useState<"individual" | "group">("individual")
-  // Rights detail modal (opened from the Rights meta row).
+  // Rights detail modal (opened from the Rights row).
   const [rightsModalOpen, setRightsModalOpen] = useState(false)
 
   // Funding "Confirmed by" filter — same URL-backed state + popover as
@@ -314,18 +264,15 @@ export default function ActivityDetail({
       ),
     [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
   )
-  // Count shown next to the filter control: the number of loaded receipts the
-  // filter currently shows, so it always agrees with the list below it. The
-  // Confirmed-by filter is always applied (its default already hides
-  // third-party-only receipts), so this is the filtered count in every state.
-  // (Counts the loaded window; an activity with >100 receipts is the known
-  // page-1 cap pending magic-indexer #214. The Funding tab strip label keeps
-  // the unfiltered total receipt count.)
+  // The number of loaded receipts the filter currently shows, so the count
+  // always agrees with the list below it. (Counts the loaded window; an
+  // activity with >100 receipts is the known page-1 cap pending
+  // magic-indexer #214.)
   const shownFundingCount = filteredFunding.length
 
   // The Confirmed-by filter control is rendered identically in the overview
   // section and the Funding tab (only one is mounted at a time, tab-gated),
-  // so build it once. All props come from the shared confirmedBy state.
+  // so build it once.
   const confirmedByControl = (
     <FundingConfirmedByPopover
       receipts={fundingReceipts}
@@ -341,24 +288,19 @@ export default function ActivityDetail({
     />
   )
 
-  // Section-scoped note explaining the default Confirmed-by filter: out of the
-  // box the funding section lists only receipts the recipient has confirmed.
-  // Shown only while the filter is at its default (and there's something to
-  // explain) — it drops away the moment the user widens the filter, since
-  // `confirmedBy.isDefault` flips to false. Built once and rendered in both the
-  // overview preview and the Funding tab.
+  // Note explaining the default Confirmed-by filter: out of the box the
+  // funding section lists only receipts the recipient has confirmed. Shown
+  // only while the filter is at its default (and there's something to
+  // explain).
   const recipientConfirmedNote =
     confirmedBy.isDefault && fundingReceipts.length > 0 ? (
-      <Banner variant="info" className="mb-3 py-2.5">
+      <Banner variant="info" className="py-2.5">
         Showing only receipts the recipient has confirmed. Change the filter to
         see more.
       </Banner>
     ) : null
 
-  // Tab strip on the top bar (back-row) drives which slice of the
-  // record renders in the right pane. Keep the left aside identical
-  // across all tabs. (`pathname` is read above, where rkey derives
-  // from it.)
+  // The section tabs drive which slice of the record renders.
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
   const activeTab:
@@ -376,30 +318,24 @@ export default function ActivityDetail({
   // first rows aren't left hidden behind the fixed navbar.
   useScrollTopOnTabChange(activeTab)
 
-  // The record title is the page's h1 on every tab (the headline below), so
+  // The record title is the page's h1 on every tab (the record header), so
   // the page registers its header and the chrome renders no h1 of its own.
-  // The navbar title (the phone bar's compact title next to the back
-  // chevron, and the document title) stays the activity's name on every
-  // tab: the phone tab strip below the title names the section.
+  // The navbar title (the document title) stays the activity's name on
+  // every tab: the tab strip names the section.
   useRegisterPageHeader()
   usePageTitle(value.title || "Activity")
 
-  // Edit affordance — the viewer can act on the cert when they're
-  // signed in as the cert's creator. Two paths:
-  //   - Personal session DID === cert.did (own cert), OR
-  //   - Acting-as-group on the group's own cert, AND the role is
-  //     owner or admin. Members of a group can switch into it via
-  //     the account switcher but the BFF rejects writes from them,
-  //     so we hide the affordance rather than land them on a
-  //     write-rejected edit page.
+  // Edit affordance — the viewer can act on the activity when they're
+  // signed in as its creator. Two paths:
+  //   - Personal session DID === activity DID (own record), OR
+  //   - Acting as the group that owns it, with the owner or admin role.
+  //     Members can switch into a group but the BFF rejects their writes,
+  //     so the affordance stays hidden for them.
   const { did: sessionDid, isAuthenticated } = useAuth()
   // Funding: any signed-in viewer can record a payment they were party to;
   // trusted evaluators additionally get the third-party direction (gated
-  // inside the modal). The "Record funding" affordance shows for any
-  // authenticated viewer.
+  // inside the modal).
   const canRecordFunding = isAuthenticated && !!sessionDid
-  // Shown after a successful record — the receipt only appears once the
-  // indexer has caught up (it's eventually consistent), so offer a refresh.
   // We recorded a receipt and it hasn't surfaced from the indexer yet — used
   // to suppress the "no receipts yet" empty state while we wait.
   const fundingRecordInFlight =
@@ -465,34 +401,23 @@ export default function ActivityDetail({
   // "Record funding" opener — shown in both the overview preview and the
   // Funding tab headers (only one is mounted at a time, tab-gated).
   const recordFundingControl = canRecordFunding ? (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="cert-detail__section-action-btn"
-      onClick={openRecordFunding}
-    >
-      <Plus size={14} strokeWidth={2} aria-hidden />
+    <Button variant="secondary" size="sm" onClick={openRecordFunding}>
+      <Plus size={14} strokeWidth={1.75} aria-hidden />
       Record funding
     </Button>
   ) : null
-  // When acting as a group, the user can only edit certs OWNED BY
-  // that group — even though the session DID is still their
-  // personal identity. Without this, a member who switches into a
-  // group they're part of would still see the Edit button on their
-  // own personal certs, which contradicts the active identity. The
-  // personal-edit branch only fires when there's no active org.
+  // When acting as a group, the user can only edit records OWNED BY that
+  // group — even though the session DID is still their personal identity.
+  // The personal-edit branch only fires when there's no active org.
   const isCreator = activeOrg
     ? canEditAsActiveOrg
     : !!sessionDid && sessionDid === did
-  // When the creator is acting as the group, writes route through
-  // the BFF (target ≠ session); otherwise straight XRPC.
-  const editTargetDid = canEditAsActiveOrg ? did : undefined
-  // Group-edit affordance — the viewer is NOT a direct editor (own cert
+  // Group-edit affordance — the viewer is NOT a direct editor (own record
   // or active-org owner/admin), but they ARE an owner/admin of the group
-  // that owns this cert while signed in under a different identity
-  // (personal, or another org). Offer an Edit button that, on confirm,
-  // switches them into the owning group before opening the editor — the
-  // edit page's own gate then passes and writes route through the group.
+  // that owns this activity while signed in under a different identity
+  // (personal, or another group). Their Edit button, on confirm, switches
+  // them into the owning group before opening the editor — the edit page's
+  // own gate then passes and writes route through the group.
   const editAsGroup = isCreator
     ? null
     : groups.find(
@@ -500,12 +425,15 @@ export default function ActivityDetail({
           g.groupDid === did &&
           (g.role === "owner" || g.role === "admin"),
       ) ?? null
+  const editAsGroupLabel = editAsGroup
+    ? editAsGroup.displayName || editAsGroup.handle
+    : null
   const [groupEditOpen, setGroupEditOpen] = useState(false)
   const editHref = `${recordUrl(did, "activity", rkey ?? "")}/edit`
   // Build a tab href that PRESERVES the current query params (e.g. the
   // funding "Confirmed by" filter `?confirmedRoles=`), so jumping from the
   // overview to a sub-tab via "See all" doesn't reset the filter. Mirrors the
-  // top-bar tab strip's `hrefFor`.
+  // tab strip's `hrefFor`.
   const tabHref = (tab: string): string | null => {
     if (!pathname) return null
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -515,116 +443,7 @@ export default function ActivityDetail({
     return qs ? `${pathname}?${qs}` : pathname
   }
   const fundingHref = tabHref("funding")
-
-  // -------------------------------------------------------------------
-  // Inline edit state — same pattern as the profile page. Drafts are
-  // seeded from `value` when the user enters edit mode; on save we
-  // PUT the record and update local mirrors so the read-only view
-  // immediately reflects the change.
-  // -------------------------------------------------------------------
-  const [isEditing, setIsEditing] = useState(false)
-  const [drafts, setDrafts] = useState({
-    title: "",
-    shortDescription: "",
-    description: null as LinearDocument | null,
-    /** Per issue #75 — these scalar meta fields are now editable
-     *  inline. Date inputs use the `YYYY-MM-DD` shape browsers
-     *  emit; `null` means "field cleared by the user" (save
-     *  handler deletes the key). Work scope is edited as a plain
-     *  string and serialised as the `WorkScopeString` lexicon
-     *  variant. Complex variants (CEL, structured records),
-     *  contributors, locations, and rights remain read-only —
-     *  they need pickers / structured editors out of this scope. */
-    workScope: "",
-    startDate: "" as string,
-    endDate: "" as string,
-  })
-  const [localValue, setLocalValue] = useState<ClaimActivity | null>(null)
-  const [pendingImageBlob, setPendingImageBlob] =
-    useState<UploadedBlob | null>(null)
-  const [pendingImagePreviewUrl, setPendingImagePreviewUrl] =
-    useState<string | null>(null)
-  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  /** Snapshot of the record value + CID at edit-start (the
-   *  CID-precondition baseline for swapRecord). Captured on
-   *  `handleEditClick`; consumed by the swap-aware save handler
-   *  to detect concurrent edits and decide rebase vs banner
-   *  (issue #71). */
-  const [mountSnapshot, setMountSnapshot] = useState<{
-    value: ClaimActivity
-    cid: string
-  } | null>(null)
-
-  // Read values used everywhere a tab renders the cert: prefer the
-  // local mirror (set after save) over the server-supplied `value`.
-  const effectiveValue = localValue ?? value
-  const editing = isEditing && isCreator
-
-  const handleEditClick = useCallback(() => {
-    // Seed the meta scalars from the effective value. Dates come
-    // out of the lexicon as ISO strings; truncate to YYYY-MM-DD
-    // for the HTML date input. evaluateWorkScope returns the
-    // displayed string (handles every union variant), so seeding
-    // the input with it is lossless on a round-trip when the
-    // source was a `WorkScopeString` — but DOES "downgrade" a
-    // CEL workScope to a plain string on save. Acceptable for
-    // v1; the workScope JSX comments document the trade-off.
-    const startSeed =
-      typeof effectiveValue.startDate === "string"
-        ? effectiveValue.startDate.slice(0, 10)
-        : ""
-    const endSeed =
-      typeof effectiveValue.endDate === "string"
-        ? effectiveValue.endDate.slice(0, 10)
-        : ""
-    const workScopeSeed = evaluateWorkScope(effectiveValue.workScope) ?? ""
-    setDrafts({
-      title: effectiveValue.title ?? "",
-      shortDescription: effectiveValue.shortDescription ?? "",
-      description:
-        asLinearDocument(effectiveValue.description) ??
-        (typeof effectiveValue.description === "string" &&
-        effectiveValue.description.trim().length > 0
-          ? {
-              $type: "pub.leaflet.pages.linearDocument" as const,
-              blocks: [
-                {
-                  block: {
-                    $type: "pub.leaflet.blocks.text" as const,
-                    plaintext: effectiveValue.description,
-                  },
-                },
-              ],
-            }
-          : null),
-      workScope: workScopeSeed,
-      startDate: startSeed,
-      endDate: endSeed,
-    })
-    setPendingImageBlob(null)
-    setPendingImagePreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
-    // Capture value + CID at edit-start as the swapRecord baseline.
-    // Save handler compares fresh server reads against this to
-    // detect same-field conflicts.
-    setMountSnapshot({ value: effectiveValue, cid })
-    setSaveError(null)
-    setIsEditing(true)
-  }, [effectiveValue, cid])
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false)
-    setPendingImageBlob(null)
-    setPendingImagePreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return null
-    })
-    setSaveError(null)
-  }, [])
+  const contributorsHref = tabHref("contributors")
 
   // ----- Destructive delete -----
   const router = useRouter()
@@ -632,49 +451,15 @@ export default function ActivityDetail({
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Record-level overflow menu in the mobile navbar's right slot: the owner's
-  // Edit / Delete (moved off the title row on mobile) + Share / Add to list /
-  // Copy AT URI. Reads as page-level chrome instead of an action on the
-  // author. Desktop keeps the inline title-row Edit/Delete + the in-body
-  // share menu (the navbar isn't rendered at >=800px). Placed here so it can
-  // reference the edit/delete handlers defined above.
-  usePageRecordMenu(
-    rkey
-      ? {
-          targetUri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
-          targetCid: cid,
-          targetType: LIST_CERTS_TYPE,
-          shareTab: activeTab === "overview" ? null : activeTab,
-          editActions:
-            !editing && (isCreator || editAsGroup)
-              ? {
-                  isCreator,
-                  editHref,
-                  editAsGroupLabel: editAsGroup
-                    ? editAsGroup.displayName || editAsGroup.handle
-                    : null,
-                  onEditAsGroup: () => setGroupEditOpen(true),
-                  onDelete: () => {
-                    setDeleteError(null)
-                    setDeleteOpen(true)
-                  },
-                }
-              : null,
-        }
-      : null,
-  )
-
   const handleDeleteConfirm = useCallback(async () => {
     if (!rkey) return
     setIsDeleting(true)
     setDeleteError(null)
     try {
-      // Same activeOrg-aware routing the save path uses: group BFF
-      // when acting as a group, xrpc proxy on the user's own repo
-      // otherwise.
+      // Group BFF when acting as the owning group, the xrpc proxy on the
+      // user's own repo otherwise. The group BFF takes DELETE; the xrpc
+      // proxy expects POST for com.atproto.repo.deleteRecord.
       const useGroupRoute = canEditAsActiveOrg
-      // Group BFF takes DELETE; the xrpc proxy expects POST for
-      // com.atproto.repo.deleteRecord per the lexicon.
       const res = await authFetch(
         useGroupRoute
           ? `/api/groups/${encodeURIComponent(did)}/activity`
@@ -703,13 +488,10 @@ export default function ActivityDetail({
           ),
         )
       }
-      // Redirect away from the deleted cert. We use a hard
-      // navigation (window.location) rather than router.push so
-      // every client-side cache the destination page might keep
-      // (profile certs/projects lists, the indexer feed cache,
-      // any module-level memoised fetches) is cleared on the way
-      // — otherwise the just-deleted cert can linger in the
-      // profile grid until the next refresh.
+      // Hard navigation (window.location) rather than router.push so every
+      // client-side cache the destination page might keep (profile lists,
+      // the indexer feed cache, module-level memoised fetches) is cleared
+      // on the way — otherwise the just-deleted activity can linger.
       if (typeof window !== "undefined") {
         window.location.href = profileUrl(did)
       } else {
@@ -725,437 +507,76 @@ export default function ActivityDetail({
     }
   }, [rkey, did, canEditAsActiveOrg, router])
 
-  const handleImageFile = useCallback(
-    async (file: File) => {
-      const previewUrl = URL.createObjectURL(file)
-      setPendingImagePreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev)
-        return previewUrl
-      })
-      const blob = await uploadBlob(
-        file,
-        editTargetDid ? { targetDid: editTargetDid } : undefined,
-      )
-      setPendingImageBlob(blob)
-    },
-    [editTargetDid],
-  )
-
-  const handleSave = useCallback(async () => {
-    if (!rkey || !sessionDid || !isAuthenticated) {
-      setSaveError("Not authenticated")
-      return
-    }
-    if (!mountSnapshot) {
-      setSaveError("Edit state lost — please refresh and try again")
-      return
-    }
-    setIsSaving(true)
-    setSaveError(null)
-    try {
-      const trimmedTitle =
-        drafts.title.trim() || effectiveValue.title || ""
-      const trimmedShort =
-        drafts.shortDescription.trim() ||
-        effectiveValue.shortDescription ||
-        ""
-
-      // saveWithSwap operates on a small user-facing shape for
-      // dirty-set detection. The write callback expands back to
-      // the full ClaimActivity by overlaying onto the captured
-      // `effectiveValue` baseline (carries forward dates,
-      // contributors, work scope, rights, locations).
-      // User-facing shape includes the editable scalars added in
-      // #75: workScope (serialised as the lexicon's WorkScopeString
-      // variant on save) and startDate / endDate. Dirty-set
-      // detection diffs against the mount snapshot in this shape.
-      type UserShape = {
-        title: string
-        shortDescription: string
-        description: typeof drafts.description
-        workScope: string
-        startDate: string
-        endDate: string
-      }
-      const userDrafts: UserShape = {
-        title: trimmedTitle,
-        shortDescription: trimmedShort,
-        description: drafts.description,
-        workScope: drafts.workScope.trim(),
-        startDate: drafts.startDate,
-        endDate: drafts.endDate,
-      }
-      const userMountSnapshot: UserShape = {
-        title: mountSnapshot.value.title ?? "",
-        shortDescription: mountSnapshot.value.shortDescription ?? "",
-        description: (mountSnapshot.value.description ??
-          null) as UserShape["description"],
-        workScope: evaluateWorkScope(mountSnapshot.value.workScope) ?? "",
-        startDate:
-          typeof mountSnapshot.value.startDate === "string"
-            ? mountSnapshot.value.startDate.slice(0, 10)
-            : "",
-        endDate:
-          typeof mountSnapshot.value.endDate === "string"
-            ? mountSnapshot.value.endDate.slice(0, 10)
-            : "",
-      }
-
-      let nextSaved: ClaimActivity | null = null
-      const result = await saveWithSwap<UserShape, UserShape>({
-        mountSnapshot: userMountSnapshot,
-        initialCid: mountSnapshot.cid,
-        drafts: userDrafts,
-        computeNext: (_serverShape, draftsArg) => draftsArg,
-        write: async (next, swapRecord) => {
-          const built: ClaimActivity = {
-            ...effectiveValue,
-            title: next.title,
-            shortDescription: next.shortDescription,
+  // The record's actions, beside the title at every width: the owner's
+  // Edit (a visible button), then the ⋯ menu with Delete, Share, Add to
+  // list and Copy AT URI.
+  const recordActions = (
+    <>
+      {isCreator ? (
+        <Button
+          href={editHref}
+          variant="secondary"
+          size="sm"
+          aria-label="Edit activity"
+        >
+          <Pencil size={14} strokeWidth={1.75} aria-hidden />
+          Edit
+        </Button>
+      ) : editAsGroup ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label="Edit activity"
+          tooltip={`Edit as ${editAsGroupLabel}`}
+          onClick={() => setGroupEditOpen(true)}
+        >
+          <Pencil size={14} strokeWidth={1.75} aria-hidden />
+          Edit
+        </Button>
+      ) : null}
+      {recordUri ? (
+        <AddToListMenu
+          targetUri={recordUri}
+          targetCid={cid}
+          targetType={LIST_CERTS_TYPE}
+          shareTab={activeTab === "overview" ? null : activeTab}
+          editActions={
+            isCreator
+              ? {
+                  isCreator,
+                  editHref,
+                  editAsGroupLabel: null,
+                  onEditAsGroup: () => setGroupEditOpen(true),
+                  onDelete: () => {
+                    setDeleteError(null)
+                    setDeleteOpen(true)
+                  },
+                }
+              : null
           }
-          if (isEmptyLongDescription(next.description)) {
-            delete (built as { description?: unknown }).description
-          } else if (next.description) {
-            built.description = next.description
-          }
-          if (pendingImageBlob) {
-            const imageValue: HypercertsSmallImage = {
-              $type: "org.hypercerts.defs#smallImage",
-              image: pendingImageBlob as unknown as BlobRef,
-            }
-            built.image = imageValue
-          }
-          // workScope — write as the WorkScopeString lexicon
-          // variant; empty string drops the field. This downgrades
-          // a CEL workScope to a plain string when the user edits
-          // (the seed used `evaluateWorkScope` which collapses
-          // every variant to its display string). Acceptable
-          // trade-off for v1 — CEL workscope authoring lives in
-          // a different surface anyway.
-          if (next.workScope) {
-            built.workScope = {
-              $type: "org.hypercerts.claim.activity#workScopeString",
-              scope: next.workScope,
-            }
-          } else {
-            delete (built as { workScope?: unknown }).workScope
-          }
-          // Dates — store as ISO-8601 (YYYY-MM-DD is a valid
-          // prefix; the lexicon accepts both date-only and
-          // full timestamp shapes). Empty input drops the field.
-          if (next.startDate) {
-            built.startDate = next.startDate
-          } else {
-            delete (built as { startDate?: unknown }).startDate
-          }
-          if (next.endDate) {
-            built.endDate = next.endDate
-          } else {
-            delete (built as { endDate?: unknown }).endDate
-          }
-          await putCertRecord(
-            sessionDid,
-            editTargetDid ?? sessionDid,
-            rkey,
-            built,
-            { swapRecord },
-          )
-          nextSaved = built
-        },
-        read: async () => {
-          const params = new URLSearchParams({
-            repo: did,
-            collection: "org.hypercerts.claim.activity",
-            rkey,
-          })
-          const res = await fetch(
-            `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
-          )
-          if (!res.ok) throw new Error(
-              "Saved, but couldn't refresh the page. Reload to see your changes.",
-            )
-          const data = (await res.json()) as {
-            cid: string
-            value: ClaimActivity
-          }
-          return {
-            cid: data.cid,
-            value: {
-              title: data.value.title ?? "",
-              shortDescription: data.value.shortDescription ?? "",
-              description: (data.value.description ??
-                null) as UserShape["description"],
-              workScope: evaluateWorkScope(data.value.workScope) ?? "",
-              startDate:
-                typeof data.value.startDate === "string"
-                  ? data.value.startDate.slice(0, 10)
-                  : "",
-              endDate:
-                typeof data.value.endDate === "string"
-                  ? data.value.endDate.slice(0, 10)
-                  : "",
-            },
-          }
-        },
-      })
-
-      if (!result.ok) {
-        if (result.reason === "conflict") {
-          setSaveError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to see the latest version and re-apply your changes.`,
-          )
-        } else {
-          setSaveError(
-            "Couldn't auto-merge after several retries — refresh to see the latest version and try again.",
-          )
-        }
-        return
-      }
-
-      if (nextSaved) setLocalValue(nextSaved)
-      if (pendingImagePreviewUrl) {
-        setLocalImageUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return pendingImagePreviewUrl
-        })
-      }
-      setPendingImagePreviewUrl(null)
-      setPendingImageBlob(null)
-      setIsEditing(false)
-    } catch (err) {
-      if (err instanceof InvalidSwapError) {
-        setSaveError(
-          "Someone else saved while you were editing — please refresh and try again.",
-        )
-      } else {
-        console.error("Failed to save cert:", err)
-        setSaveError(err instanceof Error ? err.message : "Failed to save activity")
-      }
-    } finally {
-      setIsSaving(false)
-    }
-  }, [
-    rkey,
-    did,
-    sessionDid,
-    isAuthenticated,
-    drafts,
-    effectiveValue,
-    mountSnapshot,
-    pendingImageBlob,
-    pendingImagePreviewUrl,
-    editTargetDid,
-  ])
-
-  // Revoke any outstanding object URL on unmount. Without this, a
-  // user who navigates away mid-edit (or whose page unmounts after
-  // save) leaks the pending preview / local mirror until the tab
-  // closes. The setters above already revoke on replacement; this
-  // is the unmount-side guarantee.
-  //
-  // Use refs (not deps) so the cleanup only fires on unmount — a
-  // deps array on (pendingImagePreviewUrl, localImageUrl) would
-  // revoke the prior render's URLs on every state transition,
-  // including the save flow where one URL is *moved* from pending
-  // to localImageUrl (revoking the URL we just promoted).
-  const pendingImagePreviewUrlRef = useRef(pendingImagePreviewUrl)
-  useLayoutEffect(() => {
-    pendingImagePreviewUrlRef.current = pendingImagePreviewUrl
-  })
-  const localImageUrlRef = useRef(localImageUrl)
-  useLayoutEffect(() => {
-    localImageUrlRef.current = localImageUrl
-  })
-  useEffect(() => {
-    return () => {
-      const a = pendingImagePreviewUrlRef.current
-      const b = localImageUrlRef.current
-      if (a) URL.revokeObjectURL(a)
-      if (b && b !== a) URL.revokeObjectURL(b)
-    }
-  }, [])
-
-  // Resolution order for the displayed cert image:
-  //   1. In-flight preview (object URL created the instant the user
-  //      picked a new image — atproto PDSes don't serve a blob via
-  //      getBlob until the record references it, so we bridge with
-  //      the local file).
-  //   2. Post-save local mirror.
-  //   3. Re-resolve from the local mirror's record if it exists.
-  //   4. Original server value.
-  const effectiveImageUrl =
-    pendingImagePreviewUrl ??
-    localImageUrl ??
-    (localValue?.image
-      ? resolveActivityImageUrl(localValue.image, did)
-      : baseImageUrl)
-
-  // Headline (shared across all tabs) — title row + byline only.
-  // The shortDescription used to be nested here, but that meant the
-  // Overview tab's first body element appeared 12px below the byline
-  // (the headline's internal gap) while the Description and
-  // Contributors tabs' first content sat 24px below (the main
-  // pane's `gap`). Pulling shortDescription OUT of the headline so
-  // it becomes a sibling section in `cert-detail__main` makes all
-  // three tabs start their content at the same vertical position.
-  const headline = (
-    <header className="cert-detail__headline">
-      {/* Mobile: "Activity" eyebrow + date created (right-aligned) above
-          the title — mirrors the project page's "Project" eyebrow row.
-          Hidden on desktop, where the date shows in the headline columns. */}
-      <div className="cert-detail__eyebrow-row">
-        <span className="cert-detail__eyebrow" aria-hidden="true">
-          Activity
-        </span>
-        {value.createdAt ? (
-          <time
-            className="cert-detail__eyebrow-date"
-            dateTime={value.createdAt}
-            title={formatAbsoluteDateTime(value.createdAt)}
-          >
-            {createdAbsolute}
-          </time>
-        ) : null}
-      </div>
-      <div className="cert-detail__title-row">
-        {editing ? (
-          // Bare/flush <Input> for the inline title edit, at the same
-          // ramp step as the read title (`text-h2`, the page title).
-          // borderWeight="hover" reproduces the 1.5px --border-hover /
-          // --fg-primary focus chrome.
-          <Input
-            flush
-            size="bare"
-            borderWeight="hover"
-            type="text"
-            className="flex-[1_1_auto] min-w-0 font-headline !text-h2 text-[var(--fg-primary)] !px-2.5 py-1"
-            value={drafts.title}
-            maxLength={256}
-            placeholder="Activity title"
-            aria-label="Activity title"
-            onChange={(e) =>
-              setDrafts((d) => ({ ...d, title: e.target.value }))
-            }
-          />
-        ) : (
-          <h1 className="cert-detail__title" dir="auto">
-            {effectiveValue.title?.trim() || "Untitled activity"}
-          </h1>
-        )}
-        {!editing && rkey ? (
-          // Three-dot record menu — DESKTOP only, right-aligned on the title
-          // row (the title is flex:1, so it pushes this to the end). Folds the
-          // owner's Edit / Delete (when available) in with Share / Add to list
-          // / Copy AT URI, replacing the old separate Edit + Delete buttons.
-          // On mobile the same menu lives in the navbar (usePageRecordMenu);
-          // this cluster is hidden at <=799px via `.cert-detail__title-actions`.
-          <span className="cert-detail__title-actions">
-            <AddToListMenu
-              targetUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-              targetCid={cid}
-              targetType={LIST_CERTS_TYPE}
-              shareTab={activeTab === "overview" ? null : activeTab}
-              editActions={
-                isCreator || editAsGroup
-                  ? {
-                      isCreator,
-                      editHref,
-                      editAsGroupLabel: editAsGroup
-                        ? editAsGroup.displayName || editAsGroup.handle
-                        : null,
-                      onEditAsGroup: () => setGroupEditOpen(true),
-                      onDelete: () => {
-                        setDeleteError(null)
-                        setDeleteOpen(true)
-                      },
-                    }
-                  : null
-              }
-            />
-          </span>
-        ) : null}
-      </div>
-      {/* No `action` here: on mobile the record menu lives in the navbar
-          (usePageRecordMenu), on desktop in the time-period row below. */}
-      <CertHeadlineColumns
-        did={did}
-        rkey={rkey}
-        createdAt={effectiveValue.createdAt}
-        formattedDate={createdAbsolute}
-      />
-    </header>
-  )
-
-  // Slim headline — used by every tab except Overview: the activity title
-  // with the author pulled up onto the same row (right-aligned, no "Author"
-  // label) and the edit/delete actions tucked into a three-dot menu. No
-  // date-created / project byline (those live on the Overview tab).
-  const slimHeadline = (
-    <SlimTabHeadline
-      did={did}
-      title={effectiveValue.title?.trim() || "Untitled activity"}
-      isCreator={isCreator}
-      editHref={editHref}
-      editAsGroupLabel={
-        editAsGroup ? editAsGroup.displayName || editAsGroup.handle : null
-      }
-      onEditAsGroup={() => setGroupEditOpen(true)}
-      onDelete={() => {
-        setDeleteError(null)
-        setDeleteOpen(true)
-      }}
-    />
-  )
-
-  // Overview-only shortDescription section. Lives BELOW the headline
-  // (with `cert-detail__main`'s 24px gap) so its top edge aligns
-  // with the first content row on the Description / Contributors
-  // tabs.
-  // Summary heading row — just the label now; the "Read full description"
-  // affordance moved to a centered button below the summary (see
-  // `descriptionReveal`).
-  const summaryHead = (
-    <div className="cert-detail__summary-head">
-      <span className="cert-detail__meta-label">
-        <AlignLeft size={12} strokeWidth={2} aria-hidden />
-        Summary
-      </span>
-    </div>
-  )
-
-  const shortDescSection =
-    activeTab !== "overview" ? null : editing ? (
-      <section className="cert-detail__section cert-detail__section--summary">
-        {summaryHead}
-        <textarea
-          className="cert-detail__short-desc-input"
-          value={drafts.shortDescription}
-          maxLength={512}
-          placeholder="A short description (one or two lines)…"
-          aria-label="Short description"
-          onChange={(e) =>
-            setDrafts((d) => ({ ...d, shortDescription: e.target.value }))
-          }
-          rows={3}
         />
-      </section>
-    ) : effectiveValue.shortDescription ? (
+      ) : null}
+    </>
+  )
+
+  // Overview-only summary. Rendered as a sibling of the tab panel (not
+  // inside it) so the phone reading order can place the details rows
+  // (time period, work scope, contributors, rights) between it and the
+  // rest of the overview.
+  const shortDescSection =
+    activeTab === "overview" && value.shortDescription ? (
       <section className="cert-detail__section cert-detail__section--summary">
-        {summaryHead}
+        <SectionHeader title="Summary" />
         <p className="cert-detail__short-desc" dir="auto">
-          {effectiveValue.shortDescription}
+          {value.shortDescription}
         </p>
       </section>
     ) : null
 
   // Overview "Read full description": a centered disclosure button below the
   // summary that reveals the full rich description inline as its own
-  // Description section, and collapses it again. The chevron encodes the
-  // behaviour — it points down to expand and rotates to point up once open
-  // (rotation driven off the button's aria-expanded in CSS), so the control
-  // reads as an in-place toggle rather than a navigation. Hidden while editing
-  // (the Description editor lives on its own tab) and when there's no rich
-  // description to show.
+  // Description section, and collapses it again. The chevron points down to
+  // expand and flips up once open (driven off aria-expanded in CSS).
   const descriptionToggle = (
     <div className="cert-detail__desc-toggle">
       <Button
@@ -1176,39 +597,11 @@ export default function ActivityDetail({
     </div>
   )
 
-  // While editing, the full-description editor lives here on the overview
-  // (the dedicated Description tab was removed — the overview now owns both
-  // reading and editing the description). Otherwise: the centered toggle
-  // reveals the read-only description inline.
-  const descriptionReveal = editing ? (
-    <section className="cert-detail__section">
-      <div className="cert-detail__section-header">
-        <h2 className="cert-detail__section-title">
-          <ScrollText size={12} strokeWidth={2} aria-hidden />
-          Description
-        </h2>
-      </div>
-      <LeafletEditor
-        value={drafts.description}
-        onChange={(next) => setDrafts((d) => ({ ...d, description: next }))}
-        placeholder="Full description of this activity."
-        ariaLabel="Activity description"
-        did={did}
-        onImageUpload={(file) =>
-          uploadBlob(file, editTargetDid ? { targetDid: editTargetDid } : undefined)
-        }
-      />
-    </section>
-  ) : !showFullDescription ? null : descriptionExpanded ? (
+  const descriptionReveal = !showFullDescription ? null : descriptionExpanded ? (
     <>
       <section className="cert-detail__section">
-        <div className="cert-detail__section-header">
-          <h2 className="cert-detail__section-title">
-          <ScrollText size={12} strokeWidth={2} aria-hidden />
-          Description
-        </h2>
-        </div>
-        <LeafletDocument value={effectiveValue.description} did={did} />
+        <SectionHeader title="Description" />
+        <LeafletDocument value={value.description} did={did} />
       </section>
       {descriptionToggle}
     </>
@@ -1216,298 +609,83 @@ export default function ActivityDetail({
     descriptionToggle
   )
 
+  // Funding list body, shared by the overview preview (first five) and the
+  // Funding tab (all).
+  const fundingBody = (limit?: number) =>
+    fundingReceipts.length === 0 ? (
+      fundingRecordInFlight ? null : (
+        <EmptyState
+          variant="inline"
+          title="No funding receipts for this activity yet."
+        />
+      )
+    ) : filteredFunding.length > 0 ? (
+      <ul className="cert-detail__funding-list">
+        <li>
+          <FundingReceiptHeader showFor={false} />
+        </li>
+        {(limit ? filteredFunding.slice(0, limit) : filteredFunding).map((r) => (
+          <li key={r.uri}>
+            <FundingReceiptRow receipt={r} showTextParties showFor={false} />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <EmptyState variant="inline" title="No funding receipts match this filter.">
+        {!confirmedBy.isDefault ? (
+          <Button variant="ghost" size="sm" onClick={confirmedBy.reset}>
+            Reset filter
+          </Button>
+        ) : null}
+      </EmptyState>
+    )
+
   // The Contributors list — shown on the Contributors tab beneath the
-  // deluxe board.
+  // contributor board.
   const contributorsSection = (
     <section className="cert-detail__section">
-      <div className="cert-detail__section-header">
-        <h2 className="cert-detail__section-title">
-          <Users size={12} strokeWidth={2} aria-hidden />
-          Contributors
-          <span className="cert-detail__meta-count">{contributorCount}</span>
-        </h2>
-      </div>
+      <SectionHeader
+        title={<SectionTitleCount label="Contributors" count={contributorCount} />}
+      />
       {contributorCount > 0 ? (
-        (() => {
-          return (
-            <>
-              {contributors.some((c) => c.contributionWeight != null) ? (
-                <ContributorWeightHeader />
-              ) : null}
-              <ul className="cert-detail__contributors">
-                {contributors.map((c, i) => {
-                  const roleText = contributionRoleText(c.contributionDetails)
-                  return (
-                    <ContributorRow
-                      key={contributorKey(c, i)}
-                      contributor={c}
-                      role={roleText}
-                      weight={
-                        weightPercents.get(i) ?? c.contributionWeight ?? null
-                      }
-                    />
-                  )
-                })}
-              </ul>
-            </>
-          )
-        })()
+        <div>
+          {contributors.some((c) => c.contributionWeight != null) ? (
+            <ContributorWeightHeader />
+          ) : null}
+          <ul className="cert-detail__contributors">
+            {contributors.map((c, i) => (
+              <ContributorRow
+                key={contributorKey(c, i)}
+                contributor={c}
+                role={contributionRoleText(c.contributionDetails)}
+                weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
+              />
+            ))}
+          </ul>
+        </div>
       ) : (
-        <p className="cert-detail__short-desc">No contributors listed.</p>
+        <EmptyState variant="inline" title="No contributors listed." />
       )}
     </section>
   )
 
   return (
     <>
-      {/* Editing banner sits ABOVE the cert-detail grid so it spans
-          the full content width. Placing it inside the article made
-          it a grid child of the 2-column layout and squashed it into
-          the left rail. */}
-      {editing ? (
-        <EditBanner
-          label="Editing activity"
-          error={saveError}
-          isSaving={isSaving}
-          onCancel={handleCancelEdit}
-          onSave={handleSave}
-        />
-      ) : null}
+      <article className="record-page">
+        <RecordHeader
+          kind="Activity"
+          title={value.title?.trim() || "Untitled activity"}
+          actions={recordActions}
+        >
+          <RecordByline did={did} createdAt={value.createdAt || null}>
+            <ActivityProjectField
+              did={did}
+              rkey={rkey}
+              canAddToProject={isCreator}
+            />
+          </RecordByline>
+        </RecordHeader>
 
-      <article
-        className={`page-layout cert-detail--wide cert-detail--tab-${activeTab}${editing ? " cert-detail--editing" : ""}`}
-      >
-      <aside className="cert-detail__aside" aria-label="Activity details">
-        {/* No placeholder in the read-only view: the image box renders
-            only when there's a real image (or in edit mode, where the
-            placeholder is the upload target). */}
-        {(effectiveImageUrl && !imageFailed) || editing ? (
-          <div
-            className={
-              editing
-                ? "cert-detail__image cert-detail__image--editing"
-                : "cert-detail__image"
-            }
-          >
-            {effectiveImageUrl && !imageFailed ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={effectiveImageUrl}
-                alt=""
-                className="cert-detail__image-img"
-                onError={() => setImageFailed(true)}
-              />
-            ) : (
-              <CertIcon
-                size={56}
-                strokeWidth={1.25}
-                className="cert-detail__image-placeholder-icon"
-                aria-hidden
-              />
-            )}
-            {editing ? (
-              <ImageEditOverlay
-                onFile={handleImageFile}
-                hasPending={!!pendingImageBlob}
-              />
-            ) : null}
-          </div>
-        ) : null}
-
-        <dl className="cert-detail__meta">
-          {/* "Created" lives in the headline byline now — no need to
-              repeat it in the aside meta list. */}
-          <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
-            <dt className="cert-detail__meta-label">
-              <span className="cert-detail__meta-label-text">
-                <Calendar size={12} strokeWidth={2} aria-hidden />
-                Time period
-              </span>
-            </dt>
-            <dd className="cert-detail__meta-value">
-              {editing ? (
-                /* Two date inputs in place of the rendered label.
-                   Empty input drops the field on save (#75). */
-                <span className="cert-detail__meta-edit">
-                  {/* `!w-auto max-w-full min-w-0` reproduces the legacy
-                      `.cert-detail__meta-input` sizing (no fixed width,
-                      max-width:100%, min-width:0) — the primitive's
-                      flush `w-full` would otherwise stretch each date
-                      field inside this inline-flex meta-edit row. */}
-                  <Input
-                    flush
-                    density="compact"
-                    borderWeight="hover"
-                    type="date"
-                    aria-label="Start date"
-                    className="!w-auto max-w-full min-w-0"
-                    value={drafts.startDate}
-                    onChange={(e) =>
-                      setDrafts((d) => ({ ...d, startDate: e.target.value }))
-                    }
-                  />
-                  <span aria-hidden="true">–</span>
-                  <Input
-                    flush
-                    density="compact"
-                    borderWeight="hover"
-                    type="date"
-                    aria-label="End date"
-                    className="!w-auto max-w-full min-w-0"
-                    value={drafts.endDate}
-                    onChange={(e) =>
-                      setDrafts((d) => ({ ...d, endDate: e.target.value }))
-                    }
-                  />
-                </span>
-              ) : (
-                timePeriodLabel
-              )}
-            </dd>
-          </div>
-
-          {editing || workScopeLabel ? (
-            <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
-              <dt className="cert-detail__meta-label">
-                <Target size={12} strokeWidth={2} aria-hidden />
-                Work scope
-              </dt>
-              <dd className="cert-detail__meta-value">
-                {editing ? (
-                  /* Plain text input. Serialised as the
-                     `WorkScopeString` lexicon variant on save;
-                     complex CEL workscope authoring lives
-                     elsewhere (#75 trade-off).
-                     `!w-auto max-w-full min-w-0` reproduces the legacy
-                     `.cert-detail__meta-input` sizing (intrinsic width,
-                     not the primitive's flush `w-full`). */
-                  <Input
-                    flush
-                    density="compact"
-                    borderWeight="hover"
-                    type="text"
-                    aria-label="Work scope"
-                    className="!w-auto max-w-full min-w-0"
-                    placeholder="e.g. mentorship, code review…"
-                    value={drafts.workScope}
-                    maxLength={256}
-                    onChange={(e) =>
-                      setDrafts((d) => ({ ...d, workScope: e.target.value }))
-                    }
-                  />
-                ) : (
-                  workScopeLabel
-                )}
-              </dd>
-            </div>
-          ) : null}
-
-          {/* Contributors row — preview of up to 5, with a "Show all"
-              tail link into the dedicated Contributors tab when there
-              are more. Lives in the aside (not the main pane) so the
-              top of the main column stays reserved for narrative
-              content. NOT tab-gated: the aside is identical on every
-              cert tab. */}
-          {contributorCount > 0
-            ? (() => {
-                const ASIDE_CONTRIB_PREVIEW = 5
-                const shown = contributors.slice(0, ASIDE_CONTRIB_PREVIEW)
-                const contributorsHref = tabHref("contributors")
-                const hasAnyWeight = shown.some(
-                  (c) => c.contributionWeight != null,
-                )
-                // Percentages computed across the FULL list so the %
-                // column adds to 100 even when only the first 5 show
-                // (`weightPercents` above is memoized on `contributors`).
-                return (
-                  <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
-                    <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
-                      <span className="cert-detail__meta-label-text">
-                        <Users size={12} strokeWidth={2} aria-hidden />
-                        Contributors
-                        <span className="cert-detail__meta-count">
-                          {contributorCount}
-                        </span>
-                      </span>
-                      {contributorsHref ? (
-                        <TransitionLink
-                          href={contributorsHref}
-                          replace
-                          className="cert-detail__section-see-all"
-                        >
-                          See all
-                          <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-                        </TransitionLink>
-                      ) : null}
-                    </dt>
-                    <dd className="cert-detail__meta-value">
-                      {hasAnyWeight ? <ContributorWeightHeader /> : null}
-                      <ul className="cert-detail__contributors cert-detail__contributors--aside">
-                        {shown.map((c, i) => {
-                          const roleText = contributionRoleText(
-                            c.contributionDetails,
-                          )
-                          return (
-                            <ContributorRow
-                              key={contributorKey(c, i)}
-                              contributor={c}
-                              role={roleText}
-                              weight={
-                                weightPercents.get(i) ??
-                                c.contributionWeight ??
-                                null
-                              }
-                            />
-                          )
-                        })}
-                      </ul>
-                    </dd>
-                  </div>
-                )
-              })()
-            : null}
-
-          {/* Rights row — sits at the bottom of the meta list. The
-              other meta rows are quick scalar facts; Rights
-              references an external record and reads as a
-              less-frequent reference. */}
-          {value.rights ? (
-            <div className="cert-detail__meta-row cert-detail__meta-row--rights">
-              <dt className="cert-detail__meta-label">
-                <FileText size={12} strokeWidth={2} aria-hidden />
-                Rights
-              </dt>
-              <dd className="cert-detail__meta-value">
-                <button
-                  type="button"
-                  className="cert-detail__rights-link"
-                  onClick={() => setRightsModalOpen(true)}
-                  title="View rights details"
-                >
-                  {rightsName ? (
-                    rightsName
-                  ) : rightsLoading ? (
-                    <span className="cert-detail__meta-aux">Loading…</span>
-                  ) : (
-                    <span className="cert-detail__uri">{value.rights.uri}</span>
-                  )}
-                </button>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      </aside>
-
-      <div className="page-layout__main cert-detail__main">
-        {/* Title stays put across tabs (the active tab shows in the top
-            bar's second row); only the per-tab content below slides. Every
-            tab except Overview uses the slim headline (author on the title
-            row, actions in a three-dot menu, no date/project byline);
-            Overview keeps the full headline with the byline columns. */}
-        {activeTab === "overview" ? headline : slimHeadline}
-
-        {/* Phones: the record's sections as a tab strip under the title
-            (from 800px they live in the desktop top bar's second row). */}
         <RecordSectionTabs
           tabs={CERT_DETAIL_TABS}
           activeKey={activeTab}
@@ -1519,274 +697,287 @@ export default function ActivityDetail({
           }}
         />
 
-        {/* Short description / summary. Rendered as a SIBLING of the tab
-            panel (not inside it) so the mobile single-column order can place
-            the facts meta rows (time period / work scope / contributors /
-            rights) between the summary and the updates. Overview-only — null
-            on the other tabs. On desktop it sits in the same spot (right
-            after the headline, before the tab content). */}
-        {shortDescSection}
-
-        <TabPanelTransition
-          className="cert-detail__content"
-          activeKey={activeTab}
-          order={CERT_DETAIL_TABS.map((t) => t.key)}
+        <div
+          className={`page-layout cert-detail--wide cert-detail--tab-${activeTab}`}
         >
-        {activeTab === "overview" ? (
-          <>
-            {/* Read-full-description: centered button below the summary that
-                reveals the full description inline as a Description section. */}
-            {descriptionReveal}
-            {/* Updates preview sits above Locations: after the cert's
-                narrative (summary / read-full link) the reader sees
-                the latest activity, then the where. Capped at one
-                card here — the "See all" link jumps to the dedicated
-                Updates tab for the rest. */}
-            {rkey ? (
-              <ContextUpdates
-                subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-                variant="overview"
-                maxItems={1}
-                seeAllHref={tabHref("updates")}
-              />
+          <aside className="cert-detail__aside" aria-label="Activity details">
+            {/* The image box renders only when there's a real image. */}
+            {imageUrl && !imageFailed ? (
+              <div className="cert-detail__image">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="cert-detail__image-img"
+                  onError={() => setImageFailed(true)}
+                />
+              </div>
             ) : null}
 
-            {/* Funding preview — up to 5 receipts for this activity, with a
-                "See all" link into the dedicated Funding tab. Also shown
-                (header only) to a signed-in viewer with no receipts yet, so
-                they can record one. Read-only otherwise — no bearing on the
-                inline-edit state. The `for` tail is omitted (it's this
-                activity) and text wallet-address funders are surfaced. */}
-            {fundingReceipts.length > 0 || canRecordFunding ? (
-              <section className="cert-detail__section">
-                <div className="cert-detail__section-header">
-                  <h2 className="cert-detail__section-title">
-                    <Coins size={12} strokeWidth={2} aria-hidden />
-                    Funding
-                    {fundingReceipts.length > 0 ? (
-                      <span className="cert-detail__meta-count">
-                        {shownFundingCount}
-                      </span>
-                    ) : null}
-                  </h2>
-                  <div className="cert-detail__section-actions">
-                    {recordFundingControl}
-                    {fundingReceipts.length > 0 ? confirmedByControl : null}
-                    {fundingHref && fundingReceipts.length > 0 ? (
-                      <TransitionLink
-                        href={fundingHref}
-                        replace
-                        className="cert-detail__section-see-all"
-                      >
-                        See all
-                        <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-                      </TransitionLink>
-                    ) : null}
-                  </div>
-                </div>
-                {fundingRecordedNote}
-                {recipientConfirmedNote}
-                {fundingReceipts.length === 0 ? (
-                  fundingRecordInFlight ? null : (
-                    <p className="cert-detail__short-desc cert-detail__funding-empty">
-                      No funding receipts for this activity yet.
-                    </p>
-                  )
-                ) : filteredFunding.length > 0 ? (
-                  <ul className="cert-detail__funding-list">
-                    <li>
-                      <FundingReceiptHeader showFor={false} />
-                    </li>
-                    {filteredFunding.slice(0, 5).map((r) => (
-                      <li key={r.uri}>
-                        <FundingReceiptRow
-                          receipt={r}
-                          showTextParties
-                          showFor={false}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="cert-detail__short-desc cert-detail__funding-empty">
-                    No funding receipts match this filter.
-                  </p>
-                )}
-              </section>
-            ) : null}
+            <dl className="cert-detail__meta">
+              <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
+                <dt className="cert-detail__meta-label">Time period</dt>
+                <dd className="cert-detail__meta-value">{timePeriodLabel}</dd>
+              </div>
 
-            {/* Locations + map. Overview-only (the main pane is
-                tab-gated); the aside no longer carries a Locations
-                row.
-                Contributors moved to the aside meta-list — see the
-                Contributors row above (`<dt>Contributors</dt>`).
-                Project association is surfaced in the three-column
-                byline below the title (see `<CertHeadlineColumns>`),
-                so the older full-width Projects section is gone — it
-                would have duplicated the headline Project column. */}
-            {locations.length > 0 ? (
-              <section className="cert-detail__section cert-detail__section--locations">
-                <span className="cert-detail__meta-label">
-                  <MapPin size={12} strokeWidth={2} aria-hidden />
-                  Locations
-                  <span className="cert-detail__meta-count">
-                    {locations.length}
-                  </span>
-                </span>
-                <CertLocationsMap locations={locations} />
-              </section>
-            ) : null}
-          </>
-        ) : activeTab === "contributors" ? (
-          <>
-            {contributorCount > 0 ? (
-              <ActivityFancyBoard
-                did={did}
-                rkey={rkey}
-                contributors={contributors}
-              />
-            ) : null}
-            {contributorsSection}
-          </>
-        ) : activeTab === "funding" ? (
-          <section className="cert-detail__section">
-            <div className="cert-detail__section-header">
-              <h2 className="cert-detail__section-title">
-                <Coins size={12} strokeWidth={2} aria-hidden />
-                Funding
-                {fundingReceipts.length > 0 ? (
-                  <span className="cert-detail__meta-count">
-                    {shownFundingCount}
-                  </span>
-                ) : null}
-              </h2>
-              {recordFundingControl || fundingReceipts.length > 0 ? (
-                <div className="cert-detail__section-actions">
-                  {recordFundingControl}
-                  {fundingReceipts.length > 0 ? confirmedByControl : null}
+              {workScopeLabel ? (
+                <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
+                  <dt className="cert-detail__meta-label">Work scope</dt>
+                  <dd className="cert-detail__meta-value">{workScopeLabel}</dd>
                 </div>
               ) : null}
-            </div>
-            {fundingRecordedNote}
-            {recipientConfirmedNote}
-            {fundingLoading && fundingReceipts.length === 0 ? (
-              <div className="cert-detail__funding-loading">
-                <LoadingSpinner size="sm" />
-              </div>
-            ) : fundingReceipts.length === 0 ? (
-              fundingRecordInFlight ? null : (
-                <p className="cert-detail__short-desc cert-detail__funding-empty">
-                  No funding receipts for this activity yet.
-                </p>
-              )
-            ) : filteredFunding.length > 0 ? (
-              <ul className="cert-detail__funding-list">
-                <li>
-                  <FundingReceiptHeader showFor={false} />
-                </li>
-                {filteredFunding.map((r) => (
-                  <li key={r.uri}>
-                    <FundingReceiptRow
-                      receipt={r}
-                      showTextParties
-                      showFor={false}
+
+              {/* Up to five contributors, with "See all" into the
+                  Contributors tab. Percentages come from the FULL list
+                  so the column adds to 100 even when only five show. */}
+              {contributorCount > 0 ? (
+                <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
+                  <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
+                    <span className="cert-detail__meta-label-text">
+                      Contributors{" "}
+                      <span className="cert-detail__meta-count">
+                        {contributorCount}
+                      </span>
+                    </span>
+                    {contributorsHref ? <SeeAllLink href={contributorsHref} /> : null}
+                  </dt>
+                  <dd className="cert-detail__meta-value">
+                    {contributors
+                      .slice(0, ASIDE_CONTRIB_PREVIEW)
+                      .some((c) => c.contributionWeight != null) ? (
+                      <ContributorWeightHeader />
+                    ) : null}
+                    <ul className="cert-detail__contributors cert-detail__contributors--aside">
+                      {contributors.slice(0, ASIDE_CONTRIB_PREVIEW).map((c, i) => (
+                        <ContributorRow
+                          key={contributorKey(c, i)}
+                          contributor={c}
+                          role={contributionRoleText(c.contributionDetails)}
+                          weight={
+                            weightPercents.get(i) ?? c.contributionWeight ?? null
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ) : null}
+
+              {/* Rights references an external record; opens the rights
+                  detail dialog. */}
+              {value.rights ? (
+                <div className="cert-detail__meta-row cert-detail__meta-row--rights">
+                  <dt className="cert-detail__meta-label">Rights</dt>
+                  <dd className="cert-detail__meta-value">
+                    {rightsLoading && !rightsName ? (
+                      <Skeleton variant="line" width="8rem" height="0.875rem" />
+                    ) : (
+                      <button
+                        type="button"
+                        className="cert-detail__rights-link"
+                        onClick={() => setRightsModalOpen(true)}
+                        title="View rights details"
+                      >
+                        {rightsName ? (
+                          rightsName
+                        ) : (
+                          <span className="cert-detail__uri">{value.rights.uri}</span>
+                        )}
+                      </button>
+                    )}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </aside>
+
+          <div className="page-layout__main cert-detail__main">
+            {shortDescSection}
+
+            <TabPanelTransition
+              className="cert-detail__content"
+              activeKey={activeTab}
+              order={CERT_DETAIL_TABS.map((t) => t.key)}
+            >
+              {activeTab === "overview" ? (
+                <>
+                  {descriptionReveal}
+                  {/* The latest update, then funding, then where. */}
+                  {recordUri ? (
+                    <ContextUpdates
+                      subjectUri={recordUri}
+                      variant="overview"
+                      maxItems={1}
+                      seeAllHref={tabHref("updates")}
                     />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="cert-detail__short-desc cert-detail__funding-empty">
-                No funding receipts match this filter.
-              </p>
-            )}
-          </section>
-        ) : activeTab === "updates" ? (
-          rkey ? (
-            <ContextUpdates
-              subjectUri={`at://${did}/org.hypercerts.claim.activity/${rkey}`}
-              variant="full"
-              canEdit={isCreator || !!editAsGroup}
-              viewerDid={sessionDid}
-            />
-          ) : null
-        ) : null}
-        </TabPanelTransition>
-      </div>
-    </article>
-    {deleteOpen ? (
-      <DeleteRecordDialog
-        title="Delete activity?"
-        recordName={effectiveValue.title || ""}
-        recordTypeLabel="activity"
-        isDeleting={isDeleting}
-        errorMessage={deleteError}
-        onCancel={() => {
-          if (!isDeleting) setDeleteOpen(false)
-        }}
-        onConfirm={handleDeleteConfirm}
-      />
-    ) : null}
-    {groupEditOpen && editAsGroup ? (
-      <ConfirmDialog
-        title="Edit as group"
-        message={`This activity is published by ${editAsGroup.displayName || editAsGroup.handle}. You'll switch to acting as that group to edit it — your changes are saved as the group, not your personal account.`}
-        confirmLabel="Continue as group"
-        confirmVariant="primary"
-        onCancel={() => setGroupEditOpen(false)}
-        onConfirm={() => {
-          switchOrg(editAsGroup)
-          setGroupEditOpen(false)
-          router.push(editHref)
-        }}
-      />
-    ) : null}
-    {recordIdentityOpen && sessionDid && fundingAuthoringGroup ? (
-      <FundingIdentityChoiceDialog
-        individualDid={sessionDid}
-        groupDid={did}
-        onChoose={(as) => {
-          setRecordFundingAs(as)
-          setRecordIdentityOpen(false)
-          setRecordFundingOpen(true)
-        }}
-        onClose={() => setRecordIdentityOpen(false)}
-      />
-    ) : null}
-    {recordFundingOpen && sessionDid && rkey
-      ? (() => {
-          // The author is the chosen identity: the group (only when the
-          // viewer is its owner/admin) authors the receipt — letting it be
-          // recorded as the recipient — otherwise the viewer personally.
-          const asGroup = recordFundingAs === "group" && !!fundingAuthoringGroup
-          const writerDid = asGroup ? did : sessionDid
-          return (
-            <FundingReceiptFormModal
-              writerDid={writerDid}
-              writerIsGroup={asGroup}
-              canRecordAsRecipient={asGroup || sessionDid === did}
-              isEvaluator={trustedEvaluatorDids.includes(writerDid)}
-              activityAuthorDid={did}
-              forActivity={{
-                uri: `at://${did}/org.hypercerts.claim.activity/${rkey}`,
-                cid,
-                title: effectiveValue.title || undefined,
-              }}
-              onClose={() => setRecordFundingOpen(false)}
-              onCreated={(result) => {
-                setFundingRecordPollTimedOut(false)
-                setPendingFundingUri(result.uri)
-              }}
-            />
-          )
-        })()
-      : null}
-    {rightsModalOpen && value.rights ? (
-      <RightsDetailModal
-        uri={value.rights.uri}
-        cid={value.rights.cid}
-        onClose={() => setRightsModalOpen(false)}
-      />
-    ) : null}
+                  ) : null}
+
+                  {/* Funding preview — up to five receipts, with "See all"
+                      into the Funding tab when there are more. Also shown
+                      (header only) to a signed-in viewer with no receipts
+                      yet, so they can record one. */}
+                  {fundingReceipts.length > 0 || canRecordFunding ? (
+                    <section className="cert-detail__section">
+                      <SectionHeader
+                        title={
+                          <SectionTitleCount label="Funding" count={shownFundingCount} />
+                        }
+                        action={
+                          <div className="cert-detail__section-actions">
+                            {recordFundingControl}
+                            {fundingReceipts.length > 0 ? confirmedByControl : null}
+                            {fundingHref &&
+                            filteredFunding.length > OVERVIEW_FUNDING_PREVIEW ? (
+                              <SeeAllLink href={fundingHref} />
+                            ) : null}
+                          </div>
+                        }
+                      />
+                      {fundingRecordedNote}
+                      {recipientConfirmedNote}
+                      {fundingBody(OVERVIEW_FUNDING_PREVIEW)}
+                    </section>
+                  ) : null}
+
+                  {locations.length > 0 ? (
+                    <section className="cert-detail__section cert-detail__section--locations">
+                      <SectionHeader
+                        title={
+                          <SectionTitleCount label="Locations" count={locations.length} />
+                        }
+                      />
+                      <CertLocationsMap locations={locations} />
+                    </section>
+                  ) : null}
+                </>
+              ) : activeTab === "contributors" ? (
+                <>
+                  {contributorCount > 0 ? (
+                    <ActivityFancyBoard
+                      did={did}
+                      rkey={rkey}
+                      contributors={contributors}
+                    />
+                  ) : null}
+                  {contributorsSection}
+                </>
+              ) : activeTab === "funding" ? (
+                <section className="cert-detail__section">
+                  <SectionHeader
+                    title={
+                      <SectionTitleCount label="Funding" count={shownFundingCount} />
+                    }
+                    action={
+                      recordFundingControl || fundingReceipts.length > 0 ? (
+                        <div className="cert-detail__section-actions">
+                          {recordFundingControl}
+                          {fundingReceipts.length > 0 ? confirmedByControl : null}
+                        </div>
+                      ) : null
+                    }
+                  />
+                  {fundingRecordedNote}
+                  {recipientConfirmedNote}
+                  {fundingLoading && fundingReceipts.length === 0 ? (
+                    <div
+                      className="flex flex-col gap-3"
+                      role="status"
+                      aria-label="Loading funding"
+                    >
+                      <Skeleton variant="line" width="100%" height="2.5rem" />
+                      <Skeleton variant="line" width="100%" height="2.5rem" />
+                      <Skeleton variant="line" width="100%" height="2.5rem" />
+                    </div>
+                  ) : (
+                    fundingBody()
+                  )}
+                </section>
+              ) : activeTab === "updates" && recordUri ? (
+                <ContextUpdates
+                  subjectUri={recordUri}
+                  variant="full"
+                  canEdit={isCreator || !!editAsGroup}
+                  viewerDid={sessionDid}
+                />
+              ) : null}
+            </TabPanelTransition>
+          </div>
+        </div>
+      </article>
+      {deleteOpen ? (
+        <DeleteRecordDialog
+          title="Delete activity?"
+          recordName={value.title || ""}
+          recordTypeLabel="activity"
+          isDeleting={isDeleting}
+          errorMessage={deleteError}
+          onCancel={() => {
+            if (!isDeleting) setDeleteOpen(false)
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
+      ) : null}
+      {groupEditOpen && editAsGroup ? (
+        <ConfirmDialog
+          title="Edit as group"
+          message={`This activity is published by ${editAsGroupLabel}. You'll switch to acting as that group to edit it — your changes are saved as the group, not your personal account.`}
+          confirmLabel="Continue as group"
+          confirmVariant="primary"
+          onCancel={() => setGroupEditOpen(false)}
+          onConfirm={() => {
+            switchOrg(editAsGroup)
+            setGroupEditOpen(false)
+            router.push(editHref)
+          }}
+        />
+      ) : null}
+      {recordIdentityOpen && sessionDid && fundingAuthoringGroup ? (
+        <FundingIdentityChoiceDialog
+          individualDid={sessionDid}
+          groupDid={did}
+          onChoose={(as) => {
+            setRecordFundingAs(as)
+            setRecordIdentityOpen(false)
+            setRecordFundingOpen(true)
+          }}
+          onClose={() => setRecordIdentityOpen(false)}
+        />
+      ) : null}
+      {recordFundingOpen && sessionDid && recordUri
+        ? (() => {
+            // The author is the chosen identity: the group (only when the
+            // viewer is its owner/admin) authors the receipt — letting it be
+            // recorded as the recipient — otherwise the viewer personally.
+            const asGroup = recordFundingAs === "group" && !!fundingAuthoringGroup
+            const writerDid = asGroup ? did : sessionDid
+            return (
+              <FundingReceiptFormModal
+                writerDid={writerDid}
+                writerIsGroup={asGroup}
+                canRecordAsRecipient={asGroup || sessionDid === did}
+                isEvaluator={trustedEvaluatorDids.includes(writerDid)}
+                activityAuthorDid={did}
+                forActivity={{
+                  uri: recordUri,
+                  cid,
+                  title: value.title || undefined,
+                }}
+                onClose={() => setRecordFundingOpen(false)}
+                onCreated={(result) => {
+                  setFundingRecordPollTimedOut(false)
+                  setPendingFundingUri(result.uri)
+                }}
+              />
+            )
+          })()
+        : null}
+      {rightsModalOpen && value.rights ? (
+        <RightsDetailModal
+          uri={value.rights.uri}
+          cid={value.rights.cid}
+          onClose={() => setRightsModalOpen(false)}
+        />
+      ) : null}
     </>
   )
 }

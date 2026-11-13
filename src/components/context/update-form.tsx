@@ -7,8 +7,11 @@ import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
 import Input from "@/components/ui/input"
 import Textarea from "@/components/ui/textarea"
 import Button from "@/components/ui/button"
-import ErrorMessage from "@/components/ui/error-message"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
 import Tooltip from "@/components/ui/tooltip"
+import FormActionBar from "@/components/create/form-action-bar"
+import { useOrg } from "@/lib/groups/org-context"
 import { uploadBlob, buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import {
   ATTACHMENT_ACCEPT,
@@ -58,11 +61,15 @@ interface UpdateFormProps {
 }
 
 /**
- * Shared create / edit form for an `org.hypercerts.context.attachment`
+ * Shared create / edit page for an `org.hypercerts.context.attachment`
  * "update": a short summary, a rich-text body, and file attachments
  * (the lexicon's `content[]`). The two modes differ only in whether a
  * new record is minted or an existing one is overwritten (with a
  * swapRecord guard) — the fields and layout are identical.
+ *
+ * Laid out like the other forms: `PageContainer` (narrow) → `PageHeader`
+ * (the page's h1, back to the record's Updates) → the fields → the shared
+ * `FormActionBar`.
  */
 export default function UpdateForm({
   ownDid,
@@ -76,6 +83,7 @@ export default function UpdateForm({
   initialCid,
 }: UpdateFormProps) {
   const router = useRouter()
+  const { activeOrg } = useOrg()
   const [title, setTitle] = useState(() =>
     typeof initialValue?.title === "string" ? initialValue.title : "",
   )
@@ -127,6 +135,12 @@ export default function UpdateForm({
   // a different repo than the viewer's own — uploads target that group's
   // blob store too.
   const isGroupWrite = targetDid !== ownDid
+  // The action bar names who the update is written as, from the active
+  // identity. Only show it when that matches the repo the update goes to
+  // (an admin can post to a group's record without switching to it).
+  const identityMatchesTarget = isGroupWrite
+    ? activeOrg?.groupDid === targetDid
+    : !activeOrg
   const canSave =
     title.trim().length > 0 &&
     (mode === "edit" || !!subjectCid) &&
@@ -221,149 +235,145 @@ export default function UpdateForm({
     }
   }
 
+  const heading = mode === "edit" ? "Edit update" : "New update"
+
   return (
-    <form className="flex flex-col gap-5 py-2" onSubmit={handleSubmit}>
-      <h2 className="font-headline text-h3">
-        {mode === "edit" ? "Edit update" : "New update"}
-      </h2>
-
-      <Input
-        label="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        maxLength={300}
-        placeholder="What's the update?"
+    <PageContainer width="narrow">
+      <PageHeader
+        back={{ href: backHref, label: "Updates" }}
+        title={heading}
+        description="What happened since this record was published. You can attach files."
       />
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <Input
+          label="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={300}
+          placeholder="What's the update?"
+        />
 
-      <div className="flex flex-col gap-1">
         <Textarea
           label="Short description"
           value={shortDescription}
           onChange={(e) => setShortDescription(e.target.value)}
           rows={2}
           maxLength={SHORT_DESCRIPTION_MAX}
+          showCount
           placeholder="A one- or two-line summary (optional)."
         />
-        <span className="self-end text-xs text-[var(--fg-muted)]">
-          {shortDescription.length}/{SHORT_DESCRIPTION_MAX} characters
-        </span>
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-[var(--fg-primary)]">
-          Description
-        </label>
-        <LeafletEditor
-          value={description}
-          onChange={setDescription}
-          placeholder="Add details. Headings, lists, links, images, and video embeds are supported via the toolbar."
-          ariaLabel="Update description"
-          did={targetDid}
-          onImageUpload={(file) =>
-            uploadBlob(file, isGroupWrite ? { targetDid } : undefined)
+        <div className="flex flex-col gap-1.5">
+          <p className="m-0 text-ui font-medium text-[var(--fg-secondary)]">
+            Description
+          </p>
+          <LeafletEditor
+            value={description}
+            onChange={setDescription}
+            placeholder="Add details. Headings, lists, links, images, and video embeds are supported via the toolbar."
+            ariaLabel="Update description"
+            did={targetDid}
+            onImageUpload={(file) =>
+              uploadBlob(file, isGroupWrite ? { targetDid } : undefined)
+            }
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="m-0 text-ui font-medium text-[var(--fg-secondary)]">
+            Attachments
+          </p>
+          {content.length > 0 ? (
+            <ul className="flex flex-wrap gap-2">
+              {content.map((entry, i) => {
+                const a = resolveAttachment(entry)
+                if (!a) return null
+                // Prefer this session's local preview; fall back to the
+                // getBlob proxy for attachments the saved record already
+                // references (edit mode).
+                const imgUrl =
+                  a.kind === "image"
+                    ? (pendingPreviews.get(a.cid) ??
+                      buildAvatarUrlFromCid(targetDid, a.cid))
+                    : null
+                return (
+                  <li
+                    key={`${i}-${a.kind === "uri" ? a.uri : a.cid}`}
+                    className="relative flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1.5 pr-7"
+                  >
+                    {imgUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={imgUrl}
+                        alt=""
+                        className="h-10 w-10 rounded-[var(--radius)] object-cover"
+                      />
+                    ) : (
+                      <span className="flex flex-col text-xs">
+                        <span className="font-medium text-[var(--fg-primary)]">
+                          {a.kind === "uri"
+                            ? "Link"
+                            : mimeTypeLabel(a.mimeType)}
+                        </span>
+                        {a.kind !== "uri" && formatAttachmentSize(a.size) ? (
+                          <span className="text-[var(--fg-muted)]">
+                            {formatAttachmentSize(a.size)}
+                          </span>
+                        ) : null}
+                      </span>
+                    )}
+                    <Tooltip label="Remove attachment" className="absolute right-1 top-1">
+                      <button
+                        type="button"
+                        aria-label="Remove attachment"
+                        onClick={() => removeAttachment(i)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
+                      >
+                        <X size={14} strokeWidth={1.75} aria-hidden />
+                      </button>
+                    </Tooltip>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ATTACHMENT_ACCEPT}
+            className="hidden"
+            onChange={handleFile}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="self-start"
+            loading={uploading}
+            disabled={uploading || saving}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Paperclip size={14} strokeWidth={1.75} aria-hidden />
+            Add attachment
+          </Button>
+        </div>
+
+        <FormActionBar
+          submitLabel={mode === "edit" ? "Save changes" : "Post update"}
+          submittingLabel={mode === "edit" ? "Saving…" : "Posting…"}
+          isSubmitting={saving}
+          submitDisabled={!canSave}
+          error={error}
+          onCancel={() => router.push(backHref)}
+          identityLabel={
+            identityMatchesTarget
+              ? mode === "edit"
+                ? "Saving as"
+                : "Posting as"
+              : null
           }
         />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-[var(--fg-primary)]">
-          Attachments
-        </label>
-        {content.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {content.map((entry, i) => {
-              const a = resolveAttachment(entry)
-              if (!a) return null
-              // Prefer this session's local preview; fall back to the
-              // getBlob proxy for attachments the saved record already
-              // references (edit mode).
-              const imgUrl =
-                a.kind === "image"
-                  ? (pendingPreviews.get(a.cid) ??
-                    buildAvatarUrlFromCid(targetDid, a.cid))
-                  : null
-              return (
-                <li
-                  key={`${i}-${a.kind === "uri" ? a.uri : a.cid}`}
-                  className="relative flex items-center gap-2 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1.5 pr-7"
-                >
-                  {imgUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={imgUrl}
-                      alt=""
-                      className="h-10 w-10 rounded-[var(--radius)] object-cover"
-                    />
-                  ) : (
-                    <span className="flex flex-col text-xs">
-                      <span className="font-medium text-[var(--fg-primary)]">
-                        {a.kind === "uri"
-                          ? "Link"
-                          : mimeTypeLabel(a.mimeType)}
-                      </span>
-                      {a.kind !== "uri" && formatAttachmentSize(a.size) ? (
-                        <span className="text-[var(--fg-muted)]">
-                          {formatAttachmentSize(a.size)}
-                        </span>
-                      ) : null}
-                    </span>
-                  )}
-                  <Tooltip label="Remove attachment" className="absolute right-1 top-1">
-                    <button
-                      type="button"
-                      aria-label="Remove attachment"
-                      onClick={() => removeAttachment(i)}
-                      className="inline-flex h-5 w-5 items-center justify-center rounded-[var(--radius)] text-[var(--fg-muted)] hover:bg-[var(--overlay-weak)] hover:text-[var(--fg-primary)]"
-                    >
-                      <X size={14} strokeWidth={1.75} aria-hidden />
-                    </button>
-                  </Tooltip>
-                </li>
-              )
-            })}
-          </ul>
-        ) : null}
-        <input
-          ref={fileRef}
-          type="file"
-          accept={ATTACHMENT_ACCEPT}
-          className="hidden"
-          onChange={handleFile}
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="self-start"
-          loading={uploading}
-          disabled={uploading || saving}
-          onClick={() => fileRef.current?.click()}
-        >
-          <Paperclip size={14} strokeWidth={1.75} aria-hidden />
-          Add attachment
-        </Button>
-      </div>
-
-      {error ? <ErrorMessage message={error} /> : null}
-
-      <div className="flex justify-end gap-2 pt-1">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => router.push(backHref)}
-          disabled={saving}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          loading={saving}
-          disabled={!canSave}
-        >
-          {mode === "edit" ? "Save changes" : "Post update"}
-        </Button>
-      </div>
-    </form>
+      </form>
+    </PageContainer>
   )
 }

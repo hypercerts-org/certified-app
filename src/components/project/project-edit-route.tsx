@@ -11,6 +11,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import Skeleton from "@/components/ui/skeleton"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
@@ -769,15 +770,19 @@ export default function ProjectEditRoute({
               ) : null}
 
               {ownCertsLoading ? (
-                <p className="cert-detail__empty-line">Loading your activities…</p>
+                <div role="status" aria-label="Loading your activities" className="flex flex-col gap-2">
+                  <Skeleton variant="line" width="100%" height="2.25rem" />
+                  <Skeleton variant="line" width="100%" height="2.25rem" />
+                </div>
               ) : ownCerts.length === 0 ? (
-                <p className="cert-detail__empty-line">
-                  You don&rsquo;t have any activities yet.{" "}
+                <EmptyState
+                  variant="inline"
+                  title="You don't have any activities yet."
+                >
                   <Link href="/create" className="create-project__inline-link">
-                    Create your first activity
+                    Create an activity
                   </Link>
-                  .
-                </p>
+                </EmptyState>
               ) : (
                 <>
                   <p className="create-project__quick-pick-label">

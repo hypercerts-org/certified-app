@@ -4,12 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import {
-  Calendar,
-  FileText,
-  MapPin,
   Plus,
   Search,
-  Target,
   Trash2,
   X,
 } from "lucide-react"
@@ -18,6 +14,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
 import Input from "@/components/ui/input"
 import Select from "@/components/ui/select"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
@@ -709,7 +706,6 @@ export default function CreatePage() {
             <dl className="cert-detail__meta">
               <div className="cert-detail__meta-row">
                 <dt className="cert-detail__meta-label">
-                  <Calendar size={12} strokeWidth={2} aria-hidden />
                   Time period
                 </dt>
                 <dd className="cert-detail__meta-value">
@@ -774,7 +770,6 @@ export default function CreatePage() {
 
               <div className="cert-detail__meta-row">
                 <dt className="cert-detail__meta-label">
-                  <Target size={12} strokeWidth={2} aria-hidden />
                   Work scope
                 </dt>
                 <dd className="cert-detail__meta-value">
@@ -795,10 +790,9 @@ export default function CreatePage() {
 
               <div className="cert-detail__meta-row">
                 <dt className="cert-detail__meta-label">
-                  <MapPin size={12} strokeWidth={2} aria-hidden />
                   Locations
                   {locations.length > 0 ? (
-                    <span className="cert-detail__meta-count">
+                    <span className="cert-detail__meta-count ml-1">
                       {locations.length}
                     </span>
                   ) : null}
@@ -844,7 +838,6 @@ export default function CreatePage() {
 
               <div className="cert-detail__meta-row">
                 <dt className="cert-detail__meta-label">
-                  <FileText size={12} strokeWidth={2} aria-hidden />
                   Rights
                 </dt>
                 <dd className="cert-detail__meta-value">
@@ -970,9 +963,11 @@ export default function CreatePage() {
               />
 
               {contributors.length === 0 ? (
-                <p className="cert-detail__empty-line">
-                  No contributors yet. Add one to credit collaborators.
-                </p>
+                <EmptyState
+                  variant="inline"
+                  title="No contributors yet."
+                  description="Add one to credit collaborators."
+                />
               ) : (
                 <ul className="create-cert__contrib-list">
                   {contributors.map((c, idx) => {

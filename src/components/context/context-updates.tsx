@@ -1,22 +1,22 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState } from "react"
-import { TransitionLink } from "@/lib/view-transitions"
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
 import {
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   ExternalLink,
   File,
-  MessageSquareText,
   Pencil,
   Play,
   Plus,
   Trash2,
 } from "lucide-react"
-import LoadingSpinner from "@/components/ui/loading-spinner"
+import EmptyState from "@/components/ui/empty-state"
+import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
+import Skeleton from "@/components/ui/skeleton"
+import { SectionTitleCount } from "@/components/create/form-action-bar"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { useContextUpdates } from "@/hooks/use-context-updates"
@@ -75,11 +75,13 @@ interface ContextUpdatesProps {
 
 /**
  * Read-only list of `org.hypercerts.context.attachment` records with
- * `contentType === "update"` whose `subjects` include `subjectUri`.
+ * `contentType === "update"` whose `subjects` include `subjectUri`, under
+ * a `SectionHeader` ("Updates" + a muted count).
  *
- * Renders nothing (not even an empty state) when there are no updates,
- * so the section quietly disappears from detail pages whose authors
- * haven't published any.
+ * The overview preview renders nothing when there are no updates (or they
+ * fail to load), so the section quietly disappears from the overview; the
+ * full variant (the Updates tab) shows an empty state, or the load error
+ * with "Try again".
  */
 export default function ContextUpdates({
   subjectUri,
@@ -111,7 +113,6 @@ export default function ContextUpdates({
         type="button"
         variant="secondary"
         size="sm"
-        className="ml-auto"
         onClick={() => router.push(newHref)}
       >
         <Plus size={14} strokeWidth={1.75} aria-hidden />
@@ -119,45 +120,58 @@ export default function ContextUpdates({
       </Button>
     ) : null
 
+  const headingId = useId()
+  const sectionHeader = (count: number, action: ReactNode) => (
+    <SectionHeader
+      id={headingId}
+      title={<SectionTitleCount label={heading} count={count} />}
+      action={action}
+    />
+  )
+  const sectionClass =
+    variant === "full"
+      ? "context-updates context-updates--full"
+      : "context-updates context-updates--overview"
+
   if (isLoading) {
     return (
-      <section className="context-updates" aria-labelledby="context-updates-heading">
-        <header className="context-updates__head">
-          <h2 id="context-updates-heading" className="context-updates__heading">
-            {heading}
-          </h2>
-        </header>
-        <div className="context-updates__loading">
-          <LoadingSpinner size="sm" />
+      <section className={sectionClass} aria-labelledby={headingId}>
+        {sectionHeader(0, null)}
+        <div
+          className="flex flex-col gap-2"
+          role="status"
+          aria-label="Loading updates"
+        >
+          <Skeleton variant="line" width="min(20rem, 70%)" height="1.25rem" />
+          <Skeleton variant="line" width="100%" height="1rem" />
+          <Skeleton variant="line" width="85%" height="1rem" />
         </div>
       </section>
     )
   }
 
   if (error) {
-    return null
+    // The overview preview stays quiet; the Updates tab says so and
+    // offers a retry.
+    if (variant !== "full") return null
+    return (
+      <section className={sectionClass} aria-labelledby={headingId}>
+        {sectionHeader(0, null)}
+        <EmptyState variant="inline" title="Couldn't load updates.">
+          <Button variant="ghost" size="sm" onClick={() => refetch()}>
+            Try again
+          </Button>
+        </EmptyState>
+      </section>
+    )
   }
 
   if (updates.length === 0) {
     if (variant === "full") {
       return (
-        <section
-          className="context-updates context-updates--full"
-          aria-labelledby="context-updates-heading"
-        >
-          <header className="context-updates__head">
-            <MessageSquareText
-              size={16}
-              strokeWidth={1.75}
-              aria-hidden
-              className="context-updates__icon"
-            />
-            <h2 id="context-updates-heading" className="context-updates__heading">
-              {heading}
-            </h2>
-            {newButton}
-          </header>
-          <p className="context-updates__empty">No updates yet.</p>
+        <section className={sectionClass} aria-labelledby={headingId}>
+          {sectionHeader(0, newButton)}
+          <EmptyState variant="inline" title="No updates yet." />
         </section>
       )
     }
@@ -165,38 +179,18 @@ export default function ContextUpdates({
   }
 
   return (
-    <section
-      className={
-        variant === "full"
-          ? "context-updates context-updates--full"
-          : "context-updates context-updates--overview"
-      }
-      aria-labelledby="context-updates-heading"
-    >
-      <header className="context-updates__head">
-        <MessageSquareText
-          size={16}
-          strokeWidth={1.75}
-          aria-hidden
-          className="context-updates__icon"
-        />
-        <h2 id="context-updates-heading" className="context-updates__heading">
-          {heading}
-        </h2>
-        <span className="context-updates__count">{updates.length}</span>
-        {variant === "overview" && seeAllHref ? (
-          <TransitionLink
-            href={seeAllHref}
-            replace
-            scroll={false}
-            className="context-updates__see-all"
-          >
-            See all
-            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
-          </TransitionLink>
-        ) : null}
-        {newButton}
-      </header>
+    <section className={sectionClass} aria-labelledby={headingId}>
+      {sectionHeader(
+        updates.length,
+        // "See all" only when the preview leaves some out.
+        variant === "overview" &&
+          seeAllHref &&
+          visibleUpdates.length < updates.length ? (
+          <SeeAllLink href={seeAllHref} />
+        ) : (
+          newButton
+        ),
+      )}
       <ul className="context-updates__list">
         {visibleUpdates.map((u, i) => (
           // Clamp in both variants — the dedicated Updates subtab gets

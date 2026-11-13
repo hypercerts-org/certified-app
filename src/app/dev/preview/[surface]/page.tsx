@@ -34,6 +34,7 @@
  *   /dev/preview/records        — Records (projects as folders, ?kind= panes)
  *   /dev/preview/activity       — activity DETAIL page (same fixture record)
  *   /dev/preview/project        — project DETAIL page (project fixture)
+ *   /dev/preview/update-new     — new UPDATE form on the activity fixture
  *
  * `?fixture=empty` switches every list/connection to its empty variant.
  * `?visitor=1` / `?visitor=signedout` view the profile surfaces as another
@@ -73,7 +74,7 @@ import {
   type ProfileScenario,
   certsProfileRecord,
 } from "@/lib/dev/fixtures/profile"
-import { MOCK_HANDLE } from "@/lib/dev/fixtures/session"
+import { MOCK_DID, MOCK_HANDLE } from "@/lib/dev/fixtures/session"
 import { MOCK_ACTIVITY_RKEY, MOCK_PROJECT_RKEY } from "@/lib/dev/fixtures/feed"
 import type { UploadedBlob } from "@/lib/atproto/profile"
 
@@ -91,6 +92,7 @@ import CreatePage from "@/app/create/page"
 import RecordEditPage from "@/app/[actor]/[type]/[rkey]/edit/page"
 import RecordDetailPage from "@/app/[actor]/[type]/[rkey]/page"
 import ProfileEditForm from "@/components/profile/profile-edit-form"
+import UpdateForm from "@/components/context/update-form"
 
 const SURFACES = [
   "profile",
@@ -105,6 +107,7 @@ const SURFACES = [
   "records",
   "activity",
   "project",
+  "update-new",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -223,6 +226,19 @@ function SurfaceBody({
             <RecordDetailPage />
           </PathParamsContext.Provider>
         </NavigationPromisesContext.Provider>
+      )
+    case "update-new":
+      // The new-update form, fed the activity fixture directly (the route
+      // only resolves these props). Writes fire on submit only.
+      return (
+        <UpdateForm
+          ownDid={MOCK_DID}
+          targetDid={MOCK_DID}
+          subjectUri={`at://${MOCK_DID}/org.hypercerts.claim.activity/${MOCK_ACTIVITY_RKEY}`}
+          subjectCid="bafypreviewactivity"
+          backHref={`/${MOCK_HANDLE}/activity/${MOCK_ACTIVITY_RKEY}?tab=updates`}
+          mode="create"
+        />
       )
     case "profile-edit":
       // The inline-edit form mounted by profile-sidebar when isEditing.

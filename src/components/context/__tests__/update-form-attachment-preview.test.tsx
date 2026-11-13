@@ -23,6 +23,19 @@ vi.mock("@/hooks/use-context-updates", () => ({
   invalidateContextUpdates: vi.fn(),
 }))
 
+// The page's FormActionBar names who the update is posted as.
+vi.mock("@/lib/auth/auth-context", () => ({
+  useAuth: () => ({ did: "did:plc:me" }),
+}))
+
+vi.mock("@/lib/groups/org-context", () => ({
+  useOrg: () => ({ activeOrg: null }),
+}))
+
+vi.mock("@/hooks/use-author-info", () => ({
+  useAuthorInfo: () => ({ info: null, isLoading: false, error: null }),
+}))
+
 // Only `uploadBlob` is stubbed — `buildAvatarUrlFromCid` stays real so the
 // test asserts against the actual getBlob proxy URL the app would emit.
 const uploadBlob = vi.fn()

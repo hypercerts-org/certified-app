@@ -17,8 +17,9 @@ import {
   type ContextAttachmentRecord,
 } from "@/lib/atproto/context-attachment"
 import { usePageTitle } from "@/lib/navbar-context"
-import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
+import PageContainer from "@/components/ui/page-container"
+import Skeleton from "@/components/ui/skeleton"
 import UpdateForm from "@/components/context/update-form"
 
 /**
@@ -87,31 +88,38 @@ export default function EditUpdatePage() {
 
   if (!type || actor.kind === "invalid") {
     return (
-      <EmptyState
-        icon={FileQuestion}
-        title="Not found"
-        description="This link doesn't point to an activity or project."
-        className="pt-[120px]"
-      />
+      <PageContainer width="narrow">
+        <EmptyState
+          icon={FileQuestion}
+          title="Not found"
+          description="This link doesn't point to an activity or project."
+        />
+      </PageContainer>
     )
   }
 
   if (resolving || loading || !did || !ownDid) {
     return (
-      <div className="flex justify-center py-24">
-        <LoadingSpinner size="md" />
-      </div>
+      <PageContainer width="narrow">
+        <div role="status" aria-label="Loading" className="flex flex-col gap-5">
+          <Skeleton variant="line" width="min(16rem, 70%)" height="2rem" />
+          <Skeleton variant="line" width="100%" height="2.75rem" />
+          <Skeleton variant="line" width="100%" height="5rem" />
+          <Skeleton variant="line" width="100%" height="10rem" />
+        </div>
+      </PageContainer>
     )
   }
 
   if (loadError || !record || !subjectUri) {
     return (
-      <EmptyState
-        icon={FileQuestion}
-        title="Update not found"
-        description="We couldn't load this update for editing."
-        className="pt-[120px]"
-      />
+      <PageContainer width="narrow">
+        <EmptyState
+          icon={FileQuestion}
+          title="Update not found"
+          description="We couldn't load this update for editing."
+        />
+      </PageContainer>
     )
   }
 
