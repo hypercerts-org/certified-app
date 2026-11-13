@@ -1733,14 +1733,11 @@
 }
 
 @media (max-width: 799px) {
-  /* Rest above the home indicator on notched phones; the shell's
-     matching bottom padding lives in layout.css. */
+  /* Desktop only: on phones "Send feedback" lives in the account sheet
+     and the bottom tab bar sits where the button would float. The
+     component unmounts below 800px; this covers first paint. */
   .feedback-trigger {
-    bottom: calc(var(--feedback-trigger-offset) + env(safe-area-inset-bottom, 0px));
-    right: var(--feedback-trigger-offset);
-    min-height: var(--feedback-trigger-height);
-    padding: 10px 16px;
-    font-size: 0.8125rem;
+    display: none;
   }
 
   .feedback-modal__backdrop--desktop {
@@ -1763,6 +1760,9 @@
    and the shell's footer follows the page, so neither rule applies there. */
 .app-page:not(.app-shell .app-page) {
   padding-top: var(--navbar-height);
+  /* Clear the phone bottom tab bar (0 on desktop and wherever the bar is
+     not in the DOM). */
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   min-height: 100vh;
 }
 

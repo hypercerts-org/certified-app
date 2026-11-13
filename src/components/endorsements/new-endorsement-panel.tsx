@@ -15,8 +15,7 @@ interface NewEndorsementPanelProps {
   readonly ownDid: string
   /** DIDs the user has already endorsed (used to block duplicates). */
   readonly existingSubjectDids: ReadonlySet<string>
-  /** DIDs to pre-select when the panel opens — typically a single DID
-   *  from a deep-link like `/endorsements?endorse=did:plc:...`. Caller
+  /** DIDs to pre-select when the panel opens. Caller
    *  is responsible for validating these (not self, not duplicate)
    *  before passing. Consumed once on mount via a lazy-initialiser. */
   readonly initialDids?: readonly string[]

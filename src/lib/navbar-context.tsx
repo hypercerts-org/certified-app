@@ -11,16 +11,21 @@ import {
 } from "react";
 
 /**
- * Navbar rendering modes:
- *   - "default"         — full app chrome (hamburger + brandmark + account switcher)
- *   - "titled"          — back arrow + centered page title (set via usePageTitle)
- *   - "profile-overlay" — transparent background, back arrow only (set via useProfileNavbar).
- *                         Floats over a full-bleed page (e.g. profile banner). The layout also
- *                         drops its top padding so content starts at viewport top = 0.
+ * What pages tell the chrome (the phone `Navbar`, the `DesktopTopBar` and
+ * the `AppShell`):
+ *   - the page title (`usePageTitle`, optional desktop override and
+ *     breadcrumb): the phone bar's compact title, and the chrome's fallback
+ *     `<h1>` when the page has no `<PageHeader>` (DESIGN.md §3.6);
+ *   - whether a `<PageHeader>` is mounted (`useRegisterPageHeader`);
+ *   - the record menu for the phone detail bar (`usePageRecordMenu`);
+ *   - profile flags: full-bleed shell (`useProfileNavbar`), which profile
+ *     tabs exist, and whether the profile is being edited.
  *
- * Mode is derived inside Navbar: pageTitle → "titled"; profileOverlay → "profile-overlay";
- * otherwise "default". The hooks below only toggle the individual flags so multiple pages
- * can coexist without stepping on each other.
+ * The phone bar picks its layout itself: top-level pages (the five
+ * destinations, Settings, Help, your own profile, untitled pages) get the
+ * brandmark, New and account buttons; anything else with a title gets a
+ * back chevron and the compact title. The hooks below only toggle their own
+ * flag so multiple pages can coexist without stepping on each other.
  */
 export interface PageTitleBreadcrumbPart {
   text: string;
@@ -86,6 +91,8 @@ interface NavbarValues {
   /** Record-level overflow menu rendered in the mobile navbar's right
    *  slot on detail (sub-)pages. Null on pages that don't set it. */
   recordMenu: PageRecordMenu | null;
+  /** The page wants the full-bleed shell (the profile: banner edge to
+   *  edge). Read by `AppShell`. Set via `useProfileNavbar`. */
   profileOverlay: boolean;
   /** True when the viewed profile has a non-empty `longDescription`.
    *  Drives whether the "About" tab is rendered in the top-bar tab
@@ -261,11 +268,11 @@ export function useNavbarContext(): NavbarContextValue {
 }
 
 /**
- * Set the navbar title for the current page. While mounted, the navbar
- * switches to a titled layout: a back icon on the left, the title in the
- * center, and an empty right slot. The page itself should not render its
- * own `<h1>` page title since the navbar now carries it, unless the page
- * renders a `<PageHeader>` (see `useRegisterPageHeader`).
+ * Set the title for the current page. The phone bar shows it (as a
+ * compact title, with a back chevron on detail pages) and the chrome
+ * renders it as the page's `<h1>` unless the page renders a `<PageHeader>`
+ * (see `useRegisterPageHeader`); on desktop that fallback h1 is visually
+ * hidden.
  *
  * Usage:
  *   export default function SettingsPage() {
@@ -347,7 +354,7 @@ export function usePageTitleBreadcrumb(b: PageTitleBreadcrumb | null) {
 
 /**
  * Publish the record-level overflow menu (Share / Add to list / Copy AT
- * URI) to the mobile navbar's right slot. Detail pages call this so the
+ * URI) to the phone detail bar's right slot. Detail pages call this so the
  * menu reads as page-level chrome that acts on the whole record, instead
  * of sitting in the author row where it can be mistaken for an action on
  * the author. Pass `null` while data is loading. No-op visually on
@@ -375,11 +382,10 @@ export function usePageRecordMenu(menu: PageRecordMenu | null) {
 }
 
 /**
- * Switch the navbar into "profile overlay" mode for the current page:
- * transparent background, back arrow on the left only, no brandmark, no
- * account switcher. The layout also drops its top padding so the page
- * content starts at viewport top = 0, letting the navbar float directly
- * over the content (e.g. over a profile banner).
+ * Put the current page in the full-bleed shell (`.app-shell--fullbleed`):
+ * no side gutters or reading-column cap, so the profile banner runs edge to
+ * edge right below the top bar. (The name is historical: the phone bar used
+ * to float transparently over the banner; it is now the normal bar.)
  *
  * Usage:
  *   export default function ProfilePage() {

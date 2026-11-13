@@ -6,8 +6,10 @@
 /* Opt the page out of the shell's 720px reading column so the graph uses
    the full grid width (capped at 1300px by .app-shell__grid). The shell's
    horizontal padding is dropped here — `.viz`'s own padding is the gutter —
-   while its navbar-offset top/bottom padding is kept. */
-.app-shell:has(.viz) .app-shell__content {
+   while its navbar-offset top/bottom padding is kept. Keyed on
+   `.viz--page`, so the graph inside the Help pop-up (`<dialog>`, also in
+   the shell's DOM) leaves the Help page's own width alone. */
+.app-shell:has(.viz--page) .app-shell__content {
   max-width: none;
   padding-left: 0;
   padding-right: 0;
@@ -19,7 +21,7 @@
    and let the sidebar scroll internally. Below 1100px the layout stacks
    and the page scrolls normally. */
 @media (min-width: 1100px) {
-  .app-shell:has(.viz) .app-shell__content {
+  .app-shell:has(.viz--page) .app-shell__content {
     height: calc(100dvh - var(--top-bar-total, var(--top-bar-row1, 52px)));
     min-height: 0;
     padding-top: 0;
@@ -27,7 +29,7 @@
     overflow: hidden;
   }
 
-  .viz {
+  .viz--page {
     height: 100%;
     min-height: 0;
   }

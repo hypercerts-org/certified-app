@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { ownProfileUrl, parseActor } from "@/lib/urls"
+import React, { useMemo } from "react";
+import { parseActor } from "@/lib/urls"
 import {
   CERT_DETAIL_TABS,
   PROJECT_DETAIL_TABS,
@@ -9,49 +9,21 @@ import {
 } from "@/lib/detail-tabs"
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Building2,
-  ChevronDown,
-  FileBadge,
-  FolderKanban,
-  HelpCircle,
-  Home,
-  LayoutGrid,
-  Library,
-  Menu,
-  Newspaper,
-  Plus,
-  Settings,
-  User,
-} from "lucide-react";
-import SiteDrawer from "./site-drawer";
+import { ArrowLeft } from "lucide-react";
 import { useIsNotFound } from "./not-found-marker";
 import { useAuth } from "@/lib/auth/auth-context";
-import { useNavbarValues } from "@/lib/navbar-context";
+import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context";
 import { useViewTransition } from "@/lib/view-transitions";
-import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
+import { useMounted } from "@/hooks/use-mounted";
 import { useOrg } from "@/lib/groups/org-context";
-import { useOrgProfile } from "@/hooks/use-org-profile";
-import { routeForActorSwitch } from "@/lib/groups/navigation";
-import { isRouteVisibleToActor } from "@/lib/groups/personal-only";
-import Avatar from "@/components/ui/avatar";
+import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
 import Button from "@/components/ui/button";
-import { getInitials } from "@/lib/utils/initials";
-import AccountSwitcherList from "./account-switcher-list";
 import Brandmark from "@/components/ui/brandmark";
 import GlobalSearch from "@/components/search/global-search";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tabs, TabList, Tab } from "@/components/ui/tabs";
-
-const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
-
-// Temporarily hide the top-left hamburger (site-navigation drawer trigger).
-// We're considering removing it entirely; flip this back to `true` to restore.
-// The button + <SiteDrawer> wiring is kept intact below so nothing has to be
-// rebuilt if we decide to bring it back.
-const SHOW_SITE_NAV_HAMBURGER = false;
+import { DesktopAccountMenu } from "./account-menu";
+import { DesktopNewMenu } from "./new-menu";
 
 interface ProfileTab {
   key: string;
@@ -84,22 +56,28 @@ const PROFILE_TABS: ProfileTab[] = [
   { key: "lists", label: "Lists" },
   { key: "about", label: "About", aboutOnly: true },
   // Settings used to sit here as an own-only tab; it's now a
-  // standalone page reachable only from the hamburger site drawer
-  // (and from the legacy /settings deep link). The profile tab
+  // standalone page reachable from the account menu. The profile tab
   // strip stays focused on viewing-your-own-profile concerns.
 ];
 
 /**
  * Desktop chrome (≥800px).
  *
- * Row 1 — always visible:
- *   [brandmark]  [page title]                  [search]  [Apps]  [Settings]  [switcher]
+ * Row 1, always:
+ *   [brandmark] [Home] [Feed] [Explore] [Records] [Apps]     [search] [New] [account]
+ *   Signed out: [brandmark] [Explore] [Apps]                 [search] [Sign in]
  *
- * Row 2 — only on /profile/[handle]:
- *   [Overview]  [Activities]  [Endorsements]  [Groups]
+ * Row 2, only on some pages:
+ *   - the profile (`/{actor}`) and the edit-profile pages: the profile tabs;
+ *   - record detail pages: Back + the record's section tabs;
+ *   - `/create` and `/project/new`: Back.
  *
- * The bar is `position: sticky; top: 0` and full-width. It is hidden via
- * CSS below 800px — the mobile `<Navbar />` handles that range.
+ * Row 1 shows no page title. Pages render a `<PageHeader>` (their visible
+ * h1); a page without one keeps a visually hidden `<h1>` here, so every
+ * page has exactly one (DESIGN.md §3.6).
+ *
+ * The bar scrolls with the page. It is hidden below 800px by CSS — the
+ * phone `<Navbar />` and `<BottomNav />` handle that range.
  *
  * Source of truth for "what's the active profile tab" is the URL query
  * (`?tab=`). Tabs are <Link>s that update the query in place — the page
@@ -111,57 +89,23 @@ export default function DesktopTopBar() {
   const { transitionBack } = useViewTransition();
   const searchParams = useSearchParams();
 
-  const { isLoading, isAuthenticated, did, openSignIn, signOut } = useAuth();
-  const {
-    pageTitle,
-    desktopTitle,
-    breadcrumb,
-    profileAboutAvailable,
-    profileGroupsAvailable,
-    profileEditing,
-  } = useNavbarValues();
-  // The desktop bar prefers the record-name override (detail pages keep the
-  // name on every tab); the mobile navbar still uses the tab-aware pageTitle.
-  const desktopShownTitle = desktopTitle ?? pageTitle;
-  const { profile, avatarUrl } = useProfile();
+  const { isLoading: authLoading, isAuthenticated, did, openSignIn } = useAuth();
+  const navbarValues = useNavbarValues();
+  const { pageTitle, desktopTitle, breadcrumb } = navbarValues;
+  // The bar sits in its own Suspense boundary, which can hydrate after the
+  // page has already published its title (or after auth resolved). Until
+  // mounted, render exactly what the server did: no title, no auth-shaped
+  // controls. That keeps hydration clean.
+  const mounted = useMounted();
+  const isLoading = authLoading || !mounted;
+  // Pages publish these flags from effects, which can run before this
+  // boundary hydrates; read them only once mounted (same reason as above).
+  const profileAboutAvailable = mounted && navbarValues.profileAboutAvailable;
+  const profileGroupsAvailable = mounted && navbarValues.profileGroupsAvailable;
+  const profileEditing = mounted && navbarValues.profileEditing;
+  const hasPageHeader = useHasPageHeader();
   const { handle } = useSession();
-  const { activeOrg, groups, selfGroup, switchOrg } = useOrg();
-  const { orgAvatarUrl } = useOrgProfile();
-
-  const sortedOrgs = useMemo(() => {
-    return [...groups].sort((a, b) => {
-      if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
-      const roleA = ROLE_ORDER[a.role] ?? 3;
-      const roleB = ROLE_ORDER[b.role] ?? 3;
-      if (roleA !== roleB) return roleA - roleB;
-      const nameA = (a.displayName || a.handle).toLowerCase();
-      const nameB = (b.displayName || b.handle).toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  }, [groups]);
-
-  const identity = activeOrg
-    ? {
-        name: activeOrg.displayName || activeOrg.handle,
-        handle: activeOrg.handle,
-        avatarUrl: orgAvatarUrl || activeOrg.avatarUrl || undefined,
-        initials: getInitials(activeOrg.displayName || activeOrg.handle),
-      }
-    : {
-        name: profile?.displayName,
-        handle,
-        avatarUrl: avatarUrl || undefined,
-        initials: getInitials(profile?.displayName, handle),
-      };
-
-  // Profile shortcut target — mirrors the left rail. When acting as a
-  // group it targets the group's handle, so "My profile" follows the
-  // active identity just like the avatar switcher does.
-  const profileHref = ownProfileUrl({
-    activeGroup: activeOrg,
-    personalHandle: handle,
-    personalDid: did,
-  });
+  const { activeOrg } = useOrg();
 
   // Routes rooted at an actor — `/{actor}` (profile) and
   // `/{actor}/{type}/{rkey}` (a record that belongs to that profile) — all
@@ -181,8 +125,6 @@ export default function DesktopTopBar() {
   const profileHandleFromUrl = routeActor;
   // Bare `/{actor}` is the profile page (gets the profile tab strip).
   const isOnProfile = routeActor !== null && segments.length === 1;
-  const isOnSettings =
-    pathname === "/settings" || (pathname?.startsWith("/settings/") ?? false);
   // The standalone edit-profile pages — personal (/settings/edit-profile)
   // and group (/groups/{did}/edit-profile) — are reached from the "Edit
   // profile" affordance, so they keep the profile tab strip for context
@@ -216,8 +158,8 @@ export default function DesktopTopBar() {
   // stays the primary "discard" action.
   const isOnCreatePage = pathname === "/create" || pathname === "/project/new";
   const showBackRow = isOnCertDetail || isOnProjectDetail || isOnCreatePage;
-  // Settings is its own standalone surface now (reachable from the
-  // site drawer); no tab strip there. The edit-profile page is the one
+  // Settings is its own standalone surface (reachable from the account
+  // menu); no tab strip there. The edit-profile page is the one
   // exception — it borrows the profile strip (locked to Overview, see
   // `isOnEditProfile`) so the chrome doesn't drop a row when you enter
   // edit mode.
@@ -228,16 +170,16 @@ export default function DesktopTopBar() {
   // there is no actor or record behind them. The Back button stays.
   const isNotFound = useIsNotFound();
   const showTabsRow = !isNotFound && (isOnProfile || isOnEditProfile);
-  // Compare the URL handle slug to the signed-in user's handle to decide
-  // whether to show own-only tabs (e.g. Settings). Activeorg switches the
-  // "you" identity to the org, so we compare against `identity.handle`.
-  // "My profile" links fall back to the DID while the handle loads, so a
-  // DID in the URL counts as own too.
+  // Compare the URL handle slug to the acting identity's handle to decide
+  // whether to show own-only tabs. Acting as a group switches the "you"
+  // identity to the group. Profile links fall back to the DID while the
+  // handle loads, so a DID in the URL counts as own too.
+  const identityHandle = activeOrg ? activeOrg.handle : handle;
   const identityDid = activeOrg ? activeOrg.groupDid : did;
   const isOnOwnProfile =
     !!profileHandleFromUrl &&
-    ((!!identity.handle &&
-      profileHandleFromUrl.toLowerCase() === identity.handle.toLowerCase()) ||
+    ((!!identityHandle &&
+      profileHandleFromUrl.toLowerCase() === identityHandle.toLowerCase()) ||
       (!!identityDid && profileHandleFromUrl === identityDid));
   const visibleProfileTabs = useMemo(
     () =>
@@ -256,39 +198,6 @@ export default function DesktopTopBar() {
     if (v && visibleProfileTabs.some((t) => t.key === v)) return v;
     return "overview";
   }, [searchParams, visibleProfileTabs]);
-
-  // Switcher dropdown — now the canonical <Popover> (portal + side="bottom"
-  // + align="end"), which escapes the bar's overflow/transform context and
-  // owns positioning, click-outside, Esc-to-close (focus-return to trigger)
-  // and re-measurement on resize/scroll.
-  const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // "+" create dropdown — the canonical <Popover> (portal, side="bottom",
-  // align="start"), like the account switcher. It owns positioning,
-  // click-outside, Esc + focus return and arrow-key roving. Lives left of
-  // the global search field as a single-icon trigger that expands into
-  // three Create-shortcut Links.
-  const [createOpen, setCreateOpen] = useState(false);
-
-  // Close the switcher on navigation. Positioning, click-outside and
-  // Esc-to-close are owned by the <Popover> primitive.
-  useEffect(() => {
-    // Intentional setState in effect (TECH-814): close switcher on route change (external router input); covers back/forward nav that no click handler sees; setState bails out when already closed
-    setSwitcherOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    // Intentional setState in effect (TECH-814): close create-menu on route change; same rationale as the switcher close above
-    setCreateOpen(false);
-  }, [pathname]);
-
-  if (isLoading) return null;
-
-  // aria-current for the row-1 shortcut links (exact section match).
-  const currentIf = (active: boolean) => (active ? ("page" as const) : undefined);
-  const isUnder = (base: string) =>
-    pathname === base || (pathname?.startsWith(`${base}/`) ?? false);
 
   // Editorial pages use LandingTopBar; suppress the app chrome.
   // Embeds render bare (board-only) inside a third-party iframe.
@@ -311,292 +220,65 @@ export default function DesktopTopBar() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
 
-  // Brandmark navigates to /home for signed-in viewers and to /welcome
-  // once we know the viewer is signed out. isLoading already returned
-  // null above (line ~353), so !isAuthenticated here means definitively
-  // signed out. Mirrors the navbar + left-rail brand link.
-  const brandHref = isAuthenticated ? "/home" : "/welcome"
-  const brandAriaLabel = "Certified home"
+  // The brandmark goes Home for signed-in viewers and to /welcome once we
+  // know the viewer is signed out (while auth resolves it points Home; that
+  // page's own guard sends a signed-out visitor on).
+  const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
+
+  // Fallback h1 for pages without a <PageHeader>: the record's name on
+  // detail pages (desktopTitle), else the page title, else the breadcrumb.
+  const breadcrumbText = breadcrumb
+    ? [breadcrumb.left.text, breadcrumb.right?.text].filter(Boolean).join(" / ")
+    : null;
+  const fallbackTitle = desktopTitle ?? pageTitle ?? breadcrumbText;
 
   return (
     <header className="desktop-top-bar" aria-label="App chrome">
-      <SiteDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      {mounted && !hasPageHeader && fallbackTitle ? (
+        <h1 className="sr-only">{fallbackTitle}</h1>
+      ) : null}
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
-          {SHOW_SITE_NAV_HAMBURGER ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Open site navigation"
-              aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(true)}
-            >
-              <Menu size={18} strokeWidth={1.75} aria-hidden />
-            </Button>
-          ) : null}
-          <Link
-            href={brandHref}
-            className={`desktop-top-bar__brand${breadcrumb || desktopShownTitle ? "" : " desktop-top-bar__brand--wordmark"}`}
-            aria-label={brandAriaLabel}
-          >
-            {breadcrumb || desktopShownTitle ? (
-              <Brandmark size={28} className="desktop-top-bar__brand-mark" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element -- static same-origin SVG wordmark; next/image performs no optimization on SVG sources and the element is CSS-sized (no CLS)
-              <img
-                src="/brand/wordmark/certified_wordmark_black.svg"
-                alt="Certified"
-                className="desktop-top-bar__wordmark"
-              />
-            )}
+          <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
+            <Brandmark size={28} decorative />
           </Link>
-          {breadcrumb ? (
-            <h1 className="desktop-top-bar__title desktop-top-bar__title--breadcrumb">
-              <Link
-                href={breadcrumb.left.href}
-                className="desktop-top-bar__title-part desktop-top-bar__title-part--left"
-                title={breadcrumb.left.text}
-              >
-                {breadcrumb.left.text}
-              </Link>
-              {breadcrumb.right ? (
-                <>
-                  <span className="desktop-top-bar__title-sep" aria-hidden="true"> / </span>
+          {/* Destinations wait for auth, so a signed-in viewer never sees
+              the signed-out set flash first. */}
+          {!isLoading ? (
+            <nav className="desktop-top-bar__nav" aria-label="Main navigation">
+              {destinationsFor(isAuthenticated).map((dest) => {
+                const Icon = dest.icon;
+                const active = isDestinationActive(dest, pathname);
+                return (
                   <Link
-                    href={breadcrumb.right.href}
-                    className="desktop-top-bar__title-part desktop-top-bar__title-part--right"
+                    key={dest.key}
+                    href={dest.href}
+                    className="desktop-top-bar__nav-link"
+                    aria-current={active ? "page" : undefined}
+                    data-tour={dest.tour}
                   >
-                    {breadcrumb.right.text}
+                    <Icon size={20} strokeWidth={1.5} aria-hidden />
+                    <span>{dest.label}</span>
                   </Link>
-                </>
-              ) : null}
-            </h1>
-          ) : desktopShownTitle ? (
-            <h1 className="desktop-top-bar__title">{desktopShownTitle}</h1>
+                );
+              })}
+            </nav>
           ) : null}
         </div>
 
         <div className="desktop-top-bar__right">
-          {/* Shown everywhere, including /explore — the navbar search stays
-              available even though Explore has its own contextual field.
-              Also the product tour's "search the network" spotlight (the
-              standalone Explore nav button is gone), via data-tour. */}
+          {/* Shown everywhere, including /explore. `/` and Cmd/Ctrl+K focus
+              it. Also the tour's "search the network" spotlight. */}
           <div className="desktop-top-bar__search" data-tour="navbar-search">
             <GlobalSearch placeholder="Search Certified" />
           </div>
 
-          {isAuthenticated ? (
-            <div
-              className="desktop-top-bar__create-wrap"
-              data-tour="nav-create"
-            >
-              <Popover open={createOpen} onOpenChange={setCreateOpen}>
-                <PopoverTrigger>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Create new"
-                  >
-                    <Plus size={20} strokeWidth={1.75} aria-hidden />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  portal
-                  side="bottom"
-                  align="start"
-                  offset={8}
-                  minWidth={220}
-                  className="desktop-top-bar__create-menu"
-                >
-                  <Link
-                    href="/create"
-                    role="menuitem"
-                    tabIndex={-1}
-                    className="desktop-top-bar__create-item"
-                    onClick={() => setCreateOpen(false)}
-                  >
-                    <FileBadge size={16} strokeWidth={1.75} aria-hidden />
-                    <span>New activity</span>
-                  </Link>
-                  <Link
-                    href="/project/new"
-                    role="menuitem"
-                    tabIndex={-1}
-                    className="desktop-top-bar__create-item"
-                    onClick={() => setCreateOpen(false)}
-                  >
-                    <FolderKanban size={16} strokeWidth={1.75} aria-hidden />
-                    <span>New project</span>
-                  </Link>
-                  <Link
-                    href="/groups/create"
-                    role="menuitem"
-                    tabIndex={-1}
-                    className="desktop-top-bar__create-item"
-                    onClick={() => setCreateOpen(false)}
-                  >
-                    <Building2 size={16} strokeWidth={1.75} aria-hidden />
-                    <span>New group</span>
-                  </Link>
-                </PopoverContent>
-              </Popover>
-            </div>
-          ) : null}
-
-          {isAuthenticated ? (
-            <Link
-              href="/home"
-              className="desktop-top-bar__icon-btn"
-              aria-label="Home"
-              aria-current={currentIf(pathname === "/home")}
-              data-tour="nav-home"
-            >
-              <Home size={20} strokeWidth={1.5} aria-hidden />
-              <span className="desktop-top-bar__icon-label">Home</span>
-            </Link>
-          ) : null}
-
-          {isAuthenticated ? (
-            <Link
-              href="/feed"
-              className="desktop-top-bar__icon-btn"
-              aria-label="Feed"
-              aria-current={currentIf(pathname === "/feed")}
-              data-tour="nav-feed"
-            >
-              <Newspaper size={20} strokeWidth={1.5} aria-hidden />
-              <span className="desktop-top-bar__icon-label">Feed</span>
-            </Link>
-          ) : null}
-
-          <Link
-            href="/apps"
-            className="desktop-top-bar__icon-btn"
-            aria-label="Apps"
-            aria-current={currentIf(isUnder("/apps"))}
-            data-tour="nav-apps"
-          >
-            <LayoutGrid size={20} strokeWidth={1.5} aria-hidden />
-            <span className="desktop-top-bar__icon-label">Apps</span>
-          </Link>
-
-          {/* Records manager: personal account only (see personal-only.ts). */}
-          {isAuthenticated && isRouteVisibleToActor("records", !!activeOrg) ? (
-            <Link
-              href="/records"
-              className="desktop-top-bar__icon-btn"
-              aria-label="Records"
-              aria-current={currentIf(isUnder("/records"))}
-              data-tour="nav-records"
-            >
-              <Library size={20} strokeWidth={1.5} aria-hidden />
-              <span className="desktop-top-bar__icon-label">Records</span>
-            </Link>
-          ) : null}
-
-          {isAuthenticated ? (
-            <Link
-              href={profileHref}
-              className="desktop-top-bar__icon-btn"
-              aria-label="My profile"
-              aria-current={currentIf(isOnProfile && isOnOwnProfile)}
-              data-tour="nav-profile"
-            >
-              <User size={20} strokeWidth={1.5} aria-hidden />
-              <span className="desktop-top-bar__icon-label">Profile</span>
-            </Link>
-          ) : null}
-
-          {isAuthenticated ? (
-            <Link
-              href="/settings"
-              className="desktop-top-bar__icon-btn"
-              aria-label="Settings"
-              aria-current={currentIf(isOnSettings)}
-              data-tour="nav-settings"
-            >
-              <Settings size={20} strokeWidth={1.5} aria-hidden />
-              <span className="desktop-top-bar__icon-label">Settings</span>
-            </Link>
-          ) : null}
-
-          <Link
-            href="/help"
-            className="desktop-top-bar__icon-btn"
-            aria-label="Help"
-            aria-current={currentIf(isUnder("/help"))}
-            data-tour="nav-help"
-          >
-            <HelpCircle size={20} strokeWidth={1.5} aria-hidden />
-            <span className="desktop-top-bar__icon-label">Help</span>
-          </Link>
-
-          {isAuthenticated ? (
-            <div className="desktop-top-bar__switcher-wrap">
-              <Popover open={switcherOpen} onOpenChange={setSwitcherOpen}>
-                <PopoverTrigger>
-                  <button
-                    type="button"
-                    className="desktop-top-bar__switcher"
-                    aria-label={`Switch account (currently ${identity.name || "anonymous"})`}
-                    data-tour="account-switcher"
-                  >
-                    <Avatar
-                      size="sm"
-                      src={identity.avatarUrl}
-                      fallbackInitials={identity.initials}
-                    />
-                    <span className="desktop-top-bar__switcher-meta">
-                      {identity.name ? (
-                        <span className="desktop-top-bar__switcher-name">{identity.name}</span>
-                      ) : null}
-                      {identity.handle ? (
-                        <span className="desktop-top-bar__switcher-handle">@{identity.handle}</span>
-                      ) : null}
-                    </span>
-                    <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  portal
-                  side="bottom"
-                  align="end"
-                  minWidth={260}
-                  style={{ width: 300 }}
-                  className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]"
-                >
-                  <AccountSwitcherList
-                    session={{ handle: handle ?? null }}
-                    profile={profile ? { displayName: profile.displayName ?? undefined } : null}
-                    avatarUrl={avatarUrl ?? undefined}
-                    sortedOrgs={sortedOrgs}
-                    selfGroup={selfGroup}
-                    activeOrg={activeOrg}
-                    switchOrg={switchOrg}
-                    onAfterSwitch={(next) => {
-                      setSwitcherOpen(false);
-                      // Stay on the current page after the swap unless
-                      // it's a personal-only surface the new actor can't
-                      // visit (e.g. /create when switching personal →
-                      // group); the helper returns /home in that case.
-                      router.push(routeForActorSwitch(pathname, next));
-                    }}
-                    onSignOut={() => {
-                      setSwitcherOpen(false);
-                      signOut();
-                    }}
-                    onSwitchAccount={() => {
-                      setSwitcherOpen(false);
-                      openSignIn();
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          {isLoading ? null : isAuthenticated ? (
+            <>
+              <DesktopNewMenu />
+              <DesktopAccountMenu />
+            </>
           ) : (
-            // Theme-aware primary Button (inverts in dark mode) replaces the
-            // old black SVG pill, whose edge vanished on the dark canvas.
             <Button variant="primary" size="sm" onClick={openSignIn}>
               Sign in
             </Button>

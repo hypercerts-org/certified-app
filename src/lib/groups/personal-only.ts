@@ -1,8 +1,11 @@
 /**
- * Single source of truth for which nav items are personal-only — i.e.
- * hidden when the user is acting as a group. Centralized so the three
- * nav surfaces (desktop left rail, mobile sidebar, bottom nav) can't
- * drift out of sync as features are added.
+ * Single source of truth for which routes are personal-only — i.e. the
+ * account switcher leaves them (for /home) when you switch to acting as a
+ * group, and the few remaining surfaces that gate on them hide the entry.
+ *
+ * The primary navigation (Home, Feed, Explore, Records, Apps) never hides
+ * a destination per account: a page that a group can't use explains why
+ * in place instead (Records does this).
  *
  * The constraints are real, not cosmetic:
  *   - "create"       : xrpc proxy validates `repo === sessionDid` for
@@ -10,20 +13,20 @@
  *                      write a record to the group repo here.
  *   - "groups"       : would be self-referential when already in a
  *                      group context — the group is reachable via the
- *                      account switcher.
+ *                      account menu.
  *   - "endorsements" : the underlying record lives in the personal
  *                      repo only; no group analogue exists.
- *   - "records"      : the /records manager writes through the XRPC
- *                      proxy (session repo only), and lists have no group
- *                      write path at all.
+ *
+ * Records is deliberately NOT listed: it stays reachable while acting as a
+ * group and shows "Records are managed on your personal account" with a
+ * switch button, so switching accounts on /records doesn't redirect.
  */
-export type PersonalOnlyRoute = "create" | "groups" | "endorsements" | "records"
+export type PersonalOnlyRoute = "create" | "groups" | "endorsements"
 
 const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = [
   "create",
   "groups",
   "endorsements",
-  "records",
 ]
 
 /**
@@ -43,7 +46,7 @@ export function isRouteVisibleToActor(
  * Classify a pathname against the personal-only registry. Returns
  * the matching route key (so callers can pass it to
  * `isRouteVisibleToActor`) or null when the route is allowed for any
- * actor (profile views, search, home, etc.).
+ * actor (profile views, search, home, records, etc.).
  *
  * Used by the actor switcher to decide whether to stay on the user's
  * current pathname after a persona switch, or redirect to /home
@@ -57,6 +60,5 @@ export function pathnameToPersonalOnlyRoute(
   if (pathname === "/endorsements" || pathname.startsWith("/endorsements/")) {
     return "endorsements"
   }
-  if (pathname === "/records" || pathname.startsWith("/records/")) return "records"
   return null
 }

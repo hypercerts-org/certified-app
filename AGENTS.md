@@ -47,7 +47,7 @@ These are the rules most often violated by drift. If your change touches CSS, JS
 2. **No raw hex / rgb / hsl / named colors** outside `src/app/styles/tokens.css` and `src/app/styles/landing.css` (stylelint-enforced). Use semantic tokens (`--fg-primary`, `--bg-elevated`, `--border-default`, …) or, on landing, the theme-aware landing tokens (`--color-navy`, `--color-off-white`, `--color-light-gray`, `--color-mid-gray`, `--color-surface`). The two invariant primitives `--color-primary` and `--color-white` are reserved for systems that must not flip (skip-nav, brand SVG); don't reach for them on app surfaces.
 3. **No new breakpoints.** The only canonical breakpoints are 800 / 1100 / 1300 (tokens `--bp-gt-mobile`, `--bp-gt-narrow-desktop`, `--bp-gt-desktop`). For "below desktop" use `max-width: 799px`. Don't introduce 768 / 760 / 640.
 4. **No ad-hoc shadows.** Elevation shadows are `var(--shadow-sm)` / `var(--shadow-md)` / `var(--shadow-lg)`, plus `var(--shadow-modal)` for dialogs only; rings and hairlines use the `--shadow-ring-*` / `--shadow-inset-*` / `--shadow-outline-*` / `--shadow-navbar-hairline` tokens. Raw `box-shadow: 0 8px 24px rgba(...)` is a smell.
-5. **No ad-hoc z-index.** Use the tokens in `tokens.css` §"Z-index map" (`--z-rail`, `--z-popover`, `--z-navbar`, `--z-feedback-trigger`, `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-tooltip`, …).
+5. **No ad-hoc z-index.** Use the tokens in `tokens.css` §"Z-index map" (`--z-rail`, `--z-popover`, `--z-navbar`, `--z-feedback-trigger`, `--z-chrome-menu`, `--z-portal-sheet`, `--z-modal`, `--z-skip-nav`, `--z-feedback`, `--z-tooltip`, …).
 6. **Reach for the canonical UI primitive before writing a new BEM class.** The components in `src/components/ui/` are: `<Button>` (4 variants × 5 sizes including `size="icon"` and `size="icon-sm"`), `<Input>` (4 sizes incl. `bare` × 3 variants), `<Textarea>`, `<Badge>` (11 variants), `<Card>` (`row` / `elevated` / `inset`), `<Tabs>`/`<Tab>`/`<TabPanel>`, `<Skeleton>`, `<Popover>`, `<Avatar>`, `<AppDialog>`, `<ConfirmDialog>`, `<EmptyState>`, `<ErrorMessage>`, `<LoadingSpinner>`, `<EditBanner>`, and the page-layout set `<PageContainer>`, `<PageHeader>`, `<SectionHeader>`, `<SideNav>`, `<StatRow>`. If a divergent style already exists for the job (e.g. a `.foo__btn` class), do **not** add another — migrate the existing one toward the primitive or, if too risky, leave a TODO that references this file.
 7. **Titles use the `text-display` / `text-h1` / `text-h2` / `text-h3` / `text-h4` scale and `font-headline`** (Noto Serif): page titles, account names, record titles, empty-state and dialog titles. Section headings inside a page use `text-section` (Inter 600, via `<SectionHeader>`). Body uses `text-body` / `text-body-sm` / `text-caption` + Inter. Do not use Tailwind's `text-xl` / `text-lg` / `text-2xl` for app headings.
 8. **All modals use `<AppDialog>` (or `<ConfirmDialog>` / `<DeleteRecordDialog>` which wrap it).** Don't hand-roll backdrop / Esc / focus-trap / scroll-lock — the `<dialog>` + `showModal()` pattern is centralized and has bug history. See `app-dialog.tsx:118` for the bug class it prevents.
@@ -105,7 +105,7 @@ Certified is a passwordless identity platform built on **AT Protocol** (atproto)
 | Lint | ESLint flat config extending `next/core-web-vitals` and `next/typescript` |
 | Test runner | **Vitest** (jsdom), ~1235 tests in `src/**/__tests__/`. Playwright for E2E in `e2e/`. See §27. |
 
-> Note: Next.js 16 renamed `middleware.ts` to `proxy.ts`. This app ships **no** edge proxy/middleware — the `/` redirect is client-side (`HomeClient`).
+> Note: Next.js 16 renamed `middleware.ts` to `proxy.ts`. The `/` redirect is a server component (`src/app/page.tsx`); `src/proxy.ts` handles at-uri paths and the CSP nonce (§7).
 
 ## 3. Quick Reference
 
@@ -185,56 +185,67 @@ Key principles:
 <html>
   <head>… JSON-LD: Organization + WebSite …</head>
   <body>
-    <Providers>                        // src/lib/providers.tsx (currently a passthrough)
-      <AuthProvider>                   // OAuth state, modal, redirect overlay
-        <OrgProvider>                  // Active group + memberships, persisted to localStorage
-          <NavbarProvider>             // "default" | "transparent" navbar variant
+    <Providers>                        // src/lib/providers.tsx (next-themes, CSP nonce)
+      <ToastProvider>
+      <AuthProvider>                   // OAuth state, sign-in modal, redirect overlay
+        <OrgProvider>                  // Active group + memberships (sessionStorage)
+          <OnboardingProvider> <TourProvider>
+          <NavbarProvider>             // Page title, PageHeader registry, record menu, profile flags
+            <FeedbackProvider> <ViewTransitionProvider>
             <a class="skip-nav">       // Skip-to-main link
-            <Navbar />
+            <ActingAsBar />            // Only while acting as a group
+            <Navbar />                 // Phone top bar (< 800px)
+            <Suspense><DesktopTopBar /></Suspense>   // Desktop top bar (≥ 800px)
             <main id="main-content">
-              <AppShell>{children}</AppShell>   // .app-shell wrapper, skipped on /welcome
+              <AppShell>{children}</AppShell>   // .app-shell + SiteFooter; skipped on /welcome, legal pages, /embed
             </main>
-            <Footer />                 // Single global footer on every page
-            <FeedbackModal />          // Floating feedback button + modal
-          </NavbarProvider>
-        </OrgProvider>
-      </AuthProvider>
-    </Providers>
+            <BottomNav />              // Phone tab bar (< 800px)
+            <PwaInstallGuard />
+            <FeedbackModal /> <FeedbackTrigger />   // The floating trigger is desktop-only
+            <OnboardingModal /> <ProductTour />
     <Analytics />
-  </body>
-</html>
 ```
+
+**The shell** (DESIGN.md §4). Five destinations, in one order everywhere: Home, Feed, Explore, Records, Apps (`src/lib/layout/destinations.ts`; signed out: Explore and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
+
+- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** Row 1: brandmark, the five destinations (icon + word), then search (`/` or Cmd/Ctrl+K focuses it), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Row 2 (unchanged): profile tabs on profile pages, Back + record tabs on record detail pages, Back on `/create` and `/project/new`. Signed out: Sign in instead of New and the account button.
+- **Phone (< 800px).** `navbar.tsx`: on top-level pages (the destinations, `/settings`, `/help`, your own profile, untitled pages) the brandmark, a `+` (the New menu as a sheet) and the avatar (the account sheet); on detail pages a back chevron, the compact title and the record menu. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser (`src/lib/layout/bottom-nav-visibility.ts`: hidden only on `/welcome` and `/embed`).
+- **Account menu**, `account-menu.tsx`: one `AccountMenuContent` rendered in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones. Current account (+ View profile), Switch account (personal first, then groups sorted by `sortGroupsForSwitcher`, then New group), Settings, Help, Send feedback, Appearance, Sign in with another account (replaces the session), Sign out (behind a `ConfirmDialog`). Switching goes through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`), which the acting-as bar and Records also use.
+- **The h1.** A page with `<PageHeader>` owns its h1. Otherwise the chrome renders `usePageTitle`'s value as the h1: visually hidden in the desktop bar, the compact title in the phone bar (DESIGN.md §3.6).
+- **Acting as a group** shows in the account button (square group avatar, "as @you"), in `ActingAsBar` (in flow above the desktop bar; fixed under the phone bar, which then stops hiding on scroll), and in the Create forms.
 
 Scoped providers (mounted only where used):
 
-- `WagmiProvider` + `QueryClientProvider` — only in `src/app/settings/wallet/layout.tsx`. **Do not** lift these to the root; wagmi is heavy and only the wallet linking flow needs it.
-- `AuthGuard` — in `settings/layout.tsx`, `connected-apps/layout.tsx`, and `groups/layout.tsx`. Redirects to `/welcome` when unauthenticated; renders a centered loading spinner while auth is initializing.
-- `WelcomeLayout` (`src/app/welcome/layout.tsx`) — sets navbar variant to `"transparent"` while the user is on `/welcome`, and resets to `"default"` on unmount.
+- `AuthGuard` — in `settings/layout.tsx` and `groups/layout.tsx`. Redirects to `/welcome` when unauthenticated; renders a centered loading spinner while auth is initializing.
+- `WelcomeLayout` (`src/app/welcome/layout.tsx`) — the landing page; the app chrome (both top bars, the bottom nav) steps aside on `/welcome` and `LandingTopBar` takes over.
 
 ## 7. Routing Map
 
 | Route | Type | Auth | Notes |
 |---|---|---|---|
-| `/` | client redirector (`HomeClient`) | mixed | Sends unauth → `/welcome`; sends auth → `/{handle}` (or the active group's handle/DID). The redirect is client-side only. The canonical landing for crawlers is `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`). |
-| `/welcome` | server | public | Landing page. Sets transparent navbar variant. JSON-LD: SoftwareApplication + FAQPage. |
-| `/about` | server | public | About page. |
-| `/terms` | server | public | Terms of Service. |
-| `/privacy` | server | public | Privacy Policy. |
-| `/dsa` | server | public | DSA compliance. |
+| `/` | server redirect | mixed | Signed in (session cookie) → `/home`; signed out → `/welcome` (`src/app/page.tsx`, a real 307). The canonical landing for crawlers is `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`). |
+| `/welcome` | server | public | Landing page with its own chrome (`LandingTopBar`). JSON-LD: SoftwareApplication + FAQPage. |
+| `/terms`, `/privacy`, `/imprint`, `/dsa` | server | public | Legal pages. Outside `AppShell`; desktop uses `LandingTopBar`, phones the app's top bar. |
+| `/home` | client | gated | The account home (account card, groups, records, from others, apps). Destination 1. |
+| `/feed` | client | gated | Follow feed with evaluator filters. Destination 2. |
+| `/explore` | client | public | Browse the network. Destination 3. |
+| `/records` | client | gated | Manage what your account holds (`?kind=activities\|endorsements\|following\|followers\|lists`). While acting as a group it explains that records live on the personal account and offers a switch. Destination 4. |
+| `/apps` | server | public | Partner app directory. Destination 5. |
+| `/help` | server | public | FAQ, walk-through, feedback. |
+| `/create`, `/project/new` | client | open (Sign in prompt when signed out) | New activity / new project forms. |
 | `/[actor]` | client | open | **Canonical profile URL** (handle-forward). `actor` is a handle (canonical/displayed) or a DID (durable). A DID-addressed URL canonicalizes to the handle form on load. Handles personal and group identities. |
 | `/[actor]/[type]/[rkey]` | client | open | **Canonical record URL.** `type` ∈ `activity \| project` (friendly segment ↔ collection NSID, mapped in `src/lib/urls.ts`). Resolves `actor`→DID, fetches the record, canonicalizes a DID-addressed URL to the handle form. |
 | `/[actor]/[type]/[rkey]/edit` | client | gated (owner) | Record editor. Dispatches to the activity/project editor by `type`; same actor→DID resolution + canonicalization as the read route. |
-| `/settings` | client | gated (AuthGuard) | If `activeOrg`, renders `OrgSettings`; otherwise account settings (handle, email, password, app-passwords placeholder, 2FA placeholder). |
+| `/settings` | client | gated (AuthGuard) | If `activeOrg`, renders `OrgSettings`; otherwise account settings. Reached from the account menu. |
 | `/settings/edit-profile` | client | gated | Edit personal profile. |
-| `/settings/my-data` | client | gated | Data export / view. |
-| `/settings/wallet` | client | gated + Wagmi | EIP-712 wallet linking. The only route that loads wagmi/viem. |
-| `/connected-apps` | client | gated | Lists `CONNECTED_APPS` from `src/lib/constants/apps.ts`. |
-| `/groups` | client | gated | List groups, accept/leave/remove public membership. |
-| `/groups/create` | client | gated | Register a new group. Enforces `MAX_SELF_CREATED_ORGS = 5`. |
-| `/groups/[groupDid]` | client | gated | Group profile view. |
+| `/groups` | server redirect | — | → `/home` (groups live in the account menu and on Home). |
+| `/groups/create` | client | gated | Register a new group. Enforces `MAX_SELF_CREATED_ORGS = 5`. Linked from New and the account menu. |
+| `/groups/[groupDid]` | server redirect | — | → the group's `/{handle}` profile. |
 | `/groups/[groupDid]/edit-profile` | client | gated | Edit group profile + metadata. |
-| `/groups/[groupDid]/apps` | client | gated | Apps view scoped to a group. |
 | `/groups/[groupDid]/settings` | client | gated | Member management + audit log. |
+| `/endorsements` | server redirect | — | → `/records?kind=endorsements` (endorsements are managed in Records). |
+| `/workspace` | server redirect | — | → `/records`. The old navigation prototype still renders at `/dev/preview/workspace`. |
+| `/endorsement-graph` | server | public | The endorsement network graph (also opened from Help in a pop-up). |
 | `/oauth/callback` | client | — | Receives the OAuth redirect. POSTs query string to `/api/auth/callback-handler`, then either `postMessage`s the parent window (iframe flow) or `window.location.replace("/")`. |
 | `/.well-known/oauth-client-metadata` | server | public | Generated from `getOAuthClient().clientMetadata` + extras (`brand_color`, `tos_uri`, etc.). Cached `public, max-age=600`. |
 | `/.well-known/jwks.json` | server | public | Generated from `getOAuthClient().jwks`. Cached `public, max-age=600`. |
@@ -251,7 +262,7 @@ Permanent redirects (in `next.config.ts`):
 
 **Root-level `[actor]` invariant.** Because the profile route lives at the root, the `[actor]` segment must be disambiguated from real app routes. AT Protocol handles always contain a dot; DIDs start with `did:`; **every top-level app route is a dotless bare word** (`home`, `explore`, `settings`, …). This is enforced by `RESERVED_ROUTES` + `parseActor` in `src/lib/urls.ts`. **Any new top-level route MUST be a dotless word** or it will collide with the handle namespace.
 
-**Edge proxy — `src/proxy.ts`** (Next 16's renamed `middleware`). Added for pdsls.dev interop only: a pasted at-uri path (`/at://did/collection/rkey`, `/at:/…`, or the host-safe `/at/…`) is parsed and 308-redirected into the handle-forward scheme. Every other request passes straight through (single `startsWith("/at")` check). The `/` route redirect still runs client-side via `HomeClient`; auth-gated pages still rely on `AuthGuard`. SEO crawlers are pointed at `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`).
+**Edge proxy — `src/proxy.ts`** (Next 16's renamed `middleware`). Added for pdsls.dev interop (and the per-request CSP nonce): a pasted at-uri path (`/at://did/collection/rkey`, `/at:/…`, or the host-safe `/at/…`) is parsed and 308-redirected into the handle-forward scheme. Every other request passes straight through. The `/` redirect is a server component (`src/app/page.tsx`); auth-gated pages still rely on `AuthGuard` or their own signed-out handling. SEO crawlers are pointed at `/welcome` (priority-1 in `sitemap.ts`, allowed in `robots.ts`).
 
 ## 8. Authentication Flow
 
@@ -404,7 +415,7 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
 - `src/app/styles/` — a tree of feature-scoped CSS files, all imported by `src/app/globals.css`. The split is intentional; do not collapse it back to one file.
   - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live.**
   - `components.css` — primitive component chrome (modals, app-card label, dash-card, error/empty states).
-  - `layout.css` — app shell, navbar, top-bar, bottom-nav, drawers, rails.
+  - `layout.css` — app shell, phone top bar, desktop top bar, account button, bottom nav, acting-as bar.
   - Per-feature: `feed.css`, `profile-*.css`, `cert-detail.css`, `project-detail.css`, `explore.css`, `home.css`, `settings-page.css`, `workspace.css`, `notifications.css`, `landing.css`, `leaflet.css`, etc.
 - Tailwind utilities are used freely *inside* JSX for one-off layout (`flex`, `mt-4`, `max-w-3xl`, …).
 - Tailwind theme is small: `screens` replaced with `md` 800 / `lg` 1100 / `xl` 1300 · `future.hoverOnlyWhenSupported` · `colors.{success, warning, error}` · `fontFamily.{sans, headline, mono}` · the full `fontSize` type ramp (`display`, `h1`-`h4`, `section`, `body`, `body-sm`, `ui`, `caption`, `label`, `micro`) · `letterSpacing.label` · `transitionDuration.{instant, fast, base, slow}` + `transitionTimingFunction.{out, emphasized, in-out}` (defaults: fast + `--ease-out`) · `height` / `minHeight` `control-{compact, sm, md, lg}` · `maxWidth.measure` · `boxShadow.{sm, md, lg, modal}` aliasing the CSS vars · `borderRadius.DEFAULT: 2px` · the `pulse` / `skeleton` animations. See `tailwind.config.ts`.
@@ -429,7 +440,7 @@ Token catalog is the source of truth at `src/app/styles/tokens.css`. The most-us
 - **Type:** `--text-display` … `--text-micro` (plus `--text-section`) mirror the Tailwind ramp · `--tracking-label` (0.06em, uppercase only) · `--measure` (65ch).
 - **Control heights:** `--control-h-compact` (32) / `-sm` (36) / `-md` (44) / `-lg` (56) → Tailwind `h-control-*`.
 - **Geometry:** `--radius` (2 px) · `--radius-pill` (999 px) · `--page-width-narrow` / `-default` / `-wide` (720 / 1120 / 1280 px, `<PageContainer>`) · `--navbar-height` (64 px) · `--top-bar-row1` / `--top-bar-row2` / `--top-bar-total` for desktop top-bar heights · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
-- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-feedback-trigger` (55; floating Feedback button) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
+- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-feedback-trigger` (55; floating Feedback button) · `--z-chrome-menu` (56; New and account menus) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
 
 ### Rules
 
@@ -469,7 +480,7 @@ Use these. Don't reimplement.
 | `<Tabs>` + `<TabList>` + `<Tab>` + `<TabPanel>` | Controlled (`value` / `onChange`). Proper ARIA tablist + arrow-key navigation. `<TabPanel keepMounted>` if child state should survive switches. |
 | `<Skeleton>` | `variant: "line" \| "box" \| "circle" \| "text"`. `width` / `height` accept any CSS dimension. `text` accepts `lines={n}`. Fill `--overlay-weak`; the pulse stops under `prefers-reduced-motion`. |
 | `<Popover>` + `<PopoverTrigger>` + `<PopoverContent>` + `<PopoverItem>` | Floating menu. Handles click-outside, Esc, focus restore, ARIA. `align: "start" \| "center" \| "end"`. Controlled (`open` / `onOpenChange`) or uncontrolled. |
-| `<Avatar>` | `size: "xs" \| "sm" \| "md" \| "lg" \| "xl" \| "2xl"` (20 / 32 / 48 / 64 / 96 / 240 px). Pass `fallbackInitials={getInitials(name)}` from `src/lib/utils/initials.ts`. |
+| `<Avatar>` | `size: "xs" \| "sm" \| "md" \| "lg" \| "xl" \| "2xl"` (20 / 32 / 48 / 64 / 96 / 240 px). `shape: "circle"` (default, people) \| `"square"` (groups, 2px radius). Pass `fallbackInitials={getInitials(name)}` from `src/lib/utils/initials.ts`. |
 | `<AppDialog>` + `<AppDialogHeader>` + `<AppDialogBody>` | The modal primitive: `--bg-overlay` surface, `--shadow-modal`, `--scrim` backdrop. `<AppDialogHeader title onClose? disabled?>` renders a left-aligned serif `text-h4` title and an `icon-sm` close button; the old `center` prop is removed. See [§11 Modals](#11-css-conventions). |
 | `<ConfirmDialog>`, `<DeleteRecordDialog>` | Specializations of AppDialog for destructive / type-to-confirm flows. |
 | `<EmptyState>` | `variant: "rich" \| "inline"` (`compact` = alias of `inline`). Rich: centered 40 px icon (stroke 1.25) + serif title + description + actions; `headingLevel` sets the title element. |
@@ -493,7 +504,7 @@ Use these. Don't reimplement.
 - **SVG icons / button graphics:** raw `<img>` (not `next/image`) for SVG assets. `next/image` is reserved for raster assets where the optimizer adds value (see `partner-apps.tsx` for an example using `Image`).
 - **Icons:** `lucide-react`. The only `@tabler/icons-react` import in the codebase is the cert icon, wrapped by `src/components/ui/cert-icon.tsx` to expose a lucide-compatible `strokeWidth` prop. Don't import tabler directly elsewhere.
 - **Icon sizing follows the ladder in DESIGN.md §8:** 12 px (stroke 2) meta / error glyphs · 14 px (1.75) inline actions, menus · 16 px (1.75) button, toast, banner and close icons · 20 px (1.5) chrome · 24 px bottom nav (1.5, 2.5 active) · 40 px empty state (1.25). Smaller icons get heavier strokes; snap 11 / 13 / 15 px to the nearest step.
-- **Dropdown triggers:** if it's a menu, use `<Popover>`. Roll-your-own should be a last resort; if you do, the trigger needs `aria-haspopup` + `aria-expanded` (`navbar.tsx` has the canonical pattern from before `<Popover>` existed).
+- **Dropdown triggers:** if it's a menu, use `<Popover>` (on phones, the same content in a `<BottomSheet>`, as `account-menu.tsx` and `new-menu.tsx` do). Roll-your-own should be a last resort; if you do, the trigger needs `aria-haspopup` + `aria-expanded`.
 - **Popover (menu) vs. panel — two sanctioned variants, no third.** A *menu* (single-select list of actions/options) uses the canonical `<Popover>`/`<PopoverTrigger>`/`<PopoverContent>`/`<PopoverItem>` (e.g. the Explore Sort + Sub-category dropdowns) — it carries `role="menu"`/`role="menuitem"`, click-outside, Esc-to-close, focus restore, and ARIA wiring for free. A *panel* (a popover holding form controls like checkbox filters, where the open surface is a `role="dialog"` rather than a menu) uses `useClickOutsideClose` on a wrapper ref (e.g. the home-feed `QualityFilter`/`EvaluatorFilter` and the Explore quality-filter popover). Pick one of these two; never hand-roll a fourth ad-hoc popover variant.
 - **Skip-nav:** already wired in root layout (`<a href="#main-content" class="skip-nav">`). `<main id="main-content">` exists. Don't reintroduce.
 - **External user-controlled URLs (e.g. `profile.website`):** validate the scheme before using as an `href`. Only allow `http:`, `https:`, `mailto:`, `tel:`; reject anything else (including `javascript:`, `data:`, `vbscript:`, malformed).
@@ -516,8 +527,8 @@ Group-creation limit hook is at `src/lib/groups/use-org-limit.ts` (`useOrgCreati
 ## 14. State Management
 
 - **Auth state:** `AuthProvider` in `src/lib/auth/auth-context.tsx`. Holds `isLoading`, `isAuthenticated`, `did`, `pdsUrl`, `error`, `isModalOpen`, `isRedirectingToProvider`, plus actions `openSignIn`, `closeModal`, `submitEmail`, `submitHandle`, `submitGoogle`, `signOut`. Also owns the `SignInModal` and `ProviderRedirectOverlay` components.
-- **Active group:** `OrgProvider` in `src/lib/groups/org-context.tsx`. Persists the active org to `localStorage` under key `certified_active_org`. Initializes synchronously on first render (`getInitialOrg`) so the navbar avatar doesn't flicker. Refetches groups on auth change. When the auth state turns to "logged out", the active org is cleared.
-- **Navbar variant:** `NavbarProvider` (`src/lib/navbar-context.tsx`). Two variants: `default` (opaque) and `transparent` (used on `/welcome`).
+- **Active group:** `OrgProvider` in `src/lib/groups/org-context.tsx`. Persists the active org to `sessionStorage` under key `certified_active_org` and restores it after mount (so the server render and hydration agree). Refetches groups on auth change. When the auth state turns to "logged out", the active org is cleared. Switch with `useSwitchActor()` (stays on the page unless it is personal-only).
+- **Chrome state:** `NavbarProvider` (`src/lib/navbar-context.tsx`): the page title (`usePageTitle`), whether a `<PageHeader>` is mounted (`useRegisterPageHeader` / `useHasPageHeader`), the phone record menu, and the profile flags (full-bleed shell, available tabs, editing).
 - **Wagmi:** scoped to `/settings/wallet/layout.tsx`. Mounts `WagmiProvider` with `config` from `src/lib/wagmi.ts` (chains: mainnet, base, optimism, arbitrum; connectors: injected, coinbaseWallet smart-wallet-only, walletConnect when `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is set; `ssr: true`).
 - **No Redux / Zustand / Jotai.** Local component state + the three contexts above is the entire state model.
 
@@ -802,9 +813,9 @@ certified-app/
     │   ├── sitemap.ts                  # sitemap.xml
     │   ├── error.tsx                   # Global error boundary
     │   ├── not-found.tsx               # 404 page
-    │   ├── page.tsx                    # `/` — renders <HomeClient /> (redirector)
+    │   ├── page.tsx                    # `/` — server redirect to /home or /welcome
     │   ├── welcome/
-    │   │   ├── layout.tsx              # Sets navbar variant to "transparent"
+    │   │   ├── layout.tsx              # Landing layout (the app chrome steps aside on /welcome)
     │   │   └── page.tsx                # Landing + JSON-LD (SoftwareApplication, FAQPage)
     │   ├── about/page.tsx
     │   ├── terms/page.tsx
@@ -876,10 +887,17 @@ certified-app/
     │   │       ├── ready-cta-content.tsx
     │   │       └── what-you-get.tsx
     │   ├── layout/
-    │   │   ├── app-shell.tsx              # .app-shell wrapper, skipped on /welcome
+    │   │   ├── account-menu.tsx           # Account menu: desktop popover + phone sheet, sign-out confirm
+    │   │   ├── acting-as-bar.tsx          # "Operating <group>" banner while acting as a group
+    │   │   ├── app-shell.tsx              # .app-shell wrapper + SiteFooter, skipped on /welcome
     │   │   ├── auth-guard.tsx             # Auth redirect with loading spinner
-    │   │   ├── footer.tsx                 # Global footer (single instance, in root layout)
-    │   │   └── navbar.tsx                 # Top nav with account switcher, mobile bottom sheet
+    │   │   ├── bottom-nav.tsx             # Phone tab bar: Home, Feed, Explore, Records, Apps
+    │   │   ├── desktop-top-bar.tsx        # Desktop bar: destinations, search, New, account; row 2 tabs
+    │   │   ├── feedback-trigger.tsx       # Floating Feedback button (desktop only)
+    │   │   ├── menu-row.ts                # Shared row styling for the shell menus
+    │   │   ├── navbar.tsx                 # Phone top bar (brandmark / back, title, New, account)
+    │   │   ├── new-menu.tsx               # New activity / project / group: popover + phone sheet
+    │   │   └── site-footer.tsx            # Global footer
     │   ├── dashboard/
     │   │   ├── custom-domain-modal.tsx
     │   │   └── username-card.tsx
@@ -955,7 +973,7 @@ certified-app/
         │   ├── constants.ts               # LIMIT_MIN/MAX/DEFAULT, debounce timings
         │   ├── initials.ts                # getInitials()
         │   └── sanitize.ts                # stripInvisible/sanitizeEmail/sanitizeHandle
-        ├── navbar-context.tsx             # NavbarProvider — "default" | "transparent" variant
+        ├── navbar-context.tsx             # NavbarProvider — page title, PageHeader registry, record menu, profile flags
         ├── providers.tsx                  # Currently a passthrough — placeholder for cross-cutting providers
         └── wagmi.ts                       # wagmi config (mainnet/base/optimism/arbitrum) + SUPPORTED_CHAINS
 ```

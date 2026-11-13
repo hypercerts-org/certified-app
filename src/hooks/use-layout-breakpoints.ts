@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
  *
  * Used to gate **mount/unmount** of a small set of components that have
  * focusable/portal content which must not exist at desktop widths for
- * accessibility (<BottomNav>, <MobileSidebar>, and the hamburger button).
+ * accessibility (<BottomNav>, the phone <Navbar>, and the bottom sheets
+ * that replace desktop popovers).
  * All other responsive behavior is CSS-only via @media queries on the
  * same numbers.
  *
@@ -23,7 +24,7 @@ const BP_GT_NARROW_DESKTOP = 1100;
 const BP_GT_DESKTOP = 1300;
 
 export interface LayoutBreakpoints {
-  /** ≥800px: desktop layout begins. Bottom-nav, mobile-sidebar, hamburger should unmount. */
+  /** ≥800px: desktop layout begins. The bottom nav and the phone navbar unmount. */
   isDesktop: boolean;
   /** ≥1100px: right rail mounted. */
   hasRightRail: boolean;

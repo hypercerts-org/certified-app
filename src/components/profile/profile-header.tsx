@@ -53,10 +53,10 @@ interface ProfileHeaderProps {
  *   - neither set → "Follow" button (no-op today; placeholder for the
  *     future follow flow)
  *
- * The back arrow lives in the transparent navbar overlay above — NOT in
- * this component. Pages that use ProfileHeader should also call
- * useProfileNavbar() so the navbar renders as a transparent floating bar
- * with only the back arrow visible.
+ * The back chevron lives in the phone top bar above — NOT in this
+ * component. Pages that use ProfileHeader should also call
+ * useProfileNavbar() so the shell goes full-bleed and the banner runs
+ * edge-to-edge below the bar.
  */
 export default function ProfileHeader({
   profile,

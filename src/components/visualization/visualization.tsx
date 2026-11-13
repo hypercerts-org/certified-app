@@ -9,7 +9,6 @@ import {
   useEndorsementGraph,
   type EndorsementGraph as EndorsementGraphData,
 } from "@/hooks/use-endorsement-graph"
-import { usePageTitle } from "@/lib/navbar-context"
 import type { FocusRequest } from "@/components/visualization/endorsement-graph"
 
 // Canvas/`window`-dependent — load client-only.
@@ -37,7 +36,15 @@ function GraphLoading() {
   )
 }
 
-export default function Visualization() {
+/**
+ * The endorsement network: the graph plus its stats sidebar. Renders as the
+ * /endorsement-graph page by default; pass `embedded` when it is hosted
+ * inside something else (the Help pop-up), so the page-only layout rules
+ * (`.viz--page`: full shell width, viewport-tall on wide screens) stay off
+ * the page behind it. The page sets its own title; this component never
+ * touches the chrome.
+ */
+export default function Visualization({ embedded = false }: { embedded?: boolean } = {}) {
   const { graph, isLoading, error } = useEndorsementGraph()
   const [focusReq, setFocusReq] = useState<FocusRequest>({ did: null, nonce: 0 })
   // Stats of the currently-visible (filtered) graph, emitted by the graph
@@ -45,16 +52,12 @@ export default function Visualization() {
   // Falls back to the full graph until the first emit.
   const [statsGraph, setStatsGraph] = useState<EndorsementGraphData | null>(null)
 
-  // Shows "Endorsement network" in the top bar next to the brandmark (which
-  // replaces the wordmark whenever a page title is set).
-  usePageTitle("Endorsement network")
-
   const handleFocus = useCallback((did: string) => {
     setFocusReq((prev) => ({ did, nonce: prev.nonce + 1 }))
   }, [])
 
   return (
-    <div className="viz">
+    <div className={embedded ? "viz" : "viz viz--page"}>
       <div className="viz__main">
         <div className="viz__graph" aria-busy={isLoading || undefined}>
           {isLoading && <GraphLoading />}

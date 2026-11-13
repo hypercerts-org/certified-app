@@ -193,23 +193,29 @@ export default function GlobalSearch({
     }
   }, [query, search])
 
-  // Cmd/Ctrl+K focus shortcut — same gesture as the old PeopleSearch.
+  // Focus shortcuts: Cmd/Ctrl+K (the old PeopleSearch gesture) and a bare
+  // `/` (GitHub, Bluesky). Neither fires while typing in another field;
+  // `/` also stays a plain character inside the search field itself, and
+  // only the visible field responds (the bar is display:none on phones).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return
+      const isModK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"
+      const isSlash =
+        e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey
+      if (!isModK && !isSlash) return
+      const input = inputRef.current
+      if (!input || input.getClientRects().length === 0) return
       const target = e.target
-      if (
+      const typing =
         target instanceof Element &&
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
-          (target instanceof HTMLElement && target.isContentEditable)) &&
-        target !== inputRef.current
-      ) {
-        return
-      }
+          target.tagName === "SELECT" ||
+          (target instanceof HTMLElement && target.isContentEditable))
+      if (typing && (isSlash || target !== input)) return
       e.preventDefault()
-      inputRef.current?.focus()
-      inputRef.current?.select()
+      input.focus()
+      input.select()
     }
     globalThis.addEventListener("keydown", onKey)
     return () => globalThis.removeEventListener("keydown", onKey)

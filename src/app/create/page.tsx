@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
-import EmptyState from "@/components/ui/empty-state"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import Select from "@/components/ui/select"
@@ -393,10 +393,11 @@ export default function CreatePage() {
       <div className="dashboard">
         <div className="dashboard__body">
           <div className="dashboard__main">
-            <EmptyState
+            <SignedOutPrompt
               icon={PenLine}
               title="Sign in to create an activity"
               description="Activities are published under your Certified account."
+              headingLevel={2}
             />
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Visualization from "@/components/visualization/visualization"
+import PageTitle from "@/components/layout/page-title"
 
 export const metadata: Metadata = {
   title: "Endorsement network",
@@ -8,5 +9,10 @@ export const metadata: Metadata = {
 }
 
 export default function EndorsementGraphPage() {
-  return <Visualization />
+  return (
+    <>
+      <PageTitle title="Endorsement network" />
+      <Visualization />
+    </>
+  )
 }

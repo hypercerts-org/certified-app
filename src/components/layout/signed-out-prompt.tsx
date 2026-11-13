@@ -20,7 +20,7 @@ export interface SignedOutPromptProps {
 
 /**
  * Public placeholder for personal, owner-scoped surfaces (e.g.
- * /endorsements, /groups) when the visitor is signed out. These pages
+ * /create, /project/new) when the visitor is signed out. These pages
  * have no public listing to render — the data is keyed on the viewer's
  * own DID — so instead of bouncing anonymous visitors to /welcome we
  * render an explanation plus a sign-in affordance in place.

@@ -1,22 +1,10 @@
-import type { Metadata } from "next"
-import { Suspense } from "react"
-import Workspace from "@/components/workspace/workspace"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = {
-  title: "Workspace",
-  description:
-    "Compare navigation structures for stepping between the network, actors, and per-lexicon listings.",
-}
-
-export default function WorkspacePage() {
-  return (
-    <div className="workspace-page">
-      {/* Suspense boundary required by Next 16 because <Workspace>
-          reads useSearchParams() at the top level. Without it,
-          static prerender of /workspace bails. */}
-      <Suspense fallback={null}>
-        <Workspace />
-      </Suspense>
-    </div>
-  )
+/**
+ * `/workspace` was a prototype for comparing navigation structures. The
+ * signed-in person's records live at `/records`, so old links land there.
+ * The prototype itself still renders at `/dev/preview/workspace`.
+ */
+export default function WorkspacePage(): never {
+  redirect("/records")
 }

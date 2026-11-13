@@ -7,21 +7,27 @@
  * `navigateTo` route. When a step activates, the renderer routes there (if
  * the step's anchor isn't already on the page), waits for the target
  * element to mount, scrolls it into view, and spotlights it. Steps with
- * `anchor: null` show a centered card; steps whose anchor never appears
- * degrade gracefully to a centered card too.
+ * `anchor: null` show a centered card. A step whose anchor never appears
+ * falls back to a centered card after a bounded wait (product-tour.tsx,
+ * MAX_RESOLVE_FRAMES), so no step can hang.
  *
- * The tour is structured around the main navigation: for each destination
- * it first spotlights the nav button you'd click (the `nav-*` anchors live
- * on both the desktop top bar and the mobile bottom nav — the renderer
- * picks whichever is visible), routes to that page, then dives into what
- * you can do there. The order mirrors the nav itself: Home, Explore, Apps,
- * Create, Profile, Settings, Help.
+ * The tour follows the main navigation: for each destination it first
+ * spotlights the nav item you'd use (the `nav-*` anchors live on both the
+ * desktop top bar and the phone bottom tab bar — the renderer picks
+ * whichever is visible), routes to that page, then shows what you can do
+ * there. The order mirrors the navigation: Home, Feed, Explore, Records,
+ * Apps, then the New button and the account menu (profile, settings,
+ * help, switching to a group).
  *
  * Anchors are matched against `data-tour="<anchor>"` attributes placed on
  * page content. The same anchor id may appear on more than one element
- * (e.g. a nav button in both the desktop top bar and the mobile bottom
- * nav) — the renderer picks the first *rendered* one, so the visible
- * variant wins per layout.
+ * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
+ * the renderer picks the first *rendered* one, so the visible variant wins
+ * per layout. Every anchor here exists in the current shell:
+ *   nav-home, nav-feed, nav-explore, nav-records, nav-apps — destinations
+ *   nav-create — the New button (desktop) / the + (phone)
+ *   account-menu — the account button (desktop and phone)
+ *   navbar-search — the desktop search field
  *
  * Copy mirrors the concept sections on /help; keep them in sync.
  */
@@ -48,10 +54,8 @@ export interface TourStep {
    *  next to the target. The spotlight still highlights the anchor; only
    *  the card is detached. Overrides `placement`/`align`. */
   readonly pin?: "top-left" | "top-right" | "bottom-left" | "bottom-right"
-  /** Restrict this step to one layout. Desktop navigates from the top-bar
-   *  buttons; mobile navigates from the hamburger sidebar — so the
-   *  per-destination nav spotlights are desktop-only, replaced on mobile by
-   *  a single "use the sidebar" step. Undefined = shown on both. */
+  /** Restrict this step to one layout, for anchors that only exist at one
+   *  width (the desktop search field). Undefined = shown on both. */
   readonly platform?: "desktop" | "mobile"
 }
 
@@ -64,18 +68,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nLet's take a quick look around.",
   },
 
-  // ---- Mobile navigation (sidebar) -----------------------------------
-  {
-    id: "nav-menu",
-    navigateTo: "/home",
-    anchor: "nav-menu",
-    title: "Getting around",
-    body: "On mobile you navigate from the menu. Tap it to open the sidebar — Home, Explore, Apps, your Profile, Settings, and Help all live in there.",
-    placement: "bottom",
-    align: "start",
-    platform: "mobile",
-  },
-
   // ---- Home ----------------------------------------------------------
   {
     id: "nav-home",
@@ -84,7 +76,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Home",
     body: "Home always brings you back to your account. It's your starting point in the app.",
     placement: "bottom",
-    platform: "desktop",
   },
   {
     id: "home-account",
@@ -96,6 +87,14 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
 
   // ---- Feed ----------------------------------------------------------
+  {
+    id: "nav-feed",
+    navigateTo: "/feed",
+    anchor: "nav-feed",
+    title: "Feed",
+    body: "Feed is what's happening: new work from the accounts you follow and trust.",
+    placement: "bottom",
+  },
   {
     id: "feed",
     navigateTo: "/feed",
@@ -109,9 +108,17 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "nav-explore",
     navigateTo: "/explore",
+    anchor: "nav-explore",
+    title: "Explore",
+    body: "Explore is the whole network: browse activities, projects and accounts from everyone on Certified.",
+    placement: "bottom",
+  },
+  {
+    id: "navbar-search",
+    navigateTo: null,
     anchor: "navbar-search",
     title: "Search the network",
-    body: "The search bar up here is always with you. Look up any activity, project, or account from across the whole network — from any page in the app.",
+    body: "The search bar up here is always with you. Look up any activity, project, or account from across the whole network — from any page in the app. Press / to jump to it.",
     placement: "bottom",
     platform: "desktop",
   },
@@ -125,6 +132,16 @@ export const TOUR_STEPS: readonly TourStep[] = [
     align: "start",
   },
 
+  // ---- Records -------------------------------------------------------
+  {
+    id: "nav-records",
+    navigateTo: "/records",
+    anchor: "nav-records",
+    title: "Records",
+    body: "Records is where you manage what your account holds: projects and their activities, endorsements, who you follow, and your lists.",
+    placement: "bottom",
+  },
+
   // ---- Apps ----------------------------------------------------------
   {
     id: "nav-apps",
@@ -133,7 +150,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Apps",
     body: "Other apps that work with your Certified account. Sign in to any of them with the same account.",
     placement: "bottom",
-    platform: "desktop",
   },
   {
     id: "apps-grid",
@@ -147,12 +163,12 @@ export const TOUR_STEPS: readonly TourStep[] = [
   // ---- Create --------------------------------------------------------
   {
     id: "nav-create",
-    navigateTo: "/create",
+    navigateTo: null,
     anchor: "nav-create",
-    title: "Create",
-    body: "The + button is where you publish your own work — new activities and projects.",
+    title: "New",
+    body: "This button is where you publish your own work: new activities and projects, or a new group.",
     placement: "bottom",
-    platform: "desktop",
+    align: "end",
   },
   {
     id: "create-title",
@@ -171,22 +187,24 @@ export const TOUR_STEPS: readonly TourStep[] = [
     placement: "top",
   },
 
-  // ---- Profile -------------------------------------------------------
+  // ---- Account menu --------------------------------------------------
   {
-    id: "nav-profile",
-    navigateTo: "/profile",
-    anchor: "nav-profile",
-    title: "Profile",
-    body: "Profile is your public page — your work, endorsements, and followers, all in one place.",
+    id: "account-menu",
+    navigateTo: null,
+    anchor: "account-menu",
+    title: "Your account menu",
+    body: "Open this for your public profile, Settings, Help and feedback. If you belong to a group, switch into it here to post and act as the group — then switch back to yourself any time.",
     placement: "bottom",
-    platform: "desktop",
+    align: "end",
   },
+
+  // ---- Profile -------------------------------------------------------
   {
     id: "profile-tabs",
     navigateTo: "/profile",
     anchor: "profile-tabs",
-    title: "Everything in one place",
-    body: "Switch between your activities, projects, endorsements, followers, and lists from these sections.",
+    title: "Your public profile",
+    body: "Your profile is what others see: your activities, projects, endorsements, followers, and lists, in these sections.",
     placement: "bottom",
   },
   {
@@ -198,34 +216,13 @@ export const TOUR_STEPS: readonly TourStep[] = [
     placement: "bottom",
   },
 
-  // ---- Account switcher (groups) --------------------------------------
-  {
-    id: "account-switcher",
-    navigateTo: null,
-    anchor: "account-switcher",
-    title: "Switch between accounts",
-    body: "Your account switcher lives up here. If you belong to a group, switch into it to post and act as the group — then switch back to yourself any time.",
-    placement: "bottom",
-    align: "end",
-    platform: "desktop",
-  },
-
   // ---- Settings ------------------------------------------------------
-  {
-    id: "nav-settings",
-    navigateTo: "/settings",
-    anchor: "nav-settings",
-    title: "Settings",
-    body: "Settings is where you manage your identity and account.",
-    placement: "bottom",
-    platform: "desktop",
-  },
   {
     id: "settings-handle",
     navigateTo: "/settings#account",
     anchor: "settings-handle",
     title: "Your handle and identity",
-    body: "This is your handle — your username on the network. Behind it sits a permanent DID that owns your data, so your work stays yours even if you rename your handle.",
+    body: "Settings is where you manage your account. This is your handle — your username on the network. Behind it sits a permanent DID that owns your data, so your work stays yours even if you rename your handle.",
     placement: "bottom",
   },
   {
@@ -239,13 +236,11 @@ export const TOUR_STEPS: readonly TourStep[] = [
 
   // ---- Help ----------------------------------------------------------
   {
-    id: "nav-help",
+    id: "help",
     navigateTo: "/help",
-    anchor: "nav-help",
+    anchor: null,
     title: "Help",
-    body: "Help has guides for everything we just covered — and you can replay this walk-through any time from here.",
-    placement: "bottom",
-    platform: "desktop",
+    body: "Help has guides for everything we just covered — open it from the account menu any time. You can replay this walk-through from there too.",
   },
 
   {

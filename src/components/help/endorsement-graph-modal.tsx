@@ -20,7 +20,7 @@ export default function EndorsementGraphModal({
       <AppDialogHeader title="Endorsement network" onClose={onClose} />
       {/* `.viz` carries its own 16px gutter, so zero the body padding. */}
       <div className="endorsement-graph-modal__body">
-        <Visualization />
+        <Visualization embedded />
       </div>
     </AppDialog>
   );

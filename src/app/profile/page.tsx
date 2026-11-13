@@ -19,10 +19,10 @@ import { profileUrl } from "@/lib/urls"
  * "Active identity" wins over "personal identity" so that the
  * /profile entry point lines up with what the user is currently
  * acting as — same convention as the chrome (`useOrg().activeOrg`
- * decides "me" everywhere in the navbar / drawer).
+ * decides "me" in the account menu and the top bars).
  *
- * We call useProfileNavbar() so there's no flash of the default
- * navbar during the redirect.
+ * We call useProfileNavbar() so the shell is already full-bleed during
+ * the redirect (no layout jump when the profile mounts).
  */
 export default function ProfileRedirectPage() {
   useProfileNavbar()

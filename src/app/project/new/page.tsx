@@ -9,7 +9,7 @@ import Image from "next/image"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
-import EmptyState from "@/components/ui/empty-state"
+import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import Button from "@/components/ui/button"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import LeafletEditor from "@/components/leaflet/leaflet-editor-dynamic"
@@ -203,10 +203,11 @@ export default function CreateProjectPage() {
       <div className="dashboard">
         <div className="dashboard__body">
           <div className="dashboard__main">
-            <EmptyState
+            <SignedOutPrompt
               icon={FolderGit2}
               title="Sign in to create a project"
               description="Projects are published under your Certified account."
+              headingLevel={2}
             />
           </div>
         </div>

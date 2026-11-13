@@ -50,9 +50,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const { activeOrg } = useOrg()
   const { isDesktop } = useLayoutBreakpoints()
 
-  // Steps that apply to the current layout. Desktop navigates from the
-  // top-bar buttons; mobile from the hamburger sidebar — so each platform
-  // gets its own nav steps (see `platform` in tour-steps).
+  // Steps that apply to the current layout. Most anchors exist at every
+  // width (the destinations are in the desktop top bar and the phone tab
+  // bar); a step whose anchor exists at one width only is tagged with
+  // `platform` in tour-steps.
   const steps = useMemo(
     () =>
       TOUR_STEPS.filter(

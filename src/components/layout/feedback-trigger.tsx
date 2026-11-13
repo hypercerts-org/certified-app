@@ -5,13 +5,15 @@ import { usePathname } from "next/navigation"
 import { MessageSquare } from "lucide-react"
 import { useFeedback } from "@/lib/feedback-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
-import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility"
 
 /**
- * Floating "Share Feedback" button, pinned bottom-right. It's the app's
- * primary door into the feedback modal (the footer no longer carries a
- * link). Opening is delegated to the shared <FeedbackModal> via
- * `useFeedback()`, so this file only owns the trigger and its placement.
+ * Floating "Feedback" button, pinned bottom-right on desktop (≥800px).
+ * Opening is delegated to the shared <FeedbackModal> via `useFeedback()`,
+ * so this file only owns the trigger and its placement.
+ *
+ * Phones don't get it: the bottom tab bar sits where it would float, and
+ * "Send feedback" lives in the account sheet (as it does in the desktop
+ * account menu).
  *
  * When the <SiteFooter> scrolls into view the button lifts above it so it
  * never covers the footer links; otherwise it rests at the default offset.
@@ -19,9 +21,9 @@ import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility"
 export default function FeedbackTrigger() {
   const { isOpen, openFeedback } = useFeedback()
   const pathname = usePathname()
-  const { isDesktop, isStandalone } = useLayoutBreakpoints()
+  const { isDesktop } = useLayoutBreakpoints()
   // Pixel offset while lifted above the footer; null at rest, so the CSS
-  // resting position (which adds the mobile safe-area inset) applies.
+  // resting position applies.
   const [bottomOffset, setBottomOffset] = useState<number | null>(null)
 
   const updatePosition = useCallback(() => {
@@ -41,6 +43,7 @@ export default function FeedbackTrigger() {
   }, [])
 
   useEffect(() => {
+    if (!isDesktop) return
     // Coalesce every trigger into one measure per frame. rAF also keeps the
     // first measure out of the synchronous effect body (cascading-render
     // lint) and lets the footer lay out before we read its rect.
@@ -67,18 +70,16 @@ export default function FeedbackTrigger() {
       window.removeEventListener("resize", schedule)
       ro.disconnect()
     }
-  }, [updatePosition])
+  }, [updatePosition, isDesktop])
 
-  // Hidden on the marketing landing page (/welcome has its own contact
-  // CTA), on /embed (bare board inside a third-party iframe), and wherever
-  // the mobile bottom nav is on screen — that bar already carries a
-  // Feedback entry, so the floating button would duplicate it and overlap
-  // the bar.
+  // Hidden on phones (see above), on the marketing landing page (/welcome
+  // has its own contact CTA), on /embed (bare board inside a third-party
+  // iframe), and while the feedback modal is open.
   if (
+    !isDesktop ||
     isOpen ||
     pathname === "/welcome" ||
-    pathname.startsWith("/embed") ||
-    isBottomNavVisible({ pathname, isDesktop, isStandalone })
+    pathname.startsWith("/embed")
   )
     return null
 

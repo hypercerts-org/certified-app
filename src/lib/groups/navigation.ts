@@ -1,4 +1,4 @@
-import type { Group } from "./types"
+import type { Group, OrgRole } from "./types"
 import {
   isRouteVisibleToActor,
   pathnameToPersonalOnlyRoute,
@@ -6,7 +6,7 @@ import {
 
 /**
  * Decide where to go after the user switches actor (personal ↔ org)
- * in the account switcher.
+ * in the account menu.
  *
  * Default: stay on the current path. The switch should feel like a
  * mode change, not a navigation — the user's reading context is
@@ -29,4 +29,24 @@ export function routeForActorSwitch(
     return "/home"
   }
   return pathname
+}
+
+/** Display order of roles in the account menu: the groups you run first. */
+const ROLE_ORDER: Record<OrgRole, number> = { owner: 0, admin: 1, member: 2 }
+
+/**
+ * The groups list as the account menu shows it: accepted memberships
+ * first, then by role (owner, admin, member), then by name. Returns a new
+ * array; the input is not mutated.
+ */
+export function sortGroupsForSwitcher(groups: readonly Group[]): Group[] {
+  return [...groups].sort((a, b) => {
+    if (a.accepted !== b.accepted) return a.accepted ? -1 : 1
+    const roleA = ROLE_ORDER[a.role] ?? 3
+    const roleB = ROLE_ORDER[b.role] ?? 3
+    if (roleA !== roleB) return roleA - roleB
+    const nameA = (a.displayName || a.handle).toLowerCase()
+    const nameB = (b.displayName || b.handle).toLowerCase()
+    return nameA.localeCompare(nameB)
+  })
 }

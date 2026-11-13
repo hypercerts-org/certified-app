@@ -14,6 +14,9 @@ export interface AvatarProps {
   seed?: string;
   className?: string;
   bordered?: boolean;
+  /** "circle" (default) for people; "square" (the 2px `--radius`) for
+   *  groups, so an organisation never reads as a person (DESIGN.md §4.8). */
+  shape?: "circle" | "square";
 }
 
 const sizeMap = {
@@ -87,8 +90,10 @@ const Avatar: React.FC<AvatarProps> = ({
   seed,
   className = "",
   bordered = false,
+  shape = "circle",
 }) => {
   const [imageError, setImageError] = React.useState(false);
+  const radius = shape === "square" ? "rounded" : "rounded-full";
 
   React.useEffect(() => { setImageError(false) }, [src]);
 
@@ -100,7 +105,7 @@ const Avatar: React.FC<AvatarProps> = ({
   if (showFallback) {
     return (
       <div
-        className={`${sizeMap[size]} shrink-0 rounded-full flex items-center justify-center ${className}`}
+        className={`${sizeMap[size]} shrink-0 ${radius} flex items-center justify-center ${className}`}
         style={{
           padding: ringPx[size],
           background: conicRingFor(seed || fallbackInitials || alt || ""),
@@ -108,7 +113,7 @@ const Avatar: React.FC<AvatarProps> = ({
           ...(bordered ? { boxShadow: "0 0 0 2px var(--bg-elevated)" } : {}),
         }}
       >
-        <div className="w-full h-full rounded-full bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center">
+        <div className={`w-full h-full ${radius} bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center`}>
           {fallbackInitials.slice(0, 2).toUpperCase()}
         </div>
       </div>
@@ -123,7 +128,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={`${sizeMap[size]} shrink-0 rounded-full overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
+      className={`${sizeMap[size]} shrink-0 ${radius} overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
       <Image
         src={src as string}

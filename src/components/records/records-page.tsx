@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FolderGit2, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
+import { FolderGit2, Library, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import PageContainer from "@/components/ui/page-container"
+import PageHeader from "@/components/ui/page-header"
+import EmptyState from "@/components/ui/empty-state"
+import Button from "@/components/ui/button"
+import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import {
   EndorsementsPane,
   FollowersPane,
@@ -49,8 +54,9 @@ function parseKind(value: string | null): RecordKind {
  * `?kind=`; each pane lists the records with a way to create, open, edit
  * and delete them.
  *
- * Personal account only: lists have no group write path, and the nav
- * hides Records while acting as a group (see personal-only.ts).
+ * Personal account only: lists have no group write path. While acting as
+ * a group the page stays in the navigation and explains that records are
+ * managed on the personal account, with a button to switch back.
  */
 export default function RecordsPage() {
   usePageTitle("Records")
@@ -60,6 +66,7 @@ export default function RecordsPage() {
   const { isLoading: authLoading, isAuthenticated, did } = useAuth()
   const { handle } = useSession()
   const { activeOrg } = useOrg()
+  const switchActor = useSwitchActor()
 
   const { counts, isLoading: countsLoading } = useActorWorkspaceCounts(did ?? null)
   const following = useFollowing(did ?? null)
@@ -73,16 +80,35 @@ export default function RecordsPage() {
   useEffect(() => {
     if (authLoading) return
     if (!isAuthenticated) router.replace("/welcome")
-    else if (activeOrg) router.replace("/home")
-  }, [authLoading, isAuthenticated, activeOrg, router])
+  }, [authLoading, isAuthenticated, router])
 
-  if (authLoading || !isAuthenticated || !did || activeOrg) {
+  if (authLoading || !isAuthenticated || !did) {
     return (
       <div className="records-page">
         <div className="records-page__loading">
           <LoadingSpinner size="md" />
         </div>
       </div>
+    )
+  }
+
+  // Acting as a group: Records stays in the navigation, and the page says
+  // where records live instead of redirecting.
+  if (activeOrg) {
+    return (
+      <PageContainer>
+        <PageHeader title="Records" />
+        <EmptyState
+          icon={Library}
+          headingLevel={2}
+          title="Records are managed on your personal account"
+          description="Switch to your personal account to see and edit your projects, activities, endorsements, follows and lists."
+        >
+          <Button variant="primary" onClick={() => switchActor(null)}>
+            Switch to personal account
+          </Button>
+        </EmptyState>
+      </PageContainer>
     )
   }
 
