@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Compass, Plus, Users } from "lucide-react"
+import { Compass, Plus, Users, UsersRound } from "lucide-react"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import IdentityRow from "@/components/ui/identity-row"
@@ -28,6 +28,8 @@ import {
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
 import ReceivedEndorsements from "@/components/records/received-endorsements"
+import { GroupRows } from "@/components/home/home-sections"
+import { useOrg } from "@/lib/groups/org-context"
 import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
 
 type FollowingState = ReturnType<typeof useFollowing>
@@ -326,7 +328,7 @@ function FollowingList({ did, following }: { did: string; following: FollowingSt
     return (
       <EmptyState
         icon={Compass}
-        headingLevel={3}
+        headingLevel={2}
         title="You're not following anyone yet"
         description="Follow accounts to see what they publish in your feed. Find them with Find accounts."
       />
@@ -401,7 +403,7 @@ function FollowersList({
     return (
       <EmptyState
         icon={Users}
-        headingLevel={3}
+        headingLevel={2}
         title="No followers yet"
         description="When another account follows yours, it shows here."
       >
@@ -509,6 +511,45 @@ export function ListsPane({ did }: { did: string }) {
           </div>
         </TabPanel>
       </Tabs>
+    </section>
+  )
+}
+
+// --------------------------------- Groups -----------------------------------
+
+/**
+ * Every group the account belongs to, with your role in each: open its
+ * profile, or switch to act as it. Home's "Your groups" shows the first
+ * few and links here.
+ */
+export function GroupsPane() {
+  const titleId = useId()
+  const { groups, isLoading } = useOrg()
+  return (
+    <section className="records-pane" aria-labelledby={titleId}>
+      <PaneHead
+        titleId={titleId}
+        title="Groups"
+        description="Groups you belong to. Switch to one to act as it, or open its profile."
+        action={
+          <Button href="/groups/create" variant="secondary" size="sm">
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            New group
+          </Button>
+        }
+      />
+      {isLoading && groups.length === 0 ? (
+        <RowsSkeleton shape="square" rows={3} />
+      ) : groups.length === 0 ? (
+        <EmptyState
+          icon={UsersRound}
+          headingLevel={2}
+          title="You're not in any groups yet"
+          description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
+        />
+      ) : (
+        <GroupRows groups={groups} />
+      )}
     </section>
   )
 }

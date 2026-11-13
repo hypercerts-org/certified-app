@@ -169,7 +169,7 @@ export default function ReceivedEndorsements({
     return (
       <EmptyState
         icon={ThumbsUp}
-        headingLevel={3}
+        headingLevel={2}
         title="No endorsements received yet"
         description="When another account endorses yours, it shows here. You choose which ones show on your profile."
       >

@@ -440,9 +440,63 @@ function roleLabel(role: Group["role"]): string {
  * Personal account only: while acting as a group the list would be the
  * person's, not the group's.
  */
-export function HomeGroups({ profileBase }: { profileBase: string }) {
-  const { groups, isLoading } = useOrg()
+/**
+ * Group rows: the group's avatar, name, your role and its handle, linking to
+ * the group, with a Switch button to act as it. Home shows the first few;
+ * Workspace → Groups shows them all.
+ */
+export function GroupRows({ groups }: { groups: readonly Group[] }) {
   const switchActor = useSwitchActor()
+  return (
+    <ul className="home-rows">
+      {groups.map((g) => {
+        const { name, handle } = groupRowLabel(g)
+        return (
+          <li key={g.groupDid} className="home-group">
+            <Link
+              href={`/groups/${encodeURIComponent(g.groupDid)}`}
+              className="home-row home-group__link"
+            >
+              <Avatar
+                size="sm"
+                shape="square"
+                src={g.avatarUrl}
+                alt=""
+                seed={g.groupDid}
+                fallbackInitials={getInitials(g.displayName, g.handle)}
+              />
+              <span className="home-row__text">
+                <span className="home-row__title" dir="auto">
+                  {name}
+                </span>
+                <span className="home-row__meta">
+                  {roleLabel(g.role)}
+                  {handle ? (
+                    <>
+                      <span aria-hidden> · </span>
+                      {handle}
+                    </>
+                  ) : null}
+                </span>
+              </span>
+            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => switchActor(g)}
+              aria-label={`Switch to ${name}`}
+            >
+              Switch
+            </Button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+export function HomeGroups() {
+  const { groups, isLoading } = useOrg()
   const preview = groups.slice(0, GROUP_PREVIEW)
 
   return (
@@ -461,54 +515,11 @@ export function HomeGroups({ profileBase }: { profileBase: string }) {
       ) : groups.length === 0 ? (
         <EmptyState variant="inline" title="You're not in any groups yet." />
       ) : (
-        <ul className="home-rows">
-          {preview.map((g) => {
-            const { name, handle } = groupRowLabel(g)
-            return (
-              <li key={g.groupDid} className="home-group">
-                <Link
-                  href={`/groups/${encodeURIComponent(g.groupDid)}`}
-                  className="home-row home-group__link"
-                >
-                  <Avatar
-                    size="sm"
-                    shape="square"
-                    src={g.avatarUrl}
-                    alt=""
-                    seed={g.groupDid}
-                    fallbackInitials={getInitials(g.displayName, g.handle)}
-                  />
-                  <span className="home-row__text">
-                    <span className="home-row__title" dir="auto">
-                      {name}
-                    </span>
-                    <span className="home-row__meta">
-                      {roleLabel(g.role)}
-                      {handle ? (
-                        <>
-                          <span aria-hidden> · </span>
-                          {handle}
-                        </>
-                      ) : null}
-                    </span>
-                  </span>
-                </Link>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => switchActor(g)}
-                  aria-label={`Switch to ${name}`}
-                >
-                  Switch
-                </Button>
-              </li>
-            )
-          })}
-        </ul>
+        <GroupRows groups={preview} />
       )}
       {groups.length > GROUP_PREVIEW ? (
         <div>
-          <SeeAllLink href={`${profileBase}?tab=groups`} label={`All ${groups.length} groups`} />
+          <SeeAllLink href="/records?kind=groups" label={`All ${groups.length} groups`} />
         </div>
       ) : null}
     </HomeSection>

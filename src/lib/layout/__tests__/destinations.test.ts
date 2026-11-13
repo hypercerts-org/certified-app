@@ -7,22 +7,22 @@ import {
 } from "../destinations"
 
 describe("destinations", () => {
-  it("lists the five destinations in the one order every surface uses", () => {
-    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Home", "Feed", "Explore", "Records", "Apps"])
-    expect(DESTINATIONS.map((d) => d.href)).toEqual(["/home", "/feed", "/explore", "/records", "/apps"])
+  it("lists Workspace, then the network, in the one order every surface uses", () => {
+    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Workspace", "Feed", "Explore", "Apps"])
+    expect(DESTINATIONS.map((d) => d.href)).toEqual(["/home", "/feed", "/explore", "/apps"])
+    expect(DESTINATIONS.map((d) => d.group)).toEqual(["workspace", "network", "network", "network"])
   })
 
-  it("shows all five signed in and only Explore and Apps signed out", () => {
-    expect(destinationsFor(true)).toHaveLength(5)
+  it("shows all four signed in and only Explore and Apps signed out", () => {
+    expect(destinationsFor(true)).toHaveLength(4)
     expect(destinationsFor(false).map((d) => d.key)).toEqual(["explore", "apps"])
   })
 
   it("gives every destination a tour anchor", () => {
     expect(DESTINATIONS.map((d) => d.tour)).toEqual([
-      "nav-home",
+      "nav-workspace",
       "nav-feed",
       "nav-explore",
-      "nav-records",
       "nav-apps",
     ])
   })
@@ -36,8 +36,16 @@ describe("destinations", () => {
     expect(isDestinationActive(apps, null)).toBe(false)
   })
 
-  it("treats the destinations, Settings and Help as top-level pages", () => {
-    for (const p of ["/home", "/feed", "/explore", "/records", "/apps", "/settings", "/help"]) {
+  it("keeps Workspace current on the Overview and every Records section", () => {
+    const workspace = DESTINATIONS.find((d) => d.key === "workspace")!
+    expect(isDestinationActive(workspace, "/home")).toBe(true)
+    expect(isDestinationActive(workspace, "/records")).toBe(true)
+    expect(isDestinationActive(workspace, "/feed")).toBe(false)
+    expect(isDestinationActive({ href: "/help" }, "/help")).toBe(true)
+  })
+
+  it("treats the destinations, Records, Settings and Help as top-level pages", () => {
+    for (const p of ["/home", "/records", "/feed", "/explore", "/apps", "/settings", "/help"]) {
       expect(isTopLevelPath(p)).toBe(true)
     }
     for (const p of ["/settings/edit-profile", "/create", "/alice.example/activity/3k", null]) {

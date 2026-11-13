@@ -33,6 +33,13 @@ export interface SideNavProps {
    * (default). Turn it off when the nav is not in a sidebar column.
    */
   sticky?: boolean;
+  /**
+   * Below 1100px: "auto" (default) wraps up to `SIDE_NAV_WRAP_MAX` items
+   * and scrolls longer lists; "scroll" always keeps one scrolling row, for
+   * a nav that sits above every page of an area (the Workspace), where
+   * several wrapped rows would push each page down.
+   */
+  overflow?: "auto" | "scroll";
   className?: string;
 }
 
@@ -82,10 +89,11 @@ export default function SideNav({
   "aria-label": ariaLabel,
   items,
   sticky = true,
+  overflow = "auto",
   className = "",
 }: SideNavProps) {
   const listRef = useRef<HTMLUListElement>(null);
-  const scrolls = items.length > SIDE_NAV_WRAP_MAX;
+  const scrolls = overflow === "scroll" || items.length > SIDE_NAV_WRAP_MAX;
   const currentKey = items.find((item) => item.current)?.key ?? null;
   const hasScrolledRef = useRef(false);
 

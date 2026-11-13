@@ -354,7 +354,7 @@ export default function ProjectEditRoute({
       back={
         recordHref
           ? { href: recordHref, label: "Project" }
-          : { href: "/records", label: "Records" }
+          : { href: "/records", label: "Workspace" }
       }
       title="Edit project"
       description="Your changes update the published project."

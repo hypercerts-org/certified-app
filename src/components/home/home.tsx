@@ -11,7 +11,7 @@ import { usePageTitle } from "@/lib/navbar-context"
 import { ownProfileUrl } from "@/lib/urls"
 import type { Group } from "@/lib/groups/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import PageContainer from "@/components/ui/page-container"
+import WorkspaceShell from "@/components/layout/workspace-shell"
 import Card from "@/components/ui/card"
 import { HomeIdSection, HomeIdentityHeader } from "@/components/home/home-account-card"
 import {
@@ -22,10 +22,11 @@ import {
 } from "@/components/home/home-sections"
 
 /**
- * Signed-in home: the account and what it holds. The follow feed has its
- * own page, /feed.
+ * Workspace → Overview (`/home`): the account and what it holds, inside
+ * the Workspace frame (its side list leads to the Records sections and
+ * Groups). The follow feed has its own page, /feed.
  *
- *   ≥ 1100px                                    < 1100px (one column)
+ *   ≥ 1300px (beside the side list)             < 1300px (one column)
  *   ┌──────────────────────┐ ┌───────────┐      header
  *   │ header: avatar, name │ │ ID (box)  │      ID (box)
  *   │ bio, website         │ └───────────┘      Your groups (box)
@@ -39,7 +40,7 @@ import {
  * personal-only.
  */
 export default function Home() {
-  usePageTitle("Home")
+  usePageTitle("Workspace")
   const router = useRouter()
   const { isLoading: authLoading, isAuthenticated, did: personalDid } = useAuth()
   const { handle: personalHandle } = useSession()
@@ -70,9 +71,9 @@ export default function Home() {
   })
 
   return (
-    // The container sets the width, gutters and page-frame shell layout;
-    // `home-page` scopes the page's own rules in home.css.
-    <PageContainer className="home-page">
+    // The Workspace frame (its side list, width and gutters); `home-page`
+    // scopes the Overview's own rules in home.css.
+    <WorkspaceShell current="overview" className="home-page">
       {/* Spinner while auth resolves, while the signed-out redirect is in
           flight, or while the acting-as DID is still resolving. */}
       {authLoading || !isAuthenticated || !activeDid ? (
@@ -90,7 +91,7 @@ export default function Home() {
           profileBase={profileBase}
         />
       )}
-    </PageContainer>
+    </WorkspaceShell>
   )
 }
 
@@ -111,9 +112,9 @@ function HomeAccount({
 
   return (
     // DOM order is the phone order: header, the ID and Your groups boxes,
-    // the sections (records, from others), Apps. From 1100px a grid puts
-    // the two boxes in a column on the right, level with the header
-    // (home.css).
+    // the sections (records, from others), Apps. From 1300px (beside the
+    // Workspace side list) a grid puts the two boxes in a column on the
+    // right, level with the header (home.css).
     <div className="home__layout">
       <div className="home__header">
         <HomeIdentityHeader identity={identity} activeGroup={activeGroup} />
@@ -133,7 +134,7 @@ function HomeAccount({
         </Card>
         {isGroup ? null : (
           <Card unpadded className="home__box">
-            <HomeGroups profileBase={profileBase} />
+            <HomeGroups />
           </Card>
         )}
       </div>

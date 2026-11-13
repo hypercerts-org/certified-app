@@ -239,7 +239,7 @@ export default function CreatePage() {
   // signed-out states so the page doesn't jump when the session settles.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/records", label: "Records" }}
+      back={{ href: "/records", label: "Workspace" }}
       title="New activity"
       description="Describe a piece of work: what was done, when, where and by whom."
     />

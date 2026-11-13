@@ -6,7 +6,7 @@ import { MoreHorizontal, type LucideIcon } from "lucide-react"
 import Button from "@/components/ui/button"
 import BottomSheet from "@/components/ui/bottom-sheet"
 import Input from "@/components/ui/input"
-import SectionHeader from "@/components/ui/section-header"
+import PageHeader from "@/components/ui/page-header"
 import Skeleton from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -29,8 +29,9 @@ export function matches(text: string, q: string): boolean {
 }
 
 /**
- * The head of a pane: the kind's name as the section's `<h2>` with one
- * line of description, and an optional action on the right.
+ * The head of a pane: each Workspace section is a page of its own, so its
+ * name is the page's `<h1>` (a `<PageHeader>`), with one line of
+ * description and an optional action on the right.
  */
 export function PaneHead({
   titleId,
@@ -44,12 +45,12 @@ export function PaneHead({
   action?: React.ReactNode
 }) {
   return (
-    <SectionHeader
-      id={titleId}
+    <PageHeader
+      titleId={titleId}
       title={title}
       description={description}
-      action={action}
-      className="records-pane__head"
+      actions={action}
+      className="records-pane__head !mb-0"
     />
   )
 }

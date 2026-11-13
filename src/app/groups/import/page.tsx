@@ -91,7 +91,7 @@ export default function ImportGroupPage() {
   // The page's one header (DESIGN.md §9.13), shared by every state below.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/home", label: "Home" }}
+      back={{ href: "/home", label: "Workspace" }}
       title="Turn an account into a group"
       description="Keep the account and its records, and manage it as a group."
     />

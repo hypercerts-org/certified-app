@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import RecordsPage from "@/components/records/records-page"
 
 export const metadata: Metadata = {
-  title: "Records",
+  title: "Workspace",
 }
 
 // RecordsPage reads `?kind=` with useSearchParams, which needs a Suspense

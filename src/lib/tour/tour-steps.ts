@@ -25,7 +25,7 @@
  * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
  * the renderer picks the first *rendered* one, so the visible variant wins
  * per layout. Every anchor here exists in the current app:
- *   nav-home, nav-feed, nav-explore, nav-records, nav-apps — destinations
+ *   nav-workspace, nav-feed, nav-explore, nav-apps — destinations
  *   nav-create — the New button (desktop) / the + (phone)
  *   account-menu — the account button (desktop and phone)
  *   navbar-search — the desktop search field (not on /explore)
@@ -77,13 +77,13 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nLet's take a quick look around.",
   },
 
-  // ---- Home ----------------------------------------------------------
+  // ---- Workspace -----------------------------------------------------
   {
-    id: "nav-home",
+    id: "nav-workspace",
     navigateTo: "/home",
-    anchor: "nav-home",
-    title: "Home",
-    body: "Home always brings you back to your account. It's your starting point in the app.",
+    anchor: "nav-workspace",
+    title: "Workspace",
+    body: "Your Workspace is everything your account holds: your records, what others gave you and your groups. Manage it all from the list on the side. Feed, Explore and Apps next to it are the network.",
     placement: "bottom",
   },
   {
@@ -141,16 +141,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "These buttons set what you're looking through: all of it at once, or just activities, projects or accounts. Search above them to narrow it down.",
     placement: "bottom",
     align: "start",
-  },
-
-  // ---- Records -------------------------------------------------------
-  {
-    id: "nav-records",
-    navigateTo: "/records",
-    anchor: "nav-records",
-    title: "Records",
-    body: "Records is where you manage what your account holds: projects and their activities, endorsements, who you follow, and your lists.",
-    placement: "bottom",
   },
 
   // ---- Apps ----------------------------------------------------------

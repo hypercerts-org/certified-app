@@ -22,8 +22,8 @@ describe("retired routes redirect to Records", () => {
     ).rejects.toThrow("NEXT_REDIRECT /records?kind=endorsements&tab=received")
   })
 
-  it("/workspace goes to Records", async () => {
+  it("/workspace goes to the Workspace Overview", async () => {
     const { default: Page } = await import("../workspace/page")
-    expect(() => Page()).toThrow("NEXT_REDIRECT /records")
+    expect(() => Page()).toThrow("NEXT_REDIRECT /home")
   })
 })

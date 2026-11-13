@@ -26,13 +26,19 @@ beforeEach(() => {
 })
 
 describe("BottomNav", () => {
-  it("shows the five destinations, labelled, in a phone browser tab", () => {
+  it("shows Workspace and the network, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
     const links = Array.from(nav.querySelectorAll("a"))
-    expect(links.map((a) => a.textContent)).toEqual(["Home", "Feed", "Explore", "Records", "Apps"])
+    expect(links.map((a) => a.textContent)).toEqual(["Workspace", "Feed", "Explore", "Apps"])
     expect(screen.getByRole("link", { name: "Feed" })).toHaveAttribute("aria-current", "page")
-    expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current")
+    expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
+  })
+
+  it("keeps Workspace current on the Records sections", () => {
+    state.pathname = "/records"
+    render(<BottomNav />)
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
   })
 
   it("carries no actions: no Create, no Feedback", () => {

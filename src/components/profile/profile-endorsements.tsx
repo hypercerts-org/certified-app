@@ -313,7 +313,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         title="Endorsements"
         description={
           isPersonalOwner
-            ? "Give, hide and sort endorsements into lists in Records."
+            ? "Give, hide and sort endorsements into lists in your Workspace."
             : undefined
         }
         action={

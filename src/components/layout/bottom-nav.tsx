@@ -8,9 +8,10 @@ import { isBottomNavVisible } from "@/lib/layout/bottom-nav-visibility";
 import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
 
 /**
- * Phone bottom tab bar (below 800px), in every phone browser: Home, Feed,
- * Explore, Records and Apps — the same destinations, in the same order, as
- * the desktop top bar. Signed out it shows the public two (Explore, Apps).
+ * Phone bottom tab bar (below 800px), in every phone browser: Workspace,
+ * then the network (Feed, Explore, Apps) — the same destinations, in the
+ * same order, as the desktop top bar. Signed out it shows the public two
+ * (Explore, Apps).
  * Tabs are destinations only: creating lives in the top bar's `+`, and
  * feedback in the account sheet. No tab is ever hidden per account.
  *

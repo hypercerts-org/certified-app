@@ -36,7 +36,7 @@ export default function ProfileOwnerBar({
           </Link>
         ) : null}
         <Link href="/home" className="profile-owner-bar__link">
-          Back to Home
+          Back to Workspace
         </Link>
       </div>
     </div>

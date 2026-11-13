@@ -557,7 +557,7 @@ export default function WorkPane({
       ) : nothingYet ? (
         <EmptyState
           icon={FolderGit2}
-          headingLevel={3}
+          headingLevel={2}
           title="No projects or activities yet"
           description="An activity records a piece of work. Group activities into projects to show how they fit together."
         >

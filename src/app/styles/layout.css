@@ -1373,6 +1373,15 @@
   min-width: 0;
 }
 
+/* Between your Workspace and the network (Feed, Explore, Apps). */
+.desktop-top-bar__divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  margin-inline: 6px;
+  background: var(--border-default);
+}
+
 .desktop-top-bar__nav-link {
   display: inline-flex;
   align-items: center;

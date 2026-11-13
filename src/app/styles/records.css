@@ -1,9 +1,7 @@
 /* ---------- /records ----------
-   The signed-in person's record manager. <PageContainer> frames the page
-   (its `.page-container` class lifts the shell's 600px column) and
-   <PageHeader> carries the title; each pane's header carries its own
-   create action. Below 1100px the <SideNav> of kinds is a scrolling row
-   of pills above the pane; from 1100px it is a sticky column beside it. */
+   The Workspace sections that manage what the account holds. The
+   Workspace frame (below) sets the side list; each pane opens with its
+   <PageHeader> (the page's h1) and carries its own create action. */
 
 .records-page__loading {
   display: flex;
@@ -12,14 +10,18 @@
   min-height: 50vh;
 }
 
-.records__layout {
+/* ---------- Workspace frame (workspace-shell.tsx) ----------
+   The Overview (/home) and the Records sections share one frame: the
+   Workspace side list beside the section. Below 1100px the list is one
+   scrolling row of pills above the section. */
+.workspace__layout {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
 @media (min-width: 1100px) {
-  .records__layout {
+  .workspace__layout {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
     gap: 48px;
@@ -27,16 +29,24 @@
   }
 }
 
-/* The pill row bleeds into the phone gutter so the last pill can scroll
-   fully into view. */
+/* The pill row bleeds into the page gutter so the last pill can scroll
+   fully into view; the list's own 4px padding puts the first pill on the
+   gutter. Phones: the shell's 16px; 800-1099px: the container's. */
 @media (max-width: 799px) {
-  .records__nav {
+  .workspace__nav {
     margin-inline: -16px;
     padding-inline: 12px;
   }
 }
 
-.records__main {
+@media (min-width: 800px) and (max-width: 1099px) {
+  .workspace__nav {
+    margin-inline: calc(-1 * var(--page-gutter));
+    padding-inline: calc(var(--page-gutter) - 4px);
+  }
+}
+
+.workspace__main {
   min-width: 0;
 }
 
@@ -63,11 +73,6 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-}
-
-/* The section header's description wraps before the action does. */
-.records-pane__head {
-  flex-wrap: wrap;
 }
 
 .records-pane__actions {

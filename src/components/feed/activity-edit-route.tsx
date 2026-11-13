@@ -408,7 +408,7 @@ export default function ActivityEditRoute({
       back={
         recordHref
           ? { href: recordHref, label: "Activity" }
-          : { href: "/records", label: "Records" }
+          : { href: "/records", label: "Workspace" }
       }
       title="Edit activity"
       description="Your changes update the published activity."

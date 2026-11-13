@@ -366,7 +366,7 @@ export default function CreateGroupPage() {
   // the page keeps its frame while auth and the group count resolve.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/home", label: "Home" }}
+      back={{ href: "/home", label: "Workspace" }}
       title="New group"
       description="A shared account your team can publish records as."
     />
@@ -417,7 +417,7 @@ export default function CreateGroupPage() {
           headingLevel={2}
         >
           <Button variant="secondary" href="/home">
-            Back to Home
+            Back to Workspace
           </Button>
         </EmptyState>
       </PageContainer>

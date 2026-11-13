@@ -17,8 +17,11 @@ import { DesktopNewMenu } from "./new-menu";
 
 /**
  * Desktop chrome (≥800px). One row:
- *   [wordmark] [Beta] [Home] [Feed] [Explore] [Records] [Apps]   [search] [New] [account]
+ *   [wordmark] [Beta] [Workspace] | [Feed] [Explore] [Apps]   [search] [New] [account]
  *   Signed out: [wordmark] [Beta] [Explore] [Apps]        [search] [Help] [Sign in]
+ *
+ * A divider separates your Workspace from the network (Feed, Explore,
+ * Apps): the two groups in `destinations.ts`.
  *
  * The destinations drop their icons at 800–1099px, so the full wordmark
  * fits beside them (layout.css).
@@ -94,20 +97,25 @@ export default function DesktopTopBar() {
               the signed-out set flash first. */}
           {!isLoading ? (
             <nav className="desktop-top-bar__nav" aria-label="Main navigation">
-              {destinationsFor(isAuthenticated).map((dest) => {
+              {destinationsFor(isAuthenticated).map((dest, i, all) => {
                 const Icon = dest.icon;
                 const active = isDestinationActive(dest, pathname);
+                const startsGroup = i > 0 && all[i - 1].group !== dest.group;
                 return (
-                  <Link
-                    key={dest.key}
-                    href={dest.href}
-                    className="desktop-top-bar__nav-link"
-                    aria-current={active ? "page" : undefined}
-                    data-tour={dest.tour}
-                  >
-                    <Icon size={20} strokeWidth={1.5} aria-hidden />
-                    <span>{dest.label}</span>
-                  </Link>
+                  <React.Fragment key={dest.key}>
+                    {startsGroup ? (
+                      <span className="desktop-top-bar__divider" aria-hidden />
+                    ) : null}
+                    <Link
+                      href={dest.href}
+                      className="desktop-top-bar__nav-link"
+                      aria-current={active ? "page" : undefined}
+                      data-tour={dest.tour}
+                    >
+                      <Icon size={20} strokeWidth={1.5} aria-hidden />
+                      <span>{dest.label}</span>
+                    </Link>
+                  </React.Fragment>
                 );
               })}
             </nav>

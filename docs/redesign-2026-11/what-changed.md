@@ -19,17 +19,17 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 
 ## Navigation
 
-**Five destinations, in the same order everywhere:** Home · Feed · Explore · Records · Apps.
+**Two groups, in the same order everywhere:** Workspace | Feed · Explore · Apps. Workspace (added after the first review) is what your account holds and what you manage: the Overview (what Home was), the Records sections and Groups, behind one side list. Feed, Explore and Apps are the network.
 
 **Desktop**
 
-- One top bar: the wordmark with a Beta tag, the five labelled destinations, search, a black **New** button and your account.
+- One top bar: the wordmark with a Beta tag, the labelled destinations (Workspace, a divider, then Feed, Explore, Apps), search, a black **New** button and your account.
 - New offers: New activity, New project, New group.
 - Profile, Settings and Help moved into the account menu.
 
 **Phone**
 
-- A bottom tab bar with the same five tabs, in every browser. Before, it only appeared in the installed app.
+- A bottom tab bar with the same four tabs (Workspace, Feed, Explore, Apps), in every browser. Before, it only appeared in the installed app.
 - The top bar shows the wordmark with a Beta tag, **+** (the New menu) and your avatar.
 - Detail pages get a back chevron.
 - The hamburger and the drawer are gone.
@@ -130,7 +130,7 @@ The notary character stays: monochrome, warm greys, the 2px radius, and a serif 
 ## Open questions and follow-ups
 
 - **Radius**: still 2px. A more "modern" look could use a softer radius; that's a brand decision for you.
-- **Records on phones**: the section buttons wrap onto more than one row (five wrapped onto three; there are four now). Shorter labels, or a select menu, would make them more compact.
+- **Workspace on phones**: its six sections are one row of pills that scrolls sideways (the current one scrolled into view), so the last ones start off-screen.
 - **Profile**: the endorsement-list manager moved from the profile's Endorsements tab to Records. The tab now links there.
 - **Group profile editing**: `/groups/{did}/edit-profile` remains for admins who aren't currently acting as the group.
 - **Not redesigned**:
