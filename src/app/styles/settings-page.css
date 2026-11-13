@@ -45,7 +45,9 @@
 /* From 800px: the label column on the left, the control on the right. */
 @media (min-width: 800px) {
   .settings-row {
-    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+    /* ~300px for the label and its explanation, so a two-sentence
+       description doesn't wrap to four lines beside an empty control column. */
+    grid-template-columns: minmax(0, 18.75rem) minmax(0, 1fr);
     gap: 8px 32px;
     align-items: start;
   }
@@ -257,17 +259,6 @@
 }
 
 /* ---------- Promote-to-group form ---------- */
-.import-group {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 36rem;
-}
-
-/* The flex gap owns the rhythm — clear the notes' own block margins. */
-.import-group > p {
-  margin: 0;
-}
 
 .import-group__actions {
   display: flex;

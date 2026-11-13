@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
-import SideNav, { type SideNavIcon } from "@/components/ui/side-nav"
+import SideNav, { SIDE_NAV_CONTENT_OFFSET, type SideNavIcon } from "@/components/ui/side-nav"
 
 /**
  * The frame shared by personal settings (`SettingsPanel`) and group settings
@@ -70,8 +70,9 @@ export function useHashSection<K extends string>(
 }
 
 export interface SettingsLayoutProps<K extends string> {
-  /** One line naming the account these settings apply to. */
-  description: React.ReactNode
+  /** An optional line under the title (a group: what your role there
+   *  lets you do). The picker already names the account. */
+  description?: React.ReactNode
   /** Right after the "Settings" title: the "for" picker (you or one of
    *  your groups). */
   titleAside?: React.ReactNode
@@ -172,7 +173,7 @@ export default function SettingsLayout<K extends string>({
         <section
           ref={mainRef}
           aria-labelledby={SECTION_TITLE_ID}
-          className="flex min-w-0 flex-col gap-4"
+          className={`flex min-w-0 flex-col gap-4 ${SIDE_NAV_CONTENT_OFFSET}`}
         >
           <SectionHeader
             id={SECTION_TITLE_ID}

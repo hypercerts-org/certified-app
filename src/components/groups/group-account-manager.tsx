@@ -227,7 +227,7 @@ export default function GroupAccountManager({
                 }}
               >
                 <Pencil size={16} strokeWidth={1.75} aria-hidden />
-                Edit<span className="sr-only"> handle</span>
+                Edit{" "}<span className="sr-only">handle</span>
               </Button>
             ) : (
               <Button
@@ -323,7 +323,7 @@ export default function GroupAccountManager({
                 }}
               >
                 <Pencil size={16} strokeWidth={1.75} aria-hidden />
-                Edit<span className="sr-only"> email</span>
+                Edit{" "}<span className="sr-only">email</span>
               </Button>
             </div>
           )

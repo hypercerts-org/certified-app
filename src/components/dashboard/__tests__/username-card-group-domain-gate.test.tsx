@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest"
-import { render, screen, cleanup } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent } from "@testing-library/react"
 
 /**
  * judgment-004-gate: in a GROUP context (groupDid set) the custom-domain
@@ -24,15 +24,31 @@ afterEach(() => {
 describe("UsernameCard custom-domain affordance gating", () => {
   it("renders the custom-domain affordance in personal context (no groupDid)", () => {
     render(<UsernameCard handle={CERTIFIED_HANDLE} did={DID} />)
+    // Edit sits beside the value (like email and password) and opens the
+    // ways to change the handle.
+    const edit = screen.getByRole("button", { name: /edit handle/i })
+    expect(edit).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(edit)
+    expect(edit).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("button", { name: /change certified handle/i })).toBeTruthy()
     expect(
       screen.getByRole("button", { name: /use my own domain/i })
     ).toBeTruthy()
+  })
+
+  it("opens the only option straight from Edit in group context", () => {
+    render(
+      <UsernameCard handle={CERTIFIED_HANDLE} did={DID} groupDid="did:plc:org" />
+    )
+    const edit = screen.getByRole("button", { name: /edit handle/i })
+    expect(edit).not.toHaveAttribute("aria-expanded")
   })
 
   it("does NOT render the custom-domain affordance in group context (groupDid set)", () => {
     render(
       <UsernameCard handle={CERTIFIED_HANDLE} did={DID} groupDid="did:plc:org" />
     )
+    fireEvent.click(screen.getByRole("button", { name: /edit handle/i }))
     expect(
       screen.queryByRole("button", { name: /use my own domain/i })
     ).toBeNull()

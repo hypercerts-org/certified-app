@@ -36,7 +36,7 @@ export default function SsoAppLink({
     >
       {children}
       {/* The tile's visible text (name, tag, description) is its name. */}
-      <span className="sr-only"> (opens in new tab)</span>
+      {" "}<span className="sr-only">(opens in new tab)</span>
     </a>
   )
 }

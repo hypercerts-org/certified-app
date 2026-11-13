@@ -4,6 +4,7 @@ import PageContainer from "@/components/ui/page-container";
 import PageHeader from "@/components/ui/page-header";
 import SectionHeader from "@/components/ui/section-header";
 import HelpContents, { type HelpSection } from "@/components/help/help-contents";
+import { SIDE_NAV_CONTENT_OFFSET } from "@/components/ui/side-nav";
 import HelpFeedbackButton from "@/components/help/help-feedback-button";
 import HelpTourButton from "@/components/help/help-tour-button";
 import HelpFaq from "@/components/help/help-faq";
@@ -57,7 +58,7 @@ export default function HelpPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:items-start lg:gap-12">
         <HelpContents sections={SECTIONS} />
 
-        <article className="flex min-w-0 max-w-measure flex-col gap-8 md:gap-12">
+        <article className={`flex min-w-0 max-w-measure flex-col gap-8 md:gap-12 ${SIDE_NAV_CONTENT_OFFSET}`}>
           <section id="about" aria-labelledby="help-about-title" className={sectionCls}>
             <SectionHeader id="help-about-title" title="About Certified" />
             <div className="flex flex-col gap-4">

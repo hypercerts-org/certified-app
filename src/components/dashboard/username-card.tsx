@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useId, useState, useMemo } from "react";
 import { Pencil, Globe, AtSign } from "lucide-react";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
@@ -176,6 +176,23 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
 
   const showingForm = isEditing || isChoosingCertified;
 
+  // The ways to change the handle from here, in order. One opens straight
+  // from Edit; several are shown as buttons when Edit is pressed.
+  const [isChoosing, setIsChoosing] = useState(false);
+  const optionsId = useId();
+  const options: { key: string; label: string; icon: typeof Pencil; onSelect: () => void }[] = [];
+  if (isCertifiedHandle) {
+    options.push({ key: "certified", label: "Change Certified handle", icon: AtSign, onSelect: handleEdit });
+    if (did && !groupDid) {
+      options.push({ key: "domain", label: "Use my own domain", icon: Globe, onSelect: () => setIsDomainModalOpen(true) });
+    }
+  } else if (did) {
+    if (!groupDid) {
+      options.push({ key: "domain", label: "Use a different domain", icon: Globe, onSelect: () => setIsDomainModalOpen(true) });
+    }
+    options.push({ key: "certified", label: "Use a Certified handle", icon: AtSign, onSelect: handleStartCertified });
+  }
+
   return (
     <>
       <div className="dash-card mt-4">
@@ -252,77 +269,53 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
             </div>
           )}
 
-          {/* Read-only display: value + inline actions (Edit, then the
-              domain-switch buttons). The custom-domain buttons are gated
-              OFF in group context (groupDid set): that flow writes the
-              handle via the personal XRPC updateHandle endpoint, which is
-              wrong for a group repo. The "Use a Certified handle"
-              button is kept — it routes through the group-aware path. */}
+          {/* Read-only display: the value, then Edit in the same action
+              column as the email and password rows, so the value boxes share
+              one width and one right edge. When there is more than one way
+              to change the handle, Edit opens them as a row of secondary
+              buttons below. The custom-domain options are gated OFF in group
+              context (groupDid set): that flow writes the handle via the
+              personal XRPC updateHandle endpoint, which is wrong for a group
+              repo. "Use a Certified handle" goes through the group-aware
+              path. */}
           {!showingForm && (
             <div className="settings-field">
               {/* Click-to-copy the bare handle (no @), mirroring the DID pill —
-                  `display` keeps the familiar @handle on screen. The wrapper
-                  fills the row (like .settings-field__value) so the pill is as
-                  wide as the email / password fields. */}
-              <span
-                className="flex-1 min-w-0"
-                data-tour="settings-handle"
-              >
+                  `display` keeps the familiar @handle on screen. */}
+              <span className="flex-1 min-w-0" data-tour="settings-handle">
                 {handle ? (
-                  <CopyPill
-                    value={handle}
-                    display={`@${handle}`}
-                    label="handle"
-                  />
+                  <CopyPill value={handle} display={`@${handle}`} label="handle" />
                 ) : (
                   <span className="settings-field__value">@…</span>
                 )}
               </span>
-              {isCertifiedHandle && (
-                <Button variant="ghost" size="sm" onClick={handleEdit}>
+              {options.length === 1 ? (
+                <Button variant="ghost" size="sm" onClick={options[0].onSelect}>
                   <Pencil size={16} strokeWidth={1.75} aria-hidden />
-                  Edit<span className="sr-only"> handle</span>
+                  Edit{" "}<span className="sr-only">handle</span>
                 </Button>
-              )}
-              {/* Domain-switch buttons on their own full-width row so the pill
-                  above fills the field like the email / password values. */}
-              {did && !(isCertifiedHandle && groupDid) && (
-                <div className="basis-full flex flex-wrap gap-2">
-                  {isCertifiedHandle ? (
-                    !groupDid && (
-                      <button
-                        className="username-card__domain-btn"
-                        onClick={() => setIsDomainModalOpen(true)}
-                        type="button"
-                      >
-                        <Globe size={14} aria-hidden="true" />
-                        Use my own domain
-                      </button>
-                    )
-                  ) : (
-                    <>
-                      {!groupDid && (
-                        <button
-                          className="username-card__domain-btn"
-                          onClick={() => setIsDomainModalOpen(true)}
-                          type="button"
-                        >
-                          <Globe size={14} aria-hidden="true" />
-                          Use a different domain
-                        </button>
-                      )}
-                      <button
-                        className="username-card__domain-btn"
-                        onClick={handleStartCertified}
-                        type="button"
-                      >
-                        <AtSign size={14} aria-hidden="true" />
-                        Use a Certified handle
-                      </button>
-                    </>
-                  )}
+              ) : options.length > 1 ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={isChoosing}
+                  aria-controls={optionsId}
+                  onClick={() => setIsChoosing((v) => !v)}
+                >
+                  <Pencil size={16} strokeWidth={1.75} aria-hidden />
+                  Edit{" "}<span className="sr-only">handle</span>
+                </Button>
+              ) : null}
+              {options.length > 1 && isChoosing ? (
+                <div id={optionsId} className="basis-full flex flex-wrap gap-2">
+                  {options.map(({ key, label, icon: Icon, onSelect }) => (
+                    <Button key={key} variant="secondary" size="sm" onClick={onSelect}>
+                      <Icon size={16} strokeWidth={1.75} aria-hidden />
+                      {label}
+                    </Button>
+                  ))}
                 </div>
-              )}
+              ) : null}
             </div>
           )}
         </div>

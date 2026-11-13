@@ -103,8 +103,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // (secondary / ghost) already read clearly when dimmed, so they keep the
     // lighter opacity treatment. While `loading`, every variant keeps the
     // opacity dim so the spinner stays legible over the original fill.
+    // A solid grey block read as a live secondary button (audit ST6): a
+    // faint wash, a hairline and muted text, dimmed, so it is plainly inert.
     const filledDisabledStyles =
-      "disabled:!bg-[var(--bg-sunken)] disabled:!text-[var(--fg-muted)] disabled:!border disabled:!border-[var(--border-default)] disabled:hover:!opacity-100 disabled:hover:!bg-[var(--bg-sunken)]";
+      "disabled:!bg-[var(--overlay-weak)] disabled:!text-[var(--fg-muted)] disabled:!border disabled:!border-[var(--border-subtle)] disabled:opacity-70 disabled:hover:!bg-[var(--overlay-weak)]";
     const disabledStyles = !(disabled || loading)
       ? ""
       : loading

@@ -95,7 +95,7 @@ Colors are custom properties in `:root`, overridden in `:root[data-theme="dark"]
 
 | Token | Role |
 |---|---|
-| `--bg-sunken` | Recessed: toggle tracks, disabled filled controls, inset wells. |
+| `--bg-sunken` | Recessed: toggle tracks, inset wells. |
 | `--bg-canvas` | Page background. |
 | `--bg-elevated` | Cards, inputs, popovers. Lighter than canvas in both themes. |
 | `--bg-floating` | Anything that floats over the page: menus and popovers, dropdowns and suggestion lists, bottom sheets, the drawer, toasts, the walkthrough card, sticky bars content scrolls under, the phone tab bar. **Always opaque** (text over text is unreadable, however blurred): it is `--bg-elevated`, and a style whose cards are translucent (Glass) sets a solid colour (`looks.test.ts` checks every style). |
@@ -437,7 +437,7 @@ Depth is carried by surface lightness and hairlines, not shadows.
 
 | Level | Surface | Edge | Shadow | Use |
 |---|---|---|---|---|
-| Sunken | `--bg-sunken` | none | none | Tracks, wells, disabled fills |
+| Sunken | `--bg-sunken` | none | none | Tracks, wells |
 | Canvas | `--bg-canvas` | none | none | Page |
 | Elevated | `--bg-elevated` | `--border-default` | none | Cards, inputs |
 | Floating | `--bg-elevated` | `--border-default` | `--shadow-md` | Popover, toast. Tooltip is the exception: an inverted bubble (`--fg-primary` fill, `--bg-canvas` text, `--shadow-md`). |
@@ -472,7 +472,7 @@ Rules:
 | Active (press) | `.press-scale`: `scale(0.97)`, `--duration-instant` (the one press scale, also the tab bar's) | same | same |
 | Selected / pressed toggle | bg `--overlay-medium` + `--fg-primary` + weight 600 | n/a | border `--fg-primary` |
 | Focus-visible | §6.2 | same | same |
-| Disabled | `opacity: var(--opacity-disabled)`, `cursor: not-allowed`, no hover | `--bg-sunken` fill + `--fg-muted` text + `--border-default` | opacity + `--bg-sunken` fill |
+| Disabled | `opacity: var(--opacity-disabled)`, `cursor: not-allowed`, no hover | `--overlay-weak` wash + `--fg-muted` text + `--border-subtle`, at 70% opacity | opacity + `--bg-sunken` fill |
 | Loading | Keep the fill; a spinner replaces the leading icon; `aria-busy` | same | same |
 
 - Hover applies only on devices that hover. Tailwind `future.hoverOnlyWhenSupported` gates every `hover:` utility; hand-written CSS wraps `:hover` in `@media (hover: hover)`. A tap must never leave a sticky hover.
@@ -850,7 +850,7 @@ Prompts name tokens, not hex. Look values up in `tokens.css` if you need them.
 
 **Feed card:** "`<Card variant="row">`: no fill, hairline `--border-subtle` below, 20px vertical padding (24 on desktop). `<IdentityRow size="sm">` byline. Optional 1:1 image at `var(--radius)`, the full width of the text column. Title serif at `text-h4` (all widths, 600), `--fg-primary`, `text-wrap: pretty`. Description `body-sm` `--fg-secondary`, three-line clamp, `text-wrap: pretty`. Meta row `text-ui` `--fg-muted` with dot separators, `tabular-nums` timestamps, compact badges."
 
-**Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.97)`. Disabled: sunken fill, muted text, default border. `loading` shows a spinner and sets `aria-busy`."
+**Primary button:** "`<Button variant="primary">`: `--btn-primary-bg` / `--btn-primary-fg`, `body-sm` 500, 0 tracking, `var(--radius)`, about 40px on desktop and 44px minimum below 800px. Hover `--btn-primary-bg-hover` (hover devices only). Press `scale(0.97)`. Disabled: a faint `--overlay-weak` wash, muted text, a `--border-subtle` hairline, at 70% opacity, `cursor: not-allowed` (a solid grey block read as a live secondary button). `loading` shows a spinner and sets `aria-busy`."
 
 **Settings card:** "`<Card variant="elevated">`, 24px padding. Eyebrow above in `text-label` `--fg-muted`. Fields with sentence-case `text-ui` 500 labels in `--fg-secondary`, 16px between fields."
 

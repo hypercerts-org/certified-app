@@ -214,26 +214,15 @@ export default function SettingsPanel() {
       case "app-passwords":
         return <AppPasswordsSection />
       case "group":
-        return did ? (
-          <SettingsBlock>
-            <ImportAsGroupSection did={did} />
-          </SettingsBlock>
-        ) : null
+        return did ? <ImportAsGroupSection did={did} /> : null
     }
   }
 
   return (
     <SettingsLayout
+      // "Settings for [Me]" (the picker) says whose settings these are; no
+      // second line repeating it.
       titleAside={<SettingsForSwitcher current={null} />}
-      description={
-        handle ? (
-          <>
-            Settings for <strong className="font-medium text-[var(--fg-primary)]">@{handle}</strong>.
-          </>
-        ) : (
-          "Settings for your account."
-        )
-      }
       navLabel="Settings sections"
       sections={SECTIONS}
       current={selected.key}

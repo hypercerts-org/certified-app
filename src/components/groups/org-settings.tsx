@@ -1101,13 +1101,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     <>
       <SettingsLayout
         titleAside={<SettingsForSwitcher current={org} />}
-        description={
-          <>
-            Settings for the group{" "}
-            <strong className="font-medium text-[var(--fg-primary)]">@{org.handle}</strong>.{" "}
-            {ROLE_PHRASE[org.role]}
-          </>
-        }
+        // The picker names the group; the line under it says only what
+        // your role lets you do.
+        description={ROLE_PHRASE[org.role]}
         navLabel="Group settings sections"
         sections={visibleCategories}
         current={selected.key}

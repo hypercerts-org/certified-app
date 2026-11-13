@@ -85,6 +85,14 @@ const itemRest =
  * sidebar column. Items are links (`href`) or buttons (`onClick`); the
  * current one carries `aria-current` ("page" on links, "true" on buttons).
  */
+/**
+ * The top padding for the content beside a SideNav (from 1100px), so the
+ * first nav label and the content's first heading sit on one line: half
+ * the 40px row minus half the 1.4-line `text-section` title. Every "side
+ * list + content" frame uses it (Settings, Help, the Workspace).
+ */
+export const SIDE_NAV_CONTENT_OFFSET = "lg:pt-[0.55rem]"
+
 export default function SideNav({
   "aria-label": ariaLabel,
   items,

@@ -644,7 +644,7 @@ function ContributorsEditor({
                 <div className="create-cert__contrib-fields">
                   <div className="create-cert__contrib-field">
                     <label htmlFor={roleId} className="cert-detail__meta-label">
-                      Role<span className="sr-only"> of contributor {n}</span>
+                      Role{" "}<span className="sr-only">of contributor {n}</span>
                     </label>
                     <Input
                       flush
@@ -658,7 +658,7 @@ function ContributorsEditor({
                   </div>
                   <div className="create-cert__contrib-field create-cert__contrib-field--share">
                     <label htmlFor={shareId} className="cert-detail__meta-label">
-                      Share<span className="sr-only"> of contributor {n}, in percent</span>
+                      Share{" "}<span className="sr-only">of contributor {n}, in percent</span>
                     </label>
                     <Input
                       flush

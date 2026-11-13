@@ -77,7 +77,7 @@ export default function SmartLink({ url, className }: SmartLinkProps) {
         {display}
         {/* External links open a new tab; announce it for AT users. The
             sighted cue is the new-tab behaviour itself + the title. */}
-        <span className="sr-only"> (opens in new tab)</span>
+        {" "}<span className="sr-only">(opens in new tab)</span>
       </a>
     </>
   )

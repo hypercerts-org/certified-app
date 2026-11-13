@@ -277,7 +277,7 @@ export default function ProfileHeader({
                   title="This profile is imported from Bluesky"
                 >
                   Bluesky profile
-                  <span className="sr-only"> (opens in new tab)</span>
+                  {" "}<span className="sr-only">(opens in new tab)</span>
                 </a>
               ) : null}
             </p>

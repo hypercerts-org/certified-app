@@ -38,7 +38,8 @@ function PreviewAvatar({
  * centerpieces (`data-look-preview`, looks.css) in the current light/dark
  * mode: a miniature Overview with the account's avatar and name, its ID
  * card, two numbers, and an endorsement with a note. Decorative; the tile
- * names the style.
+ * names the style. Every name, handle and DID here is invented (the
+ * `.example` domain is reserved), never a real account.
  */
 function LookPreview({ id }: { id: AnyLookId }) {
   return (
@@ -48,25 +49,25 @@ function LookPreview({ id }: { id: AnyLookId }) {
       className="flex flex-1 flex-col gap-2.5 bg-[var(--bg-canvas)] p-3 text-left text-[var(--fg-secondary)] [background-image:var(--look-backdrop)] [background-size:var(--look-backdrop-size)] [font-family:var(--font-inter)]"
     >
       <span className="flex items-center gap-2.5">
-        <PreviewAvatar initials="UT" shape="circle" size="sm" />
+        <PreviewAvatar initials="WC" shape="circle" size="sm" />
         <span className="flex min-w-0 flex-col">
           <span className="font-headline truncate text-body leading-tight text-[var(--fg-primary)] [font-weight:var(--weight-headline,600)]">
-            Upper Tana Trust
+            Wrenfield Collective
           </span>
-          <span className="truncate text-caption text-[var(--fg-muted)]">@uppertana.org</span>
+          <span className="truncate text-caption text-[var(--fg-muted)]">@wrenfield.example</span>
         </span>
       </span>
 
       <span
         data-centerpiece="id"
-        data-did="did:plc:7xq3m2k4vb5ntq2a6wze"
+        data-did="did:plc:q4nx7r2kd8vwm3tz5hpj"
         className="relative block overflow-hidden rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2.5 py-2"
       >
         <span data-part="title" className="block text-caption font-semibold text-[var(--fg-primary)]">
           ID
         </span>
         <span className="mt-1 block truncate rounded bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[0.6875rem] text-[var(--fg-primary)] [font-family:var(--font-mono)]">
-          did:plc:7xq3m2k4vb5ntq2a6wze
+          did:plc:q4nx7r2kd8vwm3tz5hpj
         </span>
       </span>
 
@@ -88,14 +89,14 @@ function LookPreview({ id }: { id: AnyLookId }) {
         data-centerpiece="endorsement"
         className="flex items-start gap-2 border-t border-[var(--border-subtle)] pt-2"
       >
-        <PreviewAvatar initials="ME" shape="square" size="xs" />
+        <PreviewAvatar initials="LG" shape="square" size="xs" />
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-caption">
             <span data-part="who" className="font-medium text-[var(--fg-primary)]">
-              Ma Earth
+              Lumen Grove
             </span>{" "}
             <span data-part="when" className="text-[var(--fg-muted)]">
-              2026-11-04
+              4 Nov 2026
             </span>
           </span>
           <span data-part="note" className="text-caption text-[var(--fg-secondary)]">

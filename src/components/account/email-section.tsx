@@ -367,7 +367,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
           ) : (
             <>
               <Pencil size={16} strokeWidth={1.75} aria-hidden />
-              Edit<span className="sr-only"> email</span>
+              Edit{" "}<span className="sr-only">email</span>
             </>
           )}
         </Button>

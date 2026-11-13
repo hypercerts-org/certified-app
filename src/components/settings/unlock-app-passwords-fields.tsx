@@ -135,7 +135,9 @@ export function UnlockAppPasswordFields({
   codeHelper = "We emailed a sign-in code to the address on your account.",
 }: {
   state: UnlockState
-  intro: string
+  /** A line above the fields. Omit when the host already explains (a
+   *  settings row's description). */
+  intro?: string
   /** Called when the user clicks the "set password" link — the host closes
    *  its dialog so the in-app navigation to Settings → Account isn't left
    *  underneath an open modal. */
@@ -181,7 +183,7 @@ export function UnlockAppPasswordFields({
 
   return (
     <>
-      <p className="mb-4 text-body-sm text-[var(--fg-secondary)]">{intro}</p>
+      {intro ? <p className="mb-4 text-body-sm text-[var(--fg-secondary)]">{intro}</p> : null}
 
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
