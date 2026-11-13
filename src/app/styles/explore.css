@@ -214,11 +214,22 @@
 
 /* ---------- Skeletons ---------- */
 
+/* Same geometry as the list rows: [lead + text] [date] on phones; from
+   800px the row grid with the author column (the column tracks are the
+   rows' own custom properties, see .cert-list-row). */
 .explore-skeleton-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
+}
+
+.explore-skeleton-row__main {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .explore-skeleton-row__text {
@@ -232,12 +243,24 @@
 .explore-skeleton-row__aside {
   display: none;
   align-items: center;
-  gap: 8px;
-  width: 200px;
-  flex-shrink: 0;
+  gap: 10px;
+  min-width: 0;
+}
+
+.explore-skeleton-row__date {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
 }
 
 @media (min-width: 800px) {
+  .explore-skeleton-row {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) var(--explore-author-col) var(--explore-date-col);
+    gap: var(--explore-row-gap);
+  }
+
   .explore-skeleton-row__aside {
     display: flex;
   }
@@ -411,14 +434,12 @@
    the line lines up with the section title, the tab rule and the search
    field, not 8px past them. */
 .explore__list > li + li .cert-list-row,
-.explore__list > li + li .account-list-row,
 .explore__list > li + li .explore-skeleton-row,
 .explore__list > li + li .funding-receipt-row {
   position: relative;
 }
 
 .explore__list > li + li .cert-list-row::before,
-.explore__list > li + li .account-list-row::before,
 .explore__list > li + li .explore-skeleton-row::before,
 .explore__list > li + li .funding-receipt-row::before {
   content: "";
@@ -440,7 +461,6 @@
   }
 
   .explore-page .cert-list-row,
-  .explore-page .account-list-row,
   .explore-page .explore-skeleton-row {
     padding-left: 8px;
     padding-right: 8px;
@@ -470,27 +490,55 @@
   contain-intrinsic-size: auto 64px;
 }
 
-.cert-list-row {
-  /* Three columns: link block (thumb + title/meta), author column,
-     and time. The link block shrinks; the author column has a
-     fixed minimum so author bylines stack vertically across rows. */
-  display: grid;
-  grid-template-columns: 1fr 200px 84px;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  transition: background-color var(--transition-fast);
+/* The row's column tracks, shared with the loading rows so they line up.
+   Fixed author and date tracks keep those columns aligned across rows
+   (and across Explore's sections, which are separate lists). */
+.cert-list-row,
+.explore-skeleton-row {
+  --explore-author-col: 200px;
+  --explore-date-col: 84px;
+  --explore-row-gap: 16px;
 }
 
 /* 800-1099px: a narrower content column, so the fixed 200px author
    column starved the title. Narrow the author/date columns here; the
    author byline already truncates with an ellipsis. */
 @media (min-width: 800px) and (max-width: 1099px) {
-  .cert-list-row {
-    grid-template-columns: minmax(0, 1fr) 140px 76px;
-    gap: 12px;
+  .cert-list-row,
+  .explore-skeleton-row {
+    --explore-author-col: 140px;
+    --explore-date-col: 76px;
+    --explore-row-gap: 12px;
   }
+}
+
+/* On Explore the results have the page's full width, so the author
+   column (a name, no handle line) gets more of it: whole names instead
+   of "Centro de innovacion…". */
+.explore-page .cert-list-row,
+.explore-page .explore-skeleton-row {
+  --explore-author-col: 280px;
+}
+
+@media (min-width: 800px) and (max-width: 1099px) {
+  .explore-page .cert-list-row,
+  .explore-page .explore-skeleton-row {
+    --explore-author-col: 180px;
+  }
+}
+
+.cert-list-row {
+  /* Three columns: link block (lead + title/meta), author column,
+     and time. The link block shrinks; the author column has a
+     fixed width so author bylines stack vertically across rows. */
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) var(--explore-author-col) var(--explore-date-col);
+  align-items: center;
+  gap: var(--explore-row-gap);
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  transition: background-color var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -543,6 +591,14 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* The lead slot holding an account's avatar (`<Avatar size="row">`,
+   40px): the avatar draws its own circle, so no tile behind it. */
+.cert-list-row__thumb--avatar {
+  background: none;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .cert-list-row__body {
@@ -619,6 +675,41 @@
    card-view bottom margin so it sits vertically centered. */
 .cert-list-row__author-col .feed-card__author {
   margin-bottom: 0;
+}
+
+/* One line: the avatar and the name, which gets the column's width. The
+   handle is on the profile the byline links to, not here; the loading
+   byline drops its second bar to match. */
+.cert-list-row__author-col .feed-card__author-handle,
+.cert-list-row__author-col .feed-card__author--skeleton .feed-card__author-meta > * + * {
+  display: none;
+}
+
+/* An account row's own @handle, where the other rows show their author
+   (with the endorsement-degree badge after it on endorsement lists). */
+.cert-list-row__aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cert-list-row__handle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
+.cert-list-row__handle--did {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  color: var(--fg-muted);
 }
 
 .cert-list-row__time {
@@ -832,113 +923,6 @@
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
-}
-
-/* ---------- Account list row ---------- */
-
-/* Three tracks: identity block (avatar + name + @handle stacked),
-   optional endorsement badge, and a right-anchored "Joined …" date.
-   The middle and right tracks use `auto` so they collapse when the
-   data is missing — endorsement-filter mode adds the badge; older
-   profiles without a recorded createdAt drop the date silently. */
-.account-list-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  transition: background-color var(--transition-fast);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .account-list-row:hover {
-    background: var(--overlay-weak);
-  }
-}
-
-.account-list-row__link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  text-decoration: none;
-  color: inherit;
-}
-
-.account-list-row__avatar {
-  flex-shrink: 0;
-}
-
-.account-list-row__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 1px;
-}
-
-.account-list-row__name {
-  /* Standard text, bold (primary line). */
-  font-size: var(--text-body-sm);
-  font-weight: 600;
-  color: var(--fg-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-.account-list-row__handle {
-  /* Second-row text — smaller. */
-  font-size: var(--text-caption);
-  color: var(--fg-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
-}
-
-.account-list-row__handle--did {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
-  color: var(--fg-muted);
-}
-
-.account-list-row__badge {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.account-list-row__joined {
-  font-size: var(--text-caption);
-  color: var(--fg-secondary);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-@media (max-width: 799px) {
-  /* Account rows share the flattened feed treatment: full-width rows
-     between hairline dividers (set in the cert-list-row mobile block),
-     no boxed hover wash. */
-  .account-list-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    padding: 12px 0;
-  }
-  .account-list-row__badge {
-    justify-self: start;
-  }
-  /* "Joined …" date is dropped on mobile — the row is just the
-     identity (avatar + name + @handle). */
-  .account-list-row__joined {
-    display: none;
-  }
 }
 
 /* ---------- Funding receipt row ---------- */

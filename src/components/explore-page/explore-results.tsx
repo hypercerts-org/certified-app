@@ -350,10 +350,11 @@ function EmptyResults({
 }
 
 /**
- * Loading rows shaped like the list rows: a 40px thumbnail (or a round
- * avatar for accounts), a title and a meta line, and on desktop the
- * author and date columns. `aria-hidden`; the caller's region carries
- * `aria-busy`.
+ * Loading rows shaped like the list rows (one geometry for every type):
+ * the 40px lead (a thumbnail, or a round avatar for accounts), a title
+ * and a meta line, the author column (an author's avatar and name, or an
+ * account's handle) on desktop, and the date. `aria-hidden`; the
+ * caller's region carries `aria-busy`.
  */
 export function ExploreRowsSkeleton({
   rows,
@@ -367,21 +368,26 @@ export function ExploreRowsSkeleton({
       {Array.from({ length: rows }).map((_, i) => (
         <li key={i}>
           <div className="explore-skeleton-row">
-            {variant === "account" ? (
-              <Skeleton circle width={40} height={40} />
-            ) : (
-              <Skeleton variant="box" width={40} height={40} />
-            )}
-            <div className="explore-skeleton-row__text">
-              <Skeleton variant="line" width="55%" height={14} />
-              <Skeleton variant="line" width="35%" height={12} />
-            </div>
-            {variant === "record" ? (
-              <div className="explore-skeleton-row__aside">
-                <Skeleton circle width={20} height={20} />
-                <Skeleton variant="line" width={96} height={12} />
+            <div className="explore-skeleton-row__main">
+              {variant === "account" ? (
+                <Skeleton circle width={40} height={40} />
+              ) : (
+                <Skeleton variant="box" width={40} height={40} />
+              )}
+              <div className="explore-skeleton-row__text">
+                <Skeleton variant="line" width="55%" height={14} />
+                <Skeleton variant="line" width="35%" height={12} />
               </div>
-            ) : null}
+            </div>
+            <div className="explore-skeleton-row__aside">
+              {variant === "record" ? (
+                <Skeleton circle width={32} height={32} />
+              ) : null}
+              <Skeleton variant="line" width={112} height={12} />
+            </div>
+            <div className="explore-skeleton-row__date">
+              <Skeleton variant="line" width={48} height={12} />
+            </div>
           </div>
         </li>
       ))}

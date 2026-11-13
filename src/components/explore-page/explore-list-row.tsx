@@ -9,14 +9,18 @@ import EndorsementRowBadge from "./endorsement-row-badge"
 import { formatAbsoluteDateTime } from "./format-display"
 
 /**
- * Presentational shell for the dense explore-page row used by both
- * `CertListRow` and `ProjectListRow`. They render the same four-column
- * grid:
+ * Presentational shell for the dense explore-page row used by
+ * `CertListRow`, `ProjectListRow` and `AccountListRow`. They render the
+ * same four-column grid, so every Explore section has one geometry:
  *
- *   [thumb] [ title             ] [ author col ] [ date ]
- *           [ meta item · meta item · … ]
+ *   [lead] [ title             ] [ author col ] [ date ]
+ *          [ meta item · meta item · … ]
  *
- * The two wrappers just resolve their lexicon-specific bits
+ * The lead is a 40px slot: a record's thumbnail, or an account's
+ * people-size avatar (`leading`). The author column holds the author's
+ * byline, or an account's own @handle (`aside`).
+ *
+ * The wrappers just resolve their lexicon-specific bits
  * (which-field-is-title, which-image-precedence, which-href-builder)
  * and hand the resolved props in here. Keeping the shell purely
  * presentational means the wrappers stay focused on their own data
@@ -33,9 +37,12 @@ export interface ExploreListRowProps {
    *  when the underlying URI couldn't be parsed). */
   href: string | null
   /** Resolved image URL — null falls back to `fallbackIcon`. */
-  thumbUrl: string | null
+  thumbUrl?: string | null
   /** Icon shown when `thumbUrl` is null or fails to load. */
-  fallbackIcon: ReactNode
+  fallbackIcon?: ReactNode
+  /** Replaces the thumbnail in the 40px lead slot (an account's
+   *  `<Avatar size="row">`). */
+  leading?: ReactNode
   title: string
   /** Optional second line under the title (e.g. "by Display Name").
    *  Hidden on desktop — there the author shows in its own column;
@@ -44,8 +51,11 @@ export interface ExploreListRowProps {
   /** Meta segments rendered as a `·`-separated line under the title.
    *  Empty array hides the meta line. */
   metaItems: ReactNode[]
-  /** Author byline DID. Null hides the column. */
-  authorDid: string | null
+  /** Author byline DID. Null leaves the column empty. */
+  authorDid?: string | null
+  /** Replaces the author byline in the author column (an account's own
+   *  @handle). */
+  aside?: ReactNode
   /** Closure-graph metadata for the author DID — surfaces the
    *  endorsement-strength badge next to the author handle when the
    *  active explore filter is endorsement-based (#84). */
@@ -53,6 +63,9 @@ export interface ExploreListRowProps {
   /** ISO timestamp for the right-hand "x ago" column. Null shows
    *  nothing. */
   timestampIso: string | null
+  /** What the date is, when it isn't the record's own creation: a
+   *  prefix for its tooltip and accessible text ("Joined"). */
+  timestampLabel?: string
   /** Compact variant: drops the author and date columns entirely so the
    *  thumb + title/meta block spans the full row width. */
   compact?: boolean
@@ -60,14 +73,17 @@ export interface ExploreListRowProps {
 
 export default function ExploreListRow({
   href,
-  thumbUrl,
-  fallbackIcon,
+  thumbUrl = null,
+  fallbackIcon = null,
+  leading,
   title,
   subtitle,
   metaItems,
-  authorDid,
+  authorDid = null,
+  aside,
   endorsementMeta,
   timestampIso,
+  timestampLabel,
   compact = false,
 }: ExploreListRowProps) {
   const [imageFailed, setImageFailed] = useState(false)
@@ -103,8 +119,14 @@ export default function ExploreListRow({
 
   const body = (
     <>
-      <div className="cert-list-row__thumb">
-        {showImage ? (
+      <div
+        className={`cert-list-row__thumb${
+          leading ? " cert-list-row__thumb--avatar" : ""
+        }`}
+      >
+        {leading ? (
+          leading
+        ) : showImage ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             className="cert-list-row__img"
@@ -157,7 +179,9 @@ export default function ExploreListRow({
       {compact ? null : (
         <>
           <div className="cert-list-row__author-col">
-            {authorDid ? (
+            {aside !== undefined ? (
+              aside
+            ) : authorDid ? (
               <ActivityAuthor
                 did={authorDid}
                 nameSuffix={
@@ -172,8 +196,15 @@ export default function ExploreListRow({
             <time
               className="cert-list-row__time"
               dateTime={timestampIso}
-              title={formatAbsoluteDateTime(timestampIso)}
+              title={
+                timestampLabel
+                  ? `${timestampLabel} ${formatAbsoluteDateTime(timestampIso)}`
+                  : formatAbsoluteDateTime(timestampIso)
+              }
             >
+              {timestampLabel ? (
+                <span className="sr-only">{timestampLabel} </span>
+              ) : null}
               {formatRelativeTime(timestampIso)}
             </time>
           ) : (

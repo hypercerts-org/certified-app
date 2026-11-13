@@ -1,33 +1,31 @@
 "use client"
 
 import { memo } from "react"
-import Link from "next/link"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { deriveIdentity } from "@/lib/utils/identity"
-import { formatShortDate } from "@/lib/utils/format-date"
-import { formatAbsoluteDateTime } from "./format-display"
 import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import EndorsementRowBadge from "./endorsement-row-badge"
+import ExploreListRow from "./explore-list-row"
 
 /**
- * Dense single-row representation of an account for the /explore list
- * view. Three columns:
+ * An account in an /explore list. The same row as an activity or a
+ * project (`<ExploreListRow>`), so every Explore section has one
+ * geometry:
  *
- *   ┌─────────────────────────────────────────────────────────┐
- *   │ [AV] Display name             [endorsement]  Joined Mar │
- *   │      @handle                                     5, 2025│
- *   └─────────────────────────────────────────────────────────┘
+ *   [avatar] [ Display name     ] [ @handle [2nd] ] [ date ]
+ *            [ description …    ]
  *
- * Identity block (avatar + name + @handle stacked) on the left, the
- * endorsement-degree badge (when present) in the middle, and the
- * profile's `createdAt` formatted as a "Joined …" date anchored
- * right. The createdAt comes from the `app.certified.actor.profile`
- * record — null on legacy profiles indexed before the field was
- * emitted, in which case the column collapses.
+ * The avatar fills the 40px lead slot (`<Avatar size="row">`, the
+ * people size); the account's own @handle sits where the other rows
+ * show their author, with the endorsement-degree badge after it when
+ * the list is endorsement-based; the date column is when the account
+ * joined (the profile's `createdAt`, null on legacy profiles, which
+ * leaves it empty). Phones drop the author column and the description
+ * line, so the handle (and badge) move under the name there.
  */
 function AccountListRow({
   actor,
@@ -45,46 +43,48 @@ function AccountListRow({
       preferredAvatarUrl: actor.avatarUrl,
     })
 
+  const badge = endorsementMeta ? (
+    <EndorsementRowBadge meta={endorsementMeta} />
+  ) : null
+  const handleText = handle ? `@${handle}` : truncateDid(actor.did)
+  const description = actor.description?.trim() || null
+
   return (
-    <article className="account-list-row">
-      <Link href={profileHref} className="account-list-row__link">
+    <ExploreListRow
+      href={profileHref}
+      leading={
         <Avatar
-          size="md"
+          size="row"
           src={avatarUrl ?? undefined}
           alt=""
           fallbackInitials={initials}
           seed={actor.did}
-          className="account-list-row__avatar"
         />
-        <div className="account-list-row__body">
-          <span className="account-list-row__name" dir="auto">
-            {displayName}
+      }
+      title={displayName}
+      subtitle={
+        <>
+          {handleText}
+          {badge ? <> {badge}</> : null}
+        </>
+      }
+      metaItems={description ? [description] : []}
+      aside={
+        <span className="cert-list-row__aside">
+          <span
+            className={`cert-list-row__handle${
+              handle ? "" : " cert-list-row__handle--did"
+            }`}
+          >
+            {handle ? null : <User size={12} strokeWidth={2} aria-hidden />}
+            {handleText}
           </span>
-          {handle ? (
-            <span className="account-list-row__handle">@{handle}</span>
-          ) : (
-            <span className="account-list-row__handle account-list-row__handle--did">
-              <User size={12} strokeWidth={2} aria-hidden />
-              {truncateDid(actor.did)}
-            </span>
-          )}
-        </div>
-      </Link>
-      {endorsementMeta ? (
-        <div className="account-list-row__badge">
-          <EndorsementRowBadge meta={endorsementMeta} />
-        </div>
-      ) : null}
-      {actor.createdAt ? (
-        <time
-          className="account-list-row__joined"
-          dateTime={actor.createdAt}
-          title={`Joined ${formatAbsoluteDateTime(actor.createdAt)}`}
-        >
-          Joined {formatShortDate(actor.createdAt)}
-        </time>
-      ) : null}
-    </article>
+          {badge}
+        </span>
+      }
+      timestampIso={actor.createdAt}
+      timestampLabel="Joined"
+    />
   )
 }
 
