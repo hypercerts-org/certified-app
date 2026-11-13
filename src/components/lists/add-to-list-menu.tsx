@@ -122,7 +122,7 @@ export default function AddToListMenu({
           <Button
             size="icon"
             variant="ghost"
-            aria-label="Open list actions"
+            aria-label="More actions"
           >
             <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
           </Button>

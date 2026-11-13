@@ -170,7 +170,7 @@ function Toaster({
       // Bottom-right stack on desktop; full-width on narrow viewports,
       // lifted by the bottom-nav height + safe-area inset so it clears the
       // bar instead of covering it.
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch max-[799px]:bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
+      className="toast-region pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-feedback)] flex flex-col items-center gap-2 p-4 max-[799px]:items-stretch max-[799px]:bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px))] min-[800px]:inset-x-auto min-[800px]:bottom-4 min-[800px]:right-4 min-[800px]:items-end"
     >
       {/* Enter keyframe lives with the component (toast.tsx is the only file
           this step owns; no global stylesheet edit). Under reduced motion

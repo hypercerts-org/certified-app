@@ -149,10 +149,15 @@ export async function fetchNetworkActors(
         },
     { signal },
   )
-  // Deliberate fail-soft: HTTP failures and GraphQL errors render as
-  // an empty actor page (pre-existing behaviour, preserved verbatim
-  // through the postIndexer migration).
+  // A failed request (HTTP or GraphQL error with no data) throws, so
+  // callers can show "Couldn't load … Try again" instead of a false
+  // "No accounts yet". A successful empty page still returns no actors.
   const connection = res.data?.appCertifiedActorProfile
+  if (!connection && (!res.ok || res.errors.length > 0)) {
+    throw new Error(
+      res.errors[0]?.message ?? `Indexer request failed: ${res.status}`,
+    )
+  }
   const edges = connection?.edges ?? []
   const actors: NetworkActor[] = []
   for (const edge of edges) {

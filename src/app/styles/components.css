@@ -2166,3 +2166,13 @@
   opacity: 1;
   color: var(--color-accent);
 }
+
+/* While a bottom sheet is open on a phone, toasts move to the top of the
+   screen: at the bottom they would sit over the sheet's rows and take
+   their taps (toasts stay interactive while a sheet makes the page inert). */
+@media (max-width: 799px) {
+  html:has(.bottom-sheet__backdrop) .toast-region {
+    top: calc(var(--chrome-top, 0px) + env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
+}
