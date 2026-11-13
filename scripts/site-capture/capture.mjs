@@ -274,6 +274,118 @@ function readComputed(properties) {
   return out
 }
 
+/** Runs in the page (at the top): the large images the site lays behind
+ *  its content, decorative <img>s (alt="", aria-hidden) and CSS background
+ *  images, within the first two screens and covering at least a fifth of a
+ *  screen. Largest first, up to three. */
+function findSurfaceImages() {
+  const vw = innerWidth
+  const vh = innerHeight
+  const found = []
+  const seen = new Set()
+  const consider = (el, src) => {
+    if (!src || seen.has(src) || !/^https?:/.test(src)) return
+    const r = el.getBoundingClientRect()
+    const top = r.top + scrollY
+    if (top > vh * 2 || r.width < vw * 0.5 || r.height < 200) return
+    const shown = Math.max(0, Math.min(r.bottom + scrollY, vh * 2) - Math.max(top, 0))
+    const covers = (Math.min(r.width, vw) * shown) / (vw * vh)
+    if (covers < 0.2) return
+    seen.add(src)
+    found.push({
+      src,
+      covers: Math.min(2, Math.round(covers * 100) / 100),
+      where: top < vh * 0.5 ? "behind the first screen" : "further down the first two screens",
+    })
+  }
+  for (const img of document.images) {
+    const decorative =
+      img.getAttribute("alt") === "" || img.getAttribute("aria-hidden") === "true" || img.getAttribute("role") === "presentation"
+    if (decorative) consider(img, img.currentSrc || img.src)
+  }
+  for (const el of document.querySelectorAll("body *")) {
+    const bg = getComputedStyle(el).backgroundImage
+    const m = bg && bg !== "none" ? /url\(["']?([^"')]+)["']?\)/.exec(bg) : null
+    if (m) {
+      try {
+        consider(el, new URL(m[1], document.baseURI).href)
+      } catch {
+        // not a URL
+      }
+    }
+  }
+  return found.sort((a, b) => b.covers - a.covers).slice(0, 3)
+}
+
+/** The largest site image a capture hands on, as base64 characters. */
+const MAX_SITE_IMAGE_CHARS = 90_000
+
+/** A site image re-drawn as a JPEG (on white, for transparent ones), at
+ *  most 640 wide and 640 tall, smaller until it fits the size cap. Drawn by
+ *  the browser and screenshotted, so a cross-origin image works. */
+async function renderSiteImage(context, src) {
+  const page = await context.newPage()
+  try {
+    for (const [width, quality] of [
+      [640, 72],
+      [480, 62],
+      [360, 55],
+    ]) {
+      await page.setViewportSize({ width, height: width })
+      const ok = await page.evaluate(
+        async ([url, w]) => {
+          document.body.innerHTML = ""
+          document.body.style.cssText = "margin:0;background:#fff"
+          const img = document.createElement("img")
+          img.style.cssText = `display:block;width:${w}px;max-height:${w}px;object-fit:cover;object-position:center`
+          document.body.appendChild(img)
+          img.src = url
+          try {
+            await img.decode()
+            return img.naturalWidth > 0
+          } catch {
+            return false
+          }
+        },
+        [src, width],
+      )
+      if (!ok) return null
+      const jpeg = await page.locator("img").screenshot({ type: "jpeg", quality, timeout: 2000 })
+      const data = b64(jpeg)
+      if (data.length <= MAX_SITE_IMAGE_CHARS) return data
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    await page.close().catch(() => {})
+  }
+}
+
+/** A JPEG's average colour and how busy it is: 0 for a flat or calm
+ *  texture, 1 for a busy photograph (the spread of its lightness). */
+export function imageStats(pixels) {
+  let n = 0
+  let r = 0
+  let g = 0
+  let b = 0
+  const lum = []
+  for (let i = 0; i + 3 < pixels.length; i += 4) {
+    r += pixels[i]
+    g += pixels[i + 1]
+    b += pixels[i + 2]
+    lum.push((0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255)
+    n++
+  }
+  if (!n) return { average: "#808080", busy: 0.5 }
+  const mean = lum.reduce((a, v) => a + v, 0) / n
+  const sd = Math.sqrt(lum.reduce((a, v) => a + (v - mean) ** 2, 0) / n)
+  return {
+    average: `#${hex2(r / n)}${hex2(g / n)}${hex2(b / n)}`.toUpperCase(),
+    busy: Math.round(Math.min(1, sd * 3.5) * 100) / 100,
+  }
+}
+
 const LOGO_SELECTORS = [
   'header a[href="/"] img',
   'header a[href="/"] svg',
@@ -425,6 +537,7 @@ export async function capture(url, { chromium, executablePath } = {}) {
 
     await tidy()
     const desktopTop = await page.screenshot({ type: "jpeg", quality: 72 })
+    const surfaceCandidates = await page.evaluate(findSurfaceImages).catch(() => [])
     const computed = await page.evaluate(readComputed, PROPERTIES).catch(() => [])
     const logo = await captureLogo(page)
     const shareUrl = await page
@@ -446,6 +559,23 @@ export async function capture(url, { chromium, executablePath } = {}) {
     const phone = await page.screenshot({ type: "jpeg", quality: 72 })
 
     const shareImage = shareUrl && /^https?:/.test(shareUrl) && left() > 2_000 ? await captureShareImage(context, shareUrl) : null
+    const surfaceImages = []
+    for (const candidate of surfaceCandidates) {
+      if (left() < 2_500) break
+      const data = await renderSiteImage(context, candidate.src)
+      if (!data) continue
+      const stats = imageStats(await samplePixels(context, [`data:image/jpeg;base64,${data}`]).catch(() => []))
+      const id = `site-image-${surfaceImages.length + 1}`
+      surfaceImages.push({
+        id,
+        label: `${id}: an image the site lays ${candidate.where}, covering ${Math.round(Math.min(1, candidate.covers) * 100)}% of a screen`,
+        mediaType: "image/jpeg",
+        data,
+        where: candidate.where,
+        covers: candidate.covers,
+        ...stats,
+      })
+    }
     const pixels = await samplePixels(context, [
       `data:image/jpeg;base64,${b64(desktopTop)}`,
       `data:image/jpeg;base64,${b64(phone)}`,
@@ -462,6 +592,7 @@ export async function capture(url, { chromium, executablePath } = {}) {
       shareImage: shareImage ? { label: "The site's share image (og:image)", mediaType: "image/jpeg", data: b64(shareImage) } : null,
       computed,
       visibleColours: dominantColours(pixels),
+      surfaceImages,
     }
   } finally {
     await browser.close().catch(() => {})

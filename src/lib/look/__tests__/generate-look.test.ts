@@ -76,7 +76,7 @@ const answer = {
   shadows: "soft",
   backdrop: { kind: "glow", intensity: "subtle" },
   avatar: { shape: "circle", ring: "brand", fill: "brand", initials: "ui", image: "natural" },
-  idCard: { surface: "brand", edge: "none", pattern: "dots", title: "caps", mark: "dot" },
+  idCard: { surface: "brand", image: "", edge: "none", pattern: "dots", title: "caps", mark: "dot" },
   endorsement: { frame: "rule", who: "plain", note: "quote", mark: "check" },
 }
 
@@ -190,6 +190,33 @@ describe("generateLookSpec", () => {
       parsed_output: { ...answer, idCard: { ...answer.idCard, title: "caps" }, evidence: [{ lever: "idCard.title", choice: "caps", quote: '"text-transform": "uppercase"' }] },
     })
     expect((await generateLookSpec({ apiKey: "k", design })).idCard.title).toBe("plain")
+  })
+
+  it("puts the ID card on the site image Claude names, taken from the capture", async () => {
+    const withTexture: SiteCapture = {
+      ...capture,
+      surfaceImages: [
+        { id: "site-image-1", label: "site-image-1: an image the site lays behind the first screen", mediaType: "image/jpeg", data: "QUJDRA==", where: "behind the first screen", covers: 0.95, average: "#038EC2", busy: 0.2 },
+      ],
+    }
+    parse.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...answer,
+        idCard: { ...answer.idCard, surface: "image", image: "site-image-1", pattern: "none", mark: "none", title: "plain" },
+        evidence: [{ lever: "idCard.surface", choice: "image", quote: '"id":"site-image-1","where":"behind the first screen"' }],
+      },
+    })
+    const spec = await generateLookSpec({ apiKey: "k", design, capture: withTexture })
+    expect(spec.idCard.surface).toBe("image")
+    expect(spec.assets?.idImage?.data).toBe("data:image/jpeg;base64,QUJDRA==")
+    // Claude saw it, labelled, after the screenshots.
+    const blocks = parse.mock.calls[0][0].messages[0].content as Block[]
+    expect(blocks.some((b) => b.type === "text" && b.text.startsWith("site-image-1:"))).toBe(true)
+    // A new version doesn't send the pixels back as text.
+    parse.mockClear()
+    await generateLookSpec({ apiKey: "k", design, capture: withTexture, previous: spec })
+    expect(sentText()).not.toContain("QUJDRA==")
   })
 
   it("never keeps a move the site gives no evidence for", async () => {

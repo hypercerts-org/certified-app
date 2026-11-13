@@ -24,6 +24,21 @@ export interface ComputedSample {
   styles: Record<string, string>
 }
 
+/** A large image the site lays behind its content (a texture, pattern,
+ *  illustration or photo), re-drawn as a small JPEG. A style can put it
+ *  under the ID card (custom-look-spec.ts, withSiteImage). */
+export interface SiteSurfaceImage extends CapturedImage {
+  /** "site-image-1" …, how Claude names it. */
+  id: string
+  where: string
+  /** How much of a screen it covers (1 = a whole screen). */
+  covers: number
+  /** Its average colour, #RRGGBB. */
+  average: string
+  /** 0 a calm texture … 1 a busy photograph. */
+  busy: number
+}
+
 export interface SiteCapture {
   url: string
   screenshots: CapturedImage[]
@@ -32,6 +47,9 @@ export interface SiteCapture {
   computed: ComputedSample[]
   /** The colours covering most of the screenshots, largest first. */
   visibleColours: { hex: string; share: number }[]
+  /** Large images behind the site's content, largest first (none from
+   *  older captures). */
+  surfaceImages?: SiteSurfaceImage[]
 }
 
 export interface SiteCaptureResponse {

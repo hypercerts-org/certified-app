@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
 import {
   InvalidLookSpecError,
+  cleanSiteImage,
+  withSiteImage,
   MOVES,
   buildCustomLookCss,
   contrast,
@@ -43,7 +45,7 @@ const stripe = (over: Partial<LookSpecInput> = {}): LookSpecInput => ({
   shadows: "soft",
   backdrop: { kind: "band", intensity: "medium" },
   avatar: { shape: "circle", ring: "brand", fill: "gradient", initials: "ui", image: "natural" },
-  idCard: { surface: "gradient", edge: "none", pattern: "none", title: "caps", mark: "chip" },
+  idCard: { surface: "gradient", image: "", edge: "none", pattern: "none", title: "caps", mark: "chip" },
   endorsement: { frame: "card", who: "plain", note: "plain", mark: "check" },
   ...over,
 })
@@ -231,7 +233,7 @@ describe("buildCustomLookCss", () => {
 
   it("keeps text readable on a strong ID card surface", () => {
     for (const surface of ["brand", "gradient", "ink"] as const) {
-      const t = lookTokens(normalizeLookSpec(stripe({ idCard: { surface, edge: "none", pattern: "none", title: "plain", mark: "none" } })))
+      const t = lookTokens(normalizeLookSpec(stripe({ idCard: { surface, image: "", edge: "none", pattern: "none", title: "plain", mark: "none" } })))
       for (const mode of [t.light, t.dark]) {
         const fg = mode["--look-id-fg"]
         const bgs = (mode["--look-id-surface"].match(/#[0-9A-F]{6}/g) ?? []) as string[]
@@ -260,7 +262,7 @@ describe("groundLookSpec: nothing invented", () => {
     const { spec, dropped } = ground({ ...stripe(), evidence: [] })
     expect(spec.backdrop).toEqual({ kind: "none", intensity: "medium" })
     // "none" is itself a plain edge, so it stays.
-    expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
+    expect(spec.idCard).toEqual({ surface: "plain", image: "", edge: "none", pattern: "none", title: "plain", mark: "none" })
     expect((spec.avatar as Record<string, string>).ring).toBe("hairline")
     expect((spec.endorsement as Record<string, string>).frame).toBe("row")
     expect(dropped).toContain("idCard.mark: chip")
@@ -325,5 +327,43 @@ describe("the idea and the signature piece", () => {
     expect(old.idea).toBe("")
     expect(old.signaturePiece).toBeNull()
     expect(normalizeLookSpec({ ...stripe(), signaturePiece: "everything" }).signaturePiece).toBeNull()
+  })
+})
+
+describe("the ID card on the site's own image", () => {
+  const texture = { id: "site-image-1", mediaType: "image/jpeg", data: "QUJDRA==", average: "#038EC2", busy: 0.2 }
+  const onImage = (image = "site-image-1") =>
+    stripe({ idCard: { surface: "image", image, edge: "none", pattern: "none", title: "plain", mark: "none" } })
+
+  it("takes the image from the capture and draws the card on it, ink chosen for its tone", () => {
+    const spec = normalizeLookSpec(withSiteImage(onImage(), [texture]))
+    expect(spec.idCard.surface).toBe("image")
+    expect(spec.assets?.idImage?.data).toBe("data:image/jpeg;base64,QUJDRA==")
+    const css = buildCustomLookCss("custom-abcdefgh", spec)
+    expect(css).toContain('url("data:image/jpeg;base64,QUJDRA==") center / cover no-repeat')
+    expect(css).toContain("var(--look-id-veil)")
+    const t = lookTokens(spec)
+    for (const mode of [t.light, t.dark]) {
+      expect(contrast(parseHex(mode["--look-id-fg"])!, parseHex(mode["--look-id-surface"])!)).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it("falls back to the brand colour without a matching image", () => {
+    expect(normalizeLookSpec(withSiteImage(onImage("site-image-9"), [texture, { ...texture, id: "site-image-2" }])).idCard.surface).toBe("brand")
+    expect(normalizeLookSpec(withSiteImage(onImage(), [])).idCard.surface).toBe("brand")
+    // A stored style whose image went missing.
+    expect(normalizeLookSpec(onImage()).idCard.surface).toBe("brand")
+  })
+
+  it("lets nothing but a base64 image data URL reach the CSS", () => {
+    expect(cleanSiteImage({ data: 'data:image/jpeg;base64,QUJD") } body { color: red', average: "#000000", busy: 0 })).toBeNull()
+    expect(cleanSiteImage({ data: "data:image/svg+xml;base64,PHN2Zz4=", average: "#000000", busy: 0 })).toBeNull()
+    expect(cleanSiteImage({ data: "https://evil.example/x.png", average: "#000000", busy: 0 })).toBeNull()
+    expect(cleanSiteImage({ data: `data:image/png;base64,${"A".repeat(200_000)}`, average: "#000000", busy: 0 })).toBeNull()
+    expect(cleanSiteImage({ data: "data:image/webp;base64,QUJD", average: "nope", busy: 7 })).toEqual({
+      data: "data:image/webp;base64,QUJD",
+      average: "#808080",
+      busy: 1,
+    })
   })
 })

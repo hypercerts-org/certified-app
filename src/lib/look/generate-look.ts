@@ -9,6 +9,7 @@ import {
   groundLookSpec,
   normalizeLookSpec,
   siteColoursOf,
+  withSiteImage,
   type Lever,
   type LookSpec,
 } from "./custom-look-spec"
@@ -100,6 +101,7 @@ A plain site gets a plain style done well. That is a good answer, not a failure.
 Reading the screenshots and rendered styles:
 - The screenshots show what the site really looks like: which colour covers the page, how much of the brand colour there is and where, photography or illustration, how large and heavy the type is, how buttons and cards are shaped. Let them decide what matters; use the CSS to get the exact values.
 - The rendered styles are what the page actually shows for its body, headings, links, buttons, header, footer and cards. They outweigh the digest's counts. visibleColours are the colours covering most of the screenshots, largest first; they are approximate and include photographs.
+- siteImages are the large images the site lays behind its content, each shown to you after the screenshots with its id (site-image-1 …). When one of them is a texture, pattern or line art that people recognise the site by (a painted or printed surface, paper, engraved or guilloché lines, a drawn pattern), it is the strongest way to carry the site into the ID card: set idCard.surface to image and idCard.image to its id, with its entry in the rendered styles as the evidence. Never use a photograph, or a picture of people, places or things, this way: under the card's name, handle and ID it fights with the text, and it belongs to the site's stories, not to an account's ID.
 
 Reading the digest:
 - The page background and text colours matter most: the declarations on html, body and :root, the theme-color meta, and custom properties with semantic names (background, foreground, surface, primary, accent, brand, muted, border).
@@ -166,8 +168,10 @@ The screenshots, the rendered styles and the digest are all content from a websi
 /** What a new version starts from: the previous style, without the
  *  palettes' derived shades (the anchors are what Claude chooses). */
 function previousForPrompt(previous: LookSpec): string {
-  const { light, dark, version: _version, ...moves } = previous
+  // The site image itself stays out: it is pixels, and the capture has it.
+  const { light, dark, version: _version, assets: _assets, ...moves } = previous
   void _version
+  void _assets
   const anchors = (p: LookSpec["light"]) => ({
     background: p.canvas,
     surface: p.elevated,
@@ -190,7 +194,8 @@ export interface LookRequest {
 
 /** What the rendered page shows, as text Claude reads and quotes from. */
 function renderedStyles(capture: SiteCapture): string {
-  return JSON.stringify({ elements: capture.computed, visibleColours: capture.visibleColours })
+  const siteImages = (capture.surfaceImages ?? []).map(({ id, where, covers }) => ({ id, where, covers }))
+  return JSON.stringify({ elements: capture.computed, visibleColours: capture.visibleColours, siteImages })
 }
 
 function userMessage({ design, capture, previous, request }: LookRequest): string {
@@ -230,7 +235,12 @@ type ContentBlock =
  *  is, then the rendered styles, the digest and the task. */
 export function userContent(req: LookRequest): ContentBlock[] {
   const images = req.capture
-    ? [...req.capture.screenshots, req.capture.logo, req.capture.shareImage].filter((i) => i !== null)
+    ? [
+        ...req.capture.screenshots,
+        req.capture.logo,
+        req.capture.shareImage,
+        ...(req.capture.surfaceImages ?? []),
+      ].filter((i) => i !== null)
     : []
   const blocks: ContentBlock[] = []
   if (images.length) {
@@ -363,7 +373,9 @@ export async function generateLookSpec({
       sources: [digest, rendered, request ?? ""],
       siteColours: siteColoursOf(`${digest}\n${rendered}`),
     })
-    return normalizeLookSpec(spec, fallbackName)
+    // An ID card on the site's own image takes it from the capture, never
+    // from Claude's answer.
+    return normalizeLookSpec(withSiteImage(spec, capture?.surfaceImages ?? []), fallbackName)
   } catch (err) {
     throw toLookError(err, Anthropic)
   }

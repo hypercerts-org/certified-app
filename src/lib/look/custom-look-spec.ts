@@ -162,6 +162,8 @@ export const MOVES = {
     brand: "the solid brand colour, text in white or ink",
     gradient: "a gradient of the two brand colours, like a premium card",
     ink: "inverted: the text colour as the surface, the page colour as text (a dark pass)",
+    image:
+      "the site's own image (one of the site images, named in idCard.image) under the card, toned toward the brand colour: for a texture, pattern or line art the site lays behind its content; never a photograph or a picture of people, places or things, which would fight with the card's text",
   },
   idEdge: {
     hairline: "the usual hairline",
@@ -275,6 +277,51 @@ const ColorsSchema = z.object({
 export const SIGNATURE_PIECES = ["idCard", "avatar", "endorsement", "backdrop"] as const
 export type SignaturePiece = (typeof SIGNATURE_PIECES)[number]
 
+/** A site image as a style keeps it: a JPEG, PNG or WebP data URL the
+ *  capture re-encoded, with its average colour and how busy it is (0 calm
+ *  texture, 1 busy photo), which set the tone over it. */
+export interface SiteImageAsset {
+  data: string
+  average: string
+  busy: number
+}
+
+/** The largest data URL a style keeps (about 75 KB of image). */
+export const MAX_SITE_IMAGE_CHARS = 100_000
+const SITE_IMAGE_DATA = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/
+
+/** A site image asset if it is safe to put in CSS: a base64 image data
+ *  URL (nothing that could close the url() or the rule), not too large;
+ *  null otherwise. */
+export function cleanSiteImage(raw: unknown): SiteImageAsset | null {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null
+  if (!r || typeof r.data !== "string") return null
+  if (r.data.length > MAX_SITE_IMAGE_CHARS || !SITE_IMAGE_DATA.test(r.data)) return null
+  const average = parseHex(r.average)
+  const busy = typeof r.busy === "number" && Number.isFinite(r.busy) ? Math.min(1, Math.max(0, r.busy)) : 0.5
+  return { data: r.data, average: average ? toHex(average) : "#808080", busy }
+}
+
+/**
+ * Puts the chosen site image on a raw spec (Claude's answer after
+ * grounding): when the ID card's surface is "image", the capture image its
+ * idCard.image names (or the only one) becomes `assets.idImage`. Without a
+ * matching image the surface falls back to the brand colour.
+ */
+export function withSiteImage(
+  raw: Record<string, unknown>,
+  images: readonly { id: string; mediaType: string; data: string; average: string; busy: number }[],
+): Record<string, unknown> {
+  const id = raw.idCard && typeof raw.idCard === "object" ? (raw.idCard as Record<string, unknown>) : null
+  if (!id || id.surface !== "image") return raw
+  const chosen = images.find((i) => i.id === id.image) ?? (images.length === 1 ? images[0] : undefined)
+  const asset = chosen
+    ? cleanSiteImage({ data: `data:${chosen.mediaType};base64,${chosen.data}`, average: chosen.average, busy: chosen.busy })
+    : null
+  if (!asset) return { ...raw, idCard: { ...id, surface: "brand" } }
+  return { ...raw, assets: { idImage: asset } }
+}
+
 /** What Claude returns. Kept loose where the API's schema support is
  *  (no string patterns or number ranges); `normalizeLookSpec` enforces. */
 export const LookSpecSchema = z.object({
@@ -327,6 +374,9 @@ export const LookSpecSchema = z.object({
   }),
   idCard: z.object({
     surface: menu("idSurface"),
+    image: z
+      .string()
+      .describe("When surface is image: the id of the site image it uses (site-image-1 …). Otherwise an empty string."),
     edge: menu("idEdge"),
     pattern: menu("idPattern"),
     title: menu("idTitle"),
@@ -391,6 +441,9 @@ export interface LookSpec {
     title: Choice<"idTitle">
     mark: Choice<"idMark">
   }
+  /** Images the style draws, taken from the site by the capture (never
+   *  from Claude): the ID card's surface when it is "image". */
+  assets?: { idImage?: SiteImageAsset }
   endorsement: {
     frame: Choice<"endorsementFrame">
     who: Choice<"endorsementWho">
@@ -744,6 +797,7 @@ export function normalizeLookSpec(raw: unknown, fallbackName = "Your style"): Lo
   const bd = typeof r.backdrop === "string" ? { kind: r.backdrop, intensity: "medium" } : obj(r.backdrop)
   const av = obj(r.avatar)
   const id = obj(r.idCard)
+  const idImage = cleanSiteImage(obj(r.assets).idImage)
   const en = obj(r.endorsement)
 
   return {
@@ -773,12 +827,14 @@ export function normalizeLookSpec(raw: unknown, fallbackName = "Your style"): Lo
       image: pick("avatarImage", av.image, "natural"),
     },
     idCard: {
-      surface: pick("idSurface", id.surface, "plain"),
+      // An image surface needs its image; without one, the brand colour.
+      surface: ((v) => (v === "image" && !idImage ? "brand" : v))(pick("idSurface", id.surface, "plain")),
       edge: pick("idEdge", id.edge, "hairline"),
       pattern: pick("idPattern", id.pattern, "none"),
       title: pick("idTitle", id.title, "plain"),
       mark: pick("idMark", id.mark, "none"),
     },
+    ...(idImage ? { assets: { idImage } } : {}),
     endorsement: {
       frame: pick("endorsementFrame", en.frame, "row"),
       who: pick("endorsementWho", en.who, "plain"),
@@ -906,6 +962,18 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
       out["--look-id-surface"] = toHex(p.text)
       fg = textOn([p.text])
       break
+    case "image": {
+      // The site's image, under a veil of its own average colour toned
+      // toward the brand: thin over a calm texture, thicker over a busy
+      // picture (and in dark mode), so the ink chosen for that colour reads.
+      const img = spec.assets?.idImage
+      const tone = mix(parseHex(img?.average) ?? p.accent, p.accent, 0.3)
+      const busy = img?.busy ?? 0.5
+      out["--look-id-surface"] = toHex(tone)
+      out["--look-id-veil"] = rgba(tone, Math.min(0.8, 0.12 + 0.55 * busy + (dark ? 0.15 : 0)))
+      fg = textOn([tone])
+      break
+    }
     default:
       out["--look-id-surface"] = toHex(p.elevated)
   }
@@ -1087,10 +1155,21 @@ function idRules(spec: LookSpec, s: Scope): Rules {
   const rules: Rules = []
   const card: Decl = { position: "relative", isolation: "isolate", overflow: "hidden" }
   const pattern = c.pattern === "none" ? (c.surface === "paper" ? PATTERNS.grain : null) : PATTERNS[c.pattern]
-  if (c.surface !== "plain" || pattern) {
+  const image = c.surface === "image" ? spec.assets?.idImage : undefined
+  if (image) {
+    // cleanSiteImage let only a base64 image data URL through.
+    card.background = [
+      pattern,
+      "linear-gradient(var(--look-id-veil), var(--look-id-veil))",
+      `url("${image.data}") center / cover no-repeat`,
+      "var(--look-id-surface)",
+    ]
+      .filter(Boolean)
+      .join(", ")
+  } else if (c.surface !== "plain" || pattern) {
     card.background = pattern ? `${pattern}, var(--look-id-surface)` : "var(--look-id-surface)"
   }
-  if (c.surface === "brand" || c.surface === "gradient" || c.surface === "ink") {
+  if (c.surface === "brand" || c.surface === "gradient" || c.surface === "ink" || image) {
     // On a strong surface the card's own text, wells and lines follow the
     // ink that reads on it (as Wallet's pass does).
     Object.assign(card, {
