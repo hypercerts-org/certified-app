@@ -78,7 +78,7 @@ describe("ProfileOverview: Endorsements received", () => {
     const link = within(first).getByRole("link")
     expect(link.getAttribute("href")).toBe("/issuer1.certified.app")
     expect(first.querySelector('[data-part="who"]')!.textContent).toBe("Issuer 1")
-    // The date sits beside the name, inside the same meta line.
+    // The name over the date (one text column, like the "Latest" records).
     const when = first.querySelector('[data-part="when"]')!
     expect(when.tagName).toBe("TIME")
     expect(when.parentElement).toBe(first.querySelector('[data-part="who"]')!.parentElement)

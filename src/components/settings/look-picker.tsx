@@ -91,13 +91,12 @@ function LookPreview({ id }: { id: AnyLookId }) {
       >
         <PreviewAvatar initials="LG" shape="square" size="xs" />
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-caption">
-            <span data-part="who" className="font-medium text-[var(--fg-primary)]">
-              Lumen Grove
-            </span>{" "}
-            <span data-part="when" className="text-[var(--fg-muted)]">
-              4 Nov 2026
-            </span>
+          {/* Name over date, like the app's endorsement row. */}
+          <span data-part="who" className="truncate text-caption font-medium text-[var(--fg-primary)]">
+            Lumen Grove
+          </span>
+          <span data-part="when" className="text-micro text-[var(--fg-muted)]">
+            4 Nov 2026
           </span>
           <span data-part="note" className="text-caption text-[var(--fg-secondary)]">
             A reliable partner on the tree nursery.

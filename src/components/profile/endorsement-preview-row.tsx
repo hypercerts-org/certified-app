@@ -8,8 +8,9 @@ import { useEndorserIdentity } from "@/components/profile/use-endorser-identity"
 
 /**
  * One received endorsement as a compact row (32px avatar, 14px name, 12px
- * date): the endorser's avatar, then their name with the date beside it,
- * and their note under them, linking to the endorser's profile. The one
+ * date), drawn like the Overview's "Latest" records: the endorser's avatar,
+ * then their name over the date, and their note under them, linking to the
+ * endorser's profile. The one
  * endorsement row, used by the Workspace Overview's "Endorsements and
  * followers" and the profile Overview's "Endorsements received"; styles
  * are the `profile-overview__endorse-*` classes (layout.css).
