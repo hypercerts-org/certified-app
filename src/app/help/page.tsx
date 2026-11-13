@@ -32,10 +32,10 @@ const SECTIONS: HelpSection[] = [
   { id: "feedback", label: "Feedback" },
 ];
 
-// Sections clear the phone top bar when a contents link jumps to them (the
-// desktop bar scrolls with the page, and --navbar-height is 0 there).
-const sectionCls =
-  "flex scroll-mt-[calc(var(--navbar-height)+24px)] flex-col gap-3";
+// A contents link lands a section 24px below the fixed top chrome: the
+// root's `scroll-padding-top: var(--chrome-top)` (layout.css) clears the
+// top bar and the acting-as bar; this adds the breathing room.
+const sectionCls = "flex scroll-mt-6 flex-col gap-3";
 const proseCls = "m-0 text-body text-[var(--fg-secondary)] text-pretty";
 const strongCls = "font-semibold text-[var(--fg-primary)]";
 

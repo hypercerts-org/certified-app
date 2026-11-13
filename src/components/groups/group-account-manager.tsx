@@ -13,6 +13,7 @@ import {
 } from "@/lib/groups/account"
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
 import CopyPill from "@/components/account/copy-pill"
 import { useUnlockSession } from "@/components/settings/unlock-app-passwords-fields"
@@ -49,6 +50,7 @@ export default function GroupAccountManager({
 
   // Email.
   const [email, setEmail] = useState<string | null>(null)
+  const [emailLoadError, setEmailLoadError] = useState(false)
   const [editingEmail, setEditingEmail] = useState(false)
   const [newEmail, setNewEmail] = useState("")
   const [emailToken, setEmailToken] = useState("")
@@ -59,6 +61,7 @@ export default function GroupAccountManager({
   const relock = useCallback(() => {
     setUnlocked(false)
     setEmail(null)
+    setEmailLoadError(false)
     setEditingHandle(false)
     setEditingEmail(false)
     setNewEmail("")
@@ -69,12 +72,17 @@ export default function GroupAccountManager({
   }, [])
 
   const loadEmail = useCallback(async () => {
-    const result = await getGroupEmail(groupDid)
-    if (result === LOCKED) {
-      relock()
-      return
+    setEmailLoadError(false)
+    try {
+      const result = await getGroupEmail(groupDid)
+      if (result === LOCKED) {
+        relock()
+        return
+      }
+      setEmail(result.email)
+    } catch {
+      setEmailLoadError(true)
     }
-    setEmail(result.email)
   }, [groupDid, relock])
 
   const unlockFn = useCallback(
@@ -218,8 +226,8 @@ export default function GroupAccountManager({
                   setEditingHandle(true)
                 }}
               >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
+                Edit<span className="sr-only"> handle</span>
               </Button>
             ) : (
               <Button
@@ -296,6 +304,13 @@ export default function GroupAccountManager({
                 </Button>
               </div>
             </form>
+          ) : emailLoadError ? (
+            // Load failure: the inline pattern with a retry (DESIGN §10.1).
+            <EmptyState variant="inline" title="Couldn't load the group's email.">
+              <Button variant="ghost" size="sm" onClick={() => void loadEmail()}>
+                Try again
+              </Button>
+            </EmptyState>
           ) : (
             <div className="group-acct__view">
               <span className="settings-field__value">{email || "—"}</span>
@@ -307,8 +322,8 @@ export default function GroupAccountManager({
                   setNewEmail(email || "")
                 }}
               >
-                <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                Edit
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
+                Edit<span className="sr-only"> email</span>
               </Button>
             </div>
           )

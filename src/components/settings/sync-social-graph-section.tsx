@@ -11,6 +11,7 @@ import { ArrowLeft, RefreshCw, Search, Users } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
+import EmptyState from "@/components/ui/empty-state"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import Skeleton from "@/components/ui/skeleton"
@@ -97,8 +98,12 @@ export default function SyncSocialGraphSection({
   const summary = sync.isLoading ? "Comparing graphs…" : null
   const onlyCertified = sync.stats.onlyCertified.length
   const onlyBluesky = sync.stats.onlyBluesky.length
+  // After a failed load the counts are unknown, not zero.
+  const failed = !!sync.error && !sync.isLoading
+  const count = (n: number) => (failed ? null : formatCount(n))
   const inSync =
     !sync.isLoading &&
+    !failed &&
     !sync.truncated &&
     !sync.blueskyTruncated &&
     onlyCertified === 0 &&
@@ -111,26 +116,29 @@ export default function SyncSocialGraphSection({
         items={[
           {
             label: "Followed on both",
-            value: formatCount(sync.stats.inBoth.length),
+            value: count(sync.stats.inBoth.length),
             loading: sync.isLoading,
           },
           {
             label: "Only on Certified",
-            value: formatCount(onlyCertified),
+            value: count(onlyCertified),
             loading: sync.isLoading,
           },
           {
             label: "Only on Bluesky",
-            value: formatCount(onlyBluesky),
+            value: count(onlyBluesky),
             loading: sync.isLoading,
           },
         ]}
       />
 
-      {sync.error ? (
-        <p className="social-graph-sync__error" role="alert">
-          {sync.error}
-        </p>
+      {failed ? (
+        // Load failure: the inline pattern with a retry (DESIGN §10.1).
+        <EmptyState variant="inline" title="Couldn't load the follow lists.">
+          <Button variant="ghost" size="sm" onClick={() => void sync.reload()}>
+            Try again
+          </Button>
+        </EmptyState>
       ) : sync.truncated || sync.blueskyTruncated ? (
         <p className="social-graph-sync__error" role="alert">
           One of your follow lists is too large to compare safely (more than

@@ -214,8 +214,8 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
             "Sending…"
           ) : (
             <>
-              <Pencil size={14} />
-              Edit
+              <Pencil size={16} strokeWidth={1.75} aria-hidden />
+              Edit<span className="sr-only"> password</span>
             </>
           )}
         </Button>

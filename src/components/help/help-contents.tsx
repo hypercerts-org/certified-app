@@ -1,12 +1,23 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import SideNav from "@/components/ui/side-nav"
+import { CircleHelp, Info, MessageSquare, Route } from "lucide-react"
+import SideNav, { type SideNavIcon } from "@/components/ui/side-nav"
 
 export interface HelpSection {
   /** The section element's id; the link's `#hash`. */
   id: string
   label: string
+}
+
+/** Each section's SideNav icon, like the other SideNavs (Settings, Records,
+ *  Explore). Keyed by section id here, in the client file, because the
+ *  server-rendered page can't pass icon components across. */
+const SECTION_ICONS: Readonly<Record<string, SideNavIcon>> = {
+  about: Info,
+  "walk-through": Route,
+  questions: CircleHelp,
+  feedback: MessageSquare,
 }
 
 /**
@@ -72,6 +83,7 @@ export default function HelpContents({ sections }: { sections: HelpSection[] }) 
       items={sections.map(({ id, label }) => ({
         key: id,
         label,
+        icon: SECTION_ICONS[id],
         href: `#${id}`,
         current: id === current,
         onClick: () => {

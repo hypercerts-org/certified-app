@@ -280,8 +280,8 @@ export default function UsernameCard({ handle, pdsUrl, did, groupDid }: Username
               </span>
               {isCertifiedHandle && (
                 <Button variant="ghost" size="sm" onClick={handleEdit}>
-                  <Pencil size={14} />
-                  Edit
+                  <Pencil size={16} strokeWidth={1.75} aria-hidden />
+                  Edit<span className="sr-only"> handle</span>
                 </Button>
               )}
               {/* Domain-switch buttons on their own full-width row so the pill

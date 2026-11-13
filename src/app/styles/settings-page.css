@@ -550,7 +550,7 @@
   }
 }
 
-/* ---- DID pill (click-to-copy identifier: account ID, handle) ---- */
+/* ---- DID pill (click-to-copy identifier: permanent ID, handle) ---- */
 .did-pill {
   display: flex;
   align-items: center;
@@ -609,6 +609,17 @@
   flex-shrink: 0;
   display: inline-flex;
   color: var(--fg-muted);
+}
+
+/* Phones: the copy pills (handle, permanent ID) and the handle's
+   domain-switch buttons ("Use my own domain", …; base rule in
+   components.css) are 44px touch targets, like the sm Buttons beside
+   them. */
+@media (max-width: 799px) {
+  .did-pill,
+  .username-card__domain-btn {
+    min-height: var(--control-h-md);
+  }
 }
 
 /* ---- Group password reset (owner/admin enter-email flow) ---- */

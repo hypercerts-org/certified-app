@@ -71,6 +71,7 @@ import IdentityRow from "@/components/ui/identity-row"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import GroupResultModal from "@/components/groups/group-result-modal"
 import HandleSearch from "@/components/groups/handle-search"
+import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
 import Pagination from "@/components/ui/pagination"
 import Skeleton from "@/components/ui/skeleton"
@@ -101,7 +102,7 @@ const CATEGORIES: CategoryDef[] = [
     key: "account",
     label: "Account",
     icon: CircleUser,
-    description: "This group's handle and account ID.",
+    description: "This group's handle and permanent ID.",
   },
   {
     key: "social-graph",
@@ -303,6 +304,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // Members state
   const [members, setMembers] = useState<ResolvedMember[]>([])
   const [membersLoading, setMembersLoading] = useState(true)
+  // Loading the list failed (shown in its place, with a retry) vs. a role
+  // change or removal failed (shown above the list).
+  const [membersLoadError, setMembersLoadError] = useState(false)
   const [memberError, setMemberError] = useState<string | null>(null)
   const [membersPage, setMembersPage] = useState(0)
   const MEMBERS_PER_PAGE = 5
@@ -318,6 +322,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
 
   // Ownership transfer (CGS >= 0.6.0)
   const [transfer, setTransfer] = useState<OwnershipTransfer | null>(null)
+  // Reading the transfer status failed vs. an action on it failed.
+  const [transferLoadError, setTransferLoadError] = useState(false)
   const [transferError, setTransferError] = useState<string | null>(null)
   const [transferBusy, setTransferBusy] = useState(false)
   const [transferTarget, setTransferTarget] = useState("")
@@ -342,7 +348,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // Audit log
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [auditLoading, setAuditLoading] = useState(true)
-  const [auditError, setAuditError] = useState<string | null>(null)
+  const [auditLoadError, setAuditLoadError] = useState(false)
   const [auditPage, setAuditPage] = useState(0)
   const AUDIT_PER_PAGE = 20
 
@@ -350,6 +356,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     async (signal?: AbortSignal) => {
       try {
         setMembersLoading(true)
+        setMembersLoadError(false)
         const m = await listOrgMembers(groupDid, signal)
         if (signal?.aborted) return
 
@@ -378,12 +385,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         )
 
         if (!signal?.aborted) setMembers(resolved)
-      } catch (err) {
-        if (!signal?.aborted) {
-          setMemberError(
-            err instanceof Error ? err.message : "Failed to load members"
-          )
-        }
+      } catch {
+        if (!signal?.aborted) setMembersLoadError(true)
       } finally {
         if (!signal?.aborted) setMembersLoading(false)
       }
@@ -396,15 +399,14 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       if (!isAdmin) return
       try {
         setAuditLoading(true)
-        setAuditError(null)
+        setAuditLoadError(false)
         const entries = await queryOrgAuditLog(groupDid, {}, signal)
         if (!signal?.aborted) setAuditEntries(entries)
-      } catch (err) {
+      } catch {
         // Surface the failure so admins notice when the log can't load,
         // instead of silently seeing "No activity recorded yet."
         if (signal?.aborted) return
-        const message = err instanceof Error ? err.message : "Couldn't load activity log"
-        setAuditError(message)
+        setAuditLoadError(true)
       } finally {
         if (!signal?.aborted) setAuditLoading(false)
       }
@@ -418,15 +420,13 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         const next = await getOwnershipTransfer(groupDid, signal)
         if (!signal?.aborted) {
           setTransfer(next)
-          setTransferError(null)
+          setTransferLoadError(false)
         }
-      } catch (err) {
+      } catch {
         if (signal?.aborted) return
         // Leave `transfer` as-is: a non-party's page stays hidden either way,
         // and the owner (whose page is always in the rail) sees this inline.
-        setTransferError(
-          err instanceof Error ? err.message : "Couldn't read transfer status"
-        )
+        setTransferLoadError(true)
       }
     },
     [groupDid]
@@ -650,8 +650,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               </SettingsRow>
             )}
             <SettingsRow
-              label="Account ID"
-              description="This group's permanent ID (a DID). Unlike its handle it never changes; apps and records refer to the group by it."
+              label="Permanent ID"
+              description="This group's DID. Unlike its handle it never changes, so apps and records refer to the group by it."
             >
               <DidSection did={groupDid} />
             </SettingsRow>
@@ -696,59 +696,72 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                     </div>
                   ))}
                 </div>
+              ) : membersLoadError && members.length === 0 ? (
+                <LoadError
+                  title="Couldn't load the members."
+                  onRetry={() => void fetchMembers()}
+                />
               ) : (
-                <ul className="org-members__list">
-                  {members
-                    .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
-                    .map((member) => (
-                      <li key={member.did} className="org-members__item">
-                        <div className="org-members__item-info">
-                          <IdentityRow
-                            did={member.did}
-                            handle={member.handle}
-                            displayName={member.displayName}
-                            avatarUrl={member.avatarUrl}
-                            size="sm"
-                          />
-                        </div>
-                        <div className="org-members__item-actions">
-                          {isOwner && member.role !== "owner" ? (
-                            <Select
+                <>
+                  {membersLoadError ? (
+                    <LoadError
+                      title="Couldn't refresh the members."
+                      onRetry={() => void fetchMembers()}
+                    />
+                  ) : null}
+                  <ul className="org-members__list">
+                    {members
+                      .slice(membersPage * MEMBERS_PER_PAGE, (membersPage + 1) * MEMBERS_PER_PAGE)
+                      .map((member) => (
+                        <li key={member.did} className="org-members__item">
+                          <div className="org-members__item-info">
+                            <IdentityRow
+                              did={member.did}
+                              handle={member.handle}
+                              displayName={member.displayName}
+                              avatarUrl={member.avatarUrl}
                               size="sm"
-                              aria-label={`Role of ${member.handle ? `@${member.handle}` : "this member"}`}
-                              value={member.role}
-                              onChange={(e) =>
-                                handleRoleChange(member.did, e.target.value as OrgRole)
-                              }
-                            >
-                              <option value="member">Member</option>
-                              <option value="admin">Admin</option>
-                            </Select>
-                          ) : (
-                            <Badge variant="role">{member.role}</Badge>
-                          )}
-                          {/* Owners can remove admins + members; admins can
-                              remove only members (not other admins, not the
-                              owner, not themselves). Mirrors CGS RBAC. */}
-                          {canRemoveMember({
-                            memberDid: member.did,
-                            memberRole: member.role,
-                            callerDid: did,
-                            isOwner,
-                          }) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Remove ${member.handle ? `@${member.handle}` : "member"}`}
-                              onClick={() => setConfirmRemove(member.did)}
-                            >
-                              <Trash2 size={16} strokeWidth={1.75} aria-hidden />
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                </ul>
+                            />
+                          </div>
+                          <div className="org-members__item-actions">
+                            {isOwner && member.role !== "owner" ? (
+                              <Select
+                                size="sm"
+                                aria-label={`Role of ${member.handle ? `@${member.handle}` : "this member"}`}
+                                value={member.role}
+                                onChange={(e) =>
+                                  handleRoleChange(member.did, e.target.value as OrgRole)
+                                }
+                              >
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                              </Select>
+                            ) : (
+                              <Badge variant="role">{member.role}</Badge>
+                            )}
+                            {/* Owners can remove admins + members; admins can
+                                remove only members (not other admins, not the
+                                owner, not themselves). Mirrors CGS RBAC. */}
+                            {canRemoveMember({
+                              memberDid: member.did,
+                              memberRole: member.role,
+                              callerDid: did,
+                              isOwner,
+                            }) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Remove ${member.handle ? `@${member.handle}` : "member"}`}
+                                onClick={() => setConfirmRemove(member.did)}
+                              >
+                                <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+                              </Button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                </>
               )}
               <Pagination
                 page={membersPage + 1}
@@ -834,6 +847,17 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               avatarUrl={m?.avatarUrl}
               size="sm"
             />
+          )
+        }
+
+        if (transferLoadError) {
+          return (
+            <SettingsBlock>
+              <LoadError
+                title="Couldn't check for a pending transfer."
+                onRetry={() => void fetchTransfer()}
+              />
+            </SettingsBlock>
           )
         }
 
@@ -953,10 +977,11 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                   </div>
                 ))}
               </div>
-            ) : auditError ? (
-              <SettingsNote role="alert">
-                Couldn&apos;t load the activity log: {auditError}
-              </SettingsNote>
+            ) : auditLoadError ? (
+              <LoadError
+                title="Couldn't load the activity log."
+                onRetry={() => void fetchAudit()}
+              />
             ) : auditEntries.length === 0 ? (
               <SettingsNote>No activity recorded yet.</SettingsNote>
             ) : (
@@ -1061,11 +1086,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   // The Account section gains rows by role, so its one-liner follows.
   const sectionDescription =
     selected.key === "account"
-      ? isSelfOwned
-        ? "This group's profile, handle, sign-in email and password, and its account ID."
-        : isAdmin
-          ? "This group's profile, handle, sign-in email and password, and its account ID."
-          : "This group's handle and account ID."
+      ? isSelfOwned || isAdmin
+        ? "This group's profile, handle and permanent ID, sign-in email and password."
+        : "This group's handle and permanent ID."
       : selected.description
 
   return (
@@ -1157,6 +1180,18 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
         />
       ) : null}
     </>
+  )
+}
+
+/** A section's load failure: one muted line and "Try again", the inline
+ *  pattern every page uses for load errors (DESIGN §10.1). */
+function LoadError({ title, onRetry }: { title: string; onRetry: () => void }) {
+  return (
+    <EmptyState variant="inline" title={title}>
+      <Button variant="ghost" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </EmptyState>
   )
 }
 

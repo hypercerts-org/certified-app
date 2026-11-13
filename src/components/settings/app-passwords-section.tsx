@@ -13,6 +13,7 @@ import {
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
+import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
 import Skeleton from "@/components/ui/skeleton"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -48,6 +49,7 @@ export default function AppPasswordsSection() {
   const [created, setCreated] = useState<CreatedAppPassword | null>(null)
 
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
   // Revoke is irreversible and signs out every client using the password,
   // so it goes through a confirm step.
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
@@ -58,6 +60,7 @@ export default function AppPasswordsSection() {
     setItems([])
     setCreated(null)
     setLoadError(null)
+    setRevokeError(null)
   }, [])
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
@@ -67,6 +70,7 @@ export default function AppPasswordsSection() {
       if (signal?.aborted) return
       setItems(list)
       setLoadError(null)
+      setRevokeError(null)
       setStatus("unlocked")
     } catch (err) {
       if (signal?.aborted) return
@@ -79,7 +83,7 @@ export default function AppPasswordsSection() {
       // A non-locked failure means the session is open but the list call
       // failed — stay unlocked and surface the error.
       setStatus("unlocked")
-      setLoadError("Couldn't load app passwords.")
+      setLoadError("Couldn't load your app passwords.")
     } finally {
       if (!signal?.aborted) setIsLoading(false)
     }
@@ -123,6 +127,7 @@ export default function AppPasswordsSection() {
   const handleRevoke = useCallback(
     async (pwName: string) => {
       setRevoking(pwName)
+      setRevokeError(null)
       try {
         await revokeAppPassword(pwName)
         await refresh()
@@ -131,7 +136,8 @@ export default function AppPasswordsSection() {
           goLocked()
           return
         }
-        setLoadError("Couldn't revoke that app password.")
+        // A failed revoke leaves the list as it was; say so above it.
+        setRevokeError(`Couldn't revoke "${pwName}". Try again in a moment.`)
       } finally {
         setRevoking(null)
         setConfirmRevoke(null)
@@ -251,28 +257,36 @@ export default function AppPasswordsSection() {
         {isLoading ? (
           <Skeleton variant="line" width="100%" height={20} count={2} />
         ) : loadError ? (
-          <ErrorMessage message={loadError} />
+          // Load failure: the inline pattern with a retry (DESIGN §10.1).
+          <EmptyState variant="inline" title={loadError}>
+            <Button variant="ghost" size="sm" onClick={() => void refresh()}>
+              Try again
+            </Button>
+          </EmptyState>
         ) : items.length === 0 ? (
           <p className="m-0 text-body-sm text-[var(--fg-muted)]">None yet.</p>
         ) : (
-          <ul className="app-passwords__list">
-            {items.map((p) => (
-              <li key={p.name} className="app-passwords__row">
-                <span className="app-passwords__row-name">{p.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  loading={revoking === p.name}
-                  disabled={revoking === p.name}
-                  onClick={() => setConfirmRevoke(p.name)}
-                  aria-label={`Revoke ${p.name}`}
-                >
-                  <Trash2 size={14} aria-hidden /> Revoke
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-3">
+            {revokeError && <ErrorMessage message={revokeError} />}
+            <ul className="app-passwords__list">
+              {items.map((p) => (
+                <li key={p.name} className="app-passwords__row">
+                  <span className="app-passwords__row-name">{p.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    loading={revoking === p.name}
+                    disabled={revoking === p.name}
+                    onClick={() => setConfirmRevoke(p.name)}
+                    aria-label={`Revoke ${p.name}`}
+                  >
+                    <Trash2 size={14} aria-hidden /> Revoke
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </SettingsRow>
 

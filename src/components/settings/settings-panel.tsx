@@ -59,7 +59,7 @@ const SECTIONS: SectionDef[] = [
     key: "account",
     label: "Account",
     icon: CircleUser,
-    description: "Your profile, handle, sign-in email and password, and your account ID.",
+    description: "Your profile, handle and permanent ID, sign-in email and password.",
   },
   {
     key: "appearance",
@@ -166,8 +166,8 @@ export default function SettingsPanel() {
               <PasswordSection email={email || ""} />
             </SettingsRow>
             <SettingsRow
-              label="Account ID"
-              description="Your permanent ID (a DID). Unlike your handle it never changes; apps and records refer to you by it."
+              label="Permanent ID"
+              description="Your account's DID. Unlike your handle it never changes, so apps and records refer to you by it."
             >
               <DidSection did={did || undefined} />
             </SettingsRow>

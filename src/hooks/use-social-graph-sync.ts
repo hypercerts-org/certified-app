@@ -63,6 +63,8 @@ export function useSocialGraphSync(
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
+  /** Re-read both follow lists (the "Try again" after a failed load). */
+  reload: () => Promise<void>
   /** Bluesky → Certified: write a certified follow per DID. */
   importDids: (
     dids: string[],
@@ -94,6 +96,7 @@ export function useSocialGraphSync(
     isLoading: blueskyLoading,
     error: blueskyError,
     addFollow: blueskyAddFollow,
+    refetch: blueskyRefetch,
   } = useBlueskyFollows(did)
   const blueskyCount = blueskyDids.size
   const ownDid = opts?.ownDid ?? did
@@ -113,11 +116,14 @@ export function useSocialGraphSync(
     return { inBoth, onlyCertified, onlyBluesky }
   }, [certifiedSubjects, blueskyDids])
 
-  // `useBlueskyFollows` doesn't expose a refetch — the cache
-  // refreshes on focus when stale, which is good enough for the
-  // post-import view (the bluesky data didn't change, only certified
-  // did).
+  // After an import only the Certified side changed, so `refetch`
+  // re-reads just that; the Bluesky cache refreshes on focus when
+  // stale. `reload` (below) re-reads both, for a failed first load.
   const refetch = useCallback(() => certifiedRefetch(), [certifiedRefetch])
+
+  const reload = useCallback(async () => {
+    await Promise.all([certifiedRefetch(), blueskyRefetch()])
+  }, [certifiedRefetch, blueskyRefetch])
 
   const [isWriting, setIsWriting] = useState(false)
 
@@ -269,6 +275,7 @@ export function useSocialGraphSync(
     isLoading: certifiedLoading || blueskyLoading,
     error: certifiedError || blueskyError,
     refetch,
+    reload,
     importDids,
     exportDids,
   }

@@ -15,7 +15,8 @@ import SideNav, { type SideNavIcon } from "@/components/ui/side-nav"
  * One section shows at a time, picked by the URL hash (`/settings#account`),
  * so deep links, the product tour and `window.location.hash = …` hand-offs
  * keep working. Choosing a section replaces the hash rather than pushing a
- * history entry.
+ * history entry, and moves focus to the new section's heading so a
+ * keyboard or screen-reader user hears which section opened.
  */
 
 export interface SettingsSectionDef<K extends string> {
@@ -94,6 +95,26 @@ export default function SettingsLayout<K extends string>({
 }: SettingsLayoutProps<K>) {
   const navRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
+  // The section a nav click asked for; its heading takes focus once it has
+  // rendered. Deep links and the first render leave focus alone.
+  const focusPending = useRef<K | null>(null)
+
+  // Focus the selected section's heading (tabindex -1: focusable from
+  // script, not a Tab stop). Focus lands on the heading, so its name is
+  // announced and Tab continues into the section. No scroll: the click
+  // handler has already brought the section into view.
+  const focusTitle = useCallback(() => {
+    const heading = document.getElementById(SECTION_TITLE_ID)
+    if (!heading) return
+    heading.tabIndex = -1
+    heading.focus({ preventScroll: true })
+  }, [])
+
+  useEffect(() => {
+    if (focusPending.current !== current) return
+    focusPending.current = null
+    focusTitle()
+  }, [current, focusTitle])
 
   // Phones: keep the current pill in view in the scrolling row (a deep link
   // can pick a section whose pill starts off-screen). Scrolls the row only,
@@ -123,11 +144,17 @@ export default function SettingsLayout<K extends string>({
         return
       }
       e?.preventDefault()
-      onSelect(key)
       // If the section's top has scrolled up under the top bar (a long
       // section, with the sticky nav still in view), bring it back.
       const top = mainRef.current?.getBoundingClientRect().top ?? 0
       if (top < 0) window.scrollTo({ top: 0 })
+      if (key === current) {
+        // Already showing: nothing re-renders, so focus it now.
+        focusTitle()
+        return
+      }
+      focusPending.current = key
+      onSelect(key)
     },
   }))
 

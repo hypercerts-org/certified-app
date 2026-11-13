@@ -174,5 +174,14 @@ export function useBlueskyFollows(did: string | null) {
     })
   }, [])
 
-  return { followedDids, truncated, isLoading, error, addFollow }
+  // Fetch again regardless of the cache: the "Try again" after a failed
+  // load (a failure never fills the cache, but a stale entry for this DID
+  // could still short-circuit the fetch).
+  const refetch = useCallback(async () => {
+    const currentDid = didRef.current
+    if (cache && cache.did === currentDid) cache = null
+    await doFetch(currentDid)
+  }, [doFetch])
+
+  return { followedDids, truncated, isLoading, error, addFollow, refetch }
 }
