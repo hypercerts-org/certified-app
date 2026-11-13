@@ -80,10 +80,19 @@ describe("EndorsementGraph controls", () => {
     expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "d"])
   })
 
-  it("sits with the kind checkboxes in one filter card", () => {
+  it("sits with the kind checkboxes in the labelled Lines row", () => {
     renderGraph()
-    const card = screen.getByRole("checkbox", { name: "Mutual only" }).closest(".viz__kind-toggles")
-    expect(card).not.toBeNull()
-    expect(card!.querySelectorAll('input[type="checkbox"]')).toHaveLength(3)
+    const lines = screen.getByRole("group", { name: "Lines" })
+    expect(lines.querySelectorAll('input[type="checkbox"]')).toHaveLength(3)
+    expect(lines).toContainElement(screen.getByRole("checkbox", { name: "Mutual only" }))
+  })
+
+  it("keeps every control and the key in one panel (audit GP3)", () => {
+    renderGraph()
+    const panel = screen.getByRole("group", { name: "Graph controls" })
+    expect(panel).toContainElement(screen.getByRole("combobox", { name: /find an account/i }))
+    expect(panel).toContainElement(screen.getByRole("radiogroup", { name: "Graph layout" }))
+    expect(panel).toContainElement(screen.getByRole("radiogroup", { name: "Show accounts" }))
+    expect(panel.querySelector(".viz__legend")).not.toBeNull()
   })
 })

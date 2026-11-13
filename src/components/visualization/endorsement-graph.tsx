@@ -14,7 +14,7 @@
  * between the same pair.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
@@ -285,6 +285,7 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
   // identity, so the canvas stays paused when idle (autoPauseRedraw).
   const [repaintEpoch, setRepaintEpoch] = useState(0)
   const [onlyMutual, setOnlyMutual] = useState(false)
+  const linesLabelId = useId()
   // Badge-kind checkboxes. Both on by default; the UI disables the last
   // checked one so at least one kind is always shown.
   const [showEndorsements, setShowEndorsements] = useState(true)
@@ -834,8 +835,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
         />
       )}
 
-      {/* controls */}
-      <div className="viz__controls">
+      {/* controls: one panel of labelled rows (find, layout, which
+          accounts, which lines), the legend a one-line key at its foot. */}
+      <div className="viz__controls" role="group" aria-label="Graph controls">
         <Combobox<GraphNode>
           className="viz__search-wrap"
           listboxClassName="viz__search-results"
@@ -888,6 +890,9 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           )}
         />
         <div className="viz__control-row">
+          <span className="viz__control-label" aria-hidden="true">
+            Layout
+          </span>
           <SegmentedControl
             className="viz__layout-toggle"
             aria-label="Graph layout"
@@ -898,9 +903,12 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
           />
         </div>
         <div className="viz__control-row">
+          <span className="viz__control-label" aria-hidden="true">
+            Show
+          </span>
           <SegmentedControl
             className="viz__scope-toggle"
-            aria-label="Network scope"
+            aria-label="Show accounts"
             value={evaluatorConnectedOnly ? "evaluator" : "everything"}
             onValueChange={(v) => setEvaluatorConnectedOnly(v === "evaluator")}
             size="sm"
@@ -910,10 +918,13 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
             ]}
           />
         </div>
-        {/* What the graph shows: the badge kinds, then "Mutual only", all
-            checkboxes (a state, not an action). The last checked kind is
-            disabled so at least one kind is always visible. */}
-        <div className="viz__kind-toggles">
+        {/* Which lines the graph draws: the badge kinds, then "Mutual only",
+            all checkboxes (a state, not an action). The last checked kind
+            is disabled so at least one kind is always visible. */}
+        <div className="viz__control-row" role="group" aria-labelledby={linesLabelId}>
+          <span id={linesLabelId} className="viz__control-label">
+            Lines
+          </span>
           <div className="viz__kind-row">
             <Checkbox
               label="Endorsements"
@@ -927,26 +938,27 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
               disabled={showAwards && !showEndorsements}
               onChange={(e) => setShowAwards(e.target.checked)}
             />
+            <Checkbox
+              label="Mutual only"
+              checked={onlyMutual}
+              onChange={(e) => setOnlyMutual(e.target.checked)}
+            />
           </div>
-          <Checkbox
-            label="Mutual only"
-            checked={onlyMutual}
-            onChange={(e) => setOnlyMutual(e.target.checked)}
-          />
         </div>
+        {/* The key: what each line colour means, in one line. */}
         <div className="viz__legend" aria-hidden="true">
-          <div className="viz__legend-row">
+          <span className="viz__legend-row">
             <span className="viz__legend-swatch viz__legend-swatch--uni" />
-            <span>One-way endorsement</span>
-          </div>
-          <div className="viz__legend-row">
+            One-way
+          </span>
+          <span className="viz__legend-row">
             <span className="viz__legend-swatch viz__legend-swatch--mutual" />
-            <span>Mutual endorsement</span>
-          </div>
-          <div className="viz__legend-row">
+            Mutual
+          </span>
+          <span className="viz__legend-row">
             <span className="viz__legend-swatch viz__legend-swatch--award" />
-            <span>Award</span>
-          </div>
+            Award
+          </span>
         </div>
       </div>
 
