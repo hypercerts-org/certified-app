@@ -44,7 +44,7 @@
   z-index: var(--z-tour-card);
   width: min(360px, calc(100vw - 32px));
   max-width: 360px;
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);

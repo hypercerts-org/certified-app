@@ -493,6 +493,8 @@ html:not([data-theme="dark"]) [data-look-preview="glass"] {
   --bg-elevated: rgba(255, 255, 255, 0.62);
   --bg-selected: rgba(255, 255, 255, 0.78);
   --sheet-bg: rgba(244, 248, 251, 0.96);
+  /* Floating layers stay solid (tokens.css --bg-floating). */
+  --bg-floating: #F4F8FB;
   --fg-primary: #0A0B10;
   --fg-secondary: #252832;
   --fg-muted: #4A4F5C;
@@ -524,6 +526,7 @@ html[data-theme="dark"] [data-look-preview="glass"] {
   --bg-elevated: rgba(20, 22, 30, 0.55);
   --bg-selected: rgba(255, 255, 255, 0.14);
   --sheet-bg: rgba(28, 32, 46, 0.96);
+  --bg-floating: #1C202E;
   --fg-primary: #F4F5F8;
   --fg-secondary: #CDD0DA;
   --fg-muted: #A2A7B5;
@@ -545,15 +548,6 @@ html[data-theme="dark"] [data-look-preview="glass"] {
   --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 34px -14px rgba(0, 0, 0, 0.6);
   --shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 22px 48px -18px rgba(0, 0, 0, 0.7);
   --look-backdrop: linear-gradient(180deg, #1F2A44 0%, #2C3550 40%, #3B3346 75%, #4A3438 100%);
-}
-
-/* Menus (Workspace, Network, account, New, pickers) are frosted but
-   near-opaque: panels can be see-through, a list you read from can't. */
-html[data-look="glass"] .popover-panel {
-  background-color: var(--sheet-bg);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  /* Unprefixed last: the production CSS minifier keeps only the last of the pair. */
-  backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* --------------------------------------------------------------- Shapes

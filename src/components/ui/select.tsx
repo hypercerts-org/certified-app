@@ -83,7 +83,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             // The native option list is painted by the OS/UA; styling it is not
             // portable. We set the surface tokens so platforms that DO honour
             // them (most desktop Chromium/Firefox) render dark-correct options.
-            className={`${sizeClasses[size]} ${baseChrome} ${borderChrome} ${disabledChrome} [&>option]:bg-[var(--bg-elevated)] [&>option]:text-[var(--fg-primary)] ${className}`}
+            className={`${sizeClasses[size]} ${baseChrome} ${borderChrome} ${disabledChrome} [&>option]:bg-[var(--bg-floating)] [&>option]:text-[var(--fg-primary)] ${className}`}
             {...props}
           >
             {children}

@@ -279,7 +279,7 @@
   z-index: var(--z-popover);
   max-height: 220px;
   overflow-y: auto;
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);

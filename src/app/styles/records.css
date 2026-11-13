@@ -486,7 +486,7 @@
   padding: 8px 8px 8px 16px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   box-shadow: var(--shadow-md);
 }
 

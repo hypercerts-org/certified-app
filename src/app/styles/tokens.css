@@ -128,6 +128,11 @@
   --navbar-bg: color-mix(in srgb, var(--bg-canvas) 80%, transparent);
   --navbar-border: rgba(0, 0, 0, 0.05);
   --sheet-bg: color-mix(in srgb, var(--bg-elevated) 95%, transparent);
+  /* Anything that floats over the page: menus, dropdowns, bottom sheets,
+     the drawer, toasts, the walkthrough card, sticky bars content scrolls
+     under. Always opaque: text over text is unreadable, however blurred.
+     A style whose cards are translucent (Glass) sets it to a solid colour. */
+  --bg-floating: var(--bg-elevated);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

@@ -422,7 +422,7 @@
   gap: 12px;
   padding: 12px 20px 16px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
 }
 
 dialog.feed-filter-dialog .feed-filter-dialog__footer {
@@ -1060,7 +1060,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
   right: 0;
   min-width: 180px;
   padding: 4px;
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);

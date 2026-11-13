@@ -210,7 +210,7 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet outline-none hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
+    "bottom-sheet outline-none hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-floating)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
   // `.bottom-sheet--expanded` raises the cap to 92vh.
   const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
   const sheetClassName = `${sheetBase}${sheetExpandedClass}${

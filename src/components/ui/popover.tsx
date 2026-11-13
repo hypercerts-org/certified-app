@@ -625,7 +625,7 @@ export function PopoverContent({
         onBlur={trackFocusOut}
         data-side={side}
         data-align={align}
-        className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${className}`}
+        className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-floating)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${className}`}
         style={{
           position: "fixed",
           top: coords?.top ?? 0,
@@ -656,7 +656,7 @@ export function PopoverContent({
       onFocus={trackFocusIn}
       onBlur={trackFocusOut}
       data-align={align}
-      className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${alignClass[align]} ${className}`}
+      className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-floating)] border border-[var(--border-default)] rounded shadow-md p-1.5 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}
       {...props}
     >

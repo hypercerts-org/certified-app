@@ -259,7 +259,7 @@
   z-index: var(--z-bottom-nav);
   height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -951,7 +951,7 @@
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
@@ -1057,7 +1057,7 @@
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
@@ -1661,7 +1661,7 @@ button.desktop-top-bar__nav-link {
   left: 0;
   right: 0;
   z-index: var(--z-popover);
-  background: var(--bg-elevated);
+  background: var(--bg-floating);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);

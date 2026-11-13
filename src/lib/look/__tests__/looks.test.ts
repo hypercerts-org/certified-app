@@ -138,6 +138,24 @@ describe("looks.css", () => {
     })
   }
 
+  it("keeps every floating layer opaque in every style, light and dark", () => {
+    // Menus, sheets, toasts and the walkthrough card paint --bg-floating
+    // (tokens.css: --bg-elevated unless a style sets it). Text over text is
+    // unreadable, so whichever applies must be a solid colour.
+    expect(TOKENS_CSS).toMatch(/--bg-floating: var\(--bg-elevated\)/)
+    for (const { id } of LOOKS.filter((l) => l.id !== "neutral")) {
+      for (const mode of ["light", "dark"] as const) {
+        const sel =
+          mode === "light"
+            ? `:root[data-look="${id}"]:not([data-theme="dark"]),`
+            : `:root[data-look="${id}"][data-theme="dark"],`
+        const b = block(LOOKS_CSS, sel)
+        const surface = b["--bg-floating"] ?? b["--bg-elevated"]
+        expect(surface, `${id} ${mode} floating surface`).toMatch(/^#[0-9a-f]{6}$/i)
+      }
+    }
+  })
+
   it("keeps Neutral's preview equal to tokens.css", () => {
     const root = block(TOKENS_CSS, ":root {")
     const rootDark = block(TOKENS_CSS, ':root[data-theme="dark"] {')

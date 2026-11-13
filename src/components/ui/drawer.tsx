@@ -103,7 +103,7 @@ export default function Drawer({
         // order, so it stacks on top without needing a higher index.
         // House spring curve; dismiss runs faster (200ms) than the 300ms
         // open so closing never feels sluggish.
-        className={`fixed top-0 bottom-0 ${anchorClass} z-[var(--z-portal-sheet)] flex w-[83.33%] max-w-[320px] flex-col overflow-y-auto bg-[var(--bg-elevated)] shadow-[var(--shadow-lg)] transition-transform ease-emphasized ${open ? "duration-slow" : "duration-base"} motion-reduce:transition-none ${closedTransform}`}
+        className={`fixed top-0 bottom-0 ${anchorClass} z-[var(--z-portal-sheet)] flex w-[83.33%] max-w-[320px] flex-col overflow-y-auto bg-[var(--bg-floating)] shadow-[var(--shadow-lg)] transition-transform ease-emphasized ${open ? "duration-slow" : "duration-base"} motion-reduce:transition-none ${closedTransform}`}
       >
         {children}
       </aside>
