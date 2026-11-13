@@ -13,14 +13,17 @@ type WordmarkProps = Omit<React.SVGProps<SVGSVGElement>, "height"> & {
    *  the same, followed by ".app". */
   variant?: "certified" | "certified-app";
   /**
-   * With `variant="certified-app"`: a "Beta" pill over "app", exactly as
-   * wide as "app" (the design of certified_app_beta_wordmark_black.svg).
-   * At UI sizes the artwork's own pill would be a few pixels tall, so this
-   * one is sized to be read (60% of the letter height, at least 10px) and
-   * its label is real text. It rises above the letter box without taking
-   * layout space.
+   * With `variant="certified-app"`: the thin "BETA" pill over "app",
+   * exactly as wide as "app", in the space above its x-height (the
+   * artwork of certified_app_beta_wordmark_black.svg). It adds no size.
    */
   beta?: boolean;
+  /**
+   * With `variant="certified-app"`: ".app" at 50% opacity, so "Certified"
+   * leads and the background shows through ".app" (the artwork of
+   * certified_app_faded_wordmark_black.svg). A Beta pill stays solid.
+   */
+  faded?: boolean;
   title?: string;
   /**
    * Hide the wordmark from the accessibility tree when it sits inside an
@@ -32,10 +35,6 @@ type WordmarkProps = Omit<React.SVGProps<SVGSVGElement>, "height"> & {
 
 /** The artwork's letter box: "Certified" is 60 units tall. */
 const LETTER_H = 60;
-/** Where "app" sits in the certified-app artwork, and its x-height line. */
-const APP_X0 = 337.64;
-const APP_X1 = 465.15;
-const X_HEIGHT_TOP = 17.1211;
 
 const CERTIFIED_PATHS = [
   "M33.3864 30.5641L38.6253 36.1521L16.718 56.6896C14.6698 58.6101 11.4507 58.5075 9.52987 56.4598L8.2387 55.084L0 46.2953L5.58916 41.0575L13.3574 49.3404L33.3864 30.5641Z",
@@ -60,9 +59,14 @@ const APP_PATHS = [
   "M447.3596 16.0193Q452.9471 16.0193 456.9214 18.6557Q460.8957 21.2921 463.0205 26.1714Q465.1454 31.0507 465.1454 37.9761Q465.1454 48.6003 460.3054 54.306Q455.4655 60.0116 447.3596 60.0116Q440.1194 60.0116 435.909 54.3453Q431.6987 48.679 431.6987 37.9761Q431.6987 31.2868 433.5874 26.3681Q435.4762 21.4495 439.0176 18.7344Q442.559 16.0193 447.3596 16.0193ZM446.5726 22.5513Q441.2998 22.5513 438.5454 26.4862Q435.791 30.4211 435.791 37.9761Q435.791 45.3737 438.5847 49.4267Q441.3785 53.4796 446.5726 53.4796Q451.7667 53.4796 454.5211 49.466Q457.2755 45.4524 457.2755 37.9761Q457.2755 30.5785 454.4818 26.5649Q451.688 22.5513 446.5726 22.5513ZM435.791 76.3021H428.0785V17.1211H435.791Z",
 ] as const;
 
+/** The BETA pill over "app": a rounded bar with "BETA" (Switzer 700) cut
+ *  out of it. */
+const BETA_PILL_PATH =
+  "M343.6435 1.0151H459.1454C462.4591 1.0151 465.1454 3.7014 465.1454 7.0151C465.1454 10.3288 462.4591 13.0151 459.1454 13.0151H343.6435C340.3298 13.0151 337.6435 10.3288 337.6435 7.0151C337.6435 3.7014 340.3298 1.0151 343.6435 1.0151ZM389.3053 9.9005H391.9362Q392.963 9.9005 393.5232 9.4549Q394.0833 9.0094 394.0833 8.1947Q394.0833 7.5921 393.7099 7.2145Q393.4769 6.9789 393.1217 6.8506Q393.3146 6.7436 393.4595 6.5865Q393.7608 6.2597 393.7608 5.7675Q393.7608 5.0207 393.1922 4.5752Q392.6236 4.1296 391.6476 4.1296H389.3053ZM412.0323 9.9005H413.4836L411.3704 4.1296H409.741L407.6363 9.9005H409.0027L409.3845 8.8227H411.6505ZM396.0352 9.9005H400.1766V8.8227H397.393V7.4733H399.8456V6.421H397.393V5.2074H400.1766V4.1296H396.0352ZM403.6816 9.9005H405.0479V5.2414H406.8386V4.1296H401.8909V5.2414H403.6816ZM390.6632 7.4564H391.8598Q392.2672 7.4564 392.4793 7.6473Q392.6915 7.8382 392.6915 8.1353Q392.6915 8.4493 392.4878 8.636Q392.2841 8.8227 391.9022 8.8227H390.6632ZM390.6632 5.2074H391.6137Q391.9786 5.2074 392.1696 5.3814Q392.3605 5.5554 392.3605 5.8524Q392.3605 6.124 392.1696 6.2979Q391.9786 6.4719 391.5882 6.4719H390.6632ZM411.2807 7.7788H409.7543L410.3435 6.1155L410.5208 5.4655L410.6915 6.1155Z";
+
 const ARTWORK = {
   certified: { width: 313, height: 60, paths: CERTIFIED_PATHS },
-  "certified-app": { width: 465.15, height: 76.31, paths: [...CERTIFIED_PATHS, ...APP_PATHS] },
+  "certified-app": { width: 465.15, height: 76.31, paths: CERTIFIED_PATHS },
 } as const;
 
 /**
@@ -80,6 +84,7 @@ export default function Wordmark({
   height = 20,
   variant = "certified",
   beta = false,
+  faded = false,
   title,
   decorative = false,
   className,
@@ -90,7 +95,8 @@ export default function Wordmark({
   const scale = height / LETTER_H;
   const label = title ?? (variant === "certified-app" ? "Certified.app" : "Certified");
   const descender = (art.height - LETTER_H) * scale;
-  const svg = (
+  const isApp = variant === "certified-app";
+  return (
     <svg
       height={art.height * scale}
       width={art.width * scale}
@@ -109,35 +115,12 @@ export default function Wordmark({
         // A fixed list: the index is a stable key.
         <path key={i} d={d} />
       ))}
+      {isApp
+        ? APP_PATHS.map((d, i) => (
+            <path key={`app-${i}`} d={d} fillOpacity={faded ? 0.5 : undefined} />
+          ))
+        : null}
+      {isApp && beta ? <path d={BETA_PILL_PATH} /> : null}
     </svg>
-  );
-  if (!beta || variant !== "certified-app") return svg;
-
-  // The pill: over "app", as wide as it, its bottom a small gap above the
-  // x-height line. Filled with the wordmark's colour (currentColor), with
-  // the label in the page colour, so it reads as cut out of the pill.
-  const pillH = Math.max(10, Math.round(height * 0.6));
-  const gap = Math.max(1.5, height * 0.1);
-  return (
-    <span className="relative inline-flex">
-      {svg}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute flex items-center justify-center rounded-[999px] bg-current"
-        style={{
-          left: APP_X0 * scale,
-          width: (APP_X1 - APP_X0) * scale,
-          top: X_HEIGHT_TOP * scale - gap - pillH,
-          height: pillH,
-        }}
-      >
-        <span
-          className="font-semibold uppercase leading-none tracking-label text-[var(--bg-canvas)] [font-feature-settings:'case'_1]"
-          style={{ fontSize: Math.round(pillH * 0.72) }}
-        >
-          Beta
-        </span>
-      </span>
-    </span>
   );
 }

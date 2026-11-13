@@ -128,7 +128,7 @@ const Navbar: React.FC = () => {
                 className="navbar__logo navbar__logo--wordmark"
                 aria-label="Certified home"
               >
-                <Wordmark variant="certified-app" beta height={18} decorative />
+                <Wordmark variant="certified-app" beta faded height={18} decorative />
               </Link>
             )
           ) : (

@@ -85,7 +85,7 @@ export default function DesktopTopBar() {
       <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
         <div className="desktop-top-bar__left">
           <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
-            <Wordmark variant="certified-app" beta height={18} decorative />
+            <Wordmark variant="certified-app" beta faded height={18} decorative />
           </Link>
           {/* Destinations wait for auth, so a signed-in viewer never sees
               the signed-out set flash first. */}

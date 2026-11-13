@@ -86,18 +86,18 @@ describe("Navbar (phone)", () => {
     expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument()
   })
 
-  it("shows the wordmark with a Beta tag on a top-level page", () => {
+  it("shows the Certified.app wordmark (with its Beta pill) on a top-level page", () => {
     state.hasPageHeader = true
-    render(<Navbar />)
-    expect(screen.getByText("Beta")).toBeInTheDocument()
+    const { container } = render(<Navbar />)
+    expect(container.querySelector(".navbar__logo--wordmark svg")).not.toBeNull()
   })
 
-  it("keeps the square brandmark, without Beta, while the compact title shows", () => {
+  it("keeps the square brandmark, not the wordmark, while the compact title shows", () => {
     state.pageTitle = "Home"
-    render(<Navbar />)
+    const { container } = render(<Navbar />)
     expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument()
-    expect(screen.queryByText("Beta")).toBeNull()
+    expect(container.querySelector(".navbar__logo--wordmark")).toBeNull()
   })
 
   it("treats your own profile as top-level", () => {

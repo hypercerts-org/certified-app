@@ -30,7 +30,7 @@ export default function SiteFooter() {
     <footer className="site-footer" aria-label="Site footer">
       <div className="site-footer__row">
         <div className="site-footer__left">
-          <Wordmark variant="certified-app" height={14} className="site-footer__wordmark" />
+          <Wordmark variant="certified-app" faded height={14} className="site-footer__wordmark" />
           <span className="site-footer__copy">
             © {year} Hypercerts Foundation
           </span>

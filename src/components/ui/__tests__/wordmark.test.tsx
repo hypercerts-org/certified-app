@@ -19,20 +19,23 @@ describe("Wordmark", () => {
     expect(parseFloat(svg.style.marginBottom)).toBeCloseTo(-((76.31 - 60) * 30) / 60)
   })
 
-  it("adds a Beta pill over \"app\", as wide as \"app\", above the letters", () => {
-    const { container } = render(<Wordmark variant="certified-app" beta height={30} decorative />)
-    const label = screen.getByText("Beta")
-    const pill = label.parentElement as HTMLElement
-    expect(pill).toHaveAttribute("aria-hidden", "true")
-    expect(parseFloat(pill.style.left)).toBeCloseTo((337.64 * 30) / 60)
-    expect(parseFloat(pill.style.width)).toBeCloseTo(((465.15 - 337.64) * 30) / 60)
-    expect(parseFloat(pill.style.top)).toBeLessThan(0)
-    expect(container.querySelector("svg")).not.toBeNull()
+  it("adds the artwork's thin Beta pill without growing the wordmark", () => {
+    render(<Wordmark variant="certified-app" beta height={30} />)
+    const svg = screen.getByRole("img", { name: "Certified.app" })
+    expect(svg.querySelectorAll("path")).toHaveLength(16)
+    expect(Number(svg.getAttribute("height"))).toBeCloseTo((30 * 76.31) / 60)
   })
 
-  it("ignores beta on the plain Certified wordmark", () => {
-    render(<Wordmark beta height={30} decorative />)
-    expect(screen.queryByText("Beta")).toBeNull()
+  it("fades .app to half opacity, leaving Certified and the pill solid", () => {
+    const { container } = render(<Wordmark variant="certified-app" beta faded height={30} decorative />)
+    const paths = Array.from(container.querySelectorAll("path"))
+    expect(paths.filter((p) => p.getAttribute("fill-opacity") === "0.5")).toHaveLength(4)
+    expect(paths[paths.length - 1]).not.toHaveAttribute("fill-opacity")
+  })
+
+  it("ignores beta and faded on the plain Certified wordmark", () => {
+    const { container } = render(<Wordmark beta faded height={30} decorative />)
+    expect(container.querySelectorAll("path")).toHaveLength(11)
   })
 
   it("leaves the accessibility tree when decorative", () => {
