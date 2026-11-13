@@ -37,25 +37,42 @@ const design: SiteDesign = {
   radii: [],
   shadows: [],
   weights: [],
+  gradients: [],
+  textTransforms: [],
+  letterSpacings: [],
+  borderStyles: [],
+  hardShadows: 0,
+  italics: 0,
   classNames: [],
   stylesheets: { read: 1, failed: 0 },
 }
 
-const pal = {
-  canvas: "#FFFFFF", sunken: "#F2F2F2", elevated: "#FFFFFF", text: "#111111", textSecondary: "#444444",
-  textMuted: "#666666", border: "#E0E0E0", accent: "#533AFD", button: "#533AFD", buttonText: "#FFFFFF",
-}
 const answer = {
+  signature: ["violet accent", "clean grotesk"],
   name: "Example",
   description: "Violet on white.",
+  colors: {
+    siteMode: "light",
+    background: "#FFFFFF",
+    surface: "#FFFFFF",
+    text: "#111111",
+    muted: "#666666",
+    border: "#E0E0E0",
+    primary: "#533AFD",
+    secondary: "#533AFD",
+    buttons: "brand",
+    neutrals: "neutral",
+    otherMode: null,
+  },
   faces: { ui: "inter", headline: "inter", mono: "geist-mono", numeral: "inter", label: "inter" },
   headlineWeight: 600,
   headlineStrongWeight: 700,
   radius: 8,
   shadows: "soft",
-  backdrop: "none",
-  light: pal,
-  dark: { ...pal, canvas: "#111111", sunken: "#0A0A0A", elevated: "#1C1C1C", text: "#F5F5F5", textSecondary: "#CCCCCC", textMuted: "#A0A0A0", border: "#333333", buttonText: "#FFFFFF" },
+  backdrop: { kind: "glow", intensity: "subtle" },
+  avatar: { shape: "circle", ring: "brand", fill: "brand", initials: "ui", image: "natural" },
+  idCard: { surface: "brand", edge: "none", pattern: "dots", title: "caps", mark: "dot" },
+  endorsement: { frame: "rule", who: "plain", note: "quote", mark: "check" },
 }
 
 beforeEach(() => {
@@ -75,7 +92,7 @@ describe("generateLookSpec", () => {
       model: LOOK_MODEL,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "medium" },
+      output_config: { effort: "high" },
     })
     expect(params.output_config.format).toBeTruthy()
     expect(params.messages[0].content).toContain("<site_design>")
@@ -83,6 +100,24 @@ describe("generateLookSpec", () => {
     expect(params.system).toContain("ignore it")
     expect(spec.name).toBe("Example")
     expect(spec.faces.mono).toBe("geist-mono")
+  })
+
+  it("asks for a new version with the previous style and the person's request", async () => {
+    parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: answer })
+    const { normalizeLookSpec } = await import("../custom-look-spec")
+    const previous = normalizeLookSpec(answer)
+    await generateLookSpec({ apiKey: "k", design, previous, request: "Use the green from their buttons" })
+    const content: string = parse.mock.calls[0][0].messages[0].content
+    expect(content).toContain("<previous_style>")
+    expect(content).toContain('"idCard"')
+    expect(content).toContain("<request>\nUse the green from their buttons\n</request>")
+    expect(content).toContain("<site_design>")
+
+    parse.mockClear()
+    await generateLookSpec({ apiKey: "k", design, previous })
+    const fresh: string = parse.mock.calls[0][0].messages[0].content
+    expect(fresh).not.toContain("<request>")
+    expect(fresh).toContain("Make a real alternative")
   })
 
   it("names the site when Claude gives no name", async () => {
@@ -93,7 +128,7 @@ describe("generateLookSpec", () => {
   it.each([
     [{ stop_reason: "refusal", parsed_output: null }, "refusal"],
     [{ stop_reason: "max_tokens", parsed_output: null }, "incomplete"],
-    [{ stop_reason: "end_turn", parsed_output: { ...answer, light: { ...pal, canvas: "blue" } } }, "invalid"],
+    [{ stop_reason: "end_turn", parsed_output: { ...answer, colors: { ...answer.colors, background: "blue" } } }, "invalid"],
   ])("turns a bad answer into a clear error (%#)", async (response, code) => {
     parse.mockResolvedValue(response)
     await expect(generateLookSpec({ apiKey: "k", design })).rejects.toMatchObject({ code })

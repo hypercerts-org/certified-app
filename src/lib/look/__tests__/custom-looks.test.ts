@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { normalizeLookSpec, type LookSpecInput } from "../custom-look-spec"
+import { normalizeLookSpec } from "../custom-look-spec"
 import {
   MAX_CUSTOM_LOOKS,
   addCustomLook,
   maskKey,
   parseCustomLooks,
   removeCustomLook,
+  replaceCustomLook,
+  restorePreviousLook,
 } from "../custom-looks"
 import {
   CUSTOM_LOOKS_CSS_STORAGE_KEY,
@@ -26,6 +28,8 @@ const d = {
   canvas: "#121212", sunken: "#0A0A0A", elevated: "#1E1E1E", text: "#F5F5F5", textSecondary: "#CCCCCC",
   textMuted: "#A0A0A0", border: "#333333", accent: "#FF6B6B", button: "#F5F5F5", buttonText: "#121212",
 }
+/** A stored style in the first version's shape (two palettes), which the
+ *  store still reads. */
 const spec = (name = "Guardian") =>
   normalizeLookSpec({
     name,
@@ -38,7 +42,7 @@ const spec = (name = "Guardian") =>
     backdrop: "none",
     light: p,
     dark: d,
-  } satisfies LookSpecInput)
+  })
 
 const styleEl = () => document.getElementById(CUSTOM_LOOKS_STYLE_ID)
 
@@ -92,6 +96,36 @@ describe("made styles", () => {
     expect(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY)).toBeNull()
     expect(window.localStorage.getItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)).toBeNull()
     expect(styleEl()).toBeNull()
+  })
+
+  it("makes a new version in place, and can go back to the previous one", () => {
+    const first = addCustomLook(spec("One"), "theguardian.com", "https://www.theguardian.com/uk")
+    expect(first.url).toBe("https://www.theguardian.com/uk")
+    expect(first.version).toBe(1)
+
+    const next = replaceCustomLook(first.id, spec("Two"))!
+    expect(next.id).toBe(first.id)
+    expect(next.version).toBe(2)
+    expect(next.spec.name).toBe("Two")
+    expect(next.previous?.name).toBe("One")
+    expect(currentLook()).toBe(first.id)
+    // One tile, its CSS rebuilt.
+    const stored = parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))
+    expect(stored).toHaveLength(1)
+    expect(stored[0].url).toBe("https://www.theguardian.com/uk")
+
+    const back = restorePreviousLook(first.id)!
+    expect(back.spec.name).toBe("One")
+    expect(back.previous?.name).toBe("Two")
+    expect(replaceCustomLook("custom-zzzzzzzz", spec())).toBeNull()
+  })
+
+  it("gives an older stored style its site address and version 1", () => {
+    const raw = JSON.stringify([{ id: "custom-ab12cd34", source: "a.example", createdAt: "", spec: spec() }])
+    const [look] = parseCustomLooks(raw)
+    expect(look.url).toBe("https://a.example/")
+    expect(look.version).toBe(1)
+    expect(look.previous).toBeUndefined()
   })
 
   it(`keeps at most ${MAX_CUSTOM_LOOKS}, newest first`, () => {

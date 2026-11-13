@@ -7,9 +7,11 @@
  * tokens: the colours used for backgrounds, text and borders (light and
  * dark schemes apart), the declarations on html / body / :root, CSS custom
  * properties that look like design tokens, font families, corner radii,
- * shadows, weights, the theme-color meta, and the class names in the HTML
- * that carry design (bg-*, text-*, rounded-* …). `var(--x)` is resolved, so
- * token-based CSS still shows its colours.
+ * shadows, weights, the theme-color meta, the class names in the HTML that
+ * carry design (bg-*, text-*, rounded-* …), and the habits a site is
+ * recognised by: gradients, uppercase and letter-spacing, dashed or double
+ * borders, hard shadows, italics. `var(--x)` is resolved, so token-based
+ * CSS still shows its colours.
  *
  * Everything here is the website's own text, untrusted: the prompt tells
  * Claude it is data, and nothing from it reaches the app's CSS
@@ -43,6 +45,16 @@ export interface SiteDesign {
   radii: Counted[]
   shadows: Counted[]
   weights: Counted[]
+  /** Background gradients (a strong signature when a site has them). */
+  gradients: Counted[]
+  /** text-transform and letter-spacing habits (all-caps labels, tracking). */
+  textTransforms: Counted[]
+  letterSpacings: Counted[]
+  /** Border styles beyond solid (dashed, dotted, double) and widths. */
+  borderStyles: Counted[]
+  /** Shadows with no blur: the hard, offset kind. */
+  hardShadows: number
+  italics: number
   classNames: Counted[]
   stylesheets: { read: number; failed: number }
 }
@@ -329,6 +341,12 @@ export function digestSite(
   const shadows = new Map<string, number>()
   const weights = new Map<string, number>()
   const fontFaces = new Set<string>()
+  const gradients = new Map<string, number>()
+  const transforms = new Map<string, number>()
+  const spacings = new Map<string, number>()
+  const borderStyles = new Map<string, number>()
+  let hardShadows = 0
+  let italics = 0
   const pageDeclarations: SiteDesign["pageDeclarations"] = []
   let hasDarkScheme = false
 
@@ -372,6 +390,25 @@ export function digestSite(
     } else if (d.property === "font-weight") {
       const v = short(value, 20)
       weights.set(v, (weights.get(v) ?? 0) + 1)
+    } else if (d.property === "text-transform" && value !== "none") {
+      transforms.set(value, (transforms.get(value) ?? 0) + 1)
+    } else if (d.property === "letter-spacing" && value !== "normal" && value !== "0") {
+      const v = short(value, 24)
+      spacings.set(v, (spacings.get(v) ?? 0) + 1)
+    } else if (d.property === "font-style" && value === "italic") {
+      italics++
+    }
+    if (/^background(-image)?$/.test(d.property) && /gradient\(/i.test(value)) {
+      const v = short(value, 200)
+      gradients.set(v, (gradients.get(v) ?? 0) + 1)
+    }
+    if (/^border(-(top|right|bottom|left))?(-style)?$/.test(d.property)) {
+      for (const kind of value.match(/\b(dashed|dotted|double|groove|ridge)\b/g) ?? []) {
+        borderStyles.set(kind, (borderStyles.get(kind) ?? 0) + 1)
+      }
+    }
+    if (d.property === "box-shadow" && /(^|,)\s*(inset\s+)?-?\d+(\.\d+)?(px|rem)?\s+-?\d+(\.\d+)?(px|rem)?\s+0(px)?\s/.test(value) && !/^0(px)?\s+0(px)?\s+0/.test(value)) {
+      hardShadows++
     }
   }
 
@@ -411,6 +448,12 @@ export function digestSite(
     radii: top(radii, 12),
     shadows: top(shadows, 8),
     weights: top(weights, 10),
+    gradients: top(gradients, 6),
+    textTransforms: top(transforms, 4),
+    letterSpacings: top(spacings, 6),
+    borderStyles: top(borderStyles, 4),
+    hardShadows,
+    italics,
     classNames: html.classNames,
     stylesheets: stats,
   }

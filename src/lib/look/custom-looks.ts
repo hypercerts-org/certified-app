@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react"
 import { buildCustomLookCss, normalizeLookSpec, type LookSpec } from "./custom-look-spec"
+import { normalizeSiteUrl } from "./site-design"
 import {
   CUSTOM_LOOKS_CSS_STORAGE_KEY,
   CUSTOM_LOOKS_STORAGE_KEY,
@@ -28,8 +29,14 @@ export interface CustomLook {
   id: CustomLookId
   /** The site it was made from, e.g. "stripe.com". */
   source: string
+  /** The address it was read from, for making a new version. */
+  url: string
   createdAt: string
+  /** 1 for the first version, counting up with each new one. */
+  version: number
   spec: LookSpec
+  /** The version before this one, to go back to (one step). */
+  previous?: LookSpec
 }
 
 /** Older ones drop off when a new one would make more. */
@@ -87,11 +94,21 @@ export function parseCustomLooks(raw: string | null): CustomLook[] {
     const e = entry as Record<string, unknown>
     if (!isCustomLookId(e.id) || out.some((l) => l.id === e.id)) continue
     try {
+      const source = typeof e.source === "string" ? e.source.slice(0, 253) : ""
+      let previous: LookSpec | undefined
+      try {
+        previous = e.previous ? normalizeLookSpec(e.previous) : undefined
+      } catch {
+        previous = undefined
+      }
       out.push({
         id: e.id,
-        source: typeof e.source === "string" ? e.source.slice(0, 253) : "",
+        source,
+        url: (normalizeSiteUrl(typeof e.url === "string" ? e.url : source) ?? null)?.toString() ?? "",
         createdAt: typeof e.createdAt === "string" ? e.createdAt : "",
+        version: typeof e.version === "number" && e.version >= 1 ? Math.floor(e.version) : 1,
         spec: normalizeLookSpec(e.spec),
+        ...(previous ? { previous } : {}),
       })
     } catch {
       // A broken entry is skipped, not fatal.
@@ -146,12 +163,39 @@ function newId(): CustomLookId {
 }
 
 /** Keep a newly made style (newest first) and switch the page to it. */
-export function addCustomLook(spec: LookSpec, source: string): CustomLook {
-  const look: CustomLook = { id: newId(), source, createdAt: new Date().toISOString(), spec }
+export function addCustomLook(spec: LookSpec, source: string, url = `https://${source}/`): CustomLook {
+  const look: CustomLook = { id: newId(), source, url, createdAt: new Date().toISOString(), version: 1, spec }
   const kept = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY)).slice(0, MAX_CUSTOM_LOOKS - 1)
   writeCustomLooks([look, ...kept])
   applyLook(look.id)
   return look
+}
+
+/** A new version of a made style, in its place (same tile, same id); the
+ *  one it replaces is kept to go back to. Switches the page to it. */
+export function replaceCustomLook(id: CustomLookId, spec: LookSpec): CustomLook | null {
+  const looks = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY))
+  const at = looks.findIndex((l) => l.id === id)
+  if (at === -1) return null
+  const old = looks[at]
+  const next: CustomLook = { ...old, spec, previous: old.spec, version: old.version + 1 }
+  looks[at] = next
+  writeCustomLooks(looks)
+  applyLook(id)
+  return next
+}
+
+/** Swap a made style back to its previous version (and forward again). */
+export function restorePreviousLook(id: CustomLookId): CustomLook | null {
+  const looks = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY))
+  const at = looks.findIndex((l) => l.id === id)
+  const old = looks[at]
+  if (at === -1 || !old.previous) return null
+  const next: CustomLook = { ...old, spec: old.previous, previous: old.spec, version: Math.max(1, old.version - 1) }
+  looks[at] = next
+  writeCustomLooks(looks)
+  applyLook(id)
+  return next
 }
 
 /** Forget a made style; if it is on, go back to Neutral. */
