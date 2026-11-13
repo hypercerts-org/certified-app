@@ -27,6 +27,12 @@ html[data-look] body {
   background-attachment: fixed;
 }
 
+/* The app column paints the canvas colour over <body>; under a style it
+   lets the body (same colour, plus any backdrop) show through. */
+html[data-look] .app-shell {
+  background-color: transparent;
+}
+
 /* ---------------------------------------------------------------- Today
    Preview only: the tokens.css values, so the Today tile looks like Today
    whatever style is active. */
@@ -808,6 +814,12 @@ html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="note"]::a
   content: "\201D";
 }
 
+html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="who"] {
+  font-family: var(--font-headline);
+  font-size: var(--text-h4);
+  font-weight: 400;
+}
+
 html[data-look="almanac"] [data-centerpiece="endorsement"] [data-part="when"] {
   font-family: var(--font-label);
   text-transform: uppercase;
@@ -859,6 +871,22 @@ html[data-look="linen"] [data-centerpiece="id"] h2 {
   letter-spacing: -0.01em;
 }
 
+/* The gold check: checked by someone else, which is what an endorsement is. */
+html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="who"]::before {
+  content: "\2713";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
 html[data-look="linen"] [data-centerpiece="endorsement"] [data-part="note"] {
   font-family: var(--font-numeral);
   font-style: italic;
@@ -892,7 +920,8 @@ html[data-look="banknote"] [data-centerpiece="id"] {
   border: 3px double var(--border-hover);
   padding-block: 26px 24px;
   background-image:
-    repeating-radial-gradient(circle at 105% 110%, transparent 0 5px, color-mix(in srgb, var(--color-accent) 16%, transparent) 5px 6px);
+    radial-gradient(circle at 100% 100%, transparent 0 70px, var(--bg-elevated) 190px),
+    repeating-radial-gradient(circle at 100% 100%, transparent 0 4px, color-mix(in srgb, var(--color-accent) 22%, transparent) 4px 5px);
 }
 
 html[data-look="banknote"] [data-centerpiece="id"]::before,
@@ -945,6 +974,14 @@ html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="note"] {
   color: var(--fg-primary);
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-hover);
+}
+
+/* A countersignature: the endorser's name set like a signature. */
+html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="who"] {
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: var(--text-h4);
+  font-weight: 500;
 }
 
 html[data-look="banknote"] [data-centerpiece="endorsement"] [data-part="when"] {
@@ -1051,15 +1088,15 @@ html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="when"] {
   font-size: var(--text-label);
 }
 
+/* A dot-matrix bullet (3x3 dots, in ink: red means new only). */
 html[data-look="dots"] [data-centerpiece="endorsement"] [data-part="who"]::before {
   content: "";
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  vertical-align: 2px;
-  border-radius: 50%;
-  background: var(--badge-count-bg);
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  vertical-align: 1px;
+  background: radial-gradient(circle, var(--fg-primary) 0.9px, transparent 1.2px) 0 0 / 2.7px 2.7px;
 }
 
 /* -------- Glass: light-edged avatars, a frosted ID sheet, frosted chips - */
