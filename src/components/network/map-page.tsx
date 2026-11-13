@@ -15,7 +15,10 @@ export default function MapPage() {
   return (
     <PageContainer className="map-page">
       <PageHeader title="Map" description="Where the work across the Certified network takes place." />
+      {/* A tinted panel the width of the content, so the placeholder
+          reads as a deliberate page rather than a lone note. */}
       <EmptyState
+        className="rounded bg-[var(--bg-sunken)] md:py-20"
         icon={MapIcon}
         headingLevel={2}
         title="The map is on its way"

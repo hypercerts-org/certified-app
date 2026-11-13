@@ -17,7 +17,10 @@ export default function FundingPage() {
   return (
     <PageContainer className="funding-page">
       <PageHeader title="Funding" description="Who funds which work across the Certified network." />
+      {/* A tinted panel the width of the content, so the placeholder
+          reads as a deliberate page rather than a lone note. */}
       <EmptyState
+        className="rounded bg-[var(--bg-sunken)] md:py-20"
         icon={HandCoins}
         headingLevel={2}
         title="The funding view is on its way"
