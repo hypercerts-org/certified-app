@@ -10,8 +10,6 @@ import React, {
   useRef,
 } from "react";
 
-import Badge from "./badge";
-
 /**
  * Canonical Tabs/Tab/TabPanel components with proper ARIA semantics:
  *   role="tablist" on the strip, role="tab" on each trigger,
@@ -180,8 +178,8 @@ export interface TabProps
    *  arrow-key / Home / End navigation, is removed from the roving tab order,
    *  and is announced via `aria-disabled`. */
   disabled?: boolean;
-  /** Optional count/badge rendered after the label via the Badge primitive
-   *  (the neutral `count` chip). Accepts a number or short string. */
+  /** Optional count after the label, as a muted tabular number (not a
+   *  badge). Accepts a number or short string ("…" while loading). */
   count?: number | string;
   /** When set, the tab renders as a Next `<Link href>` (an anchor) instead of
    *  a `<button>` — for URL-router tab strips where each tab is a route. The
@@ -317,13 +315,18 @@ export function Tab({
     className: tabClassName,
   };
 
+  // The count is a quiet muted number (DESIGN.md: counts are muted tabular
+  // numbers; red is only for notifications). The leading space keeps the
+  // accessible name "Funding 3", not "Funding3"; it collapses visually at
+  // the start of the span.
   const label = (
     <>
       {children}
       {hasCount && (
-        <Badge variant="count" compact>
+        <span className="font-normal tabular-nums text-[var(--fg-muted)]">
+          {" "}
           {count}
-        </Badge>
+        </span>
       )}
     </>
   );

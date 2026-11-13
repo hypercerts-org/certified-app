@@ -39,12 +39,14 @@ const baseByVariant: Record<CardVariant, string> = {
     "bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded",
 };
 
+// Hover is a border change only: cards never carry shadows (DESIGN.md).
+// `hover:` only fires on hover-capable devices (hoverOnlyWhenSupported).
 const hoverByVariant: Record<CardVariant, string> = {
   row: "transition-colors duration-fast motion-reduce:transition-none hover:bg-[var(--overlay-weak)]",
   elevated:
-    "transition-[border-color,box-shadow] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)] hover:shadow-sm",
+    "transition-[border-color] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)]",
   inset:
-    "transition-[border-color,box-shadow] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)]",
+    "transition-[border-color] duration-fast motion-reduce:transition-none hover:border-[var(--border-hover)]",
 };
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(

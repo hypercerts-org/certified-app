@@ -18,13 +18,15 @@
 
 /* ========== Micro-interactions ========== */
 
-/* Press feedback — applied to interactive cards and buttons via utility class */
+/* Press feedback — applied to interactive cards and buttons via utility
+   class. 0.97 is the one press scale (DESIGN.md §5), shared with the phone
+   tab bar. */
 .press-scale {
   transition: transform var(--duration-instant) var(--ease-out);
 }
 
 .press-scale:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1100,17 +1102,6 @@
   margin-top: 16px;
 }
 
-.edit-profile__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 4px 0 8px;
-}
-
-/* (Removed a non-canonical `@media (max-width: 520px)` block for
-   `.edit-profile__actions`; the ≤799px block already stacks the actions
-   full-width across the whole mobile range.) */
-
 /* Dashboard body single-column variant (kept for compatibility) */
 .dashboard__body--single {
   /* no-op: all layouts are single-column now */
@@ -1229,20 +1220,6 @@
 
   .profile-card__name {
     font-size: 1.375rem;
-  }
-
-  /* Edit profile: actions stack full-width on mobile (covers both <button>
-     Save and <a> Cancel). Consolidated here from a separate, mostly-overridden
-     520px block. */
-  .edit-profile__actions {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .edit-profile__actions :is(button, a) {
-    width: 100%;
-    display: flex;
-    justify-content: center;
   }
 
   /* Dashboard back/action buttons: on mobile they stack full-width with a

@@ -84,7 +84,9 @@ export interface InputProps
 
 const sizeClasses: Record<InputSize, string> = {
   // 36 / 44 / 56 — the control-height scale (--control-h-sm/md/lg).
-  sm: "h-control-sm px-3 text-sm",
+  // Below 800px every size is at least 44px tall and 16px text: iOS zooms
+  // the page into any field under 16px when it takes focus.
+  sm: "h-control-sm px-3 text-base md:text-sm max-[799px]:h-control-md",
   md: "h-control-md px-4 text-base md:text-sm",
   lg: "h-control-lg px-5 text-base",
   // No fixed height, no text-size — typography cascades from the parent

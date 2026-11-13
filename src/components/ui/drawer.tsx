@@ -36,8 +36,9 @@ export interface DrawerProps {
  * slide is reduced-motion-safe (`motion-reduce:*`), and the global
  * `prefers-reduced-motion` block applies on top.
  *
- * Folds the bespoke mobile-sidebar + site-drawer shells into one
- * primitive; callers own the panel's inner content.
+ * Callers own the panel's inner content. (No app surface uses it today:
+ * phones navigate with the bottom tab bar and the account sheet; it stays
+ * in the primitive set, shown in /dev/gallery.)
  */
 export default function Drawer({
   open,
@@ -64,7 +65,7 @@ export default function Drawer({
   }, [open, onClose])
 
   // Portal mount — gates SSR so `createPortal(document.body)` only runs
-  // on the client (mirrors mobile-sidebar's `useMounted` gate).
+  // on the client.
   const mounted = useMounted()
   if (!mounted) return null
 
@@ -99,8 +100,7 @@ export default function Drawer({
         // so Tab from background chrome can't land on its controls.
         inert={!open}
         // Same z-token as the backdrop; the panel follows it in DOM
-        // order, so it stacks on top without needing a higher index
-        // (mirrors the 60/61 split mobile-sidebar uses in raw CSS).
+        // order, so it stacks on top without needing a higher index.
         // House spring curve; dismiss runs faster (200ms) than the 300ms
         // open so closing never feels sluggish.
         className={`fixed top-0 bottom-0 ${anchorClass} z-[var(--z-portal-sheet)] flex w-[83.33%] max-w-[320px] flex-col overflow-y-auto bg-[var(--bg-elevated)] shadow-[var(--shadow-lg)] transition-transform ease-emphasized ${open ? "duration-slow" : "duration-base"} motion-reduce:transition-none ${closedTransform}`}

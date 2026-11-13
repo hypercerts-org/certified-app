@@ -46,9 +46,11 @@ const listCls =
 const itemBase =
   "inline-flex min-h-control-md items-center gap-2 whitespace-nowrap rounded-[999px] border px-3.5 py-2 text-left text-ui font-medium no-underline transition-[background-color,border-color,color] duration-fast motion-reduce:transition-none select-none [-webkit-touch-callout:none] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 lg:flex lg:w-full lg:min-h-10 lg:rounded lg:border-0 lg:px-3";
 
-// Current: a filled pill in the row; a sunken, bold row in the column.
+// Current: sunken, primary text, weight 600 — a sunken pill in the row, a
+// sunken row in the column, like the top bar's current destination. Black
+// fill is kept for the page's one primary action.
 const itemCurrent =
-  "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-fg)] lg:bg-[var(--bg-sunken)] lg:font-semibold lg:text-[var(--fg-primary)]";
+  "border-[var(--border-hover)] bg-[var(--bg-sunken)] font-semibold text-[var(--fg-primary)]";
 
 // Rest: an outlined pill in the row; a bare row in the column. `hover:`
 // only fires on hover-capable devices (tailwind hoverOnlyWhenSupported).
@@ -68,8 +70,10 @@ export default function SideNav({
   sticky = true,
   className = "",
 }: SideNavProps) {
+  // The desktop top bar scrolls away, so the column sticks 32px below the
+  // fixed chrome (none on desktop) rather than below the bar's height.
   const navCls = [
-    sticky ? "lg:sticky lg:top-[calc(var(--top-bar-total)_+_32px)]" : "",
+    sticky ? "lg:sticky lg:top-[calc(var(--chrome-top,0px)_+_32px)]" : "",
     className,
   ]
     .filter(Boolean)

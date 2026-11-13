@@ -62,7 +62,9 @@ import Tooltip from "./tooltip";
  *     stack frees up horizontal room for the issuer's name.
  *   - `shape`: "square" → rounded (= var(--radius), 2px); "pill" →
  *     rounded-[999px].
- *   - `size`: "sm" (h-7 / 28px) | "md" (h-8 / 32px).
+ *   - `size`: "sm" (h-7 / 28px) | "md" (h-8 / 32px) on desktop; both are
+ *     44px tall below 800px (the touch minimum), icon-only segments 44px
+ *     wide.
  *   - Focus ring: drawn with a NEGATIVE outline-offset so it renders INSIDE the
  *     segment and is never clipped by the joined container's overflow-hidden.
  *     (A positive offset, as used elsewhere in the repo, would be clipped.)
@@ -130,11 +132,13 @@ function segmentClass({
     // it. outline-offset is negative → the 2px outline sits within the segment.
     "focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:-outline-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-50",
-    size === "sm" ? "h-7 text-[13px]" : "h-8 text-sm",
+    size === "sm" ? "h-7 text-ui" : "h-8 text-body-sm",
+    // Touch: 44px tall below 800px whatever the size, so pages don't patch it.
+    "max-[799px]:h-control-md",
     iconOnly
       ? size === "sm"
-        ? "w-7 px-0"
-        : "w-8 px-0"
+        ? "w-7 px-0 max-[799px]:w-11"
+        : "w-8 px-0 max-[799px]:w-11"
       : size === "sm"
         ? "px-2.5"
         : "px-3",

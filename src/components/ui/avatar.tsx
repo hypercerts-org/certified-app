@@ -20,7 +20,7 @@ export interface AvatarProps {
 }
 
 const sizeMap = {
-  xs: "h-5 w-5 text-[0.625rem]",
+  xs: "h-5 w-5 text-micro",
   sm: "h-8 w-8 text-body-sm",
   md: "h-12 w-12 text-body",
   lg: "h-16 w-16 text-h4",
@@ -92,12 +92,22 @@ const Avatar: React.FC<AvatarProps> = ({
   bordered = false,
   shape = "circle",
 }) => {
-  const [imageError, setImageError] = React.useState(false);
+  // Load state per src, so a new src starts over without an effect: the
+  // image failed / finished loading only if it's the one that's showing.
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
   const radius = shape === "square" ? "rounded" : "rounded-full";
 
-  React.useEffect(() => { setImageError(false) }, [src]);
-
+  const imageError = !!src && failedSrc === src;
+  const loaded = !!src && loadedSrc === src;
   const showFallback = !src || imageError;
+  const initials = fallbackInitials.slice(0, 2).toUpperCase();
+  // The initials are a picture of the name, which is always written out
+  // next to the avatar. With no `alt` they are hidden from assistive tech
+  // (as an image avatar with alt="" is); with one, the avatar is an image
+  // named by it.
+  const labelled = alt !== "";
+  const imgRole = labelled ? { role: "img" as const, "aria-label": alt } : {};
 
   // Placeholder: a deterministic conic-gradient ring around the neutral fill
   // + initials. `overflow-hidden` and the flat border are dropped here — the
@@ -112,9 +122,13 @@ const Avatar: React.FC<AvatarProps> = ({
           // Keep the elevated separator for stacked/overlapping contexts.
           ...(bordered ? { boxShadow: "0 0 0 2px var(--bg-elevated)" } : {}),
         }}
+        {...imgRole}
       >
-        <div className={`w-full h-full ${radius} bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center`}>
-          {fallbackInitials.slice(0, 2).toUpperCase()}
+        <div
+          className={`w-full h-full ${radius} bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center`}
+          aria-hidden="true"
+        >
+          {initials}
         </div>
       </div>
     );
@@ -128,15 +142,28 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <div
-      className={`${sizeMap[size]} shrink-0 ${radius} overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
+      className={`${sizeMap[size]} relative shrink-0 ${radius} overflow-hidden flex items-center justify-center ${borderStyles} ${className}`}
     >
+      {/* Initials on the neutral fill until the image has loaded, so the
+          avatar is never a blank circle (e.g. the top-bar account button
+          on a slow connection). Removed once loaded, so a transparent
+          logo doesn't show letters through it. */}
+      {!loaded ? (
+        <span
+          className={`absolute inset-0 ${radius} bg-[var(--color-surface-container-high)] text-[var(--fg-primary)] font-semibold flex items-center justify-center`}
+          aria-hidden="true"
+        >
+          {initials}
+        </span>
+      ) : null}
       <Image
         src={src as string}
         alt={alt}
         width={sizePx[size]}
         height={sizePx[size]}
-        className="w-full h-full object-cover"
-        onError={() => setImageError(true)}
+        className="relative w-full h-full object-cover"
+        onLoad={() => setLoadedSrc(src as string)}
+        onError={() => setFailedSrc(src as string)}
         // unoptimized: avatar URLs come from many foreign sources
         // (Bluesky CDN, foreign PDS getBlob endpoints, our same-
         // origin resolve-did proxy). next.config.ts allowlist only

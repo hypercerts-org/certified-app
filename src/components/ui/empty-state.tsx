@@ -66,7 +66,7 @@ export default function EmptyState({
     // hint reads as one line.
     return (
       <p
-        className={`m-0 text-sm text-[var(--fg-muted)] ${className}`}
+        className={`m-0 text-body-sm text-[var(--fg-muted)] ${className}`}
       >
         {title}
         {description && (
@@ -98,7 +98,7 @@ export default function EmptyState({
         {title}
       </Heading>
       {description && (
-        <p className="max-w-[320px] text-[0.875rem] leading-[1.6] text-pretty text-[var(--fg-muted)]">
+        <p className="max-w-[320px] text-body-sm text-pretty text-[var(--fg-muted)]">
           {description}
         </p>
       )}

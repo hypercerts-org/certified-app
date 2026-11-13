@@ -247,9 +247,17 @@ ol.leaflet-doc__list {
 
 .leaflet-editor__surface {
   outline: none;
-  font-size: 0.9375rem;
+  font-size: var(--text-body-sm);
   line-height: 1.6;
   color: var(--fg-primary);
+}
+
+/* Phones: 16px, or iOS zooms the page into the editor when it takes
+   focus (the same floor as Input / Textarea). */
+@media (max-width: 799px) {
+  .leaflet-editor__surface {
+    font-size: var(--text-body);
+  }
 }
 
 /* Nuclear: kill every possible source of a "second border" around
@@ -468,32 +476,6 @@ ol.leaflet-doc__list {
   align-items: center;
   gap: 8px;
   margin-left: auto;
-}
-
-/* ---------- "more" link + long-description modal ---------- */
-
-.profile-overview__more-link {
-  display: inline;
-  background: transparent;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--fg-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-  /* Sit inline with the trailing word of the About paragraph so it
-     reads as natural prose continuation. */
-}
-
-.profile-overview__more-link:hover {
-  text-decoration-thickness: 2px;
-}
-
-.profile-overview__more-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
 }
 
 /* About tab content — wraps the LeafletDocument render in the

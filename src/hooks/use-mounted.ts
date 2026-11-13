@@ -16,10 +16,9 @@ const emptySubscribe = () => () => {}
  * post-hydration client snapshot flips it to `true`, so the portal
  * renders into the real DOM.
  *
- * The standard pattern of `const [mounted, setMounted] = useState(false)
- * + useEffect(() => setMounted(true), [])` was duplicated across the
- * layout chrome components (`navbar`, `desktop-top-bar`'s portaled
- * switcher menus, plus `mobile-sidebar`'s portal). Consolidate here.
+ * Replaces the `const [mounted, setMounted] = useState(false) +
+ * useEffect(() => setMounted(true), [])` pattern; used by the desktop top
+ * bar (hydration-safe chrome), the portaled Popover and the Drawer.
  */
 export function useMounted(): boolean {
   return useSyncExternalStore(
