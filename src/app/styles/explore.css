@@ -1,5 +1,5 @@
 /* ---------- /explore page ----------
-   A <PageContainer width="wide"> (`.explore-page`, which also joins the
+   A <PageContainer> (`.explore-page`, the default 1120px; it also joins the
    shell's page-frame layout in layout.css): the page header, then the
    layout. Below 1100px one column: the list pills (SideNav), then the
    main column. From 1100px the lists are a sticky column on the left.
@@ -70,6 +70,12 @@
 .explore__actions .explore__action-btn {
   width: 44px;
   height: var(--control-h-md);
+}
+
+/* The labelled "Filters" button: the row's height, tighter sides. */
+.explore__actions .explore__filters-btn {
+  height: var(--control-h-md);
+  padding-inline: 12px;
 }
 
 .explore__actions [role="radio"] {

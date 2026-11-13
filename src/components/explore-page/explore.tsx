@@ -296,7 +296,7 @@ function useHasRecentlyViewed(): boolean {
 // ------------------------------- Page ---------------------------------------
 
 const LIST_LABEL: Record<string, string> = {
-  all: "All",
+  all: "Whole network",
   follows: "Accounts I follow",
   endorsed: "Endorsed accounts",
   recent: "Recently viewed",
@@ -308,10 +308,11 @@ function ExploreAll() {
   const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth()
   const hasRecent = useHasRecentlyViewed()
 
-  // The lists. "All" first: it is the default, so it is the one in view
-  // when the phone pill row loads. Featured (`?filter=ma-earth`) is part
-  // of All, so All stays current while it is shown. Recently viewed
-  // appears once this browser has viewed something (or when linked to).
+  // The lists. "Whole network" first: it is the default, so it is the
+  // one in view when the phone pill row loads. Featured
+  // (`?filter=ma-earth`) is part of it, so it stays current while that
+  // is shown. Recently viewed appears once this browser has viewed
+  // something (or when linked to).
   const listItems: SideNavItem[] = [
     { key: "all", label: LIST_LABEL.all, icon: Globe },
     { key: "follows", label: LIST_LABEL.follows, icon: UserCheck },
@@ -337,7 +338,7 @@ function ExploreAll() {
     (filter === "follows" || filter === "endorsed")
 
   return (
-    <PageContainer width="wide" className="explore-page">
+    <PageContainer className="explore-page">
       <PageHeader
         title="Explore"
         description="Activities, projects and accounts across the Certified network."

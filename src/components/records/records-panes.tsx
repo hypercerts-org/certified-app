@@ -21,6 +21,7 @@ import { useUrlParam } from "@/hooks/use-url-param"
 import type { FollowRecord } from "@/lib/atproto/follow"
 import { profileUrl } from "@/lib/urls"
 import { formatShortDate } from "@/lib/utils/format-date"
+import NewListMenu from "@/components/records/new-list-menu"
 import ReceivedEndorsements from "@/components/records/received-endorsements"
 import { PaneHead, RowsSkeleton } from "@/components/records/records-shared"
 
@@ -40,13 +41,6 @@ function parseTab(value: string | null): EndorsementsTab {
   return (ENDORSEMENT_TABS as readonly string[]).includes(value ?? "")
     ? (value as EndorsementsTab)
     : "given"
-}
-
-/** A tab's count as quiet text (the Tab's `count` chip reads as a
- *  notification badge). Nothing while loading. */
-function TabCount({ n }: { n: number | null }) {
-  if (n === null) return null
-  return <span className="records-tab-count">{n}</span>
 }
 
 /**
@@ -73,6 +67,17 @@ export function EndorsementsPane({
     () => new Set(given.endorsements.map((e) => e.subjectDid)),
     [given.endorsements],
   )
+  // The panel opens on the Given tab, so from another tab the button
+  // switches there first.
+  const endorseOpen = panelOpen && tab === "given"
+  const onEndorse = () => {
+    if (tab !== "given") {
+      setTabParam("given")
+      setPanelOpen(true)
+    } else {
+      setPanelOpen((v) => !v)
+    }
+  }
 
   return (
     <section className="records-pane" aria-labelledby={titleId}>
@@ -81,39 +86,37 @@ export function EndorsementsPane({
         title="Endorsements"
         description="Endorsements you gave and received, and your lists of endorsed accounts."
         action={
-          tab === "given" ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              aria-expanded={panelOpen}
-              onClick={() => setPanelOpen((v) => !v)}
-            >
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              Endorse someone
-            </Button>
-          ) : null
+          <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            Endorse someone
+          </Button>
         }
       />
       <Tabs value={tab} onChange={(v) => setTabParam(v)}>
         <TabList aria-label="Endorsements">
-          <Tab value="given">
+          {/* Counts are left out while their list loads. */}
+          <Tab
+            value="given"
+            count={given.isLoading && given.endorsements.length === 0 ? undefined : given.endorsements.length}
+          >
             Given
-            <TabCount
-              n={given.isLoading && given.endorsements.length === 0 ? null : given.endorsements.length}
-            />
           </Tab>
-          <Tab value="received">
+          <Tab
+            value="received"
+            count={
+              received.isLoading && received.endorsements.length === 0
+                ? undefined
+                : received.endorsements.length
+            }
+          >
             Received
-            <TabCount
-              n={received.isLoading && received.endorsements.length === 0 ? null : received.endorsements.length}
-            />
           </Tab>
-          <Tab value="lists">Lists</Tab>
+          <Tab value="lists">Endorsement lists</Tab>
         </TabList>
 
         <TabPanel value="given">
           <div className="records-pane__tab-body">
-            {panelOpen ? (
+            {endorseOpen ? (
               <NewEndorsementPanel
                 ownDid={did}
                 existingSubjectDids={existing}
@@ -247,11 +250,11 @@ export function FollowingPane({ did, following }: { did: string; following: Foll
       {following.isLoading && rows.length === 0 ? (
         <RowsSkeleton shape="circle" />
       ) : following.error && rows.length === 0 ? (
-        <EmptyState
-          variant="inline"
-          title="Couldn't load who you follow."
-          description="Try again in a moment."
-        />
+        <EmptyState variant="inline" title="Couldn't load who you follow.">
+          <Button variant="ghost" size="sm" onClick={() => void following.refetch()}>
+            Try again
+          </Button>
+        </EmptyState>
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Compass}
@@ -326,14 +329,10 @@ export function FollowersPane({
       {followers.isLoading && followers.entries.length === 0 ? (
         <RowsSkeleton shape="circle" />
       ) : followers.error && followers.entries.length === 0 ? (
-        <EmptyState
-          variant="inline"
-          title="Couldn't load your followers."
-          description="Try again in a moment."
-        >
-          <button type="button" className="records-link" onClick={() => void followers.refetch()}>
+        <EmptyState variant="inline" title="Couldn't load your followers.">
+          <Button variant="ghost" size="sm" onClick={() => void followers.refetch()}>
             Try again
-          </button>
+          </Button>
         </EmptyState>
       ) : followers.entries.length === 0 ? (
         <EmptyState
@@ -387,6 +386,7 @@ export function ListsPane({ did }: { did: string }) {
         titleId={titleId}
         title="Lists"
         description="Your lists of activities, projects and accounts. Open a list to rename it, add to it or delete it."
+        action={<NewListMenu did={did} />}
       />
       {/* The profile's list manager, which carries create, edit and delete. */}
       <ProfileLists did={did} viewerIsOwner />

@@ -13,7 +13,7 @@ import { ownProfileUrl } from "@/lib/urls"
 import type { Group } from "@/lib/groups/types"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
-import { HomeIdCard, HomeIdentityHeader } from "@/components/home/home-account-card"
+import { HomeIdSection, HomeIdentityHeader } from "@/components/home/home-account-card"
 import {
   HomeApps,
   HomeGroups,
@@ -30,8 +30,8 @@ import {
  *   ┌──────────────────────┐ ┌───────────┐      ID
  *   │ Your records         │ │ ID        │      Your records
  *   │ From others          │ │ Your      │      From others
- *   │ Apps                 │ │ groups    │      Apps
- *   └──────────────────────┘ └───────────┘      Your groups
+ *   │ Apps                 │ │ groups    │      Your groups
+ *   └──────────────────────┘ └───────────┘      Apps
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the account switcher. "Your groups" is
@@ -113,12 +113,12 @@ function HomeAccount({
     <>
       <HomeIdentityHeader identity={identity} activeGroup={activeGroup} />
 
-      {/* DOM order is the phone order (ID, records, from others, apps,
-          groups); from 1100px a grid puts the ID and groups in a side
-          column (home.css). */}
+      {/* DOM order is the phone order (ID, records, from others, groups,
+          apps); from 1100px a grid puts the ID and groups in a side
+          column and Apps under the main column (home.css). */}
       <div className="home__layout">
         <div className="home__id">
-          <HomeIdCard identity={identity} isGroup={isGroup} />
+          <HomeIdSection identity={identity} isGroup={isGroup} />
         </div>
 
         <div className="home__main">
@@ -137,7 +137,6 @@ function HomeAccount({
             counts={counts}
             countsLoading={countsLoading}
           />
-          <HomeApps />
         </div>
 
         {isGroup ? null : (
@@ -145,6 +144,10 @@ function HomeAccount({
             <HomeGroups profileBase={profileBase} />
           </div>
         )}
+
+        <div className="home__apps">
+          <HomeApps />
+        </div>
       </div>
     </>
   )

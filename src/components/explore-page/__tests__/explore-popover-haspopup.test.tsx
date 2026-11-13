@@ -61,7 +61,7 @@ describe("Explore popover triggers expose aria-haspopup", () => {
     const { default: Explore } = await import("../explore")
     render(<Explore />)
     const qualityTrigger = screen.getByRole("button", {
-      name: /Filter by quality/,
+      name: /^Filters/,
     })
     expect(qualityTrigger.getAttribute("aria-haspopup")).not.toBeNull()
   })

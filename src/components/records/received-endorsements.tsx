@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ThumbsUp } from "lucide-react"
+import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsementSubjectRow, {
@@ -47,10 +48,11 @@ function useIssuerInfo(e: ReceivedEndorsement): { info: AuthorInfo | null; isLoa
 }
 
 /**
- * One received endorsement: who gave it, when, the note, and whether it is
- * shown on your profile, with Hide or Show. Hiding writes a "rejected"
- * response record on your account; showing again removes your responses
- * to it (the same writes the profile's controls make).
+ * One received endorsement: who gave it, when, the note, and Hide or Show.
+ * A hidden one carries a "Hidden" tag; its text keeps full contrast.
+ * Hiding writes a "rejected" response record on your account; showing
+ * again removes your responses to it (the same writes the profile's
+ * controls make).
  */
 function ReceivedRow({
   endorsement,
@@ -110,7 +112,7 @@ function ReceivedRow({
         classes={ENDORSEMENT_ROW_CLASSES}
         trailing={
           <div className="records-person__action records-endorsement__control">
-            <span className="records-endorsement__state">{hidden ? "Hidden" : "Shown"}</span>
+            {hidden ? <Badge variant="tag">Hidden</Badge> : null}
             <Button
               variant="secondary"
               size="sm"
@@ -132,7 +134,8 @@ function ReceivedRow({
 
 /**
  * Endorsements other accounts gave you, hidden ones included (this is where
- * you show them again). Each row says "Shown" or "Hidden" on your profile.
+ * you show them again). Hidden ones are tagged "Hidden"; the rest show on
+ * your profile.
  */
 export default function ReceivedEndorsements({
   did,
@@ -155,14 +158,10 @@ export default function ReceivedEndorsements({
   if (isLoading && endorsements.length === 0) return <RowsSkeleton shape="circle" rows={4} />
   if (error && endorsements.length === 0) {
     return (
-      <EmptyState
-        variant="inline"
-        title="Couldn't load your endorsements."
-        description="Try again in a moment."
-      >
-        <button type="button" className="records-link" onClick={onRetry}>
+      <EmptyState variant="inline" title="Couldn't load your endorsements.">
+        <Button variant="ghost" size="sm" onClick={onRetry}>
           Try again
-        </button>
+        </Button>
       </EmptyState>
     )
   }

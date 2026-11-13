@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import { render, screen, cleanup, within } from "@testing-library/react"
 
-// The Explore list navigation (SideNav): "All" is listed first and is
-// current by default, the featured Ma Earth set counts as All, and
+// The Explore list navigation (SideNav): "Whole network" is listed first and is
+// current by default, the featured Ma Earth set counts as it, and
 // "Recently viewed" only appears once this browser has viewed something.
 //
 // Explore pulls in auth, navbar, navigation, and the explore-data hook;
@@ -58,22 +58,22 @@ async function renderExplore() {
 }
 
 describe("Explore list navigation", () => {
-  it("lists All first and marks it current by default", async () => {
+  it("lists Whole network first and marks it current by default", async () => {
     const nav = await renderExplore()
     const links = within(nav).getAllByRole("link")
     expect(links.map((l) => l.textContent)).toEqual([
-      "All",
+      "Whole network",
       "Accounts I follow",
       "Endorsed accounts",
     ])
     expect(links[0].getAttribute("aria-current")).toBe("page")
   })
 
-  it("keeps All current while the featured set is shown", async () => {
+  it("keeps Whole network current while the featured set is shown", async () => {
     search = "filter=ma-earth&show=activities"
     const nav = await renderExplore()
     expect(
-      within(nav).getByRole("link", { name: "All" }).getAttribute("aria-current"),
+      within(nav).getByRole("link", { name: "Whole network" }).getAttribute("aria-current"),
     ).toBe("page")
   })
 

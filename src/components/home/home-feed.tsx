@@ -9,8 +9,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { ChevronDown, Filter, Inbox, Info, Users } from "lucide-react"
-import Banner from "@/components/ui/banner"
+import { AlertCircle, ChevronDown, Filter, Inbox, Info, Users } from "lucide-react"
 import Button from "@/components/ui/button"
 import Card from "@/components/ui/card"
 import Checkbox from "@/components/ui/checkbox"
@@ -168,8 +167,8 @@ export function FeedPageHeader({
  * keep to the byline, since the sentence already names both ends.
  *
  * The author set is direct follows ∪ the accounts the selected trusted
- * endorsers have endorsed, narrowed by the organization-quality filter;
- * the activity-quality filter narrows the records.
+ * endorsers have endorsed, narrowed by the account-quality filter; the
+ * activity-quality filter narrows the records.
  *
  * Layout: the page header first. At 1100px and wider, three columns: the
  * filters in a sticky box on the left, the list in the middle and `news`
@@ -224,9 +223,9 @@ export default function HomeFeed({
     (next: Set<string>) => setCustomEvaluators(next),
     [],
   )
-  // Organization-quality filter (Orglabeler tiers) — applied to the
-  // event ACTOR rather than the record, by adjusting the author DID
-  // set handed to useHomeFeed (see effectiveFollows below).
+  // Account-quality filter (Orglabeler tiers) — applied to the event
+  // ACTOR rather than the record, by adjusting the author DID set handed
+  // to useHomeFeed (see effectiveFollows below).
   const [includedOrgTiers, setIncludedOrgTiers] = useState<Set<OrgQualityValue>>(
     () => new Set<OrgQualityValue>(DEFAULT_ORG_TIER_SELECTION),
   )
@@ -269,7 +268,7 @@ export default function HomeFeed({
     useEvaluatorEndorsements(selectedEvaluators)
   const orgFilter = useOrgQualityFilter(includedOrgTiers)
   // Direct follows ∪ DIDs endorsed by any selected trusted evaluator,
-  // then narrowed by the organization-quality filter. The viewer's own
+  // then narrowed by the account-quality filter. The viewer's own
   // DID is excluded so the feed doesn't show the viewer's own activity
   // (matches the prior behaviour — direct follows never include self).
   const effectiveFollows = useMemo(() => {
@@ -297,12 +296,10 @@ export default function HomeFeed({
   // module scope, so after the first visit `ready` flips
   // effectively-synchronously — only the cold first paint waits.
   const ready = !followsLoading && !endorsementsLoading && !orgFilter.isLoading
-  const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
-    useHomeFeed(effectiveFollows, {
-      excludeCertLabels,
-      includeCertLabels,
-      ready,
-    })
+  // Bumped by the list's "Try again": remounts FeedList, which loads the
+  // feed again from the head.
+  const [feedAttempt, setFeedAttempt] = useState(0)
+  const retryFeed = useCallback(() => setFeedAttempt((n) => n + 1), [])
 
   // How many checkboxes differ from their default, across the three
   // groups. Shown on the Filters button; zero means "defaults".
@@ -344,19 +341,18 @@ export default function HomeFeed({
 
       <div className="feed-layout">
         <div className="feed-layout__main" data-tour="feed">
-          <HomeFeedBody
+          <FeedList
+            key={feedAttempt}
+            authors={effectiveFollows}
+            excludeCertLabels={excludeCertLabels}
+            includeCertLabels={includeCertLabels}
+            ready={ready}
             followsLoading={followsLoading}
             followsError={!!followsError}
             onRetryFollows={refetchFollows}
-            followedCount={effectiveFollows.size}
-            isLoading={isLoading}
-            error={error}
-            events={events}
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            loadMore={loadMore}
             filtersChanged={!isDefaultFilters}
             onResetFilters={resetFilters}
+            onRetry={retryFeed}
           />
         </div>
 
@@ -412,6 +408,55 @@ export default function HomeFeed({
   )
 }
 
+/**
+ * Loads the feed for `authors` and renders it. Its own component so the
+ * parent can key it: "Try again" after a failed load remounts it, which
+ * starts a fresh load from the head.
+ */
+function FeedList({
+  authors,
+  excludeCertLabels,
+  includeCertLabels,
+  ready,
+  followsLoading,
+  followsError,
+  onRetryFollows,
+  filtersChanged,
+  onResetFilters,
+  onRetry,
+}: {
+  authors: Set<string>
+  excludeCertLabels: readonly string[] | undefined
+  includeCertLabels: readonly string[] | undefined
+  ready: boolean
+  followsLoading: boolean
+  followsError: boolean
+  onRetryFollows: () => void
+  filtersChanged: boolean
+  onResetFilters: () => void
+  onRetry: () => void
+}) {
+  const { events, isLoading, isLoadingMore, hasMore, loadMore, error } =
+    useHomeFeed(authors, { excludeCertLabels, includeCertLabels, ready })
+  return (
+    <HomeFeedBody
+      followsLoading={followsLoading}
+      followsError={followsError}
+      onRetryFollows={onRetryFollows}
+      followedCount={authors.size}
+      isLoading={isLoading}
+      error={error}
+      onRetry={onRetry}
+      events={events}
+      hasMore={hasMore}
+      isLoadingMore={isLoadingMore}
+      loadMore={loadMore}
+      filtersChanged={filtersChanged}
+      onResetFilters={onResetFilters}
+    />
+  )
+}
+
 // Memoized: filter state (dialog open/close, evaluator + tier checkbox
 // ticks) lives in HomeFeed, so without memo every filter interaction
 // re-executes the full row map. Props are primitives plus a stable
@@ -424,6 +469,7 @@ const HomeFeedBody = memo(function HomeFeedBody({
   followedCount,
   isLoading,
   error,
+  onRetry,
   events,
   hasMore,
   isLoadingMore,
@@ -437,6 +483,8 @@ const HomeFeedBody = memo(function HomeFeedBody({
   followedCount: number
   isLoading: boolean
   error: string | null
+  /** Load the feed again after `error`. */
+  onRetry: () => void
   events: HomeFeedEvent[]
   hasMore: boolean
   isLoadingMore: boolean
@@ -478,16 +526,19 @@ const HomeFeedBody = memo(function HomeFeedBody({
   if (followsLoading || isLoading) {
     return <HomeFeedSkeleton />
   }
+  // Load failures: the page's one error pattern (an empty-state block
+  // with Try again), as on /explore.
   if (followsError) {
     return (
-      <Banner variant="warning">
-        <span className="home-feed__error">
-          Couldn&apos;t load the accounts you follow.
-          <Button variant="secondary" size="sm" onClick={onRetryFollows}>
-            Try again
-          </Button>
-        </span>
-      </Banner>
+      <EmptyState
+        icon={AlertCircle}
+        title="Couldn't load the accounts you follow"
+        description="Something went wrong on our side. Try again in a moment."
+      >
+        <Button variant="secondary" size="sm" onClick={onRetryFollows}>
+          Try again
+        </Button>
+      </EmptyState>
     )
   }
   if (followedCount === 0) {
@@ -515,9 +566,15 @@ const HomeFeedBody = memo(function HomeFeedBody({
   }
   if (error) {
     return (
-      <Banner variant="warning">
-        Couldn&apos;t load the feed. Try again in a moment.
-      </Banner>
+      <EmptyState
+        icon={AlertCircle}
+        title="Couldn't load the feed"
+        description="Something went wrong on our side. Try again in a moment."
+      >
+        <Button variant="secondary" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      </EmptyState>
     )
   }
   if (events.length === 0) {
@@ -571,7 +628,7 @@ const HomeFeedBody = memo(function HomeFeedBody({
 })
 
 /**
- * Resolve the organization-quality checkboxes into a DID set + how to
+ * Resolve the account-quality checkboxes into a DID set + how to
  * apply it to the feed's author set. Two modes, mirroring the cert
  * quality filter's polarity logic:
  *   - Unlabeled INCLUDED → "exclude": fetch the DIDs carrying any
@@ -626,7 +683,7 @@ function useOrgQualityFilter(included: Set<OrgQualityValue>): {
 
 /**
  * The feed filters: trusted endorsers, activity quality (Hyperlabel
- * tiers) and organization quality (Orglabeler tiers), each a fieldset,
+ * tiers) and account quality (Orglabeler tiers), each a fieldset,
  * plus an optional reset row. Rendered twice: in the filters column at
  * 1100px and wider (`previewMode="popover"`, previews in a portalled
  * popover because the column scrolls) and in the sheet / dialog below
@@ -716,7 +773,7 @@ function FeedFilterPanel({
       </fieldset>
       <div className="feed-evaluators__separator" aria-hidden="true" />
       <fieldset className="feed-evaluators__group">
-        <legend className="feed-evaluator-panel__heading">Organization quality</legend>
+        <legend className="feed-evaluator-panel__heading">Account quality</legend>
         <div className="feed-evaluators__list">
           {ORGLABEL_DISPLAY_ORDER.map((tier) => (
             <FilterCheckRow

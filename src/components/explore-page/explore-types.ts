@@ -74,7 +74,7 @@ const ALL_FILTERS: FilterOption[] = [
   { key: "recent", label: "Recently viewed" },
   { key: "follows", label: "Accounts I follow", requiresAuth: true },
   { key: "endorsed", label: "Endorsed accounts", requiresAuth: true },
-  { key: "all", label: "All" },
+  { key: "all", label: "Whole network" },
 ]
 
 /** Funding has a single, minimal listing — no social-graph or

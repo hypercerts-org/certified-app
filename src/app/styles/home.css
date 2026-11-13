@@ -1,15 +1,15 @@
 /* ---------- /home page ----------
    The signed-in home is about the account. Its <PageHeader> is the
    identity strip (avatar, name, bio, website; home-account-card.tsx);
-   below it come the ID card, the account's sections (records, from
-   others, apps) and Your groups. <PageContainer> sets the width and
-   gutters; this file sets the grid and the hairline rows. The follow
-   feed lives on /feed; its card styles stay in this file (.home-feed*). */
+   below it come the ID, the account's sections (records, from others),
+   Your groups and Apps. <PageContainer> sets the width and gutters; this
+   file sets the grid and the hairline rows. The follow feed lives on
+   /feed; its card styles stay in this file (.home-feed*). */
 
-/* One column below 1100px, in DOM order: ID, sections, groups. The top
-   padding adds to the header's own 16px margin (a margin would collapse
-   into it), so the identity strip stands 24px (phone) / 32px (desktop)
-   clear of the first section. */
+/* One column below 1100px, in DOM order: ID, sections, groups, apps. The
+   top padding adds to the header's own 16px margin (a margin would
+   collapse into it), so the identity strip stands 24px (phone) / 32px
+   (desktop) clear of the first section. */
 .home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -24,18 +24,21 @@
   }
 }
 
-/* From 1100px the sections take the left column and the ID card and Your
-   groups a 320px column on the right. The main column spans every row,
-   so the side rows size to the ID card and the groups list alone and
-   the last row (1fr) absorbs the rest of the main column. */
+/* From 1100px the sections take the left column, with Apps under them,
+   and the ID and Your groups a 320px column on the right. The main
+   column spans the first three rows, so the side rows size to the ID and
+   the groups list alone and the third row (1fr) absorbs the rest of the
+   main column. Both side blocks are plain sections, so their headers
+   line up with "Your records". */
 @media (min-width: 1100px) {
   .home__layout {
     grid-template-columns: minmax(0, 1fr) 320px;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
       "main id"
       "main groups"
-      "main .";
+      "main ."
+      "apps .";
     row-gap: 48px;
     column-gap: 64px;
     align-items: start;
@@ -52,11 +55,41 @@
   .home__groups {
     grid-area: groups;
   }
+
+  .home__apps {
+    grid-area: apps;
+  }
 }
 
 .home__id,
-.home__groups {
+.home__groups,
+.home__apps {
   min-width: 0;
+}
+
+/* The ID's two values between hairlines, like the rows beside it. Side
+   by side while the section spans the one column (800-1099px). */
+.home-id {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 800px) and (max-width: 1099px) {
+  .home-id {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+}
+
+.home-id__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .home__main {
@@ -154,6 +187,23 @@
   }
 }
 
+/* A group row: the link to the group's profile, then its Switch
+   button. */
+.home-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-group__link {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-group > :last-child {
+  flex-shrink: 0;
+}
+
 /* Shared "by {group}" provenance byline (src/components/ui/owner-byline.tsx).
    Defined here because home.css is imported globally; reused by the
    profile Projects tab. Compact single muted line: a 14px group avatar
@@ -182,7 +232,7 @@
 .owner-byline__avatar > div {
   width: 14px;
   height: 14px;
-  font-size: 0.5rem;
+  font-size: var(--text-micro);
 }
 
 .owner-byline__name {
@@ -388,14 +438,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-/* Follow-list error banner: message + inline retry button. */
-.home-feed__error {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
 }
 
 /* ---- Body: record image + headline + description + meta ---- */

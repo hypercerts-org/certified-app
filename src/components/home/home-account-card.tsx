@@ -4,7 +4,6 @@ import { useId } from "react"
 import { Pencil } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
-import Card from "@/components/ui/card"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
@@ -137,10 +136,12 @@ function HomeIdentityHeaderSkeleton() {
 }
 
 /**
- * The ID card: the account's handle and permanent ID (DID), each
+ * The ID section: the account's handle and permanent ID (DID), each
  * click-to-copy, with the note that apps use it to identify the account.
+ * A plain section like Your groups beside it: a section header, then the
+ * two values between hairlines (home.css).
  */
-export function HomeIdCard({
+export function HomeIdSection({
   identity,
   isGroup,
 }: {
@@ -151,10 +152,8 @@ export function HomeIdCard({
   const titleId = useId()
 
   return (
-    <Card
-      as="section"
-      unpadded
-      className="flex flex-col gap-4 p-5"
+    <section
+      className="flex min-w-0 flex-col gap-3"
       aria-labelledby={titleId}
       data-tour="home-account"
     >
@@ -167,11 +166,11 @@ export function HomeIdCard({
             : "Identifies your account in every app."
         }
       />
-      {/* Side by side while the card spans the one column (800-1099px);
-          stacked on phones and in the 320px side column. */}
-      <dl className="m-0 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-6 lg:grid-cols-1">
+      {/* Side by side while the section spans the one column
+          (800-1099px); stacked on phones and in the 320px side column. */}
+      <dl className="home-id">
         {handle || isLoading ? (
-          <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="home-id__item">
             <dt className="text-ui font-medium text-[var(--fg-secondary)]">Handle</dt>
             <dd className="m-0 min-w-0">
               {handle ? (
@@ -182,13 +181,13 @@ export function HomeIdCard({
             </dd>
           </div>
         ) : null}
-        <div className="flex min-w-0 flex-col gap-1.5">
+        <div className="home-id__item">
           <dt className="text-ui font-medium text-[var(--fg-secondary)]">Permanent ID</dt>
           <dd className="m-0 min-w-0">
             <CopyPill value={did} label="permanent ID" />
           </dd>
         </div>
       </dl>
-    </Card>
+    </section>
   )
 }

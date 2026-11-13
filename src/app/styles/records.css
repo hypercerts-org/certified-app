@@ -1,9 +1,9 @@
 /* ---------- /records ----------
    The signed-in person's record manager. <PageContainer> frames the page
    (its `.page-container` class lifts the shell's 600px column) and
-   <PageHeader> carries the title and the New menu. Below 1100px the
-   <SideNav> of kinds is a scrolling row of pills above the pane; from
-   1100px it is a sticky column beside it. */
+   <PageHeader> carries the title; each pane's header carries its own
+   create action. Below 1100px the <SideNav> of kinds is a scrolling row
+   of pills above the pane; from 1100px it is a sticky column beside it. */
 
 .records-page__loading {
   display: flex;
@@ -40,6 +40,22 @@
   min-width: 0;
 }
 
+/* Acting as a group: the group's records (and projects) on its profile,
+   then the switch back. */
+.records-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.records-group__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
 /* ---------- Pane ---------- */
 
 .records-pane {
@@ -52,6 +68,12 @@
 /* The section header's description wraps before the action does. */
 .records-pane__head {
   flex-wrap: wrap;
+}
+
+.records-pane__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .records-pane__search {
@@ -68,13 +90,6 @@
   display: flex;
   justify-content: center;
   padding: 8px 0 16px;
-}
-
-.records-tab-count {
-  margin-left: 8px;
-  font-weight: 400;
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .records-pane__tab-body {
@@ -195,9 +210,9 @@
   min-width: 0;
 }
 
-/* 12px apart so the buttons' enlarged touch targets don't overlap. */
-.records-row__actions,
-.records-row__inline-actions {
+/* Edit and the "More actions" menu, 12px apart so the buttons' enlarged
+   touch targets don't overlap. */
+.records-row__actions {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -209,9 +224,8 @@
   transition: opacity var(--transition-fast);
 }
 
-/* The select checkbox: a column the height of the row, so the whole strip
-   is the hit area. With a pointer it shows on hover or focus (and stays
-   while anything is selected); on touch it always shows. */
+/* The select checkbox, always shown so selecting has a visible start: a
+   column the height of the row, so the whole strip is the hit area. */
 .records-row__check {
   display: flex;
   flex-shrink: 0;
@@ -220,20 +234,6 @@
   justify-content: center;
   width: 32px;
   cursor: pointer;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .records-row--activity .records-row__check > * {
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-  }
-
-  .records-row--activity:hover .records-row__check > *,
-  .records-row--activity:focus-within .records-row__check > *,
-  .records-row--activity[data-selected] .records-row__check > *,
-  .records-work[data-selecting] .records-row__check > * {
-    opacity: 1;
-  }
 }
 
 .records-row[data-selected] {
@@ -291,13 +291,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Phones: Edit and Delete move into the row's menu, and the contributors
-   drop under the title so the title keeps its width. */
+/* Phones: the contributors drop under the title so the title keeps its
+   width. */
 @media (max-width: 799px) {
-  .records-row__inline-actions {
-    display: none;
-  }
-
   .records-row--activity {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -439,11 +435,15 @@
 
 /* ---------- Selection bar ----------
    Floats at the bottom of the viewport while anything is selected: sticky
-   inside the pane on desktop, fixed above the bottom tab bar on phones. */
+   inside the pane on desktop, fixed above the bottom tab bar on phones.
+   It comes before the list in the DOM (one Tab stop from the search);
+   `order` moves it to the end of the pane's flex column, where the
+   sticky bottom can hold it.
 
-/* Centred and capped on desktop so it stays clear of the floating
+   Centred and capped on desktop so it stays clear of the floating
    Feedback button in the bottom-right corner. */
 .records-selection {
+  order: 1;
   position: sticky;
   bottom: 16px;
   z-index: var(--z-rail-sticky);
@@ -625,12 +625,6 @@
   gap: 12px;
 }
 
-.records-endorsement__state {
-  font-size: var(--text-ui);
-  font-weight: 500;
-  color: var(--fg-muted);
-}
-
 /* Phones: the state and its button take their own line under the note,
    so the note keeps the row's width. */
 @media (max-width: 799px) {
@@ -638,10 +632,6 @@
     flex-basis: 100%;
     padding: 0 0 4px 44px;
   }
-}
-
-.records-person[data-hidden] .records-person__main {
-  opacity: 0.6;
 }
 
 .records-person__error {

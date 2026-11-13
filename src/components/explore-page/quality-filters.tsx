@@ -121,6 +121,14 @@ export function useQualityFilters() {
         : HYPERLABEL_TIERS.filter((t) => qualityIncluded.has(t)),
     [qualityIncluded, certIncludeUnlabeled],
   )
+  // How many cert checkboxes differ from the default (for "Filters · N").
+  const qualityChangedCount = useMemo(() => {
+    let n = qualityIncluded.has(UNLABELED_SLUG) ? 0 : 1
+    for (const t of HYPERLABEL_TIERS) {
+      if (qualityIncluded.has(t) === DEFAULT_HIDDEN_CERT_LABELS.includes(t)) n++
+    }
+    return n
+  }, [qualityIncluded])
   const qualityIsDefault = useMemo(() => {
     const expectedSize =
       HYPERLABEL_TIERS.length - DEFAULT_HIDDEN_CERT_LABELS.length + 1
@@ -167,6 +175,13 @@ export function useQualityFilters() {
         : ORG_TIER_SLUGS.filter((slug) => orgQualityIncluded.has(slug)),
     [orgQualityIncluded, orgIncludeUnlabeled],
   )
+  const orgQualityChangedCount = useMemo(() => {
+    let n = orgQualityIncluded.has(UNLABELED_SLUG) ? 0 : 1
+    for (const slug of ORG_TIER_SLUGS) {
+      if (orgQualityIncluded.has(slug) !== DEFAULT_ORG_TIER_SLUGS.includes(slug)) n++
+    }
+    return n
+  }, [orgQualityIncluded])
   const orgQualityIsDefault = useMemo(() => {
     if (orgQualityIncluded.size !== DEFAULT_ORG_TIER_SLUGS.length + 1) return false
     if (!orgQualityIncluded.has(UNLABELED_SLUG)) return false
@@ -240,6 +255,8 @@ export function useQualityFilters() {
     includeOrgLabels,
     qualityIsDefault,
     orgQualityIsDefault,
+    qualityChangedCount,
+    orgQualityChangedCount,
     onQualityToggle,
     onOrgQualityToggle,
     onResetQuality,
@@ -253,7 +270,8 @@ export type QualityFilters = ReturnType<typeof useQualityFilters>
  * adds the Activity-quality (cert) section above Account quality — true
  * on the certs single-kind view and on the All view (which includes
  * activities); false on accounts/projects single-kind views, where only
- * the author-org tier applies.
+ * the author-org tier applies. The trigger reads "Filters", and
+ * "Filters · N" once N checkboxes differ from the defaults, like /feed.
  */
 export function QualityFilterPopover({
   q,
@@ -266,22 +284,22 @@ export function QualityFilterPopover({
   open: boolean
   onOpenChange: (v: boolean) => void
 }) {
-  const filtered =
-    (showCertSection && !q.qualityIsDefault) || !q.orgQualityIsDefault
+  const changed = (showCertSection ? q.qualityChangedCount : 0) + q.orgQualityChangedCount
   const certHeadingId = useId()
   const orgHeadingId = useId()
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger>
         <Button
-          size="icon"
           variant="secondary"
-          pressed={filtered}
-          tooltip="Filter by quality"
-          className="explore__action-btn"
-          aria-label={`Filter by quality${filtered ? " (filtered)" : ""}`}
+          size="md"
+          className="explore__filters-btn"
+          aria-label={changed > 0 ? `Filters, ${changed} changed` : "Filters"}
         >
           <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
+          <span className="tabular-nums">
+            {changed > 0 ? `Filters · ${changed}` : "Filters"}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" role="group" aria-label="Quality filter">

@@ -518,7 +518,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
 
 .feed-card__author-name {
   /* Standard text, bold (primary line). */
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
   white-space: nowrap;
@@ -870,7 +870,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
 }
 
 .endorsement-panel__title {
-  font-size: 0.9375rem;
+  font-size: var(--text-section);
   font-weight: 600;
   color: var(--fg-primary);
 }
@@ -1460,12 +1460,12 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
 }
 
 /* ---------- /feed page ----------
-   A <PageContainer width="wide"> (`.feed-page`): the page header, then
-   the layout. Below 1100px one column, the header and the list together
-   capped at the 600px reading column; the filters open from the header's
-   Filters button. From 1100px three columns: filters | feed | news, the
-   feed capped at 600px in the middle and the filters box sticky under
-   the top bar. */
+   A <PageContainer> (`.feed-page`, the default 1120px like the other
+   destinations): the page header, then the layout. Below 1100px one
+   column, the header and the list together capped at the 600px reading
+   column; the filters open from the header's Filters button. From 1100px
+   three columns inside the 1120px: filters 216 | feed up to 600 | news
+   256, 24px apart, the filters box sticky below the fixed chrome. */
 
 /* Below 1100px the whole page (header included) is the 600px reading
    column, so the title lines up with the list. Two classes to win over
@@ -1489,7 +1489,7 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
   .feed-layout {
     display: grid;
     grid-template-areas: "filters main news";
-    grid-template-columns: 220px minmax(0, 1fr) 260px;
+    grid-template-columns: 216px minmax(0, 1fr) 256px;
     align-items: start;
     gap: 24px;
   }
@@ -1505,8 +1505,8 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
     grid-area: filters;
     display: block;
     position: sticky;
-    top: calc(var(--top-bar-total) + 24px);
-    max-height: calc(100vh - var(--top-bar-total) - 48px);
+    top: calc(var(--chrome-top, var(--navbar-height)) + 24px);
+    max-height: calc(100vh - var(--chrome-top, var(--navbar-height)) - 48px);
     overflow-y: auto;
     scrollbar-width: thin;
   }
@@ -1515,13 +1515,6 @@ dialog.feed-filter-dialog .feed-filter-dialog__footer {
     grid-area: news;
     display: block;
     min-width: 0;
-  }
-}
-
-@media (min-width: 1300px) {
-  .feed-layout {
-    grid-template-columns: 240px minmax(0, 1fr) 300px;
-    gap: 32px;
   }
 }
 

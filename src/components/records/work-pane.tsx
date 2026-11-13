@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronRight,
-  Eye,
+  ExternalLink,
   Folder,
   FolderGit2,
   FolderPlus,
@@ -43,6 +43,7 @@ import ProjectPickerDialog, {
 } from "@/components/records/project-picker-dialog"
 import {
   PaneHead,
+  RowMenu,
   RowsSkeleton,
   SearchField,
   count,
@@ -123,12 +124,15 @@ function useDeleteFlow<T extends { uri: string }>(
  * activity can sit in several projects, so it shows in each of their
  * folders, with chips naming the others.
  *
- * Own activities can be selected (a checkbox per row). The selection bar
- * offers "Add to project…", a picker that ticks and unticks projects and
- * can start a new project from the selection. Each folder has "Add
- * activities", and each row "Remove from project". Every change writes
- * each touched project once (`updateOwnProjectItems`, personal repo only)
- * and confirms with a toast that can undo it.
+ * Own activities can be selected (a checkbox per row, always shown). The
+ * selection bar offers "Add to project…", a picker that ticks and unticks
+ * projects and can start a new project from the selection. Each folder
+ * has "Add activities", and each row "Remove from project". Every change
+ * writes each touched project once (`updateOwnProjectItems`, personal
+ * repo only) and confirms with a toast that can undo it.
+ *
+ * The pane's header carries the page's create actions: New activity (the
+ * page's one primary button) and New project.
  */
 export default function WorkPane({
   did,
@@ -137,6 +141,7 @@ export default function WorkPane({
   written,
   onDeleted,
   onProjectWritten,
+  onRetry,
 }: {
   did: string
   /** Handle (preferred) or DID for record URLs. */
@@ -147,6 +152,8 @@ export default function WorkPane({
   written: ReadonlyMap<string, CollectionRecord>
   onDeleted: (uri: string) => void
   onProjectWritten: (record: CollectionRecord) => void
+  /** Load both lists again (the page remounts the pane). */
+  onRetry: () => void
 }) {
   const titleId = useId()
   const router = useRouter()
@@ -435,19 +442,57 @@ export default function WorkPane({
         titleId={titleId}
         title="Projects and activities"
         description="Each project is a folder of its activities. One activity can sit in several projects."
+        action={
+          // Hidden while loading and when there is nothing yet: the empty
+          // state below carries its own "New activity".
+          !isLoading && !nothingYet ? (
+            <div className="records-pane__actions">
+              <Button href="/create" variant="primary" size="sm">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New activity
+              </Button>
+              <Button href="/project/new" variant="secondary" size="sm">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New project
+              </Button>
+            </div>
+          ) : null
+        }
       />
       {!isLoading && !nothingYet ? (
         <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
       ) : null}
 
+      {/* Announces the selection count; the bar itself mounts and unmounts. */}
+      <p className="sr-only" aria-live="polite">
+        {hasSelection ? `${count(selectedLive.length, "activity", "activities")} selected` : ""}
+      </p>
+      {/* Before the list in the DOM, so "Add to project…" is the next Tab
+          stop after the search rather than after every row; CSS still
+          shows it at the bottom of the pane (records.css). */}
+      {hasSelection ? (
+        <div className="records-selection" role="region" aria-label="Selected activities">
+          <span className="records-selection__count">{selectedLive.length} selected</span>
+          <div className="records-selection__actions">
+            <Button variant="primary" size="sm" onClick={() => openPicker(selectedLive)}>
+              <FolderPlus size={16} strokeWidth={1.75} aria-hidden />
+              Add to project…
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <RowsSkeleton rows={5} />
       ) : (projectsError || own.error) && nothingYet ? (
-        <EmptyState
-          variant="inline"
-          title="Couldn't load your projects and activities."
-          description="Try again in a moment."
-        />
+        <EmptyState variant="inline" title="Couldn't load your projects and activities.">
+          <Button variant="ghost" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </EmptyState>
       ) : nothingYet ? (
         <EmptyState
           icon={FolderGit2}
@@ -457,14 +502,14 @@ export default function WorkPane({
         >
           <Button href="/create" variant="secondary" size="sm">
             <Plus size={16} strokeWidth={1.75} aria-hidden />
-            Create an activity
+            New activity
           </Button>
         </EmptyState>
       ) : q && shownProjects.length === 0 && shownLoose.length === 0 ? (
         <EmptyState variant="inline" title={`Nothing matches "${query.trim()}".`}>
-          <button type="button" className="records-link" onClick={() => setQuery("")}>
+          <Button variant="ghost" size="sm" onClick={() => setQuery("")}>
             Clear search
-          </button>
+          </Button>
         </EmptyState>
       ) : (
         <ul className="records-folders">
@@ -520,25 +565,6 @@ export default function WorkPane({
         </p>
       ) : null}
 
-      {/* Announces the selection count; the bar itself mounts and unmounts. */}
-      <p className="sr-only" aria-live="polite">
-        {hasSelection ? `${count(selectedLive.length, "activity", "activities")} selected` : ""}
-      </p>
-      {hasSelection ? (
-        <div className="records-selection" role="region" aria-label="Selected activities">
-          <span className="records-selection__count">{selectedLive.length} selected</span>
-          <div className="records-selection__actions">
-            <Button variant="primary" size="sm" onClick={() => openPicker(selectedLive)}>
-              <FolderPlus size={16} strokeWidth={1.75} aria-hidden />
-              Add to project…
-            </Button>
-            <Button variant="ghost" size="sm" onClick={clearSelection}>
-              Clear
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       {picking ? (
         <ProjectPickerDialog
           activities={picking}
@@ -583,7 +609,9 @@ export default function WorkPane({
 }
 
 /** The folder head: a disclosure button (chevron, thumbnail, name, count)
- *  plus optional actions on the right. */
+ *  that opens and closes the folder, plus optional actions on the right
+ *  (a project's Edit, and a menu with Open project, Add activities… and
+ *  Delete). */
 function FolderHead({
   bodyId,
   isOpen,
@@ -669,21 +697,32 @@ function ProjectFolder({
         meta={`Project · ${count(n, "activity", "activities")}`}
         actions={
           <>
-            <Button href={href} variant="ghost" size="icon-sm" aria-label={`Open ${title}`} tooltip="Open">
-              <Eye size={16} strokeWidth={1.75} aria-hidden />
-            </Button>
             <Button href={`${href}/edit`} variant="ghost" size="icon-sm" aria-label={`Edit ${title}`} tooltip="Edit">
               <Pencil size={16} strokeWidth={1.75} aria-hidden />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Delete ${title}`}
-              tooltip="Delete"
-              onClick={() => onDeleteProject(project)}
-            >
-              <Trash2 size={16} strokeWidth={1.75} aria-hidden />
-            </Button>
+            <RowMenu
+              label={`More actions for ${title}`}
+              title={title}
+              entries={[
+                { kind: "link", key: "open", label: "Open project", href, icon: ExternalLink },
+                {
+                  kind: "action",
+                  key: "add",
+                  label: "Add activities…",
+                  icon: Plus,
+                  onSelect: onAddActivities,
+                },
+                { kind: "separator", key: "sep" },
+                {
+                  kind: "action",
+                  key: "delete",
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  onSelect: () => onDeleteProject(project),
+                },
+              ]}
+            />
           </>
         }
       />
@@ -697,7 +736,12 @@ function ProjectFolder({
             renderRow={renderRow}
           />
           <div className="records-folder__foot">
-            <Button variant="ghost" size="sm" onClick={onAddActivities}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onAddActivities}
+              aria-label={`Add activities to ${title}`}
+            >
               <Plus size={16} strokeWidth={1.75} aria-hidden />
               Add activities
             </Button>

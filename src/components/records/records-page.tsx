@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FolderGit2, Library, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
+import { FolderGit2, FolderOpen, ListChecks, ThumbsUp, UserCheck, Users } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SideNav, { type SideNavIcon } from "@/components/ui/side-nav"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import { SeeAllLink } from "@/components/ui/section-header"
 import { useSwitchActor } from "@/lib/groups/use-switch-actor"
+import { ownProfileUrl } from "@/lib/urls"
 import WorkPane from "@/components/records/work-pane"
-import RecordsNewMenu from "@/components/records/records-new-menu"
 import {
   EndorsementsPane,
   FollowersPane,
@@ -54,8 +55,12 @@ const DESCRIPTION = "Everything your account holds. Create, change and organise 
  * of pills below) picks the pane via `?kind=`.
  *
  * Personal account only: the page writes to the session DID's repo. While
- * acting as a group the page stays in the navigation and explains that
- * records are managed on the personal account, with a button to switch.
+ * acting as a group the page stays in the navigation, points to the
+ * group's records on its profile and offers to switch back.
+ *
+ * The page header has no action: each pane's header carries its own
+ * (New activity and New project, New list, Endorse someone, Find
+ * accounts), and the top bar's New is the global one.
  */
 export default function RecordsPage() {
   usePageTitle(TITLE)
@@ -66,6 +71,9 @@ export default function RecordsPage() {
   const { handle } = useSession()
   const { activeOrg } = useOrg()
   const switchActor = useSwitchActor()
+  // Bumped by the projects-and-activities pane's "Try again": remounts it
+  // so both of its loads run again.
+  const [workAttempt, setWorkAttempt] = useState(0)
 
   const { counts, isLoading: countsLoading } = useActorWorkspaceCounts(did ?? null)
   const following = useFollowing(did ?? null)
@@ -100,21 +108,32 @@ export default function RecordsPage() {
     )
   }
 
-  // Acting as a group: Records stays in the navigation, and the page says
-  // where records live instead of redirecting.
+  // Acting as a group: Records stays in the navigation. The group's
+  // records live on its profile (the same target as Home's "All
+  // records"), so that comes first; switching back is the way to manage
+  // your own.
   if (activeOrg) {
+    const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
     return (
       <PageContainer className="records-page">
         <PageHeader title={TITLE} description={DESCRIPTION} />
         <EmptyState
-          icon={Library}
+          icon={FolderOpen}
           headingLevel={2}
-          title="Records are managed on your personal account"
-          description="Switch to your personal account to see and edit your projects, activities, endorsements, follows and lists."
+          title="This group's records are on its profile"
+          description="To manage your own records, switch to your personal account."
         >
-          <Button variant="primary" onClick={() => switchActor(null)}>
-            Switch to personal account
-          </Button>
+          <div className="records-group">
+            <div className="records-group__actions">
+              <Button variant="primary" href={`${groupProfile}?tab=activities`}>
+                Open activities
+              </Button>
+              <Button variant="secondary" onClick={() => switchActor(null)}>
+                Switch to personal account
+              </Button>
+            </div>
+            <SeeAllLink href={`${groupProfile}?tab=projects`} label="Open projects" />
+          </div>
         </EmptyState>
       </PageContainer>
     )
@@ -135,15 +154,7 @@ export default function RecordsPage() {
 
   return (
     <PageContainer className="records-page">
-      <PageHeader
-        title={TITLE}
-        description={DESCRIPTION}
-        actions={
-          <RecordsNewMenu
-            first={kind === "lists" ? "list" : "activity"}
-          />
-        }
-      />
+      <PageHeader title={TITLE} description={DESCRIPTION} />
       <div className="records__layout">
         <SideNav
           aria-label="Kinds of records"
@@ -160,12 +171,14 @@ export default function RecordsPage() {
         <div className="records__main">
           {kind === "activities" ? (
             <WorkPane
+              key={workAttempt}
               did={did}
               actor={actor}
               removed={removed}
               written={written}
               onDeleted={markRemoved}
               onProjectWritten={markWritten}
+              onRetry={() => setWorkAttempt((n) => n + 1)}
             />
           ) : kind === "endorsements" ? (
             <EndorsementsPane did={did} actor={actor} given={given} />

@@ -40,7 +40,7 @@ export default function FeedPage() {
   if (authLoading || !isAuthenticated || !activeDid) {
     // Same frame as the loaded page, so nothing jumps when it arrives.
     return (
-      <PageContainer width="wide" className="feed-page">
+      <PageContainer className="feed-page">
         <FeedPageHeader />
         <div className="feed-layout">
           <div className="feed-layout__main">
@@ -52,7 +52,7 @@ export default function FeedPage() {
   }
 
   return (
-    <PageContainer width="wide" className="feed-page">
+    <PageContainer className="feed-page">
       {/* Keyed on the account so switching account starts a fresh feed
           instead of showing the previous account's items while it loads. */}
       <HomeFeed

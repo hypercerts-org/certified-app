@@ -5,7 +5,6 @@ import Link from "next/link"
 import { FolderGit2, Plus } from "lucide-react"
 import AppTile from "@/components/apps/app-tile"
 import Avatar from "@/components/ui/avatar"
-import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import CertIcon from "@/components/ui/cert-icon"
 import EmptyState from "@/components/ui/empty-state"
@@ -14,6 +13,7 @@ import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import StatRow from "@/components/ui/stat-row"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
+import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
@@ -134,7 +134,8 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: "/records?kind=activities",
         projects: "/records?kind=activities",
         lists: "/records?kind=lists",
-        endorsements: "/records?kind=endorsements",
+        // "From others" is about what was received.
+        endorsements: "/records?kind=endorsements&tab=received",
         followers: "/records?kind=followers",
       }
 }
@@ -407,13 +408,21 @@ export function groupRowLabel(group: Pick<Group, "groupDid" | "handle" | "displa
   return { name: handle ?? "Group", handle: null }
 }
 
+/** "owner" → "Owner". */
+function roleLabel(role: Group["role"]): string {
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
+
 /**
  * The groups the signed-in person belongs to, each with their role, and
- * "New group" in the corner. Personal account only: while acting as a
- * group the list would be the person's, not the group's.
+ * "New group" in the corner. A row opens the group's profile; its Switch
+ * button acts as the group (the same switch as the account menu).
+ * Personal account only: while acting as a group the list would be the
+ * person's, not the group's.
  */
 export function HomeGroups({ profileBase }: { profileBase: string }) {
   const { groups, isLoading } = useOrg()
+  const switchActor = useSwitchActor()
   const preview = groups.slice(0, GROUP_PREVIEW)
 
   return (
@@ -436,10 +445,10 @@ export function HomeGroups({ profileBase }: { profileBase: string }) {
           {preview.map((g) => {
             const { name, handle } = groupRowLabel(g)
             return (
-              <li key={g.groupDid}>
+              <li key={g.groupDid} className="home-group">
                 <Link
                   href={`/groups/${encodeURIComponent(g.groupDid)}`}
-                  className="home-row"
+                  className="home-row home-group__link"
                 >
                   <Avatar
                     size="sm"
@@ -453,10 +462,25 @@ export function HomeGroups({ profileBase }: { profileBase: string }) {
                     <span className="home-row__title" dir="auto">
                       {name}
                     </span>
-                    {handle ? <span className="home-row__meta">{handle}</span> : null}
+                    <span className="home-row__meta">
+                      {roleLabel(g.role)}
+                      {handle ? (
+                        <>
+                          <span aria-hidden> · </span>
+                          {handle}
+                        </>
+                      ) : null}
+                    </span>
                   </span>
-                  <Badge variant="role">{g.role}</Badge>
                 </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => switchActor(g)}
+                  aria-label={`Switch to ${name}`}
+                >
+                  Switch
+                </Button>
               </li>
             )
           })}

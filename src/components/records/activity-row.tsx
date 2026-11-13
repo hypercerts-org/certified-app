@@ -132,11 +132,10 @@ export interface ActivityRowProps {
 
 /**
  * One activity row. Left to right: a select checkbox (own activities;
- * shown on hover or focus with a pointer, always on touch), the thumbnail
- * and title over its dates (both open the activity), chips for the other
- * projects it sits in, contributor avatars, then Edit and Delete with a
- * "More actions" menu (Open, Edit, Contributors…, Add to project…, Remove
- * from project, Delete). On phones only the menu stays on the row.
+ * always shown), the thumbnail and title over its dates (both open the
+ * activity), chips for the other projects it sits in, contributor
+ * avatars, then Edit and a "More actions" menu (Open, Contributors…, Add
+ * to project…, Remove from project, Delete), at every width.
  *
  * An activity another account published can sit in your project: it
  * reads "By @handle", can't be selected, and offers Open and Remove from
@@ -181,7 +180,6 @@ export default function ActivityRow({
   const entries: RowMenuEntry[] = isOwn
     ? [
         { kind: "link", key: "open", label: "Open", href, icon: ExternalLink },
-        { kind: "link", key: "edit", label: "Edit", href: `${href}/edit`, icon: Pencil },
         {
           kind: "link",
           key: "contributors",
@@ -243,26 +241,15 @@ export default function ActivityRow({
       <ContributorStack contributors={record.value.contributors} />
       <div className="records-row__actions">
         {isOwn ? (
-          <span className="records-row__inline-actions">
-            <Button
-              href={`${href}/edit`}
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Edit ${title}`}
-              tooltip="Edit"
-            >
-              <Pencil size={16} strokeWidth={1.75} aria-hidden />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Delete ${title}`}
-              tooltip="Delete"
-              onClick={() => onDelete(record)}
-            >
-              <Trash2 size={16} strokeWidth={1.75} aria-hidden />
-            </Button>
-          </span>
+          <Button
+            href={`${href}/edit`}
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Edit ${title}`}
+            tooltip="Edit"
+          >
+            <Pencil size={16} strokeWidth={1.75} aria-hidden />
+          </Button>
         ) : null}
         <RowMenu label={`More actions for ${title}`} title={title} entries={entries} />
       </div>
