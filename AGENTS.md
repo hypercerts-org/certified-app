@@ -1028,6 +1028,7 @@ certified-app/
 20. **Group follow writes via the personal XRPC proxy** — `createFollow(ownDid, subjectDid)` without `targetDid` writes to the PERSONAL repo, even when acting-as-group. Pass `{ targetDid: groupDid }` to route through `/api/groups/[did]/follow`.
 21. **Hiding rejected endorsements from non-owners** — `useReceivedEndorsements` default keeps the privacy contract (foreign viewers never see rejected). Only pass `{ includeRejected: true }` on owner-side surfaces, and filter client-side from there.
 22. **Static segments under dynamic routes** — `/project/new` lives at `src/app/project/new/page.tsx` alongside `[did]/[rkey]`. Static wins (and `[did]/[rkey]` is two segments so `/project/new` wouldn't match it anyway), but if you change the dynamic pattern to single-segment make sure `new` still wins.
+23. **`backdrop-filter` order** — write `-webkit-backdrop-filter` first and `backdrop-filter` last. The production CSS minifier keeps only the last of the pair, and Chrome ignores the prefixed one, so unprefixed-first silently loses the blur in production (it did on `.form-action-bar`).
 
 ## 23. Adding a New Feature — Checklist
 

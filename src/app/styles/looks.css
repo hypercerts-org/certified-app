@@ -1011,6 +1011,10 @@ html[data-look="banknote"] [data-centerpiece="endorsement"]:not([data-look-previ
   color: var(--fg-primary);
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-hover);
+  /* A signature line under the words, not a row divider. */
+  justify-self: start;
+  align-self: start;
+  width: fit-content;
 }
 
 /* A countersignature: the endorser's name set like a signature. */
