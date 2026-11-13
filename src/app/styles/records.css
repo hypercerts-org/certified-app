@@ -198,6 +198,10 @@
   padding: 12px 4px;
 }
 
+/* The row's link. Hover is the one whole-row tint (.hover-tint
+   .hover-tint--bleed, components.css): the bleed's -8px margin plus this
+   12px inline padding keep the content at the list's 4px inset while
+   the tint reaches 8px past it. */
 .records-row__main {
   display: flex;
   flex: 1;
@@ -205,16 +209,9 @@
   gap: 12px;
   min-width: 0;
   min-height: 44px;
-  padding: 12px 4px;
+  padding: 12px;
   color: inherit;
   text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .records-row__main:hover .records-row__title {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
 }
 
 .records-row__thumb {
@@ -454,6 +451,8 @@
   gap: 8px;
 }
 
+/* The folder's disclosure, a whole-row control: the one hover tint, with
+   the bleed (see .records-row__main for the 12px). */
 .records-folder__toggle {
   display: flex;
   flex: 1;
@@ -461,27 +460,20 @@
   gap: 12px;
   min-width: 0;
   min-height: 44px;
-  padding: 12px 4px;
+  padding: 12px;
   border: 0;
   border-radius: var(--radius);
-  background: none;
+  background-color: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
 }
 
 /* Inset ring: the folder list has no side padding to hold an outer one. */
 .records-folder__toggle:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .records-folder__toggle:hover {
-    background-color: var(--overlay-weak);
-  }
 }
 
 .records-folder__chevron {
@@ -719,6 +711,9 @@
   flex-wrap: wrap;
 }
 
+/* The row's link (avatar, name, handle, note). Hover is the one
+   whole-row tint (.hover-tint .hover-tint--bleed, components.css); it
+   has no inline padding of its own, so the bleed keeps the text put. */
 .records-person__main {
   display: flex;
   flex: 1;
@@ -756,13 +751,6 @@
   font-size: var(--text-ui);
   line-height: 1.45;
   color: var(--fg-muted);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .records-person__main:hover .records-person__name {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
 }
 
 .records-person__note {

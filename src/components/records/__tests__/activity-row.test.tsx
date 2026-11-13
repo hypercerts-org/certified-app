@@ -64,6 +64,15 @@ describe("ActivityRow controls (PA2, PA3)", () => {
     expect(edit).toHaveClass("records-reveal")
   })
 
+  it("gives the row's link the one whole-row hover tint", () => {
+    renderRow()
+    expect(screen.getByRole("link", { name: /^River survey/ })).toHaveClass(
+      "records-row__main",
+      "hover-tint",
+      "hover-tint--bleed",
+    )
+  })
+
   it("lists Edit in the More actions menu on desktop too", () => {
     renderRow()
     fireEvent.click(screen.getByRole("button", { name: "More actions for River survey" }))
@@ -85,6 +94,10 @@ describe("records.css reveal rule", () => {
     // Never display:none or visibility:hidden, which would drop them from
     // the Tab order.
     expect(hoverBlock.slice(0, hoverBlock.indexOf("\n}\n"))).not.toMatch(/display: none|visibility: hidden/)
+  })
+
+  it("leaves row hover to the tint: no title underline on hover", () => {
+    expect(css).not.toMatch(/:hover \.records-(row__title|person__name)/)
   })
 
   it("brings them back on hover, keyboard focus and while selecting", () => {

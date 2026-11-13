@@ -425,7 +425,7 @@ function ListsBody({
         <li key={list.uri}>
           <button
             type="button"
-            className="endorsement-lists__row"
+            className="endorsement-lists__row hover-tint hover-tint--bleed"
             onClick={() => onOpen(list.uri)}
           >
             <div className="endorsement-lists__row-main">
@@ -634,7 +634,7 @@ function ListItemRow({ subjectDid, createdAt, note, revoke }: ListItemRowProps) 
   )
 
   return (
-    <li className="endorsement-lists__item">
+    <li className="endorsement-lists__item hover-tint">
       <EndorsementSubjectRow
         did={subjectDid}
         info={info}

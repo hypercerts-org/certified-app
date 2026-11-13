@@ -81,6 +81,7 @@ describe("Workspace → Groups rows", () => {
     render(<GroupRows groups={GROUPS} size="md" />)
     const row = screen.getAllByRole("listitem")[0]
     expect(row).toHaveClass("records-person")
+    expect(within(row).getByRole("link")).toHaveClass("hover-tint", "hover-tint--bleed")
     const avatar = row.querySelector(".h-10.w-10")
     expect(avatar).not.toBeNull()
     expect(within(row).getByText("Estuary Alliance")).toHaveClass("records-person__name")

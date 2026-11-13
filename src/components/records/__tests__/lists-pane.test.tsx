@@ -122,7 +122,7 @@ describe("Lists (X11, LI1, LI2)", () => {
     const tabbar = container.querySelector(".records-pane__tabbar") as HTMLElement
     const panel = screen.getByRole("tabpanel")
     expect(within(panel).queryByRole("button", { name: "New activity list" })).toBeNull()
-    expect(within(panel).getByRole("button", { name: /Field work/ })).toBeInTheDocument()
+    expect(within(panel).getByRole("button", { name: /Field work/ })).toHaveClass("hover-tint", "hover-tint--bleed")
     fireEvent.click(within(tabbar).getByRole("button", { name: "New activity list" }))
     expect(screen.getByRole("dialog", { hidden: true, name: "Create activities list" })).toBeInTheDocument()
   })

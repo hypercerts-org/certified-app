@@ -58,6 +58,7 @@ describe("Followers rows (FO1)", () => {
         />
       </WorkspaceShell>,
     )
+    expect(screen.getByRole("link", { name: /kris/ })).toHaveClass("hover-tint", "hover-tint--bleed")
     const following = screen.getByRole("button", { name: "Following kris" })
     const follow = screen.getByRole("button", { name: "Follow holke" })
     for (const button of [following, follow]) {

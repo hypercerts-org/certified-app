@@ -37,25 +37,23 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* A whole-row button. Hover is the one whole-row tint (.hover-tint
+   .hover-tint--bleed, components.css): the bleed's -8px margin, so the
+   row is 16px wider than the list, and 12px inline padding put the text
+   at the 4px inset the Workspace's other rows use. */
 .profile-lists__row {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
+  width: calc(100% + 16px);
   min-height: var(--control-h-md);
-  padding: 12px 0;
+  padding: 12px;
   border: 0;
-  background: transparent;
+  background-color: transparent;
   color: var(--fg-primary);
   font: inherit;
   text-align: left;
   cursor: pointer;
-}
-
-/* A full-width button: with the hover tint's 8px bleed it must also grow
-   by the bleed on both sides, or it would only shift left. */
-.profile-lists__row.hover-tint--bleed {
-  width: calc(100% + 16px);
 }
 
 .profile-lists__row:focus-visible {

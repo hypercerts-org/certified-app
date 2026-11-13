@@ -486,7 +486,7 @@ export function GroupRows({
           const { name, handle } = groupRowLabel(g)
           return (
             <li key={g.groupDid} className="records-person">
-              <Link href={groupProfileHref(g)} className="records-person__main">
+              <Link href={groupProfileHref(g)} className="records-person__main hover-tint hover-tint--bleed">
                 <Avatar
                   size="row"
                   shape="square"

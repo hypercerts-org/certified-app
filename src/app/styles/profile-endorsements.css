@@ -118,16 +118,20 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* A whole-row button. Hover is the one whole-row tint (.hover-tint
+   .hover-tint--bleed, components.css): the bleed's -8px margin, so the
+   row is 16px wider than the list, and 12px inline padding keep the text
+   at the endorsement rows' 4px inset. */
 .endorsement-lists__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: 100%;
+  width: calc(100% + 16px);
   min-height: 44px;
-  padding: 12px 4px;
+  padding: 12px;
   border: 0;
-  background: none;
+  background-color: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -138,13 +142,6 @@
 .endorsement-lists__row:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .endorsement-lists__row:hover .endorsement-lists__row-title {
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
 }
 
 .endorsement-lists__row-main {
@@ -229,17 +226,21 @@
   gap: 8px;
 }
 
+/* A bordered card that is one link (plus its owner's "×"): the one hover
+   tint (.hover-tint, components.css) and the hover border. */
 .endorsement-lists__item {
   /* Positioning context for the absolute `×` remove button. */
   position: relative;
-  background: var(--bg-elevated);
+  background-color: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
   transition: border-color var(--transition-fast);
 }
 
-.endorsement-lists__item:hover {
-  border-color: var(--border-hover);
+@media (hover: hover) and (pointer: fine) {
+  .endorsement-lists__item:hover {
+    border-color: var(--border-hover);
+  }
 }
 
 .endorsement-lists__item-link {

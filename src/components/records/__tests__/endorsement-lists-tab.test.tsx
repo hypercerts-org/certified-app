@@ -92,7 +92,7 @@ describe("Endorsements → Endorsement lists (EN4)", () => {
     lists.value = [LIST]
     renderPane()
     const row = screen.getByRole("button", { name: /Partners/ })
-    expect(row).toHaveClass("endorsement-lists__row")
+    expect(row).toHaveClass("endorsement-lists__row", "hover-tint", "hover-tint--bleed")
     expect(row.closest(".endorsement-lists__rows")).not.toBeNull()
   })
 

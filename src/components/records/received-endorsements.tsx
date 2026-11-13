@@ -28,7 +28,7 @@ export function isHiddenEndorsement(endorsement: ReceivedEndorsement, ownStates:
 /** The people row (Followers' size): 40px avatar, the name in `body`,
  *  the handle in `ui`. Shared by Received and Given. */
 export const ENDORSEMENT_ROW_CLASSES: EndorsementSubjectRowClasses = {
-  main: "records-person__main",
+  main: "records-person__main hover-tint hover-tint--bleed",
   meta: "records-person__text",
   name: "records-person__name",
   handle: "records-person__handle",

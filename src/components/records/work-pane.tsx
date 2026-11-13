@@ -717,7 +717,7 @@ function FolderHead({
     <div className="records-folder__head">
       <button
         type="button"
-        className="records-folder__toggle"
+        className="records-folder__toggle hover-tint hover-tint--bleed"
         aria-expanded={isOpen}
         aria-controls={bodyId}
         onClick={onToggle}

@@ -207,16 +207,20 @@ function PersonRow({
 }) {
   const { info, isLoading } = useAuthorInfo(did)
   const name = info?.displayName || (info?.handle ? `@${info.handle}` : did)
+  const loading = isLoading && !info
   return (
     <li className="records-person">
       <div className="records-person__identity">
+        {/* The row's link (avatar and name) takes the one hover tint,
+            bleeding 8px past its text. */}
         <IdentityRow
           did={did}
           handle={info?.handle ?? undefined}
           displayName={info?.displayName ?? undefined}
           avatarUrl={info?.avatarUrl ?? undefined}
           href={profileUrl(info?.handle || did)}
-          loading={isLoading && !info}
+          loading={loading}
+          className={loading ? undefined : "hover-tint hover-tint--bleed"}
         />
       </div>
       {since ? (

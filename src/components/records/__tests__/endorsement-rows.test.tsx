@@ -95,6 +95,7 @@ describe("Received rows (EN1, X3)", () => {
     const rows = screen.getAllByRole("listitem")
     const hiddenRow = rows[1]
     const link = within(hiddenRow).getByRole("link", { name: /Ben Okafor/ })
+    expect(link).toHaveClass("hover-tint", "hover-tint--bleed")
     const tag = within(link).getByText("Hidden")
     const date = hiddenRow.querySelector("time")!
     expect(tag.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

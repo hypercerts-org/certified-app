@@ -280,7 +280,7 @@ export default function ActivityRow({
       ) : (
         <span className="records-row__check" aria-hidden />
       )}
-      <Link href={href} className="records-row__main">
+      <Link href={href} className="records-row__main hover-tint hover-tint--bleed">
         <RowThumb
           className="records-row__thumb"
           src={record.value.image ? resolveActivityImageUrl(record.value.image, ownerDid) : null}
