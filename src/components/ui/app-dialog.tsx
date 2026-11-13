@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useCallback, type RefObject, type ReactNode, type MouseEvent } from "react"
+import { useEffect, useRef, useState, useCallback, type RefObject, type ReactNode, type MouseEvent } from "react"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
 
@@ -70,6 +70,11 @@ export interface AppDialogProps {
   /** Optional element to focus on open instead of the first focusable
    *  child. Only consulted when `autoFocusFirst` is true. */
   initialFocusRef?: RefObject<HTMLElement | null>
+  /** Where focus goes when the dialog closes. Defaults to the element that
+   *  had focus when the dialog opened. Pass it when that element won't
+   *  survive the open — e.g. a menu item that opened the dialog and
+   *  unmounted with its menu: hand over the menu's trigger instead. */
+  returnFocusRef?: RefObject<HTMLElement | null>
   children: ReactNode
 }
 
@@ -219,9 +224,22 @@ export default function AppDialog({
   contentRef,
   autoFocusFirst = false,
   initialFocusRef,
+  returnFocusRef,
   children,
 }: AppDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  // The element that had focus when the dialog opened, read during the
+  // first render. That is earlier than any effect: a child with React's
+  // `autoFocus` grabs focus during commit, before the mount effect below
+  // runs, so reading `document.activeElement` there recorded the dialog's
+  // own input and focus fell to <body> on close.
+  const [opener] = useState<HTMLElement | null>(() =>
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  )
+  const openerRef = useRef(opener)
+  const returnFocusRef_ = useRef(returnFocusRef)
   // Stash the latest onClose in a ref so the mount effect's listener
   // always calls the current value WITHOUT having to re-run (which
   // would re-call `showModal()` on an already-open dialog and throw
@@ -238,19 +256,21 @@ export default function AppDialog({
     onCloseRef.current = onClose
     autoFocusFirstRef.current = autoFocusFirst
     initialFocusRef_.current = initialFocusRef
+    returnFocusRef_.current = returnFocusRef
   })
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
-    // Save the previously-focused element so we can restore focus
-    // when the dialog closes. A11y: keyboard users should land back
-    // on the trigger that opened the modal, not on `<body>`.
-    const previouslyFocused =
-      typeof document !== "undefined" &&
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
+    // Where focus returns on close (a11y: keyboard users land back on
+    // what opened the modal, not on `<body>`). Candidates, best first: the
+    // caller's `returnFocusRef`, the element focused at first render, and
+    // whatever has focus now (e.g. a menu trigger that took focus back
+    // when the menu item that opened us unmounted). Each must still be in
+    // the document and outside the dialog.
+    const focusedNow =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const openedFrom = openerRef.current
     // Defence-in-depth: the original InvalidStateError was caused by
     // `showModal()` being called on an already-open dialog (effect
     // re-running because `onClose` was in deps). The ref pattern
@@ -332,13 +352,19 @@ export default function AppDialog({
     return () => {
       dialog.removeEventListener("close", handleClose)
       dialog.removeEventListener("keydown", handleKeyDown)
-      // Restore focus to whichever element had it before the modal
-      // opened. Guard against the previous element being torn out
-      // of the DOM (e.g. on a route navigation that closes the
-      // dialog as a side effect).
-      if (previouslyFocused && previouslyFocused.isConnected) {
+      // Restore focus. Skip candidates torn out of the DOM (the menu item
+      // that opened us; a route navigation that closed the dialog) or
+      // inside the dialog itself.
+      const usable = (el: HTMLElement | null | undefined): el is HTMLElement =>
+        !!el && el.isConnected && el !== document.body && !dialog.contains(el)
+      const target = [
+        returnFocusRef_.current?.current,
+        openedFrom,
+        focusedNow,
+      ].find(usable)
+      if (target) {
         try {
-          previouslyFocused.focus()
+          target.focus({ preventScroll: true })
         } catch {
           // swallow — focus restoration is best-effort.
         }

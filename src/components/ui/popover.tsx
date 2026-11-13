@@ -80,6 +80,8 @@ interface PopoverContextValue {
   triggerRef: React.RefObject<HTMLElement | null>;
   contentRef: React.RefObject<HTMLDivElement | null>;
   contentId: string;
+  /** Whether focus is currently inside the content (see <Popover>). */
+  focusInsideRef: React.RefObject<boolean>;
 }
 
 const PopoverContext = createContext<PopoverContextValue | null>(null);
@@ -111,6 +113,12 @@ export function Popover({ open: controlledOpen, onOpenChange, children }: Popove
 
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // True while keyboard focus is inside the open content. When the menu
+  // closes with focus still in it (an item was activated and the menu
+  // unmounted under it), focus goes back to the trigger instead of
+  // falling to <body>. Cleared by a click outside, which moves focus
+  // wherever the user clicked.
+  const focusInsideRef = useRef(false);
   const contentId = useId();
 
   // Click outside / Esc to close.
@@ -121,6 +129,7 @@ export function Popover({ open: controlledOpen, onOpenChange, children }: Popove
       if (!t) return;
       if (triggerRef.current?.contains(t)) return;
       if (contentRef.current?.contains(t)) return;
+      focusInsideRef.current = false;
       setOpen(false);
     };
     const handleKey = (e: KeyboardEvent) => {
@@ -137,9 +146,23 @@ export function Popover({ open: controlledOpen, onOpenChange, children }: Popove
     };
   }, [open, setOpen]);
 
+  // Focus return on close. A layout effect, so the trigger has focus
+  // before any dialog the menu item opened runs its own (passive) open
+  // effect — that dialog then records the trigger as the element to
+  // return to. Only acts when focus was inside the menu and has been
+  // lost (it is on <body>), so it never steals focus from a dialog or
+  // field that took it.
+  useLayoutEffect(() => {
+    if (open || !focusInsideRef.current) return;
+    focusInsideRef.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    triggerRef.current?.focus({ preventScroll: true });
+  }, [open]);
+
   return (
     <PopoverContext.Provider
-      value={{ open, setOpen, triggerRef, contentRef, contentId }}
+      value={{ open, setOpen, triggerRef, contentRef, contentId, focusInsideRef }}
     >
       {/* Inline wrapper for relative positioning of <PopoverContent>. */}
       <span className="inline-flex relative">{children}</span>
@@ -155,13 +178,31 @@ export interface PopoverTriggerProps {
   children: React.ReactElement;
 }
 
+/** Point a ref (object or callback) at a node. */
+function assignRef<T>(ref: React.Ref<T> | undefined, node: T | null): void {
+  if (typeof ref === "function") ref(node);
+  else if (ref) (ref as React.RefObject<T | null>).current = node;
+}
+
 export function PopoverTrigger({ children }: PopoverTriggerProps) {
   const ctx = usePopover("PopoverTrigger");
   // Cast: cloneElement loses ref type info; the trigger is assumed to
   // be a focusable element.
   const childProps = children.props as Record<string, unknown>;
+  // Keep a ref the caller put on the trigger (React 19: `ref` is a prop),
+  // so a caller can still reach its own button — e.g. to hand it to a
+  // dialog as the element focus returns to.
+  const childRef = childProps["ref"] as React.Ref<HTMLElement> | undefined;
+  const { triggerRef } = ctx;
+  const ref = useCallback(
+    (node: HTMLElement | null) => {
+      assignRef(triggerRef, node);
+      assignRef(childRef, node);
+    },
+    [triggerRef, childRef],
+  );
   return React.cloneElement(children, {
-    ref: ctx.triggerRef,
+    ref,
     "aria-haspopup": "menu",
     "aria-expanded": ctx.open,
     "aria-controls": ctx.contentId,
@@ -390,6 +431,8 @@ export function PopoverContent({
   style,
   children,
   onKeyDown,
+  onFocus,
+  onBlur,
   portal = false,
   side = "bottom",
   sideOffset,
@@ -401,7 +444,8 @@ export function PopoverContent({
   const isMenu = role === "menu";
   // Pull ref + id out of the context locally — the React 19 strict-refs
   // lint rule is overly cautious about accessing context-held refs in JSX.
-  const { open, triggerRef, contentRef, contentId } = usePopover("PopoverContent");
+  const { open, setOpen, triggerRef, contentRef, contentId, focusInsideRef } =
+    usePopover("PopoverContent");
 
   // Portal mode only: SSR-guard (portal can't run on the server) and the
   // computed fixed-position coords. Both hooks run unconditionally so the
@@ -414,12 +458,17 @@ export function PopoverContent({
 
   // Focus the first menu item when the menu opens, so keyboard users land
   // inside the menu (matching native <select>/menu semantics). Esc-to-close
-  // and focus-return-to-trigger live in <Popover>. In portal mode we focus
-  // with { preventScroll: true } so the browser doesn't scroll the page to
-  // bring the freshly-portaled (off-flow) node into view — the menu is
-  // already positioned next to the trigger.
+  // and focus-return-to-trigger live in <Popover>.
+  //
+  // Portal mode waits until the menu is positioned: before the first
+  // measurement the node is parked at `visibility: hidden`, and focusing a
+  // hidden element silently fails (focus stayed on the trigger, so arrow
+  // keys did nothing). `ready` flips once `coords` is set. Portal mode also
+  // focuses with { preventScroll: true } so the browser doesn't scroll the
+  // page to bring the freshly-portaled (off-flow) node into view.
+  const ready = !portal || coords !== null;
   useEffect(() => {
-    if (!open) return;
+    if (!open || !ready) return;
     // Menu popovers focus their first menu item; a non-menu (group) popover
     // focuses its first focusable control (a checkbox filter has no
     // menuitems, so it would otherwise leave focus outside the popover).
@@ -430,7 +479,7 @@ export function PopoverContent({
         );
     if (portal) target?.focus({ preventScroll: true });
     else target?.focus();
-  }, [open, contentRef, portal, isMenu]);
+  }, [open, ready, contentRef, portal, isMenu]);
 
   // Portal mode only: measure the trigger + menu and compute fixed coords
   // in a layout effect (before paint, so there's no first-frame flash at
@@ -492,6 +541,17 @@ export function PopoverContent({
   // intentionally left to <Popover>'s document-level handler so focus
   // returns to the trigger from anywhere in the menu.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Tab leaves a menu: close it and hand focus back to the trigger, then
+    // let the browser's own Tab move on from there (to the control after
+    // the trigger, or before it with Shift). Without this a portaled menu
+    // stayed open and Tab walked off the end of <body>.
+    if (isMenu && e.key === "Tab") {
+      focusInsideRef.current = false;
+      setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
+      onKeyDown?.(e);
+      return;
+    }
     const items = getMenuItems(contentRef.current);
     if (items.length > 0) {
       const current = items.indexOf(
@@ -525,6 +585,23 @@ export function PopoverContent({
     onKeyDown?.(e);
   };
 
+  // Track whether focus is inside the content, so <Popover> can return it
+  // to the trigger when the menu closes under it (see focusInsideRef). A
+  // blur with no related target is focus being lost (the focused item
+  // unmounting), so it keeps the flag; moving focus to another element
+  // outside the menu clears it.
+  const trackFocusIn = (e: React.FocusEvent<HTMLDivElement>) => {
+    focusInsideRef.current = true;
+    onFocus?.(e);
+  };
+  const trackFocusOut = (e: React.FocusEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && !contentRef.current?.contains(next)) {
+      focusInsideRef.current = false;
+    }
+    onBlur?.(e);
+  };
+
   // --- Portal path (opt-in) ---------------------------------------------
   // Same <div role="menu"> as below, but position: fixed at the computed
   // viewport coords and rendered into document.body via createPortal. The
@@ -544,6 +621,8 @@ export function PopoverContent({
         id={contentId}
         role={role}
         onKeyDown={handleKeyDown}
+        onFocus={trackFocusIn}
+        onBlur={trackFocusOut}
         data-side={side}
         data-align={align}
         className={`popover-panel z-[var(--z-popover)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${className}`}
@@ -574,6 +653,8 @@ export function PopoverContent({
       id={contentId}
       role={role}
       onKeyDown={handleKeyDown}
+      onFocus={trackFocusIn}
+      onBlur={trackFocusOut}
       data-align={align}
       className={`popover-panel absolute top-full z-[var(--z-popover)] mt-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded shadow-md p-1 ${alignClass[align]} ${className}`}
       style={{ minWidth, marginTop: offset, ...style }}

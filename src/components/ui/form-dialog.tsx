@@ -48,6 +48,9 @@ export interface FormDialogProps {
   /** Forwarded to AppDialog — element to focus on open when
    *  `autoFocusFirst` is set. */
   readonly initialFocusRef?: RefObject<HTMLElement | null>
+  /** Forwarded to AppDialog — where focus goes on close when the opener
+   *  won't survive (a menu item): pass the menu's trigger. */
+  readonly returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 /**
@@ -76,6 +79,7 @@ export default function FormDialog({
   maxWidth = 440,
   autoFocusFirst = false,
   initialFocusRef,
+  returnFocusRef,
 }: FormDialogProps) {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -95,6 +99,7 @@ export default function FormDialog({
       disableBackdropClose={isSubmitting}
       autoFocusFirst={autoFocusFirst}
       initialFocusRef={initialFocusRef}
+      returnFocusRef={returnFocusRef}
     >
       <AppDialogHeader title={title} onClose={onClose} disabled={isSubmitting} />
       <form className="px-5 pb-5 pt-4" onSubmit={handleSubmit}>

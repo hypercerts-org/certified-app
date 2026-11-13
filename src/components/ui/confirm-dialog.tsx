@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState, type RefObject } from "react"
 import Button from "./button"
 import Input from "./input"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
@@ -20,6 +20,9 @@ interface ConfirmDialogProps {
   readonly confirmPhrase?: string
   readonly onCancel: () => void
   readonly onConfirm: () => void | Promise<void>
+  /** Where focus goes when the dialog closes, when the element that opened
+   *  it won't survive (a menu item): pass the menu's trigger. */
+  readonly returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 /**
@@ -38,8 +41,13 @@ export default function ConfirmDialog({
   confirmPhrase,
   onCancel,
   onConfirm,
+  returnFocusRef,
 }: ConfirmDialogProps) {
   const [typed, setTyped] = useState("")
+  // The phrase field takes focus on open through AppDialog, not React's
+  // `autoFocus` (which ran before AppDialog recorded the opener, so focus
+  // fell to <body> on close).
+  const phraseRef = useRef<HTMLInputElement>(null)
   const phraseMatches =
     !confirmPhrase ||
     typed.trim().toLowerCase() === confirmPhrase.trim().toLowerCase()
@@ -51,6 +59,9 @@ export default function ConfirmDialog({
       maxWidth={440}
       onClose={onCancel}
       disableBackdropClose={isConfirming}
+      autoFocusFirst={!!confirmPhrase}
+      initialFocusRef={confirmPhrase ? phraseRef : undefined}
+      returnFocusRef={returnFocusRef}
     >
       <AppDialogHeader title={title} onClose={onCancel} disabled={isConfirming} />
       <AppDialogBody>
@@ -77,7 +88,7 @@ export default function ConfirmDialog({
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              autoFocus
+              ref={phraseRef}
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               disabled={isConfirming}

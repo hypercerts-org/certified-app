@@ -48,12 +48,16 @@ export interface ResponsiveDialogProps {
   /** Desktop-only: when true, `<AppDialog>` ignores backdrop clicks. The
    *  mobile sheet has no equivalent; suppress its dismissal via `onClose`. */
   disableBackdropClose?: boolean
-  /** Desktop-only: focus the first focusable element (or `initialFocusRef`)
-   *  on open. The mobile sheet runs its own focus trap. */
+  /** Focus the first focusable element (or `initialFocusRef`) on open. The
+   *  phone sheet always moves focus in; with this it takes the very first
+   *  control, text fields included. */
   autoFocusFirst?: boolean
-  /** Desktop-only: element to focus on open instead of the first focusable
-   *  child. Only consulted when `autoFocusFirst` is true. */
+  /** Element to focus on open instead of the first focusable child, at
+   *  both widths. On desktop only consulted when `autoFocusFirst` is true. */
   initialFocusRef?: RefObject<HTMLElement | null>
+  /** Where focus goes on close, when the opener won't survive (a menu
+   *  item): pass the menu's trigger. Both widths. */
+  returnFocusRef?: RefObject<HTMLElement | null>
   /** Desktop-only: `<AppDialog>`'s ARIA role. */
   role?: "dialog" | "alertdialog"
   children: ReactNode
@@ -69,6 +73,7 @@ export default function ResponsiveDialog({
   disableBackdropClose = false,
   autoFocusFirst = false,
   initialFocusRef,
+  returnFocusRef,
   role = "dialog",
   children,
 }: ResponsiveDialogProps) {
@@ -84,6 +89,9 @@ export default function ResponsiveDialog({
         ariaLabel={ariaLabel}
         header={header}
         className={className}
+        autoFocusFirst={autoFocusFirst}
+        initialFocusRef={initialFocusRef}
+        returnFocusRef={returnFocusRef}
       >
         {children}
       </BottomSheet>
@@ -104,6 +112,7 @@ export default function ResponsiveDialog({
       disableBackdropClose={disableBackdropClose}
       autoFocusFirst={autoFocusFirst}
       initialFocusRef={initialFocusRef}
+      returnFocusRef={returnFocusRef}
     >
       {header}
       {children}

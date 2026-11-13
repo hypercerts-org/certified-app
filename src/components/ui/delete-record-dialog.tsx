@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState, type RefObject } from "react"
 import Button from "./button"
 import Input from "./input"
 import AppDialog, { AppDialogHeader } from "./app-dialog"
@@ -22,6 +22,9 @@ interface DeleteRecordDialogProps {
   readonly errorMessage?: string | null
   readonly onCancel: () => void
   readonly onConfirm: () => void | Promise<void>
+  /** Where focus goes when the dialog closes, when the element that opened
+   *  it won't survive (a menu item): pass the menu's trigger. */
+  readonly returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 /**
@@ -43,8 +46,13 @@ export default function DeleteRecordDialog({
   errorMessage = null,
   onCancel,
   onConfirm,
+  returnFocusRef,
 }: DeleteRecordDialogProps) {
   const [typed, setTyped] = useState("")
+  // The name field takes focus on open through AppDialog, not React's
+  // `autoFocus` (which ran before AppDialog recorded the opener, so focus
+  // fell to <body> on close).
+  const nameRef = useRef<HTMLInputElement>(null)
   const matches = typed.trim() === recordName.trim()
   const canConfirm = matches && !isDeleting
 
@@ -55,6 +63,9 @@ export default function DeleteRecordDialog({
       maxWidth={440}
       onClose={onCancel}
       disableBackdropClose={isDeleting}
+      autoFocusFirst
+      initialFocusRef={nameRef}
+      returnFocusRef={returnFocusRef}
     >
       <AppDialogHeader
         title={title}
@@ -90,7 +101,7 @@ export default function DeleteRecordDialog({
             onChange={(e) => setTyped(e.target.value)}
             placeholder={recordName}
             autoComplete="off"
-            autoFocus
+            ref={nameRef}
             disabled={isDeleting}
             // Show inline-edit chrome (1.5 px border) so the typed
             // value reads as "currently editable"; the form-level

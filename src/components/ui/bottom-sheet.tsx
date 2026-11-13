@@ -5,8 +5,9 @@ import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
 import { useBottomSheetDrag } from "@/hooks/use-bottom-sheet-drag"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
+import { getTabbable, useFocusTrap } from "@/hooks/use-focus-trap"
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
+import { useInertOutside } from "@/hooks/use-inert-outside"
 
 export interface BottomSheetProps {
   /** Whether the sheet is mounted + visible. */
@@ -24,7 +25,24 @@ export interface BottomSheetProps {
   header?: React.ReactNode
   /** Extra class(es) appended to the sheet container. */
   className?: string
+  /** Element to focus when the sheet opens. Without it the sheet focuses
+   *  its first control (skipping text fields, so the phone keyboard
+   *  doesn't jump up), or the sheet itself when it has none. */
+  initialFocusRef?: React.RefObject<HTMLElement | null>
+  /** Focus the very first control on open, text fields included. */
+  autoFocusFirst?: boolean
+  /** Where focus goes when the sheet closes. Defaults to the element that
+   *  had focus when it opened (the trigger). */
+  returnFocusRef?: React.RefObject<HTMLElement | null>
   children: React.ReactNode
+}
+
+/** Text-entry controls, which open the on-screen keyboard when focused. */
+function isTextEntry(el: HTMLElement): boolean {
+  if (el.isContentEditable || el.tagName === "TEXTAREA") return true
+  if (el.tagName !== "INPUT") return false
+  const type = (el as HTMLInputElement).type
+  return !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(type)
 }
 
 /**
@@ -34,7 +52,11 @@ export interface BottomSheetProps {
  * Wires up the behaviours every sheet needs:
  *   - drag-to-dismiss / drag-to-expand (via `useBottomSheetDrag`)
  *   - Esc-to-close
- *   - focus trap scoped to the sheet (via `useFocusTrap`)
+ *   - focus moves into the sheet on open (`initialFocusRef`, else the first
+ *     control that isn't a text field, else the sheet) and back to the
+ *     trigger (or `returnFocusRef`) on close
+ *   - focus trap scoped to the sheet (via `useFocusTrap`), and the page
+ *     behind it inert (via `useInertOutside`)
  *   - body scroll lock while open (via `useBodyScrollLock`)
  *
  * Visual chrome (2px top-corner radius, slide-up animation, dark-mode
@@ -57,6 +79,9 @@ export default function BottomSheet({
   title,
   header,
   className = "",
+  initialFocusRef,
+  autoFocusFirst = false,
+  returnFocusRef,
   children,
 }: BottomSheetProps) {
   const {
@@ -66,10 +91,43 @@ export default function BottomSheet({
     onHandleTouchMove,
     onHandleTouchEnd,
   } = useBottomSheetDrag({ isOpen: open, onClose })
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  // The page behind the scrim is inert while the sheet is open: Tab, clicks
+  // and screen readers stay in the sheet. Declared before the focus trap so
+  // the page is interactive again when the trap hands focus back.
+  useInertOutside(open, [sheetRef, backdropRef])
 
   // Trap focus inside the sheet while open, using the drag hook's `sheetRef`
-  // as the trap container (both refs point at the same sheet element).
-  useFocusTrap<HTMLDivElement>(open, sheetRef)
+  // as the trap container (both refs point at the same sheet element). It
+  // also returns focus to the trigger (or `returnFocusRef`) on close.
+  useFocusTrap<HTMLDivElement>(open, sheetRef, { returnFocusRef })
+
+  // Move focus into the sheet on open, so keyboard and switch users start
+  // inside it rather than on the trigger behind the scrim. Leaves focus
+  // alone if a child already took it (its own autoFocus).
+  const initialFocusRef_ = useRef(initialFocusRef)
+  const autoFocusFirstRef = useRef(autoFocusFirst)
+  useEffect(() => {
+    initialFocusRef_.current = initialFocusRef
+    autoFocusFirstRef.current = autoFocusFirst
+  })
+  useEffect(() => {
+    if (!open) return
+    const sheet = sheetRef.current
+    if (!sheet) return
+    if (document.activeElement && sheet.contains(document.activeElement)) return
+    const preferred = initialFocusRef_.current?.current
+    const inBody = bodyRef.current ? getTabbable(bodyRef.current) : []
+    const target =
+      preferred ??
+      (autoFocusFirstRef.current
+        ? inBody[0]
+        : inBody.find((el) => !isTextEntry(el))) ??
+      sheet
+    target.focus({ preventScroll: true })
+  }, [open, sheetRef])
 
   // Lock body scroll while the sheet is open.
   useBodyScrollLock(open)
@@ -92,7 +150,6 @@ export default function BottomSheet({
   if (open && closing) setClosing(false)
   if (!open && rendered && !closing) setClosing(true)
 
-  const backdropRef = useRef<HTMLDivElement>(null)
   const finishExit = useCallback(() => {
     setRendered(false)
     setClosing(false)
@@ -153,7 +210,7 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
+    "bottom-sheet outline-none hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-elevated)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
   // `.bottom-sheet--expanded` raises the cap to 92vh.
   const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
   const sheetClassName = `${sheetBase}${sheetExpandedClass}${
@@ -197,6 +254,10 @@ export default function BottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label={title && typeof title === "string" ? title : ariaLabel}
+        // Focusable as a last resort (a sheet with no controls), never a
+        // Tab stop; the outline would frame the whole sheet, so none
+        // (`outline-none` in sheetBase).
+        tabIndex={-1}
       >
         <div
           className="max-[799px]:flex max-[799px]:justify-center max-[799px]:pt-3.5 max-[799px]:pb-2.5 max-[799px]:flex-shrink-0 max-[799px]:cursor-grab max-[799px]:touch-none max-[799px]:after:content-[''] max-[799px]:after:w-9 max-[799px]:after:h-1 max-[799px]:after:bg-[var(--border-default)] max-[799px]:after:rounded-[var(--radius)]"
@@ -205,7 +266,7 @@ export default function BottomSheet({
           onTouchEnd={onHandleTouchEnd}
         />
         {resolvedHeader}
-        <div className="max-[799px]:overflow-x-hidden max-[799px]:overflow-y-auto max-[799px]:[-webkit-overflow-scrolling:touch] max-[799px]:pb-[env(safe-area-inset-bottom,16px)]">
+        <div ref={bodyRef} className="max-[799px]:overflow-x-hidden max-[799px]:overflow-y-auto max-[799px]:[-webkit-overflow-scrolling:touch] max-[799px]:pb-[env(safe-area-inset-bottom,16px)]">
           {children}
         </div>
       </div>
