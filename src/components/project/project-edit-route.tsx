@@ -43,6 +43,11 @@ import { splitLocationName } from "@/lib/atproto/location"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { countGraphemes } from "@/lib/utils/graphemes"
 import { useOwnCerts } from "@/hooks/use-own-certs"
+import {
+  itemRowsFromRecord,
+  nextProjectItems,
+  type ProjectItemRow,
+} from "@/components/project/project-edit-items"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
 /**
@@ -58,12 +63,6 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
  * project OR acting as the owning group with owner/admin role) —
  * matches the inline-edit gate on the read-mode project page.
  */
-
-interface SelectedCert {
-  uri: string
-  cid: string
-  title: string
-}
 
 /**
  * `/{actor}/project/{rkey}/edit` — full-page project editor. `actor` is
@@ -107,7 +106,9 @@ export default function ProjectEditRoute({
   const [title, setTitle] = useState("")
   const [shortDescription, setShortDescription] = useState("")
   const [description, setDescription] = useState<LinearDocument | null>(null)
-  const [items, setItems] = useState<SelectedCert[]>([])
+  // The project's activities, read from the record when it loads (titles
+  // come from `itemTitles` below as the activities resolve).
+  const [items, setItems] = useState<ProjectItemRow[]>([])
   const [location, setLocation] = useState<AddedLocation | null>(null)
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false)
 
@@ -142,26 +143,23 @@ export default function ProjectEditRoute({
   const seededRef = useRef(false)
 
   // -------------------------------------------------------------------
-  // Resolve project items (cert strongRefs → titles) so the prefilled
-  // cert list renders with names rather than raw URIs.
+  // Resolve the project's activities (strong refs → titles) so the list
+  // shows names rather than raw URIs. Only the titles wait on this; the
+  // list itself is seeded from the record (below).
   // -------------------------------------------------------------------
-  const rawItems = useMemo(
-    () => (project?.value.items as unknown[]) ?? [],
-    [project?.value.items],
-  )
   const { resolutions: itemResolutions, isLoading: itemsResolving } =
-    useProjectItems(rawItems)
+    useProjectItems(project?.value.items)
 
   // -------------------------------------------------------------------
-  // Seed form fields from the loaded record. Runs once per mount; the
-  // ref guard keeps a later re-render (e.g. items resolution settling)
-  // from clobbering user edits.
+  // Seed form fields (and the activity list) from the loaded record.
+  // Runs once per mount; the ref guard keeps a later re-render from
+  // clobbering user edits.
   // -------------------------------------------------------------------
   useEffect(() => {
     if (seededRef.current) return
     if (!project) return
     const v = project.value
-    // Intentional setState in effect (TECH-814): one-shot ref-guarded (seededRef) seeding of editable form state + swap baseline from the loaded project record; key-remount refactor tracked separately
+    // Intentional setState in effect (TECH-814): one-shot ref-guarded (seededRef) seeding of editable form state, the activity list + swap baseline from the loaded project record; key-remount refactor tracked separately
     setTitle(asString(v.title) ?? "")
     setShortDescription(asString(v.shortDescription) ?? "")
     setDescription(
@@ -180,36 +178,33 @@ export default function ProjectEditRoute({
             }
           : null),
     )
+    // The list comes straight from the record, so it is complete before
+    // any activity title has loaded; titles fill in as they resolve.
+    setItems(itemRowsFromRecord(v.items))
     setMountSnapshot({ value: v, cid: project.cid })
     seededRef.current = true
   }, [project])
 
-  // Hydrate items state from useProjectItems output once items have
-  // resolved. Re-runs whenever the resolutions change — but only
-  // until the user starts editing the list; we key off
-  // `itemsSeededRef` to avoid stomping their changes.
-  const itemsSeededRef = useRef(false)
-  useEffect(() => {
-    if (itemsSeededRef.current) return
-    if (rawItems.length === 0) {
-      itemsSeededRef.current = true
-      return
+  /** Title per activity URI: the resolved record, else the quick-pick list. */
+  const itemTitles = useMemo(() => {
+    const titles = new Map<string, string>()
+    for (const c of ownCerts) titles.set(c.uri, c.title)
+    for (const r of itemResolutions) {
+      if (!r.record) continue
+      const t = r.record.value.title
+      titles.set(r.uri, typeof t === "string" && t.trim() ? t.trim() : "Untitled activity")
     }
-    if (itemsResolving) return
-    const hydrated: SelectedCert[] = itemResolutions
-      .filter((r) => r.record !== null)
-      .map((r) => ({
-        uri: r.record!.uri,
-        cid: r.record!.cid,
-        title:
-          typeof r.record!.value.title === "string" && r.record!.value.title.trim()
-            ? r.record!.value.title.trim()
-            : rkeyFromUri(r.record!.uri) || "(untitled activity)",
-      }))
-    // Intentional setState in effect (TECH-814): one-shot ref-guarded (itemsSeededRef) hydration of the editable items list once useProjectItems resolutions settle; re-running would stomp user reordering/removal
-    setItems(hydrated)
-    itemsSeededRef.current = true
-  }, [itemResolutions, itemsResolving, rawItems.length])
+    return titles
+  }, [itemResolutions, ownCerts])
+
+  const itemLabel = (uri: string): string => {
+    const known = itemTitles.get(uri)
+    if (known) return known
+    if (itemsResolving) return "Loading…"
+    return itemResolutions.find((r) => r.uri === uri)?.error
+      ? "Activity couldn't load"
+      : rkeyFromUri(uri) || "Activity"
+  }
 
   // Hydrate the location (single strongRef → AddedLocation) so the
   // edit form shows the existing place name + lets the user clear
@@ -472,10 +467,12 @@ export default function ProjectEditRoute({
       delete next.banner
       delete next.image
     }
-    if (items.length > 0) {
-      next.items = items.map((c) => ({
-        itemIdentifier: { uri: c.uri, cid: c.cid },
-      }))
+    // Untouched, the project's items[] is written back exactly as loaded;
+    // changed, existing entries keep their fields and entries that aren't
+    // activities are kept.
+    const nextItems = nextProjectItems(mountSnapshot.value.items, items)
+    if (nextItems) {
+      next.items = nextItems
     } else {
       delete next.items
     }
@@ -751,12 +748,12 @@ export default function ProjectEditRoute({
                   {items.map((c) => (
                     <li key={c.uri} className="create-project__cert-row">
                       <span className="create-project__cert-title">
-                        {c.title || c.uri}
+                        {itemLabel(c.uri)}
                       </span>
                       <button
                         type="button"
                         className="create-project__cert-remove"
-                        aria-label={`Remove ${c.title || c.uri}`}
+                        aria-label={`Remove ${itemLabel(c.uri)}`}
                         onClick={() => {
                           markInteracted()
                           setItems((rows) => rows.filter((r) => r.uri !== c.uri))
@@ -805,12 +802,16 @@ export default function ProjectEditRoute({
                               type="checkbox"
                               checked={isAdded}
                               onChange={() => {
+                                markInteracted()
                                 if (isAdded) {
                                   setItems((rows) =>
                                     rows.filter((r) => r.uri !== c.uri),
                                   )
                                 } else {
-                                  setItems((rows) => [...rows, c])
+                                  setItems((rows) => [
+                                    ...rows,
+                                    { uri: c.uri, cid: c.cid, raw: null },
+                                  ])
                                 }
                               }}
                             />

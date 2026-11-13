@@ -51,7 +51,12 @@ export function useProjectItems(items: unknown): {
   isLoading: boolean
 } {
   const [resolutions, setResolutions] = useState<ProjectItemResolution[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  // The URI list the current `resolutions` finished resolving for. Loading
+  // is derived from it rather than set in the effect: on the render where
+  // a project's items first appear, the effect hasn't run yet, and a
+  // stored flag would still say "not loading" with no resolutions, which
+  // reads as "this project has no activities".
+  const [settledKey, setSettledKey] = useState<string | null>(null)
 
   // Stringify the URIs into a stable key so the effect only re-runs
   // when the actual list of URIs changes (not on every re-render
@@ -75,7 +80,7 @@ export function useProjectItems(items: unknown): {
   useEffect(() => {
     if (uriList.length === 0) {
       setResolutions([])
-      setIsLoading(false)
+      setSettledKey(key)
       return
     }
 
@@ -93,7 +98,7 @@ export function useProjectItems(items: unknown): {
       }
     })
     setResolutions(initial)
-    setIsLoading(true)
+    setSettledKey(null)
 
     const next = [...initial]
     const indexByUri = new Map<string, number>()
@@ -179,7 +184,7 @@ export function useProjectItems(items: unknown): {
       }
       if (signal.aborted) return
       setResolutions(next)
-      setIsLoading(false)
+      setSettledKey(key)
     }
     run()
 
@@ -187,5 +192,5 @@ export function useProjectItems(items: unknown): {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  return { resolutions, isLoading }
+  return { resolutions, isLoading: uriList.length > 0 && settledKey !== key }
 }
