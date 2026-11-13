@@ -1390,7 +1390,8 @@ button.desktop-top-bar__nav-link {
 }
 
 /* Up to 300px; shrinks (to 120px, 96px below 1100px) so the
-   destinations never clip. */
+   destinations never clip. On /explore the slot is an empty placeholder
+   of the same size, so New and the account button don't move. */
 .desktop-top-bar__search {
   flex: 0 1 300px;
   min-width: 120px;

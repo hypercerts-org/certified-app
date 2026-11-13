@@ -33,7 +33,8 @@ import { DesktopWorkspaceMenu } from "./workspace-menu";
  *
  * Nothing page-specific lives here: pages carry their own back link and
  * title (`<PageHeader>`) and their own section tabs, in the page, at every
- * width. The search field steps aside on /explore, which has its own.
+ * width. On /explore, which has its own search, the field's slot stays
+ * empty, so New and the account button sit where they do on every page.
  *
  * Pages render a `<PageHeader>` (their visible h1); a page without one
  * keeps a visually hidden `<h1>` here, so every page has exactly one
@@ -73,7 +74,8 @@ export default function DesktopTopBar() {
   const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
 
   // Explore has its own search box at the top of the page; a second one
-  // here would be two ways to do the same thing.
+  // here would be two ways to do the same thing. The slot keeps its width
+  // there (an empty placeholder), so the bar's layout never shifts.
   const showSearch = !(pathname === "/explore" || pathname?.startsWith("/explore/"));
 
   // Fallback h1 for pages without a <PageHeader>: the record's name on
@@ -139,7 +141,9 @@ export default function DesktopTopBar() {
             <div className="desktop-top-bar__search" data-tour="navbar-search">
               <GlobalSearch placeholder="Search" />
             </div>
-          ) : null}
+          ) : (
+            <div className="desktop-top-bar__search" aria-hidden="true" />
+          )}
 
           {isLoading ? null : isAuthenticated ? (
             <>
