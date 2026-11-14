@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { normalizeLookSpec } from "@/lib/look/custom-look-spec"
-import { CLAUDE_KEY_STORAGE_KEY, addCustomLook, parseCustomLooks } from "@/lib/look/custom-looks"
+import { CLAUDE_KEY_STORAGE_KEY, addCustomLook, parseCustomLooks, replaceCustomLook } from "@/lib/look/custom-looks"
 import { CUSTOM_LOOKS_STORAGE_KEY } from "@/lib/look/looks"
 
 const generate = vi.fn()
@@ -121,6 +121,24 @@ describe("Made styles in the gallery", () => {
     const tile = screen.getByRole("radio", { name: "Guardian" })
     expect(tile).toHaveAccessibleDescription(/Made in this browser/)
     expect(container.querySelectorAll("ul")).toHaveLength(0)
+  })
+
+  it("pick between their versions once there are two", () => {
+    const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    renderAppearance()
+    expect(screen.queryByRole("combobox", { name: "Version of Guardian" })).toBeNull()
+
+    act(() => {
+      replaceCustomLook(look.id, spec("Guardian, darker"), "Darker")
+    })
+    const picker = screen.getByRole("combobox", { name: "Version of Guardian, darker" })
+    expect(picker).toHaveValue("2")
+    expect(Array.from((picker as HTMLSelectElement).options, (o) => o.text)).toEqual(["Version 2", "Version 1"])
+
+    fireEvent.change(picker, { target: { value: "1" } })
+    expect(screen.getByRole("radio", { name: "Guardian" })).toHaveAttribute("aria-checked", "true")
+    expect(screen.getByRole("combobox", { name: "Version of Guardian" })).toHaveValue("1")
+    expect(document.documentElement.getAttribute("data-look")).toBe(look.id)
   })
 
   it("can be removed from the gallery, and the style goes back to Neutral if it was on", () => {

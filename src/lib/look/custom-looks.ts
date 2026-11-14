@@ -25,6 +25,16 @@ import {
  * sent to Anthropic and nowhere else (generate-look.ts).
  */
 
+/** One version of a made style. */
+export interface LookVersion {
+  /** 1, 2, 3 … in the order they were made. */
+  version: number
+  createdAt: string
+  /** What the person asked for ("" for the first, or a fresh variation). */
+  request: string
+  spec: LookSpec
+}
+
 export interface CustomLook {
   id: CustomLookId
   /** The site it was made from, e.g. "stripe.com". */
@@ -32,12 +42,16 @@ export interface CustomLook {
   /** The address it was read from, for making a new version. */
   url: string
   createdAt: string
-  /** 1 for the first version, counting up with each new one. */
+  /** The version on show; a new one is numbered after the highest. */
   version: number
+  /** The version on show's spec. */
   spec: LookSpec
-  /** The version before this one, to go back to (one step). */
-  previous?: LookSpec
+  /** Every version kept, oldest first, the one on show among them. */
+  versions: LookVersion[]
 }
+
+/** Older versions drop off past this; the one on show is always kept. */
+export const MAX_LOOK_VERSIONS = 12
 
 /** Older ones drop off when a new one would make more. */
 export const MAX_CUSTOM_LOOKS = 8
@@ -78,6 +92,67 @@ function read(key: string): string | null {
 
 // ------------------------------------------------------------ made styles
 
+// Stored, each style's site images are kept once, in `images`, and its
+// versions point at them ("#image-0" …): the versions of a style mostly
+// share one image, and each can be 100,000 characters.
+const IMAGE_REF = /^#image-(\d+)$/
+
+function withImages(raw: unknown, images: readonly unknown[]): unknown {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null
+  const assets = r?.assets && typeof r.assets === "object" ? (r.assets as Record<string, unknown>) : null
+  const img = assets?.idImage && typeof assets.idImage === "object" ? (assets.idImage as Record<string, unknown>) : null
+  const ref = typeof img?.data === "string" ? IMAGE_REF.exec(img.data) : null
+  if (!r || !img || !ref) return raw
+  return { ...r, assets: { ...assets, idImage: { ...img, data: images[Number(ref[1])] } } }
+}
+
+function toStored(look: CustomLook) {
+  const images: string[] = []
+  const versions = look.versions.map((v) => {
+    const img = v.spec.assets?.idImage
+    if (!img) return v
+    let at = images.indexOf(img.data)
+    if (at === -1) at = images.push(img.data) - 1
+    return { ...v, spec: { ...v.spec, assets: { ...v.spec.assets, idImage: { ...img, data: `#image-${at}` } } } }
+  })
+  const { spec: _spec, ...rest } = look
+  void _spec
+  return { ...rest, versions, images }
+}
+
+function parseVersions(e: Record<string, unknown>): LookVersion[] {
+  const images = Array.isArray(e.images) ? e.images : []
+  const out: LookVersion[] = []
+  const add = (version: unknown, raw: unknown, createdAt: unknown, request: unknown) => {
+    const n = typeof version === "number" && version >= 1 ? Math.floor(version) : 1
+    if (out.some((v) => v.version === n)) return
+    try {
+      out.push({
+        version: n,
+        createdAt: typeof createdAt === "string" ? createdAt : "",
+        request: typeof request === "string" ? request.slice(0, 600) : "",
+        spec: normalizeLookSpec(withImages(raw, images)),
+      })
+    } catch {
+      // A broken version is skipped.
+    }
+  }
+  if (Array.isArray(e.versions)) {
+    for (const v of e.versions) {
+      if (v && typeof v === "object") {
+        const r = v as Record<string, unknown>
+        add(r.version, r.spec, r.createdAt, r.request)
+      }
+    }
+  } else {
+    // Stored before versions were kept: the one on show and the one before.
+    const shown = typeof e.version === "number" && e.version >= 1 ? Math.floor(e.version) : 1
+    add(shown, e.spec, e.createdAt, "")
+    if (e.previous) add(shown > 1 ? shown - 1 : shown + 1, e.previous, "", "")
+  }
+  return out.sort((a, b) => a.version - b.version).slice(-MAX_LOOK_VERSIONS)
+}
+
 /** Parse what's stored, keeping only entries that still check out. */
 export function parseCustomLooks(raw: string | null): CustomLook[] {
   if (!raw) return []
@@ -93,26 +168,19 @@ export function parseCustomLooks(raw: string | null): CustomLook[] {
     if (!entry || typeof entry !== "object") continue
     const e = entry as Record<string, unknown>
     if (!isCustomLookId(e.id) || out.some((l) => l.id === e.id)) continue
-    try {
-      const source = typeof e.source === "string" ? e.source.slice(0, 253) : ""
-      let previous: LookSpec | undefined
-      try {
-        previous = e.previous ? normalizeLookSpec(e.previous) : undefined
-      } catch {
-        previous = undefined
-      }
-      out.push({
-        id: e.id,
-        source,
-        url: (normalizeSiteUrl(typeof e.url === "string" ? e.url : source) ?? null)?.toString() ?? "",
-        createdAt: typeof e.createdAt === "string" ? e.createdAt : "",
-        version: typeof e.version === "number" && e.version >= 1 ? Math.floor(e.version) : 1,
-        spec: normalizeLookSpec(e.spec),
-        ...(previous ? { previous } : {}),
-      })
-    } catch {
-      // A broken entry is skipped, not fatal.
-    }
+    const versions = parseVersions(e)
+    if (!versions.length) continue
+    const shown = versions.find((v) => v.version === e.version) ?? versions[versions.length - 1]
+    const source = typeof e.source === "string" ? e.source.slice(0, 253) : ""
+    out.push({
+      id: e.id,
+      source,
+      url: (normalizeSiteUrl(typeof e.url === "string" ? e.url : source) ?? null)?.toString() ?? "",
+      createdAt: typeof e.createdAt === "string" ? e.createdAt : "",
+      version: shown.version,
+      spec: shown.spec,
+      versions,
+    })
     if (out.length === MAX_CUSTOM_LOOKS) break
   }
   return out
@@ -138,18 +206,42 @@ export function injectCustomLooksCss(css: string) {
   el.textContent = css
 }
 
+const isQuotaError = (err: unknown) =>
+  err instanceof DOMException && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED")
+
+/** Without the oldest version not on show (of the style with the most
+ *  versions); null when every style is down to the one on show. */
+function withoutOldestVersion(looks: readonly CustomLook[]): CustomLook[] | null {
+  let at = -1
+  for (let i = 0; i < looks.length; i++) {
+    if (looks[i].versions.length > 1 && (at === -1 || looks[i].versions.length > looks[at].versions.length)) at = i
+  }
+  if (at === -1) return null
+  const look = looks[at]
+  const drop = look.versions.find((v) => v.version !== look.version)!
+  const next = looks.slice()
+  next[at] = { ...look, versions: look.versions.filter((v) => v !== drop) }
+  return next
+}
+
 function writeCustomLooks(looks: readonly CustomLook[]) {
   const css = compileCustomLooksCss(looks)
-  try {
-    if (looks.length) {
-      window.localStorage.setItem(CUSTOM_LOOKS_STORAGE_KEY, JSON.stringify(looks))
-      window.localStorage.setItem(CUSTOM_LOOKS_CSS_STORAGE_KEY, css)
-    } else {
-      window.localStorage.removeItem(CUSTOM_LOOKS_STORAGE_KEY)
-      window.localStorage.removeItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)
+  let kept: readonly CustomLook[] | null = looks
+  while (kept) {
+    try {
+      if (kept.length) {
+        window.localStorage.setItem(CUSTOM_LOOKS_STORAGE_KEY, JSON.stringify(kept.map(toStored)))
+        window.localStorage.setItem(CUSTOM_LOOKS_CSS_STORAGE_KEY, css)
+      } else {
+        window.localStorage.removeItem(CUSTOM_LOOKS_STORAGE_KEY)
+        window.localStorage.removeItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)
+      }
+      break
+    } catch (err) {
+      // Storage full: older versions give way, oldest first. Blocked: the
+      // style still applies until reload.
+      kept = isQuotaError(err) ? withoutOldestVersion(kept) : null
     }
-  } catch {
-    // Storage full or blocked: the style still applies until reload.
   }
   injectCustomLooksCss(css)
   notify()
@@ -164,34 +256,46 @@ function newId(): CustomLookId {
 
 /** Keep a newly made style (newest first) and switch the page to it. */
 export function addCustomLook(spec: LookSpec, source: string, url = `https://${source}/`): CustomLook {
-  const look: CustomLook = { id: newId(), source, url, createdAt: new Date().toISOString(), version: 1, spec }
+  const createdAt = new Date().toISOString()
+  const look: CustomLook = {
+    id: newId(),
+    source,
+    url,
+    createdAt,
+    version: 1,
+    spec,
+    versions: [{ version: 1, createdAt, request: "", spec }],
+  }
   const kept = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY)).slice(0, MAX_CUSTOM_LOOKS - 1)
   writeCustomLooks([look, ...kept])
   applyLook(look.id)
   return look
 }
 
-/** A new version of a made style, in its place (same tile, same id); the
- *  one it replaces is kept to go back to. Switches the page to it. */
-export function replaceCustomLook(id: CustomLookId, spec: LookSpec): CustomLook | null {
+/** A new version of a made style, in its tile (same id), numbered after
+ *  the highest and put on show; every earlier one is kept to go back to.
+ *  Switches the page to it. */
+export function replaceCustomLook(id: CustomLookId, spec: LookSpec, request = ""): CustomLook | null {
   const looks = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY))
   const at = looks.findIndex((l) => l.id === id)
   if (at === -1) return null
   const old = looks[at]
-  const next: CustomLook = { ...old, spec, previous: old.spec, version: old.version + 1 }
+  const version = Math.max(...old.versions.map((v) => v.version)) + 1
+  const versions = [...old.versions, { version, createdAt: new Date().toISOString(), request, spec }].slice(-MAX_LOOK_VERSIONS)
+  const next: CustomLook = { ...old, version, spec, versions }
   looks[at] = next
   writeCustomLooks(looks)
   applyLook(id)
   return next
 }
 
-/** Swap a made style back to its previous version (and forward again). */
-export function restorePreviousLook(id: CustomLookId): CustomLook | null {
+/** Put one of a made style's versions on show, and switch the page to it. */
+export function showLookVersion(id: CustomLookId, version: number): CustomLook | null {
   const looks = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY))
   const at = looks.findIndex((l) => l.id === id)
-  const old = looks[at]
-  if (at === -1 || !old.previous) return null
-  const next: CustomLook = { ...old, spec: old.previous, previous: old.spec, version: Math.max(1, old.version - 1) }
+  const chosen = at === -1 ? undefined : looks[at].versions.find((v) => v.version === version)
+  if (!chosen) return null
+  const next: CustomLook = { ...looks[at], version, spec: chosen.spec }
   looks[at] = next
   writeCustomLooks(looks)
   applyLook(id)

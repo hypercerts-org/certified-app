@@ -227,6 +227,8 @@ describe("generateLookSpec", () => {
     expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
     expect(spec.backdrop.kind).toBe("none")
     expect(parse.mock.calls[0][0].system[0].text).toContain("You translate; you never invent.")
+    // The page's ground comes from the site, white only for a white site.
+    expect(parse.mock.calls[0][0].system[0].text).toContain("Plain white only when the site really is white throughout.")
   })
 
   it("keeps Claude's notes, and says in the app's words what it took back from them", async () => {

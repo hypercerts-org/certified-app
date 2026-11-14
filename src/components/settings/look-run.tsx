@@ -10,7 +10,7 @@ import type { SiteCapture, SiteCaptureResponse } from "@/lib/look/site-capture-t
 import {
   addCustomLook,
   replaceCustomLook,
-  restorePreviousLook,
+  showLookVersion,
   useClaudeKey,
   useCustomLooks,
   type CustomLook,
@@ -36,6 +36,8 @@ type Done = {
   /** A new version (with the way back), not a new style. */
   refreshed: boolean
   version: number
+  /** The version it was made from, to go back to. */
+  from: number
   /** Claude's own summary, and what the app took back from it. */
   notes: string[]
   caveats: string[]
@@ -96,7 +98,10 @@ function useLookRunState(apiKey: string) {
         ...(task.kind === "refresh" ? { previous: task.look.spec, request: task.request } : {}),
         signal: ctrl.signal,
       })
-      const look = task.kind === "new" ? addCustomLook(spec, host, url.toString()) : replaceCustomLook(task.look.id, spec)
+      const look =
+        task.kind === "new"
+          ? addCustomLook(spec, host, url.toString())
+          : replaceCustomLook(task.look.id, spec, task.request)
       if (!look) throw new LookGenerationError("unknown", "That style was removed in the meantime.")
       setPhase({
         kind: "done",
@@ -106,6 +111,7 @@ function useLookRunState(apiKey: string) {
         host,
         refreshed: task.kind === "refresh",
         version: look.version,
+        from: task.kind === "refresh" ? task.look.version : look.version,
         notes: look.spec.notes,
         caveats,
       })
@@ -174,7 +180,7 @@ function DoneText({ done }: { done: Done }) {
               type="button"
               className={LINK_BUTTON}
               onClick={() => {
-                restorePreviousLook(done.id)
+                showLookVersion(done.id, done.from)
                 run.clear()
               }}
             >

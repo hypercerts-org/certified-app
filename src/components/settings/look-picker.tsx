@@ -4,7 +4,8 @@ import { useId, useState } from "react"
 import { RefreshCw, Trash2 } from "lucide-react"
 import Button from "@/components/ui/button"
 import { Radio, RadioGroup } from "@/components/ui/radio"
-import { removeCustomLook, useCustomLooks, type CustomLook } from "@/lib/look/custom-looks"
+import Select from "@/components/ui/select"
+import { removeCustomLook, showLookVersion, useCustomLooks, type CustomLook } from "@/lib/look/custom-looks"
 import { LOOKS, isLookId, useLook, type AnyLookId } from "@/lib/look/looks"
 import { RefreshDialog, RunStatus, useLookRun } from "./look-run"
 
@@ -115,31 +116,37 @@ function LookTile({
   id,
   name,
   description,
-  note,
   selected,
+  framed = true,
+  describedBy,
   className = "",
 }: {
   id: AnyLookId
   name: string
   description: string
-  /** A last row under its own divider, kept clear on the right for the
-   *  made styles' buttons (MadeLookTile). */
-  note?: string
   selected: boolean
+  /** Its own border and selected ring; a made style's tile draws them
+   *  around the radio and its row of controls instead (MadeLookTile). */
+  framed?: boolean
+  /** More of its description, outside the radio. */
+  describedBy?: string
   className?: string
 }) {
   const descId = `look-${id}-description`
-  const noteId = `look-${id}-note`
   return (
     <Radio
       value={id}
       aria-label={name}
-      aria-describedby={note ? `${descId} ${noteId}` : descId}
+      aria-describedby={describedBy ? `${descId} ${describedBy}` : descId}
       className={[
-        "flex-col items-stretch gap-0 overflow-hidden border p-0 text-left",
-        selected
-          ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
-          : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
+        // !gap-0: Radio's own gap-2 would otherwise open a strip of the
+        // tile's background between the preview and the divider.
+        "flex-col items-stretch !gap-0 overflow-hidden p-0 text-left",
+        !framed
+          ? "border-0"
+          : selected
+            ? "border border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
+            : "border border-[var(--border-default)] hover:border-[var(--border-hover)]",
         className,
       ].join(" ")}
     >
@@ -150,60 +157,81 @@ function LookTile({
           {description}
         </span>
       </span>
-      {note ? (
-        // Its own row under a divider, as tall as the buttons laid over it.
-        <span className="block border-t border-[var(--border-default)] bg-[var(--bg-elevated)] py-1 pr-24 pl-3">
-          <span
-            id={noteId}
-            className="flex min-h-control-md items-center text-caption text-[var(--fg-muted)] md:min-h-control-sm"
-          >
-            {note}
-          </span>
-        </span>
-      ) : null}
     </Radio>
   )
 }
 
-/** A style made from a website: its tile, with New version and Remove on
- *  the tile's last row. The buttons sit beside the radio, not inside it
- *  (a button can't hold buttons), laid over the tile's bottom right: 5px
- *  up, the radio's 1px border and the row's 4px padding. */
+/** A style made from a website: its tile, and under a divider a row of
+ *  its own controls: "Made in this browser", the version on show (a
+ *  picker once there are two), New version and Remove. The row sits
+ *  beside the radio, not inside it (a button can't hold controls), and
+ *  one frame goes round both. */
 function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean }) {
   const { apiKey, run } = useLookRun()
   const [asking, setAsking] = useState(false)
-  const { id, spec, source, version } = look
+  const { id, spec, source, version, versions } = look
+  const noteId = `look-${id}-note`
   return (
-    <div className="relative flex">
+    <div
+      className={[
+        "flex flex-col rounded border",
+        selected
+          ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
+          : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
+      ].join(" ")}
+    >
       <LookTile
         id={id}
         name={spec.name}
         description={spec.description ? `${spec.description} From ${source}.` : `Made from ${source}.`}
-        note={`Made in this browser${version > 1 ? ` · version ${version}` : ""}`}
         selected={selected}
+        framed={false}
+        describedBy={noteId}
         className="flex-1"
       />
-      <span className="absolute right-2 bottom-[5px] flex gap-1">
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label={`New version of ${spec.name}`}
-          disabled={!apiKey || run.busy}
-          loading={run.refreshingId === id}
-          onClick={() => setAsking(true)}
-        >
-          <RefreshCw size={16} aria-hidden />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label={`Remove ${spec.name}`}
-          disabled={run.busy}
-          onClick={() => removeCustomLook(id)}
-        >
-          <Trash2 size={16} aria-hidden />
-        </Button>
-      </span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] py-1 pr-2 pl-3">
+        <span id={noteId} className="text-caption text-[var(--fg-muted)]">
+          Made in this browser
+        </span>
+        {versions.length > 1 ? (
+          <div className="w-[7.5rem]">
+            <Select
+              size="sm"
+              aria-label={`Version of ${spec.name}`}
+              value={String(version)}
+              disabled={run.busy}
+              onChange={(e) => showLookVersion(id, Number(e.target.value))}
+            >
+              {[...versions].reverse().map((v) => (
+                <option key={v.version} value={v.version}>
+                  Version {v.version}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
+        <span className="ml-auto flex gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`New version of ${spec.name}`}
+            disabled={!apiKey || run.busy}
+            loading={run.refreshingId === id}
+            onClick={() => setAsking(true)}
+          >
+            <RefreshCw size={16} aria-hidden />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Remove ${spec.name}`}
+            disabled={run.busy}
+            onClick={() => removeCustomLook(id)}
+          >
+            <Trash2 size={16} aria-hidden />
+          </Button>
+        </span>
+      </div>
       {asking ? (
         <RefreshDialog
           look={look}

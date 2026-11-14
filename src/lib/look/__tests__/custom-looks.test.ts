@@ -1,13 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { normalizeLookSpec } from "../custom-look-spec"
 import {
   MAX_CUSTOM_LOOKS,
+  MAX_LOOK_VERSIONS,
   addCustomLook,
   maskKey,
   parseCustomLooks,
   removeCustomLook,
   replaceCustomLook,
-  restorePreviousLook,
+  showLookVersion,
 } from "../custom-looks"
 import {
   CUSTOM_LOOKS_CSS_STORAGE_KEY,
@@ -98,26 +99,90 @@ describe("made styles", () => {
     expect(styleEl()).toBeNull()
   })
 
-  it("makes a new version in place, and can go back to the previous one", () => {
+  it("makes new versions in place and keeps every one to go back to", () => {
     const first = addCustomLook(spec("One"), "theguardian.com", "https://www.theguardian.com/uk")
     expect(first.url).toBe("https://www.theguardian.com/uk")
     expect(first.version).toBe(1)
 
-    const next = replaceCustomLook(first.id, spec("Two"))!
+    const next = replaceCustomLook(first.id, spec("Two"), "Darker")!
     expect(next.id).toBe(first.id)
     expect(next.version).toBe(2)
     expect(next.spec.name).toBe("Two")
-    expect(next.previous?.name).toBe("One")
     expect(currentLook()).toBe(first.id)
-    // One tile, its CSS rebuilt.
+    replaceCustomLook(first.id, spec("Three"))
+    // One tile, its CSS rebuilt, three versions kept with what was asked.
     const stored = parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))
     expect(stored).toHaveLength(1)
     expect(stored[0].url).toBe("https://www.theguardian.com/uk")
+    expect(stored[0].versions.map((v) => [v.version, v.spec.name, v.request])).toEqual([
+      [1, "One", ""],
+      [2, "Two", "Darker"],
+      [3, "Three", ""],
+    ])
 
-    const back = restorePreviousLook(first.id)!
+    // Any version back on show; a new one is numbered after the highest.
+    const back = showLookVersion(first.id, 1)!
+    expect(back.version).toBe(1)
     expect(back.spec.name).toBe("One")
-    expect(back.previous?.name).toBe("Two")
+    expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))[0].spec.name).toBe("One")
+    expect(window.localStorage.getItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)).toContain(first.id)
+    expect(replaceCustomLook(first.id, spec("Four"))!.version).toBe(4)
+
+    expect(showLookVersion(first.id, 9)).toBeNull()
     expect(replaceCustomLook("custom-zzzzzzzz", spec())).toBeNull()
+  })
+
+  it(`keeps at most ${MAX_LOOK_VERSIONS} versions of a style`, () => {
+    const look = addCustomLook(spec("V1"), "x.example")
+    for (let i = 2; i <= MAX_LOOK_VERSIONS + 3; i++) replaceCustomLook(look.id, spec(`V${i}`))
+    const [kept] = parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))
+    expect(kept.versions).toHaveLength(MAX_LOOK_VERSIONS)
+    expect(kept.versions[0].version).toBe(4)
+    expect(kept.version).toBe(MAX_LOOK_VERSIONS + 3)
+  })
+
+  it("stores a site image once for all the versions that use it", () => {
+    const image = `data:image/webp;base64,${"A".repeat(5000)}`
+    const onImage = () => ({ ...spec(), assets: { idImage: { data: image, average: "#0B91C2", busy: 0.1 } } })
+    const look = addCustomLook(onImage(), "vivaconagua.org")
+    replaceCustomLook(look.id, onImage())
+    replaceCustomLook(look.id, onImage())
+    const raw = window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY)!
+    expect(raw.split(image).length - 1).toBe(1)
+    const [kept] = parseCustomLooks(raw)
+    expect(kept.versions.map((v) => v.spec.assets?.idImage?.data)).toEqual([image, image, image])
+  })
+
+  it("lets old versions go, oldest first, when the browser's storage is full", () => {
+    const look = addCustomLook(spec("V1"), "x.example")
+    replaceCustomLook(look.id, spec("V2"))
+    const storage = window.localStorage
+    const setItem = storage.setItem.bind(storage)
+    // Full while the style still holds more than two versions.
+    const full = vi.spyOn(storage, "setItem").mockImplementation((key: string, value: string) => {
+      if (key === CUSTOM_LOOKS_STORAGE_KEY && (JSON.parse(value) as { versions: unknown[] }[])[0].versions.length > 2) {
+        throw new DOMException("full", "QuotaExceededError")
+      }
+      setItem(key, value)
+    })
+    replaceCustomLook(look.id, spec("V3"))
+    full.mockRestore()
+    const [kept] = parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))
+    expect(kept.versions.map((v) => v.spec.name)).toEqual(["V2", "V3"])
+    expect(kept.spec.name).toBe("V3")
+  })
+
+  it("reads a style stored before versions were kept: the one on show and the one before", () => {
+    const raw = JSON.stringify([
+      { id: "custom-ab12cd34", source: "a.example", createdAt: "", version: 3, spec: spec("Three"), previous: spec("Two") },
+    ])
+    const [look] = parseCustomLooks(raw)
+    expect(look.version).toBe(3)
+    expect(look.spec.name).toBe("Three")
+    expect(look.versions.map((v) => [v.version, v.spec.name])).toEqual([
+      [2, "Two"],
+      [3, "Three"],
+    ])
   })
 
   it("gives an older stored style its site address and version 1", () => {
@@ -125,7 +190,7 @@ describe("made styles", () => {
     const [look] = parseCustomLooks(raw)
     expect(look.url).toBe("https://a.example/")
     expect(look.version).toBe(1)
-    expect(look.previous).toBeUndefined()
+    expect(look.versions).toHaveLength(1)
   })
 
   it(`keeps at most ${MAX_CUSTOM_LOOKS}, newest first`, () => {
