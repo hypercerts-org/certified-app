@@ -191,6 +191,24 @@ export function compileCustomLooksCss(looks: readonly CustomLook[]): string {
   return looks.map((l) => `/* ${l.id} */\n${buildCustomLookCss(l.id, l.spec)}`).join("\n\n")
 }
 
+/** Made styles keep their CSS as it was compiled when they were saved, and
+ *  the before-paint script puts that in place. When the app's templates
+ *  have changed since (a fix to how a piece is drawn), rebuild it from the
+ *  stored styles, keep it and put it in place. Called once a page has
+ *  loaded (providers.tsx). */
+export function syncCustomLooksCss() {
+  const raw = read(CUSTOM_LOOKS_STORAGE_KEY)
+  if (!raw) return
+  const css = compileCustomLooksCss(parseCustomLooks(raw))
+  if (css === read(CUSTOM_LOOKS_CSS_STORAGE_KEY)) return
+  try {
+    window.localStorage.setItem(CUSTOM_LOOKS_CSS_STORAGE_KEY, css)
+  } catch {
+    // Storage full or blocked: still right on this page.
+  }
+  injectCustomLooksCss(css)
+}
+
 /** Put `css` in the page's made-styles <style> element (or remove it). */
 export function injectCustomLooksCss(css: string) {
   let el = document.getElementById(CUSTOM_LOOKS_STYLE_ID)

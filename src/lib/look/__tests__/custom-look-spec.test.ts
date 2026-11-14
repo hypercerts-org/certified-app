@@ -331,6 +331,27 @@ describe("the idea and the signature piece", () => {
   })
 })
 
+describe("the ID card's edge", () => {
+  const card = (surface: string, edge: string) =>
+    normalizeLookSpec(stripe({ idCard: { surface, image: "", edge, pattern: "none", title: "plain", mark: "none" } }))
+
+  it("draws the hairline a step stronger than the site's own borders, in both modes", () => {
+    const spec = card("plain", "hairline")
+    expect(buildCustomLookCss("custom-abcdefgh", spec)).toContain("border-color: var(--look-id-edge)")
+    const t = lookTokens(spec)
+    for (const mode of [t.light, t.dark]) {
+      const surface = parseHex(mode["--bg-elevated"])!
+      expect(contrast(parseHex(mode["--look-id-edge"])!, surface)).toBeGreaterThan(
+        contrast(parseHex(mode["--border-default"])!, surface),
+      )
+    }
+  })
+
+  it("keeps no line round a strong surface", () => {
+    expect(buildCustomLookCss("custom-abcdefgh", card("brand", "hairline"))).not.toContain("var(--look-id-edge)")
+  })
+})
+
 describe("the ID card on the site's own image", () => {
   const texture = { id: "site-image-1", mediaType: "image/jpeg", data: "QUJDRA==", average: "#038EC2", busy: 0.2 }
   const onImage = (image = "site-image-1") =>

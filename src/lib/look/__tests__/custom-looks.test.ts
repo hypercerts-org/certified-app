@@ -10,6 +10,7 @@ import {
   deleteLookVersion,
   replaceCustomLook,
   showLookVersion,
+  syncCustomLooksCss,
 } from "../custom-looks"
 import {
   CUSTOM_LOOKS_CSS_STORAGE_KEY,
@@ -150,6 +151,16 @@ describe("made styles", () => {
     expect(deleteLookVersion(look.id, 1)).toBeNull()
     expect(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY)).toBeNull()
     expect(currentLook()).not.toBe(look.id)
+  })
+
+  it("rebuilds saved CSS that predates a change to how styles are drawn", () => {
+    const look = addCustomLook(spec(), "x.example")
+    const fresh = window.localStorage.getItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)!
+    window.localStorage.setItem(CUSTOM_LOOKS_CSS_STORAGE_KEY, "/* drawn by older code */")
+    styleEl()!.textContent = "/* drawn by older code */"
+    syncCustomLooksCss()
+    expect(window.localStorage.getItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)).toBe(fresh)
+    expect(styleEl()!.textContent).toContain(look.id)
   })
 
   it(`keeps at most ${MAX_LOOK_VERSIONS} versions of a style`, () => {

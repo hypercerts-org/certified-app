@@ -166,7 +166,7 @@ export const MOVES = {
       "the site's own image (one of the site images, named in idCard.image) under the card, toned toward the brand colour: for a texture, pattern or line art the site lays behind its content; never a photograph or a picture of people, places or things, which would fight with the card's text",
   },
   idEdge: {
-    hairline: "the usual hairline",
+    hairline: "a hairline, drawn a little stronger than the site's own so the card stands off the page",
     none: "no border",
     "bar-top": "a thick brand bar along the top",
     "bar-left": "a thick brand bar down the left",
@@ -979,6 +979,9 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
     "--look-id-mark": toHex(p.accent),
     "--look-id-grain": dark ? GRAIN(1, 0.07) : GRAIN(0, 0.09),
     "--look-id-line": toHex(p.border),
+    // The ID card's hairline: a step stronger than the site's own borders,
+    // so the account's most personal object stands off the page.
+    "--look-id-edge": toHex(mix(p.border, p.text, 0.22)),
   }
   let fg: Rgb | null = null
   // A strong surface's own colour, which the avatar's fill is made from.
@@ -1222,7 +1225,8 @@ function idRules(spec: LookSpec, s: Scope): Rules {
   } else if (c.surface !== "plain" || pattern) {
     card.background = pattern ? `${pattern}, var(--look-id-surface)` : "var(--look-id-surface)"
   }
-  if (c.surface === "brand" || c.surface === "gradient" || c.surface === "ink" || image) {
+  const strong = c.surface === "brand" || c.surface === "gradient" || c.surface === "ink" || !!image
+  if (strong) {
     // On a strong surface the card's own text, wells and lines follow the
     // ink that reads on it (as Wallet's pass does).
     Object.assign(card, {
@@ -1243,6 +1247,10 @@ function idRules(spec: LookSpec, s: Scope): Rules {
     })
   }
   switch (c.edge) {
+    case "hairline":
+      // A strong surface keeps no line round it (its fill is its edge).
+      if (!strong) card["border-color"] = "var(--look-id-edge)"
+      break
     case "none":
       card["border-color"] = "transparent"
       break

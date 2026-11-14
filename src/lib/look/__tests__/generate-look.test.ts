@@ -229,6 +229,8 @@ describe("generateLookSpec", () => {
     expect(parse.mock.calls[0][0].system[0].text).toContain("You translate; you never invent.")
     // The page's ground comes from the site, white only for a white site.
     expect(parse.mock.calls[0][0].system[0].text).toContain("Plain white only when the site really is white throughout.")
+    // And the page around the content is decided every time.
+    expect(parse.mock.calls[0][0].system[0].text).toContain("The page around the content: decide it every time")
   })
 
   it("keeps Claude's notes, and says in the app's words what it took back from them", async () => {
