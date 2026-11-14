@@ -310,14 +310,25 @@ export function cleanSiteImage(raw: unknown): SiteImageAsset | null {
  */
 export function withSiteImage(
   raw: Record<string, unknown>,
-  images: readonly { id: string; mediaType: string; data: string; average: string; busy: number }[],
+  images: readonly {
+    id: string
+    mediaType: string
+    data: string
+    average: string
+    busy: number
+    card?: { mediaType: string; data: string }
+  }[],
 ): Record<string, unknown> {
   const id = raw.idCard && typeof raw.idCard === "object" ? (raw.idCard as Record<string, unknown>) : null
   if (!id || id.surface !== "image") return raw
   const chosen = images.find((i) => i.id === id.image) ?? (images.length === 1 ? images[0] : undefined)
-  const asset = chosen
-    ? cleanSiteImage({ data: `data:${chosen.mediaType};base64,${chosen.data}`, average: chosen.average, busy: chosen.busy })
-    : null
+  // The card's own crop (the site's scale, its grain kept); the whole
+  // image Claude saw for older captures.
+  const pixels = chosen ? (chosen.card ?? chosen) : null
+  const asset =
+    chosen && pixels
+      ? cleanSiteImage({ data: `data:${pixels.mediaType};base64,${pixels.data}`, average: chosen.average, busy: chosen.busy })
+      : null
   if (!asset) return { ...raw, idCard: { ...id, surface: "brand" } }
   return { ...raw, assets: { idImage: asset } }
 }
@@ -938,6 +949,8 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
     "--look-id-line": toHex(p.border),
   }
   let fg: Rgb | null = null
+  // A strong surface's own colour, which the avatar's fill is made from.
+  let base: Rgb = p.elevated
   switch (spec.idCard.surface) {
     case "tint":
       out["--look-id-surface"] = toHex(mix(p.elevated, p.accent, dark ? 0.14 : 0.08))
@@ -948,6 +961,7 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
     case "brand":
       out["--look-id-surface"] = toHex(p.accent)
       fg = textOn([p.accent])
+      base = p.accent
       break
     case "gradient": {
       // White or ink, whichever reads better across both ends; the ends
@@ -956,11 +970,13 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
       const a = ensureContrast(p.accent, [fg], 4.5)
       const b = ensureContrast(p.secondary, [fg], 4.5)
       out["--look-id-surface"] = `linear-gradient(135deg, ${toHex(a)} 0%, ${toHex(b)} 100%)`
+      base = a
       break
     }
     case "ink":
       out["--look-id-surface"] = toHex(p.text)
       fg = textOn([p.text])
+      base = p.text
       break
     case "image": {
       // The site's image, under a veil of its own average colour toned
@@ -972,6 +988,7 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
       out["--look-id-surface"] = toHex(tone)
       out["--look-id-veil"] = rgba(tone, Math.min(0.8, 0.12 + 0.55 * busy + (dark ? 0.15 : 0)))
       fg = textOn([tone])
+      base = tone
       break
     }
     default:
@@ -986,6 +1003,10 @@ function idCardTokens(spec: LookSpec, mode: Mode, p: Colours): Record<string, st
     out["--look-id-pattern"] = rgba(fg, 0.14)
     out["--look-id-mark"] = toHex(fg)
     out["--look-id-grain"] = luminance(fg) > 0.5 ? GRAIN(1, 0.08) : GRAIN(0, 0.09)
+    // The avatar's initials take the card's ink, so its fill moves away
+    // from the ink: pale under dark ink, deep under white.
+    const away: Rgb = luminance(fg) > 0.5 ? [0, 0, 0] : [255, 255, 255]
+    out["--look-id-avatar"] = toHex(ensureContrast(mix(base, away, 0.7), [fg], 4.5))
   }
   return out
 }
@@ -1184,6 +1205,7 @@ function idRules(spec: LookSpec, s: Scope): Rules {
       "--overlay-medium": "var(--look-id-line)",
       "--focus-ring": "var(--look-id-fg)",
       "--color-accent": "var(--look-id-fg)",
+      "--color-surface-container-high": "var(--look-id-avatar)",
       color: "var(--fg-secondary)",
       "border-color": "transparent",
     })

@@ -277,13 +277,16 @@ function readComputed(properties) {
 /** Runs in the page (at the top): the large images the site lays behind
  *  its content, decorative <img>s (alt="", aria-hidden) and CSS background
  *  images, within the first two screens and covering at least a fifth of a
- *  screen. Largest first, up to three. */
+ *  screen. Largest first, up to three. Each says how the site sizes it
+ *  (`fit`), so its crop for the ID card keeps the site's own scale: "cover"
+ *  (scaled to fill its box), "natural" (a tile at its own size) or a width
+ *  in CSS pixels. */
 function findSurfaceImages() {
   const vw = innerWidth
   const vh = innerHeight
   const found = []
   const seen = new Set()
-  const consider = (el, src) => {
+  const consider = (el, src, fit) => {
     if (!src || seen.has(src) || !/^https?:/.test(src)) return
     const r = el.getBoundingClientRect()
     const top = r.top + scrollY
@@ -296,19 +299,25 @@ function findSurfaceImages() {
       src,
       covers: Math.min(2, Math.round(covers * 100) / 100),
       where: top < vh * 0.5 ? "behind the first screen" : "further down the first two screens",
+      box: { width: Math.round(r.width), height: Math.round(r.height) },
+      fit,
     })
   }
   for (const img of document.images) {
     const decorative =
       img.getAttribute("alt") === "" || img.getAttribute("aria-hidden") === "true" || img.getAttribute("role") === "presentation"
-    if (decorative) consider(img, img.currentSrc || img.src)
+    if (decorative) consider(img, img.currentSrc || img.src, "cover")
   }
   for (const el of document.querySelectorAll("body *")) {
-    const bg = getComputedStyle(el).backgroundImage
+    const style = getComputedStyle(el)
+    const bg = style.backgroundImage
     const m = bg && bg !== "none" ? /url\(["']?([^"')]+)["']?\)/.exec(bg) : null
     if (m) {
+      const size = style.backgroundSize.split(",")[0].trim()
+      const px = /^(\d+(?:\.\d+)?)px/.exec(size)
+      const fit = px ? Number(px[1]) : /^auto( auto)?$/.test(size) ? "natural" : "cover"
       try {
-        consider(el, new URL(m[1], document.baseURI).href)
+        consider(el, new URL(m[1], document.baseURI).href, fit)
       } catch {
         // not a URL
       }
@@ -319,42 +328,131 @@ function findSurfaceImages() {
 
 /** The largest site image a capture hands on, as base64 characters. */
 const MAX_SITE_IMAGE_CHARS = 90_000
+/** The ID card's crop of a site image, in CSS pixels: about the card's
+ *  shape, a little larger than it. */
+const CARD_CROP = [440, 560]
+/** The whole image, as Claude sees it to tell what it shows. */
+const PREVIEW_SIDE = 480
 
-/** A site image re-drawn as a JPEG (on white, for transparent ones), at
- *  most 640 wide and 640 tall, smaller until it fits the size cap. Drawn by
- *  the browser and screenshotted, so a cross-origin image works. */
-async function renderSiteImage(context, src) {
-  const page = await context.newPage()
-  try {
-    for (const [width, quality] of [
-      [640, 72],
-      [480, 62],
-      [360, 55],
-    ]) {
-      await page.setViewportSize({ width, height: width })
-      const ok = await page.evaluate(
-        async ([url, w]) => {
-          document.body.innerHTML = ""
-          document.body.style.cssText = "margin:0;background:#fff"
-          const img = document.createElement("img")
-          img.style.cssText = `display:block;width:${w}px;max-height:${w}px;object-fit:cover;object-position:center`
-          document.body.appendChild(img)
-          img.src = url
-          try {
-            await img.decode()
-            return img.naturalWidth > 0
-          } catch {
-            return false
-          }
-        },
-        [src, width],
-      )
-      if (!ok) return null
-      const jpeg = await page.locator("img").screenshot({ type: "jpeg", quality, timeout: 2000 })
-      const data = b64(jpeg)
-      if (data.length <= MAX_SITE_IMAGE_CHARS) return data
+/** Runs in a blank page: from a site image drawn at the site's own scale
+ *  (a PNG data URL, so the canvas can read it), the whole image small for
+ *  Claude (JPEG) and the card's crop at full scale, taken where the image
+ *  has the most detail (WebP, or JPEG where the browser can't write WebP),
+ *  smaller until each fits the cap. */
+async function cutSiteImage({ src, crop, previewSide, cap }) {
+  const img = new Image()
+  img.src = src
+  await img.decode()
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+  const canvasOf = (w, h) => {
+    const c = document.createElement("canvas")
+    c.width = Math.max(1, Math.round(w))
+    c.height = Math.max(1, Math.round(h))
+    return c
+  }
+  const encode = (c, type, qualities) => {
+    for (const q of qualities) {
+      const url = c.toDataURL(type, q)
+      if (!url.startsWith(`data:${type};`)) return null
+      const data = url.slice(url.indexOf(",") + 1)
+      if (data.length <= cap) return data
     }
     return null
+  }
+
+  const ps = Math.min(1, previewSide / Math.max(W, H))
+  const pc = canvasOf(W * ps, H * ps)
+  pc.getContext("2d").drawImage(img, 0, 0, pc.width, pc.height)
+  const preview = encode(pc, "image/jpeg", [0.72, 0.6, 0.5])
+  if (!preview) return null
+
+  // Detail per 20px cell: how much lightness changes from one pixel to the
+  // next (every other pixel), summed so any window adds up at once.
+  const full = canvasOf(W, H)
+  const fctx = full.getContext("2d", { willReadFrequently: true })
+  fctx.drawImage(img, 0, 0)
+  const px = fctx.getImageData(0, 0, W, H).data
+  const lum = (i) => 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]
+  const cell = 20
+  const cols = Math.ceil(W / cell)
+  const rows = Math.ceil(H / cell)
+  const sum = new Float64Array((cols + 1) * (rows + 1))
+  const detail = new Float64Array(cols * rows)
+  for (let y = 0; y < H - 1; y += 2) {
+    for (let x = 0; x < W - 1; x += 2) {
+      const i = (y * W + x) * 4
+      const l = lum(i)
+      detail[Math.floor(y / cell) * cols + Math.floor(x / cell)] += Math.abs(l - lum(i + 4)) + Math.abs(l - lum(i + W * 4))
+    }
+  }
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      sum[(r + 1) * (cols + 1) + c + 1] =
+        detail[r * cols + c] + sum[r * (cols + 1) + c + 1] + sum[(r + 1) * (cols + 1) + c] - sum[r * (cols + 1) + c]
+    }
+  }
+  const cw = Math.min(crop[0], W)
+  const ch = Math.min(crop[1], H)
+  const wc = Math.max(1, Math.floor(cw / cell))
+  const hc = Math.max(1, Math.floor(ch / cell))
+  let best = { x: 0, y: 0, score: -1 }
+  for (let r = 0; r + hc <= rows; r++) {
+    for (let c = 0; c + wc <= cols; c++) {
+      const score =
+        sum[(r + hc) * (cols + 1) + c + wc] - sum[r * (cols + 1) + c + wc] - sum[(r + hc) * (cols + 1) + c] + sum[r * (cols + 1) + c]
+      if (score > best.score) best = { x: Math.min(c * cell, W - cw), y: Math.min(r * cell, H - ch), score }
+    }
+  }
+
+  for (const shrink of [1, 0.8, 0.64]) {
+    const cc = canvasOf(cw * shrink, ch * shrink)
+    cc.getContext("2d").drawImage(img, best.x, best.y, cw, ch, 0, 0, cc.width, cc.height)
+    const webp = encode(cc, "image/webp", [0.82, 0.72, 0.62, 0.5])
+    if (webp) return { preview, card: { mediaType: "image/webp", data: webp } }
+    const jpeg = encode(cc, "image/jpeg", [0.82, 0.7, 0.58])
+    if (jpeg) return { preview, card: { mediaType: "image/jpeg", data: jpeg } }
+  }
+  return null
+}
+
+/** A site image drawn by the browser at the scale the site shows it (on
+ *  white, for transparent ones) and screenshotted, so a cross-origin image
+ *  works; then cut into Claude's view and the card's crop (cutSiteImage). */
+async function renderSiteImage(context, candidate) {
+  const page = await context.newPage()
+  try {
+    const size = await page.evaluate(async ({ src, box, fit }) => {
+      document.body.innerHTML = ""
+      document.body.style.cssText = "margin:0;background:#fff"
+      const img = document.createElement("img")
+      img.src = src
+      try {
+        await img.decode()
+      } catch {
+        return null
+      }
+      const nw = img.naturalWidth
+      const nh = img.naturalHeight
+      if (!nw || !nh) return null
+      const scale = fit === "cover" ? Math.max(box.width / nw, box.height / nh) : typeof fit === "number" ? fit / nw : 1
+      // Within reason: not below a fifth, never over 2400 on a side.
+      const s = Math.min(Math.max(scale, 0.2), 2400 / Math.max(nw, nh))
+      const width = Math.max(1, Math.round(nw * s))
+      const height = Math.max(1, Math.round(nh * s))
+      img.style.cssText = `display:block;width:${width}px;height:${height}px`
+      document.body.appendChild(img)
+      return { width, height }
+    }, candidate)
+    if (!size) return null
+    await page.setViewportSize(size)
+    const png = await page.screenshot({ type: "png", clip: { x: 0, y: 0, ...size }, timeout: 3000 })
+    return await page.evaluate(cutSiteImage, {
+      src: `data:image/png;base64,${b64(png)}`,
+      crop: CARD_CROP,
+      previewSide: PREVIEW_SIDE,
+      cap: MAX_SITE_IMAGE_CHARS,
+    })
   } catch {
     return null
   } finally {
@@ -562,18 +660,21 @@ export async function capture(url, { chromium, executablePath } = {}) {
     const surfaceImages = []
     for (const candidate of surfaceCandidates) {
       if (left() < 2_500) break
-      const data = await renderSiteImage(context, candidate.src)
-      if (!data) continue
-      const stats = imageStats(await samplePixels(context, [`data:image/jpeg;base64,${data}`]).catch(() => []))
+      const drawn = await renderSiteImage(context, candidate)
+      if (!drawn) continue
+      const { card } = drawn
+      // The card's colours come from the crop it shows.
+      const stats = imageStats(await samplePixels(context, [`data:${card.mediaType};base64,${card.data}`]).catch(() => []))
       const id = `site-image-${surfaceImages.length + 1}`
       surfaceImages.push({
         id,
         label: `${id}: an image the site lays ${candidate.where}, covering ${Math.round(Math.min(1, candidate.covers) * 100)}% of a screen`,
         mediaType: "image/jpeg",
-        data,
+        data: drawn.preview,
         where: candidate.where,
         covers: candidate.covers,
         ...stats,
+        card,
       })
     }
     const pixels = await samplePixels(context, [

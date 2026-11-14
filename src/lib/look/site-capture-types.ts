@@ -25,8 +25,9 @@ export interface ComputedSample {
 }
 
 /** A large image the site lays behind its content (a texture, pattern,
- *  illustration or photo), re-drawn as a small JPEG. A style can put it
- *  under the ID card (custom-look-spec.ts, withSiteImage). */
+ *  illustration or photo): the whole of it small, for Claude to tell what
+ *  it shows (`data`), and a crop for the ID card (`card`). A style can put
+ *  the crop under the ID card (custom-look-spec.ts, withSiteImage). */
 export interface SiteSurfaceImage extends CapturedImage {
   /** "site-image-1" …, how Claude names it. */
   id: string
@@ -37,6 +38,11 @@ export interface SiteSurfaceImage extends CapturedImage {
   average: string
   /** 0 a calm texture … 1 a busy photograph. */
   busy: number
+  /** The ID card's crop, about the card's shape, at the scale the site
+   *  shows the image and where it has the most detail, so the card keeps
+   *  its grain. `average` and `busy` are this crop's. Older captures have
+   *  none: the card then uses `data`. */
+  card?: { mediaType: "image/webp" | "image/jpeg"; data: string }
 }
 
 export interface SiteCapture {

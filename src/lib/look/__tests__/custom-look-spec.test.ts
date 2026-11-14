@@ -348,6 +348,27 @@ describe("the ID card on the site's own image", () => {
     }
   })
 
+  it("draws the card on the capture's own crop for it, not the whole image Claude saw", () => {
+    const withCrop = { ...texture, card: { mediaType: "image/webp", data: "Q1JPUA==" } }
+    const spec = normalizeLookSpec(withSiteImage(onImage(), [withCrop]))
+    expect(spec.assets?.idImage?.data).toBe("data:image/webp;base64,Q1JPUA==")
+    expect(buildCustomLookCss("custom-abcdefgh", spec)).not.toContain("QUJDRA==")
+  })
+
+  it("gives the avatar on a strong card a fill its initials read on, in both modes", () => {
+    const strong = [
+      normalizeLookSpec(withSiteImage(onImage(), [texture])),
+      normalizeLookSpec(stripe({ idCard: { surface: "brand", image: "", edge: "none", pattern: "none", title: "plain", mark: "none" } })),
+    ]
+    for (const spec of strong) {
+      expect(buildCustomLookCss("custom-abcdefgh", spec)).toContain("--color-surface-container-high: var(--look-id-avatar)")
+      const t = lookTokens(spec)
+      for (const mode of [t.light, t.dark]) {
+        expect(contrast(parseHex(mode["--look-id-fg"])!, parseHex(mode["--look-id-avatar"])!)).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
   it("falls back to the brand colour without a matching image", () => {
     expect(normalizeLookSpec(withSiteImage(onImage("site-image-9"), [texture, { ...texture, id: "site-image-2" }])).idCard.surface).toBe("brand")
     expect(normalizeLookSpec(withSiteImage(onImage(), [])).idCard.surface).toBe("brand")

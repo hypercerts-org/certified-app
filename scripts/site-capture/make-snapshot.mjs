@@ -37,7 +37,10 @@ const sandbox = await Sandbox.create({
   persistent: false,
 })
 try {
-  await run(sandbox, "make the folder", { cmd: "mkdir", args: ["-p", DIR], cwd: "/vercel/sandbox" })
+  // The image may not have /vercel/sandbox: make the folder as root and
+  // give it to the user commands run as.
+  const user = (await (await run(sandbox, "who runs commands", { cmd: "id", args: ["-un"], cwd: "/" })).stdout()).trim()
+  await run(sandbox, "make the folder", { cmd: "install", args: ["-d", "-o", user, DIR], cwd: "/", sudo: true })
   await sandbox.writeFiles([
     { path: `${DIR}/package.json`, content: Buffer.from(JSON.stringify({ private: true, type: "module" })) },
     { path: `${DIR}/capture.mjs`, content: await readFile(path.join(here, "capture.mjs")) },
