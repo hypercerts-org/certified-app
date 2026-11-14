@@ -71,7 +71,9 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
       const params = new URLSearchParams(window.location.search)
       patch(params)
       const qs = params.toString()
-      window.history.replaceState(window.history.state, "", qs ? `${pathname}?${qs}` : pathname)
+      // State must be null: Next skips syncing a call whose state carries its
+      // own internal marker, which the current history.state does.
+      window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname)
     },
     [pathname],
   )
