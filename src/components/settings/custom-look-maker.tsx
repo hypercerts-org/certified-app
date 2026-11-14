@@ -1,27 +1,12 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
-import { RefreshCw, Trash2 } from "lucide-react"
-import Banner from "@/components/ui/banner"
+import { useId, useState } from "react"
 import Button from "@/components/ui/button"
-import FormDialog from "@/components/ui/form-dialog"
 import Input from "@/components/ui/input"
-import Textarea from "@/components/ui/textarea"
-import type { SiteDesignResponse } from "@/app/api/looks/site-design/route"
-import type { SiteCapture, SiteCaptureResponse } from "@/lib/look/site-capture-types"
-import {
-  addCustomLook,
-  maskKey,
-  removeCustomLook,
-  replaceCustomLook,
-  restorePreviousLook,
-  useClaudeKey,
-  useCustomLooks,
-  type CustomLook,
-} from "@/lib/look/custom-looks"
-import type { CustomLookId } from "@/lib/look/looks"
-import { LookGenerationError, LOOK_MODEL_NAME, generateLookSpec, toLookError, verifyClaudeKey } from "@/lib/look/generate-look"
-import { emptyDesign, normalizeSiteUrl } from "@/lib/look/site-design"
+import { maskKey } from "@/lib/look/custom-looks"
+import { toLookError, verifyClaudeKey } from "@/lib/look/generate-look"
+import { normalizeSiteUrl } from "@/lib/look/site-design"
+import { RunStatus, useLookRun } from "./look-run"
 
 const KEYS_PAGE = "https://platform.claude.com/settings/keys"
 
@@ -81,98 +66,13 @@ function KeyForm({ onSave }: { onSave: (key: string) => void }) {
   )
 }
 
-type Phase =
-  | { kind: "idle" }
-  | { kind: "reading"; host: string; refresh: boolean }
-  | { kind: "designing"; host: string; refresh: boolean }
-  | { kind: "done"; name: string; host: string; refreshedId?: CustomLookId; version?: number }
-  | { kind: "error"; message: string; field: boolean }
-
-type Task =
-  | { kind: "new"; url: URL }
-  | { kind: "refresh"; look: CustomLook; request: string }
-
-/** One style being made at a time, new or a new version: read the site,
- *  ask Claude, keep the result. Leaving the page stops it. */
-function useLookRun(apiKey: string) {
-  const [phase, setPhase] = useState<Phase>({ kind: "idle" })
-  const abortRef = useRef<AbortController | null>(null)
-  useEffect(() => () => abortRef.current?.abort(), [])
-
-  const busy = phase.kind === "reading" || phase.kind === "designing"
-
-  const start = async (task: Task): Promise<boolean> => {
-    if (abortRef.current) return false
-    const url = task.kind === "new" ? task.url : normalizeSiteUrl(task.look.url || task.look.source)
-    if (!url) {
-      setPhase({ kind: "error", message: "This style has no website address to read again.", field: false })
-      return false
-    }
-    const host = url.hostname.replace(/^www\./, "")
-    const refresh = task.kind === "refresh"
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
-    setPhase({ kind: "reading", host, refresh })
-    const site = encodeURIComponent(url.toString())
-    // Screenshots are a bonus: without them (not set up, or the site
-    // wouldn't render) the style comes from the CSS digest alone.
-    const capturing: Promise<SiteCapture | null> = fetch(`/api/looks/site-capture?url=${site}`, {
-      signal: ctrl.signal,
-    })
-      .then(async (res) => (res.ok ? (((await res.json()) as SiteCaptureResponse).capture ?? null) : null))
-      .catch(() => null)
-    try {
-      const res = await fetch(`/api/looks/site-design?url=${site}`, { signal: ctrl.signal })
-      const body = (await res.json().catch(() => ({}))) as SiteDesignResponse
-      const capture = await capturing
-      // Some sites refuse plain fetches but render for a browser: the
-      // screenshots and rendered styles are then enough on their own.
-      const design = res.ok && body.design ? body.design : capture ? emptyDesign(capture.url) : null
-      if (!design) throw new LookGenerationError("site", body.error ?? "Couldn't read that website.")
-      setPhase({ kind: "designing", host, refresh })
-      if (task.kind === "new") {
-        const spec = await generateLookSpec({ apiKey, design, capture, signal: ctrl.signal })
-        const look = addCustomLook(spec, host, url.toString())
-        setPhase({ kind: "done", name: look.spec.name, host })
-      } else {
-        const spec = await generateLookSpec({
-          apiKey,
-          design,
-          capture,
-          previous: task.look.spec,
-          request: task.request,
-          signal: ctrl.signal,
-        })
-        const look = replaceCustomLook(task.look.id, spec)
-        if (!look) throw new LookGenerationError("unknown", "That style was removed in the meantime.")
-        setPhase({ kind: "done", name: look.spec.name, host, refreshedId: look.id, version: look.version })
-      }
-      return true
-    } catch (err) {
-      const error = toLookError(err)
-      setPhase(error.code === "aborted" ? { kind: "idle" } : { kind: "error", message: error.message, field: false })
-      return false
-    } finally {
-      if (abortRef.current === ctrl) abortRef.current = null
-    }
-  }
-
-  return {
-    phase,
-    busy,
-    start,
-    stop: () => abortRef.current?.abort(),
-    fieldError: (message: string) => setPhase({ kind: "error", message, field: true }),
-    clearFieldError: () => setPhase((p) => (p.kind === "error" && p.field ? { kind: "idle" } : p)),
-    clear: () => setPhase({ kind: "idle" }),
-  }
-}
-
-type LookRun = ReturnType<typeof useLookRun>
-
-function SiteForm({ run, statusId }: { run: LookRun; statusId: string }) {
+function SiteForm({ statusId }: { statusId: string }) {
+  const { run } = useLookRun()
   const [site, setSite] = useState("")
   const { phase, busy } = run
+  // A new version being made from the gallery holds the form, without its
+  // progress: that shows by the gallery.
+  const makingNew = busy && run.refreshingId === null
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,17 +105,17 @@ function SiteForm({ run, statusId }: { run: LookRun; statusId: string }) {
         />
       </div>
       <div className="flex gap-2">
-        {busy ? (
+        {makingNew ? (
           <>
             <Button type="button" size="sm" loading>
-              {phase.kind !== "idle" && "refresh" in phase && phase.refresh ? "Making new version" : "Making style"}
+              Making style
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={run.stop}>
               Stop
             </Button>
           </>
         ) : (
-          <Button type="submit" size="sm">
+          <Button type="submit" size="sm" disabled={busy}>
             Make style
           </Button>
         )}
@@ -224,179 +124,35 @@ function SiteForm({ run, statusId }: { run: LookRun; statusId: string }) {
   )
 }
 
-/** What is happening now, under the form: reading, making, made (with a
- *  way back after a new version), or what went wrong. */
-function RunStatus({ run, statusId }: { run: LookRun; statusId: string }) {
-  const { phase } = run
-  return (
-    <>
-      <div id={statusId} role="status" aria-live="polite" className="text-body-sm text-[var(--fg-muted)]">
-        {phase.kind === "reading" ? <p className="m-0">Reading {phase.host} and taking screenshots…</p> : null}
-        {phase.kind === "designing" ? (
-          <p className="m-0">
-            {LOOK_MODEL_NAME} is making {phase.refresh ? "a new version of the style" : "a style"} from {phase.host}.
-            This can take a minute or two.
-          </p>
-        ) : null}
-        {phase.kind === "done" ? (
-          <p className="m-0 text-[var(--fg-primary)]">
-            {phase.refreshedId ? (
-              <>
-                Made version {phase.version} of “{phase.name}” and switched to it.{" "}
-                <button
-                  type="button"
-                  className="inline cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline underline-offset-2"
-                  onClick={() => {
-                    restorePreviousLook(phase.refreshedId!)
-                    run.clear()
-                  }}
-                >
-                  Back to the previous version
-                </button>
-              </>
-            ) : (
-              <>
-                Made “{phase.name}” from {phase.host} and switched to it. It’s with the other styles above.
-              </>
-            )}
-          </p>
-        ) : null}
-      </div>
-      {phase.kind === "error" && !phase.field ? <Banner variant="error">{phase.message}</Banner> : null}
-    </>
-  )
-}
-
-/** "New version of X": what Claude should do differently, optional. */
-function RefreshDialog({
-  look,
-  onClose,
-  onSubmit,
-}: {
-  look: CustomLook
-  onClose: () => void
-  onSubmit: (request: string) => void
-}) {
-  const [request, setRequest] = useState("")
-  return (
-    <FormDialog
-      title={`New version of ${look.spec.name}`}
-      onClose={onClose}
-      onSubmit={() => onSubmit(request.trim())}
-      submitLabel="Make new version"
-      maxWidth={480}
-      autoFocusFirst
-    >
-      {/* FormDialog's footer brings no space of its own: 24px to the buttons. */}
-      <div className="mb-6 flex flex-col gap-4">
-        <p className="m-0 text-body-sm text-[var(--fg-secondary)] text-pretty">
-          {LOOK_MODEL_NAME} reads {look.source} again and makes a new version from this one. You can go back to
-          this version afterwards.
-        </p>
-        <Textarea
-          label="What should change? (optional)"
-          rows={4}
-          maxLength={600}
-          value={request}
-          onChange={(e) => setRequest(e.target.value)}
-          helperText="For example: use the green from their buttons, make the ID card darker, more like their homepage hero. Leave it empty for a fresh variation."
-        />
-      </div>
-    </FormDialog>
-  )
-}
-
-function MadeLooks({ run, apiKey }: { run: LookRun; apiKey: string | null }) {
-  const looks = useCustomLooks()
-  const headingId = useId()
-  const [refreshing, setRefreshing] = useState<CustomLook | null>(null)
-  if (!looks.length) return null
-  return (
-    <div className="flex flex-col gap-2">
-      <h4 id={headingId} className="m-0 text-body-sm font-medium text-[var(--fg-primary)]">
-        Made in this browser
-      </h4>
-      <ul aria-labelledby={headingId} className="m-0 flex list-none flex-col divide-y divide-[var(--border-subtle)] p-0">
-        {looks.map((look) => (
-          <li key={look.id} className="flex items-center justify-between gap-3 py-2">
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-body-sm text-[var(--fg-primary)]">{look.spec.name}</span>
-              <span className="truncate text-caption text-[var(--fg-muted)]">
-                From {look.source}
-                {look.version > 1 ? ` · version ${look.version}` : ""}
-              </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-1">
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`New version of ${look.spec.name}`}
-                disabled={!apiKey || run.busy}
-                onClick={() => setRefreshing(look)}
-              >
-                <RefreshCw size={16} aria-hidden />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={`Remove ${look.spec.name}`}
-                disabled={run.busy}
-                onClick={() => removeCustomLook(look.id)}
-              >
-                <Trash2 size={16} aria-hidden />
-              </Button>
-            </span>
-          </li>
-        ))}
-      </ul>
-      {refreshing ? (
-        <RefreshDialog
-          look={refreshing}
-          onClose={() => setRefreshing(null)}
-          onSubmit={(request) => {
-            const look = refreshing
-            setRefreshing(null)
-            void run.start({ kind: "refresh", look, request })
-          }}
-        />
-      ) : null}
-    </div>
-  )
-}
-
 /**
  * Settings → Appearance → Make a style from a website (experimental): the
- * person's Claude API key, a website, and the styles made so far. The
- * website is read by Certified's server (/api/looks/site-design, and
- * screenshots from /api/looks/site-capture); Claude is
- * called from this browser with the person's key (generate-look.ts).
+ * person's Claude API key and a website. The styles made so far are tiles
+ * in the gallery above, with their own New version and Remove
+ * (look-picker.tsx); both share one run (look-run.tsx). The website is
+ * read by Certified's server (/api/looks/site-design, and screenshots
+ * from /api/looks/site-capture); Claude is called from this browser with
+ * the person's key (generate-look.ts).
  */
 export default function CustomLookMaker() {
-  const [apiKey, setApiKey] = useClaudeKey()
-  const run = useLookRun(apiKey ?? "")
+  const { apiKey, setApiKey, run } = useLookRun()
   const statusId = useId()
-  return (
+  return apiKey ? (
     <div className="flex flex-col gap-6">
-      {apiKey ? (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 flex-col">
-              <span className="text-body-sm font-medium text-[var(--fg-primary)]">Claude API key</span>
-              <span className="truncate text-caption text-[var(--fg-muted)]">{maskKey(apiKey)} · in this browser only</span>
-            </span>
-            <Button size="sm" variant="secondary" onClick={() => setApiKey(null)} disabled={run.busy}>
-              Remove key
-            </Button>
-          </div>
-          <div className="flex flex-col gap-3">
-            <SiteForm run={run} statusId={statusId} />
-            <RunStatus run={run} statusId={statusId} />
-          </div>
-        </>
-      ) : (
-        <KeyForm onSave={setApiKey} />
-      )}
-      <MadeLooks run={run} apiKey={apiKey} />
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 flex-col">
+          <span className="text-body-sm font-medium text-[var(--fg-primary)]">Claude API key</span>
+          <span className="truncate text-caption text-[var(--fg-muted)]">{maskKey(apiKey)} · in this browser only</span>
+        </span>
+        <Button size="sm" variant="secondary" onClick={() => setApiKey(null)} disabled={run.busy}>
+          Remove key
+        </Button>
+      </div>
+      <div className="flex flex-col gap-3">
+        <SiteForm statusId={statusId} />
+        <RunStatus statusId={statusId} refresh={false} />
+      </div>
     </div>
+  ) : (
+    <KeyForm onSave={setApiKey} />
   )
 }

@@ -21,6 +21,7 @@ import DidSection from "@/components/account/did-section"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import LookPicker from "@/components/settings/look-picker"
 import CustomLookMaker from "@/components/settings/custom-look-maker"
+import { LookRunProvider } from "@/components/settings/look-run"
 import Button from "@/components/ui/button"
 
 const UsernameCard = dynamic(
@@ -184,7 +185,9 @@ export default function SettingsPanel() {
         )
       case "appearance":
         return (
-          <>
+          // The gallery (a new version of a made style) and the maker (a new
+          // style) share one run and the key.
+          <LookRunProvider>
             <SettingsRow label="Theme" description="Light, dark, or follow your device.">
               <ThemeToggle variant="cards" />
             </SettingsRow>
@@ -200,7 +203,7 @@ export default function SettingsPanel() {
             >
               <CustomLookMaker />
             </SettingsBlock>
-          </>
+          </LookRunProvider>
         )
       case "social-graph":
         return did ? (

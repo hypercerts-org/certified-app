@@ -1,8 +1,12 @@
 "use client"
 
+import { useId, useState } from "react"
+import { RefreshCw, Trash2 } from "lucide-react"
+import Button from "@/components/ui/button"
 import { Radio, RadioGroup } from "@/components/ui/radio"
-import { useCustomLooks } from "@/lib/look/custom-looks"
+import { removeCustomLook, useCustomLooks, type CustomLook } from "@/lib/look/custom-looks"
 import { LOOKS, isLookId, useLook, type AnyLookId } from "@/lib/look/looks"
+import { RefreshDialog, RunStatus, useLookRun } from "./look-run"
 
 /** An initials avatar shaped like `<Avatar>`'s fallback (a ring around a
  *  fill), carrying the avatar centerpiece hooks so each style redraws it.
@@ -111,24 +115,32 @@ function LookTile({
   id,
   name,
   description,
+  note,
   selected,
+  className = "",
 }: {
   id: AnyLookId
   name: string
   description: string
+  /** A last line under the description, kept clear on the right for the
+   *  made styles' buttons (MadeLookTile). */
+  note?: string
   selected: boolean
+  className?: string
 }) {
   const descId = `look-${id}-description`
+  const noteId = `look-${id}-note`
   return (
     <Radio
       value={id}
       aria-label={name}
-      aria-describedby={descId}
+      aria-describedby={note ? `${descId} ${noteId}` : descId}
       className={[
         "flex-col items-stretch gap-0 overflow-hidden border p-0 text-left",
         selected
           ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
           : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
+        className,
       ].join(" ")}
     >
       <LookPreview id={id} />
@@ -137,45 +149,105 @@ function LookTile({
         <span id={descId} className="text-caption text-[var(--fg-muted)]">
           {description}
         </span>
+        {note ? (
+          <span
+            id={noteId}
+            className="flex min-h-control-md items-center pr-24 text-caption text-[var(--fg-muted)] md:min-h-control-sm"
+          >
+            {note}
+          </span>
+        ) : null}
       </span>
     </Radio>
+  )
+}
+
+/** A style made from a website: its tile, with New version and Remove on
+ *  the tile's last line. The buttons sit beside the radio, not inside it
+ *  (a button can't hold buttons), laid over the tile's bottom right. */
+function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean }) {
+  const { apiKey, run } = useLookRun()
+  const [asking, setAsking] = useState(false)
+  const { id, spec, source, version } = look
+  return (
+    <div className="relative flex">
+      <LookTile
+        id={id}
+        name={spec.name}
+        description={spec.description ? `${spec.description} From ${source}.` : `Made from ${source}.`}
+        note={`Made in this browser${version > 1 ? ` · version ${version}` : ""}`}
+        selected={selected}
+        className="flex-1"
+      />
+      <span className="absolute right-2 bottom-2.5 flex gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={`New version of ${spec.name}`}
+          disabled={!apiKey || run.busy}
+          loading={run.refreshingId === id}
+          onClick={() => setAsking(true)}
+        >
+          <RefreshCw size={16} aria-hidden />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={`Remove ${spec.name}`}
+          disabled={run.busy}
+          onClick={() => removeCustomLook(id)}
+        >
+          <Trash2 size={16} aria-hidden />
+        </Button>
+      </span>
+      {asking ? (
+        <RefreshDialog
+          look={look}
+          onClose={() => setAsking(false)}
+          onSubmit={(request) => {
+            setAsking(false)
+            void run.start({ kind: "refresh", look, request })
+          }}
+        />
+      ) : null}
+    </div>
   )
 }
 
 /**
  * Settings → Appearance → Style: one tile per style, each a live preview
  * over its name and one line about it, then the styles made from websites
- * in this browser (custom-look-maker.tsx). Picking applies the style at
- * once and keeps it in this browser (`useLook`).
+ * in this browser, each with New version and Remove (made with
+ * custom-look-maker.tsx; both share one run, look-run.tsx). Picking
+ * applies the style at once and keeps it in this browser (`useLook`).
  */
 export default function LookPicker() {
   const [look, setLook] = useLook()
   const made = useCustomLooks()
+  const statusId = useId()
   return (
-    <RadioGroup
-      value={look}
-      onValueChange={(v) => {
-        if (isLookId(v)) setLook(v)
-        else {
-          const custom = made.find((l) => l.id === v)
-          if (custom) setLook(custom.id)
-        }
-      }}
-      aria-label="Style"
-      className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
-    >
-      {LOOKS.map(({ id, name, description }) => (
-        <LookTile key={id} id={id} name={name} description={description} selected={look === id} />
-      ))}
-      {made.map(({ id, spec, source }) => (
-        <LookTile
-          key={id}
-          id={id}
-          name={spec.name}
-          description={spec.description ? `${spec.description} From ${source}.` : `Made from ${source}.`}
-          selected={look === id}
-        />
-      ))}
-    </RadioGroup>
+    <div>
+      <RadioGroup
+        value={look}
+        onValueChange={(v) => {
+          if (isLookId(v)) setLook(v)
+          else {
+            const custom = made.find((l) => l.id === v)
+            if (custom) setLook(custom.id)
+          }
+        }}
+        aria-label="Style"
+        className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+      >
+        {LOOKS.map(({ id, name, description }) => (
+          <LookTile key={id} id={id} name={name} description={description} selected={look === id} />
+        ))}
+        {made.map((m) => (
+          <MadeLookTile key={m.id} look={m} selected={look === m.id} />
+        ))}
+      </RadioGroup>
+      {/* A new version's progress, its way back, or what went wrong. */}
+      <RunStatus statusId={statusId} refresh spaced />
+    </div>
   )
 }

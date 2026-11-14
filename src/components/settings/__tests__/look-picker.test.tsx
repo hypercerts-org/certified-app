@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import LookPicker from "../look-picker"
+import { LookRunProvider } from "../look-run"
+
+const renderPicker = () =>
+  render(
+    <LookRunProvider>
+      <LookPicker />
+    </LookRunProvider>,
+  )
 
 beforeEach(() => {
   document.documentElement.removeAttribute("data-look")
@@ -9,7 +17,7 @@ beforeEach(() => {
 
 describe("LookPicker", () => {
   it("offers every style, Neutral picked by default, each with a live preview", () => {
-    const { container } = render(<LookPicker />)
+    const { container } = renderPicker()
     const radios = screen.getAllByRole("radio")
     expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
       "Neutral",
@@ -30,7 +38,7 @@ describe("LookPicker", () => {
   })
 
   it("applies a style at once, and Neutral takes it off", () => {
-    render(<LookPicker />)
+    renderPicker()
     fireEvent.click(screen.getByRole("radio", { name: "Banknote" }))
     expect(document.documentElement.getAttribute("data-look")).toBe("banknote")
     expect(screen.getByRole("radio", { name: "Banknote" })).toHaveAttribute("aria-checked", "true")

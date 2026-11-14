@@ -11,6 +11,17 @@ vi.mock("@/lib/look/generate-look", async (importOriginal) => ({
 }))
 
 const { default: CustomLookMaker } = await import("../custom-look-maker")
+const { default: LookPicker } = await import("../look-picker")
+const { LookRunProvider } = await import("../look-run")
+
+/** Settings → Appearance: the gallery above the maker, sharing one run. */
+const renderAppearance = () =>
+  render(
+    <LookRunProvider>
+      <LookPicker />
+      <CustomLookMaker />
+    </LookRunProvider>,
+  )
 
 const palette = {
   canvas: "#FFFFFF", sunken: "#F2F2F2", elevated: "#FFFFFF", text: "#111111", textSecondary: "#444444",
@@ -34,11 +45,11 @@ afterEach(() => {
   document.documentElement.removeAttribute("data-look")
 })
 
-describe("CustomLookMaker: a new version of a made style", () => {
+describe("Made styles in the gallery: a new version", () => {
   it("asks what to change, sends the previous version and the request, and offers the way back", async () => {
     const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
     generate.mockResolvedValue(spec("Guardian, darker"))
-    render(<CustomLookMaker />)
+    renderAppearance()
 
     fireEvent.click(screen.getByRole("button", { name: "New version of Guardian" }))
     // jsdom's <dialog> isn't "open" to the accessibility tree; query inside it.
@@ -80,7 +91,7 @@ describe("CustomLookMaker: a new version of a made style", () => {
           : new Response(JSON.stringify({ error: "The website answered with an error (403)." }), { status: 502 }),
       ),
     )
-    render(<CustomLookMaker />)
+    renderAppearance()
     fireEvent.click(screen.getByRole("button", { name: "New version of Guardian" }))
     fireEvent.click(screen.getByRole("button", { name: "Make new version", hidden: true }))
 
@@ -96,7 +107,43 @@ describe("CustomLookMaker: a new version of a made style", () => {
   it("can't make a new version without a key", () => {
     window.localStorage.removeItem(CLAUDE_KEY_STORAGE_KEY)
     addCustomLook(spec("Guardian"), "theguardian.com")
-    render(<CustomLookMaker />)
+    renderAppearance()
     expect(screen.getByRole("button", { name: "New version of Guardian" })).toBeDisabled()
+  })
+})
+
+describe("Made styles in the gallery", () => {
+  it("are tiles marked as made in this browser, with no separate list in the maker", () => {
+    addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    const { container } = renderAppearance()
+    const tile = screen.getByRole("radio", { name: "Guardian" })
+    expect(tile).toHaveAccessibleDescription(/Made in this browser/)
+    expect(container.querySelectorAll("ul")).toHaveLength(0)
+  })
+
+  it("can be removed from the gallery, and the style goes back to Neutral if it was on", () => {
+    const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    renderAppearance()
+    expect(document.documentElement.getAttribute("data-look")).toBe(look.id)
+    fireEvent.click(screen.getByRole("button", { name: "Remove Guardian" }))
+    expect(screen.queryByRole("radio", { name: "Guardian" })).toBeNull()
+    expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))).toEqual([])
+    expect(document.documentElement.hasAttribute("data-look")).toBe(false)
+  })
+
+  it("hold the maker's form while a new version is being made", async () => {
+    addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    let finish: (value: unknown) => void = () => {}
+    generate.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+    renderAppearance()
+    fireEvent.click(screen.getByRole("button", { name: "New version of Guardian" }))
+    fireEvent.click(screen.getByRole("button", { name: "Make new version", hidden: true }))
+
+    await screen.findByText(/is making a new version of “Guardian”/)
+    expect(screen.getByRole("button", { name: "Make style" })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Making style" })).toBeNull()
+    finish(spec("Guardian, darker"))
+    await screen.findByText(/Made version 2 of/)
+    expect(screen.getByRole("button", { name: "Make style" })).toBeEnabled()
   })
 })
