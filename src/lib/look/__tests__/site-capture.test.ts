@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { dominantColours, isPrivateAddress, looksLikeBotCheck } from "../../../../scripts/site-capture/capture.mjs"
+import { DENIED_SUBNETS } from "../site-capture"
 
 describe("site capture: which addresses a page may reach", () => {
   it.each([
@@ -52,5 +53,13 @@ describe("site capture: bot checks", () => {
     expect(looksLikeBotCheck("Just a moment...", "")).toBe(true)
     expect(looksLikeBotCheck("Attention Required! | Cloudflare", "")).toBe(true)
     expect(looksLikeBotCheck("Women Win", "We believe in a future where every girl and woman exercises their rights")).toBe(false)
+  })
+})
+
+describe("site capture: the VM's network policy", () => {
+  it("denies only IPv4 subnets: the Sandbox API rejects the whole policy for an IPv6 one", () => {
+    for (const cidr of DENIED_SUBNETS) expect(cidr).toMatch(/^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/)
+    expect(DENIED_SUBNETS).toContain("10.0.0.0/8")
+    expect(DENIED_SUBNETS).toContain("169.254.0.0/16")
   })
 })

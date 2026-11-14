@@ -49,7 +49,10 @@ const TOTAL_MS = 40_000
 const MAX_RESULT_BYTES = 6_000_000
 
 /** Everything but the public internet, refused by the VM for every
- *  connection Chromium makes. */
+ *  connection Chromium makes. IPv4 only: the Sandbox API rejects a policy
+ *  with any IPv6 CIDR ("Invalid CIDR"), which failed every capture. The
+ *  capture script's own check refuses private IPv6 addresses before a
+ *  request leaves the page (capture.mjs, isPrivateAddress). */
 export const DENIED_SUBNETS = [
   "0.0.0.0/8",
   "10.0.0.0/8",
@@ -62,10 +65,6 @@ export const DENIED_SUBNETS = [
   "198.18.0.0/15",
   "224.0.0.0/4",
   "240.0.0.0/4",
-  "::1/128",
-  "fc00::/7",
-  "fe80::/10",
-  "ff00::/8",
 ]
 
 export function siteCaptureMode(): "sandbox" | "local" | null {
