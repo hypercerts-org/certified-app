@@ -4,7 +4,7 @@ import { memo, useState, type MouseEvent } from "react"
 import FundingReceiptDetailModal from "./funding-receipt-detail-modal"
 import {
   FundingPartySlot,
-  FundingForActivity,
+  FundingForTarget,
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
 import { formatRelativeDate } from "@/lib/utils/format-date"
@@ -109,7 +109,7 @@ function FundingReceiptRow({
         <span className="funding-receipt-row__cell-label" aria-hidden="true">
           From
         </span>
-        <FundingPartySlot party={receipt.from} showText={showTextParties} />
+        <FundingPartySlot party={receipt.from} showText={showTextParties} anonymous />
       </span>
       <span className="funding-receipt-row__to-cell">
         <span className="funding-receipt-row__cell-label" aria-hidden="true">
@@ -119,7 +119,7 @@ function FundingReceiptRow({
       </span>
       {/* "for" activity is its own column (image + title); the column
           header labels it, so no inline connector word. */}
-      {showFor ? <FundingForActivity uri={receipt.forUri} /> : null}
+      {showFor ? <FundingForTarget uri={receipt.forUri} /> : null}
       <span className="funding-receipt-row__amount">
         {receipt.amount ? (
           <>

@@ -29,7 +29,7 @@ export interface SingleActivity {
 // space separator is collision-free — DIDs and record keys never contain
 // spaces).
 //
-// The funding list renders one <FundingForActivity> per receipt, and many
+// The funding list renders one <FundingForTarget> per receipt, and many
 // receipts fund the same activity, so without coalescing each row fired its
 // own getRecord — an N+1 with no dedupe. Concurrent callers for the same
 // record now share one in-flight request, and a resolved record is cached

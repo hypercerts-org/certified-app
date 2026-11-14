@@ -7,9 +7,11 @@ import IdentityRow from "@/components/ui/identity-row"
 import WalletAddress from "@/components/ui/wallet-address"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useActivity } from "@/hooks/use-activity"
-import { profileUrl } from "@/lib/urls"
+import { useProjectSummary } from "@/hooks/use-project-summary"
+import { profileUrl, recordUrl } from "@/lib/urls"
 import { parseAtUri, activityDetailHref } from "@/lib/atproto/activity-uri"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { projectImage } from "@/lib/atproto/collection"
 import type { FundingParty } from "@/lib/atproto/indexer"
 
 /**
@@ -20,6 +22,7 @@ import type { FundingParty } from "@/lib/atproto/indexer"
  */
 
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
+const PROJECT_COLLECTION = "org.hypercerts.collection"
 
 /** Resolve a DID to an account byline (avatar + name + @handle) and render
  *  it as an {@link IdentityRow}. Centralises the per-row `useAuthorInfo`
@@ -56,19 +59,25 @@ export function HydratedIdentityRow({
 /** Renders one side of the transfer. Accounts hydrate per-row and show
  *  avatar + name + @handle. Text slots render their literal value when
  *  `showText` is set (the activity detail page surfaces wallet
- *  addresses); otherwise text / null slots render nothing (the /explore
- *  default). */
+ *  addresses); otherwise text slots render nothing (the /explore default).
+ *  A missing party renders nothing, or "Anonymous" when `anonymous` is set
+ *  (the funder side: a receipt without `from` records an anonymous gift). */
 export function FundingPartySlot({
   party,
   showText = false,
+  anonymous = false,
 }: {
   party: FundingParty
   showText?: boolean
+  anonymous?: boolean
 }) {
   const did = party?.kind === "account" ? party.did : null
   if (!did) {
     if (showText && party?.kind === "text" && party.value) {
       return <FundingTextParty value={party.value} />
+    }
+    if (anonymous && party === null) {
+      return <span className="funding-receipt-row__anon">Anonymous</span>
     }
     return null
   }
@@ -85,30 +94,49 @@ function FundingTextParty({ value }: { value: string }) {
   )
 }
 
-/** The "for [activity]" column. Resolves the activity (title + square
- *  image) from its URI via {@link useActivity} and links to its detail
- *  page; the title wraps to at most two lines. Always renders the cell
- *  span (empty when the `for` ref is missing or doesn't point at an
- *  activity) so the funding table's columns stay aligned across rows. */
-export function FundingForActivity({ uri }: { uri: string | null }) {
+/** The "for" column: the activity or project the payment was for. Resolves
+ *  the record (title + square image) from its URI and links to its detail
+ *  page; the title wraps to at most two lines. Always renders the cell span
+ *  (empty when the `for` ref is missing or points at something else) so the
+ *  funding table's columns stay aligned across rows. */
+export function FundingForTarget({ uri }: { uri: string | null }) {
   const parsed = uri ? parseAtUri(uri) : null
   const isActivity = parsed?.collection === ACTIVITY_COLLECTION
+  const isProject = parsed?.collection === PROJECT_COLLECTION
   const { activity } = useActivity(
     isActivity ? parsed!.did : null,
     isActivity ? parsed!.rkey : null,
   )
+  const projectValue = useProjectSummary(
+    isProject ? parsed!.did : null,
+    isProject ? parsed!.rkey : null,
+  )
 
-  if (!parsed || !isActivity) {
+  if (!parsed || (!isActivity && !isProject)) {
     return <span className="funding-receipt-row__for" />
   }
 
-  const title =
-    (typeof activity?.value.title === "string" && activity.value.title) ||
-    "activity"
-  const imageUrl = activity
-    ? resolveActivityImageUrl(activity.value.image, parsed.did)
-    : null
-  const href = activityDetailHref(parsed.did, parsed.rkey)
+  let title: string
+  let imageUrl: string | null
+  let href: string
+  if (isActivity) {
+    title =
+      (typeof activity?.value.title === "string" && activity.value.title) ||
+      "activity"
+    imageUrl = activity
+      ? resolveActivityImageUrl(activity.value.image, parsed.did)
+      : null
+    href = activityDetailHref(parsed.did, parsed.rkey)
+  } else {
+    const value = projectValue
+    title =
+      (typeof value?.title === "string" && value.title) ||
+      (typeof value?.name === "string" && value.name) ||
+      "project"
+    const raw = value ? projectImage(value, "thumb") : null
+    imageUrl = raw ? resolveActivityImageUrl(raw, parsed.did) : null
+    href = recordUrl(parsed.did, "project", parsed.rkey)
+  }
 
   return (
     <span className="funding-receipt-row__for">

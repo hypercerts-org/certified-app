@@ -5,7 +5,7 @@ import { Check, ChevronRight, Copy, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import {
-  FundingForActivity,
+  FundingForTarget,
   FundingPartySlot,
   HydratedIdentityRow,
 } from "./funding-receipt-parts"
@@ -88,7 +88,7 @@ function buildPerspective(
  * a copy button.
  *
  * Parties and the `for` activity reuse the same renderers the list row
- * uses ({@link FundingPartySlot} / {@link FundingForActivity}) so an
+ * uses ({@link FundingPartySlot} / {@link FundingForTarget}) so an
  * account shows avatar + name and a wallet address shows its ENS name /
  * copyable hex exactly as in the row.
  */
@@ -259,7 +259,7 @@ export default function FundingReceiptDetailModal({
             how it settled (Payment), and how it's recorded (Record). */}
         <DetailSection title="Transfer" defaultOpen>
           <DetailRow label="From">
-            <FundingPartySlot party={receipt.from} showText />
+            <FundingPartySlot party={receipt.from} showText anonymous />
           </DetailRow>
 
           <DetailRow label="To">
@@ -283,7 +283,7 @@ export default function FundingReceiptDetailModal({
 
           <DetailRow label="For">
             {hasForActivity ? (
-              <FundingForActivity uri={receipt.forUri} />
+              <FundingForTarget uri={receipt.forUri} />
             ) : (
               <EmptyValue />
             )}

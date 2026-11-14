@@ -90,9 +90,9 @@ function parseView(v: string | null): ListGalleryView {
 
 const ALL_DEGREES: readonly Degree[] = [1, 2, 3] as const
 
-/** Default funding "Confirmed by" selection — all role buckets, no third
- *  parties — i.e. show only receipts confirmed by the sender, recipient, or
- *  both. The single-kind funding view starts here (the user can change it);
+/** Default funding "Confirmed by" selection — trusted sources + both sides,
+ *  no specific third parties. The single-kind funding view starts here (the
+ *  user can change it);
  *  the combined All view applies it as a fixed filter (no control), so its
  *  funding block matches the funding tab's default. */
 const DEFAULT_CONFIRM_ROLE_SET: ReadonlySet<ConfirmRole> = new Set(
@@ -895,10 +895,10 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // Same default "Confirmed by" filter as the funding type — show only
-  // receipts the recipient confirmed (recipient or both); sender-only and
-  // third-party-only are hidden. Fixed here (the All view has no confirmer
-  // control). Merge optimistic confirmations first so a just-confirmed pair
+  // Same default "Confirmed by" filter as the funding type — what a trusted
+  // source recorded and what both sides confirmed; one-sided and
+  // unknown-source receipts are hidden. Fixed here (the All view has no
+  // confirmer control). Merge optimistic confirmations first so a just-confirmed pair
   // shows as one row.
   const mergedFunding = useMergedFunding(funding.fundingReceipts)
   const fundingItems = useMemo(

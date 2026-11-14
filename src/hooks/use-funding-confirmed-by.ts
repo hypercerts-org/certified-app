@@ -15,13 +15,13 @@ import {
 const EMPTY_SELECTION_SENTINEL = "-"
 
 export interface FundingConfirmedByState {
-  /** Selected role buckets (default: {@link DEFAULT_CONFIRM_ROLES} —
-   *  recipient + both). */
+  /** Selected buckets (default: {@link DEFAULT_CONFIRM_ROLES} — trusted
+   *  sources + both sides). */
   roles: Set<ConfirmRole>
   /** Selected third-party attestor DIDs (default: none). */
   thirdParties: Set<string>
-  /** True when the selection equals the default (recipient + both, no third
-   *  parties). */
+  /** True when the selection equals the default (trusted sources + both
+   *  sides, no third parties). */
   isDefault: boolean
   toggleRole: (role: ConfirmRole) => void
   toggleThirdParty: (did: string) => void
@@ -30,9 +30,9 @@ export interface FundingConfirmedByState {
 
 /**
  * URL-backed state for the Funding "Confirmed by" filter, shared by /explore
- * and the activity detail page so both surfaces behave identically. Two axes
- * whose UNION is shown: the Both / Sender / Recipient role buckets
- * (`?confirmedRoles=`, default all three) and a set of specific third-party
+ * the activity detail page and /funding so every surface behaves identically.
+ * Two axes whose UNION is shown: the buckets (`?confirmedRoles=`, default
+ * trusted sources + both sides) and a set of specific third-party
  * attestor DIDs (`?confirmedTp=`, default none). Filtering itself is
  * client-side via {@link matchesConfirmedBy} — the role buckets aren't a
  * single indexer arg. Only the params this filter owns are touched; every
@@ -102,7 +102,7 @@ export function useFundingConfirmedBy(): FundingConfirmedByState {
   )
 
   const reset = useCallback(() => {
-    // Back to the default: recipient + both buckets, no third parties.
+    // Back to the default: trusted sources + both sides, no third parties.
     setParam({ confirmedRoles: null, confirmedTp: null })
   }, [setParam])
 
