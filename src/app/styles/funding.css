@@ -150,10 +150,39 @@
     gap: 8px;
   }
 
+  /* All five views side by side: icon over a short label, equal widths,
+     so none scrolls out of sight. */
+  .funding-page__switcher-scroll {
+    overflow: visible;
+  }
+
+  .funding-page__switcher-scroll [role="radiogroup"] {
+    display: flex;
+    width: 100%;
+  }
+
+  .funding-page__switcher-scroll [role="radio"] {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding-inline: 0;
+    font-size: var(--text-micro);
+  }
+
   .funding-confirmed__row {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+
+  /* Every chip in view, wrapped, so no source hides off-screen. */
+  .funding-confirmed__scroll {
+    overflow: visible;
+  }
+
+  .funding-chips {
+    flex-wrap: wrap;
   }
 }
 
@@ -711,8 +740,12 @@
 }
 
 .funding-register__search {
-  width: 280px;
-  max-width: 100%;
+  flex: 0 1 300px;
+  min-width: 0;
+}
+
+.funding-register__size {
+  flex: 0 0 170px;
 }
 
 .funding-register__project-filter {
@@ -736,7 +769,7 @@
 .funding-ledger__row {
   position: relative;
   display: grid;
-  grid-template-columns: 104px minmax(0, 1.1fr) minmax(0, 1.25fr) minmax(0, 1.35fr) 104px 168px;
+  grid-template-columns: 104px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1.35fr) 96px minmax(0, 136px);
   align-items: center;
   gap: 12px;
   padding: 8px 10px;
@@ -855,7 +888,7 @@ a.funding-ledger__project:hover {
 
 @media (max-width: 1099px) {
   .funding-ledger__row {
-    grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) 96px 140px;
+    grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) 88px minmax(0, 120px);
   }
 }
 
@@ -913,8 +946,14 @@ a.funding-ledger__project:hover {
     color: var(--fg-muted);
   }
 
-  .funding-register__search {
-    width: 100%;
+  .funding-register__search,
+  .funding-register__size {
+    flex: 1 1 100%;
+  }
+
+  /* The recipient heads the card, so it needs no "To" label. */
+  .funding-ledger__to .funding-ledger__cell-label {
+    display: none;
   }
 
   .funding-register__count {

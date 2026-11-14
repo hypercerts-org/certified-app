@@ -288,7 +288,7 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
         ) : null}
         {topRegion !== undefined && FLOW_REGIONS[topRegion] !== "none" ? (
           <span>
-            Projects in {regionLabel(FLOW_REGIONS[topRegion])} received{" "}
+            Projects in {FLOW_REGIONS[topRegion] === "Americas" ? "the Americas" : regionLabel(FLOW_REGIONS[topRegion])} received{" "}
             <b>{Math.round((regions[topRegion].total / total) * 100)}%</b>.
           </span>
         ) : null}

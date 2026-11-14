@@ -140,22 +140,52 @@ async function getJson<T>(url: string, timeoutMs = PDS_TIMEOUT_MS): Promise<T | 
   return null
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * One indexer query. Sends the app's rate-limit bypass key when set (as the
+ * /api/indexer proxy does): the scan is hundreds of requests from one
+ * egress IP, which the indexer's per-IP limiter otherwise throttles. A 429
+ * or 5xx is retried with backoff (honouring Retry-After).
+ */
 async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const headers: Record<string, string> = { "content-type": "application/json" }
+  const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
+  if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) await sleep(Math.min(8000, 600 * 2 ** (attempt - 1)) + Math.random() * 300)
     try {
       const res = await fetch(INDEXER_URL, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify({ query, variables }),
         signal: AbortSignal.timeout(INDEXER_TIMEOUT_MS),
         cache: "no-store",
       })
-      if (!res.ok) continue
-      const body = (await res.json()) as { data?: T; errors?: { message: string }[] }
+      if (res.status === 429) {
+        const wait = Number(res.headers.get("retry-after"))
+        if (Number.isFinite(wait) && wait > 0) await sleep(Math.min(wait, 10) * 1000)
+        continue
+      }
+      if (!res.ok) {
+        if (res.status < 500) return null
+        continue
+      }
+      const body = (await res.json()) as {
+        data?: T
+        errors?: { message: string; extensions?: { code?: string } }[]
+      }
       if (body.data) return body.data
-      if (body.errors?.length) console.warn("[funding] indexer error:", body.errors[0].message)
+      const err = body.errors?.[0]
+      if (err) {
+        // A throttle or timeout reported as a GraphQL error is worth a retry;
+        // anything else is a query problem that won't fix itself.
+        if (/rate|limit|timeout|unavailable/i.test(`${err.extensions?.code ?? ""} ${err.message}`)) continue
+        console.warn("[funding] indexer error:", err.message)
+        return null
+      }
     } catch {
-      // retry once
+      // network error or timeout: retry
     }
   }
   return null
@@ -305,7 +335,7 @@ async function fetchOtherReceipts(
     })
   }
   let complete = true
-  const parts = await mapLimit(ranges, 8, async (range) => {
+  const parts = await mapLimit(ranges, 4, async (range) => {
     const out: IndexerReceiptNode[] = []
     const query = receiptsInRangeQuery(range)
     let after: string | null = null
@@ -364,7 +394,7 @@ const PROFILES = `
 
 async function fetchAccounts(dids: string[]): Promise<Map<string, FundingAccount>> {
   const out = new Map<string, FundingAccount>()
-  await mapLimit(chunk(dids, 100), 4, async (batch) => {
+  await mapLimit(chunk(dids, 100), 2, async (batch) => {
     const data = await gql<{
       appCertifiedActorProfile?: {
         edges: { node: { did: string; displayName: string | null; avatar: ImageNode } | null }[]
@@ -403,7 +433,7 @@ interface ProjectNode {
 
 async function fetchProjects(uris: string[]): Promise<Map<string, ProjectNode>> {
   const out = new Map<string, ProjectNode>()
-  await mapLimit(chunk(uris, 50), 4, async (batch) => {
+  await mapLimit(chunk(uris, 50), 2, async (batch) => {
     const data = await gql<{ orgHypercertsCollection?: { edges: { node: ProjectNode | null }[] } | null }>(
       COLLECTIONS,
       { uris: batch },
@@ -480,7 +510,7 @@ async function locationPoint(node: LocationNode): Promise<{ lat: number; lng: nu
 
 async function fetchLocations(uris: string[]): Promise<Map<string, { lat: number; lng: number; name: string | null }>> {
   const nodes: LocationNode[] = []
-  await mapLimit(chunk(uris, 50), 4, async (batch) => {
+  await mapLimit(chunk(uris, 50), 2, async (batch) => {
     const data = await gql<{ appCertifiedLocation?: { edges: { node: LocationNode | null }[] } | null }>(
       LOCATIONS,
       { uris: batch },

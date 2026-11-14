@@ -18,7 +18,7 @@ const BARS_H = 84
 const GAP = 18
 const PLOT_H = 250
 const AXIS_H = 26
-const LEFT = 44
+const LEFT = 52
 const RIGHT = 8
 const HEIGHT = BARS_H + GAP + PLOT_H + AXIS_H
 
@@ -52,8 +52,13 @@ function buildAxis(days: { day: number; count: number }[], x0: number, x1: numbe
       if (!best || w < best[1] - best[0]) best = [days[lo].day, days[hi].day + 1]
     }
   }
-  if (!best || best[1] - best[0] > span / 3) return linear
-  const [a, b] = best
+  if (!best) return linear
+  // A quiet stretch of under two weeks at either end joins the busy one:
+  // squeezed into a sliver behind a break mark it reads as noise.
+  let [a, b] = best
+  if (a - first <= 14) a = first
+  if (last - b <= 14) b = last
+  if (b - a > span / 3) return linear
   const width = x1 - x0
   const quiet = span - (b - a)
   const before = ((a - first) / Math.max(1, quiet)) * width * 0.3

@@ -78,35 +78,39 @@ export default function FundingRegister({
   return (
     <div className="funding-register">
       <div className="funding-register__tools">
-        <Input
-          type="search"
-          className="funding-register__search"
-          size="sm"
-          placeholder="Search recipients and projects"
-          aria-label="Search recipients and projects"
-          value={query}
-          leadingIcon={<Search size={14} aria-hidden />}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setLimit(PAGE)
-          }}
-        />
-        <Select
-          size="sm"
-          aria-label="Gift size"
-          value={size}
-          onChange={(e) => {
-            setSize(e.target.value)
-            setLimit(PAGE)
-          }}
-        >
-          <option value="any">Any amount</option>
-          {GIFT_SIZES.map((s, i) => (
-            <option key={s.label} value={String(i)}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
+        {/* Input and Select fill their parent, so the wrappers set the widths. */}
+        <div className="funding-register__search">
+          <Input
+            type="search"
+            size="sm"
+            placeholder="Search recipients and projects"
+            aria-label="Search recipients and projects"
+            value={query}
+            leadingIcon={<Search size={14} aria-hidden />}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setLimit(PAGE)
+            }}
+          />
+        </div>
+        <div className="funding-register__size">
+          <Select
+            size="sm"
+            aria-label="Gift size"
+            value={size}
+            onChange={(e) => {
+              setSize(e.target.value)
+              setLimit(PAGE)
+            }}
+          >
+            <option value="any">Any amount</option>
+            {GIFT_SIZES.map((s, i) => (
+              <option key={s.label} value={String(i)}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+        </div>
         {projectName ? (
           <Button size="sm" variant="secondary" onClick={onClearProject} aria-label={`Show all projects, not only ${projectName}`}>
             <span className="funding-register__project-filter">For: {projectName}</span>

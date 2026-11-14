@@ -28,11 +28,13 @@ export interface CanvasColors {
   fg: string
   muted: string
   ok: string
+  /** The page background, for halos behind text drawn over marks. */
+  bg: string
   /** Changes whenever the colours are re-read; empty until the first read. */
   key: string
 }
 
-const TOKENS = { fg: "--fg-primary", muted: "--fg-muted", ok: "--badge-success-fg" } as const
+const TOKENS = { fg: "--fg-primary", muted: "--fg-muted", ok: "--badge-success-fg", bg: "--bg-canvas" } as const
 
 /**
  * Token colours resolved for canvas drawing (a canvas can't read CSS
@@ -43,7 +45,7 @@ const TOKENS = { fg: "--fg-primary", muted: "--fg-muted", ok: "--badge-success-f
  */
 export function useCanvasColors(): CanvasColors {
   const { resolvedTheme } = useTheme()
-  const [colors, setColors] = useState<CanvasColors>({ fg: "", muted: "", ok: "", key: "" })
+  const [colors, setColors] = useState<CanvasColors>({ fg: "", muted: "", ok: "", bg: "", key: "" })
   useEffect(() => {
     const read = () => {
       const probe = document.createElement("span")
@@ -57,12 +59,13 @@ export function useCanvasColors(): CanvasColors {
         fg: resolve(TOKENS.fg),
         muted: resolve(TOKENS.muted),
         ok: resolve(TOKENS.ok),
+        bg: resolve(TOKENS.bg),
       }
       probe.remove()
       setColors((prev) =>
-        prev.fg === next.fg && prev.muted === next.muted && prev.ok === next.ok
+        prev.fg === next.fg && prev.muted === next.muted && prev.ok === next.ok && prev.bg === next.bg
           ? prev
-          : { ...next, key: `${next.fg}|${next.muted}|${next.ok}` },
+          : { ...next, key: `${next.fg}|${next.muted}|${next.ok}|${next.bg}` },
       )
     }
     // After the theme class lands on <html>.

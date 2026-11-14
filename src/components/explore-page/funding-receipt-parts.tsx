@@ -41,11 +41,14 @@ export function HydratedIdentityRow({
   className?: string
   noLink?: boolean
 }) {
-  const { info } = useAuthorInfo(did)
+  const { info, isLoading } = useAuthorInfo(did)
   const handle = info?.handle ?? undefined
   return (
     <IdentityRow
       did={did}
+      // A skeleton until the profile arrives, rather than a flash of the
+      // raw DID; a DID that never resolves still falls back to it.
+      loading={isLoading && !info}
       handle={handle}
       displayName={info?.displayName ?? undefined}
       avatarUrl={info?.avatarUrl ?? undefined}

@@ -106,8 +106,16 @@ export default function FundingAtlas({
       const x = xOf(p.lng!)
       const r = rOf(t.total)
       const fitsRight = x + r + 5 + ctx.measureText(text).width <= width
+      const tx = fitsRight ? x + r + 5 : x - r - 5
       ctx.textAlign = fitsRight ? "left" : "right"
-      ctx.fillText(text, fitsRight ? x + r + 5 : x - r - 5, yOf(p.lat!))
+      // A halo in the page colour keeps the name legible over circles.
+      ctx.lineJoin = "round"
+      ctx.lineWidth = 3
+      ctx.strokeStyle = colors.bg
+      ctx.globalAlpha = 0.9
+      ctx.strokeText(text, tx, yOf(p.lat!))
+      ctx.globalAlpha = 1
+      ctx.fillText(text, tx, yOf(p.lat!))
     }
   }, [width, height, mapW, colors, placed, proj, ds, selected])
 
