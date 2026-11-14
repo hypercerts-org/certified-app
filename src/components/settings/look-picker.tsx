@@ -142,7 +142,7 @@ function LookTile({
       aria-describedby={meta ? `${descId} ${metaId}` : descId}
       className={[
         // !gap-0: Radio's own gap-2 would otherwise open a strip of the
-        // tile's background between the preview and the divider.
+        // tile's background between the divider and the preview.
         "flex-col items-stretch !gap-0 overflow-hidden p-0 text-left",
         // Inside a made style's frame, which clips: the radius and the
         // focus ring stay within it.
@@ -154,8 +154,8 @@ function LookTile({
         className,
       ].join(" ")}
     >
-      <LookPreview id={id} />
-      <span className="flex flex-col gap-0.5 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2.5">
+      {/* The style's name and what it is first, then how it looks. */}
+      <span className="flex flex-col gap-0.5 border-b border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2.5">
         <span className="text-body-sm font-medium text-[var(--fg-primary)]">{name}</span>
         <span id={descId} className="text-caption text-[var(--fg-muted)]">
           {description}
@@ -166,6 +166,7 @@ function LookTile({
           </span>
         ) : null}
       </span>
+      <LookPreview id={id} />
     </Radio>
   )
 }
@@ -276,8 +277,8 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
 }
 
 /**
- * Settings → Appearance → Style: one tile per style, each a live preview
- * over its name and one line about it, then the styles made from websites
+ * Settings → Appearance → Style: one tile per style, each its name and one
+ * line about it over a live preview, then the styles made from websites
  * in this browser, each with New version and Remove (made with
  * custom-look-maker.tsx; both share one run, look-run.tsx). Picking
  * applies the style at once and keeps it in this browser (`useLook`).

@@ -189,7 +189,7 @@ Settings → Appearance → **Style** switches the whole app between design dire
 - **Corners:** `--radius`, which Tailwind's `rounded` now reads too. One value per style, so small controls share the card radius.
 - **Shadows** (`--shadow-sm/md/lg`) and an optional `--look-backdrop` behind the page: Glass's landscape gradient, Dot matrix's dot field, Stamp's grain.
 
-The hard rules (§0) still hold for code, and components keep using the tokens. The picker's tiles are live previews (`[data-look-preview]`, the same blocks). Own colours (a theme the account carries for visitors) is a different feature and isn't a style.
+The hard rules (§0) still hold for code, and components keep using the tokens. The picker's tiles are a style's name and one line about it over a live preview (`[data-look-preview]`, the same blocks); a made style's tile ends in its version row. Own colours (a theme the account carries for visitors) is a different feature and isn't a style.
 
 **Centerpieces.** Beyond tokens, every style redraws the same three places, and only these, so each direction shows itself where it matters most instead of in one-off spots:
 
@@ -930,6 +930,7 @@ Names only; values are in `tokens.css`.
 
 ## 15. Changelog
 
+- **2026-11-14, Style tiles: name first.** Each tile in Settings → Appearance → Style reads top to bottom: the style's name and description, the preview, and for a made style its version row.
 - **2026-11-14, Made styles: the page and the ID card's edge.** The prompt makes the page around the content its own step, decided every time: carry what the site puts behind its content into the backdrop (a wash or glow of its own colour is almost always open, with that colour as the evidence), none only for a plain white site. The ID card's hairline in made styles is a step stronger than the site's own borders (`--look-id-edge`); strong surfaces keep no line. Saved made-style CSS is rebuilt once a page is idle when it predates a template change, so fixes reach styles made earlier.
 - **2026-11-14, Made style tiles, redesigned.** The bottom row holds only the version controls, on one line even on a 276px tile: a light version picker, delete this version (asked first; the last one removes the style), New version. "Made in this browser from <site>" moves under the description. One clipping frame fixes the bottom corners under styles with a larger radius. The result of making a style is a dialog of its own (Claude's notes, what the app took back, a pointer to New version), without the inline request field.
 - **2026-11-14, Made styles keep every version.** The browser keeps each version of a made style (up to 12, with the request behind it; a site image is stored once per style), and the tile's bottom row, now beside the radio rather than inside it, has a version picker next to "Made in this browser", New version and Remove. The tiles lose a strip of background between the preview and its divider (the radio's own gap). Claude is told to give the page the site's own ground, white only for a white site.
