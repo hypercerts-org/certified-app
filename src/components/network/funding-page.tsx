@@ -117,6 +117,16 @@ export default function FundingPage() {
               { label: "Anonymous gifts", value: formatCount(summary.anonymous) },
             ]}
           />
+          <FundingConfirmedBy
+            roles={confirmed.roles}
+            counts={counts}
+            shown={idx.length}
+            isDefault={confirmed.isDefault}
+            onToggle={confirmed.toggleRole}
+            onReset={confirmed.reset}
+          />
+          {/* Below the chips, not above: it comes and goes as chips toggle,
+              and must not move them under the pointer. */}
           {summary.others.length > 0 ? (
             <p className="funding-page__currencies">
               Received counts US dollars only. Also in this selection:{" "}
@@ -129,14 +139,6 @@ export default function FundingPage() {
               , not converted.
             </p>
           ) : null}
-          <FundingConfirmedBy
-            roles={confirmed.roles}
-            counts={counts}
-            shown={idx.length}
-            isDefault={confirmed.isDefault}
-            onToggle={confirmed.toggleRole}
-            onReset={confirmed.reset}
-          />
           <div className="funding-page__switcher">
             <div className="funding-page__switcher-scroll">
               <SegmentedControl

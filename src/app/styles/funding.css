@@ -19,7 +19,7 @@
 
 .funding-page__currencies,
 .funding-page__partial {
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: var(--text-body-sm);
   color: var(--fg-muted);
 }
