@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
 import FormDialog from "@/components/ui/form-dialog"
 import Textarea from "@/components/ui/textarea"
 import type { SiteDesignResponse } from "@/app/api/looks/site-design/route"
@@ -11,25 +12,43 @@ import {
   replaceCustomLook,
   restorePreviousLook,
   useClaudeKey,
+  useCustomLooks,
   type CustomLook,
 } from "@/lib/look/custom-looks"
 import type { CustomLookId } from "@/lib/look/looks"
 import { LookGenerationError, LOOK_MODEL_NAME, generateLookSpec, toLookError } from "@/lib/look/generate-look"
 import { emptyDesign, normalizeSiteUrl } from "@/lib/look/site-design"
 
+/** Where a run was started, so where its progress and result show: under
+ *  the gallery (New version on a made style's tile) or under the maker
+ *  (a new style, or a new version asked for from its result). */
+export type Slot = "gallery" | "maker"
+
 /** The made style a new version is for; null while making a new style. */
 type Target = { id: CustomLookId; name: string } | null
 
+type Done = {
+  kind: "done"
+  slot: Slot
+  id: CustomLookId
+  name: string
+  host: string
+  /** A new version (with the way back), not a new style. */
+  refreshed: boolean
+  version: number
+  /** Claude's own summary, and what the app took back from it. */
+  notes: string[]
+  caveats: string[]
+}
+
 type Phase =
   | { kind: "idle" }
-  | { kind: "reading"; host: string; target: Target }
-  | { kind: "designing"; host: string; target: Target }
-  | { kind: "done"; name: string; host: string; target: Target; version?: number }
-  | { kind: "error"; message: string; field: boolean; target: Target }
+  | { kind: "reading"; slot: Slot; host: string; target: Target }
+  | { kind: "designing"; slot: Slot; host: string; target: Target }
+  | Done
+  | { kind: "error"; slot: Slot; message: string; field: boolean }
 
-type Task =
-  | { kind: "new"; url: URL }
-  | { kind: "refresh"; look: CustomLook; request: string }
+type Task = { slot: Slot } & ({ kind: "new"; url: URL } | { kind: "refresh"; look: CustomLook; request: string })
 
 /** One style being made at a time, new or a new version: read the site,
  *  ask Claude, keep the result. Leaving the page stops it. */
@@ -42,16 +61,17 @@ function useLookRunState(apiKey: string) {
 
   const start = async (task: Task): Promise<boolean> => {
     if (abortRef.current) return false
+    const { slot } = task
     const target: Target = task.kind === "refresh" ? { id: task.look.id, name: task.look.spec.name } : null
     const url = task.kind === "new" ? task.url : normalizeSiteUrl(task.look.url || task.look.source)
     if (!url) {
-      setPhase({ kind: "error", message: "This style has no website address to read again.", field: false, target })
+      setPhase({ kind: "error", slot, message: "This style has no website address to read again.", field: false })
       return false
     }
     const host = url.hostname.replace(/^www\./, "")
     const ctrl = new AbortController()
     abortRef.current = ctrl
-    setPhase({ kind: "reading", host, target })
+    setPhase({ kind: "reading", slot, host, target })
     const site = encodeURIComponent(url.toString())
     // Screenshots are a bonus: without them (not set up, or the site
     // wouldn't render) the style comes from the CSS digest alone.
@@ -68,28 +88,31 @@ function useLookRunState(apiKey: string) {
       // screenshots and rendered styles are then enough on their own.
       const design = res.ok && body.design ? body.design : capture ? emptyDesign(capture.url) : null
       if (!design) throw new LookGenerationError("site", body.error ?? "Couldn't read that website.")
-      setPhase({ kind: "designing", host, target })
-      if (task.kind === "new") {
-        const spec = await generateLookSpec({ apiKey, design, capture, signal: ctrl.signal })
-        const look = addCustomLook(spec, host, url.toString())
-        setPhase({ kind: "done", name: look.spec.name, host, target })
-      } else {
-        const spec = await generateLookSpec({
-          apiKey,
-          design,
-          capture,
-          previous: task.look.spec,
-          request: task.request,
-          signal: ctrl.signal,
-        })
-        const look = replaceCustomLook(task.look.id, spec)
-        if (!look) throw new LookGenerationError("unknown", "That style was removed in the meantime.")
-        setPhase({ kind: "done", name: look.spec.name, host, target, version: look.version })
-      }
+      setPhase({ kind: "designing", slot, host, target })
+      const { spec, caveats } = await generateLookSpec({
+        apiKey,
+        design,
+        capture,
+        ...(task.kind === "refresh" ? { previous: task.look.spec, request: task.request } : {}),
+        signal: ctrl.signal,
+      })
+      const look = task.kind === "new" ? addCustomLook(spec, host, url.toString()) : replaceCustomLook(task.look.id, spec)
+      if (!look) throw new LookGenerationError("unknown", "That style was removed in the meantime.")
+      setPhase({
+        kind: "done",
+        slot,
+        id: look.id,
+        name: look.spec.name,
+        host,
+        refreshed: task.kind === "refresh",
+        version: look.version,
+        notes: look.spec.notes,
+        caveats,
+      })
       return true
     } catch (err) {
       const error = toLookError(err)
-      setPhase(error.code === "aborted" ? { kind: "idle" } : { kind: "error", message: error.message, field: false, target })
+      setPhase(error.code === "aborted" ? { kind: "idle" } : { kind: "error", slot, message: error.message, field: false })
       return false
     } finally {
       if (abortRef.current === ctrl) abortRef.current = null
@@ -103,7 +126,7 @@ function useLookRunState(apiKey: string) {
     refreshingId: busy && phase.target ? phase.target.id : null,
     start,
     stop: () => abortRef.current?.abort(),
-    fieldError: (message: string) => setPhase({ kind: "error", message, field: true, target: null }),
+    fieldError: (message: string) => setPhase({ kind: "error", slot: "maker", message, field: true }),
     clearFieldError: () => setPhase((p) => (p.kind === "error" && p.field ? { kind: "idle" } : p)),
     clear: () => setPhase({ kind: "idle" }),
   }
@@ -133,24 +156,112 @@ export function useLookRun(): LookRunContextValue {
   return ctx
 }
 
-/** What is happening now: reading, making, made (with a way back after a
- *  new version), or what went wrong. The gallery shows the runs for new
- *  versions (`refresh`), the maker the runs for new styles. */
+const LINK_BUTTON =
+  "inline cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline underline-offset-2"
+
+/** What was made: the line saying so (with the way back after a new
+ *  version), Claude's own notes on what it took and where, and anything
+ *  the app took back from them. Read out as the run's status. */
+function DoneText({ done }: { done: Done }) {
+  const { run } = useLookRun()
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="m-0 text-[var(--fg-primary)]">
+        {done.refreshed ? (
+          <>
+            Made version {done.version} of “{done.name}” and switched to it.{" "}
+            <button
+              type="button"
+              className={LINK_BUTTON}
+              onClick={() => {
+                restorePreviousLook(done.id)
+                run.clear()
+              }}
+            >
+              Back to the previous version
+            </button>
+          </>
+        ) : (
+          <>
+            Made “{done.name}” from {done.host} and switched to it.
+          </>
+        )}
+      </p>
+      {done.notes.length ? (
+        <div className="flex flex-col gap-1">
+          <p className="m-0 text-caption">From {LOOK_MODEL_NAME}</p>
+          <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[var(--fg-secondary)]">
+            {done.notes.map((note, i) => (
+              <li key={i}>{note}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {done.caveats.map((caveat) => (
+        <p key={caveat} className="m-0 text-pretty">
+          {caveat}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+/** After a style is made: an invitation to look, and a field to ask for a
+ *  new version right there, in the person's own words. */
+function AskForChanges({ done }: { done: Done }) {
+  const { run } = useLookRun()
+  const look = useCustomLooks().find((l) => l.id === done.id)
+  const [request, setRequest] = useState("")
+  if (!look) return null
+  return (
+    <form
+      noValidate
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!run.busy) void run.start({ kind: "refresh", look, request: request.trim(), slot: done.slot })
+      }}
+    >
+      <p className="m-0 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty">
+        Look around the app to see it in place. If it isn’t right yet, tell {LOOK_MODEL_NAME} what to change, in your
+        own words, and it makes a new version.
+      </p>
+      <div className="max-w-[28rem]">
+        <Textarea
+          label="What should change?"
+          rows={3}
+          maxLength={600}
+          value={request}
+          onChange={(e) => setRequest(e.target.value)}
+          helperText="For example: a darker ID card, the green from their buttons. Leave it empty for a fresh variation."
+        />
+      </div>
+      <div>
+        <Button type="submit" size="sm" disabled={run.busy}>
+          Make new version
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/** What is happening now, where the run was started (`slot`): reading,
+ *  making, made (DoneText, then AskForChanges), or what went wrong. */
 export function RunStatus({
   statusId,
-  refresh,
+  slot,
   spaced = false,
 }: {
   statusId: string
-  refresh: boolean
+  slot: Slot
   /** Space above, only while there is something to say. */
   spaced?: boolean
 }) {
-  const { run } = useLookRun()
+  const { apiKey, run } = useLookRun()
   const { phase } = run
-  const shown = phase.kind !== "idle" && (phase.target !== null) === refresh ? phase : null
+  const shown = phase.kind !== "idle" && phase.slot === slot ? phase : null
   return (
-    <div className={`flex flex-col gap-3 ${spaced && shown ? "mt-3" : ""}`}>
+    <div className={`flex flex-col gap-4 ${spaced && shown ? "mt-3" : ""}`}>
       <div id={statusId} role="status" aria-live="polite" className="text-body-sm text-[var(--fg-muted)]">
         {shown?.kind === "reading" || shown?.kind === "designing" ? (
           <p className="m-0">
@@ -162,44 +273,21 @@ export function RunStatus({
                 {shown.host}. This can take a minute or two.
               </>
             )}
-            {refresh ? (
+            {/* A new style has Stop beside the maker's button; a new version
+                has it here. */}
+            {shown.target ? (
               <>
                 {" "}
-                <button
-                  type="button"
-                  className="inline cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline underline-offset-2"
-                  onClick={run.stop}
-                >
+                <button type="button" className={LINK_BUTTON} onClick={run.stop}>
                   Stop
                 </button>
               </>
             ) : null}
           </p>
         ) : null}
-        {shown?.kind === "done" ? (
-          <p className="m-0 text-[var(--fg-primary)]">
-            {shown.target ? (
-              <>
-                Made version {shown.version} of “{shown.name}” and switched to it.{" "}
-                <button
-                  type="button"
-                  className="inline cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline underline-offset-2"
-                  onClick={() => {
-                    restorePreviousLook(shown.target!.id)
-                    run.clear()
-                  }}
-                >
-                  Back to the previous version
-                </button>
-              </>
-            ) : (
-              <>
-                Made “{shown.name}” from {shown.host} and switched to it. It’s with the other styles above.
-              </>
-            )}
-          </p>
-        ) : null}
+        {shown?.kind === "done" ? <DoneText done={shown} /> : null}
       </div>
+      {shown?.kind === "done" && apiKey ? <AskForChanges done={shown} /> : null}
       {shown?.kind === "error" && !shown.field ? <Banner variant="error">{shown.message}</Banner> : null}
     </div>
   )

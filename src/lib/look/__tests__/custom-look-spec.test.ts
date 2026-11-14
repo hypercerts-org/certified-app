@@ -47,6 +47,7 @@ const stripe = (over: Partial<LookSpecInput> = {}): LookSpecInput => ({
   avatar: { shape: "circle", ring: "brand", fill: "gradient", initials: "ui", image: "natural" },
   idCard: { surface: "gradient", image: "", edge: "none", pattern: "none", title: "caps", mark: "chip" },
   endorsement: { frame: "card", who: "plain", note: "plain", mark: "check" },
+  notes: ["I set the backdrop in their violet-to-pink gradient."],
   ...over,
 })
 

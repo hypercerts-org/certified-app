@@ -245,6 +245,26 @@ export const PLAIN = {
 export type Lever = keyof typeof PLAIN
 export const LEVERS = Object.keys(PLAIN) as [Lever, ...Lever[]]
 
+/** Each lever in plain words, for telling the person what was left out. */
+export const LEVER_NAMES: Record<Lever, string> = {
+  "backdrop.kind": "the page backdrop",
+  shadows: "the shadows",
+  "avatar.shape": "the avatar's shape",
+  "avatar.ring": "the avatar's ring",
+  "avatar.fill": "the avatar's initials",
+  "avatar.initials": "the avatar's initials",
+  "avatar.image": "the avatar pictures",
+  "idCard.surface": "the ID card's surface",
+  "idCard.edge": "the ID card's edge",
+  "idCard.pattern": "the ID card's pattern",
+  "idCard.title": "the ID card's title",
+  "idCard.mark": "the ID card's corner mark",
+  "endorsement.frame": "the endorsements' frame",
+  "endorsement.who": "the endorsers' names",
+  "endorsement.note": "the endorsement notes",
+  "endorsement.mark": "the endorsement mark",
+}
+
 // ----------------------------------------------------------------- schema
 
 const hex = z.string().describe("#RRGGBB")
@@ -399,6 +419,11 @@ export const LookSpecSchema = z.object({
     note: menu("endorsementNote"),
     mark: menu("endorsementMark"),
   }),
+  notes: z
+    .array(z.string())
+    .describe(
+      "Last, up to five short bullets to the person who asked, in the first person and plain words: what you took from the website and where it shows in the app. In a new version: what changed and how you followed their request. Only what this answer does.",
+    ),
 })
 
 export type LookSpecInput = z.infer<typeof LookSpecSchema>
@@ -432,6 +457,9 @@ export interface LookSpec {
   signature: string[]
   idea: string
   signaturePiece: SignaturePiece | null
+  /** Claude's own summary for the person: what it took and where it shows
+   *  (empty in styles made before this existed). */
+  notes: string[]
   faces: Record<"ui" | "headline" | "mono" | "numeral" | "label", LookFace>
   headlineWeight: number
   headlineStrongWeight: number
@@ -824,6 +852,10 @@ export function normalizeLookSpec(raw: unknown, fallbackName = "Your style"): Lo
     signaturePiece: (SIGNATURE_PIECES as readonly unknown[]).includes(r.signaturePiece)
       ? (r.signaturePiece as SignaturePiece)
       : null,
+    notes: (Array.isArray(r.notes) ? r.notes : [])
+      .map((n) => clean(n, 220))
+      .filter(Boolean)
+      .slice(0, 5),
     faces,
     headlineWeight: oneWeight ? 400 : snapWeight(r.headlineWeight, 600),
     headlineStrongWeight: oneWeight ? 400 : snapWeight(r.headlineStrongWeight, 700),

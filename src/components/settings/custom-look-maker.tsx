@@ -82,7 +82,7 @@ function SiteForm({ statusId }: { statusId: string }) {
       run.fieldError("Enter a website address, like example.com.")
       return
     }
-    if (await run.start({ kind: "new", url })) setSite("")
+    if (await run.start({ kind: "new", url, slot: "maker" })) setSite("")
   }
 
   return (
@@ -149,7 +149,7 @@ export default function CustomLookMaker() {
       </div>
       <div className="flex flex-col gap-3">
         <SiteForm statusId={statusId} />
-        <RunStatus statusId={statusId} refresh={false} />
+        <RunStatus statusId={statusId} slot="maker" />
       </div>
     </div>
   ) : (

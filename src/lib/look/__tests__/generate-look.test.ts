@@ -54,6 +54,7 @@ const answer = {
   signature: ["violet accent", "clean grotesk"],
   idea: "violet as the one mark of the brand",
   signaturePiece: "idCard",
+  notes: ["I put their violet on the ID card.", "Names are in their clean grotesk."],
   name: "Example",
   description: "Violet on white.",
   colors: {
@@ -111,7 +112,7 @@ beforeEach(() => {
 describe("generateLookSpec", () => {
   it("asks Claude from the browser with the person's key and checks the answer", async () => {
     parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: answer })
-    const spec = await generateLookSpec({ apiKey: "sk-ant-test", design })
+    const { spec } = await generateLookSpec({ apiKey: "sk-ant-test", design })
 
     expect(constructed[0]).toMatchObject({ apiKey: "sk-ant-test", dangerouslyAllowBrowser: true })
     const [params] = parse.mock.calls[0]
@@ -176,7 +177,7 @@ describe("generateLookSpec", () => {
         evidence: [{ lever: "idCard.title", choice: "caps", quote: '"text-transform": "uppercase"' }],
       },
     })
-    const spec = await generateLookSpec({ apiKey: "k", design, capture })
+    const { spec } = await generateLookSpec({ apiKey: "k", design, capture })
     expect(spec.idCard.title).toBe("caps")
     // The orange is only on the screenshots, not in the digest: still kept.
     const { rgbToOklch, parseCssColour } = await import("../oklch")
@@ -189,7 +190,7 @@ describe("generateLookSpec", () => {
       stop_reason: "end_turn",
       parsed_output: { ...answer, idCard: { ...answer.idCard, title: "caps" }, evidence: [{ lever: "idCard.title", choice: "caps", quote: '"text-transform": "uppercase"' }] },
     })
-    expect((await generateLookSpec({ apiKey: "k", design })).idCard.title).toBe("plain")
+    expect((await generateLookSpec({ apiKey: "k", design })).spec.idCard.title).toBe("plain")
   })
 
   it("puts the ID card on the site image Claude names, taken from the capture", async () => {
@@ -207,7 +208,7 @@ describe("generateLookSpec", () => {
         evidence: [{ lever: "idCard.surface", choice: "image", quote: '"id":"site-image-1","where":"behind the first screen"' }],
       },
     })
-    const spec = await generateLookSpec({ apiKey: "k", design, capture: withTexture })
+    const { spec } = await generateLookSpec({ apiKey: "k", design, capture: withTexture })
     expect(spec.idCard.surface).toBe("image")
     expect(spec.assets?.idImage?.data).toBe("data:image/jpeg;base64,QUJDRA==")
     // Claude saw it, labelled, after the screenshots.
@@ -222,15 +223,41 @@ describe("generateLookSpec", () => {
   it("never keeps a move the site gives no evidence for", async () => {
     // The answer sets a brand ID card with dots and a mark, but cites nothing.
     parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { ...answer, evidence: [] } })
-    const spec = await generateLookSpec({ apiKey: "k", design })
+    const { spec } = await generateLookSpec({ apiKey: "k", design })
     expect(spec.idCard).toEqual({ surface: "plain", edge: "none", pattern: "none", title: "plain", mark: "none" })
     expect(spec.backdrop.kind).toBe("none")
     expect(parse.mock.calls[0][0].system[0].text).toContain("You translate; you never invent.")
   })
 
+  it("keeps Claude's notes, and says in the app's words what it took back from them", async () => {
+    // An ID card on a site image the capture didn't bring, and a pattern
+    // and a mark with no evidence.
+    parse.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...answer,
+        idCard: { ...answer.idCard, surface: "image", image: "site-image-1", pattern: "dots", mark: "dot" },
+        evidence: [{ lever: "idCard.surface", choice: "image", quote: "font-family" }],
+      },
+    })
+    const { spec, caveats } = await generateLookSpec({ apiKey: "k", design, capture })
+    expect(spec.notes).toEqual(["I put their violet on the ID card.", "Names are in their clean grotesk."])
+    expect(spec.idCard.surface).toBe("brand")
+    expect(caveats).toContain(
+      "The website's own image couldn't be used this time, so the ID card is in the brand colour instead.",
+    )
+    const left = caveats.find((c) => c.startsWith("Certified left these plain")) ?? ""
+    expect(left).toContain("the ID card's pattern")
+    expect(left).toContain("the ID card's corner mark")
+    expect(left).toMatch(/, [^,]+ and [^,]+\.$/)
+    // The avatar's fill and initials are one thing to the person.
+    expect(left.split("the avatar's initials").length).toBeLessThanOrEqual(2)
+    expect(parse.mock.calls[0][0].system[0].text).toContain("notes, written last")
+  })
+
   it("names the site when Claude gives no name", async () => {
     parse.mockResolvedValue({ stop_reason: "end_turn", parsed_output: { ...answer, name: "" } })
-    expect((await generateLookSpec({ apiKey: "k", design })).name).toBe("example.com")
+    expect((await generateLookSpec({ apiKey: "k", design })).spec.name).toBe("example.com")
   })
 
   it.each([

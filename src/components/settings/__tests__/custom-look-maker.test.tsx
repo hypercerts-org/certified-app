@@ -28,7 +28,9 @@ const palette = {
   textMuted: "#666666", border: "#E0E0E0", accent: "#C70000", button: "#052962", buttonText: "#FFFFFF",
 }
 const dark = { ...palette, canvas: "#121212", sunken: "#0A0A0A", elevated: "#1E1E1E", text: "#F5F5F5", textSecondary: "#CCCCCC", textMuted: "#A0A0A0", border: "#333333", button: "#F5F5F5", buttonText: "#121212" }
-const spec = (name: string) => normalizeLookSpec({ name, light: palette, dark })
+const spec = (name: string, notes: string[] = []) => normalizeLookSpec({ name, notes, light: palette, dark })
+/** What generateLookSpec resolves to: the style and what the app took back. */
+const made = (name: string, notes: string[] = [], caveats: string[] = []) => ({ spec: spec(name, notes), caveats })
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -48,7 +50,7 @@ afterEach(() => {
 describe("Made styles in the gallery: a new version", () => {
   it("asks what to change, sends the previous version and the request, and offers the way back", async () => {
     const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
-    generate.mockResolvedValue(spec("Guardian, darker"))
+    generate.mockResolvedValue(made("Guardian, darker"))
     renderAppearance()
 
     fireEvent.click(screen.getByRole("button", { name: "New version of Guardian" }))
@@ -74,7 +76,7 @@ describe("Made styles in the gallery: a new version", () => {
 
   it("makes the style from the screenshots when the site refuses the CSS read", async () => {
     const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
-    generate.mockResolvedValue(spec("Guardian, from screenshots"))
+    generate.mockResolvedValue(made("Guardian, from screenshots"))
     const capture = {
       url: "https://www.theguardian.com/",
       screenshots: [{ label: "Desktop", mediaType: "image/jpeg", data: "AAAA" }],
@@ -142,8 +144,47 @@ describe("Made styles in the gallery", () => {
     await screen.findByText(/is making a new version of “Guardian”/)
     expect(screen.getByRole("button", { name: "Make style" })).toBeDisabled()
     expect(screen.queryByRole("button", { name: "Making style" })).toBeNull()
-    finish(spec("Guardian, darker"))
+    finish(made("Guardian, darker"))
     await screen.findByText(/Made version 2 of/)
     expect(screen.getByRole("button", { name: "Make style" })).toBeEnabled()
+  })
+})
+
+describe("After a style is made", () => {
+  it("says so, shows Claude's notes and what the app took back, and asks what to change", async () => {
+    generate.mockResolvedValue(
+      made(
+        "Guardian",
+        ["I used their deep blue for the buttons.", "Names are in their serif headline face."],
+        ["Certified left these plain, as it couldn't find them on the website: the ID card's pattern."],
+      ),
+    )
+    renderAppearance()
+    fireEvent.change(screen.getByLabelText("Website"), { target: { value: "theguardian.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "Make style" }))
+
+    await screen.findByText(/Made “Guardian” from theguardian.com and switched to it/)
+    const notes = screen.getAllByRole("listitem").map((li) => li.textContent)
+    expect(notes).toEqual(["I used their deep blue for the buttons.", "Names are in their serif headline face."])
+    expect(screen.getByText(/left these plain/)).toBeInTheDocument()
+
+    // A new version straight from the result, with the person's words.
+    generate.mockResolvedValue(made("Guardian, darker", ["I made the ID card their darkest blue, as you asked."]))
+    fireEvent.change(screen.getByLabelText("What should change?"), { target: { value: "A darker ID card" } })
+    fireEvent.click(screen.getByRole("button", { name: "Make new version" }))
+    await screen.findByText(/Made version 2 of “Guardian, darker”/)
+    expect(generate.mock.calls[1][0].request).toBe("A darker ID card")
+    expect(generate.mock.calls[1][0].previous.name).toBe("Guardian")
+    expect(screen.getByRole("listitem")).toHaveTextContent("I made the ID card their darkest blue, as you asked.")
+  })
+
+  it("shows no notes for a style Claude said nothing about", async () => {
+    generate.mockResolvedValue(made("Guardian"))
+    renderAppearance()
+    fireEvent.change(screen.getByLabelText("Website"), { target: { value: "theguardian.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "Make style" }))
+    await screen.findByText(/Made “Guardian”/)
+    expect(screen.queryByRole("list", { name: undefined })).toBeNull()
+    expect(screen.getByRole("button", { name: "Make new version" })).toBeEnabled()
   })
 })

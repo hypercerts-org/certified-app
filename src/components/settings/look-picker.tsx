@@ -210,7 +210,7 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
           onClose={() => setAsking(false)}
           onSubmit={(request) => {
             setAsking(false)
-            void run.start({ kind: "refresh", look, request })
+            void run.start({ kind: "refresh", look, request, slot: "gallery" })
           }}
         />
       ) : null}
@@ -251,7 +251,7 @@ export default function LookPicker() {
         ))}
       </RadioGroup>
       {/* A new version's progress, its way back, or what went wrong. */}
-      <RunStatus statusId={statusId} refresh spaced />
+      <RunStatus statusId={statusId} slot="gallery" spaced />
     </div>
   )
 }
