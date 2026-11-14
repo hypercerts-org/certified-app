@@ -3,9 +3,10 @@
 import { useId, useState } from "react"
 import { RefreshCw, Trash2 } from "lucide-react"
 import Button from "@/components/ui/button"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { Radio, RadioGroup } from "@/components/ui/radio"
 import Select from "@/components/ui/select"
-import { removeCustomLook, showLookVersion, useCustomLooks, type CustomLook } from "@/lib/look/custom-looks"
+import { deleteLookVersion, showLookVersion, useCustomLooks, type CustomLook } from "@/lib/look/custom-looks"
 import { LOOKS, isLookId, useLook, type AnyLookId } from "@/lib/look/looks"
 import { RefreshDialog, RunStatus, useLookRun } from "./look-run"
 
@@ -118,7 +119,7 @@ function LookTile({
   description,
   selected,
   framed = true,
-  describedBy,
+  meta,
   className = "",
 }: {
   id: AnyLookId
@@ -128,22 +129,25 @@ function LookTile({
   /** Its own border and selected ring; a made style's tile draws them
    *  around the radio and its row of controls instead (MadeLookTile). */
   framed?: boolean
-  /** More of its description, outside the radio. */
-  describedBy?: string
+  /** A last line under the description (a made style's origin). */
+  meta?: string
   className?: string
 }) {
   const descId = `look-${id}-description`
+  const metaId = `look-${id}-meta`
   return (
     <Radio
       value={id}
       aria-label={name}
-      aria-describedby={describedBy ? `${descId} ${describedBy}` : descId}
+      aria-describedby={meta ? `${descId} ${metaId}` : descId}
       className={[
         // !gap-0: Radio's own gap-2 would otherwise open a strip of the
         // tile's background between the preview and the divider.
         "flex-col items-stretch !gap-0 overflow-hidden p-0 text-left",
+        // Inside a made style's frame, which clips: the radius and the
+        // focus ring stay within it.
         !framed
-          ? "border-0"
+          ? "!rounded-none border-0 focus-visible:!outline-offset-[-2px]"
           : selected
             ? "border border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
             : "border border-[var(--border-default)] hover:border-[var(--border-hover)]",
@@ -156,25 +160,32 @@ function LookTile({
         <span id={descId} className="text-caption text-[var(--fg-muted)]">
           {description}
         </span>
+        {meta ? (
+          <span id={metaId} className="mt-1 text-caption text-[var(--fg-muted)]">
+            {meta}
+          </span>
+        ) : null}
       </span>
     </Radio>
   )
 }
 
-/** A style made from a website: its tile, and under a divider a row of
- *  its own controls: "Made in this browser", the version on show (a
- *  picker once there are two), New version and Remove. The row sits
- *  beside the radio, not inside it (a button can't hold controls), and
- *  one frame goes round both. */
+/** A style made from a website: its tile, saying it was made in this
+ *  browser, and under a divider a row of controls for the version on
+ *  show: which version (a picker once there are two), delete it, make a
+ *  new one. The row sits beside the radio, not inside it (a button can't
+ *  hold controls); one frame goes round both and clips them, so its
+ *  corners hold whatever the style's radius. */
 function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean }) {
   const { apiKey, run } = useLookRun()
   const [asking, setAsking] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { id, spec, source, version, versions } = look
-  const noteId = `look-${id}-note`
+  const only = versions.length === 1
   return (
     <div
       className={[
-        "flex flex-col rounded border",
+        "flex flex-col overflow-hidden rounded border",
         selected
           ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
           : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
@@ -183,23 +194,25 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
       <LookTile
         id={id}
         name={spec.name}
-        description={spec.description ? `${spec.description} From ${source}.` : `Made from ${source}.`}
+        description={spec.description || `A style from ${source}.`}
+        meta={`Made in this browser from ${source}`}
         selected={selected}
         framed={false}
-        describedBy={noteId}
         className="flex-1"
       />
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] py-1 pr-2 pl-3">
-        <span id={noteId} className="text-caption text-[var(--fg-muted)]">
-          Made in this browser
-        </span>
-        {versions.length > 1 ? (
-          <div className="w-[7.5rem]">
+      <div className="flex items-center gap-1 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] py-1 pr-1 pl-1.5">
+        {only ? (
+          <span className="px-1.5 text-ui text-[var(--fg-muted)]">Version {version}</span>
+        ) : (
+          // As wide as its longest option, so the chevron sits by the number.
+          <div className="w-fit">
             <Select
               size="sm"
               aria-label={`Version of ${spec.name}`}
               value={String(version)}
               disabled={run.busy}
+              // Light, as in a toolbar: a field's outline only on hover and focus.
+              className="!w-auto !border-transparent !bg-transparent !pl-1.5 text-ui hover:!border-[var(--border-default)] focus:!border-[var(--focus-ring)]"
               onChange={(e) => showLookVersion(id, Number(e.target.value))}
             >
               {[...versions].reverse().map((v) => (
@@ -209,8 +222,17 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
               ))}
             </Select>
           </div>
-        ) : null}
+        )}
         <span className="ml-auto flex gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={only ? `Remove ${spec.name}` : `Delete version ${version}`}
+            disabled={run.busy}
+            onClick={() => setDeleting(true)}
+          >
+            <Trash2 size={16} aria-hidden />
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -221,17 +243,24 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
           >
             <RefreshCw size={16} aria-hidden />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={`Remove ${spec.name}`}
-            disabled={run.busy}
-            onClick={() => removeCustomLook(id)}
-          >
-            <Trash2 size={16} aria-hidden />
-          </Button>
         </span>
       </div>
+      {deleting ? (
+        <ConfirmDialog
+          title={only ? `Remove ${spec.name}?` : `Delete version ${version} of ${spec.name}?`}
+          message={
+            only
+              ? "The style is removed from this browser and can’t be brought back."
+              : "This version is removed from this browser and can’t be brought back. The other versions stay."
+          }
+          confirmLabel={only ? "Remove style" : "Delete version"}
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => {
+            setDeleting(false)
+            deleteLookVersion(id, version)
+          }}
+        />
+      ) : null}
       {asking ? (
         <RefreshDialog
           look={look}

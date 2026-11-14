@@ -302,6 +302,30 @@ export function showLookVersion(id: CustomLookId, version: number): CustomLook |
   return next
 }
 
+/** Delete one version of a made style. The one on show goes to the next
+ *  older version (or the next newer, if it was the oldest); the last one
+ *  left removes the style (removeCustomLook). Doesn't change which style
+ *  is on. */
+export function deleteLookVersion(id: CustomLookId, version: number): CustomLook | null {
+  const looks = parseCustomLooks(read(CUSTOM_LOOKS_STORAGE_KEY))
+  const at = looks.findIndex((l) => l.id === id)
+  if (at === -1 || !looks[at].versions.some((v) => v.version === version)) return null
+  const old = looks[at]
+  if (old.versions.length === 1) {
+    removeCustomLook(id)
+    return null
+  }
+  const versions = old.versions.filter((v) => v.version !== version)
+  const shown =
+    old.version !== version
+      ? versions.find((v) => v.version === old.version)!
+      : ([...versions].reverse().find((v) => v.version < version) ?? versions[0])
+  const next: CustomLook = { ...old, versions, version: shown.version, spec: shown.spec }
+  looks[at] = next
+  writeCustomLooks(looks)
+  return next
+}
+
 /** Forget a made style; if it is on, go back to Neutral. */
 export function removeCustomLook(id: CustomLookId) {
   if (currentLook() === id) applyLook(DEFAULT_LOOK)

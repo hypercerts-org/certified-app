@@ -7,6 +7,7 @@ import {
   maskKey,
   parseCustomLooks,
   removeCustomLook,
+  deleteLookVersion,
   replaceCustomLook,
   showLookVersion,
 } from "../custom-looks"
@@ -130,6 +131,25 @@ describe("made styles", () => {
 
     expect(showLookVersion(first.id, 9)).toBeNull()
     expect(replaceCustomLook("custom-zzzzzzzz", spec())).toBeNull()
+  })
+
+  it("deletes one version: the one before goes on show, and the last one takes the style with it", () => {
+    const look = addCustomLook(spec("One"), "x.example")
+    replaceCustomLook(look.id, spec("Two"))
+    replaceCustomLook(look.id, spec("Three"))
+    showLookVersion(look.id, 2)
+    // Not the one on show: it stays on show.
+    expect(deleteLookVersion(look.id, 3)!.spec.name).toBe("Two")
+    // The one on show: the one before it.
+    const left = deleteLookVersion(look.id, 2)!
+    expect(left.version).toBe(1)
+    expect(left.versions.map((v) => v.version)).toEqual([1])
+    expect(window.localStorage.getItem(CUSTOM_LOOKS_CSS_STORAGE_KEY)).toContain(look.id)
+    expect(deleteLookVersion(look.id, 9)).toBeNull()
+    // The last one removes the style.
+    expect(deleteLookVersion(look.id, 1)).toBeNull()
+    expect(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY)).toBeNull()
+    expect(currentLook()).not.toBe(look.id)
   })
 
   it(`keeps at most ${MAX_LOOK_VERSIONS} versions of a style`, () => {

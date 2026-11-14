@@ -1,9 +1,10 @@
 "use client"
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import AppDialog, { AppDialogBody, AppDialogHeader } from "@/components/ui/app-dialog"
 import Banner from "@/components/ui/banner"
 import Button from "@/components/ui/button"
-import FormDialog from "@/components/ui/form-dialog"
+import FormDialog, { DIALOG_FOOTER_ACTIONS_CLASS } from "@/components/ui/form-dialog"
 import Textarea from "@/components/ui/textarea"
 import type { SiteDesignResponse } from "@/app/api/looks/site-design/route"
 import type { SiteCapture, SiteCaptureResponse } from "@/lib/look/site-capture-types"
@@ -12,7 +13,6 @@ import {
   replaceCustomLook,
   showLookVersion,
   useClaudeKey,
-  useCustomLooks,
   type CustomLook,
 } from "@/lib/look/custom-looks"
 import type { CustomLookId } from "@/lib/look/looks"
@@ -165,94 +165,69 @@ export function useLookRun(): LookRunContextValue {
 const LINK_BUTTON =
   "inline cursor-pointer border-0 bg-transparent p-0 text-[var(--fg-primary)] underline underline-offset-2"
 
-/** What was made: the line saying so (with the way back after a new
- *  version), Claude's own notes on what it took and where, and anything
- *  the app took back from them. Read out as the run's status. */
-function DoneText({ done }: { done: Done }) {
+/** What was made, in a dialog of its own: Claude's notes on what it took
+ *  and where it shows, anything the app took back from them, and a word
+ *  on where to ask for changes (New version on the tile) once the person
+ *  has looked around. After a new version, the way back to the one it
+ *  was made from. */
+function MadeDialog({ done }: { done: Done }) {
   const { run } = useLookRun()
+  const lookAround = useRef<HTMLButtonElement>(null)
+  const close = () => run.clear()
+  const title = done.refreshed ? `Made version ${done.version} of “${done.name}”` : `Made “${done.name}”`
   return (
-    <div className="flex flex-col gap-3">
-      <p className="m-0 text-[var(--fg-primary)]">
-        {done.refreshed ? (
-          <>
-            Made version {done.version} of “{done.name}” and switched to it.{" "}
-            <button
-              type="button"
-              className={LINK_BUTTON}
+    <AppDialog ariaLabel={title} onClose={close} maxWidth={520} autoFocusFirst initialFocusRef={lookAround}>
+      <AppDialogHeader title={title} onClose={close} />
+      <AppDialogBody>
+        <div className="mb-6 flex flex-col gap-4 text-body-sm text-[var(--fg-secondary)]">
+          <p className="m-0">
+            {done.refreshed
+              ? `It’s on now. Version ${done.from} is still there.`
+              : `Made from ${done.host}, and it’s on now.`}
+          </p>
+          {done.notes.length ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="m-0 text-caption text-[var(--fg-muted)]">From {LOOK_MODEL_NAME}</p>
+              <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[var(--fg-primary)]">
+                {done.notes.map((note, i) => (
+                  <li key={i}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {done.caveats.map((caveat) => (
+            <p key={caveat} className="m-0 text-pretty text-[var(--fg-muted)]">
+              {caveat}
+            </p>
+          ))}
+          <p className="m-0 text-pretty">
+            Look around the app to see it in place. If something isn’t right, press New version on its tile and tell{" "}
+            {LOOK_MODEL_NAME} what to change, in your own words. Every version is kept, so you can always go back.
+          </p>
+        </div>
+        <div className={DIALOG_FOOTER_ACTIONS_CLASS}>
+          {done.refreshed ? (
+            <Button
+              variant="ghost"
               onClick={() => {
                 showLookVersion(done.id, done.from)
-                run.clear()
+                close()
               }}
             >
-              Back to the previous version
-            </button>
-          </>
-        ) : (
-          <>
-            Made “{done.name}” from {done.host} and switched to it.
-          </>
-        )}
-      </p>
-      {done.notes.length ? (
-        <div className="flex flex-col gap-1">
-          <p className="m-0 text-caption">From {LOOK_MODEL_NAME}</p>
-          <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[var(--fg-secondary)]">
-            {done.notes.map((note, i) => (
-              <li key={i}>{note}</li>
-            ))}
-          </ul>
+              Back to version {done.from}
+            </Button>
+          ) : null}
+          <Button ref={lookAround} onClick={close}>
+            Look around
+          </Button>
         </div>
-      ) : null}
-      {done.caveats.map((caveat) => (
-        <p key={caveat} className="m-0 text-pretty">
-          {caveat}
-        </p>
-      ))}
-    </div>
-  )
-}
-
-/** After a style is made: an invitation to look, and a field to ask for a
- *  new version right there, in the person's own words. */
-function AskForChanges({ done }: { done: Done }) {
-  const { run } = useLookRun()
-  const look = useCustomLooks().find((l) => l.id === done.id)
-  const [request, setRequest] = useState("")
-  if (!look) return null
-  return (
-    <form
-      noValidate
-      className="flex flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (!run.busy) void run.start({ kind: "refresh", look, request: request.trim(), slot: done.slot })
-      }}
-    >
-      <p className="m-0 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty">
-        Look around the app to see it in place. If it isn’t right yet, tell {LOOK_MODEL_NAME} what to change, in your
-        own words, and it makes a new version.
-      </p>
-      <div className="max-w-[28rem]">
-        <Textarea
-          label="What should change?"
-          rows={3}
-          maxLength={600}
-          value={request}
-          onChange={(e) => setRequest(e.target.value)}
-          helperText="For example: a darker ID card, the green from their buttons. Leave it empty for a fresh variation."
-        />
-      </div>
-      <div>
-        <Button type="submit" size="sm" disabled={run.busy}>
-          Make new version
-        </Button>
-      </div>
-    </form>
+      </AppDialogBody>
+    </AppDialog>
   )
 }
 
 /** What is happening now, where the run was started (`slot`): reading,
- *  making, made (DoneText, then AskForChanges), or what went wrong. */
+ *  making, or what went wrong; once made, MadeDialog. */
 export function RunStatus({
   statusId,
   slot,
@@ -263,11 +238,11 @@ export function RunStatus({
   /** Space above, only while there is something to say. */
   spaced?: boolean
 }) {
-  const { apiKey, run } = useLookRun()
+  const { run } = useLookRun()
   const { phase } = run
   const shown = phase.kind !== "idle" && phase.slot === slot ? phase : null
   return (
-    <div className={`flex flex-col gap-4 ${spaced && shown ? "mt-3" : ""}`}>
+    <div className={`flex flex-col gap-3 ${spaced && shown && shown.kind !== "done" ? "mt-3" : ""}`}>
       <div id={statusId} role="status" aria-live="polite" className="text-body-sm text-[var(--fg-muted)]">
         {shown?.kind === "reading" || shown?.kind === "designing" ? (
           <p className="m-0">
@@ -291,9 +266,8 @@ export function RunStatus({
             ) : null}
           </p>
         ) : null}
-        {shown?.kind === "done" ? <DoneText done={shown} /> : null}
       </div>
-      {shown?.kind === "done" && apiKey ? <AskForChanges done={shown} /> : null}
+      {shown?.kind === "done" ? <MadeDialog done={shown} /> : null}
       {shown?.kind === "error" && !shown.field ? <Banner variant="error">{shown.message}</Banner> : null}
     </div>
   )

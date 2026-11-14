@@ -70,7 +70,7 @@ describe("Made styles in the gallery: a new version", () => {
     expect(stored[0].id).toBe(look.id)
     expect(stored[0].spec.name).toBe("Guardian, darker")
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to the previous version" }))
+    fireEvent.click(screen.getByRole("button", { name: "Back to version 1", hidden: true }))
     expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))[0].spec.name).toBe("Guardian")
   })
 
@@ -141,14 +141,30 @@ describe("Made styles in the gallery", () => {
     expect(document.documentElement.getAttribute("data-look")).toBe(look.id)
   })
 
-  it("can be removed from the gallery, and the style goes back to Neutral if it was on", () => {
+  it("can be removed from the gallery, once asked, and the style goes back to Neutral if it was on", () => {
     const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
     renderAppearance()
     expect(document.documentElement.getAttribute("data-look")).toBe(look.id)
     fireEvent.click(screen.getByRole("button", { name: "Remove Guardian" }))
+    expect(screen.getByRole("radio", { name: "Guardian" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Remove style", hidden: true }))
     expect(screen.queryByRole("radio", { name: "Guardian" })).toBeNull()
     expect(parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))).toEqual([])
     expect(document.documentElement.hasAttribute("data-look")).toBe(false)
+  })
+
+  it("can lose one version, once asked, the one before going on show", () => {
+    const look = addCustomLook(spec("Guardian"), "theguardian.com", "https://www.theguardian.com/")
+    replaceCustomLook(look.id, spec("Guardian, darker"), "Darker")
+    renderAppearance()
+    fireEvent.click(screen.getByRole("button", { name: "Delete version 2" }))
+    fireEvent.click(screen.getByRole("button", { name: "Delete version", hidden: true }))
+    const [kept] = parseCustomLooks(window.localStorage.getItem(CUSTOM_LOOKS_STORAGE_KEY))
+    expect(kept.versions.map((v) => v.version)).toEqual([1])
+    expect(screen.getByRole("radio", { name: "Guardian" })).toHaveAttribute("aria-checked", "true")
+    // One version left: no picker, and the bin removes the style.
+    expect(screen.queryByRole("combobox", { name: "Version of Guardian" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Remove Guardian" })).toBeInTheDocument()
   })
 
   it("hold the maker's form while a new version is being made", async () => {
@@ -169,7 +185,7 @@ describe("Made styles in the gallery", () => {
 })
 
 describe("After a style is made", () => {
-  it("says so, shows Claude's notes and what the app took back, and asks what to change", async () => {
+  it("says so in a dialog of its own, with Claude's notes and what the app took back", async () => {
     generate.mockResolvedValue(
       made(
         "Guardian",
@@ -181,19 +197,18 @@ describe("After a style is made", () => {
     fireEvent.change(screen.getByLabelText("Website"), { target: { value: "theguardian.com" } })
     fireEvent.click(screen.getByRole("button", { name: "Make style" }))
 
-    await screen.findByText(/Made “Guardian” from theguardian.com and switched to it/)
-    const notes = screen.getAllByRole("listitem").map((li) => li.textContent)
+    await screen.findByText("Made “Guardian”")
+    expect(screen.getByText(/Made from theguardian.com, and it’s on now/)).toBeInTheDocument()
+    const notes = screen.getAllByRole("listitem", { hidden: true }).map((li) => li.textContent)
     expect(notes).toEqual(["I used their deep blue for the buttons.", "Names are in their serif headline face."])
     expect(screen.getByText(/left these plain/)).toBeInTheDocument()
+    expect(screen.getByText(/press New version on its tile/)).toBeInTheDocument()
+    // Nothing to fill in now: the person goes to look first.
+    expect(screen.queryByLabelText("What should change?")).toBeNull()
 
-    // A new version straight from the result, with the person's words.
-    generate.mockResolvedValue(made("Guardian, darker", ["I made the ID card their darkest blue, as you asked."]))
-    fireEvent.change(screen.getByLabelText("What should change?"), { target: { value: "A darker ID card" } })
-    fireEvent.click(screen.getByRole("button", { name: "Make new version" }))
-    await screen.findByText(/Made version 2 of “Guardian, darker”/)
-    expect(generate.mock.calls[1][0].request).toBe("A darker ID card")
-    expect(generate.mock.calls[1][0].previous.name).toBe("Guardian")
-    expect(screen.getByRole("listitem")).toHaveTextContent("I made the ID card their darkest blue, as you asked.")
+    fireEvent.click(screen.getByRole("button", { name: "Look around", hidden: true }))
+    expect(screen.queryByText("Made “Guardian”")).toBeNull()
+    expect(screen.getByRole("radio", { name: "Guardian" })).toHaveAttribute("aria-checked", "true")
   })
 
   it("shows no notes for a style Claude said nothing about", async () => {
@@ -201,8 +216,7 @@ describe("After a style is made", () => {
     renderAppearance()
     fireEvent.change(screen.getByLabelText("Website"), { target: { value: "theguardian.com" } })
     fireEvent.click(screen.getByRole("button", { name: "Make style" }))
-    await screen.findByText(/Made “Guardian”/)
-    expect(screen.queryByRole("list", { name: undefined })).toBeNull()
-    expect(screen.getByRole("button", { name: "Make new version" })).toBeEnabled()
+    await screen.findByText("Made “Guardian”")
+    expect(screen.queryAllByRole("listitem", { hidden: true })).toHaveLength(0)
   })
 })
