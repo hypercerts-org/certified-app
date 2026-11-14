@@ -1,3 +1,5 @@
+import { splitLocationName } from "@/lib/atproto/location"
+
 /** Number, money and date formatting for the /funding page. Dates are UTC
  *  so a day means the same day for every visitor. */
 
@@ -72,4 +74,11 @@ export function formatMonth(t: number): string {
 /** "09:30" */
 export function formatTime(t: number): string {
   return timeFmt.format(new Date(t * 1000))
+}
+
+/** A location name without a leading Plus Code ("J795+FP, Tarauacá, …" ->
+ *  "Tarauacá, …"); the code alone when that is all there is. */
+export function formatPlace(place: string): string {
+  const { plusCode, name } = splitLocationName(place)
+  return name || plusCode || place
 }

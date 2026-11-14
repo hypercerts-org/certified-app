@@ -10,7 +10,7 @@ import { recordUrlFromAtUri } from "@/lib/urls"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { FLOW_REGIONS, flowData, regionLabel, type ProjectTotal } from "@/lib/funding/select"
 import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
-import { formatCount, formatUsd } from "@/lib/funding/format"
+import { formatCount, formatUsd, formatPlace } from "@/lib/funding/format"
 import { prepareCanvas, useCanvasColors, useElementWidth } from "./use-element-width"
 import FundingGlobe from "./funding-globe"
 import FundingProjectTip from "./funding-project-tip"
@@ -228,7 +228,7 @@ function AtlasSelection({
         <b>{owner?.name ?? "Organization"}</b>
         <span>
           {p.title ?? "Untitled project"} · {formatUsd(t.total)} from {formatCount(t.count)} gifts
-          {p.place ? ` · ${p.place}` : ""}
+          {p.place ? ` · ${formatPlace(p.place)}` : ""}
         </span>
       </div>
       <div className="funding-atlas__selection-actions">

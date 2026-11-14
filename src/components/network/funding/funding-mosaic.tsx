@@ -8,7 +8,7 @@ import Button from "@/components/ui/button"
 import { profileUrl, recordUrlFromAtUri } from "@/lib/urls"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { dailyTotals, type ProjectTotal } from "@/lib/funding/select"
-import { formatCount, formatShortDay, formatUsd, formatUsdShort } from "@/lib/funding/format"
+import { formatCount, formatShortDay, formatUsd, formatUsdShort, formatPlace } from "@/lib/funding/format"
 import { useElementWidth } from "./use-element-width"
 
 /** How many projects get a tile; the rest share the avatar strip. */
@@ -281,7 +281,7 @@ function ProjectPanel({
             <Avatar src={owner.avatar ?? undefined} alt="" size="xs" seed={owner.did} fallbackInitials={initials(owner.name)} />
             <span className="funding-panel__owner-text">
               <span className="funding-panel__owner-name">{owner.name ?? "Organization"}</span>
-              {p.place ? <span className="funding-panel__place">{p.place}</span> : null}
+              {p.place ? <span className="funding-panel__place">{formatPlace(p.place)}</span> : null}
             </span>
           </Link>
         ) : null}

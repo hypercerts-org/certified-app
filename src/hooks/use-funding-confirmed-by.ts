@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import {
   CONFIRM_ROLES,
   DEFAULT_CONFIRM_ROLES,
@@ -38,73 +38,81 @@ export interface FundingConfirmedByState {
  * single indexer arg. Only the params this filter owns are touched; every
  * other query param (tab, sort, …) is preserved.
  */
+function parseRoles(param: string | null): Set<ConfirmRole> {
+  if (param == null) return new Set(DEFAULT_CONFIRM_ROLES)
+  if (param === EMPTY_SELECTION_SENTINEL) return new Set()
+  const valid = new Set<string>(CONFIRM_ROLES)
+  return new Set(param.split(",").filter((v): v is ConfirmRole => valid.has(v)))
+}
+
+function parseThirdParties(param: string | null): Set<string> {
+  if (!param) return new Set<string>()
+  return new Set(param.split(",").filter((v) => v.startsWith("did:")))
+}
+
 export function useFundingConfirmedBy(): FundingConfirmedByState {
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const router = useRouter()
 
   const rolesParam = searchParams?.get("confirmedRoles") ?? null
-  const roles = useMemo<Set<ConfirmRole>>(() => {
-    if (rolesParam == null) return new Set(DEFAULT_CONFIRM_ROLES)
-    if (rolesParam === EMPTY_SELECTION_SENTINEL) return new Set()
-    const valid = new Set<string>(CONFIRM_ROLES)
-    return new Set(
-      rolesParam.split(",").filter((v): v is ConfirmRole => valid.has(v)),
-    )
-  }, [rolesParam])
+  const roles = useMemo(() => parseRoles(rolesParam), [rolesParam])
 
   const tpParam = searchParams?.get("confirmedTp") ?? null
-  const thirdParties = useMemo<Set<string>>(() => {
-    if (!tpParam) return new Set<string>()
-    return new Set(tpParam.split(",").filter((v) => v.startsWith("did:")))
-  }, [tpParam])
+  const thirdParties = useMemo(() => parseThirdParties(tpParam), [tpParam])
 
   const isDefault = thirdParties.size === 0 && isDefaultConfirmRoleSet(roles)
 
-  const setParam = useCallback(
-    (patch: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "")
-      for (const [k, v] of Object.entries(patch)) {
-        if (v === null || v === "") params.delete(k)
-        else params.set(k, v)
-      }
+  // Toggles read the URL as it is at click time and write it back with the
+  // native History API, which Next keeps in sync with useSearchParams. Going
+  // through the router instead lags a render behind, so a second click before
+  // the first had landed toggled from stale state and undid the first.
+  const update = useCallback(
+    (patch: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(window.location.search)
+      patch(params)
       const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      window.history.replaceState(window.history.state, "", qs ? `${pathname}?${qs}` : pathname)
     },
-    [pathname, searchParams, router],
+    [pathname],
   )
 
   const toggleRole = useCallback(
     (role: ConfirmRole) => {
-      const next = new Set(roles)
-      if (next.has(role)) next.delete(role)
-      else next.add(role)
-      const value = isDefaultConfirmRoleSet(next)
-        ? null // matches the default ⇒ clear the param
-        : next.size === 0
-          ? EMPTY_SELECTION_SENTINEL
-          : CONFIRM_ROLES.filter((r) => next.has(r)).join(",")
-      setParam({ confirmedRoles: value })
+      update((params) => {
+        const next = parseRoles(params.get("confirmedRoles"))
+        if (next.has(role)) next.delete(role)
+        else next.add(role)
+        if (isDefaultConfirmRoleSet(next)) params.delete("confirmedRoles") // the default ⇒ no param
+        else
+          params.set(
+            "confirmedRoles",
+            next.size === 0 ? EMPTY_SELECTION_SENTINEL : CONFIRM_ROLES.filter((r) => next.has(r)).join(","),
+          )
+      })
     },
-    [roles, setParam],
+    [update],
   )
 
   const toggleThirdParty = useCallback(
     (did: string) => {
-      const next = new Set(thirdParties)
-      if (next.has(did)) next.delete(did)
-      else next.add(did)
-      setParam({
-        confirmedTp: next.size === 0 ? null : Array.from(next).join(","),
+      update((params) => {
+        const next = parseThirdParties(params.get("confirmedTp"))
+        if (next.has(did)) next.delete(did)
+        else next.add(did)
+        if (next.size === 0) params.delete("confirmedTp")
+        else params.set("confirmedTp", Array.from(next).join(","))
       })
     },
-    [thirdParties, setParam],
+    [update],
   )
 
   const reset = useCallback(() => {
     // Back to the default: trusted sources + both sides, no third parties.
-    setParam({ confirmedRoles: null, confirmedTp: null })
-  }, [setParam])
+    update((params) => {
+      params.delete("confirmedRoles")
+      params.delete("confirmedTp")
+    })
+  }, [update])
 
   return { roles, thirdParties, isDefault, toggleRole, toggleThirdParty, reset }
 }

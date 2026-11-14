@@ -26,8 +26,11 @@ function landCells(): Float32Array {
   const out: number[] = []
   for (let row = 0; row < LAND_MASK.rows; row++) {
     const lat = (LAND_MASK.lat0 - row * LAND_MASK.step) * RAD
+    // Meridians converge toward the poles; keep every n-th cell so the dots
+    // stay evenly spaced instead of crowding into stripes.
+    const stride = Math.max(1, Math.round(1 / Math.cos(lat)))
     for (let col = 0; col < LAND_MASK.cols; col++) {
-      if (!bits[row * LAND_MASK.cols + col]) continue
+      if (col % stride !== 0 || !bits[row * LAND_MASK.cols + col]) continue
       out.push(Math.sin(lat), Math.cos(lat), (LAND_MASK.lon0 + col * LAND_MASK.step) * RAD)
     }
   }
@@ -320,7 +323,11 @@ export default function FundingGlobe({
         if (d && !d.moved) {
           const { x, y } = local(e)
           const t = hit(x, y)
-          if (t) onSelect(t.project)
+          if (t) {
+            // The globe is about to turn, so the card would point at nothing.
+            setHover(null)
+            onSelect(t.project)
+          }
         }
       }}
       onPointerCancel={() => {
@@ -330,6 +337,7 @@ export default function FundingGlobe({
         const step = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, 12], ArrowDown: [0, -12] }[e.key]
         if (!step) return
         e.preventDefault()
+        setHover(null)
         spinning.current = false
         const from = target.current ?? view.current
         target.current = {
