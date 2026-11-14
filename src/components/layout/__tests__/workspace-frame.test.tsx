@@ -50,24 +50,23 @@ import RecordsPage from "@/components/records/records-page"
 import Home from "@/components/home/home"
 
 /**
- * The frame's order: the header (with the page's h1, when it has one),
- * then the Workspace side list, then the content.
+ * The frame's order: the page's h1 (the section's name, for screen
+ * readers only: the side list names the page), then the Workspace side
+ * list, then the content. No title is drawn over the frame.
  */
 function expectFrame(container: HTMLElement, opts: { h1?: string } = {}) {
-  const header = container.querySelector(".workspace__header")
   const sideList = screen.getByRole("navigation", { name: "Workspace" })
   const main = container.querySelector(".workspace__main")
-  expect(header).not.toBeNull()
   expect(main).not.toBeNull()
-  // header → side list → content, in document order.
-  expect(header!.compareDocumentPosition(sideList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(container.querySelector(".workspace__header")).toBeNull()
   expect(sideList.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  // The header sits outside the side list's row; the list is not in it.
-  expect(header!.contains(sideList)).toBe(false)
   if (opts.h1) {
-    expect(within(header as HTMLElement).getByRole("heading", { level: 1, name: opts.h1 })).toBeInTheDocument()
+    const h1 = screen.getByRole("heading", { level: 1, name: opts.h1 })
+    expect(h1).toHaveClass("sr-only")
+    expect(h1.compareDocumentPosition(sideList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(main!.contains(h1)).toBe(false)
   }
-  return { header: header as HTMLElement, sideList, main: main as HTMLElement }
+  return { sideList, main: main as HTMLElement }
 }
 
 beforeEach(() => {
@@ -81,15 +80,16 @@ beforeEach(() => {
 })
 
 describe("WorkspaceFrame", () => {
-  it("renders the header, then the side list, then the content", () => {
+  it("renders the section's h1 (for screen readers), then the side list, then the content", () => {
     const { container } = render(
       <WorkspaceShell current="followers">
-        <WorkspaceFrame header={<h1>Followers</h1>}>
+        <WorkspaceFrame titleId="followers-title">
           <p>Rows</p>
         </WorkspaceFrame>
       </WorkspaceShell>,
     )
     const { main, sideList } = expectFrame(container, { h1: "Followers" })
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute("id", "followers-title")
     expect(within(main).getByText("Rows")).toBeInTheDocument()
     expect(within(sideList).getByRole("link", { name: "Followers" })).toHaveAttribute(
       "aria-current",
@@ -103,14 +103,14 @@ describe("WorkspaceFrame", () => {
   it("offsets the content to the first side-list label unless told not to", () => {
     const { container, rerender } = render(
       <WorkspaceShell current="overview">
-        <WorkspaceFrame header={null}>x</WorkspaceFrame>
+        <WorkspaceFrame>x</WorkspaceFrame>
       </WorkspaceShell>,
     )
     const offset = SIDE_NAV_CONTENT_OFFSET.split(" ")[0]
     expect(container.querySelector(".workspace__main")).toHaveClass(offset)
     rerender(
       <WorkspaceShell current="overview">
-        <WorkspaceFrame header={null} offset={false}>
+        <WorkspaceFrame offset={false}>
           x
         </WorkspaceFrame>
       </WorkspaceShell>,
@@ -120,7 +120,7 @@ describe("WorkspaceFrame", () => {
 
   it("must sit inside WorkspaceShell", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {})
-    expect(() => render(<WorkspaceFrame header={null}>x</WorkspaceFrame>)).toThrow(
+    expect(() => render(<WorkspaceFrame>x</WorkspaceFrame>)).toThrow(
       /inside WorkspaceShell/,
     )
     spy.mockRestore()
@@ -128,7 +128,7 @@ describe("WorkspaceFrame", () => {
 })
 
 describe("Records sections render the frame in every state", () => {
-  it("while auth loads: the section's header, the side list, a spinner", () => {
+  it("while auth loads: the section's h1, the side list, a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
@@ -159,16 +159,28 @@ describe("Records sections render the frame in every state", () => {
     ).toBeInTheDocument()
   })
 
-  it("a section: its header, the side list, and its region named by the header's title", () => {
+  it("a section: its h1, the side list, and its region named by the h1", () => {
     org.groups = []
     const { container } = render(<RecordsPage />)
     const { main } = expectFrame(container, { h1: "Groups" })
     const h1 = screen.getByRole("heading", { level: 1, name: "Groups" })
-    // The pane's region lives in the content and points at the header's h1.
+    // The pane's region lives in the content and points at the h1.
     const region = within(main).getByRole("region", { name: "Groups" })
     expect(region).toHaveAttribute("aria-labelledby", h1.id)
-    // New group stays in the header.
-    expect(screen.getByRole("link", { name: "New group" })).toBeInTheDocument()
+    // With no groups, New group is the empty state's own action.
+    expect(within(main).getByRole("link", { name: "New group" })).toBeInTheDocument()
+  })
+
+  it("a section with groups: their count and New group make its first row", () => {
+    org.groups = [
+      { groupDid: "did:plc:a", handle: "a.certified.app", displayName: "Estuary", role: "admin" },
+      { groupDid: "did:plc:b", handle: "b.certified.app", displayName: "Mangrove", role: "member" },
+    ]
+    const { container } = render(<RecordsPage />)
+    const { main } = expectFrame(container, { h1: "Groups" })
+    const row = main.querySelector(".records-pane__headrow") as HTMLElement
+    expect(within(row).getByText("2 groups")).toBeInTheDocument()
+    expect(within(row).getByRole("link", { name: "New group" })).toBeInTheDocument()
   })
 
   it("a section while its list loads", () => {
@@ -179,12 +191,12 @@ describe("Records sections render the frame in every state", () => {
 })
 
 describe("Overview renders the frame", () => {
-  it("while auth loads: no header (the account heads the ID box), the side list, a spinner", () => {
+  it("while auth loads: no section h1 (the account heads the ID box), the side list, a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<Home />)
-    expect(container.querySelector(".workspace__header")).toBeNull()
+    expect(container.querySelector("h1.sr-only")).toBeNull()
     const sideList = screen.getByRole("navigation", { name: "Workspace" })
     const main = container.querySelector(".workspace__main")!
     expect(sideList.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

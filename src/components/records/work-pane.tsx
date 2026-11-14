@@ -42,7 +42,6 @@ import ProjectPickerDialog, {
   type ProjectChange,
 } from "@/components/records/project-picker-dialog"
 import {
-  PaneHead,
   RowMenu,
   type RowMenuEntry,
   RowsSkeleton,
@@ -488,7 +487,7 @@ export default function WorkPane({
     <WorkspaceFrame
       // The content opens with the toolbar, a control row, not a heading.
       offset={false}
-      header={<PaneHead titleId={titleId} section="activities" />}
+      titleId={titleId}
     >
       <section
         className="records-pane records-work"
@@ -561,7 +560,7 @@ export default function WorkPane({
             icon={FolderGit2}
             headingLevel={2}
             title="No projects or activities yet"
-            description="An activity records a piece of work. Group activities into projects to show how they fit together."
+            description="An activity records a piece of work. Group activities into projects, like folders, to show how they fit together; one activity can sit in several projects."
           >
             <Button href="/create" variant="secondary" size="sm">
               <Plus size={16} strokeWidth={1.75} aria-hidden />

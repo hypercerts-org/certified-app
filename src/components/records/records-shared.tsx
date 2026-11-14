@@ -6,7 +6,6 @@ import { MoreHorizontal, type LucideIcon } from "lucide-react"
 import Button from "@/components/ui/button"
 import BottomSheet from "@/components/ui/bottom-sheet"
 import Input from "@/components/ui/input"
-import PageHeader from "@/components/ui/page-header"
 import Skeleton from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -17,11 +16,6 @@ import {
   type MenuMode,
 } from "@/components/layout/menu-row"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
-import {
-  workspaceSectionDescription,
-  workspaceSectionLabel,
-  type WorkspaceSection,
-} from "@/components/layout/workspace-shell"
 
 /** "1 activity" / "3 activities". */
 export function count(n: number, one: string, many: string): string {
@@ -31,36 +25,6 @@ export function count(n: number, one: string, many: string): string {
 /** Case-insensitive substring match; an empty query matches everything. */
 export function matches(text: string, q: string): boolean {
   return !q || text.toLowerCase().includes(q)
-}
-
-/**
- * The head of a pane: each Workspace section is a page of its own, so its
- * name is the page's `<h1>` (a `<PageHeader>`), with the section's line
- * of description and an optional action on the right. It goes in the
- * `WorkspaceFrame`'s header slot, full width above the side list; the
- * frame sets the space under it.
- */
-export function PaneHead({
-  titleId,
-  section,
-  description = workspaceSectionDescription(section),
-  action,
-}: {
-  titleId?: string
-  section: Exclude<WorkspaceSection, "overview">
-  /** Defaults to the section's own line (`WORKSPACE_SECTIONS`). */
-  description?: string
-  action?: React.ReactNode
-}) {
-  return (
-    <PageHeader
-      titleId={titleId}
-      title={workspaceSectionLabel(section)}
-      description={description}
-      actions={action}
-      className="!mb-0"
-    />
-  )
 }
 
 export function SearchField({

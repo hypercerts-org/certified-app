@@ -36,7 +36,7 @@ import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/
 import GivenEndorsements from "@/components/records/given-endorsements"
 import { GroupRows } from "@/components/home/home-sections"
 import { useOrg } from "@/lib/groups/org-context"
-import { PaneHead, PaneTabBar, RowsSkeleton } from "@/components/records/records-shared"
+import { PaneTabBar, RowsSkeleton } from "@/components/records/records-shared"
 import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
 type FollowingState = ReturnType<typeof useFollowing>
@@ -107,28 +107,20 @@ export function EndorsementsPane({
   }
 
   return (
-    <WorkspaceFrame
-      offset={false}
-      header={
-        <PaneHead
-          titleId={titleId}
-          section="endorsements"
-          action={
-            <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              Endorse someone
-            </Button>
-          }
-        />
-      }
-    >
+    <WorkspaceFrame offset={false} titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={(v) => setTabParam(v)}>
           <PaneTabBar
             actions={
-              tab === "lists" && hasEndorsementListsToolbar(lists) ? (
-                <EndorsementListsToolbar state={lists} viewerIsOwner />
-              ) : null
+              <>
+                {tab === "lists" && hasEndorsementListsToolbar(lists) ? (
+                  <EndorsementListsToolbar state={lists} viewerIsOwner />
+                ) : null}
+                <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
+                  <Plus size={16} strokeWidth={1.75} aria-hidden />
+                  Endorse someone
+                </Button>
+              </>
             }
           >
             <TabList aria-label="Endorsements" className="records-pane__tablist">
@@ -270,24 +262,18 @@ export function FollowersPane({
   const followers = useFollowers(did)
 
   return (
-    <WorkspaceFrame
-      offset={false}
-      header={
-        <PaneHead
-          titleId={titleId}
-          section="followers"
-          action={
-            <Button href="/explore" variant="secondary" size="sm">
-              <Compass size={16} strokeWidth={1.75} aria-hidden />
-              Find accounts
-            </Button>
-          }
-        />
-      }
-    >
+    <WorkspaceFrame offset={false} titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={(v) => setTabParam(v)}>
-          <TabList aria-label="Followers">
+          <PaneTabBar
+            actions={
+              <Button href="/explore" variant="secondary" size="sm">
+                <Compass size={16} strokeWidth={1.75} aria-hidden />
+                Find accounts
+              </Button>
+            }
+          >
+          <TabList aria-label="Followers" className="records-pane__tablist">
             {/* Counts are left out while their list loads. */}
             <Tab
               value="followers"
@@ -302,6 +288,7 @@ export function FollowersPane({
               Following
             </Tab>
           </TabList>
+          </PaneTabBar>
 
           <TabPanel value="followers">
             <div className="records-pane__tab-body">
@@ -500,7 +487,7 @@ export function ListsPane({ did }: { did: string }) {
   // "Try again" on a failed load remounts the tabs, which loads again.
   const [attempt, setAttempt] = useState(0)
   return (
-    <WorkspaceFrame offset={false} header={<PaneHead titleId={titleId} section="lists" />}>
+    <WorkspaceFrame offset={false} titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <ListsTabs key={attempt} did={did} onRetry={() => setAttempt((n) => n + 1)} />
       </section>
@@ -592,22 +579,14 @@ function ListsTabs({ did, onRetry }: { did: string; onRetry: () => void }) {
 export function GroupsPane() {
   const titleId = useId()
   const { groups, isLoading } = useOrg()
+  const newGroup = (
+    <Button href="/groups/create" variant="secondary" size="sm">
+      <Plus size={16} strokeWidth={1.75} aria-hidden />
+      New group
+    </Button>
+  )
   return (
-    <WorkspaceFrame
-      offset={false}
-      header={
-        <PaneHead
-          titleId={titleId}
-          section="groups"
-          action={
-            <Button href="/groups/create" variant="secondary" size="sm">
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              New group
-            </Button>
-          }
-        />
-      }
-    >
+    <WorkspaceFrame offset={false} titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         {isLoading && groups.length === 0 ? (
           <RowsSkeleton shape="square" rows={3} />
@@ -617,9 +596,21 @@ export function GroupsPane() {
             headingLevel={2}
             title="You're not in any groups yet"
             description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
-          />
+          >
+            {newGroup}
+          </EmptyState>
         ) : (
-          <GroupRows groups={groups} size="md" />
+          <>
+            {/* No tabs here: the count and New group make the pane's first
+                row, on the line the other panes' tabs sit on. */}
+            <div className="records-pane__headrow">
+              <p className="records-pane__count">
+                {groups.length === 1 ? "1 group" : `${groups.length} groups`}
+              </p>
+              {newGroup}
+            </div>
+            <GroupRows groups={groups} size="md" />
+          </>
         )}
       </section>
     </WorkspaceFrame>

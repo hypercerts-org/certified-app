@@ -68,9 +68,8 @@ describe("Projects and activities toolbar (PA4)", () => {
     const newProject = screen.getByRole("link", { name: "New project" })
     expect(toolbar).toContainElement(newActivity)
     expect(toolbar).toContainElement(newProject)
-    // The header keeps only the title and its line.
-    const header = container.querySelector(".workspace__header") as HTMLElement
-    expect(header).not.toContainElement(newActivity)
+    // No title is drawn over the pane: the side list names it.
+    expect(container.querySelector(".workspace__header")).toBeNull()
     // Search first, then the actions.
     expect(search.compareDocumentPosition(newActivity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

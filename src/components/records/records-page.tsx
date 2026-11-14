@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FolderOpen, UsersRound } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import PageHeader from "@/components/ui/page-header"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import { SeeAllLink } from "@/components/ui/section-header"
@@ -30,7 +29,6 @@ import { useFollowing } from "@/hooks/use-following"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
-import { PaneHead } from "@/components/records/records-shared"
 
 /** The Workspace sections this page renders (the Overview is /home). */
 type RecordKind = Exclude<WorkspaceSection, "overview">
@@ -54,9 +52,10 @@ function parseKind(value: string | null): RecordKind {
  * and `WorkspaceFrame`) carries the side list, shared with the Overview
  * (`/home`).
  *
- * Each section passes its own `<PageHeader>` to the frame and carries its
- * own create action (New activity and New project, Endorse someone, Find
- * accounts, New list, New group); the top bar's New is the global one.
+ * The side list names the page (the frame's h1 is for screen readers
+ * only), and each section carries its own create action in its tab row
+ * (New activity and New project, Endorse someone, Find accounts, New
+ * list, New group); the top bar's New is the global one.
  *
  * Personal account only: the sections write to the session DID's repo.
  * While acting as a group they point to the group's records on its
@@ -103,15 +102,14 @@ export default function RecordsPage() {
     if (kindParam === "following") router.replace("/records?kind=followers&tab=following")
   }, [kindParam, router])
 
-  // Every state renders the Workspace frame (header, side list, content):
-  // the panes their own, with their actions; the states below a plain
-  // header.
+  // Every state renders the Workspace frame (side list, content, the
+  // page's h1): the panes with their actions, the states below without.
   const content = (() => {
     // While auth resolves (also on the server) and while the signed-out
-    // redirect runs: the section's header, the side list and a spinner.
+    // redirect runs: the side list and a spinner.
     if (authLoading || !isAuthenticated || !did) {
       return (
-        <WorkspaceFrame header={<PaneHead section={kind} />}>
+        <WorkspaceFrame>
           <div className="records-page__loading">
             <LoadingSpinner size="md" />
           </div>
@@ -127,7 +125,7 @@ export default function RecordsPage() {
     if (activeOrg) {
       const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
       return (
-        <WorkspaceFrame header={<PageHeader title={workspaceSectionLabel(kind)} className="!mb-0" />}>
+        <WorkspaceFrame>
           {kind === "groups" ? (
             <EmptyState
               icon={UsersRound}

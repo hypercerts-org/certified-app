@@ -97,13 +97,10 @@ beforeEach(() => {
 })
 
 describe("Lists (X11, LI1, LI2)", () => {
-  it("says in one line what opening a list does", () => {
+  it("draws no title or line over the pane: the side list names it, the h1 is for screen readers", () => {
     renderPane()
-    expect(
-      screen.getByText(
-        "Your lists of activities, projects, accounts and endorsements. Open a list to rename, delete or add to it.",
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: "Lists" })).toHaveClass("sr-only")
+    expect(screen.queryByText(/Open a list to rename/)).toBeNull()
   })
 
   it("with no list: an empty state that carries New activity list, nothing on the tab line", () => {
