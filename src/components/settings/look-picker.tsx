@@ -122,7 +122,7 @@ function LookTile({
   id: AnyLookId
   name: string
   description: string
-  /** A last line under the description, kept clear on the right for the
+  /** A last row under its own divider, kept clear on the right for the
    *  made styles' buttons (MadeLookTile). */
   note?: string
   selected: boolean
@@ -149,22 +149,26 @@ function LookTile({
         <span id={descId} className="text-caption text-[var(--fg-muted)]">
           {description}
         </span>
-        {note ? (
+      </span>
+      {note ? (
+        // Its own row under a divider, as tall as the buttons laid over it.
+        <span className="block border-t border-[var(--border-default)] bg-[var(--bg-elevated)] py-1 pr-24 pl-3">
           <span
             id={noteId}
-            className="flex min-h-control-md items-center pr-24 text-caption text-[var(--fg-muted)] md:min-h-control-sm"
+            className="flex min-h-control-md items-center text-caption text-[var(--fg-muted)] md:min-h-control-sm"
           >
             {note}
           </span>
-        ) : null}
-      </span>
+        </span>
+      ) : null}
     </Radio>
   )
 }
 
 /** A style made from a website: its tile, with New version and Remove on
- *  the tile's last line. The buttons sit beside the radio, not inside it
- *  (a button can't hold buttons), laid over the tile's bottom right. */
+ *  the tile's last row. The buttons sit beside the radio, not inside it
+ *  (a button can't hold buttons), laid over the tile's bottom right: 5px
+ *  up, the radio's 1px border and the row's 4px padding. */
 function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean }) {
   const { apiKey, run } = useLookRun()
   const [asking, setAsking] = useState(false)
@@ -179,7 +183,7 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
         selected={selected}
         className="flex-1"
       />
-      <span className="absolute right-2 bottom-2.5 flex gap-1">
+      <span className="absolute right-2 bottom-[5px] flex gap-1">
         <Button
           size="icon"
           variant="ghost"
