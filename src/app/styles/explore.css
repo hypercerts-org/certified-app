@@ -1051,6 +1051,13 @@
   font-weight: 400;
 }
 
+/* A receipt without `from` records an anonymous gift. */
+.funding-receipt-row__anon {
+  font-size: var(--text-body-sm);
+  font-style: italic;
+  color: var(--fg-muted);
+}
+
 .funding-receipt-row__for {
   display: inline-flex;
   align-items: center;

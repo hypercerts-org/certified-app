@@ -16,24 +16,22 @@ import {
   thirdPartyDids,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
+import { confirmRoleLabel } from "@/lib/funding/labels"
+import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
-
-const ROLE_LABEL: Record<ConfirmRole, string> = {
-  both: "Funders & Recipient",
-  sender: "Only funder",
-  recipient: "Only recipient",
-}
 
 /**
  * /explore Funding "Confirmed by" filter — two checkbox sections:
  *
- *   Confirmed by               (role buckets: Both / Sender / Recipient)
+ *   Confirmed by               (buckets: Trusted sources / Both sides /
+ *                               Funder only / Recipient only / Others)
  *   Confirmed by third parties (one checkbox per distinct third-party
- *                               attestor in the loaded receipts)
+ *                               attestor in the loaded receipts that is
+ *                               not a trusted source)
  *
  * The shown list is the UNION of everything checked; with nothing checked
- * nothing shows. Default has the three role buckets checked and no third
- * parties — applied client-side (see `matchesConfirmedBy`), since the role
+ * nothing shows. Default has trusted sources + both sides checked and no
+ * third parties — applied client-side (see `matchesConfirmedBy`), since the
  * buckets aren't a single indexer arg.
  */
 export default function FundingConfirmedByPopover({
@@ -54,9 +52,10 @@ export default function FundingConfirmedByPopover({
   onToggleRole: (role: ConfirmRole) => void
   thirdParties: ReadonlySet<string>
   onToggleThirdParty: (did: string) => void
-  /** Whether the selection equals the default (all roles, no third parties). */
+  /** Whether the selection equals the default (trusted sources + both
+   *  sides, no third parties). */
   isDefault: boolean
-  /** Restore the default selection (all roles, no third parties). */
+  /** Restore the default selection. */
   onReset: () => void
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -90,7 +89,12 @@ export default function FundingConfirmedByPopover({
       out.push(did)
     }
     for (const did of thirdParties) push(did)
-    for (const r of receipts) for (const did of thirdPartyDids(r.attestations)) push(did)
+    for (const r of receipts) {
+      for (const did of thirdPartyDids(r.attestations)) {
+        // Trusted sources have their own bucket above.
+        if (!isTrustedFundingSource(did)) push(did)
+      }
+    }
     return out
   }, [receipts, thirdParties])
 
@@ -132,7 +136,7 @@ export default function FundingConfirmedByPopover({
           {CONFIRM_ROLES.map((role) => (
             <div key={role} className="popover__item popover__item--check">
               <Checkbox
-                label={ROLE_LABEL[role]}
+                label={confirmRoleLabel(role)}
                 checked={roles.has(role)}
                 onChange={() => onToggleRole(role)}
               />

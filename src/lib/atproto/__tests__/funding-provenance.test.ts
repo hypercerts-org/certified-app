@@ -2,12 +2,14 @@ import { describe, it, expect } from "vitest"
 import {
   thirdPartyDids,
   confirmRoleBucket,
+  confirmBuckets,
   matchesConfirmedBy,
   fundingConfirmEligibility,
-  CONFIRM_ROLES,
+  DEFAULT_CONFIRM_ROLES,
   type ConfirmRole,
 } from "../funding-provenance"
 import type { FundingAttestation, FundingParty } from "../indexer"
+import { MA_EARTH_DID } from "@/lib/funding/trusted-sources"
 
 const recipient: FundingAttestation = { role: "recipient", did: "did:plc:rcpt" }
 const sender: FundingAttestation = { role: "sender", did: "did:plc:sndr" }
@@ -15,7 +17,8 @@ const third = (did: string): FundingAttestation => ({ role: "third-party", did }
 
 const roleSet = (...rs: ConfirmRole[]): ReadonlySet<ConfirmRole> => new Set(rs)
 const tpSet = (...dids: string[]): ReadonlySet<string> => new Set(dids)
-const ALL_ROLES = new Set(CONFIRM_ROLES)
+const DEFAULT_ROLES: ReadonlySet<ConfirmRole> = new Set(DEFAULT_CONFIRM_ROLES)
+const maEarth = third(MA_EARTH_DID)
 const NO_TP: ReadonlySet<string> = new Set<string>()
 
 describe("thirdPartyDids", () => {
@@ -53,34 +56,49 @@ describe("confirmRoleBucket", () => {
   })
 })
 
+describe("confirmBuckets", () => {
+  it("a trusted source's receipt is 'trusted'", () => {
+    expect([...confirmBuckets([maEarth])]).toEqual(["trusted"])
+  })
+  it("an unknown third party's receipt is 'other'", () => {
+    expect([...confirmBuckets([third("did:plc:a")])]).toEqual(["other"])
+  })
+  it("a trusted receipt the recipient confirmed is 'trusted' and 'recipient'", () => {
+    expect(confirmBuckets([maEarth, recipient])).toEqual(new Set(["trusted", "recipient"]))
+  })
+  it("no attestations => no bucket", () => {
+    expect(confirmBuckets([]).size).toBe(0)
+  })
+})
+
 describe("matchesConfirmedBy", () => {
-  // The default state (every role bucket selected, no specific third party)
-  // shows only receipts confirmed by the sender, the recipient, or both.
-  // Third-party-only and as-yet-unattested receipts have no role bucket, so
-  // they are hidden by default (reachable only by selecting their third-party
-  // attestor). Callers derive the displayed count from this filtered set so
-  // the count agrees with the list.
-  describe("default selection shows only sender/recipient/both-confirmed receipts", () => {
+  // The default state (trusted sources + both sides, no specific third
+  // party) shows what a trusted source recorded and what both parties
+  // confirmed. One-sided, unknown-source and as-yet-unattested receipts are
+  // hidden until their bucket (or attestor) is selected. Callers derive the
+  // displayed count from this filtered set so the count agrees with the list.
+  describe("default selection: trusted sources + both sides", () => {
+    it("passes a trusted-source receipt", () => {
+      expect(matchesConfirmedBy([maEarth], DEFAULT_ROLES, NO_TP)).toBe(true)
+    })
     it("passes a both-confirmed receipt", () => {
-      expect(matchesConfirmedBy([recipient, sender], ALL_ROLES, NO_TP)).toBe(true)
+      expect(matchesConfirmedBy([recipient, sender], DEFAULT_ROLES, NO_TP)).toBe(true)
     })
-    it("passes a sender-only receipt", () => {
-      expect(matchesConfirmedBy([sender], ALL_ROLES, NO_TP)).toBe(true)
+    it("hides a sender-only receipt", () => {
+      expect(matchesConfirmedBy([sender], DEFAULT_ROLES, NO_TP)).toBe(false)
     })
-    it("passes a recipient-only receipt", () => {
-      expect(matchesConfirmedBy([recipient], ALL_ROLES, NO_TP)).toBe(true)
+    it("hides a recipient-only receipt", () => {
+      expect(matchesConfirmedBy([recipient], DEFAULT_ROLES, NO_TP)).toBe(false)
     })
-    it("hides a third-party-only receipt by default", () => {
-      expect(matchesConfirmedBy([third("did:plc:a")], ALL_ROLES, NO_TP)).toBe(false)
+    it("hides an unknown third party's receipt", () => {
+      expect(matchesConfirmedBy([third("did:plc:a")], DEFAULT_ROLES, NO_TP)).toBe(false)
     })
-    it("hides a zero-attestation receipt by default", () => {
-      expect(matchesConfirmedBy([], ALL_ROLES, NO_TP)).toBe(false)
+    it("hides a zero-attestation receipt", () => {
+      expect(matchesConfirmedBy([], DEFAULT_ROLES, NO_TP)).toBe(false)
     })
   })
 
-  // Once the user narrows the filter the original UNION semantics apply,
-  // byte-for-byte unchanged — a bucket-less receipt is no longer shown.
-  describe("narrowed selection applies union semantics (unchanged)", () => {
+  describe("narrowed selection applies union semantics", () => {
     it("role={sender} matches a sender-only receipt", () => {
       expect(matchesConfirmedBy([sender], roleSet("sender"), NO_TP)).toBe(true)
     })
@@ -90,10 +108,14 @@ describe("matchesConfirmedBy", () => {
     it("role={sender} does NOT match a 'both' receipt (bucket is 'both')", () => {
       expect(matchesConfirmedBy([recipient, sender], roleSet("sender"), NO_TP)).toBe(false)
     })
-    it("role={sender,recipient} (deselected 'both') does NOT match a third-party-only receipt", () => {
-      expect(
-        matchesConfirmedBy([third("did:plc:a")], roleSet("sender", "recipient"), NO_TP),
-      ).toBe(false)
+    it("role={other} matches an unknown third party's receipt", () => {
+      expect(matchesConfirmedBy([third("did:plc:a")], roleSet("other"), NO_TP)).toBe(true)
+    })
+    it("role={other} does NOT match a trusted-source receipt", () => {
+      expect(matchesConfirmedBy([maEarth], roleSet("other"), NO_TP)).toBe(false)
+    })
+    it("role={recipient} matches a trusted receipt the recipient confirmed", () => {
+      expect(matchesConfirmedBy([maEarth, recipient], roleSet("recipient"), NO_TP)).toBe(true)
     })
     it("third-party selection matches a receipt with that attestor", () => {
       expect(
