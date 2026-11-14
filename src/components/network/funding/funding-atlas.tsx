@@ -1,14 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { Globe, Map as MapIcon } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import SegmentedControl from "@/components/ui/segmented-control"
+import { useUrlParam } from "@/hooks/use-url-param"
 import { recordUrlFromAtUri } from "@/lib/urls"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { FLOW_REGIONS, flowData, regionLabel, type ProjectTotal } from "@/lib/funding/select"
 import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
 import { formatCount, formatUsd } from "@/lib/funding/format"
 import { prepareCanvas, useCanvasColors, useElementWidth } from "./use-element-width"
+import FundingGlobe from "./funding-globe"
+import FundingProjectTip from "./funding-project-tip"
 
 const LAT_TOP = 76
 const LAT_SPAN = 132
@@ -20,7 +25,8 @@ let landBits: Uint8Array | null = null
 /**
  * Where it landed: the projects on a dot map of the world, each a circle
  * sized by the money it received, with totals by region underneath. Hover a
- * circle for the project; click it to pick it.
+ * circle for the project; click it to pick it. A switch turns the flat map
+ * into a globe (`?projection=globe`).
  */
 export default function FundingAtlas({
   ds,
@@ -41,6 +47,8 @@ export default function FundingAtlas({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const colors = useCanvasColors()
   const [hover, setHover] = useState<{ t: ProjectTotal; x: number; y: number } | null>(null)
+  const [projection, setProjection] = useUrlParam("projection", { defaultValue: "flat" })
+  const globe = projection === "globe"
 
   const mapW = Math.max(0, width - 2 * INSET)
   const height = Math.round(mapW * (LAT_SPAN / 360)) + 8
@@ -143,27 +151,44 @@ export default function FundingAtlas({
 
   return (
     <div className="funding-atlas">
-      <div
-        ref={wrapRef}
-        className="funding-atlas__map"
-        style={{ height: height || undefined }}
-        onMouseMove={(e) => setHover(hit(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect()))}
-        onMouseLeave={() => setHover(null)}
-        onClick={(e) => {
-          const h = hit(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect())
-          if (h) onSelect(h.t.project)
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          role="img"
-          aria-label={`Map of ${formatCount(placed.length)} funded projects, sized by money received.`}
+      <div className="funding-atlas__bar">
+        <p className="funding-atlas__legend">
+          Circle area shows money received. {formatCount(placed.length)} of {formatCount(totals.length)} projects
+          have a location.
+        </p>
+        <SegmentedControl
+          aria-label="Projection"
+          size="sm"
+          value={globe ? "globe" : "flat"}
+          onValueChange={(v) => setProjection(v)}
+          options={[
+            { value: "flat", label: "Flat", icon: <MapIcon size={14} strokeWidth={1.75} /> },
+            { value: "globe", label: "Globe", icon: <Globe size={14} strokeWidth={1.75} /> },
+          ]}
         />
-        {hover ? <AtlasTip ds={ds} t={hover.t} x={hover.x} y={hover.y} width={width} /> : null}
       </div>
-      <p className="funding-note">
-        <span>Circle area shows money received. {formatCount(placed.length)} of {formatCount(totals.length)} projects have a location.</span>
-      </p>
+      {globe ? (
+        <FundingGlobe ds={ds} placed={placed} maxTotal={maxTotal} selected={selected} onSelect={onSelect} />
+      ) : (
+        <div
+          ref={wrapRef}
+          className="funding-atlas__map"
+          style={{ height: height || undefined }}
+          onMouseMove={(e) => setHover(hit(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect()))}
+          onMouseLeave={() => setHover(null)}
+          onClick={(e) => {
+            const h = hit(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect())
+            if (h) onSelect(h.t.project)
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            role="img"
+            aria-label={`Map of ${formatCount(placed.length)} funded projects, sized by money received.`}
+          />
+          {hover ? <FundingProjectTip ds={ds} t={hover.t} x={hover.x} y={hover.y} width={width} /> : null}
+        </div>
+      )}
       {current ? <AtlasSelection ds={ds} t={current} onShowReceipts={onShowReceipts} /> : null}
       <div className="funding-regions">
         {FLOW_REGIONS.map((region, i) =>
@@ -180,20 +205,6 @@ export default function FundingAtlas({
           ) : null,
         )}
       </div>
-    </div>
-  )
-}
-
-function AtlasTip({ ds, t, x, y, width }: { ds: FundingDataset; t: ProjectTotal; x: number; y: number; width: number }) {
-  const p = ds.projects[t.project]
-  const owner = ds.accounts[p.owner]
-  return (
-    <div className="funding-tip" style={{ left: Math.min(Math.max(x, 110), width - 110), top: Math.max(0, y - 74) }} role="status">
-      <b>{owner?.name ?? p.title ?? "Project"}</b>
-      <span>
-        {formatUsd(t.total)} · {formatCount(t.count)} gifts
-      </span>
-      {p.place ? <span className="funding-tip__muted">{p.place}</span> : null}
     </div>
   )
 }

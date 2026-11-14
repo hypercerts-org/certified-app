@@ -4,6 +4,7 @@ import { resolvePdsUrl } from "@/lib/atproto/did"
 import { guardedFetch } from "@/lib/security/ssrf"
 import { parseLocationShape } from "@/lib/atproto/location"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
+import { getBlobRefLink } from "@/lib/atproto/types"
 import { confirmBuckets } from "@/lib/atproto/funding-provenance"
 import type { FundingAttestation } from "@/lib/atproto/indexer"
 import { TRUSTED_FUNDING_SOURCES, isTrustedFundingSource } from "./trusted-sources"
@@ -146,12 +147,17 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
  * One indexer query. Sends the app's rate-limit bypass key when set (as the
  * /api/indexer proxy does): the scan is hundreds of requests from one
  * egress IP, which the indexer's per-IP limiter otherwise throttles. A 429
- * or 5xx is retried with backoff (honouring Retry-After).
+ * or 5xx is retried with backoff (honouring Retry-After). Returns the data,
+ * or the error that ended it.
  */
-async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
+async function gqlQuery<T>(
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<{ data: T | null; error: string | null }> {
   const headers: Record<string, string> = { "content-type": "application/json" }
   const bypassKey = process.env.INDEXER_RATELIMIT_BYPASS_KEY
   if (bypassKey) headers["X-RateLimit-Bypass"] = bypassKey
+  let error: string | null = "no response"
   for (let attempt = 0; attempt < 5; attempt++) {
     if (attempt > 0) await sleep(Math.min(8000, 600 * 2 ** (attempt - 1)) + Math.random() * 300)
     try {
@@ -163,32 +169,40 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
         cache: "no-store",
       })
       if (res.status === 429) {
+        error = "rate limited"
         const wait = Number(res.headers.get("retry-after"))
         if (Number.isFinite(wait) && wait > 0) await sleep(Math.min(wait, 10) * 1000)
         continue
       }
       if (!res.ok) {
-        if (res.status < 500) return null
+        error = `HTTP ${res.status}`
+        if (res.status < 500) return { data: null, error }
         continue
       }
       const body = (await res.json()) as {
         data?: T
         errors?: { message: string; extensions?: { code?: string } }[]
       }
-      if (body.data) return body.data
+      if (body.data) return { data: body.data, error: null }
       const err = body.errors?.[0]
       if (err) {
+        error = err.message
         // A throttle or timeout reported as a GraphQL error is worth a retry;
         // anything else is a query problem that won't fix itself.
         if (/rate|limit|timeout|unavailable/i.test(`${err.extensions?.code ?? ""} ${err.message}`)) continue
-        console.warn("[funding] indexer error:", err.message)
-        return null
+        return { data: null, error }
       }
     } catch {
-      // network error or timeout: retry
+      error = "network error"
     }
   }
-  return null
+  return { data: null, error }
+}
+
+async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
+  const { data, error } = await gqlQuery<T>(query, variables)
+  if (error) console.warn("[funding] indexer error:", error)
+  return data
 }
 
 // ---------------------------------------------------------------------------
@@ -278,16 +292,19 @@ interface IndexerReceiptNode {
   from: { did?: string | null; value?: string | null } | null
   to: { did?: string | null; value?: string | null } | null
   for: { uri: string | null } | null
-  matchingReceipt: { uri: string | null } | null
-  attestations: { role: string | null; did: string | null }[] | null
+  /** Absent on indexers that don't serve confirmations yet (magic-indexer #214). */
+  matchingReceipt?: { uri: string | null } | null
+  attestations?: { role: string | null; did: string | null }[] | null
 }
 
 const ISO_RE = /^[0-9:.TZ+-]+$/
 
 /** The receipts query for one createdAt range. The bounds are inlined (they
  *  come from our own records and are checked against ISO_RE) so the query
- *  doesn't depend on the name of the indexer's filter input type. */
-function receiptsInRangeQuery(range: { gte?: string; lt?: string }): string {
+ *  doesn't depend on the name of the indexer's filter input type. `full`
+ *  asks for the confirmation fields (`matchingReceipt`, `attestations`),
+ *  which not every indexer deployment serves yet. */
+function receiptsInRangeQuery(range: { gte?: string; lt?: string }, full: boolean): string {
   const parts: string[] = []
   if (range.gte && ISO_RE.test(range.gte)) parts.push(`gte: "${range.gte}"`)
   if (range.lt && ISO_RE.test(range.lt)) parts.push(`lt: "${range.lt}"`)
@@ -301,8 +318,7 @@ function receiptsInRangeQuery(range: { gte?: string; lt?: string }): string {
             from { ... on AppCertifiedDefsDid { did } ... on OrgHypercertsFundingReceiptText { value } }
             to { ... on AppCertifiedDefsDid { did } ... on OrgHypercertsFundingReceiptText { value } }
             for { uri }
-            matchingReceipt { uri }
-            attestations { role did }
+            ${full ? "matchingReceipt { uri }\n            attestations { role did }" : ""}
           }
         }
         pageInfo { hasNextPage endCursor }
@@ -319,25 +335,49 @@ interface ReceiptsPage {
 }
 
 /**
+ * What the indexer can answer: the confirmation fields (`full`) and
+ * createdAt ranges (`ranged`). Indexer deployments differ (staging's lacked
+ * `matchingReceipt`), so one small query per combination finds the richest
+ * that works, instead of the whole scan failing. Null when none works.
+ */
+async function receiptQueryShape(): Promise<{ full: boolean; ranged: boolean } | null> {
+  for (const full of [true, false]) {
+    for (const ranged of [true, false]) {
+      const { data, error } = await gqlQuery<ReceiptsPage>(
+        receiptsInRangeQuery(ranged ? { gte: "2000-01-01T00:00:00Z" } : {}, full),
+        { first: 1, after: null },
+      )
+      if (data?.orgHypercertsFundingReceipt) return { full, ranged }
+      // Only a schema mismatch is worth trying a smaller query for.
+      if (!error || !/cannot query field|unknown (field|argument)|invalid value/i.test(error)) return null
+    }
+  }
+  return null
+}
+
+/**
  * Every receipt the indexer holds that no trusted source authored. The
  * boundaries split the scan into createdAt ranges of roughly equal size
  * (taken from the trusted receipts, which are nearly all of them), paged in
- * parallel.
+ * parallel; an indexer without createdAt filters gets one sequential scan.
  */
 async function fetchOtherReceipts(
   boundaries: string[],
 ): Promise<{ nodes: IndexerReceiptNode[]; complete: boolean }> {
+  const shape = await receiptQueryShape()
+  if (!shape) return { nodes: [], complete: false }
   const ranges: { gte?: string; lt?: string }[] = []
-  for (let i = 0; i <= boundaries.length; i++) {
+  const cuts = shape.ranged ? boundaries : []
+  for (let i = 0; i <= cuts.length; i++) {
     ranges.push({
-      ...(i > 0 ? { gte: boundaries[i - 1] } : {}),
-      ...(i < boundaries.length ? { lt: boundaries[i] } : {}),
+      ...(i > 0 ? { gte: cuts[i - 1] } : {}),
+      ...(i < cuts.length ? { lt: cuts[i] } : {}),
     })
   }
   let complete = true
   const parts = await mapLimit(ranges, 4, async (range) => {
     const out: IndexerReceiptNode[] = []
-    const query = receiptsInRangeQuery(range)
+    const query = receiptsInRangeQuery(range, shape.full)
     let after: string | null = null
     for (let page = 0; page < 400; page++) {
       const data: ReceiptsPage | null = await gql<ReceiptsPage>(query, { first: 100, after })
@@ -381,6 +421,77 @@ function imageUrl(did: string, node: ImageNode): string | null {
   return ref ? buildAvatarUrlFromCid(did, ref) : null
 }
 
+/** An image field as written in a record (blob ref or URI), in the
+ *  indexer's shape so {@link imageUrl} can read it. */
+function recordImage(v: unknown): ImageNode {
+  const o = asRecord(v)
+  if (!o) return null
+  const uri = asString(o.uri)
+  if (uri) return { uri }
+  const image = asRecord(o.image)
+  if (image?.ref) {
+    const ref = getBlobRefLink(image.ref)
+    return ref && ref !== "undefined" ? { image: { ref } } : null
+  }
+  return null
+}
+
+async function getRecordFromRepo(uri: string): Promise<Record<string, unknown> | null> {
+  const did = didOf(uri)
+  const rest = uri.slice(5 + did.length + 1)
+  const slash = rest.indexOf("/")
+  if (slash < 0) return null
+  const pds = await pdsFor(did)
+  if (!pds) return null
+  const params = new URLSearchParams({ repo: did, collection: rest.slice(0, slash), rkey: rest.slice(slash + 1) })
+  const data = await getJson<{ value?: Record<string, unknown> }>(
+    `${pds.replace(/\/$/, "")}/xrpc/com.atproto.repo.getRecord?${params.toString()}`,
+  )
+  return data?.value ?? null
+}
+
+/** Accounts, projects and locations the indexer doesn't hold yet, read from
+ *  their owners' repositories instead. */
+async function accountFromRepo(did: string): Promise<FundingAccount | null> {
+  const v = await getRecordFromRepo(`at://${did}/app.certified.actor.profile/self`)
+  if (!v) return null
+  return { did, name: asString(v.displayName), avatar: imageUrl(did, recordImage(v.avatar)) }
+}
+
+async function projectFromRepo(uri: string): Promise<ProjectNode | null> {
+  const v = await getRecordFromRepo(uri)
+  if (!v) return null
+  const location = asString(asRecord(v.location)?.uri)
+  return {
+    uri,
+    did: didOf(uri),
+    title: asString(v.title) ?? asString(v.name),
+    location: location ? { uri: location } : null,
+    avatar: recordImage(v.avatar ?? v.image),
+    banner: recordImage(v.banner ?? v.image),
+  }
+}
+
+async function locationFromRepo(uri: string): Promise<LocationNode | null> {
+  const v = await getRecordFromRepo(uri)
+  if (!v) return null
+  const loc = asRecord(v.location)
+  const blobRef = asRecord(loc?.blob)?.ref
+  return {
+    uri,
+    did: didOf(uri),
+    name: asString(v.name),
+    locationType: asString(v.locationType),
+    location: loc
+      ? {
+          string: asString(loc.string),
+          uri: asString(loc.uri),
+          blob: blobRef ? { ref: getBlobRefLink(blobRef) } : null,
+        }
+      : null,
+  }
+}
+
 const PROFILES = `
   query FundingDatasetProfiles($dids: [String!]!) {
     appCertifiedActorProfile(first: 100, where: { did: { in: $dids } }) {
@@ -405,6 +516,11 @@ async function fetchAccounts(dids: string[]): Promise<Map<string, FundingAccount
       if (!n) continue
       out.set(n.did, { did: n.did, name: n.displayName ?? null, avatar: imageUrl(n.did, n.avatar) })
     }
+  })
+  const missing = dids.filter((d) => !out.get(d)?.name)
+  await mapLimit(missing, 6, async (did) => {
+    const a = await accountFromRepo(did)
+    if (a) out.set(did, a)
   })
   return out
 }
@@ -441,6 +557,11 @@ async function fetchProjects(uris: string[]): Promise<Map<string, ProjectNode>> 
     for (const e of data?.orgHypercertsCollection?.edges ?? []) {
       if (e.node) out.set(e.node.uri, e.node)
     }
+  })
+  const missing = uris.filter((u) => !out.has(u))
+  await mapLimit(missing, 6, async (uri) => {
+    const p = await projectFromRepo(uri)
+    if (p) out.set(uri, p)
   })
   return out
 }
@@ -517,6 +638,15 @@ async function fetchLocations(uris: string[]): Promise<Map<string, { lat: number
     )
     for (const e of data?.appCertifiedLocation?.edges ?? []) if (e.node) nodes.push(e.node)
   })
+  const found = new Set(nodes.map((n) => n.uri))
+  await mapLimit(
+    uris.filter((u) => !found.has(u)),
+    6,
+    async (uri) => {
+      const n = await locationFromRepo(uri)
+      if (n) nodes.push(n)
+    },
+  )
   const out = new Map<string, { lat: number; lng: number; name: string | null }>()
   await mapLimit(nodes, 8, async (node) => {
     const p = await locationPoint(node)

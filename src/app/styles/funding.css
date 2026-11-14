@@ -960,3 +960,47 @@ a.funding-ledger__project:hover {
     margin-left: 0;
   }
 }
+
+/* ---- Map: flat / globe switch and the globe ------------------------------ */
+
+.funding-atlas__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.funding-atlas__legend {
+  min-width: 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.funding-globe {
+  position: relative;
+  border-radius: var(--radius);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.funding-globe:active {
+  cursor: grabbing;
+}
+
+.funding-globe:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.funding-globe canvas {
+  display: block;
+}
+
+@media (max-width: 799px) {
+  .funding-atlas__bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
