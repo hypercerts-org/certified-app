@@ -47,6 +47,9 @@ interface AddToListMenuProps {
    *  Omit / pass null on the overview or on surfaces (feed cards, the
    *  profile sidebar) where the page tab is unrelated to this record. */
   shareTab?: string | null
+  /** List Share in the menu (default). The record pages show a visible
+   *  Share button beside the menu, so they turn this off. */
+  showShare?: boolean
   /** Edit / Delete for the record owner. The activity overview headline
    *  routes its inline Edit/Delete into this menu on mobile (the navbar's
    *  three-dot menu) so they sit beside Share. Omitted when the viewer
@@ -72,6 +75,7 @@ export default function AddToListMenu({
   targetCid,
   targetType,
   shareTab = null,
+  showShare = true,
   editActions = null,
 }: AddToListMenuProps) {
   const router = useRouter()
@@ -162,7 +166,7 @@ export default function AddToListMenu({
               ) : null}
             </>
           ) : null}
-          {sharePath ? (
+          {sharePath && showShare ? (
             <PopoverItem
               onClick={() =>
                 void copyShare(`${window.location.origin}${sharePath}`)

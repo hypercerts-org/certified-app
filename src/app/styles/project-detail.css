@@ -27,46 +27,8 @@
   }
 }
 
-/* ---------- Project page: tab content ----------
-   One column at every width, sections 32px apart (48px from 800px). */
-.project-detail__body {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  min-width: 0;
-}
-
-@media (min-width: 800px) {
-  .project-detail__body {
-    gap: 48px;
-  }
-}
-
-/* A content section: SectionHeader, then its content 12px below. */
-.project-detail__section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-/* The updates preview carries its own divider and top padding for the
-   activity page's denser column; here the section gap spaces it. */
-.project-detail__body > .context-updates {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-}
-
 /* Details (time period, contributors): plain labelled rows, two columns
    from 800px. Reuses the activity page's `.cert-detail__meta` rows. */
-@media (min-width: 800px) {
-  .project-detail__details {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px 32px;
-  }
-}
 
 /* ---------- Banner ---------- */
 
@@ -117,44 +79,6 @@
   opacity: 0.55;
 }
 
-/* ---------- Summary ---------- */
-
-.project-detail__lead {
-  max-width: var(--measure);
-  font-size: var(--text-body);
-  line-height: 1.6;
-  color: var(--fg-secondary);
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* ---------- Full description ----------
-   <RecordDescription> (cert-detail-parts.tsx): the "Read full description"
-   disclosure and the Description section it reveals, styled in
-   cert-detail.css. The toggle sits 16px under the summary: the body's gap
-   is 32px (48px from 800px), and the toggle's own -16px covers phones.
-   With nothing above it (no banner, no summary) it keeps its place under
-   the tab strip. */
-.project-detail__body > .cert-detail__desc-toggle:first-child {
-  margin-top: 0;
-}
-
-@media (min-width: 800px) {
-  .project-detail__body > .cert-detail__desc-toggle:not(:first-child) {
-    margin-top: -32px;
-  }
-}
-
-/* The description's prose caps at the reading measure in the full-width
-   column, like the summary. The typography lives on `.leaflet-doc__*`
-   (leaflet.css); a plain-string description renders as a bare
-   `.leaflet-doc__para`. */
-.project-detail__section > :is(.leaflet-doc, .leaflet-doc__para) {
-  max-width: var(--measure);
-  text-wrap: pretty;
-}
-
 /* ---------- Labelled fields (group create form) ----------
    Field rows with a sentence-case label above the control or value. */
 .project-detail__meta {
@@ -170,13 +94,6 @@
   }
 }
 
-.project-detail__meta-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
 .project-detail__meta-label {
   display: inline-flex;
   align-items: center;
@@ -187,44 +104,9 @@
   color: var(--fg-secondary);
 }
 
-/* Legacy contributors on a project (activity-only meta some foreign
-   records carry). */
-.project-detail__contributors {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* ---------- Activities in the project ---------- */
-
-/* Compact rows (`<CertListRow>`: thumb, title, period and scope) at every
-   width, separated by hairlines, as in Records and on Home. */
-.project-detail__certs-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.project-detail__certs-list > li + li .cert-list-row {
-  border-top: 1px solid var(--border-subtle);
-}
-
 /* From 800px the rows carry 8px of side padding for the hover wash; pull
    the list out by the same amount so the thumbs line up with the section
    heading. */
-@media (min-width: 800px) {
-  .project-detail__certs-list {
-    margin-inline: -8px;
-  }
-
-  .project-detail__certs-list .cert-list-row {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-}
 
 /* =====================================================================
    /groups/create — identity row (avatar circle + banner side-by-side)

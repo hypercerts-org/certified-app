@@ -4,6 +4,7 @@ import {
   formatMonthYear,
   formatRelativeDate,
   formatTimePeriod,
+  formatPeriodShort,
 } from "../format-date"
 
 describe("formatShortDate", () => {
@@ -79,5 +80,25 @@ describe("formatTimePeriod", () => {
 
   it("returns null when neither bound is set", () => {
     expect(formatTimePeriod(null, null)).toBeNull()
+  })
+})
+
+describe("formatPeriodShort", () => {
+  it("writes the year once when both dates share it", () => {
+    expect(formatPeriodShort("2026-05-31T00:00:00Z", "2026-12-31T00:00:00Z")).toBe(
+      "31 May – 31 Dec 2026",
+    )
+  })
+
+  it("writes both years across a year boundary, and one day for a single day", () => {
+    expect(formatPeriodShort("2026-07-01", "2028-07-31")).toBe("1 Jul 2026 – 31 Jul 2028")
+    expect(formatPeriodShort("2026-07-01", "2026-07-01T00:00:00Z")).toBe("1 Jul 2026")
+  })
+
+  it("reads an open period as since or until", () => {
+    expect(formatPeriodShort("2026-06-01", null)).toBe("Since 1 Jun 2026")
+    expect(formatPeriodShort(undefined, "2026-03-15")).toBe("Until 15 Mar 2026")
+    expect(formatPeriodShort("not a date", null)).toBeNull()
+    expect(formatPeriodShort(null, null)).toBeNull()
   })
 })

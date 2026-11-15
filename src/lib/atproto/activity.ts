@@ -149,8 +149,52 @@ export function evaluateWorkScope(value: unknown): string | null {
   return null
 }
 
-/** Match `scope.hasAny([...])` and return the inner array as a label. */
-function tryEvalCelHasAny(expression: string): string | null {
+/**
+ * The work scope as readable tags, for chips: `scope.hasAny(["forest_protection",
+ * "tree-nursery"])` -> `["Forest protection", "Tree nursery"]`. A plain or
+ * `{ scope }` string is split on commas. Tokens written as identifiers
+ * (`snake_case`, `kebab-case`, no spaces) are turned into words in sentence
+ * case; anything already written as words is kept as written. A CEL
+ * expression beyond `hasAny` yields no tags rather than raw code.
+ */
+export function workScopeTags(value: unknown): string[] {
+  if (value == null) return []
+  let raw: string[] | null = null
+  // A bare string may itself be a CEL expression.
+  const fromString = (s: string): string[] =>
+    /scope\s*\./.test(s) ? (tryEvalCelHasAnyItems(s) ?? []) : s.split(",")
+  if (typeof value === "string") raw = fromString(value)
+  else if (typeof value === "object") {
+    const obj = value as Record<string, unknown>
+    if (typeof obj.scope === "string") raw = obj.scope.split(",")
+    else if (typeof obj.expression === "string") raw = tryEvalCelHasAnyItems(obj.expression) ?? []
+  }
+  if (!raw) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const token of raw) {
+    const label = humanizeScopeToken(token)
+    if (!label || seen.has(label.toLowerCase())) continue
+    seen.add(label.toLowerCase())
+    out.push(label)
+  }
+  return out
+}
+
+/** `forest_protection` -> `Forest protection`; `Reforestation of X` stays. */
+export function humanizeScopeToken(token: string): string {
+  const t = token.trim()
+  if (!t) return ""
+  if (/\s/.test(t) || !/[_-]/.test(t)) {
+    // Words already, or a single word: only capitalise a lowercase start.
+    return /^[a-z]/.test(t) && !/\s/.test(t) ? t[0].toUpperCase() + t.slice(1) : t
+  }
+  const words = t.split(/[_-]+/).filter(Boolean).join(" ").toLowerCase()
+  return words ? words[0].toUpperCase() + words.slice(1) : ""
+}
+
+/** The quoted items of `scope.hasAny([...])`, or null for anything else. */
+function tryEvalCelHasAnyItems(expression: string): string[] | null {
   // We grab the bracketed argument list and then split it into
   // individual quoted strings. Using `[\s\S]` instead of `.` with the
   // `s` flag keeps us compatible with tsconfig targets older than
@@ -165,8 +209,12 @@ function tryEvalCelHasAny(expression: string): string | null {
   while ((match = itemRe.exec(m[1])) !== null) {
     items.push(match[2].replace(/\\(["'\\])/g, "$1"))
   }
-  if (items.length === 0) return null
-  return items.join(", ")
+  return items.length > 0 ? items : null
+}
+
+/** Match `scope.hasAny([...])` and return the inner array as a label. */
+function tryEvalCelHasAny(expression: string): string | null {
+  return tryEvalCelHasAnyItems(expression)?.join(", ") ?? null
 }
 
 /** When something happened, by the app's one date rule

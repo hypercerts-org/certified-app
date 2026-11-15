@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { profileUrl, recordUrl } from "@/lib/urls"
+import { useCallback, useMemo, useRef, useState } from "react"
+import Link from "next/link"
+import { parseAtUri, profileUrl, recordUrl, recordUrlFromAtUri } from "@/lib/urls"
 import { usePageTitle, useRegisterPageHeader } from "@/lib/navbar-context"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -9,54 +10,58 @@ import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
-import { Pencil, Plus, RefreshCw } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import {
   resolveActivityImageUrl,
-  evaluateWorkScope,
+  workScopeTags,
 } from "@/lib/atproto/activity"
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
 import { useRights } from "@/hooks/use-rights"
-import { formatShortDate } from "@/lib/utils/format-date"
-import Banner from "@/components/ui/banner"
+import { useCertProjects } from "@/hooks/use-cert-projects"
+import { useLocations } from "@/hooks/use-location"
+import { useFitsViewport } from "@/hooks/use-fits-viewport"
+import { useMediaQuery, WIDE_RECORD_LAYOUT } from "@/hooks/use-media-query"
+import { formatPeriodShort, formatShortDate } from "@/lib/utils/format-date"
+import Badge from "@/components/ui/badge"
 import EmptyState from "@/components/ui/empty-state"
+import { FactCard, FactList, type Fact } from "@/components/ui/fact-card"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
+import ShareLinkButton from "@/components/ui/share-link-button"
 import Skeleton from "@/components/ui/skeleton"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
-import { CERT_DETAIL_TABS } from "@/lib/detail-tabs"
-import { useActivityFunding } from "@/hooks/use-activity-funding"
+import { CERT_DETAIL_TABS, visibleDetailTabs } from "@/lib/detail-tabs"
 import { useContextUpdates } from "@/hooks/use-context-updates"
-import { useMergedFunding } from "@/hooks/use-merged-funding"
-import FundingReceiptRow, {
-  FundingReceiptHeader,
-} from "@/components/explore-page/funding-receipt-row"
-import FundingConfirmedByPopover from "@/components/explore-page/funding-confirmed-by-popover"
-import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
-import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
-import FundingReceiptFormModal from "@/components/funding/funding-receipt-form-modal"
-import FundingIdentityChoiceDialog from "@/components/funding/funding-identity-choice-dialog"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
-import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
 import CertLocationsMap from "./cert-locations-map"
 import {
-  ActivityProjectField,
   ContributorRow,
+  ContributorStack,
   RecordByline,
   RecordDescription,
   RecordHeader,
+  RecordImage,
   RecordSectionTabs,
 } from "./cert-detail-parts"
-import { SectionTitleCount } from "@/components/create/form-action-bar"
+import {
+  FundingFactCard,
+  RecordFundingSection,
+  useRecordFundingFlow,
+  useRecordFundingView,
+} from "@/components/funding/record-funding"
 import {
   contributorKey,
   contributionRoleText,
   buildWeightPercents,
 } from "@/lib/atproto/contributor-display"
 import ContextUpdates from "@/components/context/context-updates"
-import type { ClaimActivity } from "@/lib/atproto/activity-types"
+import type { ActivityContributor, ClaimActivity } from "@/lib/atproto/activity-types"
+import { locationLabel } from "@/lib/atproto/location-label"
+import { withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
+import { projectTitle } from "@/lib/atproto/collection"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_CERTS_TYPE } from "@/lib/atproto/typed-lists"
 
@@ -71,11 +76,6 @@ const ActivityFancyBoard = dynamic(
   { ssr: false },
 )
 
-/** Contributors previewed in the Overview's details column. */
-const ASIDE_CONTRIB_PREVIEW = 5
-/** Funding receipts previewed on the Overview. */
-const OVERVIEW_FUNDING_PREVIEW = 5
-
 interface ActivityDetailProps {
   did: string
   value: ClaimActivity
@@ -85,24 +85,38 @@ interface ActivityDetailProps {
   handle: string | null
 }
 
-// Single date format used throughout this view: "Mon D, YYYY".
-const formatDate = formatShortDate
+type ActivityTab = "overview" | "contributors" | "funding" | "updates"
+
+/** Whether a contributor entry names the record's own account. */
+function isAccount(c: ActivityContributor, did: string): boolean {
+  const id = c.contributorIdentity as unknown
+  if (typeof id === "string") return id === did
+  if (id && typeof id === "object") {
+    return (id as { identity?: unknown }).identity === did
+  }
+  return false
+}
+
+/** Same title, give or take case and spacing. */
+function sameTitle(a: string, b: string): boolean {
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase()
+  return norm(a) === norm(b)
+}
 
 /**
- * Detail view of a single activity claim.
+ * Detail view of a single activity claim, laid out like the project page
+ * (one record layout, cert-detail.css):
  *
- * Layout, the same at every width:
- *   - The record header: "Activity" eyebrow, the title (the page's h1)
- *     with the owner's Edit button and the ⋯ record menu beside it, and
- *     the byline (author, date created, project).
- *   - The section tabs (Overview / Contributors / Funding / Updates).
- *   - The tab content. On Overview, from 800px, a two-column block: the
- *     summary, the description disclosure and the latest update on the
- *     left; the image and the details (time period, work scope,
- *     contributors, rights) on the right. Funding and locations follow at
- *     the full page width, so their actions share the right edge with the
- *     record's Edit. Phones stack it all into one reading order
- *     (cert-detail.css).
+ *   - the header: the work's photo (16:9), "Activity · Part of <project>"
+ *     (the project part hidden when it has the activity's own title), the
+ *     title as the page's h1 with Share and ⋯ at its right, a byline (who,
+ *     when, where) and the summary as the lead;
+ *   - the rail of facts (from 1100px beside the content, sticky when it
+ *     fits; on phones under the header, on Overview): funding, details
+ *     (period, place, work scope, rights), contributors, the project;
+ *   - the tabs, only those with something in them: Overview (the
+ *     description in place, the latest update, where), Contributors (the
+ *     list, then the board), Funding and Updates.
  *
  * Editing happens on the edit page (`/{actor}/activity/{rkey}/edit`).
  */
@@ -111,37 +125,10 @@ export default function ActivityDetail({
   value,
   cid,
 }: ActivityDetailProps) {
-  const imageUrl = value.image
-    ? resolveActivityImageUrl(value.image, did)
-    : null
-
-  const [imageFailed, setImageFailed] = useState(false)
-  // Live trusted-evaluator set (curated list) — gates the funding-receipt
-  // "evaluator" provenance treatment.
-  const { evaluatorDids: trustedEvaluatorDids } = useTrustedEvaluators()
-  useEffect(() => {
-    setImageFailed(false)
-  }, [imageUrl])
-
-  const workScopeLabel = evaluateWorkScope(value.workScope)
-
-  // Time period rendering:
-  //   - both set    → "Jan 1, 2026 – Mar 15, 2026"
-  //   - only start  → "Jan 1, 2026 (ongoing)"
-  //   - only end    → "Until Mar 15, 2026"
-  //   - neither     → "Unspecified"
-  const startDate = value.startDate ? formatDate(value.startDate) : null
-  const endDate = value.endDate ? formatDate(value.endDate) : null
-  let timePeriodLabel: string
-  if (startDate && endDate) {
-    timePeriodLabel = `${startDate} – ${endDate}`
-  } else if (startDate) {
-    timePeriodLabel = `${startDate} (ongoing)`
-  } else if (endDate) {
-    timePeriodLabel = `Until ${endDate}`
-  } else {
-    timePeriodLabel = "Unspecified"
-  }
+  const imageUrl = value.image ? resolveActivityImageUrl(value.image, did) : null
+  const title = value.title?.trim() || "Untitled activity"
+  const period = formatPeriodShort(value.startDate ?? null, value.endDate ?? null)
+  const scopeTags = workScopeTags(value.workScope)
 
   const contributors = useMemo(
     () => value.contributors ?? [],
@@ -154,8 +141,33 @@ export default function ActivityDetail({
     () => buildWeightPercents(contributors),
     [contributors],
   )
-  const locations = value.locations ?? []
-  const showFullDescription = isRenderableDescription(value.description)
+  // A list of one, the account itself, says nothing a visitor doesn't
+  // already see in the byline.
+  const hasContributors =
+    contributorCount > 1 || (contributorCount === 1 && !isAccount(contributors[0], did))
+
+  const locations = useMemo(() => value.locations ?? [], [value.locations])
+  const locationUris = useMemo(() => locations.map((l) => l.uri), [locations])
+  const { locations: locationRecords, isLoading: placesLoading } = useLocations(locationUris)
+  const placeNames = locationRecords
+    .map((r) => locationLabel(r))
+    .filter((n): n is string => !!n)
+  const place =
+    locationUris.length === 0
+      ? null
+      : placesLoading
+        ? undefined
+        : placeNames.length === 0
+          ? null
+          : placeNames.length === 1
+            ? placeNames[0]
+            : `${placeNames[0]} and ${placeNames.length - 1} more`
+  // The description, less a first paragraph that repeats the lead.
+  const description = useMemo(
+    () => withoutLeadParagraph(value.description, value.shortDescription),
+    [value.description, value.shortDescription],
+  )
+  const showFullDescription = isRenderableDescription(description)
 
   // ClaimActivity doesn't carry its own rkey; the route at
   // /[actor]/[type]/[rkey] does. Derived from the trailing pathname
@@ -180,132 +192,30 @@ export default function ActivityDetail({
   const { name: rightsName, isLoading: rightsLoading } = useRights(
     value.rights?.uri ?? null,
   )
-
-  // Funding receipts whose `for` strongRef points at this activity.
-  // Loaded once (first: 100) and shared by the overview preview (up to
-  // 5 + "See all") and the Funding tab (all of them).
-  const {
-    receipts: fetchedFunding,
-    isLoading: fundingLoading,
-    refetch: refetchFunding,
-  } = useActivityFunding(did, rkey)
-  // Updates count — shown on the Updates tab.
-  const { updates } = useContextUpdates(recordUri)
-  const updatesCount = updates.length
-  // Overlay the viewer's optimistic confirmations + collapse matchingReceipt
-  // pairs so a just-confirmed payment shows as one confirmed row immediately
-  // (issue #186). A *recorded* (non-confirmation) receipt is not optimistically
-  // inserted — its provenance must come only from the indexer.
-  const fundingReceipts = useMergedFunding(fetchedFunding, recordUri)
-
-  // Record-funding modal (opener gating is derived after `useAuth` below).
-  const [recordFundingOpen, setRecordFundingOpen] = useState(false)
-  // After recording funding we poll the indexer until the new receipt lands
-  // (it's eventually consistent) — it then renders through the normal list. We
-  // deliberately don't optimistically insert it: a freshly-recorded receipt
-  // carries no attestations yet, so the "Confirmed by" filter would hide it —
-  // provenance must come from the indexer. `pendingFundingUri` is the receipt
-  // we're waiting on; the timeout flag falls back to a manual refresh if the
-  // indexer is unusually slow.
-  const [pendingFundingUri, setPendingFundingUri] = useState<string | null>(null)
-  const [fundingRecordPollTimedOut, setFundingRecordPollTimedOut] =
-    useState(false)
-
-  // Stop polling once the indexer returns the just-recorded receipt.
-  useEffect(() => {
-    if (!pendingFundingUri) return
-    if (fetchedFunding.some((r) => r.uri === pendingFundingUri)) {
-      setPendingFundingUri(null)
-      setFundingRecordPollTimedOut(false)
-    }
-  }, [pendingFundingUri, fetchedFunding])
-
-  // Poll the indexer after recording until the receipt lands, then give up to
-  // a manual refresh. Kept separate from the arrival check so the interval
-  // isn't torn down and restarted on every fetch result.
-  useEffect(() => {
-    if (!pendingFundingUri) return
-    let attempts = 0
-    const id = setInterval(() => {
-      attempts += 1
-      refetchFunding()
-      if (attempts >= 10) {
-        clearInterval(id)
-        setPendingFundingUri(null)
-        setFundingRecordPollTimedOut(true)
-      }
-    }, 1500)
-    return () => clearInterval(id)
-  }, [pendingFundingUri, refetchFunding])
-  // When the viewer is an owner/admin of the authoring group, clicking Record
-  // first asks whether to record as themselves or as the group.
-  const [recordIdentityOpen, setRecordIdentityOpen] = useState(false)
-  const [recordFundingAs, setRecordFundingAs] =
-    useState<"individual" | "group">("individual")
-  // Rights detail modal (opened from the Rights row).
   const [rightsModalOpen, setRightsModalOpen] = useState(false)
 
-  // Funding "Confirmed by" filter — same URL-backed state + popover as
-  // /explore. Applied client-side to the loaded receipts (shared by the
-  // overview preview and the Funding tab). `confirmedByOpen` drives the
-  // popover; one instance is mounted at a time (the sections are tab-gated).
-  const confirmedBy = useFundingConfirmedBy()
-  const [confirmedByOpen, setConfirmedByOpen] = useState(false)
-  const filteredFunding = useMemo(
-    () =>
-      fundingReceipts.filter((r) =>
-        matchesConfirmedBy(
-          r.attestations,
-          confirmedBy.roles,
-          confirmedBy.thirdParties,
-        ),
-      ),
-    [fundingReceipts, confirmedBy.roles, confirmedBy.thirdParties],
-  )
-  // The number of loaded receipts the filter currently shows, so the count
-  // always agrees with the list below it. (Counts the loaded window; an
-  // activity with >100 receipts is the known page-1 cap pending
-  // magic-indexer #214.)
-  const shownFundingCount = filteredFunding.length
+  // The projects this activity is in (curated by anyone).
+  const { projects, isLoading: projectsLoading } = useCertProjects(did, rkey)
 
-  // The Confirmed-by filter control is rendered identically in the overview
-  // section and the Funding tab (only one is mounted at a time, tab-gated),
-  // so build it once.
-  const confirmedByControl = (
-    <FundingConfirmedByPopover
-      receipts={fundingReceipts}
-      roles={confirmedBy.roles}
-      onToggleRole={confirmedBy.toggleRole}
-      thirdParties={confirmedBy.thirdParties}
-      onToggleThirdParty={confirmedBy.toggleThirdParty}
-      isDefault={confirmedBy.isDefault}
-      onReset={confirmedBy.reset}
-      open={confirmedByOpen}
-      onOpenChange={setConfirmedByOpen}
-      triggerVariant="section"
-    />
-  )
+  // Funding: every receipt whose `for` is this activity.
+  const fundingUris = useMemo(() => (recordUri ? [recordUri] : []), [recordUri])
+  const funding = useRecordFundingView(fundingUris, recordUri)
+  const fundingFlow = useRecordFundingFlow({
+    recordDid: did,
+    uri: recordUri,
+    cid,
+    title: value.title || undefined,
+    receipts: funding.all,
+    refetch: funding.refetch,
+    isLoading: funding.isLoading,
+  })
 
-  // Note explaining the default Confirmed-by filter: out of the box the
-  // funding section lists only receipts the recipient has confirmed. Shown
-  // only while the filter is at its default (and there's something to
-  // explain).
-  const recipientConfirmedNote =
-    confirmedBy.isDefault && fundingReceipts.length > 0 ? (
-      <Banner variant="info" className="py-2.5">
-        Showing only receipts the recipient has confirmed. Change the filter to
-        see more.
-      </Banner>
-    ) : null
+  const { updates } = useContextUpdates(recordUri)
 
   // The section tabs drive which slice of the record renders.
   const searchParams = useSearchParams()
   const tabParam = searchParams?.get("tab") ?? "overview"
-  const activeTab:
-    | "overview"
-    | "contributors"
-    | "funding"
-    | "updates" =
+  const activeTab: ActivityTab =
     tabParam === "contributors" ||
     tabParam === "funding" ||
     tabParam === "updates"
@@ -318,104 +228,30 @@ export default function ActivityDetail({
 
   // The record title is the page's h1 on every tab (the record header), so
   // the page registers its header and the chrome renders no h1 of its own.
-  // The navbar title (the document title) stays the activity's name on
-  // every tab: the tab strip names the section.
   useRegisterPageHeader()
   usePageTitle(value.title || "Activity")
 
-  // Edit affordance — the viewer can act on the activity when they're
+  // Edit affordance: the viewer can act on the activity when they're
   // signed in as its creator. Two paths:
   //   - Personal session DID === activity DID (own record), OR
   //   - Acting as the group that owns it, with the owner or admin role.
   //     Members can switch into a group but the BFF rejects their writes,
   //     so the affordance stays hidden for them.
-  const { did: sessionDid, isAuthenticated } = useAuth()
-  // Funding: any signed-in viewer can record a payment they were party to;
-  // trusted evaluators additionally get the third-party direction (gated
-  // inside the modal).
-  const canRecordFunding = isAuthenticated && !!sessionDid
-  // We recorded a receipt and it hasn't surfaced from the indexer yet — used
-  // to suppress the "no receipts yet" empty state while we wait.
-  const fundingRecordInFlight =
-    pendingFundingUri !== null || fundingRecordPollTimedOut
-  const fundingRecordedNote = pendingFundingUri ? (
-    <p
-      role="status"
-      className="cert-detail__short-desc funding-form__recorded-note"
-    >
-      Recording your funding — it will appear here shortly…
-      <RefreshCw
-        size={14}
-        strokeWidth={2}
-        aria-hidden
-        className="animate-spin ml-1.5 inline-block align-middle"
-      />
-    </p>
-  ) : fundingRecordPollTimedOut ? (
-    <p
-      role="status"
-      className="cert-detail__short-desc funding-form__recorded-note"
-    >
-      Funding recorded. It is taking longer than usual to appear.
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label="Refresh the funding list"
-        loading={fundingLoading}
-        className="ml-1.5 align-middle"
-        onClick={() => refetchFunding()}
-      >
-        <RefreshCw size={14} strokeWidth={2} aria-hidden />
-      </Button>
-    </p>
-  ) : null
+  const { did: sessionDid } = useAuth()
   const { activeOrg, groups, switchOrg } = useOrg()
   const canEditAsActiveOrg =
     !!activeOrg &&
     activeOrg.groupDid === did &&
     (activeOrg.role === "owner" || activeOrg.role === "admin")
-  // The group that authored this activity, when the viewer is an owner/admin
-  // of it (so they can author records as the group) — regardless of which
-  // identity is currently active. Drives the "record as me / as the group"
-  // choice on the funding form.
-  const fundingAuthoringGroup =
-    groups.find(
-      (g) =>
-        g.groupDid === did &&
-        (g.role === "owner" || g.role === "admin"),
-    ) ?? null
-  // Opening the record form: ask the identity question first when the viewer
-  // could record as the group, else go straight in as the individual.
-  const openRecordFunding = () => {
-    setPendingFundingUri(null)
-    setFundingRecordPollTimedOut(false)
-    if (fundingAuthoringGroup) {
-      setRecordIdentityOpen(true)
-    } else {
-      setRecordFundingAs("individual")
-      setRecordFundingOpen(true)
-    }
-  }
-  // "Record funding" opener — shown in both the overview preview and the
-  // Funding tab headers (only one is mounted at a time, tab-gated).
-  const recordFundingControl = canRecordFunding ? (
-    <Button variant="secondary" size="sm" onClick={openRecordFunding}>
-      <Plus size={14} strokeWidth={1.75} aria-hidden />
-      Record funding
-    </Button>
-  ) : null
   // When acting as a group, the user can only edit records OWNED BY that
-  // group — even though the session DID is still their personal identity.
-  // The personal-edit branch only fires when there's no active org.
+  // group, even though the session DID is still their personal identity.
   const isCreator = activeOrg
     ? canEditAsActiveOrg
     : !!sessionDid && sessionDid === did
-  // Group-edit affordance — the viewer is NOT a direct editor (own record
-  // or active-org owner/admin), but they ARE an owner/admin of the group
-  // that owns this activity while signed in under a different identity
-  // (personal, or another group). Their Edit button, on confirm, switches
-  // them into the owning group before opening the editor — the edit page's
-  // own gate then passes and writes route through the group.
+  // Group-edit affordance: the viewer is NOT a direct editor, but they
+  // ARE an owner/admin of the group that owns this activity while signed
+  // in under a different identity. Their Edit button, on confirm,
+  // switches them into the owning group before opening the editor.
   const editAsGroup = isCreator
     ? null
     : groups.find(
@@ -426,13 +262,13 @@ export default function ActivityDetail({
   const editAsGroupLabel = editAsGroup
     ? editAsGroup.displayName || editAsGroup.handle
     : null
+  const canManage = isCreator || !!editAsGroup
   const [groupEditOpen, setGroupEditOpen] = useState(false)
   const editHref = `${recordUrl(did, "activity", rkey ?? "")}/edit`
-  // Build a tab href that PRESERVES the current query params (e.g. the
-  // funding "Confirmed by" filter `?confirmedRoles=`), so jumping from the
-  // overview to a sub-tab via "See all" doesn't reset the filter. Mirrors the
-  // tab strip's `hrefFor`.
-  const tabHref = (tab: string): string | null => {
+
+  // A tab href that keeps the current query params (e.g. the funding
+  // "Confirmed by" filter), like the tab strip's own links.
+  const tabHref = (tab: ActivityTab): string | null => {
     if (!pathname) return null
     const params = new URLSearchParams(searchParams?.toString() ?? "")
     if (tab === "overview") params.delete("tab")
@@ -440,8 +276,17 @@ export default function ActivityDetail({
     const qs = params.toString()
     return qs ? `${pathname}?${qs}` : pathname
   }
-  const fundingHref = tabHref("funding")
-  const contributorsHref = tabHref("contributors")
+
+  const tabs = visibleDetailTabs(
+    CERT_DETAIL_TABS,
+    {
+      contributors: hasContributors,
+      funding: funding.all.length > 0 || fundingFlow.canRecord,
+      updates: updates.length > 0 || canManage,
+    },
+    activeTab,
+  )
+  const contributorsTabShown = tabs.some((t) => t.key === "contributors")
 
   // ----- Destructive delete -----
   const router = useRouter()
@@ -489,7 +334,7 @@ export default function ActivityDetail({
       // Hard navigation (window.location) rather than router.push so every
       // client-side cache the destination page might keep (profile lists,
       // the indexer feed cache, module-level memoised fetches) is cleared
-      // on the way — otherwise the just-deleted activity can linger.
+      // on the way; otherwise the just-deleted activity can linger.
       if (typeof window !== "undefined") {
         window.location.href = profileUrl(did)
       } else {
@@ -505,18 +350,19 @@ export default function ActivityDetail({
     }
   }, [rkey, did, canEditAsActiveOrg, router])
 
-  // The record's actions, beside the title at every width: the owner's
-  // Edit (a visible button), then the ⋯ menu with Delete, Share, Add to
-  // list and Copy AT URI.
+  // The record's actions at the header's top-right: Share for everyone
+  // (deep-linking the open tab), the owner's Edit, then the ⋯ menu.
+  const sharePath = (() => {
+    const base =
+      (recordUri ? recordUrlFromAtUri(recordUri) : null) ??
+      recordUrl(did, "activity", rkey ?? "")
+    return activeTab === "overview" ? base : `${base}?tab=${activeTab}`
+  })()
   const recordActions = (
     <>
+      <ShareLinkButton path={sharePath} what="Activity link" />
       {isCreator ? (
-        <Button
-          href={editHref}
-          variant="secondary"
-          size="sm"
-          aria-label="Edit activity"
-        >
+        <Button href={editHref} variant="secondary" size="sm" aria-label="Edit activity">
           <Pencil size={14} strokeWidth={1.75} aria-hidden />
           Edit
         </Button>
@@ -537,7 +383,7 @@ export default function ActivityDetail({
           targetUri={recordUri}
           targetCid={cid}
           targetType={LIST_CERTS_TYPE}
-          shareTab={activeTab === "overview" ? null : activeTab}
+          showShare={false}
           editActions={
             isCreator
               ? {
@@ -557,327 +403,270 @@ export default function ActivityDetail({
     </>
   )
 
-  // Overview-only summary. Rendered as a sibling of the tab panel (not
-  // inside it) so the phone reading order can place the details rows
-  // (time period, work scope, contributors, rights) between it and the
-  // rest of the overview.
-  const shortDescSection =
-    activeTab === "overview" && value.shortDescription ? (
-      <section className="cert-detail__section cert-detail__section--summary">
-        <SectionHeader title="Summary" />
-        <p className="cert-detail__short-desc" dir="auto">
-          {value.shortDescription}
-        </p>
-      </section>
-    ) : null
-
-  // Overview "Read full description": the disclosure below the summary that
-  // reveals the full description inline (an old `?tab=description` link
-  // arrives with it open).
-  const descriptionReveal = showFullDescription ? (
-    <RecordDescription
-      value={value.description}
-      did={did}
-      defaultExpanded={tabParam === "description"}
-      sectionClassName="cert-detail__section"
-    />
-  ) : null
-
-  // Funding list body, shared by the overview preview (first five) and the
-  // Funding tab (all).
-  const fundingBody = (limit?: number) =>
-    fundingReceipts.length === 0 ? (
-      fundingRecordInFlight ? null : (
-        <EmptyState
-          variant="inline"
-          title="No funding receipts for this activity yet."
-        />
-      )
-    ) : filteredFunding.length > 0 ? (
-      <ul className="cert-detail__funding-list">
-        <li>
-          <FundingReceiptHeader showFor={false} />
-        </li>
-        {(limit ? filteredFunding.slice(0, limit) : filteredFunding).map((r) => (
-          <li key={r.uri}>
-            <FundingReceiptRow receipt={r} showTextParties showFor={false} />
-          </li>
-        ))}
-      </ul>
+  // ----- The eyebrow: "Activity · Part of <project>" -----
+  const firstProject = projects[0] ?? null
+  const firstProjectTitle = firstProject ? projectTitle(firstProject.value) : null
+  const firstProjectParts = firstProject ? parseAtUri(firstProject.uri) : null
+  const firstProjectHref = firstProjectParts
+    ? recordUrl(firstProjectParts.did, "project", firstProjectParts.rkey)
+    : null
+  const eyebrow =
+    firstProjectTitle && firstProjectHref && !sameTitle(firstProjectTitle, title) ? (
+      <>
+        Activity <span aria-hidden="true">·</span>{" "}
+        <span className="record-head__kind-rest">
+          Part of{" "}
+          <Link href={firstProjectHref} className="record-head__kind-link">
+            {firstProjectTitle}
+          </Link>
+        </span>
+      </>
     ) : (
-      <EmptyState variant="inline" title="No funding receipts match this filter.">
-        {!confirmedBy.isDefault ? (
-          <Button variant="ghost" size="sm" onClick={confirmedBy.reset}>
-            Reset filter
-          </Button>
-        ) : null}
-      </EmptyState>
+      "Activity"
     )
 
-  // The Contributors list — shown on the Contributors tab beneath the
-  // contributor board.
-  const contributorsSection = (
-    <section className="cert-detail__section">
-      <SectionHeader
-        title={<SectionTitleCount label="Contributors" count={contributorCount} />}
-      />
-      {contributorCount > 0 ? (
-        <ul className="cert-detail__contributors">
-          {contributors.map((c, i) => (
-            <ContributorRow
-              key={contributorKey(c, i)}
-              contributor={c}
-              role={contributionRoleText(c.contributionDetails)}
-              weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
-            />
+  // ----- The rail -----
+  const details: Fact[] = []
+  if (period) details.push({ label: "Time period", value: period })
+  if (placeNames.length > 0) {
+    details.push({
+      label: placeNames.length === 1 ? "Place" : "Places",
+      value:
+        placeNames.length === 1 ? (
+          placeNames[0]
+        ) : (
+          <ul className="record-plain-list">
+            {placeNames.map((n, i) => (
+              <li key={`${i}-${n}`}>{n}</li>
+            ))}
+          </ul>
+        ),
+    })
+  }
+  if (scopeTags.length > 0) {
+    details.push({
+      label: "Work scope",
+      value: (
+        <ul className="record-tags" aria-label="Work scope">
+          {scopeTags.map((t) => (
+            <li key={t}>
+              <Badge variant="tag">{t}</Badge>
+            </li>
           ))}
         </ul>
-      ) : (
-        <EmptyState variant="inline" title="No contributors listed." />
-      )}
-    </section>
-  )
+      ),
+    })
+  }
+  if (value.rights) {
+    details.push({
+      label: "Rights",
+      value:
+        rightsLoading && !rightsName ? (
+          <Skeleton variant="line" width="8rem" height="0.875rem" />
+        ) : (
+          <button
+            type="button"
+            className="record-link record-link--button"
+            onClick={() => setRightsModalOpen(true)}
+          >
+            {rightsName || "View the rights"}
+          </button>
+        ),
+    })
+  }
+  if (value.createdAt) {
+    details.push({
+      label: "Published",
+      value: <time dateTime={value.createdAt}>{formatShortDate(value.createdAt)}</time>,
+    })
+  }
 
-  // The Overview's full-width sections, below the summary-and-details block
-  // (cert-detail.css), so the Funding header's actions share the page's
-  // right edge with Edit. First the funding preview: up to five receipts,
-  // with "See all" into the Funding tab when there are more; also shown
-  // (header only) to a signed-in viewer with no receipts yet, so they can
-  // record one. Then where.
-  const overviewFunding =
-    fundingReceipts.length > 0 || canRecordFunding ? (
-      <section className="cert-detail__section">
-        <SectionHeader
-          title={<SectionTitleCount label="Funding" count={shownFundingCount} />}
-          action={
-            <div className="cert-detail__section-actions">
-              {recordFundingControl}
-              {fundingReceipts.length > 0 ? confirmedByControl : null}
-              {fundingHref && filteredFunding.length > OVERVIEW_FUNDING_PREVIEW ? (
-                <SeeAllLink href={fundingHref} />
-              ) : null}
-            </div>
+  // From 1100px every card is in the rail. Below, the funding card leads
+  // (under the header, on Overview) and the rest follow the Overview's
+  // content, so the tabs aren't pushed below a screen of facts.
+  const wide = useMediaQuery(WIDE_RECORD_LAYOUT)
+  const railRef = useRef<HTMLElement | null>(null)
+  const railFits = useFitsViewport(railRef, 96)
+  const contributorsHref = contributorsTabShown ? tabHref("contributors") : null
+  // The Funding tab leads with the same figures, so the card steps aside.
+  const leadCards =
+    activeTab === "funding" ? null : (
+      <FundingFactCard view={funding} href={tabHref("funding")} />
+    )
+  const moreCards = (
+    <>
+      {details.length > 0 ? (
+        <FactCard title="Details">
+          <FactList facts={details} />
+        </FactCard>
+      ) : null}
+      {hasContributors ? (
+        <FactCard
+          title={
+            <>
+              Contributors{" "}
+              <span className="font-normal tabular-nums text-[var(--fg-muted)]">
+                {contributorCount}
+              </span>
+            </>
           }
-        />
-        {fundingRecordedNote}
-        {recipientConfirmedNote}
-        {fundingBody(OVERVIEW_FUNDING_PREVIEW)}
-      </section>
-    ) : null
-  const overviewLocations =
-    locations.length > 0 ? (
-      <section className="cert-detail__section cert-detail__section--locations">
-        <SectionHeader
-          title={<SectionTitleCount label="Locations" count={locations.length} />}
-        />
-        <CertLocationsMap locations={locations} />
-      </section>
+          action={contributorsHref ? <SeeAllLink href={contributorsHref} /> : null}
+        >
+          <ContributorStack contributors={contributors} />
+        </FactCard>
+      ) : null}
+      {projects.length > 0 ? (
+        <FactCard title="Part of">
+          <ul className="record-plain-list record-plain-list--spaced">
+            {projects.map((p) => {
+              const parts = parseAtUri(p.uri)
+              const href = parts ? recordUrl(parts.did, "project", parts.rkey) : null
+              const name = projectTitle(p.value)
+              return (
+                <li key={p.uri}>
+                  {href ? (
+                    <Link href={href} className="record-link">
+                      {name}
+                    </Link>
+                  ) : (
+                    name
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </FactCard>
+      ) : !projectsLoading && isCreator ? (
+        <FactCard title="Project">
+          <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
+            Not in a project yet.
+          </p>
+          <Link href="/records" className="record-link">
+            Add to a project
+          </Link>
+        </FactCard>
+      ) : null}
+    </>
+  )
+  const rail = wide ? (
+    <aside
+      ref={railRef}
+      className="record-layout__rail"
+      aria-label="About this activity"
+      data-sticky={railFits ? "true" : undefined}
+    >
+      {leadCards}
+      {moreCards}
+    </aside>
+  ) : activeTab === "overview" ? (
+    <div className="record-layout__lead">{leadCards}</div>
+  ) : null
+  const moreAfter =
+    !wide && activeTab === "overview" ? (
+      <aside className="record-layout__more" aria-label="About this activity">
+        {moreCards}
+      </aside>
     ) : null
 
   return (
     <>
-      <article className="record-page">
+      <article className={`record-page record-layout record-layout--tab-${activeTab}`}>
         <RecordHeader
-          kind="Activity"
-          title={value.title?.trim() || "Untitled activity"}
+          image={<RecordImage src={imageUrl} ratio="16 / 9" />}
+          eyebrow={eyebrow}
+          title={title}
           actions={recordActions}
-        >
-          <RecordByline did={did} createdAt={value.createdAt || null}>
-            <ActivityProjectField
-              did={did}
-              rkey={rkey}
-              canAddToProject={isCreator}
-            />
-          </RecordByline>
-        </RecordHeader>
-
-        <RecordSectionTabs
-          tabs={CERT_DETAIL_TABS}
-          activeKey={activeTab}
-          ariaLabel="Activity sections"
-          counts={{
-            contributors: contributorCount,
-            funding: shownFundingCount,
-            updates: updatesCount,
-          }}
+          byline={<RecordByline did={did} period={period} place={place} />}
+          lead={value.shortDescription}
         />
 
-        <div
-          className={`page-layout cert-detail--wide cert-detail--tab-${activeTab}`}
+        {rail}
+
+        {/* A strip of one tab says nothing: Overview alone has none. */}
+        {tabs.length > 1 ? (
+          <RecordSectionTabs
+            tabs={tabs}
+            activeKey={activeTab}
+            ariaLabel="Activity sections"
+            counts={{
+              contributors: contributorCount,
+              funding: funding.summary.gifts,
+              updates: updates.length,
+            }}
+          />
+        ) : null}
+
+        <TabPanelTransition
+          className="record-layout__main"
+          activeKey={activeTab}
+          order={CERT_DETAIL_TABS.map((t) => t.key)}
         >
-          <aside className="cert-detail__aside" aria-label="Activity details">
-            {/* The image box renders only when there's a real image. */}
-            {imageUrl && !imageFailed ? (
-              <div className="cert-detail__image">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl}
-                  alt=""
-                  className="cert-detail__image-img"
-                  onError={() => setImageFailed(true)}
-                />
-              </div>
-            ) : null}
-
-            <dl className="cert-detail__meta">
-              <div className="cert-detail__meta-row cert-detail__meta-row--timeperiod">
-                <dt className="cert-detail__meta-label">Time period</dt>
-                <dd className="cert-detail__meta-value">{timePeriodLabel}</dd>
-              </div>
-
-              {workScopeLabel ? (
-                <div className="cert-detail__meta-row cert-detail__meta-row--workscope">
-                  <dt className="cert-detail__meta-label">Work scope</dt>
-                  <dd className="cert-detail__meta-value">{workScopeLabel}</dd>
-                </div>
+          {activeTab === "overview" ? (
+            <>
+              {showFullDescription ? (
+                <RecordDescription value={description} did={did} />
               ) : null}
-
-              {/* Up to five contributors, with "See all" into the
-                  Contributors tab. Percentages come from the FULL list
-                  so the column adds to 100 even when only five show. */}
-              {contributorCount > 0 ? (
-                <div className="cert-detail__meta-row cert-detail__meta-row--contributors">
-                  <dt className="cert-detail__meta-label cert-detail__meta-label--with-action">
-                    <span className="cert-detail__meta-label-text">
-                      Contributors{" "}
-                      <span className="cert-detail__meta-count">
-                        {contributorCount}
-                      </span>
-                    </span>
-                    {contributorsHref ? <SeeAllLink href={contributorsHref} /> : null}
-                  </dt>
-                  <dd className="cert-detail__meta-value">
-                    <ul className="cert-detail__contributors cert-detail__contributors--aside">
-                      {contributors.slice(0, ASIDE_CONTRIB_PREVIEW).map((c, i) => (
-                        <ContributorRow
-                          key={contributorKey(c, i)}
-                          contributor={c}
-                          role={contributionRoleText(c.contributionDetails)}
-                          weight={
-                            weightPercents.get(i) ?? c.contributionWeight ?? null
-                          }
-                        />
-                      ))}
-                    </ul>
-                  </dd>
-                </div>
-              ) : null}
-
-              {/* Rights references an external record; opens the rights
-                  detail dialog. */}
-              {value.rights ? (
-                <div className="cert-detail__meta-row cert-detail__meta-row--rights">
-                  <dt className="cert-detail__meta-label">Rights</dt>
-                  <dd className="cert-detail__meta-value">
-                    {rightsLoading && !rightsName ? (
-                      <Skeleton variant="line" width="8rem" height="0.875rem" />
-                    ) : (
-                      <button
-                        type="button"
-                        className="cert-detail__rights-link"
-                        onClick={() => setRightsModalOpen(true)}
-                        title="View rights details"
-                      >
-                        {rightsName ? (
-                          rightsName
-                        ) : (
-                          <span className="cert-detail__uri">{value.rights.uri}</span>
-                        )}
-                      </button>
-                    )}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </aside>
-
-          <div className="page-layout__main cert-detail__main">
-            {shortDescSection}
-
-            <TabPanelTransition
-              className="cert-detail__content"
-              activeKey={activeTab}
-              order={CERT_DETAIL_TABS.map((t) => t.key)}
-            >
-              {activeTab === "overview" ? (
-                <>
-                  {descriptionReveal}
-                  {/* The latest update; funding and where follow in the
-                      full-width block below. */}
-                  {recordUri ? (
-                    <ContextUpdates
-                      subjectUri={recordUri}
-                      variant="overview"
-                      maxItems={1}
-                      seeAllHref={tabHref("updates")}
-                    />
-                  ) : null}
-                </>
-              ) : activeTab === "contributors" ? (
-                <>
-                  {contributorCount > 0 ? (
-                    <ActivityFancyBoard
-                      did={did}
-                      rkey={rkey}
-                      contributors={contributors}
-                    />
-                  ) : null}
-                  {contributorsSection}
-                </>
-              ) : activeTab === "funding" ? (
-                <section className="cert-detail__section">
-                  <SectionHeader
-                    title={
-                      <SectionTitleCount label="Funding" count={shownFundingCount} />
-                    }
-                    action={
-                      recordFundingControl || fundingReceipts.length > 0 ? (
-                        <div className="cert-detail__section-actions">
-                          {recordFundingControl}
-                          {fundingReceipts.length > 0 ? confirmedByControl : null}
-                        </div>
-                      ) : null
-                    }
-                  />
-                  {fundingRecordedNote}
-                  {recipientConfirmedNote}
-                  {fundingLoading && fundingReceipts.length === 0 ? (
-                    <div
-                      className="flex flex-col gap-3"
-                      role="status"
-                      aria-label="Loading funding"
-                    >
-                      <Skeleton variant="line" width="100%" height="2.5rem" />
-                      <Skeleton variant="line" width="100%" height="2.5rem" />
-                      <Skeleton variant="line" width="100%" height="2.5rem" />
-                    </div>
-                  ) : (
-                    fundingBody()
-                  )}
-                </section>
-              ) : activeTab === "updates" && recordUri ? (
+              {recordUri ? (
                 <ContextUpdates
                   subjectUri={recordUri}
-                  variant="full"
-                  canEdit={isCreator || !!editAsGroup}
-                  viewerDid={sessionDid}
+                  variant="overview"
+                  maxItems={1}
+                  seeAllHref={tabHref("updates")}
                 />
               ) : null}
-            </TabPanelTransition>
-          </div>
-
-          {activeTab === "overview" && (overviewFunding || overviewLocations) ? (
-            <TabPanelTransition
-              className="cert-detail__content cert-detail__content--lower"
-              activeKey={activeTab}
-              order={CERT_DETAIL_TABS.map((t) => t.key)}
-            >
-              {overviewFunding}
-              {overviewLocations}
-            </TabPanelTransition>
+              {locations.length > 0 ? (
+                <section className="record-section" aria-labelledby="activity-where">
+                  <SectionHeader id="activity-where" title="Where" />
+                  <CertLocationsMap locations={locations} height={240} />
+                </section>
+              ) : null}
+            </>
+          ) : activeTab === "contributors" ? (
+            <>
+              <section className="record-section" aria-labelledby="activity-contributors">
+                <h2 id="activity-contributors" className="sr-only">
+                  Contributors
+                </h2>
+                {contributorCount > 0 ? (
+                  <ul className="cert-detail__contributors record-contributors">
+                    {contributors.map((c, i) => (
+                      <ContributorRow
+                        key={contributorKey(c, i)}
+                        contributor={c}
+                        role={contributionRoleText(c.contributionDetails)}
+                        weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <EmptyState variant="inline" title="No contributors listed." />
+                )}
+              </section>
+              {contributorCount > 1 ? (
+                <ActivityFancyBoard did={did} rkey={rkey} contributors={contributors} />
+              ) : null}
+            </>
+          ) : activeTab === "funding" ? (
+            <RecordFundingSection
+              view={funding}
+              recipientDid={did}
+              actions={fundingFlow.control}
+              note={fundingFlow.note}
+              recordInFlight={fundingFlow.inFlight}
+            />
+          ) : activeTab === "updates" && recordUri ? (
+            <ContextUpdates
+              subjectUri={recordUri}
+              variant="full"
+              canEdit={canManage}
+              viewerDid={sessionDid}
+            />
           ) : null}
-        </div>
+        </TabPanelTransition>
+
+        {moreAfter}
       </article>
+      {fundingFlow.dialogs}
       {deleteOpen ? (
         <DeleteRecordDialog
           title="Delete activity?"
@@ -905,46 +694,6 @@ export default function ActivityDetail({
           }}
         />
       ) : null}
-      {recordIdentityOpen && sessionDid && fundingAuthoringGroup ? (
-        <FundingIdentityChoiceDialog
-          individualDid={sessionDid}
-          groupDid={did}
-          onChoose={(as) => {
-            setRecordFundingAs(as)
-            setRecordIdentityOpen(false)
-            setRecordFundingOpen(true)
-          }}
-          onClose={() => setRecordIdentityOpen(false)}
-        />
-      ) : null}
-      {recordFundingOpen && sessionDid && recordUri
-        ? (() => {
-            // The author is the chosen identity: the group (only when the
-            // viewer is its owner/admin) authors the receipt — letting it be
-            // recorded as the recipient — otherwise the viewer personally.
-            const asGroup = recordFundingAs === "group" && !!fundingAuthoringGroup
-            const writerDid = asGroup ? did : sessionDid
-            return (
-              <FundingReceiptFormModal
-                writerDid={writerDid}
-                writerIsGroup={asGroup}
-                canRecordAsRecipient={asGroup || sessionDid === did}
-                isEvaluator={trustedEvaluatorDids.includes(writerDid)}
-                activityAuthorDid={did}
-                forActivity={{
-                  uri: recordUri,
-                  cid,
-                  title: value.title || undefined,
-                }}
-                onClose={() => setRecordFundingOpen(false)}
-                onCreated={(result) => {
-                  setFundingRecordPollTimedOut(false)
-                  setPendingFundingUri(result.uri)
-                }}
-              />
-            )
-          })()
-        : null}
       {rightsModalOpen && value.rights ? (
         <RightsDetailModal
           uri={value.rights.uri}

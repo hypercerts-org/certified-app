@@ -74,6 +74,7 @@ export default function FundingReceiptFormModal({
   isEvaluator,
   activityAuthorDid,
   forActivity,
+  forKind = "activity",
   onClose,
   onCreated,
 }: {
@@ -92,6 +93,9 @@ export default function FundingReceiptFormModal({
   activityAuthorDid: string
   /** The activity this funding is for; becomes the `for` strongRef. */
   forActivity: StrongRef & { title?: string }
+  /** What the record is, for the form's wording (a project page records
+   *  funding for the project). */
+  forKind?: "activity" | "project"
   onClose: () => void
   onCreated?: (result: CreateFundingReceiptResult) => void
 }) {
@@ -233,8 +237,8 @@ export default function FundingReceiptFormModal({
           ) : (
             <p className="funding-form__confirm-lede">
               {role === "recipient"
-                ? "Recording funding received for this activity."
-                : "Recording funding you sent to this activity."}
+                ? `Recording funding received for this ${forKind}.`
+                : `Recording funding you sent to this ${forKind}.`}
             </p>
           )}
 
@@ -350,7 +354,7 @@ export default function FundingReceiptFormModal({
           <div className="funding-form__field">
             <span className="funding-form__label">For</span>
             <p className="funding-form__static funding-form__static--for">
-              {forActivity.title || "This activity"}
+              {forActivity.title || `This ${forKind}`}
             </p>
           </div>
 

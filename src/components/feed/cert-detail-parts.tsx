@@ -2,66 +2,37 @@
 
 /**
  * Presentational parts of the record pages (activity and project): the
- * record header, byline and section tabs, plus the contributor list
- * pieces. None of them share state with the pages — everything crosses
- * the seam through enumerable props.
+ * record header (image, eyebrow, title, byline, lead), the section tabs,
+ * the description, the "who's behind it" card and the contributor list
+ * pieces. None of them share state with the pages; everything crosses the
+ * seam through props.
  */
 
 import { memo, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { ChevronDown } from "lucide-react"
-import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
+import { CalendarDays, MapPin } from "lucide-react"
+import { profileUrl } from "@/lib/urls"
 import type { DetailTab } from "@/lib/detail-tabs"
 import { Tabs, TabList, Tab } from "@/components/ui/tabs"
-import { projectTitle } from "@/lib/atproto/collection"
 import {
   useContributorInfo,
   isAtprotoIdentity,
 } from "@/hooks/use-contributor-info"
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useCertProjects } from "@/hooks/use-cert-projects"
-import { formatAbsoluteDateTime } from "@/components/explore-page/format-display"
-import { formatShortDate } from "@/lib/utils/format-date"
+import { useOrgMarker } from "@/hooks/use-org-marker"
 import { getInitials } from "@/lib/utils/initials"
 import { deriveIdentity } from "@/lib/utils/identity"
 import Avatar from "@/components/ui/avatar"
-import Button from "@/components/ui/button"
-import SectionHeader from "@/components/ui/section-header"
+import ClampedText from "@/components/ui/clamped-text"
+import { FactCard } from "@/components/ui/fact-card"
 import Skeleton from "@/components/ui/skeleton"
+import Tooltip from "@/components/ui/tooltip"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
 
-/**
- * A contributor's share of the work, at the row's trailing edge: the
- * label travels with the value ("Share 40%"), so it reads on its own at
- * any width instead of relying on a column heading above the list.
- */
-function ContributorShare({ weight }: { weight: string }) {
-  return (
-    <span className="cert-detail__contributor-weight">
-      <span className="cert-detail__contributor-weight-label">Share</span>{" "}
-      {weight}%
-    </span>
-  )
-}
-
-/* ---------- Contributor row ----------
- *
- * Compact row for the cert detail contributors grid. Resolves the
- * contributor identity the same way `ActivityContributor` does — see
- * `useContributorInfo` / `useContributorInformationRecord` — but renders with
- * the `cert-detail__contributor-*` class set so it inherits the new
- * pill-hover styling rather than the older `activity-detail__contributor-*`
- * rules in feed.css.
- */
-
-interface ContributorRowProps {
-  readonly contributor: ActivityContributorType
-  readonly role: string | null
-  readonly weight: string | null
-}
+/* ---------- Contributors ---------- */
 
 function classifyContributorIdentity(id: unknown): {
   inlineIdentity: string | null
@@ -84,55 +55,90 @@ function classifyContributorIdentity(id: unknown): {
   return { inlineIdentity: null, strongRefUri: null }
 }
 
+export interface ContributorIdentity {
+  /** The contributor's DID when they have an account. */
+  did: string | null
+  displayName: string
+  handle: string | null
+  avatarUrl: string | null
+  initials: string
+  profileHref: string | null
+  /** Still resolving, with nothing to show yet: render a placeholder. */
+  pending: boolean
+}
+
+/**
+ * Who a contributor is, resolved the same way everywhere: an account
+ * (its profile name, @handle and avatar), a `contributorInformation`
+ * record (its name and image), or a name written into the record. A
+ * written name is shown as is and gives the avatar its initials. While an
+ * account is still resolving, `pending` is true, so the row shows a
+ * placeholder instead of flashing "Anonymous".
+ */
+export function useContributorIdentity(
+  contributor: ActivityContributorType,
+): ContributorIdentity {
+  const { inlineIdentity, strongRefUri } = classifyContributorIdentity(
+    contributor.contributorIdentity,
+  )
+  const { record: contribInfo, isLoading: contribInfoLoading } =
+    useContributorInformationRecord(strongRefUri)
+
+  const inlineIsAccount = !!inlineIdentity && isAtprotoIdentity(inlineIdentity)
+  const atprotoCandidate = inlineIsAccount
+    ? inlineIdentity
+    : contribInfo?.identifier && isAtprotoIdentity(contribInfo.identifier)
+      ? contribInfo.identifier
+      : null
+  const { info, isLoading: atprotoLoading } = useContributorInfo(atprotoCandidate)
+
+  const writtenName = inlineIdentity && !inlineIsAccount ? inlineIdentity.trim() : null
+  const name = info?.displayName || contribInfo?.displayName || writtenName || null
+  const handle = info?.handle && info.handle !== info.did ? info.handle : null
+  const hydrated = !!info?.did || !!name || !!contribInfo?.image?.uri
+  const pending = (contribInfoLoading || atprotoLoading) && !hydrated
+
+  return {
+    did: info?.did ?? null,
+    displayName: name || handle || (strongRefUri ? "Unknown contributor" : "Anonymous"),
+    handle,
+    avatarUrl: info?.avatarUrl || contribInfo?.image?.uri || null,
+    initials: getInitials(name, handle),
+    profileHref: info?.did ? profileUrl(info.handle || info.did) : null,
+    pending,
+  }
+}
+
+/**
+ * A contributor's share of the work, at the row's trailing edge: the
+ * label travels with the value ("Share 40%"), so it reads on its own at
+ * any width instead of relying on a column heading above the list.
+ */
+function ContributorShare({ weight }: { weight: string }) {
+  return (
+    <span className="cert-detail__contributor-weight">
+      <span className="cert-detail__contributor-weight-label">Share</span>{" "}
+      {weight}%
+    </span>
+  )
+}
+
+interface ContributorRowProps {
+  readonly contributor: ActivityContributorType
+  readonly role: string | null
+  readonly weight: string | null
+}
+
+/** One contributor in the Contributors list: avatar, name and role,
+ *  @handle, and their share. Links to their profile when they have one. */
 export const ContributorRow = memo(function ContributorRow({
   contributor,
   role,
   weight,
 }: ContributorRowProps) {
-  const { inlineIdentity, strongRefUri } = classifyContributorIdentity(
-    contributor.contributorIdentity,
-  )
+  const who = useContributorIdentity(contributor)
 
-  const { record: contribInfo, isLoading: contribInfoLoading } =
-    useContributorInformationRecord(strongRefUri)
-
-  const atprotoCandidate =
-    inlineIdentity ??
-    (contribInfo?.identifier && isAtprotoIdentity(contribInfo.identifier)
-      ? contribInfo.identifier
-      : null)
-
-  const { info, isLoading: atprotoLoading } =
-    useContributorInfo(atprotoCandidate)
-
-  const isLoading = contribInfoLoading || atprotoLoading
-
-  const fallbackLabel = strongRefUri ? "Unknown contributor" : "Anonymous"
-  const displayName =
-    info?.displayName ||
-    contribInfo?.displayName ||
-    (inlineIdentity && !isAtprotoIdentity(inlineIdentity)
-      ? inlineIdentity
-      : null) ||
-    fallbackLabel
-
-  const handle = info?.handle && info.handle !== info.did ? info.handle : null
-  const avatarUrl = info?.avatarUrl || contribInfo?.image?.uri || null
-  const profileHref = info?.did
-    ? profileUrl(info.handle || info.did)
-    : null
-  const initials = getInitials(
-    info?.displayName || contribInfo?.displayName || null,
-    handle,
-  )
-
-  const hasAnyHydratedField =
-    !!info?.did ||
-    !!contribInfo?.displayName ||
-    !!contribInfo?.image?.uri ||
-    !!inlineIdentity
-
-  if (isLoading && !hasAnyHydratedField) {
+  if (who.pending) {
     return (
       <li
         className="cert-detail__contributor cert-detail__contributor--skeleton"
@@ -152,19 +158,19 @@ export const ContributorRow = memo(function ContributorRow({
     <>
       <Avatar
         size="sm"
-        src={avatarUrl || undefined}
+        src={who.avatarUrl || undefined}
         alt=""
-        fallbackInitials={initials}
+        fallbackInitials={who.initials}
       />
       <span className="cert-detail__contributor-meta">
         <span className="cert-detail__contributor-name" dir="auto">
-          {displayName}
+          {who.displayName}
           {role ? (
             <span className="cert-detail__contributor-role"> · {role}</span>
           ) : null}
         </span>
-        {handle ? (
-          <span className="cert-detail__contributor-handle">@{handle}</span>
+        {who.handle ? (
+          <span className="cert-detail__contributor-handle">@{who.handle}</span>
         ) : null}
       </span>
     </>
@@ -172,11 +178,11 @@ export const ContributorRow = memo(function ContributorRow({
 
   return (
     <li className="cert-detail__contributor">
-      {profileHref ? (
+      {who.profileHref ? (
         <Link
-          href={profileHref}
+          href={who.profileHref}
           className="cert-detail__contributor-link"
-          aria-label={`View ${displayName}'s profile`}
+          aria-label={`View ${who.displayName}'s profile`}
         >
           {body}
         </Link>
@@ -190,81 +196,282 @@ export const ContributorRow = memo(function ContributorRow({
   )
 })
 
-/**
- * The head of a record page (activity or project): a small type eyebrow,
- * the record title as the page's one h1, the record's actions (the
- * owner's Edit button and the ⋯ menu) at the header's top-right, and the
- * byline below. From 800px the actions sit on the title's row; on phones
- * they move up to the eyebrow's row so the title keeps the full width.
- *
- * The page registers its header (`useRegisterPageHeader`), so the chrome
- * renders no h1 of its own.
- */
-export function RecordHeader({
-  kind,
-  title,
-  actions,
-  children,
-}: {
-  /** The record type, shown as the eyebrow ("Activity", "Project"). */
-  kind: string
-  title: string
-  /** Edit button and ⋯ menu, right of the title. */
-  actions?: ReactNode
-  /** The byline (`<RecordByline>`). */
-  children?: ReactNode
-}) {
+/** One avatar in the contributor stack, named by its tooltip. */
+function StackAvatar({ contributor }: { contributor: ActivityContributorType }) {
+  const who = useContributorIdentity(contributor)
+  if (who.pending) {
+    return (
+      <li className="record-stack__item" aria-hidden="true">
+        <Skeleton variant="circle" width={32} height={32} />
+      </li>
+    )
+  }
+  const avatar = (
+    <Avatar
+      size="sm"
+      src={who.avatarUrl || undefined}
+      alt={who.profileHref ? "" : who.displayName}
+      fallbackInitials={who.initials}
+    />
+  )
   return (
-    <header className="record-head">
-      <p className="record-head__kind">{kind}</p>
-      <h1 className="record-head__title" dir="auto">
-        {title}
-      </h1>
-      {actions ? <div className="record-head__actions">{actions}</div> : null}
-      {children}
-    </header>
+    <li className="record-stack__item">
+      <Tooltip label={who.displayName}>
+        {who.profileHref ? (
+          <Link
+            href={who.profileHref}
+            className="record-stack__link"
+            aria-label={who.displayName}
+          >
+            {avatar}
+          </Link>
+        ) : (
+          <span className="record-stack__link">{avatar}</span>
+        )}
+      </Tooltip>
+    </li>
   )
 }
 
+/** A contributor's name, for the sentence under the stack. */
+function ContributorName({ contributor }: { contributor: ActivityContributorType }) {
+  const who = useContributorIdentity(contributor)
+  if (who.pending) {
+    // Inline (the sentence is a <p>): a bar the size of a short name.
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-block h-3 w-20 rounded bg-[var(--overlay-weak)] align-middle"
+      />
+    )
+  }
+  return <span dir="auto">{who.displayName}</span>
+}
+
 /**
- * Loading placeholder for a record page (activity or project), shaped like
- * the content: the title, the byline, the tab strip, then a few lines of
- * body text. Announced once through the wrapper's `aria-label`; the bars
- * themselves are `aria-hidden` (Skeleton).
+ * Contributors as a row of avatars, the first `max` of them, then
+ * "+N" for the rest, and the first names in a sentence under them
+ * ("Ana, Bo and 3 more"). Each avatar links to its person's profile.
  */
-export function RecordDetailSkeleton({ label }: { label: string }) {
+export function ContributorStack({
+  contributors,
+  max = 6,
+  named = 2,
+}: {
+  contributors: readonly ActivityContributorType[]
+  max?: number
+  /** How many names the sentence spells out. */
+  named?: number
+}) {
+  const shown = contributors.slice(0, max)
+  const rest = contributors.length - shown.length
+  const names = contributors.slice(0, named)
+  const others = contributors.length - names.length
   return (
-    <div role="status" aria-label={label} className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Skeleton variant="line" width="4rem" height="0.75rem" />
-        <Skeleton variant="line" width="min(32rem, 85%)" height="2rem" />
-        <div className="flex items-center gap-2">
-          <Skeleton variant="circle" width={32} height={32} />
-          <Skeleton variant="line" width="10rem" height="0.875rem" />
-        </div>
+    <div className="flex flex-col gap-2">
+      <div className="record-stack">
+        <ul className="record-stack__list" aria-label="Contributors">
+          {shown.map((c, i) => (
+            <StackAvatar key={i} contributor={c} />
+          ))}
+        </ul>
+        {rest > 0 ? <span className="record-stack__more">+{rest}</span> : null}
       </div>
-      <Skeleton variant="line" width="100%" height="2.75rem" />
-      <div className="flex max-w-measure flex-col gap-2">
-        <Skeleton variant="line" width="100%" height="1rem" />
-        <Skeleton variant="line" width="92%" height="1rem" />
-        <Skeleton variant="line" width="60%" height="1rem" />
-      </div>
+      <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
+        {names.map((c, i) => (
+          <span key={i}>
+            {i > 0 ? (i === names.length - 1 && others === 0 ? " and " : ", ") : null}
+            <ContributorName contributor={c} />
+          </span>
+        ))}
+        {others > 0 ? ` and ${others} more` : null}
+      </p>
+    </div>
+  )
+}
+
+/* ---------- Header ---------- */
+
+/**
+ * The page's picture, at the top: cover-cropped to `ratio` (the project's
+ * 3:1 banner, an activity's 16:9 photo). Renders nothing when there is no
+ * picture or it fails to load, so the page never shows an empty frame.
+ */
+export function RecordImage({
+  src,
+  ratio,
+}: {
+  src: string | null
+  ratio: "3 / 1" | "16 / 9"
+}) {
+  const [failed, setFailed] = useState<string | null>(null)
+  if (!src || failed === src) return null
+  return (
+    <div className="record-head__image" style={{ aspectRatio: ratio }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" onError={() => setFailed(src)} />
     </div>
   )
 }
 
 /**
- * The record's section tabs (activity: Overview / Contributors / Funding /
- * Updates; project: Overview / Activities / Updates), one strip under the
- * record header at every width, like the profile's tabs.
- * It scrolls sideways when the tabs don't fit (phones) and stays pinned
- * below the top bar while the page scrolls.
+ * The head of a record page (activity and project), the same on both: the
+ * picture on top, then the eyebrow ("Project", "Activity · Part of …"),
+ * the title as the page's one h1 with the actions (Share, ⋯; the owner's
+ * Edit) at its top-right, the byline (who, when, where) and the lead
+ * paragraph at reading width.
+ *
+ * The page registers its header (`useRegisterPageHeader`), so the chrome
+ * renders no h1 of its own.
+ */
+export function RecordHeader({
+  image,
+  eyebrow,
+  title,
+  actions,
+  byline,
+  lead,
+}: {
+  image?: ReactNode
+  /** The record type, and for an activity its project. */
+  eyebrow: ReactNode
+  title: string
+  /** Share, the owner's Edit, the ⋯ menu. */
+  actions?: ReactNode
+  /** `<RecordByline>`. */
+  byline?: ReactNode
+  /** The short description. */
+  lead?: string | null
+}) {
+  return (
+    <header className="record-head">
+      {image}
+      <div className="record-head__top">
+        <p className="record-head__kind">{eyebrow}</p>
+        {actions ? <div className="record-head__actions">{actions}</div> : null}
+      </div>
+      <h1 className="record-head__title" dir="auto">
+        {title}
+      </h1>
+      {byline}
+      {lead ? (
+        <p className="record-head__lead" dir="auto">
+          {lead}
+        </p>
+      ) : null}
+    </header>
+  )
+}
+
+/**
+ * The byline under a record title, one row that wraps: the account behind
+ * the record (avatar and name, to its profile), the time period and the
+ * place. Groups get the square avatar.
+ */
+export function RecordByline({
+  did,
+  period,
+  place,
+}: {
+  did: string
+  period?: string | null
+  /** The place's name; `undefined` while it loads. */
+  place?: string | null
+}) {
+  const { info, isLoading } = useAuthorInfo(did)
+  const { isOrg } = useOrgMarker(did)
+
+  let who: ReactNode
+  if (isLoading || !info) {
+    who = (
+      <span className="flex items-center gap-2" aria-hidden="true">
+        <Skeleton variant="circle" width={24} height={24} />
+        <Skeleton variant="line" width="9rem" height="0.875rem" />
+      </span>
+    )
+  } else {
+    const { displayName, initials, profileHref } = deriveIdentity(info, did)
+    who = (
+      <Link href={profileHref} className="record-byline__who">
+        <Avatar
+          size="xs"
+          shape={isOrg ? "square" : "circle"}
+          src={info.avatarUrl || undefined}
+          alt=""
+          fallbackInitials={initials}
+        />
+        <span className="record-byline__name" dir="auto">
+          {displayName}
+        </span>
+      </Link>
+    )
+  }
+
+  return (
+    <div className="record-byline">
+      {who}
+      {period ? (
+        <span className="record-byline__item">
+          <CalendarDays size={14} strokeWidth={1.75} aria-hidden />
+          <span className="sr-only">Time period: </span>
+          {period}
+        </span>
+      ) : null}
+      {place === undefined ? (
+        <span className="record-byline__item" aria-hidden="true">
+          <Skeleton variant="line" width="7rem" height="0.875rem" />
+        </span>
+      ) : place ? (
+        <span className="record-byline__item">
+          <MapPin size={14} strokeWidth={1.75} aria-hidden />
+          <span className="sr-only">Place: </span>
+          <span dir="auto">{place}</span>
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Loading placeholder for a record page, shaped like it: the picture, the
+ * eyebrow, title and byline, the lead, and from 1100px the rail's first
+ * card beside them. Announced once through the wrapper's `aria-label`.
+ */
+export function RecordDetailSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label} className="record-layout">
+      <div className="record-layout__header flex flex-col gap-3">
+        <Skeleton variant="box" width="100%" height="auto" className="aspect-[3/1]" />
+        <Skeleton variant="line" width="4rem" height="0.75rem" />
+        <Skeleton variant="line" width="min(32rem, 85%)" height="2rem" />
+        <div className="flex items-center gap-2">
+          <Skeleton variant="circle" width={24} height={24} />
+          <Skeleton variant="line" width="10rem" height="0.875rem" />
+        </div>
+        <div className="flex max-w-measure flex-col gap-2">
+          <Skeleton variant="line" width="100%" height="1rem" />
+          <Skeleton variant="line" width="80%" height="1rem" />
+        </div>
+      </div>
+      <div className="record-layout__rail record-layout__rail--skeleton">
+        <Skeleton variant="box" width="100%" height="10rem" />
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Tabs ---------- */
+
+/**
+ * The record's section tabs, one strip under the record header at every
+ * width, like the profile's. It scrolls sideways when the tabs don't fit
+ * (phones) and stays pinned below the top bar while the page scrolls.
  *
  * Each tab is a real link (`?tab=<key>` on the current path, other query
  * params kept, so filters survive a switch) that REPLACES the history
  * entry and keeps the scroll position. Counts ride on the tab through the
- * `Tab` primitive's `count`; zero shows no count. Every tab that is a list
- * gets a count and no other tab does (Overview never).
+ * `Tab` primitive's `count`; zero shows no count. The page passes only the
+ * tabs a visitor would find something on.
  */
 export function RecordSectionTabs({
   tabs,
@@ -338,218 +545,82 @@ export function RecordSectionTabs({
   )
 }
 
-/**
- * The byline under a record title: labelled fields in one row that wraps
- * on narrow screens — Author, Date created, then any extra fields the page
- * passes (the activity's Project).
- */
-export function RecordByline({
-  did,
-  createdAt,
-  children,
-}: {
-  did: string
-  createdAt: string | null
-  /** Extra fields after the date (each a `<RecordBylineField>`). */
-  children?: ReactNode
-}) {
-  const { info, isLoading: authorLoading } = useAuthorInfo(did)
-
-  return (
-    <dl className="record-byline">
-      <div className="record-byline__field">
-        <dt className="record-byline__label">Author</dt>
-        <dd className="record-byline__value">
-          {authorLoading || !info ? (
-            <span className="flex items-center gap-2" aria-hidden="true">
-              <Skeleton variant="circle" width={24} height={24} />
-              <Skeleton variant="line" width="7rem" height="0.875rem" />
-            </span>
-          ) : (
-            (() => {
-              const { displayName, handle, initials, profileHref } =
-                deriveIdentity(info, did)
-              return (
-                <Link
-                  href={profileHref}
-                  className="cert-detail__headline-author"
-                  aria-label={`View ${displayName}'s profile`}
-                >
-                  <Avatar
-                    size="sm"
-                    src={info.avatarUrl || undefined}
-                    alt=""
-                    fallbackInitials={initials}
-                  />
-                  <span className="cert-detail__headline-author-meta">
-                    <span className="cert-detail__headline-name" dir="auto">
-                      {displayName}
-                    </span>
-                    {handle ? (
-                      <span className="cert-detail__headline-handle">
-                        @{handle}
-                      </span>
-                    ) : null}
-                  </span>
-                </Link>
-              )
-            })()
-          )}
-        </dd>
-      </div>
-
-      {createdAt ? (
-        <div className="record-byline__field">
-          <dt className="record-byline__label">Date created</dt>
-          <dd className="record-byline__value">
-            <time dateTime={createdAt} title={formatAbsoluteDateTime(createdAt)}>
-              {formatShortDate(createdAt)}
-            </time>
-          </dd>
-        </div>
-      ) : null}
-
-      {children}
-    </dl>
-  )
-}
+/* ---------- Body ---------- */
 
 /**
- * The activity's Project field for `<RecordByline>`: the first project
- * that contains it (`useCertProjects`), by title, with "+N" when there are
- * more.
- * When it's in no project, owners get an "Add to project" link to their
- * Records (where activities are put into projects) and visitors see no
- * field at all.
- */
-export function ActivityProjectField({
-  did,
-  rkey,
-  canAddToProject,
-}: {
-  did: string
-  rkey: string | null
-  /** The viewer can edit this activity, so offer "Add to project". */
-  canAddToProject: boolean
-}) {
-  const { projects, isLoading } = useCertProjects(did, rkey)
-
-  if (isLoading) {
-    return (
-      <div className="record-byline__field" aria-hidden="true">
-        <dt className="record-byline__label">Project</dt>
-        <dd className="record-byline__value">
-          <Skeleton variant="line" width="8rem" height="0.875rem" />
-        </dd>
-      </div>
-    )
-  }
-
-  if (projects.length === 0) {
-    if (!canAddToProject) return null
-    return (
-      <div className="record-byline__field">
-        <dt className="record-byline__label">Project</dt>
-        <dd className="record-byline__value">
-          <Link href="/records" className="record-byline__add-link">
-            Add to project
-          </Link>
-        </dd>
-      </div>
-    )
-  }
-
-  const first = projects[0]
-  const remaining = projects.length - 1
-  const firstParts = parseAtUri(first.uri)
-  const firstHref = firstParts
-    ? recordUrl(firstParts.did, "project", firstParts.rkey)
-    : null
-  const title = projectTitle(first.value)
-  // The title alone, no thumbnail: a project's image is usually its 3:1
-  // banner, which cropped to a byline-sized square reads as noise, and the
-  // byline keeps one picture (the author's avatar).
-  const body = (
-    <span className="cert-detail__headline-project-title" dir="auto">
-      {title}
-    </span>
-  )
-
-  return (
-    <div className="record-byline__field record-byline__field--grow">
-      <dt className="record-byline__label">Project</dt>
-      <dd className="record-byline__value cert-detail__headline-project-value">
-        {firstHref ? (
-          <Link href={firstHref} className="cert-detail__headline-project-link">
-            {body}
-          </Link>
-        ) : (
-          <span className="cert-detail__headline-project-link cert-detail__headline-project-link--static">
-            {body}
-          </span>
-        )}
-        {remaining > 0 ? (
-          <span className="cert-detail__meta-aux"> +{remaining}</span>
-        ) : null}
-      </dd>
-    </div>
-  )
-}
-
-/**
- * The record's full description on Overview (activity and project), behind
- * a disclosure: a centred "Read full description" button below the summary
- * reveals it as its own Description section, and "Hide description" folds
- * it again. The chevron points down to expand and flips up once open
- * (driven off `aria-expanded` in cert-detail.css). The pages render it only
- * when the description has content (`isRenderableDescription`).
- *
- * `defaultExpanded` opens it on arrival: an old `?tab=description` link
- * (the project page's former Description tab) lands on Overview with the
- * description showing.
+ * The record's full description in place on Overview, cut to about a
+ * dozen lines with "Read more" under it when it is longer. The pages
+ * render it only when the description has content
+ * (`isRenderableDescription`).
  */
 export function RecordDescription({
   value,
   did,
-  defaultExpanded = false,
-  sectionClassName,
 }: {
   /** The record's `description` (plain string or Leaflet document). */
   value: unknown
   /** The record's repo DID, for the document's image blobs. */
   did: string
-  defaultExpanded?: boolean
-  /** The page's section class (`cert-detail__section`, `project-detail__section`). */
-  sectionClassName: string
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const toggle = (
-    <div className="cert-detail__desc-toggle">
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((open) => !open)}
-        className="cert-detail__desc-toggle-btn"
-      >
-        {expanded ? "Hide description" : "Read full description"}
-        <ChevronDown
-          size={16}
-          strokeWidth={1.75}
-          aria-hidden
-          className="cert-detail__desc-toggle-chevron"
-        />
-      </Button>
-    </div>
-  )
-  if (!expanded) return toggle
   return (
-    <>
-      <section className={sectionClassName}>
-        <SectionHeader title="Description" />
+    <section className="record-section record-description" aria-label="Description">
+      <ClampedText lines={12}>
         <LeafletDocument value={value} did={did} />
-      </section>
-      {toggle}
-    </>
+      </ClampedText>
+    </section>
+  )
+}
+
+/**
+ * "Who's behind it": the account that published the record, with its
+ * avatar, name, @handle, the start of its bio and a link to its profile.
+ */
+export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: string; title?: string }) {
+  const { info, isLoading } = useAuthorInfo(did)
+  const { isOrg } = useOrgMarker(did)
+
+  if (isLoading || !info) {
+    return (
+      <FactCard title={title}>
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <Skeleton variant="circle" width={40} height={40} />
+          <div className="flex flex-col gap-1.5">
+            <Skeleton variant="line" width="9rem" height="0.875rem" />
+            <Skeleton variant="line" width="6rem" height="0.75rem" />
+          </div>
+        </div>
+      </FactCard>
+    )
+  }
+
+  const { displayName, handle, initials, profileHref } = deriveIdentity(info, did)
+  const bio = info.description?.trim() || null
+
+  return (
+    <FactCard title={title}>
+      <Link href={profileHref} className="record-owner">
+        <Avatar
+          size="row"
+          shape={isOrg ? "square" : "circle"}
+          src={info.avatarUrl || undefined}
+          alt=""
+          fallbackInitials={initials}
+        />
+        <span className="record-owner__text">
+          <span className="record-owner__name" dir="auto">
+            {displayName}
+          </span>
+          {handle ? <span className="record-owner__handle">@{handle}</span> : null}
+        </span>
+      </Link>
+      {bio ? (
+        <p className="record-owner__bio" dir="auto">
+          {bio}
+        </p>
+      ) : null}
+      <Link href={profileHref} className="record-link">
+        View profile
+      </Link>
+    </FactCard>
   )
 }

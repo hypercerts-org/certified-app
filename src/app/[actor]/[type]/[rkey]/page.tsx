@@ -53,7 +53,10 @@ export default function RecordDetailPage() {
     const staleHandle =
       actor.kind === "handle" && handle.toLowerCase() !== actorRaw.toLowerCase()
     if (addressedByDid || staleHandle) {
-      router.replace(recordUrl(handle, type, rkey))
+      // Keep the query and hash: a shared `?tab=funding` link must still
+      // open on Funding once the address bar shows the handle.
+      const { search, hash } = window.location
+      router.replace(`${recordUrl(handle, type, rkey)}${search}${hash}`)
     }
   }, [actor.kind, actorRaw, handle, did, type, rkey, router])
 

@@ -30,13 +30,11 @@ export function ActivityFancyBoard({
   const { config, entries, isLoading } = useHyperboard(did, rkey, contributors)
 
   return (
-    <section className="cert-detail__section">
-      <SectionHeader
-        title={<SectionTitleCount label="Contributor Board" count={entries.length} />}
-      />
+    <section className="record-section">
+      <SectionHeader title={<SectionTitleCount label="Contributor board" count={entries.length} />} />
 
       {isLoading && entries.length === 0 ? (
-        <div className="cert-detail__funding-loading">
+        <div className="flex justify-center py-6">
           <LoadingSpinner size="sm" />
         </div>
       ) : (

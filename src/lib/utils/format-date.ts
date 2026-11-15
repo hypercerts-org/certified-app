@@ -71,3 +71,31 @@ export function formatTimePeriod(
   if (e) return `Until ${e}`
   return null
 }
+
+/**
+ * The same period, shorter, for a byline: the year once when both dates
+ * share it ("31 May – 31 Dec 2026"), "Since 1 Jun 2026" while ongoing,
+ * "Until 15 Mar 2026", or a single day when start and end are the same.
+ * Null when neither is set or parseable.
+ */
+export function formatPeriodShort(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string | null {
+  const sd = start ? new Date(start) : null
+  const ed = end ? new Date(end) : null
+  const sOk = !!sd && !Number.isNaN(sd.getTime())
+  const eOk = !!ed && !Number.isNaN(ed.getTime())
+  if (sOk && eOk) {
+    const s = sd!
+    const e = ed!
+    const sameYear = s.getUTCFullYear() === e.getUTCFullYear()
+    const sameDay = sameYear && s.getUTCMonth() === e.getUTCMonth() && s.getUTCDate() === e.getUTCDate()
+    if (sameDay) return formatShortDate(start!)
+    const head = sameYear ? `${s.getUTCDate()} ${MONTHS[s.getUTCMonth()]}` : formatShortDate(start!)
+    return `${head} – ${formatShortDate(end!)}`
+  }
+  if (sOk) return `Since ${formatShortDate(start!)}`
+  if (eOk) return `Until ${formatShortDate(end!)}`
+  return null
+}

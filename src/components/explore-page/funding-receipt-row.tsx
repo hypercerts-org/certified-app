@@ -33,6 +33,7 @@ function FundingReceiptRow({
   receipt,
   showTextParties = false,
   showFor = true,
+  showTo = true,
   interactive = true,
 }: {
   receipt: FundingReceipt
@@ -42,6 +43,9 @@ function FundingReceiptRow({
   /** Render the trailing "for [activity]" tail. Defaults to true; pass
    *  false on the activity detail page where `for` is redundant. */
   showFor?: boolean
+  /** Render the "to" column. Defaults to true; a record page whose gifts
+   *  all go to the record's own account leaves it out. */
+  showTo?: boolean
   /** Make the row open a detail modal on click. Defaults to true; the
    *  inner account / wallet / activity controls keep their own behaviour
    *  (the click handler ignores clicks that land on a link or button). */
@@ -111,12 +115,14 @@ function FundingReceiptRow({
         </span>
         <FundingPartySlot party={receipt.from} showText={showTextParties} anonymous />
       </span>
-      <span className="funding-receipt-row__to-cell">
-        <span className="funding-receipt-row__cell-label" aria-hidden="true">
-          To
+      {showTo ? (
+        <span className="funding-receipt-row__to-cell">
+          <span className="funding-receipt-row__cell-label" aria-hidden="true">
+            To
+          </span>
+          <FundingPartySlot party={receipt.to} showText={showTextParties} />
         </span>
-        <FundingPartySlot party={receipt.to} showText={showTextParties} />
-      </span>
+      ) : null}
       {/* "for" activity is its own column (image + title); the column
           header labels it, so no inline connector word. */}
       {showFor ? <FundingForTarget uri={receipt.forUri} /> : null}
@@ -220,7 +226,13 @@ function ThirdPartyIdentity({ did }: { did: string }) {
  * line up with the data rows. `showFor` mirrors the rows so the column
  * count matches.
  */
-export function FundingReceiptHeader({ showFor = true }: { showFor?: boolean }) {
+export function FundingReceiptHeader({
+  showFor = true,
+  showTo = true,
+}: {
+  showFor?: boolean
+  showTo?: boolean
+}) {
   return (
     <div
       className="funding-receipt-row funding-receipt-row--header"
@@ -228,7 +240,7 @@ export function FundingReceiptHeader({ showFor = true }: { showFor?: boolean }) 
     >
       <span className="funding-receipt-row__heading">Date</span>
       <span className="funding-receipt-row__heading">From</span>
-      <span className="funding-receipt-row__heading">To</span>
+      {showTo ? <span className="funding-receipt-row__heading">To</span> : null}
       {showFor ? (
         <span className="funding-receipt-row__heading">For</span>
       ) : null}

@@ -10,14 +10,15 @@ import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
 import Tooltip from "@/components/ui/tooltip"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { loadLocation } from "@/hooks/use-location"
 import { authFetch } from "@/lib/auth/fetch"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
   parseLocationShape,
-  locationFallbackText,
   splitLocationName,
   type LocationRecord,
 } from "@/lib/atproto/location"
+import { formatCoordinates, locationLabel } from "@/lib/atproto/location-label"
 import { getBlobRefLink } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/activity-types"
 
@@ -60,6 +61,11 @@ async function fetchSmallBlobText(
 
 interface CertLocationsMapProps {
   locations: StrongRef[]
+  /** The map's height in px (the larger-map dialog has its own). */
+  height?: number
+  /** Show the place names under the map (default). The project's rail
+   *  names the place in its own card heading, so it can turn them off. */
+  showNames?: boolean
 }
 
 interface ResolvedLocation {
@@ -67,23 +73,25 @@ interface ResolvedLocation {
   record: LocationRecord | null
   pin: MapPinT | null
   polygon: MapPolygonT | null
-  /** Plain-text fallback for non-coordinate locations (address / H3 etc.). */
-  fallback: string | null
+  /** What to call it (name, address or rounded coordinates), or null. */
+  label: string | null
 }
 
 /**
- * Resolve every `app.certified.location` strong-ref attached to a cert
- * and render the geocoded ones as pins on a single shared Leaflet map.
- * Any locations the lexicon supports but we can't pin (address /
- * h3 / geohash / opaque GeoJSON polygons) are listed in a small
- * "Other locations" footer beneath the map so they don't disappear
- * silently.
+ * Resolve every `app.certified.location` strong-ref attached to a record
+ * and render the geocoded ones as pins on one shared Leaflet map, with
+ * the places named under it and a button that opens a larger map.
+ * Locations without coordinates are only named; a location that can't be
+ * named or mapped is left out rather than shown as "Unnamed location".
  *
- * We reuse the existing Leaflet-based map at `@/components/map/map`
- * (already pulled in by the activity-creation flow) so this doesn't
- * add a new dependency.
+ * The records come from the shared location cache (`loadLocation`), so
+ * the page's byline and this map read each one once.
  */
-export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
+export default function CertLocationsMap({
+  locations,
+  height = 240,
+  showNames = true,
+}: CertLocationsMapProps) {
   const [resolved, setResolved] = useState<ResolvedLocation[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -107,28 +115,17 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
           record: null,
           pin: null,
           polygon: null,
-          fallback: null,
+          label: null,
         }
         const parsed = parseAtUri(loc.uri)
         if (!parsed) return empty
-        const params = new URLSearchParams({
-          repo: parsed.did,
-          collection: parsed.collection,
-          rkey: parsed.rkey,
-        })
         try {
-          const res = await authFetch(
-            `/api/xrpc/com/atproto/repo/getRecord?${params.toString()}`,
-            { signal },
-          )
-          if (!res.ok) return empty
-          const data = (await res.json()) as { value?: LocationRecord }
-          const record = data.value ?? null
-          if (!record) return empty
-          // First try the sync path — inline-string + URI variants
-          // parse without a network call. When that returns null AND
-          // the location field is the `smallBlob` variant, fetch the
-          // blob's text content and re-parse with the same logic.
+          const record = await loadLocation(loc.uri)
+          if (!record || signal.aborted) return empty
+          // First try the sync path: inline-string + URI variants parse
+          // without a network call. When that returns null AND the
+          // location field is the `smallBlob` variant, fetch the blob's
+          // text content and re-parse with the same logic.
           let shape = parseLocationShape(record.locationType, record.location)
           if (shape === null) {
             const blobText = await fetchSmallBlobText(
@@ -140,27 +137,21 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
               shape = parseLocationShape(record.locationType, blobText)
             }
           }
-          // Strip the Plus Code prefix from the display name so the
-          // pin label reads as the human-friendly place ("Timbi-
-          // Madina, Guinée" not "5FX5+QGF, Timbi-Madina, Guinée").
-          // The code itself is surfaced separately below the map as
-          // a copy-paste affordance — see the names-list render.
-          const rawName = record.name?.trim() ?? ""
-          const split = splitLocationName(rawName)
-          const name =
-            (split.name || rawName || (shape ? "Location" : "Unnamed location"))
+          // Its name or address, else (coordinates read from a blob) the
+          // point, rounded.
+          const label =
+            locationLabel(record) ??
+            (shape?.kind === "point"
+              ? formatCoordinates(shape.point.lat, shape.point.lng)
+              : null)
           let pin: MapPinT | null = null
           let polygon: MapPolygonT | null = null
           if (shape?.kind === "point") {
-            pin = { lat: shape.point.lat, lng: shape.point.lng, label: name }
+            pin = { lat: shape.point.lat, lng: shape.point.lng, label: label ?? undefined }
           } else if (shape?.kind === "polygon") {
-            polygon = { rings: shape.rings, label: name }
+            polygon = { rings: shape.rings, label: label ?? undefined }
           }
-          const fallback =
-            shape === null
-              ? locationFallbackText(record.locationType, record.location)
-              : null
-          return { uri: loc.uri, record, pin, polygon, fallback }
+          return { uri: loc.uri, record, pin, polygon, label }
         } catch {
           return empty
         }
@@ -188,6 +179,7 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
   )
 
   const hasShapes = pins.length > 0 || polygons.length > 0
+  const named = resolved.filter((r) => r.label)
 
   const [expanded, setExpanded] = useState(false)
 
@@ -197,46 +189,33 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
     return (
       <div
         className="cert-detail__map cert-detail__map--skeleton"
+        style={{ height }}
         aria-hidden="true"
       />
     )
   }
 
-  // Every resolved location gets a row in the names list below the
-  // map — mappable AND unmappable. Mappable entries surface just the
-  // name (the pin label already covers the geometry); unmappable
-  // entries additionally show the fallback text so the address /
-  // h3 / geohash isn't lost. The Plus Code prefix (when present in
-  // the raw name) is rendered as a click-to-copy tag instead of
-  // taking up space inside the primary name.
+  // Each place gets a row under the map, its Plus Code (when the name
+  // carries one) as a click-to-copy tag.
   const namesList =
-    resolved.length > 0 ? (
+    named.length > 0 ? (
       <ul className="cert-detail__map-locations">
-        {resolved.map((r) => {
-          const raw = r.record?.name?.trim() ?? ""
-          const split = splitLocationName(raw)
-          const displayName =
-            split.name || raw || r.fallback || "Unnamed location"
-          const hasFallbackDetail = !!r.fallback && !!raw
+        {named.map((r) => {
+          const split = splitLocationName(r.record?.name?.trim() ?? "")
           return (
             <li key={r.uri} className="cert-detail__map-locations-item">
               <MapPin size={14} strokeWidth={1.75} aria-hidden />
               <span className="cert-detail__map-locations-name" dir="auto">
-                {displayName}
+                {r.label}
               </span>
-              {split.plusCode ? (
-                <PlusCodeTag code={split.plusCode} />
-              ) : null}
-              {hasFallbackDetail ? (
-                <span className="cert-detail__map-locations-detail">
-                  {r.fallback}
-                </span>
-              ) : null}
+              {split.plusCode && split.name ? <PlusCodeTag code={split.plusCode} /> : null}
             </li>
           )
         })}
       </ul>
     ) : null
+
+  if (!hasShapes && !namesList) return null
 
   return (
     <div className="cert-detail__map-wrap">
@@ -246,59 +225,56 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
             pins={pins}
             polygons={polygons}
             zoom={pins.length + polygons.length === 1 ? 8 : 4}
-            height={320}
+            height={height}
+            scrollWheelZoom={false}
+            compactAttribution
           />
-          {/* Expand button — opens a modal with a much larger map so
-              fine-grained polygon detail is readable. Positioned as
-              an overlay (top-right of the map container) so it
-              doesn't shift the map's own controls. */}
-          <Button
-            size="icon"
-            variant="secondary"
-            className="cert-detail__map-expand-btn !bg-[var(--bg-elevated)]"
-            onClick={() => setExpanded(true)}
-            aria-label="Open larger map"
-            tooltip="Larger map"
-          >
-            <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
-          </Button>
+          {/* The larger map, top right over the map. The wrapper is the
+              positioned box: the button's tooltip wraps it in an inline
+              span, which left in the flow drew an empty line under the
+              map. */}
+          <div className="cert-detail__map-expand">
+            <Button
+              size="icon"
+              variant="secondary"
+              className="!bg-[var(--bg-elevated)]"
+              onClick={() => setExpanded(true)}
+              aria-label="Open larger map"
+              tooltip="Larger map"
+            >
+              <Maximize2 size={14} strokeWidth={1.75} aria-hidden />
+            </Button>
+          </div>
         </div>
       ) : null}
-      {/* No coordinates to pin: skip the map frame entirely and let the
-          place list below carry the locations. */}
 
-      {namesList}
+      {showNames || !hasShapes ? namesList : null}
 
       {expanded ? (
         <AppDialog
-          ariaLabel="Larger map of activity locations"
+          ariaLabel="Larger map of the locations"
           className="cert-detail__map-modal"
           maxWidth={1100}
           onClose={() => setExpanded(false)}
         >
-          <AppDialogHeader title="Locations" onClose={() => setExpanded(false)} />
+          <AppDialogHeader
+            title={named.length === 1 ? (named[0].label ?? "Location") : "Locations"}
+            onClose={() => setExpanded(false)}
+          />
           <div className="cert-detail__map-modal-body">
-            {hasShapes ? (
-              <div className="cert-detail__map cert-detail__map--modal">
-                {/* Height comes from the `.cert-detail__map--modal`
-                    container (min(720px, 70vh) in cert-detail.css), so
-                    it tracks viewport resize / rotation while the modal
-                    is open instead of a one-shot window.innerHeight
-                    read. The map fills that box via height="100%". */}
-                <Map
-                  pins={pins}
-                  polygons={polygons}
-                  zoom={pins.length + polygons.length === 1 ? 10 : 4}
-                  height="100%"
-                />
-              </div>
-            ) : (
-              <div className="cert-detail__map cert-detail__map--empty">
-                <MapPin size={20} strokeWidth={1.5} aria-hidden />
-                <p>No mappable coordinates</p>
-              </div>
-            )}
-            {namesList}
+            <div className="cert-detail__map cert-detail__map--modal">
+              {/* Height comes from `.cert-detail__map--modal`
+                  (min(720px, 70vh)), so it tracks resize and rotation
+                  while the dialog is open. */}
+              <Map
+                pins={pins}
+                polygons={polygons}
+                zoom={pins.length + polygons.length === 1 ? 10 : 4}
+                height="100%"
+                compactAttribution
+              />
+            </div>
+            {named.length > 1 ? namesList : null}
           </div>
         </AppDialog>
       ) : null}
@@ -311,8 +287,7 @@ export default function CertLocationsMap({ locations }: CertLocationsMapProps) {
  * location name. Renders as a small monospace pill next to the
  * human-readable place; clicking copies the code to the clipboard
  * and the label flips to "Copied" for a moment so the action is
- * confirmed. Falls through to a non-interactive span if the browser
- * doesn't expose `navigator.clipboard.writeText`.
+ * confirmed.
  */
 function PlusCodeTag({ code }: { code: string }) {
   const { copied, copy } = useCopyToClipboard()

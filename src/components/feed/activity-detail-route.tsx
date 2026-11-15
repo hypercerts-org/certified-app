@@ -1,10 +1,14 @@
 "use client"
 
 import { useEffect } from "react"
+import { FileQuestion } from "lucide-react"
 import { useActivity } from "@/hooks/use-activity"
 import ActivityDetail from "@/components/feed/activity-detail"
 import Banner from "@/components/ui/banner"
+import Button from "@/components/ui/button"
+import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
+import NotFoundMarker from "@/components/layout/not-found-marker"
 import PageContainer from "@/components/ui/page-container"
 import { RecordDetailSkeleton } from "@/components/feed/cert-detail-parts"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
@@ -15,7 +19,9 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
  * parent route; this component fetches and renders the record.
  *
  * `resolving` is true while the parent is still turning the actor segment
- * into a DID — we stay in the loading state instead of flashing "not found".
+ * into a DID; we stay in the loading state instead of flashing "not found".
+ * An activity that doesn't exist says so (no retry: it can't succeed); one
+ * that couldn't be read is an inline block with "Try again".
  *
  * Every state renders inside `<PageContainer>` (the page frame: width,
  * gutters, top and bottom space), so the page doesn't jump between them.
@@ -47,19 +53,34 @@ export default function ActivityDetailRoute({
     )
   }
 
-  if (error || !activity) {
-    // A 404 from the loader means the record is gone: say so, and don't
-    // offer a retry that can never succeed.
-    const loadFailed = !!error && error !== "Activity not found"
+  if (error && error !== "Activity not found") {
+    // Fixed copy; the hook's error only picks the state, so no technical
+    // text reaches the page.
     return (
       <PageContainer>
-        {/* Fixed heading and plain body; the hook's error only picks the
-            heading, so no technical text reaches the page. */}
         <ErrorMessage
-          title={loadFailed ? "Couldn't load this activity" : "Activity not found"}
-          message="This activity may have been deleted, or its account's server is unreachable right now. Try again later."
-          onRetry={loadFailed ? refetch : undefined}
+          title="Couldn't load this activity"
+          message="Its account's server didn't answer. Try again in a moment."
+          onRetry={refetch}
         />
+      </PageContainer>
+    )
+  }
+
+  if (!activity) {
+    return (
+      <PageContainer>
+        <NotFoundMarker />
+        <EmptyState
+          icon={FileQuestion}
+          title="Activity not found"
+          description="It may have been deleted, or the link is wrong."
+          headingLevel={2}
+        >
+          <Button href="/explore" variant="secondary" size="sm">
+            Go to Explore
+          </Button>
+        </EmptyState>
       </PageContainer>
     )
   }

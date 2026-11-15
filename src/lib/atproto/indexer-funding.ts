@@ -283,14 +283,15 @@ export async function fetchFundingReceipts(
 
 /**
  * Fetch a page of `org.hypercerts.funding.receipt` records whose `for`
- * strongRef points at a single activity (`forUri`). Returns the same
- * {@link FundingReceiptsResult} shape as {@link fetchFundingReceipts};
- * the only difference is the server-side `where: { for: { eq } }`
- * filter. Used by the activity detail page's Funding tab + overview
- * preview. Failures or a missing connection return an empty page
- * rather than throwing the surface into an error state.
+ * strongRef points at one record (`forUri`: an activity or a project).
+ * Returns the same {@link FundingReceiptsResult} shape as
+ * {@link fetchFundingReceipts}; the only difference is the server-side
+ * `where: { for: { eq } }` filter. (The proxy operation keeps its
+ * historical name, `FundingReceiptsForActivity`; the query is generic.)
+ * Failures or a missing connection return an empty page rather than
+ * throwing the surface into an error state.
  */
-export async function fetchFundingReceiptsForActivity(
+export async function fetchFundingReceiptsFor(
   forUri: string,
   options: { first?: number; after?: string; signal?: AbortSignal } = {},
 ): Promise<FundingReceiptsResult> {
@@ -303,4 +304,34 @@ export async function fetchFundingReceiptsForActivity(
   )
 
   return parseFundingReceiptsResponse(result, "FundingReceiptsForActivity")
+}
+
+/** Pages read at most per record (100 receipts each, the proxy's cap). */
+export const MAX_FUNDING_PAGES = 20
+
+/**
+ * Every receipt whose `for` is `forUri`, following the cursor page by page
+ * (the proxy caps a page at 100). Stops after {@link MAX_FUNDING_PAGES}
+ * pages; `complete` says whether it reached the end. A project funded by a
+ * round easily has several hundred receipts, and its total must count
+ * them all.
+ */
+export async function fetchAllFundingReceiptsFor(
+  forUri: string,
+  options: { signal?: AbortSignal; maxPages?: number } = {},
+): Promise<{ records: FundingReceipt[]; totalCount: number | null; complete: boolean }> {
+  const { signal, maxPages = MAX_FUNDING_PAGES } = options
+  const records: FundingReceipt[] = []
+  let after: string | undefined
+  let totalCount: number | null = null
+  for (let page = 0; page < maxPages; page++) {
+    const result = await fetchFundingReceiptsFor(forUri, { first: 100, after, signal })
+    records.push(...result.records)
+    if (totalCount === null) totalCount = result.totalCount
+    if (!result.hasMore || !result.endCursor) {
+      return { records, totalCount, complete: true }
+    }
+    after = result.endCursor
+  }
+  return { records, totalCount, complete: false }
 }

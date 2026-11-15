@@ -11,6 +11,42 @@ import type { LocationRecord } from "@/lib/atproto/location"
 // only fetched once per page lifetime.
 const cache = createBoundedCache<string, Promise<LocationRecord | null>>()
 
+/** One location record by at:// URI, cached per page lifetime (shared by
+ *  the record pages' byline, their location card and the map). */
+export function loadLocation(uri: string): Promise<LocationRecord | null> {
+  return fetchLocation(uri)
+}
+
+/**
+ * Several location records at once, in the order given (null for one that
+ * couldn't be read). Backs the record pages' place names.
+ */
+export function useLocations(uris: readonly string[]): {
+  locations: (LocationRecord | null)[]
+  isLoading: boolean
+} {
+  const key = uris.join("|")
+  const [state, setState] = useState<{ key: string; locations: (LocationRecord | null)[] }>({
+    key: "",
+    locations: [],
+  })
+  useEffect(() => {
+    if (!key) return
+    let cancelled = false
+    Promise.all(key.split("|").map((u) => fetchLocation(u))).then((locations) => {
+      if (!cancelled) setState({ key, locations })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [key])
+  if (!key) return { locations: [], isLoading: false }
+  return {
+    locations: state.key === key ? state.locations : [],
+    isLoading: state.key !== key,
+  }
+}
+
 function fetchLocation(uri: string): Promise<LocationRecord | null> {
   const existing = cache.get(uri)
   if (existing) return existing
