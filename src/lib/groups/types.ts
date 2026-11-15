@@ -73,7 +73,8 @@ export interface GroupMetadata {
    *    - org.hypercerts.defs#descriptionString — plain text / markdown
    *    - pub.leaflet.pages.linearDocument — inline rich text
    *    - com.atproto.repo.strongRef — separate document record
-   *  The renderer (`<LeafletDocument>`) handles all three; the
+   *  The renderer (`<LeafletDocument>`) reads the first two (and the
+   *  legacy bare string), paragraphs kept; the
    *  in-app editor (`<LeafletEditor>`) writes the linearDocument
    *  shape, but the field stays read-compatible with legacy strings. */
   longDescription?: LongDescriptionValue

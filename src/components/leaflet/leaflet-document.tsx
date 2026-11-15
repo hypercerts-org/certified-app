@@ -1,7 +1,11 @@
 "use client"
 
 import { Fragment, type ReactNode } from "react"
-import { asLinearDocument } from "@/lib/leaflet/guards"
+import {
+  asLinearDocument,
+  descriptionStringText,
+  splitParagraphs,
+} from "@/lib/leaflet/guards"
 import { isAllowedEmbedHost } from "@/lib/leaflet/embed-url"
 import { safeHttpUrl } from "@/lib/utils/safe-url"
 import {
@@ -66,13 +70,26 @@ export default function LeafletDocument({
   minHeadingLevel = 2,
   did,
 }: LeafletDocumentProps) {
-  if (typeof value === "string") {
-    const trimmed = value.trim()
-    if (trimmed.length === 0) return null
+  // Plain text: a legacy bare string, or the lexicon's
+  // `org.hypercerts.defs#descriptionString` object. Blank lines separate
+  // paragraphs; a single line break stays a line break.
+  const text = typeof value === "string" ? value : descriptionStringText(value)
+  if (text !== null) {
+    const paragraphs = splitParagraphs(text)
+    if (paragraphs.length === 0) return null
     return (
-      <p className={joinClass("leaflet-doc__para", className)}>
-        {value}
-      </p>
+      <div className={joinClass("leaflet-doc", className)}>
+        {paragraphs.map((p, i) => (
+          <p key={i} className="leaflet-doc__para" dir="auto">
+            {p.split("\n").map((line, j) => (
+              <Fragment key={j}>
+                {j > 0 ? <br /> : null}
+                {line}
+              </Fragment>
+            ))}
+          </p>
+        ))}
+      </div>
     )
   }
 

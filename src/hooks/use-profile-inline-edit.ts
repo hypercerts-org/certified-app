@@ -15,6 +15,7 @@ import {
   putLocationRecord,
   readLocationStrongRef,
   rkeyFromStrongRefUri,
+  type LocationShape,
   type StrongRef,
 } from "@/lib/atproto/location"
 import type {
@@ -29,8 +30,15 @@ import {
   newDraftUrlRow,
   type ProfileDrafts,
 } from "@/components/profile/profile-inline-edit-types"
-import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
-import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
+import {
+  ORG_TYPE_PRESETS,
+  normalizeOrgType,
+  orgTypeLabel,
+} from "@/lib/groups/org-types"
+import {
+  isEmptyLongDescription,
+  longDescriptionToLinearDocument,
+} from "@/lib/leaflet/guards"
 
 // =====================================================================
 // Pure helpers — re-coerce stored marker shapes into the editor /
@@ -42,11 +50,24 @@ import { asLinearDocument, isEmptyLongDescription } from "@/lib/leaflet/guards"
 export interface ParsedLocation {
   name: string | null
   coords: { lat: number; lng: number } | null
+  /** The point or region read from a referenced location record (a
+   *  region, such as a GeoJSON polygon, has no `coords`). */
+  shape?: LocationShape | null
   /** When the marker stores a strongRef to a separate
    *  `app.certified.location` record, this is the URI. The save
    *  handler reuses it to overwrite the existing record instead of
    *  spawning a new one. */
   refUri?: string
+  /** The referenced record is still being read. */
+  resolving?: boolean
+}
+
+/** A referenced location record, read: its name and its geometry. */
+export interface ResolvedLocationRef {
+  uri: string
+  name: string | null
+  coords: { lat: number; lng: number } | null
+  shape: LocationShape | null
 }
 
 /**
@@ -105,15 +126,24 @@ function parseOrgTypes(v: unknown): { presets: string[]; other: string } {
   return { presets, other: otherItems.join(", ") }
 }
 
-/** All org-type tags to show in read mode, in canonical preset order
- *  followed by any free-text "other" entries. */
+/** All org-type tags to show in read mode, as labels ("nonprofit" reads
+ *  "Nonprofit", "community-group" reads "Community group"): the presets
+ *  in canonical order (slugs and other spellings of a preset count as
+ *  it), then any free-text "other" entries. */
 export function readableOrgTypeTags(v: unknown): string[] {
   const { presets, other } = parseOrgTypes(v)
   const otherTags = other
     ? other.split(",").map((s) => s.trim()).filter(Boolean)
     : []
-  const orderedPresets = ORG_TYPE_PRESETS.filter((p) => presets.includes(p))
-  return [...orderedPresets, ...otherTags]
+  const all = [...presets, ...otherTags]
+  const normalized = new Set(all.map(normalizeOrgType))
+  const orderedPresets = ORG_TYPE_PRESETS.filter((p) =>
+    normalized.has(normalizeOrgType(p)),
+  )
+  const presetKeys = new Set(orderedPresets.map(normalizeOrgType))
+  const rest = otherTags.filter((t) => !presetKeys.has(normalizeOrgType(t)))
+  const labels = [...orderedPresets, ...rest].map(orgTypeLabel)
+  return labels.filter((l, i) => l && labels.indexOf(l) === i)
 }
 
 /**
@@ -232,11 +262,7 @@ export interface UseProfileInlineEditOutput {
   /** Synchronous location parse off the marker (mostly used by the
    *  save path to recover the existing strongRef rkey). */
   inlineLocation: ParsedLocation
-  resolvedLocationRef: {
-    uri: string
-    name: string | null
-    coords: { lat: number; lng: number } | null
-  } | null
+  resolvedLocationRef: ResolvedLocationRef | null
 
   // --- Handlers ---
   handleEditClick: () => void
@@ -444,11 +470,8 @@ export function useProfileInlineEdit(
   // -------------------------------------------------------------------
   // Async strongRef resolve for the location field
   // -------------------------------------------------------------------
-  const [resolvedLocationRef, setResolvedLocationRef] = useState<{
-    uri: string
-    name: string | null
-    coords: { lat: number; lng: number } | null
-  } | null>(null)
+  const [resolvedLocationRef, setResolvedLocationRef] =
+    useState<ResolvedLocationRef | null>(null)
   useEffect(() => {
     const uri = inlineLocation.refUri
     if (!uri) {
@@ -459,10 +482,15 @@ export function useProfileInlineEdit(
     readLocationStrongRef({ uri, cid: "" }).then((res) => {
       if (cancelled) return
       if (!res) {
-        setResolvedLocationRef({ uri, name: null, coords: null })
+        setResolvedLocationRef({ uri, name: null, coords: null, shape: null })
         return
       }
-      setResolvedLocationRef({ uri, name: res.name, coords: res.coords })
+      setResolvedLocationRef({
+        uri,
+        name: res.name,
+        coords: res.coords,
+        shape: res.shape,
+      })
     })
     return () => {
       cancelled = true
@@ -473,7 +501,9 @@ export function useProfileInlineEdit(
     ? {
         name: resolvedLocationRef?.name ?? null,
         coords: resolvedLocationRef?.coords ?? null,
+        shape: resolvedLocationRef?.shape ?? null,
         refUri: inlineLocation.refUri,
+        resolving: resolvedLocationRef?.uri !== inlineLocation.refUri,
       }
     : inlineLocation
   const displayFoundedDate = readableFoundedDate(
@@ -521,21 +551,12 @@ export function useProfileInlineEdit(
       foundedDate: toDateInputValue(effectiveOrgMarker?.foundedDate),
       organizationTypes: parsedTypes.presets,
       organizationTypeOther: parsedTypes.other,
-      longDescription:
-        asLinearDocument(effectiveOrgMarker?.longDescription) ??
-        (typeof effectiveOrgMarker?.longDescription === "string"
-          ? {
-              $type: "pub.leaflet.pages.linearDocument",
-              blocks: [
-                {
-                  block: {
-                    $type: "pub.leaflet.blocks.text",
-                    plaintext: effectiveOrgMarker.longDescription,
-                  },
-                },
-              ],
-            }
-          : null),
+      // Every stored shape (leaflet document, plain string, or the
+      // lexicon's descriptionString) seeds the editor, paragraphs kept, so
+      // a save never drops a description the editor couldn't read.
+      longDescription: longDescriptionToLinearDocument(
+        effectiveOrgMarker?.longDescription,
+      ),
       additionalUrls:
         effectiveOrgUrls.length > 0
           ? effectiveOrgUrls.map((u) =>
@@ -807,6 +828,18 @@ export function useProfileInlineEdit(
           mintedLocationRkeyRef.current =
             rkeyFromStrongRefUri(ref.uri) ?? mintedLocationRkeyRef.current
           locationValue = ref
+        } else if (
+          inlineLocation.refUri &&
+          resolvedLocationRef?.uri === inlineLocation.refUri &&
+          resolvedLocationRef.shape?.kind === "polygon" &&
+          trimmedName === (resolvedLocationRef.name ?? "") &&
+          effectiveOrgMarker?.location &&
+          typeof effectiveOrgMarker.location === "object"
+        ) {
+          // A region (a polygon written by another client) the editor
+          // can't show as a pin, left as it was: keep the reference
+          // rather than flattening it to its name.
+          locationValue = effectiveOrgMarker.location
         } else if (trimmedName) {
           locationValue = trimmedName
         } else {
@@ -891,6 +924,7 @@ export function useProfileInlineEdit(
     effectiveOrgMarker,
     refreshOrgMarker,
     inlineLocation.refUri,
+    resolvedLocationRef,
     setLocalAvatarUrlTracked,
     setLocalBannerUrlTracked,
   ])

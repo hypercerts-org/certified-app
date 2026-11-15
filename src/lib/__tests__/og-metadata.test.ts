@@ -90,6 +90,34 @@ describe("profileMetadata", () => {
     expect(notFound).toHaveBeenCalled()
   })
 
+  it("describes an account without a bio by its organization's long description", async () => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer.mockResolvedValue({
+      uri: "",
+      value: {
+        longDescription: {
+          $type: "org.hypercerts.defs#descriptionString",
+          value: "We restore rivers.\n\nSince 2003.",
+        },
+      },
+    })
+    const meta = await profileMetadata("alice.example.com")
+    expect(meta.description).toBe("We restore rivers. Since 2003.")
+    expect(meta.openGraph?.description).toBe("We restore rivers. Since 2003.")
+    expect(lookupRecordServer).toHaveBeenCalledWith(
+      "did:plc:alice",
+      "app.certified.actor.organization",
+      "self",
+    )
+  })
+
+  it("falls back to the generic line when there is no organization record", async () => {
+    mockFetch(() => Response.json({ did: "did:plc:alice" }))
+    lookupRecordServer.mockResolvedValue(undefined)
+    const meta = await profileMetadata("alice.example.com")
+    expect(meta.description).toBe("Alice on Certified — one account, any app.")
+  })
+
   it("finds a handle via .well-known when the appView doesn't know it", async () => {
     mockFetch(unableToResolve)
     lookupHandleViaWellKnown.mockResolvedValue("did:plc:alice")

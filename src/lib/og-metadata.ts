@@ -16,6 +16,7 @@ import {
   resolveHandle,
 } from "@/lib/atproto/did"
 import { lookupRecordServer } from "@/lib/atproto/get-record-server"
+import { longDescriptionPlainText } from "@/lib/leaflet/guards"
 import { parseActor, profileUrl, recordUrl, type RecordType } from "@/lib/urls"
 
 // Generic share defaults. The per-page builders below only fall back to
@@ -36,6 +37,27 @@ const OG_REVALIDATE_SECONDS = 300
 const cachedProfilePayload = unstable_cache(
   (did: string) => buildProfilePayload(did),
   ["og-metadata:profile-payload"],
+  { revalidate: OG_REVALIDATE_SECONDS },
+)
+
+/**
+ * The plain text of an organization's long description (its
+ * `app.certified.actor.organization` record), for a share preview when the
+ * profile has no bio. Null for a person, or an organization without one.
+ * A failed lookup throws, so it isn't pinned for the revalidate window.
+ */
+const cachedOrgDescription = unstable_cache(
+  async (did: string): Promise<string | null> => {
+    const record = await lookupRecordServer<Record<string, unknown>>(
+      did,
+      "app.certified.actor.organization",
+      "self",
+    )
+    if (record === "missing") return null
+    if (!record) throw new LookupFailed("organization lookup failed")
+    return longDescriptionPlainText(record.value.longDescription)
+  },
+  ["og-metadata:org-description"],
   { revalidate: OG_REVALIDATE_SECONDS },
 )
 
@@ -340,8 +362,13 @@ export async function profileMetadata(actorParam: string): Promise<Metadata> {
     const title = profile.displayName?.trim()
       ? `${profile.displayName.trim()} (@${handle})`
       : `@${handle}`
+    // The bio; without one, an organization's long description (the
+    // profile page's lead); the generic line only when neither exists.
     const description =
       clampDescription(profile.description) ??
+      clampDescription(
+        await cachedOrgDescription(resolved.did).catch(() => null),
+      ) ??
       `${name} on Certified — one account, any app.`
 
     return buildShareMetadata({
