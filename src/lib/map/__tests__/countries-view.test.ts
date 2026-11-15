@@ -40,11 +40,11 @@ function model(): MapModel {
   const project = { kind: "project" as const, i: 0, title: "P", account, place: kenya, activities: [], href: "/p" }
   const activities = [
     // Placed by its project.
-    { kind: "activity" as const, i: 0, title: "a0", account, place: kenya, via: "project" as const, project, date: null, href: "/a0" },
-    { kind: "activity" as const, i: 1, title: "a1", account, place: kenyaOnly, via: null, project: null, date: null, href: "/a1" },
-    { kind: "activity" as const, i: 2, title: "a2", account, place: sea, via: null, project: null, date: null, href: "/a2" },
+    { kind: "activity" as const, i: 0, title: "a0", account, place: kenya, via: "project" as const, project, more: [], date: null, href: "/a0" },
+    { kind: "activity" as const, i: 1, title: "a1", account, place: kenyaOnly, via: null, project: null, more: [], date: null, href: "/a1" },
+    { kind: "activity" as const, i: 2, title: "a2", account, place: sea, via: null, project: null, more: [], date: null, href: "/a2" },
     // No place at all: not counted anywhere.
-    { kind: "activity" as const, i: 3, title: "a3", account, place: null, via: null, project: null, date: null, href: "/a3" },
+    { kind: "activity" as const, i: 3, title: "a3", account, place: null, via: null, project: null, more: [], date: null, href: "/a3" },
   ]
   const orgs = [{ kind: "org" as const, i: 0, account, place: peru, href: "/o" }]
   return {
