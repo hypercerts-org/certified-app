@@ -70,7 +70,7 @@ export default function ProfileMoreMenu({
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger>
-          <Button size="icon" variant="secondary" aria-label="More">
+          <Button size="icon" variant="secondary" aria-label="More actions">
             <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden />
           </Button>
         </PopoverTrigger>

@@ -130,7 +130,9 @@ export default function ProfileTrustLine({
           </Link>
         ) : null}
         {showFollowers && showFollowing && !(followerCount === null && followers.error) ? (
-          <span aria-hidden className="profile-trust__sep">·</span>
+          <span aria-hidden className="profile-trust__sep profile-trust__following">
+            ·
+          </span>
         ) : null}
         {!showFollowing ? null : followingLoading ? (
           <Skeleton variant="line" width={72} height={14} aria-hidden />
@@ -138,7 +140,7 @@ export default function ProfileTrustLine({
           <Link
             href={`${basePath}?tab=followers&sub=following`}
             scroll={false}
-            className="profile-trust__count"
+            className="profile-trust__count profile-trust__following"
             title={
               following.truncated
                 ? "Showing the first 10,000 follows; this account has more."

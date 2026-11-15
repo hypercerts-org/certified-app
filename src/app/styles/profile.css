@@ -628,6 +628,12 @@
     flex-shrink: 0;
   }
 
+  /* Beside the endorsers, the line keeps the follower count only; the
+     Followers tab has the following count. */
+  .profile-trust:has(.profile-trust__endorsed) .profile-trust__following {
+    display: none;
+  }
+
   .profile-trust__count {
     display: inline-flex;
     align-items: center;
