@@ -80,6 +80,8 @@ describe("cleanPlaceName", () => {
     expect(cleanPlaceName("98W3+WH Xaafuun, Somalia")).toBe("Xaafuun, Somalia")
     expect(cleanPlaceName("Nakuru, Kenya")).toBe("Nakuru, Kenya")
     expect(cleanPlaceName("  ")).toBeNull()
+    expect(cleanPlaceName("5.152948604857976, 97.14982301145864")).toBeNull()
+    expect(cleanPlaceName("-1.29 36.82")).toBeNull()
   })
 })
 

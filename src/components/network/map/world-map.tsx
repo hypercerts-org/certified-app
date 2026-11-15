@@ -12,7 +12,7 @@ import {
 } from "react"
 import { geoGraticule10, geoMercator, geoOrthographic, geoPath, type GeoPath, type GeoProjection } from "d3-geo"
 import { worldOutlines } from "@/lib/map/countries"
-import { MAP_CREDIT_TEXT, getOverlayTileConfig, getTileConfig } from "@/lib/map/tiles"
+import { getOverlayTileConfig, getTileConfig } from "@/lib/map/tiles"
 import { useElementWidth } from "@/components/network/funding/use-element-width"
 import { MapResizeHandle, MapZoomControls } from "@/components/network/funding/map-controls"
 import { usePanZoom } from "@/components/network/funding/use-pan-zoom"
@@ -71,6 +71,7 @@ const SOUTH = -60
 /** Satellite imagery from this tile zoom (about a city across the map). */
 const IMAGERY_FROM = 9
 const KEY_PAN = 60
+const IMAGERY_CREDIT = "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community"
 
 const D2R = Math.PI / 180
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (Math.max(-89, Math.min(89, lat)) * D2R) / 2))
@@ -84,8 +85,15 @@ function globeScale(w: number, h: number, k: number) {
   return (Math.min(w, h) / 2 - 14) * k
 }
 
+/** The flat map never shows sea above or below the world: on a tall, narrow
+ *  frame (a phone) it starts close enough for the land to fill the height. */
+function minZoom(kind: MapKind, w: number, h: number): number {
+  if (kind === "globe" || w <= 0) return 1
+  return Math.max(1, h / ((mercY(NORTH) - mercY(SOUTH)) * flatScale(w, 1)))
+}
+
 function clampView(v: View, kind: MapKind, w: number, h: number): View {
-  const k = Math.min(MAX_ZOOM, Math.max(1, v.k))
+  const k = Math.min(MAX_ZOOM, Math.max(minZoom(kind, w, h), v.k))
   if (kind === "globe") return { lng: wrap(v.lng), lat: Math.max(-80, Math.min(80, v.lat)), k }
   const s = flatScale(w, k)
   const half = h / 2 / s
@@ -209,7 +217,7 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
   const anim = useRef<number>(0)
   const frame = useRef<number>(0)
   const api = useRef<MapApi | null>(null)
-  const [ui, setUi] = useState({ k: 1, moved: false, imagery: false })
+  const [ui, setUi] = useState({ k: 1, moved: false, imagery: false, kMin: 1 })
   const [pointing, setPointing] = useState(false)
 
   // The latest props, for the drawing loop and gesture handlers.
@@ -313,9 +321,12 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
     drawLayers(a)
     ctx.restore()
 
-    const moved = v.k > 1.001 || Math.abs(wrap(v.lng - START.lng)) > 0.01 || Math.abs(v.lat - START.lat) > 0.5
+    const moved = v.k > minZoom(kd, w, h) + 0.001 || Math.abs(wrap(v.lng - START.lng)) > 0.01 || Math.abs(v.lat - START.lat) > 0.5
+    const kMin = minZoom(kd, w, h)
     setUi((prev) =>
-      Math.abs(prev.k - v.k) < 0.001 && prev.moved === moved && prev.imagery === imagery ? prev : { k: v.k, moved, imagery },
+      Math.abs(prev.k - v.k) < 0.001 && prev.moved === moved && prev.imagery === imagery && prev.kMin === kMin
+        ? prev
+        : { k: v.k, moved, imagery, kMin },
     )
     viewed?.(a)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- redraw is stable and defined below
@@ -407,7 +418,7 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
   const zoomAt = (f: number, x: number, y: number, animate = false) => {
     const { kind: kd, width: w, height: h } = props.current
     const v = view.current
-    const k = Math.min(MAX_ZOOM, Math.max(1, v.k * f))
+    const k = Math.min(MAX_ZOOM, Math.max(minZoom(kd, w, h), v.k * f))
     if (kd === "globe") {
       const next = { ...v, k }
       if (animate) animateTo(next)
@@ -517,10 +528,10 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
         onZoomOut={() => zoomAt(0.5, width / 2, height / 2, true)}
         onReset={() => animateTo({ ...START })}
         canZoomIn={ui.k < MAX_ZOOM - 1}
-        canZoomOut={ui.k > 1.001}
+        canZoomOut={ui.k > ui.kMin + 0.001}
         canReset={ui.moved}
       />
-      {ui.imagery ? <p className="world-map__credit">{MAP_CREDIT_TEXT}</p> : null}
+      {ui.imagery ? <p className="world-map__credit">{IMAGERY_CREDIT}</p> : null}
       {resize ? (
         <MapResizeHandle label={label3 === "globe" ? "Globe" : "Map"} height={height} min={resize.min} max={resize.max} onResize={resize.onResize} />
       ) : null}

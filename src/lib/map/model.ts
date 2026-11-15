@@ -355,6 +355,12 @@ export function distanceKm(a: { lng: number; lat: number }, b: { lng: number; la
   return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
+/** What to call a place in the list: its name, else where it is. */
+export function placeTitle(name: string | null, country: string | null): string {
+  if (name) return name
+  return country ? `A place in ${country}` : "A place without a name"
+}
+
 export const PRECISION_LABEL: Record<Precision, string> = {
   site: "Exact point",
   area: "Drawn area",

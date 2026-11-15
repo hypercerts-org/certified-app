@@ -21,6 +21,7 @@ import {
   groupItems,
   itemsFor,
   matchesQuery,
+  placeTitle,
   type CountryGroup,
   type Layer,
   type LayerCounts,
@@ -32,7 +33,8 @@ import { formatPlace } from "@/lib/funding/format"
 import { getInitials } from "@/lib/utils/initials"
 import WorldMap, { type MapApi, type WorldMapHandle } from "./world-map"
 import type { MapViewProps } from "./view-props"
-import { MARK_R, font, hatch, haloText, pill, selectRing, spotMark } from "./marks"
+import { font, hatch, haloText } from "./marks"
+import { NO_HITS, drawApproxDiscs, drawAreaOutlines, drawSpotMarks, hitSpots, spotsBounds, sumCounts, type SpotHits } from "./draw-spots"
 import { useMapLayers } from "./use-map-layers"
 
 /**
@@ -50,21 +52,9 @@ import { useMapLayers } from "./use-map-layers"
  */
 
 const LIST_PAGE = 40
-/** How close (in pixels) spots must be to share a group's pill. */
-const CLUSTER_W = 64
-const CLUSTER_H = 26
-/** Drawn areas larger than this are regions: an edge only, never a fill. */
-const REGION_KM2 = 10_000
-/** A drawn area shows its outline once it is this wide on screen. */
-const OUTLINE_PX = 12
 
 type Selection = { kind: "spot"; key: string } | { kind: "country"; key: string } | null
 
-interface Drawn {
-  /** Hit targets from the last frame, topmost last. */
-  marks: { x: number; y: number; r: number; spot: Spot }[]
-  pills: { x: number; y: number; w: number; h: number; spots: Spot[] }[]
-}
 
 interface Hover {
   x: number
@@ -83,14 +73,12 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
   const [limit, setLimit] = useState(LIST_PAGE)
   const [inView, setInView] = useState<{ spots: Set<string>; countries: Set<string> } | null>(null)
   const mapRef = useRef<WorldMapHandle>(null)
-  const drawn = useRef<Drawn>({ marks: [], pills: [] })
+  const drawn = useRef<SpotHits>(NO_HITS)
   const listRef = useRef<HTMLDivElement>(null)
 
   const all = useMemo(() => itemsFor(model, layers), [model, layers])
   const items = useMemo(() => (query ? all.filter((it) => matchesQuery(it, query)) : all), [all, query])
   const groups = useMemo(() => groupItems(items), [items])
-  const spotByKey = useMemo(() => new Map(groups.spots.map((s) => [s.key, s])), [groups])
-  const countryByKey = useMemo(() => new Map(groups.countries.map((g) => [g.key, g])), [groups])
 
   const bases = useMemo(() => new Map(model.orgs.map((o) => [o.account.i, o])), [model])
   const layerCounts = useMemo(() => {
@@ -144,7 +132,9 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
       const features = countryFeatures()
 
       // Places that only name a country: the country, hatched, with a count.
+      // Fading as the map closes in: inside a country it says nothing new.
       const pattern = hatch(ctx, c.muted)
+      const hatchAlpha = a.zoom <= 4 ? 0.5 : a.zoom >= 40 ? 0 : 0.5 * (1 - Math.log(a.zoom / 4) / Math.log(10))
       for (const g of groups.countries) {
         const f = features[g.countryFeature]
         if (!f) continue
@@ -153,8 +143,8 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
         ctx.save()
         ctx.beginPath()
         a.path(f)
-        ctx.globalAlpha = sel || hot ? 0.9 : 0.5
-        if (pattern) {
+        ctx.globalAlpha = sel || hot ? Math.max(0.35, hatchAlpha * 1.8) : hatchAlpha
+        if (pattern && ctx.globalAlpha > 0) {
           ctx.fillStyle = pattern
           ctx.fill()
         }
@@ -166,98 +156,12 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
         }
         ctx.restore()
       }
-      // Approximate places: a soft disc at their true radius.
-      const kmpp = a.kmPerPx()
-      for (const s of groups.spots) {
-        if (s.prec !== "approx" || !s.radiusKm) continue
-        const r = s.radiusKm / kmpp
-        if (r < MARK_R + 3) continue
-        const p = a.project(s.lng, s.lat)
-        if (!p) continue
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(p[0], p[1], r, 0, Math.PI * 2)
-        ctx.globalAlpha = 0.12
-        ctx.fillStyle = s.counts.activity > 0 ? c.activity : s.counts.project > 0 ? c.project : c.muted
-        ctx.fill()
-        ctx.globalAlpha = 0.6
-        ctx.setLineDash([4, 4])
-        ctx.lineWidth = 1
-        ctx.strokeStyle = ctx.fillStyle
-        ctx.stroke()
-        ctx.restore()
-      }
+      const highlight = [selected?.key, hoverKey]
+      drawApproxDiscs(a, groups.spots)
+      drawAreaOutlines(a, groups.spots, highlight)
+      const hits = drawSpotMarks(a, groups.spots, highlight)
+      const { marks, pills } = hits
 
-      // Drawn areas: their outline, once big enough to see.
-      for (const s of groups.spots) {
-        if (!s.area) continue
-        const feature = { type: "MultiPolygon", coordinates: s.area } as MultiPolygon
-        const [[x0, y0], [x1, y1]] = a.path.bounds(feature)
-        if (!Number.isFinite(x0) || Math.max(x1 - x0, y1 - y0) < OUTLINE_PX) continue
-        // A region, or bigger than the view: a thin edge only, no fill.
-        const huge = (s.km2 ?? 0) > REGION_KM2 || x1 - x0 > a.width * 1.5 || y1 - y0 > a.height * 1.5
-        const color = s.counts.activity > 0 ? c.activity : s.counts.project > 0 ? c.project : s.counts.org > 0 ? c.org : c.unused
-        ctx.save()
-        ctx.beginPath()
-        a.path(feature)
-        if (!huge) {
-          ctx.globalAlpha = 0.16
-          ctx.fillStyle = color
-          ctx.fill()
-        }
-        const on = selected?.key === s.key || hoverKey === s.key
-        ctx.globalAlpha = huge && !on ? 0.45 : 0.9
-        ctx.lineWidth = on ? 2.5 : huge ? 1 : 1.5
-        if (huge || (s.counts.unused > 0 && s.counts.activity + s.counts.project + s.counts.org === 0)) ctx.setLineDash([4, 3])
-        ctx.strokeStyle = color
-        ctx.stroke()
-        ctx.restore()
-      }
-
-      // Spots and groups of spots. Greedy: the busiest spots first, each
-      // joining a group whose centre is within a pill's reach, so the pills
-      // (wider than tall) don't sit on top of one another.
-      const cells: { x: number; y: number; cx: number; cy: number; spots: Spot[] }[] = []
-      const order = groups.spots
-        .map((s) => ({ s, p: a.project(s.lng, s.lat) }))
-        .filter((e): e is { s: Spot; p: [number, number] } => !!e.p && e.p[0] > -40 && e.p[0] < a.width + 40 && e.p[1] > -40 && e.p[1] < a.height + 40)
-        .sort((p, q) => q.s.items.length - p.s.items.length)
-      for (const { s, p } of order) {
-        let cell = cells.find((c) => Math.abs(c.cx - p[0]) < CLUSTER_W && Math.abs(c.cy - p[1]) < CLUSTER_H)
-        if (!cell) {
-          cell = { x: 0, y: 0, cx: p[0], cy: p[1], spots: [] }
-          cells.push(cell)
-        }
-        cell.x += p[0]
-        cell.y += p[1]
-        cell.spots.push(s)
-      }
-      const marks: Drawn["marks"] = []
-      const pills: Drawn["pills"] = []
-      const singles: { x: number; y: number; spot: Spot }[] = []
-      for (const cell of cells) {
-        if (cell.spots.length === 1) {
-          const s = cell.spots[0]
-          const p = a.project(s.lng, s.lat)!
-          singles.push({ x: p[0], y: p[1], spot: s })
-          continue
-        }
-        const n = emptyCounts()
-        for (const s of cell.spots) for (const k of LAYERS) n[k] += s.counts[k]
-        const box = pill(ctx, c, cell.x / cell.spots.length, cell.y / cell.spots.length, n)
-        pills.push({ ...box, spots: cell.spots })
-      }
-      for (const m of singles) {
-        const r = spotMark(ctx, c, m.x, m.y, m.spot.counts)
-        if (selected?.key === m.spot.key || hoverKey === m.spot.key) selectRing(ctx, c, m.x, m.y, r)
-        marks.push({ x: m.x, y: m.y, r, spot: m.spot })
-      }
-      // The selected spot inside a group: still show where it is.
-      if (selected?.kind === "spot" && !marks.some((m) => m.spot.key === selected.key)) {
-        const s = spotByKey.get(selected.key)
-        const p = s && a.project(s.lng, s.lat)
-        if (p) selectRing(ctx, c, p[0], p[1], MARK_R)
-      }
       // Country labels last, only where they don't cover a mark or a group.
       const taken = [
         ...pills.map((p) => ({ x0: p.x - 4, y0: p.y - 4, x1: p.x + p.w + 4, y1: p.y + p.h + 4 })),
@@ -277,22 +181,15 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
         taken.push(box)
         haloText(ctx, c, text, p[0], p[1], { size: 11, weight: 600, color: c.muted })
       }
-      drawn.current = { marks, pills }
+      drawn.current = hits
     },
-    [groups, selected, hoverKey, spotByKey],
+    [groups, selected, hoverKey],
   )
 
   // --- Pointer ---
   const hitAt = (x: number, y: number, a: MapApi) => {
-    const d = drawn.current
-    for (let i = d.marks.length - 1; i >= 0; i--) {
-      const m = d.marks[i]
-      if (Math.hypot(m.x - x, m.y - y) <= m.r + 5) return { type: "spot" as const, spot: m.spot }
-    }
-    for (let i = d.pills.length - 1; i >= 0; i--) {
-      const p = d.pills[i]
-      if (x >= p.x - 3 && x <= p.x + p.w + 3 && y >= p.y - 3 && y <= p.y + p.h + 3) return { type: "pill" as const, spots: p.spots }
-    }
+    const hit = hitSpots(drawn.current, x, y)
+    if (hit) return hit
     const ll = a.invert(x, y)
     if (ll) {
       const f = countryAt(ll[0], ll[1])
@@ -308,11 +205,9 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
       setTip(null)
       return false
     }
-    if (h.type === "spot") setTip({ x, y, title: (h.spot.name ? formatPlace(h.spot.name) : "") || "Unnamed place", detail: `${PRECISION_LABEL[h.spot.prec]} · ${countsText(h.spot.counts)}` })
+    if (h.type === "spot") setTip({ x, y, title: placeTitle(h.spot.name ? formatPlace(h.spot.name) : null, h.spot.country), detail: `${PRECISION_LABEL[h.spot.prec]} · ${countsText(h.spot.counts)}` })
     else if (h.type === "pill") {
-      const n = emptyCounts()
-      for (const s of h.spots) for (const k of LAYERS) n[k] += s.counts[k]
-      setTip({ x, y, title: `${h.spots.length} places close together`, detail: `${countsText(n)}. Click to zoom in.` })
+      setTip({ x, y, title: `${h.spots.length} places close together`, detail: `${countsText(sumCounts(h.spots))}. Click to zoom in.` })
     } else setTip({ x, y, title: `Somewhere in ${h.group.country}`, detail: `Only the country is known · ${countsText(h.group.counts)}` })
     return true
   }
@@ -337,7 +232,7 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
       return
     }
     if (h.type === "spot") select({ kind: "spot", key: h.spot.key })
-    else if (h.type === "pill") mapRef.current?.fitBounds(boundsOf(h.spots), 60)
+    else if (h.type === "pill") mapRef.current?.fitBounds(spotsBounds(h.spots), 60)
     else select({ kind: "country", key: h.group.key })
   }
 
@@ -498,18 +393,6 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
   )
 }
 
-function boundsOf(spots: readonly Spot[]): [[number, number], [number, number]] {
-  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity
-  for (const p of spots) {
-    w = Math.min(w, p.lng)
-    e = Math.max(e, p.lng)
-    s = Math.min(s, p.lat)
-    n = Math.max(n, p.lat)
-  }
-  const pad = 0.02
-  return [[w - pad, s - pad], [e + pad, n + pad]]
-}
-
 export function countsText(n: LayerCounts): string {
   const parts: string[] = []
   if (n.activity) parts.push(`${n.activity} ${n.activity === 1 ? "activity" : "activities"}`)
@@ -548,7 +431,7 @@ function ListRow({
 }) {
   const counts = row.spot?.counts ?? row.group!.counts
   const items = row.spot?.items ?? row.group!.items
-  const title = row.spot ? (row.spot.name ? formatPlace(row.spot.name) : "") || "Unnamed place" : `Somewhere in ${row.group!.country}`
+  const title = row.spot ? placeTitle(row.spot.name ? formatPlace(row.spot.name) : null, row.spot.country) : `Somewhere in ${row.group!.country}`
   const prec = row.spot ? PRECISION_LABEL[row.spot.prec] : PRECISION_LABEL.country
   const extra = row.spot?.km2 ? ` · ${formatArea(row.spot.km2)}` : row.spot?.prec === "approx" && row.spot.radiusKm ? ` · within ${Math.round(row.spot.radiusKm)} km` : ""
   const id = `map-row-${row.key.replace(/[^a-zA-Z0-9]/g, "-")}`

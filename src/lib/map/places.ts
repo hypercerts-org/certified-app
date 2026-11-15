@@ -39,6 +39,8 @@ export interface PlaceInput {
 export function cleanPlaceName(name: string | null | undefined): string | null {
   if (!name) return null
   const n = splitLocationName(name.trim()).name.trim()
+  // Coordinates written as the name say nothing a reader can use.
+  if (/^[-+]?\d+(\.\d+)?°?\s*[NS]?\s*[,;\s]\s*[-+]?\d+(\.\d+)?°?\s*[EW]?$/i.test(n)) return null
   return n || null
 }
 
