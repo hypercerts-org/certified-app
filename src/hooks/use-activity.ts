@@ -112,7 +112,10 @@ function loadActivity(did: string, rkey: string): Promise<SingleActivity> {
       )
       if (!res.ok) {
         throw new Error(
-          res.status === 404
+          // The PDS answers a well-formed read of a missing record with
+          // 400 (RecordNotFound), which the proxy passes through; 404 is
+          // an account with no PDS. Anything else is a failure to load.
+          res.status === 404 || res.status === 400
             ? "Activity not found"
             : "Couldn't load this activity. Try again."
         )

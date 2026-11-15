@@ -87,12 +87,15 @@
   margin: 0 0 24px;
 }
 
-/* ---------- Header ---------- */
+/* ---------- Header ----------
+   The public pages' header (DESIGN.md §9.12): the account's banner when it
+   has one, inside the container; the avatar beside the name and one meta
+   line; the lead at reading width; the links; the trust line. The viewer's
+   actions sit top right from 800px, and in a full-width row on phones. */
 
 .profile-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* The avatar's size, for its placeholders too. */
+  --profile-avatar-size: 96px;
   min-width: 0;
 }
 
@@ -130,37 +133,18 @@
   color: var(--fg-muted);
 }
 
-/* Avatar on the left, the viewer's actions on the right, both resting on
-   the same bottom edge. With a banner, the avatar lifts halfway into it. */
-.profile-header__top {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-}
-
-.profile-header--banner .profile-header__top {
-  margin-top: -64px;
-  padding-left: 12px;
-}
-
 .profile-header__avatar {
   position: relative;
   flex-shrink: 0;
+  align-self: start;
   line-height: 0;
   border-radius: 50%;
-}
-
-/* A canvas-coloured ring separates the avatar from the banner behind it. */
-.profile-header--banner .profile-header__avatar {
-  padding: 4px;
-  background: var(--bg-canvas);
 }
 
 .profile-header__avatar--square {
   border-radius: var(--radius);
 }
+
 
 .profile-header__avatar-edit {
   position: absolute;
@@ -206,17 +190,18 @@
   cursor: progress;
 }
 
-.profile-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 .profile-header__identity {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The name over its meta line. */
+.profile-header__title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -227,20 +212,27 @@
   overflow-wrap: anywhere;
 }
 
-.profile-header__handle {
+/* "Nonprofit · Hamilton, New Zealand · Founded 2003" (organizations) or
+   "she/her · Joined May 2026" (people). Items stay whole; the line wraps
+   between them. */
+.profile-header__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  margin: -4px 0 0;
+  gap: 2px 8px;
+  margin: 0;
   font-size: var(--text-body-sm);
   line-height: 1.5;
-  color: var(--fg-muted);
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-.profile-header__handle-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.profile-header__meta-item {
+  white-space: nowrap;
+}
+
+.profile-header__dot {
+  color: var(--fg-muted);
 }
 
 /* Says where the data came from when the profile is Bluesky's (#74). */
@@ -270,43 +262,59 @@
   outline-offset: 2px;
 }
 
-.profile-header__bio {
+/* The lead: the bio, or an organization's description, at reading width,
+   cut to three lines with "Read more" (ClampedText). */
+.profile-header__lead {
   max-width: var(--measure);
-  margin: 4px 0 0;
   font-size: var(--text-body);
   line-height: 1.6;
   color: var(--fg-secondary);
+}
+
+.profile-header__bio {
+  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: break-word;
   text-wrap: pretty;
 }
 
+/* The description's paragraphs take the lead's type. */
+.profile-header__lead-doc {
+  gap: 0.75em;
+}
+
+.profile-header__lead-doc .leaflet-doc__para {
+  font-size: inherit;
+  line-height: inherit;
+  text-wrap: pretty;
+}
+
+/* The website as text, then the social accounts as icon buttons. */
 .profile-header__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 20px;
+  align-items: center;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* SmartLink renders its icon and anchor as siblings. */
-.profile-header__link {
-  display: flex;
+.profile-header__website {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  max-width: 100%;
+  margin-right: 8px;
   font-size: var(--text-body-sm);
-  color: var(--fg-secondary);
-}
-
-.profile-header__link > svg {
-  flex-shrink: 0;
   color: var(--fg-muted);
 }
 
-.profile-header__link-anchor {
+.profile-header__website > svg {
+  flex-shrink: 0;
+}
+
+.profile-header__website-link {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -314,69 +322,30 @@
   font-weight: 500;
   color: var(--fg-primary);
   text-decoration: none;
+  border-radius: var(--radius);
+}
+
+.profile-header__website-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .profile-header__link-anchor:hover {
+  .profile-header__website-link:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 }
 
-/* "Type · Location · Founded …" (organisations) or "Joined …", then the
-   account ID with a copy button. */
-.profile-header__meta {
+.profile-header__social {
+  color: var(--fg-secondary);
+}
+
+.profile-header__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 16px;
-  min-width: 0;
-  font-size: var(--text-ui);
-  line-height: 1.45;
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.profile-header__id {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.profile-header__id-label {
-  font-weight: 500;
-}
-
-.profile-header__id-value {
-  min-width: 0;
-  max-width: 22ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  font-variant-numeric: slashed-zero;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-header__id:hover {
-    color: var(--fg-primary);
-  }
-}
-
-.profile-header__id:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
+  gap: 8px;
 }
 
 /* Edit mode: the identity block becomes a short form. */
@@ -385,6 +354,7 @@
   flex-direction: column;
   gap: 16px;
   max-width: 560px;
+  min-width: 0;
 }
 
 .profile-header__url-editor {
@@ -425,25 +395,101 @@
   padding: 0 12px;
 }
 
+/* Phones: one column in reading order. The 64px avatar sits beside the
+   name and meta line; then the lead (three lines), the links on one row,
+   the actions as a full-width row, and the trust line on one line. The
+   identity block dissolves so its parts can sit around the actions. */
+@media (max-width: 799px) {
+  .profile-header {
+    --profile-avatar-size: 64px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .profile-header > *,
+  .profile-header__identity > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .profile-header__identity {
+    display: contents;
+  }
+
+  .profile-header__banner {
+    order: 0;
+  }
+
+  .profile-header__avatar {
+    order: 1;
+    flex: 0 0 auto;
+    align-self: center;
+  }
+
+  .profile-header__title,
+  .profile-header__fields {
+    order: 2;
+    flex: 1 1 0;
+  }
+
+  .profile-header--editing .profile-header__fields {
+    flex-basis: 100%;
+  }
+
+  .profile-header__lead {
+    order: 3;
+    font-size: var(--text-body-sm);
+    line-height: 1.5;
+  }
+
+  .profile-header__links {
+    order: 4;
+    flex-wrap: nowrap;
+    margin-top: -4px;
+  }
+
+  .profile-header__website {
+    flex-shrink: 1;
+  }
+
+  .profile-header__links > li:not(.profile-header__website) {
+    flex-shrink: 0;
+  }
+
+  .profile-header__actions {
+    order: 5;
+    flex-wrap: nowrap;
+  }
+
+  /* The text buttons share the row; the More button keeps its size. */
+  .profile-header__actions > button,
+  .profile-header__actions > a {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .profile-header .profile-trust {
+    order: 6;
+  }
+}
+
 /* From 800px the header reads across: the avatar on the left, name and
-   details beside it, the viewer's actions on the right, the trust line
-   under the details. With a banner, the avatar lifts into it. */
+   details beside it, the viewer's actions on the right. */
 @media (min-width: 800px) {
   .profile-header {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "avatar identity actions"
-      ". trust trust";
-    gap: 16px 24px;
+    grid-template-areas: "avatar identity actions";
+    gap: 24px;
     align-items: start;
   }
 
   .profile-header--banner {
     grid-template-areas:
       "banner banner banner"
-      "avatar identity actions"
-      ". trust trust";
+      "avatar identity actions";
   }
 
   .profile-header__banner {
@@ -455,17 +501,8 @@
     height: 192px;
   }
 
-  .profile-header__top,
-  .profile-header--banner .profile-header__top {
-    display: contents;
-  }
-
   .profile-header__avatar {
     grid-area: avatar;
-  }
-
-  .profile-header--banner .profile-header__avatar {
-    margin: -64px 0 0 20px;
   }
 
   .profile-header__actions {
@@ -476,11 +513,11 @@
   .profile-header__identity,
   .profile-header__fields {
     grid-area: identity;
-    padding-top: 4px;
   }
 
-  .profile-header .profile-trust {
-    grid-area: trust;
+  /* Center a one-line name on the 96px avatar's upper half. */
+  .profile-header__identity {
+    padding-top: 8px;
   }
 }
 
@@ -567,12 +604,34 @@
   border-radius: var(--radius);
 }
 
-/* Phones: the trust-line links and the Permanent ID copy button are 44px
-   tall touch targets. */
+/* Phones: one line. The endorsers' names give way (an ellipsis) before
+   the follower count does. The links are 44px tall touch targets. */
 @media (max-width: 799px) {
-  .profile-trust__endorsed,
-  .profile-header__id {
+  .profile-trust {
+    flex-wrap: nowrap;
+    gap: 16px;
+    white-space: nowrap;
+  }
+
+  .profile-trust__endorsed {
+    flex: 0 1 auto;
     min-height: var(--control-h-md);
+  }
+
+  .profile-trust__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .profile-trust__counts {
+    flex-shrink: 0;
+  }
+
+  /* Beside the endorsers, the line keeps the follower count only; the
+     Followers tab has the following count. */
+  .profile-trust:has(.profile-trust__endorsed) .profile-trust__following {
+    display: none;
   }
 
   .profile-trust__count {
@@ -580,6 +639,11 @@
     align-items: center;
     gap: 0.25em;
     min-height: var(--control-h-md);
+  }
+
+  /* The links' 44px boxes carry the line's own space. */
+  .profile-header .profile-trust {
+    margin-block: -10px;
   }
 }
 
@@ -589,16 +653,20 @@
    don't fit (phones), running to the screen edges there, and stays pinned
    below the top bar while the page scrolls. */
 .profile-tabs {
+  position: relative;
   margin: 24px -16px 0;
+  background: var(--bg-canvas);
+}
+
+.profile-tabs__scroller {
   padding: 0 16px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
-  background: var(--bg-canvas);
 }
 
-.profile-tabs::-webkit-scrollbar {
+.profile-tabs__scroller::-webkit-scrollbar {
   display: none;
 }
 
@@ -607,6 +675,27 @@
   position: sticky;
   top: var(--chrome-top, var(--navbar-height));
   z-index: var(--z-rail-sticky);
+}
+
+/* A fade over an edge with more tabs past it (profile and record strips):
+   the canvas colour over the last 40px, so a cut-off tab reads as "scroll
+   for more". It stops above the strip's hairline. */
+.tab-strip-fade {
+  position: absolute;
+  top: 0;
+  bottom: 1px;
+  width: 40px;
+  pointer-events: none;
+}
+
+.tab-strip-fade--end {
+  right: 0;
+  background: linear-gradient(to right, transparent, var(--bg-canvas) 85%);
+}
+
+.tab-strip-fade--start {
+  left: 0;
+  background: linear-gradient(to left, transparent, var(--bg-canvas) 85%);
 }
 
 /* The phone top bar slides away on scroll down; the pinned strip (and the
@@ -638,6 +727,9 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   .profile-tabs {
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .profile-tabs__scroller {
     padding: 0;
   }
 
@@ -653,11 +745,44 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   min-width: 0;
 }
 
+/* Without a tab strip (a lone Overview), the panel keeps the header's
+   section rhythm: no gap where the strip would be. */
+.profile-page__panel--untabbed {
+  padding-top: 32px;
+}
+
+/* Phones: the header is compact, and so is the space around the tabs, so
+   the first of the account's work shows on the first screen. */
+@media (max-width: 799px) {
+  .profile-tabs {
+    margin-top: 16px;
+  }
+
+  .profile-page__panel {
+    padding-top: 20px;
+  }
+
+  .profile-page__panel--untabbed {
+    padding-top: 24px;
+  }
+
+  /* The other tabs: the header without its banner, lead, links and trust
+     line, so the tab's content starts on the first screen. */
+  .profile-header--compact .profile-header__banner,
+  .profile-header--compact .profile-header__lead,
+  .profile-header--compact .profile-header__links,
+  .profile-header--compact .profile-trust {
+    display: none;
+  }
+}
+
 .profile-page__about {
   max-width: var(--measure);
 }
 
-/* ---------- Overview ---------- */
+/* ---------- Overview ----------
+   A reading column (the account's work) and, from 1100px, a 320px rail of
+   fact cards beside it. On phones the rail follows the content. */
 
 .profile-overview {
   display: flex;
@@ -666,53 +791,24 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   min-width: 0;
 }
 
-/* Organisation About: text and type on the left, the map beside it. */
-.profile-overview__about {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-}
-
-.profile-overview__about-main {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-/* Stacked under the text (below 1100px) the map stays a modest size. */
-.profile-overview__about .profile-overview__location {
-  max-width: 480px;
-}
-
-/* About excerpt: the first lines of the long description. When it runs
-   longer, the last line fades and "Read more" opens the About tab. */
-.profile-overview__about-excerpt {
-  max-width: var(--measure);
-  max-height: 9.6em;
-  overflow: hidden;
-  font-size: var(--text-body);
-  line-height: 1.6;
-  color: var(--fg-secondary);
-}
-
-.profile-overview__about-excerpt--clamped {
-  -webkit-mask-image: linear-gradient(to bottom, var(--mask-opaque) 70%, transparent);
-  mask-image: linear-gradient(to bottom, var(--mask-opaque) 70%, transparent);
-}
-
-.profile-overview__hint {
-  margin: 0;
-  font-size: var(--text-ui);
-  color: var(--fg-muted);
-}
-
-.profile-overview__columns {
+.profile-overview__main {
   display: flex;
   flex-direction: column;
   gap: 32px;
   min-width: 0;
+}
+
+.profile-overview__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.profile-overview__rail-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .profile-overview__section {
@@ -729,24 +825,163 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   gap: 12px;
 }
 
+.profile-overview__hint {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--fg-muted);
+}
+
+.profile-overview__about {
+  max-width: var(--measure);
+}
+
+/* Activities and projects are work cards (record-page.css, `.work-card`);
+   this is their loading shape: the 16:9 frame over two lines. */
+.profile-overview__card-skeleton {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.profile-overview__card-skeleton-image {
+  aspect-ratio: 16 / 9;
+}
+
+/* "Supports": the accounts it endorsed, avatar and name, three a row
+   (two on phones). */
+.profile-supports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 800px) {
+  .profile-supports {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.profile-supports__item {
+  display: flex;
+  min-width: 0;
+}
+
+.profile-supports__link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px;
+  margin-inline: -8px;
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-supports__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.profile-supports__link:hover {
+    background: var(--overlay-weak);
+  }
+}
+
+.profile-supports__name {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.profile-overview__endorse-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ---------- Facts (the Overview's rail) ---------- */
+
+.profile-facts__handle {
+  overflow-wrap: anywhere;
+}
+
+.profile-facts__id {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-facts__id-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-variant-numeric: slashed-zero;
+  overflow-wrap: anywhere;
+}
+
+/* The page's loading body: the tab strip's labels over the Overview. */
+.profile-page__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.profile-page__skeleton-tabs {
+  display: flex;
+  gap: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 @media (min-width: 800px) {
   .profile-overview,
-  .profile-overview__columns {
+  .profile-overview__main {
     gap: 48px;
   }
 }
 
-@media (min-width: 1100px) {
-  .profile-overview__about--with-map {
+/* Between 800 and 1100px the rail follows the content, its cards side by
+   side rather than stretched across the page. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .profile-overview__rail,
+  .profile-overview__rail-skeleton {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 48px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
   }
 
-  .profile-overview__columns {
+  .profile-overview__rail > .profile-overview__rail-skeleton {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1100px) {
+  .profile-overview {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
   }
 }

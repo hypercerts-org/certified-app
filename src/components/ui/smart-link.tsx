@@ -83,6 +83,34 @@ export default function SmartLink({ url, className }: SmartLinkProps) {
   )
 }
 
+export interface LinkDescription {
+  /** The URL to open (scheme added when missing). */
+  href: string
+  Icon: IconComponent
+  /** Short text for the link: "@handle", or the bare host. */
+  display: string
+  /** The service's name ("Facebook", "X", …), or null for a website. */
+  service: string | null
+}
+
+/**
+ * What SmartLink knows about a URL, for surfaces that draw it their own
+ * way (the profile header shows a website as text and social accounts as
+ * labelled icon buttons). Null for a URL that isn't http(s).
+ */
+export function describeLink(url: string): LinkDescription | null {
+  const href = normaliseHref(url)
+  if (!href) return null
+  let parsed: URL
+  try {
+    parsed = new URL(href)
+  } catch {
+    return null
+  }
+  const { Icon, display } = detectService(parsed)
+  return { href, Icon, display, service: SERVICE_NAMES.get(Icon) ?? null }
+}
+
 /* -------------------------------------------------------------------------- */
 /* URL normalisation                                                          */
 /* -------------------------------------------------------------------------- */
@@ -213,6 +241,24 @@ function detectService(url: URL): ServiceMatch {
   // to justify the extra characters in a sidebar list.
   return { Icon: LinkIcon, display: host }
 }
+
+/** The service each brand icon stands for, for accessible names. */
+const SERVICE_NAMES = new Map<IconComponent, string>([
+  [XIcon, "X"],
+  [GitHubIcon, "GitHub"],
+  [LinkedInIcon, "LinkedIn"],
+  [BlueskyIcon, "Bluesky"],
+  [InstagramIcon, "Instagram"],
+  [YouTubeIcon, "YouTube"],
+  [MastodonIcon, "Mastodon"],
+  [TelegramIcon, "Telegram"],
+  [FacebookIcon, "Facebook"],
+  [TikTokIcon, "TikTok"],
+  [MediumIcon, "Medium"],
+  [ThreadsIcon, "Threads"],
+  [DiscordIcon, "Discord"],
+  [TwitchIcon, "Twitch"],
+])
 
 const RESERVED_TWITTER = new Set([
   "home",

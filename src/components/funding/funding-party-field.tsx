@@ -248,6 +248,7 @@ export default function FundingPartyField({
           <HydratedIdentityRow
             did={account.did}
             noLink
+            showHandle
             className="funding-party__chip-identity"
           />
           <button

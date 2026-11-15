@@ -126,5 +126,14 @@ export interface StrongRef {
   cid: string
 }
 
-/** The three accepted on-wire shapes for `longDescription`. */
-export type LongDescriptionValue = string | LinearDocument | StrongRef
+/** `org.hypercerts.defs#descriptionString`: plain text (or markdown),
+ *  the shape other clients write for a long description. */
+export interface DescriptionString {
+  $type?: "org.hypercerts.defs#descriptionString"
+  value: string
+  facets?: unknown[]
+}
+
+/** The accepted on-wire shapes for `longDescription` (the lexicon's three
+ *  union arms, plus the legacy bare string). */
+export type LongDescriptionValue = string | DescriptionString | LinearDocument | StrongRef

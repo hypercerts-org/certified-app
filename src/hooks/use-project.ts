@@ -1,10 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { authFetch } from "@/lib/auth/fetch"
 import type { CollectionValue } from "@/lib/atproto/collection"
 
 const COLLECTION = "org.hypercerts.collection"
+
+/** The error a missing project reads as, so the page can say "not found"
+ *  rather than "couldn't load". */
+export const PROJECT_NOT_FOUND = "Project not found"
 
 export interface SingleProject {
   uri: string
@@ -16,8 +20,10 @@ export interface SingleProject {
 
 /**
  * Fetch a single `org.hypercerts.collection` project record by author
- * DID + rkey. Mirrors `useActivity` — uses our XRPC proxy so foreign
- * PDSes resolve transparently.
+ * DID + rkey. Mirrors `useActivity`: uses our XRPC proxy so foreign
+ * PDSes resolve transparently. `error` is {@link PROJECT_NOT_FOUND} when
+ * the record doesn't exist, another message when it couldn't be read;
+ * `refetch` tries again.
  */
 export function useProject(
   did: string | null,
@@ -26,10 +32,13 @@ export function useProject(
   project: SingleProject | null
   isLoading: boolean
   error: string | null
+  refetch: () => void
 } {
   const [project, setProject] = useState<SingleProject | null>(null)
   const [isLoading, setIsLoading] = useState(!!(did && rkey))
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const refetch = useCallback(() => setReloadKey((k) => k + 1), [])
 
   useEffect(() => {
     if (!did || !rkey) {
@@ -59,9 +68,12 @@ export function useProject(
         )
         if (signal.aborted) return
         if (!res.ok) {
+          // The PDS answers a well-formed read of a missing record with
+          // 400 (RecordNotFound), which the proxy passes through; 404 is
+          // an account with no PDS. Anything else is a failure to load.
           throw new Error(
-            res.status === 404
-              ? "Project not found"
+            res.status === 404 || res.status === 400
+              ? PROJECT_NOT_FOUND
               : "Couldn't load this project. Try again.",
           )
         }
@@ -90,7 +102,7 @@ export function useProject(
 
     run()
     return () => controller.abort()
-  }, [did, rkey])
+  }, [did, rkey, reloadKey])
 
-  return { project, isLoading, error }
+  return { project, isLoading, error, refetch }
 }

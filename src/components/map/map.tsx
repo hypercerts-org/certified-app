@@ -72,6 +72,10 @@ export interface MapProps {
   /** Small maps: the tile credit behind an "i" button instead of
    *  Leaflet's two-line strip, which covers a quarter of a small map. */
   compactAttribution?: boolean
+  /** The closest zoom the fit to several shapes may reach (15 by
+   *  default). A region shown on its own sets it lower, so the map
+   *  shows where the region is, not only its inside. */
+  fitMaxZoom?: number
 }
 
 /**
@@ -94,6 +98,7 @@ export default function Map({
   scrollWheelZoom,
   onMapClick,
   compactAttribution = false,
+  fitMaxZoom = 15,
 }: MapProps) {
   const allowScrollWheelZoom =
     scrollWheelZoom !== undefined ? scrollWheelZoom : interactive
@@ -139,7 +144,7 @@ export default function Map({
         style={{ width: "100%", height: "100%" }}
       >
         <BaseTiles />
-        <FitBoundsOnShapes pins={pins} polygons={polygons} />
+        <FitBoundsOnShapes pins={pins} polygons={polygons} maxZoom={fitMaxZoom} />
         {onMapClick ? <ClickHandler onClick={onMapClick} /> : null}
         {pins.map((p, i) => (
           <Marker key={`${p.lat}-${p.lng}-${i}`} position={[p.lat, p.lng]}>
@@ -161,13 +166,13 @@ export default function Map({
               // Documented exception to the "tokens only" rule (CLAUDE.md
               // rule 2): Leaflet styles SVG paths from JS and cannot read
               // CSS custom properties, so these literals can't be tokens.
-              // They mirror --color-accent (#5e5e5e) in tokens.css — keep
-              // the two in sync by hand if the accent changes.
+              // White over the satellite tiles, which look the same in
+              // both themes: a grey edge disappeared into the imagery.
               pathOptions={{
-                color: "#5e5e5e",
-                weight: 1.5,
-                fillColor: "#5e5e5e",
-                fillOpacity: 0.15,
+                color: "#ffffff",
+                weight: 2,
+                fillColor: "#ffffff",
+                fillOpacity: 0.18,
               }}
             >
               {poly.label ? <Popup>{poly.label}</Popup> : null}
@@ -246,9 +251,11 @@ function BaseTiles() {
 function FitBoundsOnShapes({
   pins,
   polygons,
+  maxZoom,
 }: {
   pins: MapPin[]
   polygons: MapPolygon[]
+  maxZoom: number
 }) {
   const map = useMap()
   const firstRunRef = useRef(true)
@@ -276,9 +283,9 @@ function FitBoundsOnShapes({
       return
     }
     const bounds = L.latLngBounds(allPoints)
-    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 })
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinsKey, polyKey, map])
+  }, [pinsKey, polyKey, map, maxZoom])
 
   return null
 }

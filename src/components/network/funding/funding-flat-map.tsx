@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import type { ProjectTotal } from "@/lib/funding/select"
-import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
+import { fineLandReady, landFor, loadFineLand } from "@/lib/funding/land-grid"
 import { formatCount } from "@/lib/funding/format"
 import { useCanvasColors, useElementWidth } from "./use-element-width"
 import FundingProjectTip from "./funding-project-tip"
@@ -19,14 +19,16 @@ const START_LNG = 10
 /** Closest zoom, as a multiple of the whole world across the width: close
  *  enough to tell New Zealand's projects apart. */
 const MAX_ZOOM = 12
-/** Largest land dot, in pixels. Closer in, land is a finer grid of dots
- *  rather than bigger ones: the grid is 1.5 degrees, too coarse to draw. */
+/** Largest land dot, in pixels. */
 const MAX_DOT = 2.6
+/** Least gap between land dots, in pixels: zooming in switches to a finer
+ *  grid (land-grid.ts) as soon as its dots are this far apart, so
+ *  coastlines gain dots instead of the dots spreading out. */
+const LAND_GAP = 4.4
 const MAX_HEIGHT = 1100
 /** Names on the whole-world map; more as it zooms in, where they fit. */
 const LABELS = 5
 
-let landBits: Uint8Array | null = null
 
 interface View {
   lng: number
@@ -96,6 +98,11 @@ export default function FundingFlatMap({
   const kick = useRef<() => void>(() => {})
   /** The view, as far as the buttons need it. */
   const [ui, setUi] = useState({ z: 1, moved: false })
+  // The fine land grid, loaded once the map is on screen.
+  const [fineLand, setFineLand] = useState(fineLandReady)
+  useEffect(() => {
+    if (!fineLand) void loadFineLand().then(setFineLand)
+  }, [fineLand])
 
   /** Keep the map filling its box: zoom within limits, no sky below the
    *  land's north edge or south of it. */
@@ -180,8 +187,6 @@ export default function FundingFlatMap({
     canvas.style.height = `${height}px`
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    landBits ??= unpackLandMask()
-    const bits = landBits
     const scale = Math.max(0.45, width / 1000)
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const clampHere = (v: View) => clampView(v, unit, height, zMax)
@@ -201,28 +206,26 @@ export default function FundingFlatMap({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, width, height)
 
-      // Land: one path of dots.
-      const dot = Math.min(MAX_DOT, Math.max(0.7, LAND_MASK.step * s * 0.26))
+      // Land: one path of dots, from the grid that suits this zoom. Only
+      // the cells in view; columns run on past the date line and wrap.
+      const land = landFor(s, LAND_GAP)
+      const dot = Math.min(MAX_DOT, Math.max(0.7, land.step * s * 0.26))
       ctx.fillStyle = colors.muted
       ctx.globalAlpha = 0.4
       ctx.beginPath()
-      const plot = (x: number, y: number) => {
-        if (x < -dot || x > width + dot) return
-        ctx.moveTo(x + dot, y)
-        ctx.arc(x, y, dot, 0, Math.PI * 2)
-      }
-      for (let row = 0; row < LAND_MASK.rows; row++) {
-        const lat = LAND_MASK.lat0 - row * LAND_MASK.step
-        if (lat < LAT_TOP - LAT_SPAN) break
-        const y = yOf(lat)
-        if (y < -dot || y > height + dot) continue
-        for (let col = 0; col < LAND_MASK.cols; col++) {
-          if (!bits[row * LAND_MASK.cols + col]) continue
-          const x = xOf(LAND_MASK.lon0 + col * LAND_MASK.step)
-          plot(x, y)
-          // The same dot one world over, where the map wraps.
-          if (x < dot) plot(x + world, y)
-          else if (x > width - dot) plot(x - world, y)
+      const half = width / 2 / s
+      const r0 = Math.max(0, Math.floor((land.lat0 - (v.lat + height / 2 / s)) / land.step))
+      const r1 = Math.min(land.rows - 1, Math.ceil((land.lat0 - (v.lat - height / 2 / s)) / land.step))
+      const c0 = Math.floor((v.lng - half - land.lon0) / land.step) - 1
+      const c1 = c0 + Math.ceil((2 * half) / land.step) + 2
+      for (let row = r0; row <= r1; row++) {
+        const y = yOf(land.lat0 - row * land.step)
+        const base = row * land.cols
+        for (let c = c0; c <= c1; c++) {
+          if (!land.bits[base + (((c % land.cols) + land.cols) % land.cols)]) continue
+          const x = cx + (land.lon0 + c * land.step - v.lng) * s
+          ctx.moveTo(x + dot, y)
+          ctx.arc(x, y, dot, 0, Math.PI * 2)
         }
       }
       ctx.fill()
@@ -316,7 +319,7 @@ export default function FundingFlatMap({
       kick.current = () => {}
     }
     // clampView reads unit, height and zMax, which are listed.
-  }, [width, height, unit, zMax, colors, placed, maxTotal, ds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [width, height, unit, zMax, colors, placed, maxTotal, ds, fineLand]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A project picked elsewhere (the tiles, the list) comes into view.
   useEffect(() => {

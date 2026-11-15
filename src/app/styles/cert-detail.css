@@ -74,130 +74,30 @@
     grid-column: 1;
     grid-row: 1;
   }
-
-  /* Full-bleed tabs: drop the supplementary aside so the content spans the
-     full width of both panes. The Contributors tab carries the deluxe board
-     above the list; Funding / Updates just want the room. (Only Overview
-     keeps the aside.) */
-  .cert-detail--wide.cert-detail--tab-contributors.page-layout,
-  .cert-detail--wide.cert-detail--tab-funding.page-layout,
-  .cert-detail--wide.cert-detail--tab-updates.page-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .cert-detail--wide.cert-detail--tab-contributors.page-layout > .cert-detail__aside,
-  .cert-detail--wide.cert-detail--tab-funding.page-layout > .cert-detail__aside,
-  .cert-detail--wide.cert-detail--tab-updates.page-layout > .cert-detail__aside {
-    display: none;
-  }
-
-  /* Overview: the summary, description and latest update sit beside the
-     details column; the funding and locations sections run the full page
-     width below both, so the Funding header's actions share the right
-     edge with the record's Edit and menu (and with the Funding tab, which
-     is full width too). A hairline closes the two-column block above them. */
-  .cert-detail--wide.page-layout > .cert-detail__content--lower {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-  .cert-detail__content--lower > .cert-detail__section:first-child {
-    border-top: 1px solid var(--border-subtle);
-  }
 }
 
-/* ---------- Mobile reading reorder (single column) ----------
-   On phones the two-column reading view collapses into one prescribed
-   vertical order. The DOM keeps its desktop structure; `display:
-   contents` dissolves the aside / main / meta wrappers so their leaf
-   blocks become direct items of the single-column `.page-layout` grid,
-   and `order` sequences them (the record header and the section tabs sit
-   above the grid, outside it):
-
-     1 headline   2 image   3 summary
-     4 time period   5 work scope   6 contributors   7 rights
-     8 the tab's content (on Overview: description, latest update)
-     9 the Overview's full-width sections (funding, locations)
-
-   The create and edit activity forms reuse this grid (`.create-cert`)
-   with their own order; see "Activity create / edit form" below. */
+/* ---------- Activity form: one column on phones ----------
+   The create and edit activity forms (`.create-cert`) keep the two-pane
+   DOM (details aside first, so desktop can place it in column 2). On
+   phones `display: contents` dissolves the aside / main / details
+   wrappers so their fields become items of the single-column grid, and
+   the form sequences them (see "Activity create / edit form" below). The
+   record pages don't use this grid: their phone order is their source
+   order (`.record-layout`). */
 @media (max-width: 799px) {
   /* Single-column grid with a 0-floored track so promoted leaves can
-     never push the page wider than the viewport. (The default implicit
-     `auto` track sizes to content and overflows on wide items.) */
-  .cert-detail--wide:not(.cert-detail--editing) {
+     never push the page wider than the viewport. */
+  .create-cert.cert-detail--wide {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__aside,
-  .cert-detail--wide:not(.cert-detail--editing) > .cert-detail__main,
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta {
+  .create-cert.cert-detail--wide > .cert-detail__aside,
+  .create-cert.cert-detail--wide > .cert-detail__main,
+  .create-cert.cert-detail--wide .cert-detail__meta {
     display: contents;
   }
 
-  /* The summary is rendered as a sibling of the tab panel (see
-     activity-detail.tsx) so the details rows can sit between it and the
-     tab content. The panel itself (`.cert-detail__content`) follows them
-     as a single unit, and the Overview's full-width panel
-     (`.cert-detail__content--lower`: funding, locations) comes last. */
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__headline {
-    order: 1;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__image {
-    order: 2;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section--summary {
-    order: 3;
-  }
-  .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--timeperiod {
-    order: 4;
-  }
-  .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--workscope {
-    order: 5;
-  }
-  .cert-detail--wide:not(.cert-detail--editing)
-    .cert-detail__meta-row--contributors {
-    order: 6;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__meta-row--rights {
-    order: 7;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content {
-    order: 8;
-  }
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__content--lower {
-    order: 9;
-  }
-
-  /* The single-column grid already provides a uniform 24px row gap
-     between every promoted leaf (headline, image, each meta-row).
-     The promoted `.cert-detail__section` blocks (Summary, Locations)
-     carry their own `margin-top: 4px` + `padding-top: 24px` from the
-     desktop two-column layout, which stacked extra space on top of the
-     grid gap and made those sections sit noticeably farther from the
-     preceding element than the meta-rows do. Zero them so the grid gap
-     is the only spacing — every element is then a consistent 24px apart. */
-  .cert-detail--wide:not(.cert-detail--editing) .cert-detail__section,
-  .cert-detail--wide:not(.cert-detail--editing) .context-updates {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-  }
-
-  /* Contributors / Funding / Updates tabs: the image and the Overview's
-     details rows drop out so the tab's own content follows the strip. */
-  .cert-detail--tab-contributors .cert-detail__image,
-  .cert-detail--tab-funding .cert-detail__image,
-  .cert-detail--tab-updates .cert-detail__image,
-  .cert-detail--tab-contributors .cert-detail__meta-row,
-  .cert-detail--tab-funding .cert-detail__meta-row,
-  .cert-detail--tab-updates .cert-detail__meta-row {
-    display: none;
-  }
-
-  /* Updates tab: the first update sits right under the tab strip. */
-  .cert-detail--wide.cert-detail--tab-updates:not(.cert-detail--editing)
-    .context-updates {
+  .create-cert.cert-detail--wide .context-updates {
     margin-top: 0;
     padding-top: 0;
     border-top: none;
@@ -344,102 +244,12 @@
   gap: 12px;
 }
 
-.cert-detail__short-desc {
-  font-size: var(--text-body);
-  line-height: 1.6;
-  color: var(--fg-secondary);
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
 /* Count beside a field label ("Contributors 3"): muted and tabular, so
    it reads as a number beside the label, not part of it. */
 .cert-detail__meta-count {
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
   font-weight: 400;
-}
-
-/* The per-tab content lives in `.cert-detail__content` (the
-   TabPanelTransition wrapper, which carries the desktop tab-switch slide;
-   the headline sits OUTSIDE it so the title stays put across tabs). It
-   mirrors `.cert-detail__main`'s flex column + 32px rhythm so spacing and
-   the section dividers below read exactly as before. */
-.cert-detail__content {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  min-width: 0;
-}
-
-/* An Overview with no description and no updates leaves the main panel
-   empty (funding and locations sit in the full-width panel below); drop
-   it so it adds no gap. */
-.cert-detail__content:empty {
-  display: none;
-}
-
-/* No divider above the Updates preview on the Overview — it reads as part
-   of the overview narrative, not a ruled-off section. (The mobile rule
-   above drops the base .context-updates border; this covers desktop.) */
-.cert-detail__content > .context-updates--overview {
-  border-top: none;
-}
-
-.cert-detail__headline-author {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  color: inherit;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  border-radius: var(--radius);
-}
-
-.cert-detail__headline-author:focus-visible {
-  background: var(--overlay-weak);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .cert-detail__headline-author:hover {
-    background: var(--overlay-weak);
-  }
-}
-
-/* The byline avatar: the shared Avatar at "sm" (32px), sized down to a
-   24px footprint here. */
-.cert-detail__headline-author > div:first-child {
-  width: 24px;
-  height: 24px;
-}
-
-/* Name over @handle. 1.3 leading so the two lines have air between them
-   (at 1.15 the handle touched the name). `.record-byline__value` sizes
-   every byline value to this pair's height. */
-.cert-detail__headline-author-meta {
-  display: inline-flex;
-  flex-direction: column;
-  line-height: 1.3;
-  min-width: 0;
-}
-
-.cert-detail__headline-name {
-  font-size: var(--text-body-sm);
-  font-weight: 500;
-  color: var(--fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cert-detail__headline-handle {
-  font-size: var(--text-caption);
-  color: var(--fg-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ---------- Details (right column) ----------
@@ -477,36 +287,6 @@
   gap: 4px;
 }
 
-/* A label with a trailing action (the Contributors "See all"): label
-   left, action at the row's trailing edge. */
-.cert-detail__meta-label--with-action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-}
-
-.cert-detail__meta-label-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.cert-detail__meta-value {
-  font-size: 0.875rem;
-  color: var(--fg-primary);
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.cert-detail__meta-aux {
-  color: var(--fg-muted);
-  font-size: 0.75rem;
-  margin-left: 4px;
-}
-
 /* Date / text inputs in the create and edit activity forms' details
    column. */
 .cert-detail__meta-input {
@@ -527,37 +307,6 @@
   box-shadow: var(--shadow-ring-weak);
 }
 
-.cert-detail__uri {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-  word-break: break-all;
-}
-
-/* The Rights meta value reads as plain text but opens the rights detail
-   modal on click — underline on hover signals it's interactive. */
-.cert-detail__rights-link {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cert-detail__rights-link:hover {
-  text-decoration: underline;
-}
-
-.cert-detail__rights-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
 /* ---------- Sections (contributors / locations / description) ---------- */
 
 .cert-detail__section {
@@ -571,48 +320,6 @@
 .cert-detail__main > .cert-detail__section:first-child {
   padding-top: 0;
   margin-top: 0;
-}
-
-/* Centered "Read full description" disclosure below the Overview summary.
-   Centres the design-system Button; matches the section top rhythm. */
-.cert-detail__desc-toggle {
-  display: flex;
-  justify-content: center;
-  /* The flex-column tab panel doesn't stretch this wrapper, so pin it to the
-     column width — otherwise justify-content centres within the button's own
-     width and it reads as left-aligned. */
-  width: 100%;
-  /* Pull the button up toward the summary: .cert-detail__main puts a 32px
-     flex gap between the summary and the content panel (shared by all tabs,
-     so not reduced globally). A negative top margin tightens just this
-     control to sit close under the summary. */
-  margin-top: -16px;
-}
-
-/* The chevron encodes the toggle: down to expand, flipped up once open.
-   Driven off the button's aria-expanded so state + visual can't drift.
-   (The global reduced-motion rule zeroes this transition.) */
-.cert-detail__desc-toggle-chevron {
-  transition: transform var(--transition-fast);
-}
-
-.cert-detail__desc-toggle-btn[aria-expanded="true"] .cert-detail__desc-toggle-chevron {
-  transform: rotate(180deg);
-}
-
-.cert-detail__content > .cert-detail__section + .cert-detail__section {
-  border-top: 1px solid var(--border-subtle);
-}
-
-/* Right-aligned cluster of section-header controls (Funding: Record
-   funding, the "Confirmed by" filter, See all), in a <SectionHeader>'s
-   action slot. Section headings themselves are always <SectionHeader>. */
-.cert-detail__section-actions {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  align-self: center;
 }
 
 /* ---------- Funding receipts list ----------
@@ -649,17 +356,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-/* Aside variant — tighter rows + flush left padding so the
-   contributor block fits the narrow meta column without feeling
-   crowded against the rounded card edge. */
-.cert-detail__contributors--aside {
-  gap: 0;
-}
-
-.cert-detail__contributors--aside .cert-detail__contributor {
-  padding: 4px 6px;
 }
 
 .cert-detail__contributor {
@@ -783,7 +479,6 @@
 }
 
 .cert-detail__map--skeleton {
-  height: 320px;
   background: linear-gradient(
     135deg,
     var(--bg-sunken) 0%,
@@ -791,64 +486,10 @@
   );
 }
 
-.cert-detail__map--empty {
-  height: 120px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--fg-muted);
-  font-size: 0.8125rem;
-}
-
-.cert-detail__map--empty p {
-  margin: 0;
-}
-
-.cert-detail__map-other {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8125rem;
-  color: var(--fg-secondary);
-}
-
-.cert-detail__map-other-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
-  min-width: 0;
-}
-
-.cert-detail__map-other-name {
-  font-weight: 500;
-  color: var(--fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cert-detail__map-other-detail {
-  color: var(--fg-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ---------- Locations names list (below the map) ----------
-   Renders every resolved location (mappable or not) so the viewer
-   can read the place name without hovering pins. Same visual
-   shape as the older `__map-other-*` list above but applied
-   universally — that older list only surfaced unmappable
-   fallbacks. */
+   Every place that can be named (a name, an address or rounded
+   coordinates), so the viewer can read it without opening a pin. Plain
+   rows: a pin, the name, a Plus Code tag when the name carried one. */
 
 .cert-detail__map-locations {
   list-style: none;
@@ -857,7 +498,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.8125rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
 }
 
@@ -865,10 +506,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  background: var(--overlay-weak);
   min-width: 0;
+  color: var(--fg-muted);
 }
 
 /* MapPin SVG anchoring the row. Without `flex-shrink: 0` the
@@ -880,20 +519,19 @@
   flex-shrink: 0;
 }
 
+/* The name wraps (a rail card is narrow) rather than losing its end. */
 .cert-detail__map-locations-name {
-  font-weight: 500;
+  min-width: 0;
   color: var(--fg-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
-.cert-detail__map-locations-detail {
-  color: var(--fg-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.cert-detail__map-locations-item {
+  align-items: flex-start;
+}
+
+.cert-detail__map-locations-item > svg {
+  margin-top: 3px;
 }
 
 /* Plus Code copy-paste pill. Quiet monospace tag — reads as
@@ -922,64 +560,6 @@
 .cert-detail__map-locations-plus:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
-}
-
-/* ---------- Byline project field ----------
-   The project in an activity's byline: its title (no thumbnail), wrapping
-   to two lines before it truncates. */
-
-.cert-detail__headline-project-value {
-  min-width: 0;
-}
-
-.cert-detail__headline-project-link {
-  /* Background-highlight on hover matches the Author cell —
-     same `overlay-weak` fill, same rounded chip, same
-     negative-margin trick so the highlight feels inset without
-     reflowing the row. */
-  display: inline-flex;
-  align-items: center;
-  color: var(--fg-primary);
-  text-decoration: none;
-  min-width: 0;
-  /* Cap to the (flex-grown) column so a long title wraps within the
-     cell instead of overflowing it; short titles still hug their
-     content so the hover chip doesn't stretch. */
-  max-width: 100%;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  border-radius: var(--radius);
-  transition: background var(--transition-fast);
-}
-
-.cert-detail__headline-project-link:focus-visible {
-  background: var(--overlay-weak);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .cert-detail__headline-project-link:hover {
-    background: var(--overlay-weak);
-  }
-
-  .cert-detail__headline-project-link--static:hover {
-    background: transparent;
-  }
-}
-
-.cert-detail__headline-project-link--static {
-  cursor: default;
-}
-
-.cert-detail__headline-project-title {
-  min-width: 0;
-  overflow: hidden;
-  /* Allow the project title to wrap to two lines before truncating
-     (was a single-line ellipsis). */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow-wrap: anywhere;
 }
 
 /* ---------- Activity create / edit form ----------
@@ -1614,17 +1194,22 @@
   position: relative;
 }
 
-.cert-detail__map-expand-btn {
+/* The positioned box for the "Larger map" button: the button's tooltip
+   wraps it in an inline span, so the span (not the button) must leave
+   the flow, or it draws an empty line under the map. */
+.cert-detail__map-expand {
   position: absolute;
   top: 8px;
   right: 8px;
   /* The sibling .certs-map is an isolated stacking context, so any
-     positive z paints this button above the whole map — no need to
-     outbid Leaflet's internal 200-700 pane values. */
+     positive z paints this above the whole map. */
   z-index: var(--z-local-raise);
-  /* Size, border, hover and focus come from <Button size="icon"
-     variant="secondary"> (the opaque fill is a utility on the call site,
-     since Tailwind utilities load after this file). */
+  display: flex;
+}
+
+/* The map fills its frame: no line box under Leaflet's container. */
+.cert-detail__map .certs-map {
+  display: block;
 }
 
 /* Modal variant of the map — drops the aside's narrow-column
@@ -1645,230 +1230,6 @@
   height: min(720px, 70vh);
 }
 
-
-/* ========== Record page (activity and project) ==========
-   The frame both record pages share (cert-detail-parts.tsx), the same at
-   every width: the record header (type eyebrow, the title as the page's
-   h1 with the record's actions beside it, the byline), the section tabs,
-   then the tab's content. */
-.record-page {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* The actions sit at the header's top-right at every width: on phones on
-   the eyebrow's row, so the title keeps the full width; from 800px on the
-   title's row, top-aligned so a long title wraps beside them. */
-.record-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "kind actions"
-    "title title"
-    "byline byline";
-  align-items: center;
-  column-gap: 16px;
-  row-gap: 4px;
-  min-width: 0;
-}
-
-@media (min-width: 800px) {
-  .record-head {
-    grid-template-areas:
-      "kind kind"
-      "title actions"
-      "byline byline";
-  }
-
-  .record-head__actions {
-    align-self: start;
-  }
-}
-
-/* The record type ("Activity", "Project"): the page's one eyebrow. */
-.record-head__kind {
-  grid-area: kind;
-  margin: 0;
-  font-size: var(--text-label);
-  font-weight: 600;
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
-  font-feature-settings: 'case' 1;
-  color: var(--fg-muted);
-}
-
-.record-head > .record-byline {
-  grid-area: byline;
-}
-
-.record-head__title {
-  grid-area: title;
-  min-width: 0;
-  margin: 0;
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: var(--text-h2);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
-  color: var(--fg-primary);
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
-.record-head__actions {
-  grid-area: actions;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* Byline: labelled fields in one row that wraps on narrow screens. */
-.record-byline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px 32px;
-  margin: 12px 0 0;
-}
-
-.record-byline__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* A long value (the project title) takes the rest of the row, and wraps
-   to its own row once less than ~14rem is left. */
-.record-byline__field--grow {
-  flex: 1 1 0;
-  min-width: min(100%, 14rem);
-}
-
-.record-byline__label {
-  font-size: var(--text-ui);
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--fg-secondary);
-}
-
-/* Values share the author's height (name over @handle at 1.3 leading,
-   taller than the 24px avatar) so the row's single-line values sit level
-   with it. */
-.record-byline__value {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  min-height: calc((var(--text-body-sm) + var(--text-caption)) * 1.3);
-  margin: 0;
-  font-size: var(--text-body-sm);
-  line-height: 1.4;
-  color: var(--fg-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-/* The owner's "Add to project" link in an empty Project field. The
-   ::after stretches the hit area to 44px for touch. */
-.record-byline__add-link {
-  position: relative;
-  color: var(--fg-primary);
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-color: var(--border-default);
-  text-underline-offset: 3px;
-  transition: text-decoration-color var(--transition-fast);
-}
-
-.record-byline__add-link::after {
-  content: "";
-  position: absolute;
-  inset: -12px -4px;
-}
-
-.record-byline__add-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .record-byline__add-link:hover {
-    text-decoration-color: currentColor;
-  }
-}
-
-/* Section tabs: one underline strip at every width, like the profile's.
-   It scrolls sideways when the tabs don't fit (phones), running to the
-   screen edges there, and stays pinned below the top chrome while the
-   page scrolls. */
-.record-tabs {
-  position: sticky;
-  top: var(--chrome-top, var(--navbar-height));
-  z-index: var(--z-rail-sticky);
-  margin: 24px -16px 0;
-  padding: 0 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  background: var(--bg-canvas);
-}
-
-.record-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-/* The phone top bar slides away on scroll down; the pinned strip then
-   moves up to the top edge instead of leaving a gap. */
-html:has(.navbar--hidden) .record-tabs {
-  top: 0;
-}
-
-.record-tabs__list {
-  display: flex;
-  min-width: 100%;
-  width: max-content;
-  gap: 20px;
-}
-
-.record-tabs__tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.record-tabs__tab:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
-  border-radius: var(--radius);
-}
-
-/* The tab's content starts 24px below the strip. */
-.record-tabs + * {
-  margin-top: 24px;
-}
-
-@media (min-width: 800px) {
-  .record-tabs {
-    margin-left: 0;
-    margin-right: 0;
-    padding: 0;
-  }
-
-  .record-tabs__list {
-    gap: 24px;
-  }
-}
-
-/* Header actions in a section (Funding: Record funding, the Confirmed-by
-   filter, See all) wrap rather than squeeze the title on phones. */
-.cert-detail__section-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
 
 /* ========== Inside <PageContainer> ==========
    Create, edit and record pages render in the PageContainer primitive,

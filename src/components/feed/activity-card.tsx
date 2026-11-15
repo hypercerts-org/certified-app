@@ -17,12 +17,23 @@ interface ActivityCardProps {
   record: ActivityRecord
   did: string
   label?: LabelValue
+  /** The author byline on top. Off where the page already names the
+   *  author (a profile's own activities). */
+  showAuthor?: boolean
+  /** The title's heading level: `h3` under a page's section heading. */
+  titleAs?: "h2" | "h3"
 }
 
 // Memoized: loadMore replaces the activities array with a new identity, so
 // every prior card would otherwise re-render. Props are stable per URI, so
 // React.memo lets unchanged cards bail out of reconciliation on long lists.
-function ActivityCard({ record, did, label }: ActivityCardProps) {
+function ActivityCard({
+  record,
+  did,
+  label,
+  showAuthor = true,
+  titleAs: TitleTag = "h2",
+}: ActivityCardProps) {
   const { value } = record
 
   const imageUrl = value.image
@@ -72,9 +83,9 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
         </div>
       )}
 
-      <h2 className="feed-card__title" dir="auto">
+      <TitleTag className="feed-card__title" dir="auto">
         {value.title?.trim() || "Untitled activity"}
-      </h2>
+      </TitleTag>
 
       {value.shortDescription && (
         <p className="feed-card__desc" dir="auto">{value.shortDescription}</p>
@@ -102,8 +113,8 @@ function ActivityCard({ record, did, label }: ActivityCardProps) {
   )
 
   return (
-    <article className="feed-card">
-      {did ? <ActivityAuthor did={did} /> : null}
+    <article className={`feed-card${showAuthor ? "" : " feed-card--no-author"}`}>
+      {did && showAuthor ? <ActivityAuthor did={did} /> : null}
 
       {detailHref ? (
         <Link href={detailHref} className="feed-card__body">

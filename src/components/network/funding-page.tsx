@@ -9,7 +9,6 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import StatRow from "@/components/ui/stat-row"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import Button from "@/components/ui/button"
 import { useFeedback } from "@/lib/feedback-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useUrlParam } from "@/hooks/use-url-param"
@@ -73,24 +72,20 @@ const LATEST = 6
 
 /**
  * Why most receipts so far are Ma Earth's, and an invitation to other
- * funding programs (the shared contact form, as on the landing page).
- * Shown while the data loads too, since that can take a minute.
+ * funding programs (the shared contact form, as on the landing page): a
+ * short card at the right end of the totals row.
  */
-function FundingIntro() {
+function FundingNote() {
   const { openFeedback } = useFeedback()
   return (
-    <aside className="funding-page__intro" aria-label="About this data">
+    <aside className="funding-note-card" aria-label="About this data">
       <p>
-        <b>Most of this comes from one round.</b> Ma Earth ran the first large funding round on Certified and
-        recorded its gifts here, so most receipts so far are theirs. As other funding programs record theirs, they
-        will show here too.
-      </p>
-      <div className="funding-page__intro-invite">
-        <p>Running a funding program? You can run it in the open here, with every gift on the record.</p>
-        <Button size="sm" variant="secondary" onClick={() => openFeedback("contact")}>
+        <b>Note:</b> most receipts so far come from one funding round, run by Ma Earth. As other programs run
+        theirs with Certified, they&apos;ll show here too. Running a funding program?{" "}
+        <button type="button" className="funding-page__see-all" onClick={() => openFeedback("contact")}>
           Get in touch
-        </Button>
-      </div>
+        </button>
+      </p>
     </aside>
   )
 }
@@ -129,7 +124,6 @@ export default function FundingPage() {
   return (
     <PageContainer className="funding-page">
       <PageHeader title="Funding" description="Who funds which work across the Certified network." />
-      <FundingIntro />
       {error && !ds ? (
         <ErrorMessage title="Funding didn't load" message={error} onRetry={retry} />
       ) : !ds || !summary || !counts ? (
@@ -139,17 +133,20 @@ export default function FundingPage() {
         </div>
       ) : (
         <>
-          <StatRow
-            aria-label="Funding in this selection"
-            className="funding-page__stats"
-            items={[
-              { label: "Received", value: formatUsd(summary.total) },
-              { label: "Gifts", value: formatCount(summary.count) },
-              { label: "Projects", value: formatCount(summary.projects) },
-              { label: "Named donors", value: formatCount(summary.namedDonors) },
-              { label: "Anonymous gifts", value: formatCount(summary.anonymous) },
-            ]}
-          />
+          <div className="funding-page__overview">
+            <StatRow
+              aria-label="Funding in this selection"
+              className="funding-page__stats"
+              items={[
+                { label: "Received", value: formatUsd(summary.total) },
+                { label: "Gifts", value: formatCount(summary.count) },
+                { label: "Projects", value: formatCount(summary.projects) },
+                { label: "Named donors", value: formatCount(summary.namedDonors) },
+                { label: "Anonymous gifts", value: formatCount(summary.anonymous) },
+              ]}
+            />
+            <FundingNote />
+          </div>
           <FundingConfirmedBy
             roles={confirmed.roles}
             counts={counts}

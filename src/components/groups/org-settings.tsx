@@ -727,6 +727,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                               displayName={member.displayName}
                               avatarUrl={member.avatarUrl}
                               size="sm"
+                              showHandle
                             />
                           </div>
                           <div className="org-members__item-actions">
@@ -852,6 +853,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
               displayName={m?.displayName}
               avatarUrl={m?.avatarUrl}
               size="sm"
+              showHandle
             />
           )
         }

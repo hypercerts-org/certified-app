@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import type { ProjectTotal } from "@/lib/funding/select"
-import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
+import { fineLandReady, landFor, loadFineLand } from "@/lib/funding/land-grid"
 import { formatCount } from "@/lib/funding/format"
 import { useCanvasColors, useElementWidth } from "./use-element-width"
 import FundingProjectTip from "./funding-project-tip"
@@ -19,31 +19,14 @@ const TILT_LIMIT = 60
 const MAX_ZOOM = 10
 /** Largest land dot, in pixels. */
 const MAX_DOT = 2.8
+/** Least gap between land dots at the front of the globe, in pixels: a
+ *  closer globe draws a finer grid (land-grid.ts). */
+const LAND_GAP = 6.2
 /** Names on the whole globe; more as it zooms in, where they fit. */
 const LABELS = 5
 /** Where the globe faces before anything is picked: the Atlantic, so the
  *  Americas, Europe and Africa are all in view. */
 const DEFAULT_VIEW = { lon: -30, lat: 12 }
-
-/** Land cells as [sin(lat), cos(lat), lon (rad)] triples, built once. */
-let land: Float32Array | null = null
-function landCells(): Float32Array {
-  if (land) return land
-  const bits = unpackLandMask()
-  const out: number[] = []
-  for (let row = 0; row < LAND_MASK.rows; row++) {
-    const lat = (LAND_MASK.lat0 - row * LAND_MASK.step) * RAD
-    // Meridians converge toward the poles; keep every n-th cell so the dots
-    // stay evenly spaced instead of crowding into stripes.
-    const stride = Math.max(1, Math.round(1 / Math.cos(lat)))
-    for (let col = 0; col < LAND_MASK.cols; col++) {
-      if (col % stride !== 0 || !bits[row * LAND_MASK.cols + col]) continue
-      out.push(Math.sin(lat), Math.cos(lat), (LAND_MASK.lon0 + col * LAND_MASK.step) * RAD)
-    }
-  }
-  land = new Float32Array(out)
-  return land
-}
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180
@@ -118,6 +101,11 @@ export default function FundingGlobe({
   const selectedRef = useRef(selected)
   const kick = useRef<() => void>(() => {})
   const [z, setZ] = useState(1)
+  // The fine land grid, loaded once the globe is on screen.
+  const [fineLand, setFineLand] = useState(fineLandReady)
+  useEffect(() => {
+    if (!fineLand) void loadFineLand().then(setFineLand)
+  }, [fineLand])
 
   const take = () => {
     spinning.current = false
@@ -218,7 +206,6 @@ export default function FundingGlobe({
     canvas.style.height = `${height}px`
     const ctx = canvas.getContext("2d")
     if (!ctx) return
-    const cells = landCells()
     const cx = width / 2
     const cy = height / 2
     const rScale = Math.max(0.5, R0 / 300)
@@ -244,31 +231,50 @@ export default function FundingGlobe({
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // Land, in four depth bands so each band is one fill. Closer in, the
-      // dots stay small and spread apart (the grid is 1.5 degrees).
-      const cell = Math.min(MAX_DOT, ((2 * Math.PI * R) / LAND_MASK.cols) * 0.24)
-      ctx.fillStyle = colors.muted
-      for (let band = 0; band < 4; band++) {
-        const lo = band / 4
-        const hi = (band + 1) / 4
-        ctx.beginPath()
-        for (let i = 0; i < cells.length; i += 3) {
-          const sinPhi = cells[i]
-          const cosPhi = cells[i + 1]
-          const dl = cells[i + 2] - lam0
+      // Land: the grid that suits this zoom (finer as it gets closer),
+      // only the cells that can be in view, in four depth bands so each
+      // band is one fill.
+      const land = landFor((Math.PI * R) / 180, LAND_GAP)
+      const cell = Math.min(MAX_DOT, ((Math.PI * R) / 180) * land.step * 0.24)
+      // How far from the middle of the view the canvas reaches, in degrees.
+      const reach = Math.hypot(width, height) / 2 >= R ? 90 : Math.asin(Math.hypot(width, height) / 2 / R) / RAD
+      const r0 = Math.max(0, Math.floor((land.lat0 - (v.lat + reach)) / land.step))
+      const r1 = Math.min(land.rows - 1, Math.ceil((land.lat0 - (v.lat - reach)) / land.step))
+      // Longitudes the view can reach: all of them if a pole is in sight.
+      const spread =
+        Math.abs(v.lat) + reach >= 89 ? 180 : Math.asin(Math.sin(reach * RAD) / Math.cos(v.lat * RAD)) / RAD
+      const c0 = Math.floor((v.lon - spread - land.lon0) / land.step) - 1
+      const c1 = spread >= 180 ? c0 + land.cols - 1 : Math.ceil((v.lon + spread - land.lon0) / land.step) + 1
+      const bands = [new Path2D(), new Path2D(), new Path2D(), new Path2D()]
+      for (let row = r0; row <= r1; row++) {
+        const phi = (land.lat0 - row * land.step) * RAD
+        const sinPhi = Math.sin(phi)
+        const cosPhi = Math.cos(phi)
+        // Meridians converge toward the poles; keep every n-th cell so the
+        // dots stay evenly spaced instead of crowding into stripes.
+        const stride = Math.max(1, Math.round(1 / cosPhi))
+        const base = row * land.cols
+        for (let c = c0; c <= c1; c++) {
+          const col = ((c % land.cols) + land.cols) % land.cols
+          if (col % stride !== 0 || !land.bits[base + col]) continue
+          const dl = (land.lon0 + c * land.step) * RAD - lam0
           const cosDl = Math.cos(dl)
           const cosc = sinP0 * sinPhi + cosP0 * cosPhi * cosDl
-          if (cosc <= lo || cosc > hi) continue
+          if (cosc <= 0) continue
           const x = cx + R * cosPhi * Math.sin(dl)
           const y = cy - R * (cosP0 * sinPhi - sinP0 * cosPhi * cosDl)
           const r = Math.max(0.5, cell * Math.sqrt(cosc))
           if (x < -r || x > width + r || y < -r || y > height + r) continue
-          ctx.moveTo(x + r, y)
-          ctx.arc(x, y, r, 0, Math.PI * 2)
+          const path = bands[Math.min(3, Math.floor(cosc * 4))]
+          path.moveTo(x + r, y)
+          path.arc(x, y, r, 0, Math.PI * 2)
         }
-        ctx.globalAlpha = 0.14 + 0.36 * ((lo + hi) / 2)
-        ctx.fill()
       }
+      ctx.fillStyle = colors.muted
+      bands.forEach((path, band) => {
+        ctx.globalAlpha = 0.14 + 0.36 * ((band + 0.5) / 4)
+        ctx.fill(path)
+      })
 
       // Projects, largest first so small ones stay on top.
       const grow = Math.pow(v.z, 0.2)
@@ -376,7 +382,7 @@ export default function FundingGlobe({
       io.disconnect()
       kick.current = () => {}
     }
-  }, [width, height, R0, colors, placed, maxTotal, ds])
+  }, [width, height, R0, colors, placed, maxTotal, ds, fineLand])
 
   // A project picked elsewhere (the map, the tiles) swings to the front.
   useEffect(() => {

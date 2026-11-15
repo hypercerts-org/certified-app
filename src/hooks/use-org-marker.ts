@@ -97,6 +97,11 @@ export function useOrgMarker(did: string | null): {
   urls: OrgUrlItem[]
   marker: GroupMetadata | null
   isLoading: boolean
+  /** The DID the current answer belongs to: `did` once its marker has been
+   *  read (or came from the cache), the previous DID (or null) before
+   *  that. A refresh keeps it, so a page can tell "not known yet" (show
+   *  neither a person nor an organization) from "re-reading". */
+  answeredFor: string | null
   /** Force a refetch (bypassing the module cache). Used by editors
    *  after a write so subsequent renders pick up the new record. */
   refresh: () => void
@@ -114,6 +119,9 @@ export function useOrgMarker(did: string | null): {
     did ? !cache.has(did) : false
   )
   const [refreshTick, setRefreshTick] = useState(0)
+  const [answeredFor, setAnsweredFor] = useState<string | null>(() =>
+    did && cache.has(did) ? did : null,
+  )
 
   // Adjust state during render when the DID or refresh tick changes,
   // re-running the cache-aware initializer expressions. The cache itself
@@ -126,6 +134,7 @@ export function useOrgMarker(did: string | null): {
     setPrevMarkerKey(markerKey)
     setResult(did ? cache.get(did) ?? initial() : initial())
     setIsLoading(did ? refreshTick > 0 || !cache.has(did) : false)
+    if (did && cache.has(did)) setAnsweredFor(did)
   }
 
   useEffect(() => {
@@ -145,6 +154,7 @@ export function useOrgMarker(did: string | null): {
       .then((res) => {
         if (cancelled) return
         setResult(res)
+        setAnsweredFor(did)
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -157,6 +167,7 @@ export function useOrgMarker(did: string | null): {
   return {
     ...result,
     isLoading,
+    answeredFor,
     refresh: () => setRefreshTick((t) => t + 1),
   }
 }

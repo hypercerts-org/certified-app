@@ -118,6 +118,8 @@ function ReceivedRow({
         note={endorsement.note}
         avatarSize="row"
         classes={ENDORSEMENT_ROW_CLASSES}
+        // The Workspace: the account tells the accounts apart by handle.
+        showHandle
         // On the name's line, so the date and the button keep their place.
         nameAside={hidden ? <Badge variant="tag">Hidden</Badge> : null}
         trailing={

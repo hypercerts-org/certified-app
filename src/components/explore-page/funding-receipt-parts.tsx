@@ -24,7 +24,7 @@ import type { FundingParty } from "@/lib/atproto/indexer"
 const ACTIVITY_COLLECTION = "org.hypercerts.claim.activity"
 const PROJECT_COLLECTION = "org.hypercerts.collection"
 
-/** Resolve a DID to an account byline (avatar + name + @handle) and render
+/** Resolve a DID to an account byline (avatar and name) and render
  *  it as an {@link IdentityRow}. Centralises the per-row `useAuthorInfo`
  *  hydration that every funding surface shares (transfer parties, the
  *  receipt creator, third-party attestors, the Confirmed-by filter list).
@@ -35,11 +35,14 @@ export function HydratedIdentityRow({
   size = "sm",
   className = "",
   noLink = false,
+  showHandle = false,
 }: {
   did: string
   size?: "sm" | "md"
   className?: string
   noLink?: boolean
+  /** `@handle` under the name, where telling accounts apart matters. */
+  showHandle?: boolean
 }) {
   const { info, isLoading } = useAuthorInfo(did)
   const handle = info?.handle ?? undefined
@@ -53,6 +56,7 @@ export function HydratedIdentityRow({
       displayName={info?.displayName ?? undefined}
       avatarUrl={info?.avatarUrl ?? undefined}
       href={noLink ? undefined : profileUrl(handle || did)}
+      showHandle={showHandle}
       size={size}
       className={className}
     />

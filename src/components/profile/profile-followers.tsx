@@ -13,6 +13,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { deleteFollow, type FollowRecord } from "@/lib/atproto/follow"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
+import SectionHeader from "@/components/ui/section-header"
 import Button from "@/components/ui/button"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import ProfilePersonRow from "@/components/profile/profile-person-row"
@@ -64,11 +65,27 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   // Acting as a group: unfollows route to the group's repo via the BFF.
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
+  const isThisAccount = isOwnProfile || (!!activeOrg && activeOrg.groupDid === did)
 
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const tab: SubTab = searchParams?.get("sub") === "following" ? "following" : "followers"
+  const urlTab: SubTab = searchParams?.get("sub") === "following" ? "following" : "followers"
+  // A visitor isn't shown a list known to be empty ("Following 0"): its
+  // segment goes, and with one list left there are no segments at all.
+  const followersZero =
+    !(followers.isLoading && followers.entries.length === 0) &&
+    (followers.count ?? followers.entries.length) === 0
+  const followingZero = !(following.isLoading && following.count === 0) && following.count === 0
+  const showFollowersSegment = isThisAccount || !followersZero
+  const showFollowingSegment = isThisAccount || !followingZero
+  const segmented = showFollowersSegment && showFollowingSegment
+  const tab: SubTab =
+    urlTab === "followers" && !showFollowersSegment && showFollowingSegment
+      ? "following"
+      : urlTab === "following" && !showFollowingSegment && showFollowersSegment
+        ? "followers"
+        : urlTab
   const setTab = useCallback(
     (next: SubTab) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -108,29 +125,32 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
       variant="segmented"
       className="profile-panel"
     >
-      <h2 className="sr-only">Followers and following</h2>
-      <div className="profile-panel__head">
-        <TabList aria-label="Followers sections">
-          <Tab
-            value="followers"
-            count={
-              followers.isLoading && followers.entries.length === 0
-                ? undefined
-                : followerCount
-            }
-          >
-            Followers
-          </Tab>
-          <Tab
-            value="following"
-            count={
-              following.isLoading && following.count === 0 ? undefined : following.count
-            }
-          >
-            Following
-          </Tab>
-        </TabList>
-      </div>
+      {/* The tab names the panel; the heading is for screen readers. */}
+      <SectionHeader title="Followers" titleHidden />
+      {segmented ? (
+        <div className="profile-panel__head">
+          <TabList aria-label="Followers sections">
+            <Tab
+              value="followers"
+              count={
+                followers.isLoading && followers.entries.length === 0
+                  ? undefined
+                  : followerCount
+              }
+            >
+              Followers
+            </Tab>
+            <Tab
+              value="following"
+              count={
+                following.isLoading && following.count === 0 ? undefined : following.count
+              }
+            >
+              Following
+            </Tab>
+          </TabList>
+        </div>
+      ) : null}
 
       {showTools ? (
         <PanelTools

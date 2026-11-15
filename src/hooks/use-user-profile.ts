@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { authFetch } from "@/lib/auth/fetch"
 import type { CertifiedProfile } from "@/lib/atproto/types"
@@ -34,6 +34,13 @@ export function useUserProfile(handleOrDid: string | null): {
   isOwnProfile: boolean
   isLoading: boolean
   error: string | null
+  /** Why `error` is set: "not-found" when the handle or DID names no
+   *  account (the resolver answered 400/404), "failed" when the lookup
+   *  itself failed (network, rate limit, server error) and a retry may
+   *  work. Null without an error. */
+  errorKind: "not-found" | "failed" | null
+  /** Look the profile up again (after a failed load). */
+  retry: () => void
   /** True when the resolved DID has an `app.certified.actor.profile`
    *  record with a populated displayName. Surfaces / chrome that
    *  want to flag bsky-sourced profile data ("Bluesky profile" tag
@@ -52,6 +59,10 @@ export function useUserProfile(handleOrDid: string | null): {
   const [hasBlueskyProfile, setHasBlueskyProfile] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<"not-found" | "failed" | null>(null)
+  // Bumped by `retry` to run the lookup again.
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -66,11 +77,13 @@ export function useUserProfile(handleOrDid: string | null): {
         setBannerUrl(null)
         setIsLoading(false)
         setError(null)
+        setErrorKind(null)
         return
       }
 
       setIsLoading(true)
       setError(null)
+      setErrorKind(null)
 
       try {
         // /api/resolve-did accepts either ?did=… or ?handle=… and does
@@ -80,10 +93,18 @@ export function useUserProfile(handleOrDid: string | null): {
         const url = handleOrDid.startsWith("did:")
           ? `/api/resolve-did?did=${encodeURIComponent(handleOrDid)}`
           : `/api/resolve-did?handle=${encodeURIComponent(handleOrDid)}`
-        const res = await authFetch(url, { signal })
+        // A retry skips the browser's HTTP cache, so it really asks again.
+        const res = await authFetch(url, {
+          signal,
+          ...(attempt > 0 ? { cache: "reload" as const } : {}),
+        })
         if (!res.ok) {
           if (signal.aborted) return
-          throw new Error("Profile not found")
+          // 400 / 404: the handle or DID names no account. Anything else
+          // (429, 5xx) is a failed lookup, not a missing profile.
+          throw new ProfileLookupError(
+            res.status === 400 || res.status === 404 ? "not-found" : "failed",
+          )
         }
         const data = (await res.json()) as {
           did: string
@@ -117,6 +138,8 @@ export function useUserProfile(handleOrDid: string | null): {
         if (signal.aborted) return
         console.error("Failed to load user profile:", err)
         setError(err instanceof Error ? err.message : "Failed to load profile")
+        // A network error (fetch rejects) is a failed load too.
+        setErrorKind(err instanceof ProfileLookupError ? err.kind : "failed")
         setProfile(null)
         setAvatarUrl(null)
         setBannerUrl(null)
@@ -128,7 +151,7 @@ export function useUserProfile(handleOrDid: string | null): {
 
     run()
     return () => controller.abort()
-  }, [handleOrDid])
+  }, [handleOrDid, attempt])
 
   const isOwnProfile = !!did && did === myDid
   // Hide bsky fallback values on the viewer's own profile when they
@@ -148,7 +171,16 @@ export function useUserProfile(handleOrDid: string | null): {
     isOwnProfile,
     isLoading,
     error,
+    errorKind,
+    retry,
     hasCertifiedProfile,
     hasBlueskyProfile,
+  }
+}
+
+/** A non-OK answer from the resolver, with what it means for the page. */
+class ProfileLookupError extends Error {
+  constructor(readonly kind: "not-found" | "failed") {
+    super(kind === "not-found" ? "Profile not found" : "Couldn't load the profile")
   }
 }

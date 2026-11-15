@@ -1,11 +1,11 @@
 "use client"
 
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useId, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
+import Link from "next/link"
+import { firstParagraphText, titleAndTeaser } from "@/lib/leaflet/strip-lead"
 import {
-  ChevronDown,
-  ChevronUp,
   ExternalLink,
   File,
   Pencil,
@@ -41,11 +41,11 @@ interface ContextUpdatesProps {
   /** Section heading override. Defaults to "Updates". */
   heading?: string
   /**
-   * "overview" clamps each update's body to a few lines with an inline
-   * "Read more" affordance per card; useful as a preview slot on the
-   * cert / project overview tab.
-   * "full" renders every update at full length — for the dedicated
-   * Updates subtab.
+   * "overview" shows each update as a teaser (its summary or first
+   * paragraph, and "Read the update" to `seeAllHref`) under a visible
+   * "Updates" heading: the preview slot on a record's Overview.
+   * "full" renders every update at full length, newest first, for the
+   * dedicated Updates tab, whose tab names it (no visible heading).
    */
   variant?: "overview" | "full"
   /**
@@ -121,13 +121,24 @@ export default function ContextUpdates({
     ) : null
 
   const headingId = useId()
-  const sectionHeader = (count: number, action: ReactNode) => (
-    <SectionHeader
-      id={headingId}
-      title={<SectionTitleCount label={heading} count={count} />}
-      action={action}
-    />
-  )
+  // The overview preview has a visible heading ("Updates" + its count and
+  // See all). On the Updates tab the tab names the list, so the heading is
+  // for screen readers only and the manage action gets its own row.
+  const sectionHeader = (count: number, action: ReactNode) =>
+    variant === "full" ? (
+      <>
+        <h2 id={headingId} className="sr-only">
+          {heading}
+        </h2>
+        {action ? <div className="context-updates__toolbar">{action}</div> : null}
+      </>
+    ) : (
+      <SectionHeader
+        id={headingId}
+        title={<SectionTitleCount label={heading} count={count} />}
+        action={action}
+      />
+    )
   const sectionClass =
     variant === "full"
       ? "context-updates context-updates--full"
@@ -192,17 +203,14 @@ export default function ContextUpdates({
         ),
       )}
       <ul className="context-updates__list">
-        {visibleUpdates.map((u, i) => (
-          // Clamp in both variants — the dedicated Updates subtab gets
-          // the same Read more / Show less affordance as the overview
-          // preview, so a single long update doesn't dominate the tab.
-          // The full (tab) variant numbers each update with a small
-          // heading; the overview preview doesn't.
+        {visibleUpdates.map((u) => (
+          // The overview preview is a teaser linking to the Updates tab;
+          // the tab shows each update in full.
           <UpdateCard
             key={u.uri}
             record={u}
-            clamp
-            heading={variant === "full" ? `Update ${i + 1}` : undefined}
+            teaser={variant !== "full"}
+            readHref={seeAllHref}
             base={manage ? base : null}
             viewerDid={viewerDid}
             onChanged={refetch}
@@ -216,12 +224,11 @@ export default function ContextUpdates({
 
 interface UpdateCardProps {
   record: ContextAttachmentRecord
-  /** When true, clamp the description to a few lines and surface a
-   *  "Read more" affordance if the content overflows. */
-  clamp: boolean
-  /** Small label above the card (e.g. "Update 1") — used on the
-   *  dedicated Updates tab to numerate the list. */
-  heading?: string
+  /** Show a teaser (summary or first paragraph) instead of the body,
+   *  with a link to the update in full (`readHref`). */
+  teaser: boolean
+  /** Where the full update is: the Updates tab. */
+  readHref?: string | null
   /** Base record URL (`/{actor}/{type}/{rkey}`) the edit route hangs
    *  off. Non-null ONLY in manage mode — when set, the card renders
    *  Edit + Delete affordances. */
@@ -238,16 +245,13 @@ interface UpdateCardProps {
 
 function UpdateCard({
   record,
-  clamp,
-  heading,
+  teaser,
+  readHref = null,
   base = null,
   viewerDid = null,
   onChanged,
   onDeleted,
 }: UpdateCardProps) {
-  const [expanded, setExpanded] = useState(false)
-  const [isTruncated, setIsTruncated] = useState(false)
-  const docWrapRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -303,52 +307,43 @@ function UpdateCard({
     .map((entry) => resolveAttachment(entry))
     .filter((a): a is ResolvedAttachment => a !== null)
 
-  // After render: if clamped and the description's scroll height
-  // exceeds the visible (clamped) height, surface the "Read more"
-  // toggle. Re-measure when the content reference identity changes.
-  useLayoutEffect(() => {
-    if (!clamp || expanded) {
-      setIsTruncated(false)
-      return
-    }
-    const el = docWrapRef.current
-    if (!el) return
-    setIsTruncated(el.scrollHeight - el.clientHeight > 2)
-  }, [clamp, expanded, value.description])
-
-  const docClass = clamp && !expanded
-    ? `context-updates__doc-wrap context-updates__doc-wrap--clamped${
-        isTruncated ? " context-updates__doc-wrap--truncated" : ""
-      }`
-    : "context-updates__doc-wrap"
+  // On Overview a teaser: the summary, else the body's first paragraph,
+  // a few lines of it, and a link to the update in full on the Updates
+  // tab. (Cutting the body itself sliced embedded videos in half.) A title
+  // cut short in the data is read whole from the body, and the body
+  // doesn't open by repeating the title.
+  const opening = shortDesc ?? firstParagraphText(value.description)
+  const told = titleAndTeaser(title, opening)
+  const shownTitle = told.title
+  const teaserText = teaser ? told.teaser : null
+  // Photos in a 3-up grid; on Overview the first three, the third
+  // saying how many more there are.
+  const images = attachments.filter((a) => a.kind === "image")
+  const others = attachments.filter((a) => a.kind !== "image")
+  const shownImages = teaser ? images.slice(0, 3) : images
+  const moreImages = images.length - shownImages.length
+  const doc =
+    !teaser && value.description ? (
+      <LeafletDocument
+        value={value.description}
+        did={authorDid ?? undefined}
+        className="context-updates__doc"
+        minHeadingLevel={3}
+      />
+    ) : null
 
   return (
     <li className="context-updates__item">
-      {heading ? (
-        <div className="context-updates__item-number-row">
-          <span className="context-updates__item-number">{heading}</span>
-          {createdLabel ? (
-            <time
-              className="context-updates__item-number-date"
-              dateTime={createdAt ?? undefined}
-            >
-              {createdLabel}
-            </time>
-          ) : null}
-        </div>
+      {/* When it was posted, over its title: the list reads by date,
+          newest first. */}
+      {createdLabel ? (
+        <time className="context-updates__when" dateTime={createdAt ?? undefined}>
+          {createdLabel}
+        </time>
       ) : null}
       <header className="context-updates__item-head">
-        {title ? (
-          <h3 className="context-updates__title" dir="auto">{title}</h3>
-        ) : null}
-        {/* Date lives in the numbered row when a heading is shown. */}
-        {!heading && createdLabel ? (
-          <time
-            className="context-updates__when"
-            dateTime={createdAt ?? undefined}
-          >
-            {createdLabel}
-          </time>
+        {shownTitle ? (
+          <h3 className="context-updates__title" dir="auto">{shownTitle}</h3>
         ) : null}
         {canManage ? (
           <span className="ml-auto flex items-center gap-1">
@@ -378,47 +373,49 @@ function UpdateCard({
         ) : null}
       </header>
 
-      {shortDesc ? <p className="context-updates__lead">{shortDesc}</p> : null}
-
-      {value.description ? (
+      {teaser ? (
         <>
-          <div ref={docWrapRef} className={docClass}>
-            <LeafletDocument
-              value={value.description}
-              did={authorDid ?? undefined}
-              className="context-updates__doc"
-              minHeadingLevel={3}
-            />
-          </div>
-          {clamp && (isTruncated || expanded) ? (
-            <button
-              type="button"
-              className="context-updates__expand"
-              onClick={() => setExpanded((v) => !v)}
-              aria-expanded={expanded}
-            >
-              {expanded ? (
-                <>
-                  Show less
-                  <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
-                </>
-              ) : (
-                <>
-                  Read more
-                  <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-                </>
-              )}
-            </button>
+          {teaserText ? (
+            <p className="context-updates__teaser" dir="auto">
+              {teaserText}
+            </p>
+          ) : null}
+          {readHref && value.description ? (
+            <Link href={readHref} className="record-link">
+              Read the update
+            </Link>
           ) : null}
         </>
+      ) : (
+        <>
+          {shortDesc ? <p className="context-updates__lead">{shortDesc}</p> : null}
+          {doc}
+        </>
+      )}
+
+      {shownImages.length > 0 && authorDid ? (
+        <ul
+          className="context-updates__photos"
+          aria-label={`${images.length} ${images.length === 1 ? "photo" : "photos"}`}
+        >
+          {shownImages.map((a, i) => (
+            <AttachmentTile
+              key={`${i}-${attachmentKey(a)}`}
+              attachment={a}
+              did={authorDid}
+              more={i === shownImages.length - 1 && moreImages > 0 ? moreImages : 0}
+              moreHref={readHref}
+            />
+          ))}
+        </ul>
       ) : null}
 
-      {attachments.length > 0 && authorDid ? (
+      {others.length > 0 && authorDid ? (
         <ul
           className="context-updates__attachments"
-          aria-label={`${attachments.length} attachment${attachments.length === 1 ? "" : "s"}`}
+          aria-label={`${others.length} attachment${others.length === 1 ? "" : "s"}`}
         >
-          {attachments.map((a, i) => (
+          {others.map((a, i) => (
             <AttachmentTile key={`${i}-${attachmentKey(a)}`} attachment={a} did={authorDid} />
           ))}
         </ul>
@@ -454,29 +451,49 @@ function attachmentKey(a: ResolvedAttachment): string {
 function AttachmentTile({
   attachment,
   did,
+  more = 0,
+  moreHref = null,
 }: {
   attachment: ResolvedAttachment
   did: string
+  /** A photo standing for `more` others not shown ("+3"), linking to the
+   *  update in full. */
+  more?: number
+  moreHref?: string | null
 }) {
   if (attachment.kind === "image") {
     const url = buildAvatarUrlFromCid(did, attachment.cid)
     if (!url) return null
+    const photo = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt="" loading="lazy" className="context-updates__attachment-img" />
+    )
+    if (more > 0 && moreHref) {
+      return (
+        <li className="context-updates__photo">
+          <Link
+            href={moreHref}
+            className="context-updates__photo-link"
+            aria-label={`${more} more ${more === 1 ? "photo" : "photos"} in the update`}
+          >
+            {photo}
+            <span className="context-updates__photo-more" aria-hidden="true">
+              +{more}
+            </span>
+          </Link>
+        </li>
+      )
+    }
     return (
-      <li className="context-updates__attachment context-updates__attachment--image">
+      <li className="context-updates__photo">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="context-updates__attachment-link"
-          aria-label="Open image in new tab"
+          className="context-updates__photo-link"
+          aria-label="Open photo in new tab"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt=""
-            loading="lazy"
-            className="context-updates__attachment-img"
-          />
+          {photo}
         </a>
       </li>
     )

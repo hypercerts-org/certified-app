@@ -23,6 +23,10 @@ interface ProfileTrustLineProps {
   did: string
   /** Path of the profile page, without the query. */
   basePath: string
+  /** The viewer's identity is this account. Only the account itself sees
+   *  "No endorsements yet" and a following count of zero; a visitor sees
+   *  what there is. */
+  isOwner?: boolean
 }
 
 /**
@@ -34,7 +38,11 @@ interface ProfileTrustLineProps {
  * so a visitor sees the people they already know; the rest follow newest
  * first. One endorser counts once, even with several awards.
  */
-export default function ProfileTrustLine({ did, basePath }: ProfileTrustLineProps) {
+export default function ProfileTrustLine({
+  did,
+  basePath,
+  isOwner = false,
+}: ProfileTrustLineProps) {
   const { did: viewerDid, isAuthenticated } = useAuth()
   const { activeOrg } = useOrg()
   const actingDid = activeOrg?.groupDid ?? viewerDid
@@ -66,15 +74,27 @@ export default function ProfileTrustLine({ did, basePath }: ProfileTrustLineProp
 
   const followerCount = followers.count
   const followingLoading = following.isLoading && following.count === 0
+  const endorsersLoading = received.isLoading && endorsers.length === 0
+  // A visitor isn't told about what isn't there.
+  const showFollowers = isOwner || followerCount !== 0
+  const showFollowing = isOwner || followingLoading || following.count > 0
+  const showNone = isOwner && !endorsersLoading && endorsers.length === 0
+  const nothing =
+    !endorsersLoading &&
+    endorsers.length === 0 &&
+    !showNone &&
+    !showFollowing &&
+    followerCount === 0
+  if (nothing) return null
 
   return (
     <div className="profile-trust">
-      {received.isLoading && endorsers.length === 0 ? (
+      {endorsersLoading ? (
         <div className="profile-trust__skeleton" aria-hidden>
-          <Skeleton variant="line" width={220} height={16} />
+          <Skeleton variant="line" width={200} height={16} />
         </div>
       ) : endorsers.length === 0 ? (
-        <p className="profile-trust__none">No endorsements yet</p>
+        showNone ? <p className="profile-trust__none">No endorsements yet</p> : null
       ) : (
         <Link
           href={`${basePath}?tab=endorsements`}
@@ -95,8 +115,11 @@ export default function ProfileTrustLine({ did, basePath }: ProfileTrustLineProp
 
       <div className="profile-trust__counts">
         {followerCount === null ? (
-          <Skeleton variant="line" width={72} height={14} aria-hidden />
-        ) : (
+          // A failed count is left out, not shown as a placeholder forever.
+          followers.error ? null : (
+            <Skeleton variant="line" width={72} height={14} aria-hidden />
+          )
+        ) : showFollowers ? (
           <Link
             href={`${basePath}?tab=followers`}
             scroll={false}
@@ -105,15 +128,19 @@ export default function ProfileTrustLine({ did, basePath }: ProfileTrustLineProp
             <strong>{formatGraphCount(followerCount)}</strong>{" "}
             {followerCount === 1 ? "follower" : "followers"}
           </Link>
-        )}
-        <span aria-hidden className="profile-trust__sep">·</span>
-        {followingLoading ? (
+        ) : null}
+        {showFollowers && showFollowing && !(followerCount === null && followers.error) ? (
+          <span aria-hidden className="profile-trust__sep profile-trust__following">
+            ·
+          </span>
+        ) : null}
+        {!showFollowing ? null : followingLoading ? (
           <Skeleton variant="line" width={72} height={14} aria-hidden />
         ) : (
           <Link
             href={`${basePath}?tab=followers&sub=following`}
             scroll={false}
-            className="profile-trust__count"
+            className="profile-trust__count profile-trust__following"
             title={
               following.truncated
                 ? "Showing the first 10,000 follows; this account has more."

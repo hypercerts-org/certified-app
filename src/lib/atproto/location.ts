@@ -76,8 +76,9 @@ function extractLocationString(location: unknown): string | null {
 }
 
 /** Try to parse common coordinate formats into a `{lat, lng}` pair.
- *  Returns null if the format isn't supported or the value is malformed. */
-function parseLocationCoords(
+ *  Returns null if the format isn't supported or the value is malformed.
+ *  A blob-held location needs `fetchLocationBlobText` first. */
+export function parseLocationCoords(
   locationType: string | undefined,
   location: unknown
 ): LatLng | null {
@@ -275,6 +276,7 @@ function validCoord(c: LatLng): LatLng | null {
 import { authFetch } from "@/lib/auth/fetch"
 import { writeToRepo } from "@/lib/atproto/repo-write"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
+import { getBlobRefLink } from "@/lib/atproto/types"
 
 const LOCATION_COLLECTION = "app.certified.location"
 const LP_VERSION = "v0.1.0"
@@ -296,7 +298,10 @@ export interface ParsedLocationStrongRef {
   uri: string
   cid: string
   name: string | null
-  coords: LatLng
+  /** The point, when the record holds one. */
+  coords: LatLng | null
+  /** The point or region, when one could be read. */
+  shape: LocationShape | null
 }
 
 export interface PutLocationOptions {
@@ -383,10 +388,50 @@ export async function putLocationRecord(
   })
 }
 
+/** `$type` of the blob arm of the location union. */
+const SMALL_BLOB_TYPE = "org.hypercerts.defs#smallBlob"
+
+/** Small blobs only: a coordinate pair or a modest GeoJSON shape. */
+const LOCATION_BLOB_MAX_BYTES = 1_000_000
+
 /**
- * Resolve a strongRef pointing at an `app.certified.location` record.
- * Returns `null` for missing records, malformed coordinate strings,
- * or strongRefs that don't point at this collection.
+ * When a location record's `location` is the `org.hypercerts.defs#smallBlob`
+ * variant, the coordinates live in a blob on the same repo: a 22-byte
+ * `text/plain` "-37.78,175.27" for `coordinate-decimal`, or a GeoJSON
+ * document for `geojson` / `geojson-polygon`. Fetch the blob's text so the
+ * same parsers can read it. Null for any other variant or a failed fetch.
+ */
+export async function fetchLocationBlobText(
+  did: string,
+  location: unknown,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  if (!location || typeof location !== "object") return null
+  const obj = location as Record<string, unknown>
+  if (obj.$type !== SMALL_BLOB_TYPE) return null
+  const blob = obj.blob as { ref?: unknown; size?: unknown } | null | undefined
+  if (!blob?.ref) return null
+  if (typeof blob.size === "number" && blob.size > LOCATION_BLOB_MAX_BYTES) return null
+  const cid = getBlobRefLink(blob.ref)
+  if (!cid || cid === "undefined" || cid === "[object Object]") return null
+  const params = new URLSearchParams({ did, cid })
+  try {
+    const res = await authFetch(`/api/xrpc/com/atproto/sync/getBlob?${params.toString()}`, {
+      signal,
+    })
+    if (!res.ok) return null
+    return await res.text()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Resolve a strongRef pointing at an `app.certified.location` record:
+ * its name, and its point (`coords`) or region (`shape`) when one can be
+ * read, inline or from a small blob. The name is kept when the geometry
+ * can't be read, so a place still shows by name. Returns `null` for
+ * missing records and strongRefs that don't point at this collection.
  */
 export async function readLocationStrongRef(
   ref: StrongRef,
@@ -410,17 +455,55 @@ export async function readLocationStrongRef(
       cid: string
       value: LocationRecord
     }
-    const coords = parseLocationCoords(body.value?.locationType, body.value?.location)
-    if (!coords) return null
+    const value = body.value ?? {}
+    let shape = parseLocationShape(value.locationType, value.location)
+    if (!shape) {
+      const blobText = await fetchLocationBlobText(parsed.did, value.location, signal)
+      if (blobText) shape = parseLocationShape(value.locationType, blobText)
+    }
+    const name = value.name?.trim() || null
+    if (!shape && !name) return null
     return {
       uri: body.uri,
       cid: body.cid,
-      name: body.value?.name?.trim() || null,
-      coords,
+      name,
+      coords: shape?.kind === "point" ? shape.point : null,
+      shape,
     }
   } catch {
     return null
   }
+}
+
+/**
+ * A short place label for a meta line: "Hamilton, New Zealand" from
+ * "25A Devon Road, Frankton, Hamilton 3204, New Zealand". Drops a leading
+ * Plus Code, street lines (parts that start with a number), postcodes and
+ * short region codes, then keeps the last two parts (town, country). A
+ * name with two parts or fewer passes through.
+ */
+export function shortPlaceName(name: string | null | undefined): string | null {
+  if (!name) return null
+  const clean = splitLocationName(name.trim()).name || name.trim()
+  const parts = clean
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (parts.length <= 2) return parts.join(", ") || null
+  const last = parts.length - 1
+  const kept = parts
+    .map((part, i) => {
+      if (i === last) return part
+      // A street line ("813 N 9th Ave", "25A Devon Road").
+      if (/^\d/.test(part)) return ""
+      // Postcodes ("Hamilton 3204", "AZ 85705") lose the number.
+      const noPostcode = part.replace(/\s+\d[\d\s-]*$/, "").trim()
+      // A bare region code ("AZ") says little next to the town.
+      if (/^[A-Z]{1,3}$/.test(noPostcode)) return ""
+      return noPostcode
+    })
+    .filter(Boolean)
+  return kept.slice(-2).join(", ") || clean
 }
 
 /** Extract just the rkey from a strongRef uri (used by the editor to

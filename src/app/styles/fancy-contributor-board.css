@@ -22,7 +22,7 @@
      surfaces reads as depth under the translucent tiles. */
   background:
     linear-gradient(135deg, var(--bg-raised) 0%, var(--bg-sunken) 100%);
-  box-shadow: var(--shadow-lg);
+  /* No shadow: a board is a card on the page (DESIGN.md §5). */
 }
 
 /* Drifting ambient light — two large radial blooms that slowly orbit behind

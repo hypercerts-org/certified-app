@@ -2,12 +2,17 @@
 
 import { useEffect, useRef } from "react"
 import { TabList, Tab } from "@/components/ui/tabs"
+import TabStripFades from "@/components/ui/tab-strip-fades"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 
 export interface ProfileTabItem {
   key: string
   label: string
   /** Non-interactive (e.g. while editing, only editable sections stay on). */
   disabled?: boolean
+  /** How many the section holds, as a muted number after the label
+   *  ("Activities 12"). Nothing while unknown. */
+  count?: string
 }
 
 interface ProfileTabsProps {
@@ -78,24 +83,30 @@ export default function ProfileTabs({ tabs, active, sticky = true }: ProfileTabs
     return () => observer.disconnect()
   }, [])
 
+  const edges = useOverflowEdges(stripRef)
+
   return (
     <div
-      ref={stripRef}
       className={`profile-tabs${sticky ? " profile-tabs--sticky" : ""}`}
       data-tour="profile-tabs"
     >
-      <TabList aria-label="Profile sections" className="profile-tabs__list">
-        {tabs.map((t) => (
-          <Tab
-            key={t.key}
-            value={t.key}
-            disabled={t.disabled}
-            className="profile-tabs__tab"
-          >
-            {t.label}
-          </Tab>
-        ))}
-      </TabList>
+      <div ref={stripRef} className="profile-tabs__scroller">
+        <TabList aria-label="Profile sections" className="profile-tabs__list">
+          {tabs.map((t) => (
+            <Tab
+              key={t.key}
+              value={t.key}
+              disabled={t.disabled}
+              count={t.count}
+              className="profile-tabs__tab"
+            >
+              {t.label}
+            </Tab>
+          ))}
+        </TabList>
+      </div>
+      {/* More tabs past an edge: a fade there says the strip scrolls. */}
+      <TabStripFades start={edges.start} end={edges.end} />
     </div>
   )
 }

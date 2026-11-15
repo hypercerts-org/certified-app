@@ -25,6 +25,20 @@ vi.mock("@/hooks/use-project-items", () => ({
   useProjectItems: () => ({ resolutions: [], isLoading: false }),
 }))
 
+vi.mock("@/hooks/use-record-funding", () => ({
+  useRecordFunding: () => ({
+    receipts: [],
+    isLoading: false,
+    error: null,
+    complete: true,
+    refetch: () => {},
+  }),
+}))
+
+// The map itself is Leaflet (client-only); the names under it are what
+// this test reads.
+vi.mock("@/components/map/map-dynamic", () => ({ default: () => null }))
+
 // The location resolution mirrors the edit page: parse the strongRef,
 // getRecord via authFetch, then splitLocationName(value.name). Control
 // the getRecord response per test.
@@ -70,9 +84,9 @@ describe("ProjectDetail location strongRef", () => {
       />,
     )
 
-    // The resolved place name appears in a Location meta row.
-    expect(await screen.findByText("Berlin")).toBeTruthy()
-    expect(screen.getByText("Location")).toBeTruthy()
+    // The resolved place name shows in the byline and the Location card.
+    expect((await screen.findAllByText("Berlin")).length).toBeGreaterThan(0)
+    expect(screen.getByRole("heading", { name: "Location" })).toBeTruthy()
 
     // The object shape must never leak as a stringified label.
     await waitFor(() => {

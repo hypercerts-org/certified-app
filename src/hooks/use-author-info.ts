@@ -13,6 +13,9 @@ export interface AuthorInfo {
   handle: string
   displayName: string | null
   avatarUrl: string | null
+  /** The profile's bio, when the resolver returned one (record pages show
+   *  its start in "Who's behind it"). */
+  description?: string | null
 }
 
 /**
@@ -28,6 +31,7 @@ function fetchAuthor(did: string): Promise<AuthorInfo> {
     handle: data?.handle || did,
     displayName: data?.displayName ?? null,
     avatarUrl: data?.avatar ?? null,
+    description: data?.description ?? null,
   }))
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useMemo } from "react"
-import { UserRoundCheck } from "lucide-react"
+import { ChevronDown, UserRoundCheck } from "lucide-react"
 import {
   Popover as UiPopover,
   PopoverContent,
@@ -60,8 +60,8 @@ export default function FundingConfirmedByPopover({
   open: boolean
   onOpenChange: (v: boolean) => void
   /** "chrome" — the /explore toolbar icon button (default). "section" — a
-   *  labelled secondary button matching the "Record funding" action on the
-   *  activity-detail Funding header. */
+   *  text-labelled secondary button ("Confirmed by"), beside "Record
+   *  funding" on a record page's Funding tab. */
   triggerVariant?: "chrome" | "section"
 }) {
   // Associate each checkbox section with its visible label for AT (the
@@ -100,19 +100,19 @@ export default function FundingConfirmedByPopover({
 
   return (
     <UiPopover open={open} onOpenChange={onOpenChange}>
-      <Tooltip label="Filter by confirmer">
+      {triggerVariant === "section" ? (
+        // Labelled: the words say what it filters, so no tooltip.
         <PopoverTrigger>
-          {triggerVariant === "section" ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              pressed={!isDefault}
-              className="cert-detail__section-action-btn"
-              aria-label={`Filter by confirmer${isDefault ? "" : " (filtered)"}`}
-            >
-              <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
-            </Button>
-          ) : (
+          <Button variant="secondary" size="sm" pressed={!isDefault}>
+            <UserRoundCheck size={14} strokeWidth={1.75} aria-hidden />
+            Confirmed by
+            {isDefault ? null : <span className="sr-only"> (filtered)</span>}
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+          </Button>
+        </PopoverTrigger>
+      ) : (
+        <Tooltip label="Filter by confirmer">
+          <PopoverTrigger>
             <Button
               size="icon"
               variant="secondary"
@@ -125,9 +125,9 @@ export default function FundingConfirmedByPopover({
             >
               <UserRoundCheck size={16} strokeWidth={1.75} aria-hidden />
             </Button>
-          )}
-        </PopoverTrigger>
-      </Tooltip>
+          </PopoverTrigger>
+        </Tooltip>
+      )}
       <PopoverContent align="end" role="group" aria-label="Confirmed by filter">
         <div role="group" aria-labelledby={rolesHeadingId}>
           <p id={rolesHeadingId} className="popover__section-heading">

@@ -19,11 +19,25 @@ export const CERT_DETAIL_TABS: DetailTab[] = [
   { key: "updates", label: "Updates" },
 ]
 
-/** The project's full description lives on Overview (behind "Read full
- *  description"); an old `?tab=description` link opens Overview with it
- *  showing. */
+/** The project's full description lives on Overview; an old
+ *  `?tab=description` link opens Overview. */
 export const PROJECT_DETAIL_TABS: DetailTab[] = [
   { key: "overview", label: "Overview" },
   { key: "activities", label: "Activities" },
+  { key: "funding", label: "Funding" },
   { key: "updates", label: "Updates" },
 ]
+
+/**
+ * The tabs to show: those with something in them (`visible`), plus the
+ * active one (a deep link to a tab still opens it). Overview always.
+ */
+export function visibleDetailTabs(
+  tabs: readonly DetailTab[],
+  visible: Partial<Record<string, boolean>>,
+  activeKey: string,
+): DetailTab[] {
+  return tabs.filter(
+    (t) => t.key === "overview" || t.key === activeKey || visible[t.key] === true,
+  )
+}

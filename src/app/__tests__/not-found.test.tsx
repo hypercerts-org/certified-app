@@ -60,6 +60,17 @@ describe("not-found page", () => {
     expect(await renderAt("/did:plc:nobody")).toBe("Profile not found")
   })
 
+  it("names a missing DID as itself, without the handle's @", async () => {
+    await renderAt("/did:plc:nobody")
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" &&
+          el.textContent === "We couldn't find a Certified profile for did:plc:nobody.",
+      ),
+    ).toBeInTheDocument()
+  })
+
   it("a top-level path that isn't a handle is a missing page", async () => {
     expect(await renderAt("/this-page-does-not-exist")).toBe("Page not found")
     expect(screen.queryByText(/couldn't find a Certified profile/)).not.toBeInTheDocument()

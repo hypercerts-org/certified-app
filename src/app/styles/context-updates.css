@@ -1,14 +1,20 @@
-/* ---------- Context updates (cert & project detail pages) ---------- */
-
-/* The section's heading is a <SectionHeader> ("Updates" + a muted
-   count); the list follows 12px below it. */
+/* ---------- Context updates (activity and project pages) ----------
+   On Overview the latest update under a <SectionHeader> ("Updates", a
+   muted count, See all); on the Updates tab every update, newest first,
+   with no heading of its own (the tab names it). No rule above the
+   section: the tab strip or the content's gap separates it, so it never
+   doubles the strip's hairline. */
 .context-updates {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 24px;
-  margin-top: 4px;
-  border-top: 1px solid var(--border-subtle);
+  min-width: 0;
+}
+
+/* The Updates tab's "New update", for the record's owner. */
+.context-updates__toolbar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .context-updates__list {
@@ -21,45 +27,28 @@
   gap: 0;
 }
 
-/* No card box around updates — plain stacked rows. */
+/* No card box around updates: plain stacked rows, at reading width. */
 .context-updates__item {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: var(--measure);
 }
 
-/* Light divider + generous spacing between consecutive updates. */
+/* A hairline and generous space between consecutive updates. */
 .context-updates__item + .context-updates__item {
   border-top: 1px solid var(--border-subtle);
   margin-top: 24px;
   padding-top: 24px;
 }
 
-/* "Update N" label + date on one row, numbering each card on the
-   Updates tab. Same small uppercase muted style as the section headings. */
-.context-updates__item-number-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-/* "Update 2" over each update on the Updates tab: a sentence-case
-   caption, with the date trailing it on the right. */
-.context-updates__item-number {
+/* When it was posted, over its title. */
+.context-updates__when {
   font-size: var(--text-caption);
   font-weight: 500;
-  color: var(--fg-muted);
   line-height: 1.3;
-}
-
-.context-updates__item-number-date {
-  font-size: var(--text-caption);
-  font-weight: 500;
   color: var(--fg-muted);
-  line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .context-updates__item-head {
@@ -69,83 +58,50 @@
   gap: 12px;
 }
 
+/* Up to two lines, never cut at one. */
 .context-updates__title {
-  font-size: 0.95rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: var(--text-body);
   font-weight: 600;
-  letter-spacing: -0.005em;
+  line-height: 1.35;
   margin: 0;
   color: var(--fg-primary);
   flex: 1;
   min-width: 0;
-}
-
-.context-updates__when {
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 /* Short summary line shown above the rich-text body. */
 .context-updates__lead {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
-  margin: 0 0 8px;
+  margin: 0;
 }
 
-.context-updates__doc-wrap {
-  /* Wrapper around the LeafletDocument so we can clamp via line-clamp
-     while letting the renderer keep its own block-level layout. */
-  display: block;
-}
-
-.context-updates__doc-wrap--clamped {
-  /* Hard max-height: roughly 4 lines of body text. Using line-clamp
-     fails when the child renderer emits block-level elements (the
-     leaflet renderer wraps text in <p>/<h*>); max-height + hidden
-     overflow clamps reliably regardless of inner structure. */
-  max-height: calc(1.5em * 4);
+/* The Overview's teaser: the summary or first paragraph, four lines. */
+.context-updates__teaser {
+  display: -webkit-box;
+  margin: 0;
   overflow: hidden;
-  position: relative;
-}
-
-/* Fade-out only when the body is actually truncated (i.e. a "Read more"
-   is offered). Fully-visible content gets no fade. */
-.context-updates__doc-wrap--truncated::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 1.6em;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--bg-elevated)
-  );
-  pointer-events: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .context-updates__doc {
-  font-size: 0.875rem;
+  font-size: var(--text-body-sm);
   color: var(--fg-secondary);
   line-height: 1.5;
-}
-
-.context-updates__expand {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--fg-secondary);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.context-updates__expand:hover {
-  color: var(--fg-primary);
 }
 
 /* ---- Attachments strip below the description ---- */
@@ -175,15 +131,42 @@
     background var(--transition-fast);
 }
 
-/* Image: square thumbnail. `display: block` (not flex) so the inner
-   img's object-fit: cover correctly crops the bitmap to fill. */
-.context-updates__attachment--image .context-updates__attachment-link {
-  display: block;
-  width: 88px;
-  height: 88px;
-  background: var(--bg-sunken);
-  overflow: hidden;
+/* Photos: a 3-up grid of 16:9 frames, cover-cropped. On Overview the
+   first three, the last saying how many more the update holds. */
+.context-updates__photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
   padding: 0;
+  list-style: none;
+}
+
+.context-updates__photo {
+  display: flex;
+  min-width: 0;
+}
+
+.context-updates__photo-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.context-updates__photo-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .context-updates__photo-link:hover {
+    outline: 2px solid var(--border-hover);
+    outline-offset: -2px;
+  }
 }
 
 .context-updates__attachment-img {
@@ -193,9 +176,19 @@
   display: block;
 }
 
-.context-updates__attachment--image .context-updates__attachment-link:hover {
-  outline: 2px solid var(--border-hover);
-  outline-offset: -2px;
+/* "+3" over the last photo: a fixed dark scrim (it sits on a photo, in
+   either theme). */
+.context-updates__photo-more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--navy-overlay-70);
+  color: var(--color-white);
+  font-size: var(--text-h4);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Video URI (e.g. YouTube): vertical tile — 16:9 thumbnail on top
@@ -303,10 +296,6 @@
 @media (max-width: 799px) {
   .context-updates__item {
     padding: 0;
-  }
-  .context-updates__attachment--image .context-updates__attachment-link {
-    width: 72px;
-    height: 72px;
   }
   .context-updates__attachment--video .context-updates__attachment-link,
   .context-updates__attachment-thumb {
