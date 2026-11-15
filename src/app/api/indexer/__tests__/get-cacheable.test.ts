@@ -124,6 +124,13 @@ describe("GET /api/indexer (edge-cacheable allowlist)", () => {
       expect(body.variables.first).toBe(100)
     })
 
+    it("AllEndorsements takes every badge type the graph draws", async () => {
+      for (const badgeType of ["recognition", "certification", "participation"]) {
+        const res = await getIndexer(`?op=AllEndorsements&badgeType=${badgeType}&first=100`)
+        expect(res.status).toBe(200)
+      }
+    })
+
     it("omits Cache-Control when the 200 body carries GraphQL errors", async () => {
       mockFetch.mockResolvedValueOnce(
         new Response(JSON.stringify({ errors: [{ message: "boom" }] }), {

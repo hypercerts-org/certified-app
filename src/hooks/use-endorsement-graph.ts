@@ -58,8 +58,14 @@ export interface GraphNode {
   mutual: number
 }
 
+/** The badge types the graph draws as lines, in the order the controls
+ *  list them. Each is one paginated scan. Participation badges mostly come
+ *  from a couple of programs to many projects, so they start hidden. The
+ *  remaining types (system badges, grant-process steps) are left out. */
+export const GRAPH_LINK_KINDS = ["endorsement", "recognition", "certification", "award", "participation"] as const
+
 /** Badge type behind an edge — drives link colour and the kind filter. */
-export type GraphLinkKind = "endorsement" | "award"
+export type GraphLinkKind = (typeof GRAPH_LINK_KINDS)[number]
 
 export interface GraphLink {
   /** Issuer DID. */
@@ -82,6 +88,9 @@ export interface EndorsementGraph {
   totalEndorsements: number
   /** Raw count of award-typed badge records (not deduped edges). */
   totalAwards: number
+  /** Lines of every kind but endorsements: recognitions, certifications,
+   *  awards and participation. */
+  totalOtherBadges: number
   /** Number of unordered pairs endorsing each other both ways
    *  (endorsement-typed edges only). */
   mutualPairs: number
@@ -126,10 +135,11 @@ function avatarUrlFromCid(did: string, cid: string | null | undefined): string |
 /**
  * Account DID a badge points at. Account subjects carry it directly.
  * Record subjects (strong refs) yield the at:// authority — the DID of
- * the repo the awarded record lives in — but only for award-typed
- * badges: endorsements are person-to-person by design, and record-
- * subject endorsements were dropped before awards existed, so keeping
- * them out preserves the endorsement graph exactly.
+ * the repo the awarded record lives in (a participation badge on a
+ * project points at the project's owner) — for every kind but
+ * endorsements: those are person-to-person by design, and record-subject
+ * endorsements were dropped before awards existed, so keeping them out
+ * preserves the endorsement graph exactly.
  */
 function subjectAccountDid(
   subject: AllEndorsementsNode["subject"],
@@ -139,7 +149,7 @@ function subjectAccountDid(
   if (typeof subject.did === "string" && subject.did.startsWith("did:")) {
     return subject.did
   }
-  if (kind === "award" && typeof subject.uri === "string" && subject.uri.startsWith("at://did:")) {
+  if (kind !== "endorsement" && typeof subject.uri === "string" && subject.uri.startsWith("at://did:")) {
     const authority = subject.uri.slice("at://".length).split("/", 1)[0]
     if (authority.startsWith("did:")) return authority
   }
@@ -199,13 +209,10 @@ async function buildGraph(
    *  resolved; the returned graph has them filled in. */
   onPartial?: (graph: EndorsementGraph) => void,
 ): Promise<EndorsementGraph> {
-  // One paginated scan per badge type; the two run concurrently.
-  const [endorsementScan, awardScan] = await Promise.all([
-    fetchAllAwards("endorsement", signal),
-    fetchAllAwards("award", signal),
-  ])
+  // One paginated scan per badge type, all at once.
+  const results = await Promise.all(GRAPH_LINK_KINDS.map((kind) => fetchAllAwards(kind, signal)))
   if (signal?.aborted) throw new DOMException("aborted", "AbortError")
-  const truncated = endorsementScan.truncated || awardScan.truncated
+  const truncated = results.some((r) => r.truncated)
 
   // Authoritative profiles, filled from the actor-profile index below.
   const profiles = new Map<string, ProfileLite>()
@@ -224,11 +231,9 @@ async function buildGraph(
   const edges: { source: string; target: string; kind: GraphLinkKind }[] = []
   let totalEndorsements = 0
   let totalAwards = 0
+  let totalOtherBadges = 0
 
-  const scans: { kind: GraphLinkKind; awards: AllEndorsementsNode[] }[] = [
-    { kind: "endorsement", awards: endorsementScan.nodes },
-    { kind: "award", awards: awardScan.nodes },
-  ]
+  const scans = GRAPH_LINK_KINDS.map((kind, i) => ({ kind, awards: results[i].nodes }))
   for (const { kind, awards } of scans) {
     for (const a of awards) {
       const issuerDid = typeof a.did === "string" ? a.did : null
@@ -238,7 +243,10 @@ async function buildGraph(
       if (a.response?.state === "rejected") continue // hide rejected awards
 
       if (kind === "endorsement") totalEndorsements++
-      else totalAwards++
+      else {
+        totalOtherBadges++
+        if (kind === "award") totalAwards++
+      }
 
       // The issuer join carries the handle (and rarely displayName/avatar).
       if (a.issuer) {
@@ -346,7 +354,7 @@ async function buildGraph(
     received: receivedCount.get(did) ?? 0,
     mutual: mutualNeighbours.get(did)?.size ?? 0,
   }))
-  const graph = { nodes, links, totalEndorsements, totalAwards, mutualPairs, truncated }
+  const graph = { nodes, links, totalEndorsements, totalAwards, totalOtherBadges, mutualPairs, truncated }
 
   // Everything below only fills in handles and avatars, which takes
   // several seconds on a large network, so the graph can be drawn now.

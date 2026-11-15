@@ -67,7 +67,7 @@ function Rank({
 }
 
 export default function EndorsementStats({ graph, onFocus }: EndorsementStatsProps) {
-  const { nodes, totalEndorsements, totalAwards, mutualPairs } = graph
+  const { nodes, totalEndorsements, totalOtherBadges, mutualPairs } = graph
 
   const stats = useMemo(() => {
     const participants = nodes.length
@@ -129,7 +129,7 @@ export default function EndorsementStats({ graph, onFocus }: EndorsementStatsPro
         aria-label="Network totals"
         items={[
           { label: "Endorsements", value: totalEndorsements.toLocaleString() },
-          { label: "Awards", value: totalAwards.toLocaleString() },
+          { label: "Other badges", value: totalOtherBadges.toLocaleString() },
           { label: "People", value: stats.participants.toLocaleString() },
           { label: "Mutual pairs", value: mutualPairs.toLocaleString() },
           { label: "Reciprocity", value: `${stats.reciprocity}%` },

@@ -239,11 +239,10 @@
   min-width: 0;
 }
 
+/* One kind per line: five kinds and Mutual only don't wrap evenly. */
 .viz__kind-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 12px;
+  display: grid;
+  gap: 6px;
 }
 
 .viz__layout-toggle,
@@ -361,6 +360,30 @@
 
 .viz__legend-swatch--award {
   border-top-color: var(--color-warning);
+}
+
+/* The Lines checkboxes carry their own swatch, the line they draw. */
+.viz__kind-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz__legend-swatch--endorsement {
+  border-top-color: var(--fg-muted);
+}
+
+.viz__legend-swatch--recognition {
+  border-top-color: var(--graph-recognition);
+}
+
+.viz__legend-swatch--certification {
+  border-top-color: var(--graph-certification);
+}
+
+.viz__legend-swatch--participation {
+  border-top-color: var(--fg-muted);
+  border-top-style: dashed;
 }
 
 /* ---- Hover / selected node info panel ---- */

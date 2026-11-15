@@ -102,8 +102,9 @@ describe("useEndorsementGraph — indexer GET contract", () => {
     const useEndorsementGraph = await freshHook()
     renderHook(() => useEndorsementGraph())
 
-    // Both scans page to completion: endorsement page 1 + page 2, award page 1.
-    await waitFor(() => expect(fetchCalls).toHaveLength(3))
+    // Every scan pages to completion: endorsement page 1 + page 2, then
+    // one page each for recognition, certification, award, participation.
+    await waitFor(() => expect(fetchCalls).toHaveLength(6))
 
     const parsed = fetchCalls.map((c) => ({
       u: new URL(c.url, "http://localhost"),
@@ -122,6 +123,9 @@ describe("useEndorsementGraph — indexer GET contract", () => {
     const award = parsed.filter((p) => p.u.searchParams.get("badgeType") === "award")
     expect(endorsement).toHaveLength(2)
     expect(award).toHaveLength(1)
+    expect(parsed.map((p) => p.u.searchParams.get("badgeType")).sort()).toEqual(
+      ["award", "certification", "endorsement", "endorsement", "participation", "recognition"],
+    )
     // First page carries no cursor; the second carries the returned one.
     expect(endorsement.map((p) => p.u.searchParams.get("after")).sort()).toEqual([
       "cursor-1",

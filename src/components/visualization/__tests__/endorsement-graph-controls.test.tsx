@@ -27,13 +27,15 @@ function node(id: string): GraphNode {
   return { id, handle: `${id}.example`, displayName: id, avatarUrl: null, given: 0, received: 0, mutual: 0 }
 }
 
-// a <-> b endorse each other; c -> a is one-way; d awards a.
-const nodes = ["a", "b", "c", "d"].map(node)
+// a <-> b endorse each other; c -> a is one-way; d awards a; p gives a a
+// participation badge (hidden until Participation is checked).
+const nodes = ["a", "b", "c", "d", "p"].map(node)
 const links = [
   { source: "a", target: "b", kind: "endorsement" as const, mutual: true },
   { source: "b", target: "a", kind: "endorsement" as const, mutual: true },
   { source: "c", target: "a", kind: "endorsement" as const, mutual: false },
   { source: "d", target: "a", kind: "award" as const, mutual: false },
+  { source: "p", target: "a", kind: "participation" as const, mutual: false },
 ]
 
 function renderGraph() {
@@ -83,8 +85,28 @@ describe("EndorsementGraph controls", () => {
   it("sits with the kind checkboxes in the labelled Lines row", () => {
     renderGraph()
     const lines = screen.getByRole("group", { name: "Lines" })
-    expect(lines.querySelectorAll('input[type="checkbox"]')).toHaveLength(3)
+    expect(lines.querySelectorAll('input[type="checkbox"]')).toHaveLength(6)
     expect(lines).toContainElement(screen.getByRole("checkbox", { name: "Mutual only" }))
+  })
+
+  it("has a checkbox per badge kind, all on but Participation", () => {
+    renderGraph()
+    for (const name of ["Endorsements", "Recognitions", "Certifications", "Awards"]) {
+      expect(screen.getByRole("checkbox", { name })).toBeChecked()
+    }
+    expect(screen.getByRole("checkbox", { name: "Participation" })).not.toBeChecked()
+  })
+
+  it("adds participation lines, and the accounts they bring, when checked", () => {
+    const { last } = renderGraph()
+    expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "d"])
+    expect(last().totalOtherBadges).toBe(1)
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Participation" }))
+    expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "d", "p"])
+    expect(last().totalOtherBadges).toBe(2)
+    // Participation is not an endorsement: the endorsement counts stay.
+    expect(last().totalEndorsements).toBe(3)
   })
 
   it("keeps every control and the key in one panel (audit GP3)", () => {

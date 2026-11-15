@@ -21,7 +21,8 @@ const graph: EndorsementGraph = {
   nodes: [node(1, 26, 3), node(2, 22, 0), node(3, 0, 17)],
   links: [],
   totalEndorsements: 1234,
-  totalAwards: 10,
+  totalAwards: 4,
+  totalOtherBadges: 10,
   mutualPairs: 0,
   truncated: false,
 }
@@ -38,7 +39,7 @@ describe("EndorsementStats", () => {
     const items = within(totals).getAllByRole("listitem")
     expect(items.map((li) => li.textContent)).toEqual([
       `${(1234).toLocaleString()}Endorsements`,
-      "10Awards",
+      "10Other badges",
       "3People",
       "0Mutual pairs",
       "0%Reciprocity",

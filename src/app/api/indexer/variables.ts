@@ -25,6 +25,8 @@ const MAX_LABEL_LEN = 64
 const MAX_KIND_LIST = 16
 const MAX_KIND_LEN = 64
 const MAX_URI_LEN = 512
+/** The badge types /graph draws as lines (use-endorsement-graph.ts). */
+const GRAPH_BADGE_TYPES = new Set(["endorsement", "recognition", "certification", "award", "participation"])
 /** Per-kind URI cap for the `HydrateFeedPage` op (4 kinds × 50 = up to
  *  200 URIs total per feed page). Matches the indexer's hard cap on
  *  the `where: { uri: { in: [...] } }` filter (50 entries; values
@@ -417,13 +419,14 @@ export function buildVariables(
       return { viewer, degree: rawDegree }
     }
     case "AllEndorsements": {
-      // Paginated network-wide scan, one badge type per pass. Strict
+      // Paginated network-wide scan, one badge type per pass (the graph's
+      // line kinds, GRAPH_BADGE_TYPES). Strict
       // allowlist on `badgeType` (defaults to "endorsement" for older
       // clients) — anything else 400s here rather than fanning an
       // arbitrary string out to the indexer. Same clamp shape as the
       // other 100-per-page reads (ReceivedEndorsements).
       const badgeType = vars.badgeType === undefined ? "endorsement" : vars.badgeType
-      if (badgeType !== "endorsement" && badgeType !== "award") return null
+      if (typeof badgeType !== "string" || !GRAPH_BADGE_TYPES.has(badgeType)) return null
       return {
         badgeType,
         first: clampFirst(vars.first, MAX_FIRST, 100),

@@ -145,7 +145,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/graph",
     anchor: "graph",
     title: "Graph",
-    body: "Graph shows who endorses whom across the network. Each dot is an account, each line an endorsement.",
+    body: "Graph shows who vouches for whom across the network. Each dot is an account, each line a badge one gave the other.",
     placement: "top",
   },
 

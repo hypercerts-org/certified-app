@@ -192,6 +192,10 @@
   --color-warning-bg: #fef9e7;
   --color-warning-border: #f5d880;
   --color-warning-text: #7a6420;
+  /* /graph lines for badge kinds without a status colour of their own
+     (endorsements use the muted grey and success green, awards amber). */
+  --graph-recognition: #2f6fde;
+  --graph-certification: #8b5cf6;
   --color-error: #ba1a1a;
   /* Subtle error-tint surface + border that pair with --color-error text.
      Soft red consistent with #ba1a1a at low alpha over the light canvas. */
@@ -441,6 +445,8 @@
   --color-warning-bg: rgba(245, 166, 35, 0.1);
   --color-warning-border: rgba(245, 166, 35, 0.3);
   --color-warning-text: #fbbf24;
+  --graph-recognition: #6ea8fe;
+  --graph-certification: #b49cfc;
   --color-success-text: #6ee7a7;
   /* Soft success tint over the dark canvas (based on #6ee7a7). */
   --color-success-bg: rgba(110, 231, 167, 0.12);

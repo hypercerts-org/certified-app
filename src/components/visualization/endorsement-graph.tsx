@@ -39,9 +39,11 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
+import { GRAPH_LINK_KINDS } from "@/hooks/use-endorsement-graph"
 import type {
   GraphNode,
   GraphLink,
+  GraphLinkKind,
   EndorsementGraph as EndorsementGraphData,
 } from "@/hooks/use-endorsement-graph"
 
@@ -88,12 +90,14 @@ function computeFilteredStats(
   let mutualLinks = 0
   let endorsementLinks = 0
   let awardLinks = 0
+  let otherLinks = 0
   for (const l of links) {
     const s = linkEndId(l.source)
     const t = linkEndId(l.target)
     if (!s || !t) continue
-    if (l.kind === "award") {
-      awardLinks++
+    if (l.kind !== "endorsement") {
+      otherLinks++
+      if (l.kind === "award") awardLinks++
       continue
     }
     endorsementLinks++
@@ -114,6 +118,7 @@ function computeFilteredStats(
     links,
     totalEndorsements: endorsementLinks,
     totalAwards: awardLinks,
+    totalOtherBadges: otherLinks,
     mutualPairs: Math.round(mutualLinks / 2),
     truncated,
   }
@@ -128,6 +133,9 @@ interface ThemeColors {
   accent: string
   /** Award-typed edges — amber, distinct from both endorsement colours. */
   award: string
+  /** Recognition and certification edges: the graph's own blue and violet. */
+  recognition: string
+  certification: string
   link: string
   bg: string
 }
@@ -143,6 +151,8 @@ function readThemeColors(): ThemeColors {
     discText: get("--fg-secondary"),
     accent: get("--color-success"),
     award: get("--color-warning"),
+    recognition: get("--graph-recognition"),
+    certification: get("--graph-certification"),
     link: get("--fg-muted"),
     bg: get("--bg-sunken"),
   }
@@ -156,6 +166,25 @@ function nodeRadius(n: { given: number; received: number }): number {
 // The graph ships several arrangements behind a switcher so the best-looking
 // one can be picked per dataset. Every mode runs a collision force so avatars
 // never overlap (the original default had none — hence the overlapping logos).
+
+/** The Lines checkboxes' names, and which kinds start checked: every one
+ *  but participation, which would turn the graph into a few big stars
+ *  around the programs that hand it out. */
+const KIND_LABELS: Record<GraphLinkKind, string> = {
+  endorsement: "Endorsements",
+  recognition: "Recognitions",
+  certification: "Certifications",
+  award: "Awards",
+  participation: "Participation",
+}
+const DEFAULT_KINDS: GraphLinkKind[] = GRAPH_LINK_KINDS.filter((k) => k !== "participation")
+const KIND_CURVE: Record<GraphLinkKind, number> = {
+  endorsement: 0,
+  recognition: 0.08,
+  certification: -0.08,
+  award: 0.14,
+  participation: -0.14,
+}
 
 export type LayoutMode = "network" | "spread" | "radial"
 
@@ -297,10 +326,17 @@ export default function EndorsementGraph({
   const [repaintEpoch, setRepaintEpoch] = useState(0)
   const [onlyMutual, setOnlyMutual] = useState(false)
   const linesLabelId = useId()
-  // Badge-kind checkboxes. Both on by default; the UI disables the last
-  // checked one so at least one kind is always shown.
-  const [showEndorsements, setShowEndorsements] = useState(true)
-  const [showAwards, setShowAwards] = useState(true)
+  // Badge-kind checkboxes: every kind but participation on by default
+  // (DEFAULT_KINDS); the UI disables the last checked one so at least one
+  // kind is always shown.
+  const [shownKinds, setShownKinds] = useState<ReadonlySet<GraphLinkKind>>(() => new Set(DEFAULT_KINDS))
+  const toggleKind = (kind: GraphLinkKind, on: boolean) =>
+    setShownKinds((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(kind)
+      else next.delete(kind)
+      return next
+    })
   const [layout, setLayout] = useState<LayoutMode>("network")
   // Default on: only show the web reachable from the trusted evaluators
   // (any number of endorsement hops). Also hides stray disconnected
@@ -405,14 +441,14 @@ export default function EndorsementGraph({
     let nds = nodes
     let lks = links
 
-    // 0. badge-kind filter — the endorsement/award checkbox pair. Runs
-    //    FIRST so the downstream filters (evaluator reachability, mutual-
-    //    only) only ever see edges of the kinds the user wants: with
-    //    awards unchecked the view is exactly the pre-award graph, and
+    // 0. badge-kind filter — the Lines checkboxes. Runs FIRST so the
+    //    downstream filters (evaluator reachability, mutual-only) only ever
+    //    see edges of the kinds the user wants: with only endorsements
+    //    checked the view is exactly the endorsement graph, and
     //    reachability never flows through a hidden edge. Nodes left
     //    without any visible edge drop out with their edges.
-    if (!showEndorsements || !showAwards) {
-      lks = lks.filter((l) => (l.kind === "award" ? showAwards : showEndorsements))
+    if (GRAPH_LINK_KINDS.some((k) => !shownKinds.has(k))) {
+      lks = lks.filter((l) => shownKinds.has(l.kind))
       const keep = new Set<string>()
       for (const l of lks) {
         keep.add(linkEndId(l.source) ?? "")
@@ -492,7 +528,7 @@ export default function EndorsementGraph({
     }
 
     return { nodes: nds, links: lks }
-  }, [nodes, links, onlyMutual, showEndorsements, showAwards, evaluatorConnectedOnly, evaluatorDids])
+  }, [nodes, links, onlyMutual, shownKinds, evaluatorConnectedOnly, evaluatorDids])
 
   // Mirror the visible (filtered) graph's stats up to the sidebar so its
   // counts + rankings track the active scope / mutual filters.
@@ -721,6 +757,8 @@ export default function EndorsementGraph({
         if (!on) return c.border
       }
       if (link.kind === "award") return c.award
+      if (link.kind === "recognition") return c.recognition
+      if (link.kind === "certification") return c.certification
       return link.mutual ? c.accent : c.link
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- repaintEpoch forces one repaint when colorsRef changes on a theme flip
@@ -749,10 +787,10 @@ export default function EndorsementGraph({
       const t = linkEndId(l.target)
       if (s === panelNode.id && t) {
         const n = nodeById.get(t)
-        if (n) (l.kind === "award" ? awarded : endorsed).push(n)
+        if (n) (l.kind === "endorsement" ? endorsed : awarded).push(n)
       } else if (t === panelNode.id && s) {
         const n = nodeById.get(s)
-        if (n) (l.kind === "award" ? awardedBy : endorsedBy).push(n)
+        if (n) (l.kind === "endorsement" ? endorsedBy : awardedBy).push(n)
       }
     }
     return { endorsed, endorsedBy, awarded, awardedBy }
@@ -904,18 +942,20 @@ export default function EndorsementGraph({
           Lines
         </span>
         <div className="viz__kind-row">
-          <Checkbox
-            label="Endorsements"
-            checked={showEndorsements}
-            disabled={showEndorsements && !showAwards}
-            onChange={(e) => setShowEndorsements(e.target.checked)}
-          />
-          <Checkbox
-            label="Awards"
-            checked={showAwards}
-            disabled={showAwards && !showEndorsements}
-            onChange={(e) => setShowAwards(e.target.checked)}
-          />
+          {GRAPH_LINK_KINDS.map((kind) => (
+            <Checkbox
+              key={kind}
+              label={
+                <span className="viz__kind-label">
+                  <span className={`viz__legend-swatch viz__legend-swatch--${kind}`} aria-hidden="true" />
+                  {KIND_LABELS[kind]}
+                </span>
+              }
+              checked={shownKinds.has(kind)}
+              disabled={shownKinds.has(kind) && shownKinds.size === 1}
+              onChange={(e) => toggleKind(kind, e.target.checked)}
+            />
+          ))}
           <Checkbox
             label="Mutual only"
             checked={onlyMutual}
@@ -927,15 +967,11 @@ export default function EndorsementGraph({
       <div className="viz__legend" aria-hidden="true">
         <span className="viz__legend-row">
           <span className="viz__legend-swatch viz__legend-swatch--uni" />
-          One-way
+          One-way endorsement
         </span>
         <span className="viz__legend-row">
           <span className="viz__legend-swatch viz__legend-swatch--mutual" />
           Mutual
-        </span>
-        <span className="viz__legend-row">
-          <span className="viz__legend-swatch viz__legend-swatch--award" />
-          Award
         </span>
       </div>
     </div>
@@ -958,15 +994,17 @@ export default function EndorsementGraph({
           nodeCanvasObject={paintNode}
           nodePointerAreaPaint={paintPointerArea}
           linkColor={linkColor}
-          linkWidth={(l: FGLink) => (l.kind === "award" ? 1.1 : l.mutual ? 1.6 : 0.8)}
-          // Award edges always curve a little so they never draw exactly on
-          // top of a parallel endorsement edge between the same pair. A
-          // reciprocal award pair bows apart naturally: curvature is
-          // relative to each link's direction, so the two opposite arrows
-          // bend to opposite sides (award edges never carry `mutual`).
-          linkCurvature={(l: FGLink) =>
-            l.kind === "award" ? 0.14 : l.mutual ? 0.2 : 0
-          }
+          linkWidth={(l: FGLink) => (l.kind === "endorsement" ? (l.mutual ? 1.6 : 0.8) : l.kind === "participation" ? 0.7 : 1.1)}
+          // Participation is taking part in a program, not one account
+          // vouching for another: dashed, in the one-way grey.
+          linkLineDash={(l: FGLink) => (l.kind === "participation" ? [3, 2] : null)}
+          // Badge edges other than endorsements curve, each kind its own
+          // amount, so they never draw exactly on top of a parallel edge of
+          // another kind between the same pair. A reciprocal pair bows
+          // apart naturally: curvature is relative to each link's
+          // direction, so the two opposite arrows bend to opposite sides
+          // (only endorsements carry `mutual`).
+          linkCurvature={(l: FGLink) => (l.kind === "endorsement" ? (l.mutual ? 0.2 : 0) : KIND_CURVE[l.kind])}
           linkDirectionalArrowLength={3.2}
           linkDirectionalArrowRelPos={1}
           onNodeHover={(n: FGNode | null) => setHoverId(n ? (n.id as string) : null)}
@@ -1083,8 +1121,8 @@ export default function EndorsementGraph({
             [
               ["Endorsed", neighbourList.endorsed],
               ["Endorsed by", neighbourList.endorsedBy],
-              ["Awarded", neighbourList.awarded],
-              ["Awarded by", neighbourList.awardedBy],
+              ["Badges to", neighbourList.awarded],
+              ["Badges from", neighbourList.awardedBy],
             ] as const
           ).map(([title, list]) =>
             list.length > 0 ? (
