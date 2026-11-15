@@ -373,7 +373,7 @@ function renderInline(
     // let the parent's white-space: pre-wrap handle the `\n` so the
     // facet wrapping element (e.g. `<a>`) stays a single node.
     if (active.length === 0) {
-      out.push(withLineBreaks(segment, `s${i}`))
+      out.push(<Fragment key={`s-${i}`}>{withLineBreaks(segment, `s${i}`)}</Fragment>)
     } else {
       out.push(applyFacets(segment, active, i))
     }
