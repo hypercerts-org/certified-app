@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Avatar from "@/components/ui/avatar"
 import Skeleton from "@/components/ui/skeleton"
-import { deriveIdentity } from "@/lib/utils/identity"
+import { deriveIdentity, isMachineHandle } from "@/lib/utils/identity"
 import { formatRelativeDate } from "@/lib/utils/format-date"
 import type { AuthorInfo } from "@/hooks/use-author-info"
 
@@ -45,13 +45,15 @@ export interface EndorsementSubjectRowProps {
   nameAside?: React.ReactNode
   /** Trailing control (revoke button / response menu), rendered last. */
   trailing?: React.ReactNode
+  /** `@handle` under the name. Off by default: lists show names. */
+  showHandle?: boolean
 }
 
 const skeletonPx = { sm: 32, row: 40, md: 48 } as const
 
 /**
- * Canonical endorsement subject row: avatar + display name + @handle +
- * optional note + created date, linking through to the subject's
+ * Canonical endorsement subject row: avatar + display name (no handle
+ * unless `showHandle`; "Unnamed account" muted) + optional note + created date, linking through to the subject's
  * profile. One markup shape for the standalone /endorsements page, the
  * profile lists panel, and the profile endorsements list view — so the
  * identity fallbacks (`deriveIdentity`), the avatar-skeleton gate, and
@@ -70,6 +72,7 @@ export default function EndorsementSubjectRow({
   classes,
   nameAside,
   trailing,
+  showHandle = false,
 }: EndorsementSubjectRowProps) {
   const identity = deriveIdentity(
     info,
@@ -109,13 +112,20 @@ export default function EndorsementSubjectRow({
       <span className={classes.meta}>
         {nameAside ? (
           <span className="flex min-w-0 items-center gap-2">
-            <span className={classes.name} dir="auto">{identity.displayName}</span>
+            <span className={classes.name} data-unnamed={identity.unnamed || undefined} dir="auto">
+              {identity.displayName}
+            </span>
             <span className="shrink-0">{nameAside}</span>
           </span>
         ) : (
-          <span className={classes.name} dir="auto">{identity.displayName}</span>
+          <span className={classes.name} data-unnamed={identity.unnamed || undefined} dir="auto">
+            {identity.displayName}
+          </span>
         )}
-        {identity.handle ? (
+        {showHandle &&
+        identity.handle &&
+        !isMachineHandle(identity.handle) &&
+        identity.displayName !== identity.handle ? (
           <span className={classes.handle}>@{identity.handle}</span>
         ) : null}
         {dateInMeta ? time : null}

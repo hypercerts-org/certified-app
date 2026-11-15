@@ -38,6 +38,8 @@ function GivenRow({
         note={endorsement.note}
         avatarSize="row"
         classes={ENDORSEMENT_ROW_CLASSES}
+        // The Workspace: the account tells the accounts apart by handle.
+        showHandle
         trailing={
           <div className="records-person__action">
             <RevokeGivenButton

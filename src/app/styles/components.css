@@ -19,6 +19,15 @@
   }
 }
 
+/* ========== An account with no name ==========
+   "Unnamed account" (deriveIdentity / accountName) reads quieter than a
+   name, so a list of people never leads with it. Doubled to outrank a
+   row's own name class, whichever sheet it is in. */
+[data-unnamed][data-unnamed] {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
 /* ========== Empty State ========== */
 /* The base `.empty-state` rule is kept as a styling/override hook: the
    EmptyState primitive still emits the bare `empty-state` class on its

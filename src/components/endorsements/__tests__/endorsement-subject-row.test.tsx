@@ -11,7 +11,7 @@ import type { AuthorInfo } from "@/hooks/use-author-info"
 // profile-endorsements' EndorsementRowBody) whose loading states,
 // identity fallbacks, and <time> semantics had drifted apart. These
 // tests pin the unified behavior: skeleton only while info resolves,
-// deriveIdentity fallbacks (truncated DID, no @did handles), optional
+// deriveIdentity fallbacks ("Unnamed account", no @did handles), optional
 // note, full dateTime + tooltip on the date, and the trailing slot.
 
 const info: AuthorInfo = {
@@ -37,7 +37,7 @@ afterEach(() => {
 })
 
 describe("EndorsementSubjectRow", () => {
-  it("renders name, @handle and a profile link from resolved info", () => {
+  it("renders the name and a profile link from resolved info, no handle", () => {
     const { container } = render(
       <EndorsementSubjectRow
         did={info.did}
@@ -48,9 +48,8 @@ describe("EndorsementSubjectRow", () => {
       />,
     )
     expect(container.querySelector(".t-name")?.textContent).toBe("Alice")
-    expect(container.querySelector(".t-handle")?.textContent).toBe(
-      "@alice.test",
-    )
+    // Lists show names; the handle only on request.
+    expect(container.querySelector(".t-handle")).toBeNull()
     const link = container.querySelector("a.t-main")
     expect(link?.getAttribute("href")).toBe("/alice.test")
     // Resolved info → avatar, not the loading skeleton.
@@ -68,14 +67,14 @@ describe("EndorsementSubjectRow", () => {
       />,
     )
     expect(loading.container.querySelector(".animate-skeleton")).not.toBeNull()
-    // Canonical no-info fallback: truncated DID, never the raw DID.
+    // Canonical no-info fallback: "Unnamed account", never the DID.
     expect(loading.container.querySelector(".t-name")?.textContent).toBe(
-      "did:plc:abcdefgh…stuvwx",
+      "Unnamed account",
     )
     cleanup()
 
-    // Loading finished without info → still the truncated-DID row, no
-    // permanent skeleton.
+    // Loading finished without info → still the "Unnamed account" row,
+    // no permanent skeleton.
     const settled = render(
       <EndorsementSubjectRow
         did={info.did}
@@ -87,7 +86,7 @@ describe("EndorsementSubjectRow", () => {
     )
     expect(settled.container.querySelector(".animate-skeleton")).toBeNull()
     expect(settled.container.querySelector(".t-name")?.textContent).toBe(
-      "did:plc:abcdefgh…stuvwx",
+      "Unnamed account",
     )
   })
 
@@ -102,8 +101,21 @@ describe("EndorsementSubjectRow", () => {
     )
     expect(container.querySelector(".t-handle")).toBeNull()
     expect(container.querySelector(".t-name")?.textContent).toBe(
-      "did:plc:abcdefgh…stuvwx",
+      "Unnamed account",
     )
+  })
+
+  it("shows the handle with showHandle", () => {
+    const { container } = render(
+      <EndorsementSubjectRow
+        did={info.did}
+        info={info}
+        createdAt={CREATED_AT}
+        classes={CLASSES}
+        showHandle
+      />,
+    )
+    expect(container.querySelector(".t-handle")?.textContent).toBe("@alice.test")
   })
 
   it("renders the note only when supplied", () => {
