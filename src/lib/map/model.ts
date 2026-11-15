@@ -42,6 +42,8 @@ export interface Activity {
   place: Place | null
   via: "project" | null
   project: Project | null
+  /** Further places it names, besides `place`. */
+  more: Place[]
   date: string | null
   href: string
 }
@@ -142,6 +144,7 @@ export function buildModel(ds: MapDataset): MapModel {
       place,
       via: own ? null : place ? "project" : null,
       project,
+      more: a.more.map((j) => places[j]).filter((p): p is Place => !!p),
       date: a.date,
       href: recordUrl(ds.accounts[a.account].did, "activity", a.rkey),
     }

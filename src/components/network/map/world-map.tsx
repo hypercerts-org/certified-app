@@ -65,7 +65,8 @@ interface View {
 }
 
 const START: View = { lng: 12, lat: 18, k: 1 }
-const MAX_ZOOM = 20000
+/** Close enough for a garden plot of a few hundred square metres to fill the map. */
+const MAX_ZOOM = 80000
 const NORTH = 84
 const SOUTH = -60
 /** Satellite imagery from this tile zoom (about a city across the map). */
