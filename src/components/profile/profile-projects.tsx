@@ -171,6 +171,7 @@ function ProfileProjectsBody({
     <section className="profile-panel" aria-labelledby="profile-projects-heading">
       <SectionHeader
         id="profile-projects-heading"
+        titleHidden
         title={
           <>
             Projects <PanelCount n={loading || error ? null : projects.length} />

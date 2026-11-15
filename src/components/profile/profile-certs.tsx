@@ -182,8 +182,8 @@ export default function ProfileCerts({
       variant="segmented"
       className="profile-panel"
     >
-      {/* A visible heading, like Projects' and Endorsements'. */}
-      <SectionHeader title="Activities" />
+      {/* The tab names the panel; the heading is for screen readers. */}
+      <SectionHeader title="Activities" titleHidden />
       <div className="profile-panel__head">
         <TabList aria-label="Activities sections">
           <Tab value="created" count={countLabel(created.length, isLoading, hasMore)}>

@@ -72,8 +72,9 @@ export function useProfileSummary(did: string | null) {
       (received.isLoading && received.endorsements.length === 0) ||
       (given.isLoading && given.endorsements.length === 0)
 
+    const receivedLoading = received.isLoading && received.endorsements.length === 0
     const result: Record<
-      "activities" | "projects" | "endorsements" | "followers" | "lists",
+      "activities" | "projects" | "endorsements" | "endorsementsReceived" | "followers" | "lists",
       SectionCount
     > & { endorsementsGiven: number; following: number } = {
       activities: {
@@ -88,9 +89,19 @@ export function useProfileSummary(did: string | null) {
         isLoading: projects.isLoading && projects.projects.length === 0,
         failed: !!projects.error,
       },
+      // The Endorsements tab holds both lists, so its count is both:
+      // received plus given (a funder that endorsed 148 accounts and was
+      // endorsed once reads "Endorsements 149", not "1").
       endorsements: {
-        value: received.isLoading && received.endorsements.length === 0 ? null : received.endorsements.length,
+        value: endorsementsLoading
+          ? null
+          : received.endorsements.length + given.endorsements.length,
         isLoading: endorsementsLoading,
+        failed: !!received.error && !!given.error,
+      },
+      endorsementsReceived: {
+        value: receivedLoading ? null : received.endorsements.length,
+        isLoading: receivedLoading,
         failed: !!received.error,
       },
       followers: {
@@ -124,6 +135,7 @@ export function useProfileSummary(did: string | null) {
     received.error,
     given.isLoading,
     given.endorsements.length,
+    given.error,
     followers.count,
     followers.error,
     following.count,

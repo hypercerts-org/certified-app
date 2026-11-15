@@ -109,7 +109,24 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   // Sub-tab is URL-driven via `?sub=received|given` so a refresh keeps the
   // view and links can open it. "received" stays implicit.
   const [subParam, setSubParam] = useUrlParam("sub", { defaultValue: "received" })
-  const tab: SubTab = subParam === "given" ? "given" : "received"
+  const urlTab: SubTab = subParam === "given" ? "given" : "received"
+  // A visitor isn't shown a list known to be empty ("Given 0"): its
+  // segment goes, and with one list left there are no segments at all.
+  const visitor = !canManage
+  const receivedZero =
+    !(received.isLoading && received.endorsements.length === 0) &&
+    received.endorsements.length === 0
+  const givenZero =
+    !(given.isLoading && given.endorsements.length === 0) && given.endorsements.length === 0
+  const showReceivedSegment = !visitor || !receivedZero
+  const showGivenSegment = !visitor || !givenZero
+  const segmented = showReceivedSegment && showGivenSegment
+  const tab: SubTab =
+    urlTab === "received" && !showReceivedSegment && showGivenSegment
+      ? "given"
+      : urlTab === "given" && !showGivenSegment && showReceivedSegment
+        ? "received"
+        : urlTab
   const setTab = useCallback((next: SubTab) => setSubParam(next), [setSubParam])
 
   const [query, setQuery] = useState("")
@@ -311,6 +328,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
     >
       <SectionHeader
         title="Endorsements"
+        titleHidden
         description={
           isPersonalOwner
             ? "Give, hide and sort endorsements into lists in your Workspace."
@@ -328,29 +346,35 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
         }
       />
 
-      <div className="profile-panel__head">
-        <TabList aria-label="Endorsements sections">
-          <Tab value="received" count={receivedCount}>
-            Received
-          </Tab>
-          <Tab value="given" count={givenCount}>
-            Given
-          </Tab>
-        </TabList>
-        {canManage && sourceLength > 0 ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-pressed={selecting}
-            onClick={() => {
-              setSelecting((v) => !v)
-              clearSelection()
-            }}
-          >
-            {selecting ? "Done" : "Select"}
-          </Button>
-        ) : null}
-      </div>
+      {segmented || (canManage && sourceLength > 0) ? (
+        <div className="profile-panel__head">
+          {segmented ? (
+            <TabList aria-label="Endorsements sections">
+              <Tab value="received" count={receivedCount}>
+                Received
+              </Tab>
+              <Tab value="given" count={givenCount}>
+                Given
+              </Tab>
+            </TabList>
+          ) : (
+            <span />
+          )}
+          {canManage && sourceLength > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-pressed={selecting}
+              onClick={() => {
+                setSelecting((v) => !v)
+                clearSelection()
+              }}
+            >
+              {selecting ? "Done" : "Select"}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {showSearch ? (
         <PanelTools

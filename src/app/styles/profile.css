@@ -653,16 +653,20 @@
    don't fit (phones), running to the screen edges there, and stays pinned
    below the top bar while the page scrolls. */
 .profile-tabs {
+  position: relative;
   margin: 24px -16px 0;
+  background: var(--bg-canvas);
+}
+
+.profile-tabs__scroller {
   padding: 0 16px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
-  background: var(--bg-canvas);
 }
 
-.profile-tabs::-webkit-scrollbar {
+.profile-tabs__scroller::-webkit-scrollbar {
   display: none;
 }
 
@@ -671,6 +675,27 @@
   position: sticky;
   top: var(--chrome-top, var(--navbar-height));
   z-index: var(--z-rail-sticky);
+}
+
+/* A fade over an edge with more tabs past it (profile and record strips):
+   the canvas colour over the last 40px, so a cut-off tab reads as "scroll
+   for more". It stops above the strip's hairline. */
+.tab-strip-fade {
+  position: absolute;
+  top: 0;
+  bottom: 1px;
+  width: 40px;
+  pointer-events: none;
+}
+
+.tab-strip-fade--end {
+  right: 0;
+  background: linear-gradient(to right, transparent, var(--bg-canvas) 85%);
+}
+
+.tab-strip-fade--start {
+  left: 0;
+  background: linear-gradient(to left, transparent, var(--bg-canvas) 85%);
 }
 
 /* The phone top bar slides away on scroll down; the pinned strip (and the
@@ -702,6 +727,9 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   .profile-tabs {
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .profile-tabs__scroller {
     padding: 0;
   }
 
@@ -717,6 +745,12 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   min-width: 0;
 }
 
+/* Without a tab strip (a lone Overview), the panel keeps the header's
+   section rhythm: no gap where the strip would be. */
+.profile-page__panel--untabbed {
+  padding-top: 32px;
+}
+
 /* Phones: the header is compact, and so is the space around the tabs, so
    the first of the account's work shows on the first screen. */
 @media (max-width: 799px) {
@@ -726,6 +760,19 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
 
   .profile-page__panel {
     padding-top: 20px;
+  }
+
+  .profile-page__panel--untabbed {
+    padding-top: 24px;
+  }
+
+  /* The other tabs: the header without its banner, lead, links and trust
+     line, so the tab's content starts on the first screen. */
+  .profile-header--compact .profile-header__banner,
+  .profile-header--compact .profile-header__lead,
+  .profile-header--compact .profile-header__links,
+  .profile-header--compact .profile-trust {
+    display: none;
   }
 }
 
@@ -788,116 +835,80 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   max-width: var(--measure);
 }
 
-/* Activities and projects as cards: bordered, on the elevated surface, no
-   shadow (DESIGN.md §9.4). The activity card is the feed's card without
-   its byline (the page names the author); the project card is Explore's. */
-.profile-overview__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.profile-overview__cards--projects {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-
-.profile-overview__cards > li {
-  display: flex;
-  min-width: 0;
-}
-
-.profile-overview__cards .feed-card,
-.profile-overview__cards .feed-card:last-child {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius);
-  background: var(--bg-elevated);
-  transition: border-color var(--transition-fast);
-}
-
-.profile-overview__cards .feed-card__author {
-  margin-bottom: 12px;
-}
-
-.profile-overview__cards .feed-card__body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  padding-left: 0;
-  border-radius: var(--radius);
-}
-
-.profile-overview__cards .feed-card__body:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.profile-overview__cards .feed-card__image-wrap {
-  margin-bottom: 12px;
-}
-
-.profile-overview__cards .feed-card__title {
-  display: -webkit-box;
-  margin-bottom: 4px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  font-size: var(--text-h4);
-  line-height: 1.3;
-  white-space: normal;
-}
-
-.profile-overview__cards .feed-card__desc {
-  margin-bottom: 12px;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-}
-
-.profile-overview__cards .feed-card__meta {
-  margin-top: auto;
-}
-
-/* The card is the hover target: its edge darkens, the title stays put. */
-.profile-overview__cards .feed-card__body:hover .feed-card__title {
-  text-decoration: none;
-}
-
-.profile-overview__cards .explore-project-card {
-  flex: 1;
-  min-width: 0;
-  border-color: var(--border-default);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .profile-overview__cards .feed-card:hover {
-    border-color: var(--border-hover);
-  }
-}
-
+/* Activities and projects are work cards (record-page.css, `.work-card`);
+   this is their loading shape: the 16:9 frame over two lines. */
 .profile-overview__card-skeleton {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  overflow: hidden;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
 }
 
 .profile-overview__card-skeleton-image {
-  aspect-ratio: 1 / 1;
-  margin-bottom: 4px;
+  aspect-ratio: 16 / 9;
 }
 
-.profile-overview__card-skeleton-image--wide {
-  aspect-ratio: 3 / 1;
+/* "Supports": the accounts it endorsed, avatar and name, three a row
+   (two on phones). */
+.profile-supports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 800px) {
+  .profile-supports {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.profile-supports__item {
+  display: flex;
+  min-width: 0;
+}
+
+.profile-supports__link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px;
+  margin-inline: -8px;
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.profile-supports__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.profile-supports__link:hover {
+    background: var(--overlay-weak);
+  }
+}
+
+.profile-supports__name {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
 }
 
 .profile-overview__endorse-skeleton {
@@ -909,27 +920,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
 }
 
 /* ---------- Facts (the Overview's rail) ---------- */
-
-/* The card is the frame; the map needs no second border inside it. */
-.profile-facts__map .certs-map {
-  border: 0;
-}
-
-.profile-facts__place-name {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 0;
-  font-size: var(--text-body-sm);
-  line-height: 1.5;
-  color: var(--fg-primary);
-}
-
-.profile-facts__place-name svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--fg-muted);
-}
 
 .profile-facts__handle {
   overflow-wrap: anywhere;
@@ -964,22 +954,6 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   gap: 24px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border-subtle);
-}
-
-@media (max-width: 799px) {
-  /* One card a row; the photo leads. */
-  .profile-overview__cards,
-  .profile-overview__cards--projects {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* On a phone the photos carry the cards; one without a photo doesn't
-     spend a screen on a placeholder. */
-  .profile-overview__cards .feed-card__image-wrap--placeholder,
-  .profile-overview__cards
-    .explore-project-card__image-wrap:has(.explore-project-card__image--placeholder) {
-    display: none;
-  }
 }
 
 @media (min-width: 800px) {

@@ -2,13 +2,32 @@ import { describe, it, expect, afterEach, vi } from "vitest"
 import { render, screen, cleanup, within, fireEvent } from "@testing-library/react"
 
 import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
+import type { GivenEndorsement } from "@/hooks/use-endorsements"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import type { CollectionRecord } from "@/lib/atproto/collection"
 import type { ProfileSummary, SectionCount } from "../use-profile-summary"
 
 // The endorser's name and avatar come from the indexer block below; the
-// fallback lookup is never needed.
+// fallback lookup is never needed. A supported account resolves to a
+// name from its DID.
 vi.mock("@/hooks/use-author-info", () => ({
-  useAuthorInfo: () => ({ info: null, isLoading: false, error: null }),
+  useAuthorInfo: (did: string | null) => ({
+    info: did?.startsWith("did:plc:subject")
+      ? { did, handle: `${did.slice(8)}.test`, displayName: `Org ${did.slice(15)}`, avatarUrl: null }
+      : null,
+    isLoading: false,
+    error: null,
+  }),
+}))
+vi.mock("@/hooks/use-org-marker", () => ({
+  useOrgMarker: () => ({ isOrg: true, marker: null, isLoading: false }),
+}))
+vi.mock("@/hooks/use-location", () => ({
+  useLocations: () => ({ locations: [], isLoading: false }),
+  loadLocation: () => Promise.resolve(null),
+}))
+vi.mock("@/hooks/use-activity", () => ({
+  useActivity: () => ({ activity: null, isLoading: false, error: null, refetch: () => {} }),
 }))
 vi.mock("@/components/map/map-dynamic", () => ({ default: () => null }))
 
@@ -44,11 +63,36 @@ function activity(n: number): ActivityRecord {
   } as unknown as ActivityRecord
 }
 
+function project(n: number, items: string[], title = `Project ${n}`): CollectionRecord {
+  return {
+    uri: `at://did:plc:me/org.hypercerts.collection/p${n}`,
+    cid: `pcid${n}`,
+    value: {
+      title,
+      shortDescription: "A project.",
+      createdAt: `2026-06-0${n}T00:00:00.000Z`,
+      items: items.map((uri) => ({ itemIdentifier: { uri, cid: "x" } })),
+    },
+  } as unknown as CollectionRecord
+}
+
+function givenTo(n: number): GivenEndorsement {
+  return {
+    uri: `at://did:plc:me/app.certified.badge.award/g${n}`,
+    cid: `g${n}`,
+    rkey: `g${n}`,
+    rkeys: [`g${n}`],
+    subjectDid: `did:plc:subject${n}`,
+    createdAt: `2026-04-${String((n % 28) + 1).padStart(2, "0")}T00:00:00.000Z`,
+  } as GivenEndorsement
+}
+
 const loaded = (value: number): SectionCount => ({ value, isLoading: false, failed: false })
 
 /** A loaded summary, with whatever the test changes. */
 function summary({
   activities = [] as ActivityRecord[],
+  projects = [] as CollectionRecord[],
   received = [] as ReceivedEndorsement[],
   given = 0,
   activitiesError = null as string | null,
@@ -71,20 +115,26 @@ function summary({
       refetch: refetchActivities,
     },
     recentActivities: activities,
-    projects: { projects: [], isLoading: false, error: projectsError, truncated: false, retry: retryProjects },
+    projects: { projects, isLoading: false, error: projectsError, truncated: false, retry: retryProjects },
     received: {
       endorsements: received,
       isLoading: false,
       error: receivedError,
       refetch: refetchReceived,
     },
-    given: { endorsements: [], isLoading: false, error: null, refetch: vi.fn() },
+    given: {
+      endorsements: Array.from({ length: given }, (_, i) => givenTo(i + 1)),
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    },
     followers: {} as ProfileSummary["followers"],
     following: {} as ProfileSummary["following"],
     counts: {
       activities: { ...loaded(activities.length), failed: !!activitiesError },
-      projects: { ...loaded(0), failed: !!projectsError },
-      endorsements: { ...loaded(received.length), failed: !!receivedError },
+      projects: { ...loaded(projects.length), failed: !!projectsError },
+      endorsements: { ...loaded(received.length + given), failed: !!receivedError },
+      endorsementsReceived: { ...loaded(received.length), failed: !!receivedError },
       followers: loaded(0),
       lists: loaded(0),
       endorsementsGiven: given,
@@ -156,8 +206,8 @@ describe("ProfileOverview: Endorsements", () => {
     expect(screen.getByText(/No endorsements yet/)).toBeTruthy()
   })
 
-  it("links to the accounts it endorses", () => {
-    render(
+  it("shows the accounts it supports: twelve, by name, and a link to all of them", () => {
+    const { container } = render(
       <ProfileOverview
         did="did:plc:me"
         handle="me.certified.app"
@@ -165,8 +215,60 @@ describe("ProfileOverview: Endorsements", () => {
         summary={summary({ received: [endorsement(1)], given: 148 })}
       />,
     )
-    const given = screen.getByRole("link", { name: /Endorses 148 accounts/ })
-    expect(given.getAttribute("href")).toBe("/me.certified.app?tab=endorsements&sub=given")
+    expect(screen.getByRole("heading", { name: /Supports/ })).toBeTruthy()
+    const tiles = container.querySelectorAll(".profile-supports__item")
+    expect(tiles).toHaveLength(12)
+    // Names, never handles.
+    expect(tiles[0].querySelector(".profile-supports__name")!.textContent).toMatch(/^Org \d+$/)
+    expect(container.querySelector(".profile-supports")!.textContent).not.toContain(".test")
+    const all = screen.getByRole("link", { name: "All 148" })
+    expect(all.getAttribute("href")).toBe("/me.certified.app?tab=endorsements&sub=given")
+  })
+
+  it("has no Supports section for an account that endorsed nobody", () => {
+    render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ received: [endorsement(1)] })}
+      />,
+    )
+    expect(screen.queryByRole("heading", { name: /Supports/ })).toBeNull()
+  })
+})
+
+describe("ProfileOverview: the same work once", () => {
+  it("leaves out an activity its same-titled project already shows", () => {
+    const covered = activity(1)
+    const own = activity(2)
+    render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({
+          activities: [covered, own],
+          projects: [project(1, [covered.uri], "Activity 1")],
+        })}
+      />,
+    )
+    expect(screen.getAllByRole("heading", { level: 3, name: "Activity 1" })).toHaveLength(1)
+    expect(screen.getByRole("heading", { level: 3, name: "Activity 2" })).toBeTruthy()
+  })
+
+  it("lays one card out wide and two or more in a grid", () => {
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ activities: [activity(1)], projects: [project(1, []), project(2, [])] })}
+      />,
+    )
+    const lists = container.querySelectorAll(".work-card-list")
+    expect(lists[0].className).toContain("work-card-list--wide")
+    expect(lists[1].className).toContain("work-card-list--grid")
   })
 })
 
@@ -204,7 +306,7 @@ describe("ProfileOverview: what a visitor sees", () => {
     )
   })
 
-  it("shows activities as cards, without repeating the account as author", () => {
+  it("shows activities as work cards, without repeating the account as author", () => {
     const { container } = render(
       <ProfileOverview
         did="did:plc:me"
@@ -213,7 +315,7 @@ describe("ProfileOverview: what a visitor sees", () => {
         summary={summary({ activities: [activity(1), activity(2)] })}
       />,
     )
-    const cards = container.querySelectorAll(".profile-overview__cards .feed-card")
+    const cards = container.querySelectorAll(".work-card-list .work-card")
     expect(cards).toHaveLength(2)
     expect(container.querySelector(".feed-card__author")).toBeNull()
     expect(screen.getByRole("heading", { level: 3, name: "Activity 1" })).toBeTruthy()

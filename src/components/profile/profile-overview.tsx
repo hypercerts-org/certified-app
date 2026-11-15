@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Check, Copy, MapPin, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
+import { Check, Copy, X } from "lucide-react"
+import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import ClampedText from "@/components/ui/clamped-text"
 import EmptyState from "@/components/ui/empty-state"
@@ -9,19 +11,33 @@ import ErrorMessage from "@/components/ui/error-message"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import { FactCard, FactList, type Fact } from "@/components/ui/fact-card"
+import { WorkCardList } from "@/components/ui/work-card"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
-import ActivityCard from "@/components/feed/activity-card"
-import ExploreProjectCard from "@/components/explore-page/explore-project-card"
+import { ActivityWorkCard, ProjectWorkCard, sameTitle } from "@/components/feed/work-cards"
+import { LocationFactCard, placeFromShape } from "@/components/feed/cert-locations-map"
+import { FundingFactCard, useRecordFundingView } from "@/components/funding/record-funding"
+import { projectFundingUris } from "@/components/funding/project-fact-card"
 import {
   reverseGeocode,
   suggestForwardGeocode,
   type ForwardGeocodeResult,
 } from "@/lib/locations/geocode"
-import { splitLocationName, type LocationShape } from "@/lib/atproto/location"
+import { shortPlaceName, splitLocationName, type LocationShape } from "@/lib/atproto/location"
+import {
+  projectActivityUris,
+  projectTitle,
+  type CollectionRecord,
+} from "@/lib/atproto/collection"
+import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
+import { deriveIdentity } from "@/lib/utils/identity"
+import { parseAtUri, recordUrl } from "@/lib/urls"
+import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
+import { useOrgMarker } from "@/hooks/use-org-marker"
+import type { GivenEndorsement } from "@/hooks/use-endorsements"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
 import {
@@ -72,15 +88,38 @@ interface ProfileOverviewProps {
   joined?: string | null
 }
 
-const PREVIEW = 3
+/** Work cards on Overview: two rows of the 2-up grid. */
+const PREVIEW = 4
+/** Endorsements on Overview. */
+const ENDORSEMENTS_PREVIEW = 3
+/** Accounts in the "Supports" grid. */
+const SUPPORTS_PREVIEW = 12
+/** Projects whose funding the profile's total takes in. Each is read with
+ *  its activities (up to 25 each), so the total stops at the newest ten
+ *  projects rather than fan out to hundreds of reads; an account with more
+ *  says "across the latest 10 projects". */
+const MAX_FUNDED_PROJECTS = 10
+
+/** An activity that its own same-titled project already shows: the
+ *  project card stands for both. */
+function coveredByProject(a: ActivityRecord, projects: readonly CollectionRecord[]): boolean {
+  return projects.some(
+    (p) =>
+      sameTitle(projectTitle(p.value), a.value.title) &&
+      projectActivityUris(p.value.items).includes(a.uri),
+  )
+}
 
 /**
  * The profile's Overview tab. A reading column with the account's work —
- * About (when the header's lead is the bio), the latest activities as image
- * cards, projects, and the endorsements it received with their notes —
- * and, from 1100px, a 320px rail beside it: a small map of the account's
- * place, then the Account facts (type, place, founded, joined, handle,
- * Permanent ID). On phones the rail follows the content.
+ * About (when the header's lead is the bio), the latest activities and
+ * projects as work cards (one is a wide card, more a 2-up grid; an
+ * activity its same-titled project already shows is left out), the
+ * accounts it supports (endorsed), and the endorsements it received with
+ * their notes — and, from 1100px, a 320px rail beside it: the funding
+ * across its projects, its Location, then the Account facts (type,
+ * founded, joined, handle, Permanent ID). On phones the rail follows the
+ * content.
  *
  * A visitor sees only sections with something in them; the account itself
  * sees every section, with the action that fills an empty one. A section
@@ -103,23 +142,46 @@ export default function ProfileOverview({
   location = null,
   joined = null,
 }: ProfileOverviewProps) {
-  const { activities, recentActivities, projects, received, counts } = summary
+  const { activities, recentActivities, projects, received, given, counts } = summary
 
-  const previewActivities = recentActivities.slice(0, PREVIEW)
-  const previewProjects = [...projects.projects]
-    .sort((a, b) => (String(a.value.createdAt ?? "") < String(b.value.createdAt ?? "") ? 1 : -1))
-    .slice(0, PREVIEW)
+  const sortedProjects = useMemo(
+    () =>
+      [...projects.projects].sort((a, b) =>
+        String(a.value.createdAt ?? "") < String(b.value.createdAt ?? "") ? 1 : -1,
+      ),
+    [projects.projects],
+  )
+  // The same work isn't shown twice: an activity its same-titled project
+  // holds is the project's card.
+  const shownActivities = recentActivities.filter(
+    (a) => !coveredByProject(a, projects.projects),
+  )
+  const previewActivities = shownActivities.slice(0, PREVIEW)
+  const previewProjects = sortedProjects.slice(0, PREVIEW)
   const previewEndorsements = [...received.endorsements]
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, PREVIEW)
+    .slice(0, ENDORSEMENTS_PREVIEW)
+  const supported = useMemo(
+    () => [...given.endorsements].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [given.endorsements],
+  )
 
   const activitiesEmpty = isKnownEmpty(counts.activities)
   const projectsEmpty = isKnownEmpty(counts.projects)
   const endorsementsEmpty =
     isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
-  const showActivities = viewerIsOwner || !activitiesEmpty
+  // A visitor doesn't get an Activities section that only repeated the
+  // projects below it.
+  const allCovered =
+    !activities.error &&
+    !counts.activities.isLoading &&
+    recentActivities.length > 0 &&
+    shownActivities.length === 0 &&
+    !activities.hasMore
+  const showActivities = viewerIsOwner || (!activitiesEmpty && !allCovered)
   const showProjects = viewerIsOwner || !projectsEmpty
-  const showEndorsements = viewerIsOwner || !endorsementsEmpty
+  const showEndorsements = viewerIsOwner || !isKnownEmpty(counts.endorsementsReceived)
+  const showSupports = supported.length > 0
   const nothingToShow =
     !viewerIsOwner && !about && activitiesEmpty && projectsEmpty && endorsementsEmpty
   // Everything failed at once (the indexer is down): one block, not three.
@@ -177,7 +239,7 @@ export default function ProfileOverview({
               id="profile-overview-activities"
               title="Activities"
               action={
-                recentActivities.length > PREVIEW || activities.hasMore ? (
+                shownActivities.length > PREVIEW || activities.hasMore ? (
                   <SeeAllLink href={`${basePath}?tab=activities`} label="All activities" />
                 ) : null
               }
@@ -194,29 +256,31 @@ export default function ProfileOverview({
               <div className="profile-overview__empty">
                 <EmptyState
                   variant="inline"
-                  title="No activities yet. Activities you publish or contribute to show here."
+                  title={
+                    recentActivities.length > 0
+                      ? "Each activity is in its project below."
+                      : "No activities yet. Activities you publish or contribute to show here."
+                  }
                 />
-                <Button href="/create" variant="secondary" size="sm">
-                  New activity
-                </Button>
+                {recentActivities.length === 0 ? (
+                  <Button href="/create" variant="secondary" size="sm">
+                    New activity
+                  </Button>
+                ) : null}
               </div>
             ) : (
-              <ul className="profile-overview__cards">
-                {previewActivities.map((a) => {
+              <WorkCardList
+                items={previewActivities}
+                itemKey={(a) => a.uri}
+                render={(a, layout) => (
                   // Contributions live in another account's repo.
-                  const author = activities.dids.get(a.uri) ?? did
-                  return (
-                    <li key={a.uri}>
-                      <ActivityCard
-                        record={a}
-                        did={author}
-                        showAuthor={author !== did}
-                        titleAs="h3"
-                      />
-                    </li>
-                  )
-                })}
-              </ul>
+                  <ActivityWorkCard
+                    record={a}
+                    did={activities.dids.get(a.uri) ?? did}
+                    layout={layout}
+                  />
+                )}
+              />
             )}
           </section>
         ) : null}
@@ -242,7 +306,7 @@ export default function ProfileOverview({
                 onRetry={projects.retry}
               />
             ) : counts.projects.isLoading ? (
-              <CardsSkeleton wide />
+              <CardsSkeleton />
             ) : previewProjects.length === 0 ? (
               <div className="profile-overview__empty">
                 <EmptyState
@@ -254,14 +318,49 @@ export default function ProfileOverview({
                 </Button>
               </div>
             ) : (
-              <ul className="profile-overview__cards profile-overview__cards--projects">
-                {previewProjects.map((p) => (
-                  <li key={p.uri}>
-                    <ExploreProjectCard project={p} />
-                  </li>
-                ))}
-              </ul>
+              <WorkCardList
+                items={previewProjects}
+                itemKey={(p) => p.uri}
+                render={(p, layout) => (
+                  // The account's activities give a project without a
+                  // banner its picture, as on the project page.
+                  <ProjectWorkCard project={p} known={recentActivities} layout={layout} />
+                )}
+              />
             )}
+          </section>
+        ) : null}
+
+        {showSupports && !allFailed ? (
+          <section
+            className="profile-overview__section"
+            aria-labelledby="profile-overview-supports"
+          >
+            <SectionHeader
+              id="profile-overview-supports"
+              title={
+                <>
+                  Supports{" "}
+                  <span className="font-normal tabular-nums text-[var(--fg-muted)]">
+                    {formatGraphCount(supported.length)}
+                  </span>
+                </>
+              }
+              description="Accounts it has endorsed"
+              action={
+                supported.length > SUPPORTS_PREVIEW ? (
+                  <SeeAllLink
+                    href={`${basePath}?tab=endorsements&sub=given`}
+                    label={`All ${formatGraphCount(supported.length)}`}
+                  />
+                ) : null
+              }
+            />
+            <ul className="profile-supports">
+              {supported.slice(0, SUPPORTS_PREVIEW).map((e) => (
+                <SupportedAccount key={e.subjectDid} endorsement={e} />
+              ))}
+            </ul>
           </section>
         ) : null}
 
@@ -305,15 +404,6 @@ export default function ProfileOverview({
                     title="No endorsements yet. When another account endorses this one, it shows here."
                   />
                 ) : null}
-                {counts.endorsementsGiven > 0 ? (
-                  <SeeAllLink
-                    href={`${basePath}?tab=endorsements&sub=given`}
-                    label={`Endorses ${formatGraphCount(counts.endorsementsGiven)} ${
-                      counts.endorsementsGiven === 1 ? "account" : "accounts"
-                    }`}
-                    className="self-start"
-                  />
-                ) : null}
               </>
             )}
           </section>
@@ -338,15 +428,18 @@ export default function ProfileOverview({
         ) : kindPending ? (
           <RailSkeleton />
         ) : (
-          <AccountFacts
-            did={did}
-            handle={handle}
-            isOrg={isOrg}
-            typeTags={orgTypeTags}
-            foundedDate={orgFoundedDate}
-            location={location}
-            joined={joined}
-          />
+          <>
+            <ProfileFundingCard projects={sortedProjects} loading={counts.projects.isLoading} />
+            <AccountFacts
+              did={did}
+              handle={handle}
+              isOrg={isOrg}
+              typeTags={orgTypeTags}
+              foundedDate={orgFoundedDate}
+              location={location}
+              joined={joined}
+            />
+          </>
         )}
       </aside>
     </div>
@@ -354,6 +447,76 @@ export default function ProfileOverview({
 }
 
 /* ------------------------------ Rail ------------------------------ */
+
+/**
+ * The money behind the account's work, where a donor looks: the funding
+ * card the record pages use, summed over the account's projects (each
+ * with its activities), the newest {@link MAX_FUNDED_PROJECTS} of them.
+ * "All gifts" opens the project's Funding tab when there is one project.
+ * Renders nothing when there is no funding.
+ */
+function ProfileFundingCard({
+  projects,
+  loading,
+}: {
+  projects: readonly CollectionRecord[]
+  loading: boolean
+}) {
+  const counted = projects.slice(0, MAX_FUNDED_PROJECTS)
+  const uris = useMemo(() => {
+    const out: string[] = []
+    for (const p of projects.slice(0, MAX_FUNDED_PROJECTS)) {
+      for (const u of projectFundingUris(p)) if (!out.includes(u)) out.push(u)
+    }
+    return out
+  }, [projects])
+  const view = useRecordFundingView(uris, null)
+  if (loading || counted.length === 0) return null
+  const only = counted.length === 1 ? parseAtUri(counted[0].uri) : null
+  const href = only ? `${recordUrl(only.did, "project", only.rkey)}?tab=funding` : null
+  const scope =
+    projects.length > MAX_FUNDED_PROJECTS
+      ? `Across the latest ${MAX_FUNDED_PROJECTS} projects`
+      : counted.length > 1
+        ? `Across ${counted.length} projects`
+        : null
+  return <FundingFactCard view={view} href={href} scope={scope} />
+}
+
+/** One account the profile endorsed: its avatar and name, to its profile. */
+function SupportedAccount({ endorsement }: { endorsement: GivenEndorsement }) {
+  const did = endorsement.subjectDid
+  const { info, isLoading } = useAuthorInfo(did)
+  const { isOrg } = useOrgMarker(did)
+  if (isLoading && !info) {
+    return (
+      <li className="profile-supports__item" aria-hidden="true">
+        <span className="profile-supports__link">
+          <Skeleton variant="box" width={40} height={40} />
+          <Skeleton variant="line" width="70%" height={14} />
+        </span>
+      </li>
+    )
+  }
+  const { displayName, unnamed, initials, profileHref, avatarUrl } = deriveIdentity(info, did)
+  return (
+    <li className="profile-supports__item">
+      <Link href={profileHref} className="profile-supports__link">
+        <Avatar
+          size="row"
+          shape={isOrg ? "square" : "circle"}
+          src={avatarUrl ?? undefined}
+          alt=""
+          fallbackInitials={initials}
+          seed={did}
+        />
+        <span className="profile-supports__name" data-unnamed={unnamed || undefined} dir="auto">
+          {displayName}
+        </span>
+      </Link>
+    </li>
+  )
+}
 
 function AccountFacts({
   did,
@@ -397,54 +560,19 @@ function AccountFacts({
   return (
     <>
       {shape ? (
-        <FactCard className="profile-facts__place">
-          <PlaceMap shape={shape} name={placeName} />
-          {placeName ? (
-            <p className="profile-facts__place-name">
-              <MapPin size={16} strokeWidth={1.75} aria-hidden />
-              <span>{placeName}</span>
-            </p>
-          ) : null}
-        </FactCard>
+        // The one Location card of the public pages; the header's meta line
+        // names the town, so a caption saying only that is left out.
+        <LocationFactCard
+          places={[placeFromShape("profile", shape, placeName)]}
+          headerPlace={shortPlaceName(placeName)}
+        />
       ) : location?.resolving ? (
-        <Skeleton variant="box" height={208} />
+        <LocationFactCard places={[]} isLoading />
       ) : null}
       <FactCard title="Account" labelledBy="profile-facts-account">
         <FactList facts={facts} />
       </FactCard>
     </>
-  )
-}
-
-/** A small map of the account's place: its pin, or its region. */
-function PlaceMap({ shape, name }: { shape: LocationShape; name: string | null }) {
-  const label = name ?? undefined
-  return (
-    <div className="profile-facts__map">
-      {shape.kind === "point" ? (
-        <Map
-          pins={[{ lat: shape.point.lat, lng: shape.point.lng, label }]}
-          center={shape.point}
-          zoom={9}
-          height={160}
-          interactive
-          // Scrolling the page past the map must not zoom it; the +/-
-          // buttons, pinch and double-click still do.
-          scrollWheelZoom={false}
-          compactAttribution
-        />
-      ) : (
-        <Map
-          pins={[]}
-          polygons={[{ rings: shape.rings, label }]}
-          zoom={6}
-          height={160}
-          interactive
-          scrollWheelZoom={false}
-          compactAttribution
-        />
-      )}
-    </div>
   )
 }
 
@@ -475,24 +603,20 @@ function PermanentId({ did }: { did: string }) {
 
 /* ---------------------------- Skeletons ---------------------------- */
 
-/** Loading cards shaped like the cards they stand in for. */
-function CardsSkeleton({ wide = false }: { wide?: boolean }) {
+/** Loading work cards: two in the grid, a photo frame over the title and
+ *  meta line. */
+export function CardsSkeleton() {
   return (
-    <div
-      className={`profile-overview__cards${wide ? " profile-overview__cards--projects" : ""}`}
-      aria-hidden
-    >
-      {Array.from({ length: wide ? 2 : 3 }, (_, i) => (
+    <div className="work-card-list work-card-list--grid" aria-hidden>
+      {[0, 1].map((i) => (
         <div key={i} className="profile-overview__card-skeleton">
-          <div
-            className={`profile-overview__card-skeleton-image${
-              wide ? " profile-overview__card-skeleton-image--wide" : ""
-            }`}
-          >
+          <div className="profile-overview__card-skeleton-image">
             <Skeleton variant="box" width="100%" height="100%" />
           </div>
-          <Skeleton variant="line" width="80%" height={16} />
-          <Skeleton variant="line" width="50%" height={12} />
+          <div className="flex flex-col gap-2 p-4">
+            <Skeleton variant="line" width="80%" height={18} />
+            <Skeleton variant="line" width="50%" height={12} />
+          </div>
         </div>
       ))}
     </div>

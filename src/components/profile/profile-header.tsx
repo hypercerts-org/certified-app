@@ -91,6 +91,9 @@ export interface ProfileHeaderProps {
   onBannerFile?: (file: File) => Promise<void>
   onBannerRemove?: () => void
   hasPendingBanner?: boolean
+  /** The other tabs, on phones: no banner, lead, links or trust line, so
+   *  the tab's content starts on the first screen. */
+  compact?: boolean
 }
 
 /**
@@ -141,6 +144,7 @@ export default function ProfileHeader({
   onBannerFile,
   onBannerRemove,
   hasPendingBanner = false,
+  compact = false,
 }: ProfileHeaderProps) {
   useRegisterPageHeader()
 
@@ -193,7 +197,7 @@ export default function ProfileHeader({
     <header
       className={`profile-header${hasBannerSlot ? " profile-header--banner" : ""}${
         editing ? " profile-header--editing" : ""
-      }`}
+      }${compact && !editing ? " profile-header--compact" : ""}`}
     >
       {editing ? (
         <div className="profile-header__banner profile-header__banner--editing">

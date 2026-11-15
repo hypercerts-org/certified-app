@@ -118,6 +118,7 @@ export default function ProfileGroups({ did }: ProfileGroupsProps) {
     <section className="profile-panel" aria-labelledby="profile-groups-heading">
       <SectionHeader
         id="profile-groups-heading"
+        titleHidden
         title={
           <>
             Groups <PanelCount n={loading || error ? null : groups.length} />

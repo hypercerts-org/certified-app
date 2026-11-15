@@ -17,7 +17,7 @@ import ProfileHeader, {
 } from "@/components/profile/profile-header"
 import ProfileOwnerBar from "@/components/profile/profile-owner-bar"
 import ProfileTabs, { type ProfileTabItem } from "@/components/profile/profile-tabs"
-import ProfileOverview from "@/components/profile/profile-overview"
+import ProfileOverview, { CardsSkeleton } from "@/components/profile/profile-overview"
 import ProfileProjects from "@/components/profile/profile-projects"
 import ProfileCerts from "@/components/profile/profile-certs"
 import ProfileGroups from "@/components/profile/profile-groups"
@@ -603,12 +603,20 @@ export default function UserProfilePage() {
         onBannerFile={handleBannerFile}
         onBannerRemove={handleRemoveBanner}
         hasPendingBanner={hasPendingBanner}
+        compact={shownTab !== "overview"}
       />
 
       <Tabs value={shownTab} onChange={selectTab}>
-        <ProfileTabs tabs={visibleTabs} active={shownTab} sticky={!editing} />
+        {/* A strip of one tab says nothing: a lone Overview has none. */}
+        {visibleTabs.length > 1 ? (
+          <ProfileTabs tabs={visibleTabs} active={shownTab} sticky={!editing} />
+        ) : null}
 
-        <div className="profile-page__panel">
+        <div
+          className={`profile-page__panel${
+            visibleTabs.length > 1 ? "" : " profile-page__panel--untabbed"
+          }`}
+        >
           <TabPanelTransition activeKey={shownTab} order={TAB_ORDER}>
             <TabPanel value={shownTab}>
               {shownTab === "overview" ? (
@@ -740,17 +748,7 @@ function ProfilePageBodySkeleton() {
         <div className="profile-overview__main">
           <div className="profile-overview__section">
             <Skeleton variant="line" width={96} height={16} />
-            <div className="profile-overview__cards">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="profile-overview__card-skeleton">
-                  <div className="profile-overview__card-skeleton-image">
-                    <Skeleton variant="box" width="100%" height="100%" />
-                  </div>
-                  <Skeleton variant="line" width="80%" height={16} />
-                  <Skeleton variant="line" width="50%" height={12} />
-                </div>
-              ))}
-            </div>
+            <CardsSkeleton />
           </div>
         </div>
         <div className="profile-overview__rail">
