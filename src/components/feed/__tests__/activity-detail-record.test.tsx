@@ -138,14 +138,14 @@ describe("ActivityDetail as a visitor", () => {
     ]
     renderActivity()
     expect(document.querySelector(".record-head__kind")?.textContent).toBe("Activity")
-    // The rail's Project card leads to it, without repeating the title.
+    // The rail's Project card leads to it without repeating the title, and
+    // says what it is instead.
     expect(screen.getByRole("heading", { name: "Project" })).toBeTruthy()
     expect(screen.queryByRole("link", { name: "Mangrove Nursery" })).toBeNull()
-    expect(
-      screen
-        .getByRole("link", { name: /Funding, updates and the full story/ })
-        .getAttribute("href"),
-    ).toBe("/did:plc:org/project/p1")
+    expect(screen.getByText(/A project of the same name gathers its funding/)).toBeTruthy()
+    expect(screen.getByRole("link", { name: /Open the project/ }).getAttribute("href")).toBe(
+      "/did:plc:org/project/p1",
+    )
   })
 
   it("puts the details in the main column when there is no description", () => {

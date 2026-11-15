@@ -88,9 +88,16 @@ export default function ProjectFactCard({
           {unconfirmedLabel(all.length)}
         </p>
       ) : null}
+      {/* Without the name the link alone would read as going nowhere in
+          particular: say what the project is first. */}
+      {!showName ? (
+        <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
+          A project of the same name gathers its funding, updates and full story.
+        </p>
+      ) : null}
       {href ? (
         <Link href={href} className="record-link record-link--arrow">
-          Funding, updates and the full story
+          {showName ? "Funding, updates and the full story" : "Open the project"}
           <ArrowRight size={14} strokeWidth={1.75} aria-hidden />
         </Link>
       ) : null}
