@@ -108,47 +108,42 @@
   color: var(--badge-success-fg);
 }
 
-/* Why most receipts are Ma Earth's, and an invitation; folds to its
-   first line. The text keeps to a reading width and the button follows
-   it, so on a wide page it never drifts to the far edge. */
-.funding-intro {
-  margin-bottom: 24px;
-  padding: 10px 12px 10px 16px;
-  border-radius: var(--radius);
-  background: var(--bg-sunken);
-  font-size: var(--text-body-sm);
-  color: var(--fg-secondary);
+/* The totals with a short note at the row's right end. */
+.funding-page__overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
 }
 
-.funding-intro p {
-  max-width: var(--measure);
+/* Why most receipts are Ma Earth's, and an invitation: three short lines
+   beside the totals, under them on narrower screens. */
+.funding-note-card {
+  flex: 0 1 340px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--fg-secondary);
   text-wrap: pretty;
 }
 
-.funding-intro b {
+.funding-note-card b {
   font-weight: 600;
   color: var(--fg-primary);
 }
 
-.funding-intro__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--fg-primary);
+.funding-note-card .funding-page__see-all {
+  font-size: inherit;
 }
 
-.funding-intro__body {
-  display: grid;
-  gap: 10px;
-  padding: 4px 4px 4px 0;
-}
-
-.funding-intro__invite {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 14px;
+@media (max-width: 1099px) {
+  .funding-note-card {
+    flex-basis: 100%;
+  }
 }
 
 /* ---- View switcher ------------------------------------------------------ */

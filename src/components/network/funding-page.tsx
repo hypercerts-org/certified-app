@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useId, useMemo, useState } from "react"
-import { ChartScatter, ChevronDown, ChevronUp, Earth, LayoutGrid, ReceiptText, Split } from "lucide-react"
+import { useMemo, useState } from "react"
+import { ChartScatter, Earth, LayoutGrid, ReceiptText, Split } from "lucide-react"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
@@ -9,7 +9,6 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import StatRow from "@/components/ui/stat-row"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import Button from "@/components/ui/button"
 import { useFeedback } from "@/lib/feedback-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useUrlParam } from "@/hooks/use-url-param"
@@ -71,68 +70,21 @@ const VIEWS = [
 type View = (typeof VIEWS)[number]["value"]
 const LATEST = 6
 
-const NOTE_HIDDEN_KEY = "certified.funding.noteHidden"
-
 /**
  * Why most receipts so far are Ma Earth's, and an invitation to other
- * funding programs (the shared contact form, as on the landing page).
- * Open by default; "Hide" folds it to its first line, and this browser
- * remembers that. Shown while the data loads too, since that can take a
- * minute.
+ * funding programs (the shared contact form, as on the landing page): a
+ * short card at the right end of the totals row.
  */
-function FundingIntro() {
+function FundingNote() {
   const { openFeedback } = useFeedback()
-  const bodyId = useId()
-  const [open, setOpen] = useState(true)
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(NOTE_HIDDEN_KEY) === "1") setOpen(false)
-    } catch {
-      // No storage (private window, blocked): the note stays open.
-    }
-  }, [])
-  const toggle = () => {
-    const next = !open
-    setOpen(next)
-    try {
-      if (next) window.localStorage.removeItem(NOTE_HIDDEN_KEY)
-      else window.localStorage.setItem(NOTE_HIDDEN_KEY, "1")
-    } catch {
-      // Not remembered; the toggle still works for this visit.
-    }
-  }
   return (
-    <aside className="funding-intro" aria-label="About this data">
-      <div className="funding-intro__head">
-        <p>
-          <b>Note:</b> most of this comes from one funding round.
-        </p>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          aria-label={open ? "Hide the note" : "Show the note"}
-          onClick={toggle}
-        >
-          {open ? "Hide" : "Show"}
-          {open ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
-        </Button>
-      </div>
-      {open ? (
-        <div id={bodyId} className="funding-intro__body">
-          <p>
-            Ma Earth ran the first large funding round on Certified and recorded its gifts here, so most receipts so
-            far are theirs. As other funding programs record theirs, they will show here too.
-          </p>
-          <div className="funding-intro__invite">
-            <p>Running a funding program? You can run it in the open here, with every gift on the record.</p>
-            <Button size="sm" variant="secondary" onClick={() => openFeedback("contact")}>
-              Get in touch
-            </Button>
-          </div>
-        </div>
-      ) : null}
+    <aside className="funding-note-card" aria-label="About this data">
+      <p>
+        <b>Note:</b> most receipts so far come from one funding round, run by Ma Earth. Running a funding program?{" "}
+        <button type="button" className="funding-page__see-all" onClick={() => openFeedback("contact")}>
+          Get in touch
+        </button>
+      </p>
     </aside>
   )
 }
@@ -171,7 +123,6 @@ export default function FundingPage() {
   return (
     <PageContainer className="funding-page">
       <PageHeader title="Funding" description="Who funds which work across the Certified network." />
-      <FundingIntro />
       {error && !ds ? (
         <ErrorMessage title="Funding didn't load" message={error} onRetry={retry} />
       ) : !ds || !summary || !counts ? (
@@ -181,17 +132,20 @@ export default function FundingPage() {
         </div>
       ) : (
         <>
-          <StatRow
-            aria-label="Funding in this selection"
-            className="funding-page__stats"
-            items={[
-              { label: "Received", value: formatUsd(summary.total) },
-              { label: "Gifts", value: formatCount(summary.count) },
-              { label: "Projects", value: formatCount(summary.projects) },
-              { label: "Named donors", value: formatCount(summary.namedDonors) },
-              { label: "Anonymous gifts", value: formatCount(summary.anonymous) },
-            ]}
-          />
+          <div className="funding-page__overview">
+            <StatRow
+              aria-label="Funding in this selection"
+              className="funding-page__stats"
+              items={[
+                { label: "Received", value: formatUsd(summary.total) },
+                { label: "Gifts", value: formatCount(summary.count) },
+                { label: "Projects", value: formatCount(summary.projects) },
+                { label: "Named donors", value: formatCount(summary.namedDonors) },
+                { label: "Anonymous gifts", value: formatCount(summary.anonymous) },
+              ]}
+            />
+            <FundingNote />
+          </div>
           <FundingConfirmedBy
             roles={confirmed.roles}
             counts={counts}
