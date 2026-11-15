@@ -9,8 +9,10 @@ import {
 } from "./funding-receipt-parts"
 import { formatRelativeDate } from "@/lib/utils/format-date"
 import { formatAbsoluteDateTime, formatAmount } from "./format-display"
+import Badge from "@/components/ui/badge"
 import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
+import { formatGift } from "@/lib/funding/format"
 
 /**
  * Dense single-row representation of an `org.hypercerts.funding.receipt`
@@ -35,6 +37,10 @@ function FundingReceiptRow({
   showFor = true,
   showTo = true,
   interactive = true,
+  showConfirmedBy = true,
+  amountStyle = "code",
+  compact = false,
+  unconfirmed = false,
 }: {
   receipt: FundingReceipt
   /** Render text (non-account) parties as their literal value rather
@@ -50,6 +56,19 @@ function FundingReceiptRow({
    *  inner account / wallet / activity controls keep their own behaviour
    *  (the click handler ignores clicks that land on a link or button). */
   interactive?: boolean
+  /** Render the "Confirmed by" column. Defaults to true; a record page
+   *  leaves it out when every gift has the same confirmer (its summary
+   *  sentence says who). */
+  showConfirmedBy?: boolean
+  /** "code": "50.00 USD" (the default, /explore). "money": as the totals
+   *  read, "$50", other currencies with their code. */
+  amountStyle?: "code" | "money"
+  /** On phones, a two-line row (name and amount, then the date) instead
+   *  of the labelled card. Off by default. */
+  compact?: boolean
+  /** Mark the gift "Unconfirmed" (listed although neither both sides nor
+   *  a trusted source confirmed it). */
+  unconfirmed?: boolean
 }) {
   const [detailOpen, setDetailOpen] = useState(false)
 
@@ -77,7 +96,9 @@ function FundingReceiptRow({
   return (
     <>
     <article
-      className={`funding-receipt-row${interactive ? " funding-receipt-row--interactive" : ""}`}
+      className={`funding-receipt-row${interactive ? " funding-receipt-row--interactive" : ""}${
+        compact ? " funding-receipt-row--compact" : ""
+      }`}
       onClick={interactive ? onRowClick : undefined}
     >
       {/* Columns: date | from | to | for | amount | source | confirmed-by.
@@ -127,7 +148,9 @@ function FundingReceiptRow({
           header labels it, so no inline connector word. */}
       {showFor ? <FundingForTarget uri={receipt.forUri} /> : null}
       <span className="funding-receipt-row__amount">
-        {receipt.amount ? (
+        {!receipt.amount ? null : amountStyle === "money" ? (
+          formatGift(receipt.amount, receipt.currency) ?? formatAmount(receipt.amount)
+        ) : (
           <>
             {formatAmount(receipt.amount)}
             {receipt.currency ? (
@@ -136,13 +159,15 @@ function FundingReceiptRow({
               </span>
             ) : null}
           </>
-        ) : null}
+        )}
       </span>
       {/* Provenance — who confirmed this payment, as plain text
           (Sender / Recipient / Sender & Recipient, and/or a named
           third party). Empty until the indexer ships `attestations`
           (magic-indexer #214). */}
-      <FundingConfirmedBy receipt={receipt} />
+      {showConfirmedBy ? (
+        <FundingConfirmedBy receipt={receipt} unconfirmed={unconfirmed} />
+      ) : null}
     </article>
     {/* Rendered as a sibling (not a child of the row) so the modal's
         backdrop / content clicks don't bubble back into the row's click
@@ -160,16 +185,12 @@ function FundingReceiptRow({
 
 export default memo(FundingReceiptRow)
 
-/** The "Confirmed by" column — a plain-text summary of who attested the
- *  payment: the transfer parties (Sender / Recipient / Sender & Recipient)
- *  and/or a named third party. Renders empty when there are no attestations
- *  (pre-#214 or an unattested record) so columns stay aligned. */
-function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
+/** Who confirmed a gift, as the "Confirmed by" column shows it: the
+ *  transfer parties' label and the third parties' DIDs. */
+function confirmers(receipt: FundingReceipt): { partyLabel: string | null; tpDids: string[] } {
   const a = receipt.attestations
   const hasSender = a.some((x) => x.role === "sender")
   const hasRecipient = a.some((x) => x.role === "recipient")
-  const tpDids = thirdPartyDids(a)
-
   const partyLabel =
     hasSender && hasRecipient
       ? "Funder & Recipient"
@@ -178,11 +199,34 @@ function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
         : hasRecipient
           ? "Recipient"
           : null
+  return { partyLabel, tpDids: thirdPartyDids(a) }
+}
+
+/** A key for a gift's "Confirmed by" cell: two gifts with the same key
+ *  show the same thing there. */
+export function confirmedByKey(receipt: FundingReceipt): string {
+  const { partyLabel, tpDids } = confirmers(receipt)
+  return `${partyLabel ?? ""}|${[...tpDids].sort().join(",")}`
+}
+
+/** The "Confirmed by" column — a plain-text summary of who attested the
+ *  payment: the transfer parties (Sender / Recipient / Sender & Recipient)
+ *  and/or a named third party. Renders empty when there are no attestations
+ *  (pre-#214 or an unattested record) so columns stay aligned. With
+ *  `unconfirmed`, an "Unconfirmed" badge leads. */
+function FundingConfirmedBy({
+  receipt,
+  unconfirmed = false,
+}: {
+  receipt: FundingReceipt
+  unconfirmed?: boolean
+}) {
+  const { partyLabel, tpDids } = confirmers(receipt)
 
   // No attestations (pre-#214 or an unattested record): render the empty
   // cell with no label so the desktop columns stay aligned and the mobile
   // card doesn't show a stray "Confirmed by" with nothing under it.
-  if (!partyLabel && tpDids.length === 0) {
+  if (!partyLabel && tpDids.length === 0 && !unconfirmed) {
     return <span className="funding-receipt-row__confirmed-by" />
   }
 
@@ -197,9 +241,14 @@ function FundingConfirmedBy({ receipt }: { receipt: FundingReceipt }) {
         Confirmed by
       </span>
       <span className="funding-receipt-row__confirmed-value">
+        {unconfirmed ? (
+          <Badge variant="unverified" compact className="funding-receipt-row__unconfirmed">
+            Unconfirmed
+          </Badge>
+        ) : null}
         {partyLabel ? (
           <span className="funding-receipt-row__confirmed-label">
-            {partyLabel}
+            {unconfirmed ? `Recorded by the ${partyLabel.toLowerCase()}` : partyLabel}
           </span>
         ) : null}
         {tpDids.map((did) => (
@@ -229,9 +278,11 @@ function ThirdPartyIdentity({ did }: { did: string }) {
 export function FundingReceiptHeader({
   showFor = true,
   showTo = true,
+  showConfirmedBy = true,
 }: {
   showFor?: boolean
   showTo?: boolean
+  showConfirmedBy?: boolean
 }) {
   return (
     <div
@@ -247,9 +298,11 @@ export function FundingReceiptHeader({
       <span className="funding-receipt-row__heading funding-receipt-row__heading--amount">
         Amount
       </span>
-      <span className="funding-receipt-row__heading funding-receipt-row__heading--confirmed">
-        Confirmed by
-      </span>
+      {showConfirmedBy ? (
+        <span className="funding-receipt-row__heading funding-receipt-row__heading--confirmed">
+          Confirmed by
+        </span>
+      ) : null}
     </div>
   )
 }

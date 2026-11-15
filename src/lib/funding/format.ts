@@ -45,6 +45,20 @@ export function formatMoney(amount: number, currency: string): string {
   return `${amount.toLocaleString("en-US", { maximumFractionDigits: digits })} ${currency}`.trim()
 }
 
+/**
+ * One gift as the totals read: "$50", "$5.50"; another currency keeps its
+ * code ("12.5 USDC"), a gift without one is the bare number. Null when the
+ * amount can't be read.
+ */
+export function formatGift(amount: string | number | null, currency: string | null): string | null {
+  const n = typeof amount === "number" ? amount : Number.parseFloat(amount ?? "")
+  if (!Number.isFinite(n)) return null
+  const code = (currency ?? "").trim().toUpperCase()
+  if (code === "USD") return Number.isInteger(n) ? formatUsd(n) : formatUsdCents(n)
+  if (!code) return n.toLocaleString("en-US", { maximumFractionDigits: n < 1 ? 4 : 2 })
+  return formatMoney(n, code)
+}
+
 const dayFmt = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   day: "numeric",

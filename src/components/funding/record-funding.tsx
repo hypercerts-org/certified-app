@@ -9,6 +9,7 @@ import Pagination from "@/components/ui/pagination"
 import { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import FundingReceiptRow, {
+  confirmedByKey,
   FundingReceiptHeader,
 } from "@/components/explore-page/funding-receipt-row"
 import FundingConfirmedByPopover from "@/components/explore-page/funding-confirmed-by-popover"
@@ -23,7 +24,7 @@ import {
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { matchesConfirmedBy, type ConfirmRole } from "@/lib/atproto/funding-provenance"
+import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 import { confirmRoleLabel } from "@/lib/funding/labels"
 import { formatMoney, formatUsd } from "@/lib/funding/format"
@@ -37,9 +38,6 @@ import {
 /** Receipts per page on the Funding tab. */
 const PAGE_SIZE = 25
 
-/** The buckets the default "Confirmed by" leaves off. */
-const UNCONFIRMED_ROLES: readonly ConfirmRole[] = ["sender", "recipient", "other"]
-
 export interface RecordFundingView {
   /** Every loaded receipt (with the viewer's optimistic confirmations). */
   all: FundingReceipt[]
@@ -48,6 +46,11 @@ export interface RecordFundingView {
   summary: RecordFundingSummary
   /** Loaded receipts the filter hides. */
   hiddenCount: number
+  /** Nothing is confirmed, but gifts are recorded: the default filter
+   *  shows none, so the page lists them all, marked "Unconfirmed". */
+  onlyUnconfirmed: boolean
+  /** The Funding tab's count: the gifts it lists. */
+  tabCount: number
   isLoading: boolean
   error: string | null
   refetch: () => void
@@ -77,11 +80,14 @@ export function useRecordFundingView(
     [all, confirmedBy.roles, confirmedBy.thirdParties],
   )
   const summary = useMemo(() => summarizeRecordFunding(shown), [shown])
+  const onlyUnconfirmed = shown.length === 0 && all.length > 0 && confirmedBy.isDefault
   return {
     all,
     shown,
     summary,
     hiddenCount: all.length - shown.length,
+    onlyUnconfirmed,
+    tabCount: onlyUnconfirmed ? all.length : summary.gifts,
     isLoading,
     error,
     refetch,
@@ -89,9 +95,14 @@ export function useRecordFundingView(
   }
 }
 
+/** "1 unconfirmed gift", "3 unconfirmed gifts". */
+export function unconfirmedLabel(n: number): string {
+  return `${n.toLocaleString("en-US")} unconfirmed ${n === 1 ? "gift" : "gifts"}`
+}
+
 /** The total as one figure: dollars, else the first other currency, else
  *  the number of gifts (receipts without an amount). */
-function headlineAmount(s: RecordFundingSummary): string {
+export function headlineAmount(s: RecordFundingSummary): string {
   if (s.total > 0) return formatUsd(s.total)
   const other = s.others[0]
   if (other && other.total > 0) return formatMoney(other.total, other.currency)
@@ -99,7 +110,7 @@ function headlineAmount(s: RecordFundingSummary): string {
 }
 
 /** Gifts in other currencies, after the dollar total ("and 12.5 USDC"). */
-function otherCurrencies(s: RecordFundingSummary): string | null {
+export function otherCurrencies(s: RecordFundingSummary): string | null {
   const rest = s.total > 0 ? s.others : s.others.slice(1)
   const parts = rest.filter((o) => o.total > 0).map((o) => formatMoney(o.total, o.currency))
   return parts.length > 0 ? `and ${parts.join(", ")}` : null
@@ -113,10 +124,13 @@ function otherCurrencies(s: RecordFundingSummary): string | null {
 export function FundingFactCard({
   view,
   href,
+  scope = null,
 }: {
   view: RecordFundingView
   /** The Funding tab. */
   href: string | null
+  /** What the total covers, under it ("Across 3 projects"). */
+  scope?: string | null
 }) {
   const titleId = useId()
   const { summary, isLoading, error, all, hiddenCount } = view
@@ -154,11 +168,7 @@ export function FundingFactCard({
     return (
       <FactCard title="Funding" action={action} labelledBy={titleId}>
         <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
-          {!view.confirmedBy.isDefault
-            ? "No gifts match the filter."
-            : hiddenCount === 1
-              ? "1 gift is recorded, not yet confirmed by both sides or a trusted source."
-              : `${hiddenCount.toLocaleString("en-US")} gifts are recorded, not yet confirmed by both sides or a trusted source.`}
+          {view.confirmedBy.isDefault ? unconfirmedLabel(hiddenCount) : "No gifts match the filter."}
         </p>
       </FactCard>
     )
@@ -181,6 +191,7 @@ export function FundingFactCard({
           <p className="m-0 text-body-sm text-[var(--fg-secondary)]">{others}</p>
         ) : null}
         <p className="m-0 text-body-sm text-[var(--fg-secondary)]">{fundingByline(summary)}</p>
+        {scope ? <p className="m-0 text-caption text-[var(--fg-muted)]">{scope}</p> : null}
       </div>
       <FactList facts={facts} />
     </FactCard>
@@ -215,17 +226,21 @@ export function RecordFundingSection({
   recordInFlight?: boolean
 }) {
   const headingId = useId()
-  const { summary, shown, all, confirmedBy, isLoading, error, hiddenCount } = view
+  const { summary, shown, all, confirmedBy, isLoading, error, hiddenCount, onlyUnconfirmed } =
+    view
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE))
+  // Nothing confirmed yet: list every gift, marked "Unconfirmed", rather
+  // than an empty tab behind a count.
+  const listed = onlyUnconfirmed ? all : shown
+  const pageCount = Math.max(1, Math.ceil(listed.length / PAGE_SIZE))
   // A new filter starts at page 1; a shorter list keeps the page in range.
   const filterKey = `${[...confirmedBy.roles].sort().join(",")}|${[...confirmedBy.thirdParties].sort().join(",")}`
   useEffect(() => {
     setPage(1)
   }, [filterKey])
   const current = Math.min(page, pageCount)
-  const rows = shown.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
+  const rows = listed.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
 
   const filter =
     all.length > 0 ? (
@@ -264,23 +279,8 @@ export function RecordFundingSection({
     body = recordInFlight ? null : (
       <EmptyState variant="inline" title="No funding recorded yet." />
     )
-  } else if (shown.length === 0) {
-    body = confirmedBy.isDefault ? (
-      // Gifts exist, but only one side (or someone else) says so.
-      <EmptyState variant="inline" title="No confirmed gifts yet.">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            for (const role of UNCONFIRMED_ROLES) {
-              if (!confirmedBy.roles.has(role)) confirmedBy.toggleRole(role)
-            }
-          }}
-        >
-          Show unconfirmed gifts
-        </Button>
-      </EmptyState>
-    ) : (
+  } else if (listed.length === 0) {
+    body = (
       <EmptyState variant="inline" title="No gifts match this filter.">
         <Button variant="secondary" size="sm" onClick={confirmedBy.reset}>
           Reset filter
@@ -289,17 +289,28 @@ export function RecordFundingSection({
     )
   } else {
     // "To" says nothing when every gift went to the record's own account.
-    const showTo = !shown.every(
+    const showTo = !listed.every(
       (r) => !r.to || (r.to.kind === "account" && r.to.did === recipientDid),
     )
+    // "Confirmed by" says nothing when every gift has the same confirmer:
+    // the sentence above the list names it.
+    const firstKey = listed[0] ? confirmedByKey(listed[0]) : ""
+    const showConfirmedBy =
+      onlyUnconfirmed || !listed.every((r) => confirmedByKey(r) === firstKey)
     const listClass = `cert-detail__funding-list record-funding__list${
       showTo ? " record-funding__list--to" : ""
-    }${showFor ? " record-funding__list--for" : ""}`
+    }${showFor ? " record-funding__list--for" : ""}${
+      showConfirmedBy ? "" : " record-funding__list--no-confirmed"
+    }`
     body = (
       <>
         <ul className={listClass}>
           <li>
-            <FundingReceiptHeader showFor={showFor} showTo={showTo} />
+            <FundingReceiptHeader
+              showFor={showFor}
+              showTo={showTo}
+              showConfirmedBy={showConfirmedBy}
+            />
           </li>
           {rows.map((r) => (
             <li key={r.uri}>
@@ -308,6 +319,10 @@ export function RecordFundingSection({
                 showTextParties
                 showFor={showFor}
                 showTo={showTo}
+                showConfirmedBy={showConfirmedBy}
+                amountStyle="money"
+                compact
+                unconfirmed={onlyUnconfirmed}
               />
             </li>
           ))}
@@ -346,10 +361,18 @@ export function RecordFundingSection({
                   {fundingByline(summary)}
                 </p>
               </>
+            ) : onlyUnconfirmed ? (
+              <p className="m-0 text-body font-semibold text-[var(--fg-primary)]">
+                {unconfirmedLabel(all.length)}
+              </p>
             ) : null}
             {/* What the filter shows, so the list never looks like all
                 there is when it isn't. */}
-            {all.length > 0 ? (
+            {onlyUnconfirmed ? (
+              <p className="record-funding__note">
+                Recorded, but not yet confirmed by both sides or by a trusted source.
+              </p>
+            ) : all.length > 0 ? (
               <p className="record-funding__note">
                 {shownSentence(confirmedBy.roles, confirmedBy.thirdParties.size)}
                 {hiddenCount > 0
