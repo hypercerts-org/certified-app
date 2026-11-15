@@ -45,7 +45,8 @@ function cutShort(s: string): string | null {
  * description starts with the same words; then the description's first
  * paragraph, whole. Without such a description, a stub of a word left at
  * the cut goes ("…instead of retaining, r..." -> "…instead of
- * retaining…"). Null when there is no summary.
+ * retaining…", "…play a fundamental ro..." -> "…play a fundamental…").
+ * Null when there is no summary.
  */
 export function leadText(
   summary: string | null | undefined,
@@ -59,9 +60,11 @@ export function leadText(
   if (first && normalize(first).startsWith(normalize(stem)) && first.length > stem.length) {
     return first
   }
-  // A one- to three-letter stub after a comma was cut mid-word: drop it.
-  const stub = /^([\s\S]{20,}?)[,;:]\s+\p{L}{1,3}$/u.exec(stem)
-  return stub ? `${stub[1]}…` : short
+  // One to three letters run straight into the dots were most likely a
+  // word cut in half: drop them (a whole short word stays: "and more...").
+  if (!/\S(?:\.{3}|…)$/.test(short)) return short
+  const stub = /^([\s\S]{20,}?)[\s,;:–-]+\p{L}{1,3}$/u.exec(stem)
+  return stub ? `${stub[1].replace(/[\s,;:–-]+$/, "")}…` : short
 }
 
 /** The first sentence of a text (up to ". ", "! " or "? "), or all of it. */

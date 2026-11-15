@@ -131,15 +131,6 @@ export default function ProjectDetail({
   const recordUri = `at://${did}/org.hypercerts.collection/${rkey}`
 
   const title = projectTitle(value)
-  // The summary, read whole from the description when it was stored cut.
-  const lead = leadText(asString(value.shortDescription), value.description)
-  // The description, less a first paragraph that repeats the lead.
-  const description = useMemo(
-    () => withoutLeadParagraph(value.description, lead),
-    [value.description, lead],
-  )
-  const showFullDescription = isRenderableDescription(description)
-
   // Section tabs write `?tab=`; read it here and render that slice.
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -192,6 +183,27 @@ export default function ProjectDetail({
   }, [resolutions])
   const itemCount = Array.isArray(value.items) ? value.items.length : 0
   const activityCount = Math.max(resolutions.length, itemCount)
+
+  // ----- The lead: the summary, read whole when it was stored cut short,
+  // from the project's description or else an activity's (a project made
+  // from an activity often carries the activity's cut opening words) -----
+  const storedLead = asString(value.shortDescription)
+  const lead = useMemo(() => {
+    const own = leadText(storedLead, value.description)
+    if (!storedLead || !own || !/(?:\.{3}|…)$/.test(storedLead)) return own
+    if (!/(?:\.{3}|…)$/.test(own)) return own
+    for (const a of resolvedActivities) {
+      const whole = leadText(storedLead, a.value.description)
+      if (whole && !/(?:\.{3}|…)$/.test(whole)) return whole
+    }
+    return own
+  }, [storedLead, value.description, resolvedActivities])
+  // The description, less a first paragraph that repeats the lead.
+  const description = useMemo(
+    () => withoutLeadParagraph(value.description, lead),
+    [value.description, lead],
+  )
+  const showFullDescription = isRenderableDescription(description)
 
   // ----- Picture: the banner, else the first activity's photo (the one
   // rule every project card uses too) -----

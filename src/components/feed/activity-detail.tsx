@@ -488,7 +488,8 @@ export default function ActivityDetail({
   const moreCards = (
     <>
       {!wide && !projectLeads ? projectCard : null}
-      {hasContributors ? (
+      {/* The Contributors tab lists them, so the card steps aside there. */}
+      {hasContributors && activeTab !== "contributors" ? (
         <FactCard
           title={
             <>

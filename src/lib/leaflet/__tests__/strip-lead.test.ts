@@ -68,6 +68,9 @@ describe("leadText", () => {
     expect(leadText(cut, "Something else entirely.")).toBe(
       "We work in the commons where buildings drain the rain, instead of retaining…",
     )
+    expect(leadText("Coastal ecosystems play a fundamental ro...", null)).toBe(
+      "Coastal ecosystems play a fundamental…",
+    )
     expect(leadText("Trees, rivers and more...", null)).toBe("Trees, rivers and more...")
   })
 })
