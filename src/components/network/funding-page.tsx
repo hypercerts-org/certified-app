@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ChartScatter, Earth, LayoutGrid, ReceiptText, Split } from "lucide-react"
+import { useEffect, useId, useMemo, useState } from "react"
+import { ChartScatter, ChevronDown, ChevronUp, Earth, LayoutGrid, ReceiptText, Split } from "lucide-react"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
@@ -71,26 +71,68 @@ const VIEWS = [
 type View = (typeof VIEWS)[number]["value"]
 const LATEST = 6
 
+const NOTE_HIDDEN_KEY = "certified.funding.noteHidden"
+
 /**
  * Why most receipts so far are Ma Earth's, and an invitation to other
  * funding programs (the shared contact form, as on the landing page).
- * Shown while the data loads too, since that can take a minute.
+ * Open by default; "Hide" folds it to its first line, and this browser
+ * remembers that. Shown while the data loads too, since that can take a
+ * minute.
  */
 function FundingIntro() {
   const { openFeedback } = useFeedback()
+  const bodyId = useId()
+  const [open, setOpen] = useState(true)
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(NOTE_HIDDEN_KEY) === "1") setOpen(false)
+    } catch {
+      // No storage (private window, blocked): the note stays open.
+    }
+  }, [])
+  const toggle = () => {
+    const next = !open
+    setOpen(next)
+    try {
+      if (next) window.localStorage.removeItem(NOTE_HIDDEN_KEY)
+      else window.localStorage.setItem(NOTE_HIDDEN_KEY, "1")
+    } catch {
+      // Not remembered; the toggle still works for this visit.
+    }
+  }
   return (
-    <aside className="funding-page__intro" aria-label="About this data">
-      <p>
-        <b>Most of this comes from one round.</b> Ma Earth ran the first large funding round on Certified and
-        recorded its gifts here, so most receipts so far are theirs. As other funding programs record theirs, they
-        will show here too.
-      </p>
-      <div className="funding-page__intro-invite">
-        <p>Running a funding program? You can run it in the open here, with every gift on the record.</p>
-        <Button size="sm" variant="secondary" onClick={() => openFeedback("contact")}>
-          Get in touch
+    <aside className="funding-intro" aria-label="About this data">
+      <div className="funding-intro__head">
+        <p>
+          <b>Note:</b> most of this comes from one funding round.
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          aria-label={open ? "Hide the note" : "Show the note"}
+          onClick={toggle}
+        >
+          {open ? "Hide" : "Show"}
+          {open ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
         </Button>
       </div>
+      {open ? (
+        <div id={bodyId} className="funding-intro__body">
+          <p>
+            Ma Earth ran the first large funding round on Certified and recorded its gifts here, so most receipts so
+            far are theirs. As other funding programs record theirs, they will show here too.
+          </p>
+          <div className="funding-intro__invite">
+            <p>Running a funding program? You can run it in the open here, with every gift on the record.</p>
+            <Button size="sm" variant="secondary" onClick={() => openFeedback("contact")}>
+              Get in touch
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </aside>
   )
 }

@@ -108,34 +108,47 @@
   color: var(--badge-success-fg);
 }
 
-/* Why most receipts are Ma Earth's, and an invitation. */
-.funding-page__intro {
-  display: grid;
-  gap: 10px;
+/* Why most receipts are Ma Earth's, and an invitation; folds to its
+   first line. The text keeps to a reading width and the button follows
+   it, so on a wide page it never drifts to the far edge. */
+.funding-intro {
   margin-bottom: 24px;
-  padding: 14px 16px;
+  padding: 10px 12px 10px 16px;
   border-radius: var(--radius);
   background: var(--bg-sunken);
   font-size: var(--text-body-sm);
   color: var(--fg-secondary);
 }
 
-.funding-page__intro p {
+.funding-intro p {
   max-width: var(--measure);
   text-wrap: pretty;
 }
 
-.funding-page__intro b {
+.funding-intro b {
   font-weight: 600;
   color: var(--fg-primary);
 }
 
-.funding-page__intro-invite {
+.funding-intro__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--fg-primary);
+}
+
+.funding-intro__body {
+  display: grid;
+  gap: 10px;
+  padding: 4px 4px 4px 0;
+}
+
+.funding-intro__invite {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
+  gap: 8px 14px;
 }
 
 /* ---- View switcher ------------------------------------------------------ */
