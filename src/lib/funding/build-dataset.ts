@@ -8,7 +8,7 @@ import { getBlobRefLink } from "@/lib/atproto/types"
 import { confirmBuckets } from "@/lib/atproto/funding-provenance"
 import type { FundingAttestation } from "@/lib/atproto/indexer"
 import { TRUSTED_FUNDING_SOURCES, isTrustedFundingSource } from "./trusted-sources"
-import { regionFor, shapeCenter } from "./geo"
+import { shapeCenter } from "./geo"
 import {
   BUCKET_BOTH,
   BUCKET_OTHER,
@@ -845,7 +845,6 @@ export async function buildFundingDataset(): Promise<FundingDataset> {
       lat: loc ? Math.round(loc.lat * 1e4) / 1e4 : null,
       lng: loc ? Math.round(loc.lng * 1e4) / 1e4 : null,
       place: loc?.name ?? null,
-      region: loc ? regionFor(loc.lat, loc.lng) : null,
     })
   }
   const currencies: string[] = []

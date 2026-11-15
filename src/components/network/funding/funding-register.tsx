@@ -7,7 +7,7 @@ import Select from "@/components/ui/select"
 import Button from "@/components/ui/button"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
-import { GIFT_SIZES, giftSizeIndex, isPrimary } from "@/lib/funding/select"
+import { giftSizeIndex, giftSizes, isPrimary } from "@/lib/funding/select"
 import { formatCount, formatDay, formatUsd } from "@/lib/funding/format"
 import { FundingLedgerHeader, FundingLedgerRow } from "./funding-ledger"
 
@@ -23,6 +23,7 @@ export default function FundingRegister({
   ds,
   idx,
   project,
+  bounds,
   onClearProject,
   onOpen,
 }: {
@@ -30,6 +31,8 @@ export default function FundingRegister({
   idx: readonly number[]
   /** Only this project's receipts (index into ds.projects), or -1. */
   project: number
+  /** Where each gift size starts, in dollars (shared with Flow). */
+  bounds: readonly number[]
   onClearProject: () => void
   onOpen: (i: number) => void
 }) {
@@ -37,10 +40,12 @@ export default function FundingRegister({
   const [size, setSize] = useState("any")
   const [limit, setLimit] = useState(PAGE)
 
+  const sizes = useMemo(() => giftSizes(bounds), [bounds])
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const r = ds.receipts
-    const sizeIndex = size === "any" ? -1 : Number(size)
+    // A size from boundaries since changed falls back to any amount.
+    const sizeIndex = size === "any" || Number(size) >= sizes.length ? -1 : Number(size)
     // Precompute which recipients / projects match the search once.
     const accountHit = q
       ? ds.accounts.map((a) => (a.name ?? "").toLowerCase().includes(q) || a.did === q)
@@ -48,7 +53,7 @@ export default function FundingRegister({
     const projectHit = q ? ds.projects.map((p) => (p.title ?? "").toLowerCase().includes(q)) : null
     return idx.filter((i) => {
       if (project >= 0 && r.project[i] !== project) return false
-      if (sizeIndex >= 0 && (!isPrimary(ds, i) || giftSizeIndex(r.amount[i]) !== sizeIndex)) return false
+      if (sizeIndex >= 0 && (!isPrimary(ds, i) || giftSizeIndex(r.amount[i], bounds) !== sizeIndex)) return false
       if (!q) return true
       if (r.to[i] >= 0 && accountHit![r.to[i]]) return true
       if (r.project[i] >= 0 && projectHit![r.project[i]]) return true
@@ -57,7 +62,7 @@ export default function FundingRegister({
       if ((ds.fromText[i] ?? "").toLowerCase().includes(q)) return true
       return false
     })
-  }, [ds, idx, query, size, project])
+  }, [ds, idx, query, size, project, bounds, sizes.length])
 
   // Day totals for the headers, over the filtered rows.
   const dayTotals = useMemo(() => {
@@ -97,14 +102,14 @@ export default function FundingRegister({
           <Select
             size="sm"
             aria-label="Gift size"
-            value={size}
+            value={Number(size) >= sizes.length ? "any" : size}
             onChange={(e) => {
               setSize(e.target.value)
               setLimit(PAGE)
             }}
           >
             <option value="any">Any amount</option>
-            {GIFT_SIZES.map((s, i) => (
+            {sizes.map((s, i) => (
               <option key={s.label} value={String(i)}>
                 {s.label}
               </option>

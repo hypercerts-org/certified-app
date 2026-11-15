@@ -108,6 +108,36 @@
   color: var(--badge-success-fg);
 }
 
+/* Why most receipts are Ma Earth's, and an invitation. */
+.funding-page__intro {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
+.funding-page__intro p {
+  max-width: var(--measure);
+  text-wrap: pretty;
+}
+
+.funding-page__intro b {
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.funding-page__intro-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
 /* ---- View switcher ------------------------------------------------------ */
 
 .funding-page__switcher {
@@ -575,6 +605,71 @@
 
 /* ---- Flow --------------------------------------------------------------- */
 
+.funding-flow__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Gift sizes, opened from the bar. */
+.funding-sizes {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.funding-sizes__head {
+  display: grid;
+  gap: 2px;
+}
+
+.funding-sizes__title {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.funding-sizes__hint,
+.funding-sizes__preview {
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+}
+
+.funding-sizes__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.funding-sizes__field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 9.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-sizes__error {
+  font-size: var(--text-caption);
+  color: var(--color-error);
+}
+
+.funding-sizes__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
 .funding-flow__scroll {
   overflow-x: auto;
 }
@@ -690,7 +785,8 @@
 
 .funding-regions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* Wide enough for "Central America & Caribbean" on one line. */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 16px;
   margin-top: 20px;
 }
@@ -704,9 +800,12 @@
 }
 
 .funding-regions__item b {
+  overflow: hidden;
   font-size: var(--text-body-sm);
   font-weight: 600;
   color: var(--fg-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .funding-regions__bar {

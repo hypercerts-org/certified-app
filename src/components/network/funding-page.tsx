@@ -9,12 +9,17 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import StatRow from "@/components/ui/stat-row"
 import ErrorMessage from "@/components/ui/error-message"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Button from "@/components/ui/button"
+import { useFeedback } from "@/lib/feedback-context"
 import { usePageTitle } from "@/lib/navbar-context"
 import { useUrlParam } from "@/hooks/use-url-param"
 import { useFundingDataset } from "@/hooks/use-funding-dataset"
 import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import {
+  DEFAULT_GIFT_BOUNDS,
   bucketCounts,
+  giftBoundsParam,
+  parseGiftBounds,
   projectTotals,
   roleMask,
   selectReceipts,
@@ -41,7 +46,7 @@ const VIEWS = [
     value: "flow",
     label: "Flow",
     icon: Split,
-    blurb: "Gifts by size, through whoever recorded them, to the region where the work happens.",
+    blurb: "Gifts by size, through whoever recorded them, to where the money went.",
   },
   {
     value: "timeline",
@@ -67,6 +72,30 @@ type View = (typeof VIEWS)[number]["value"]
 const LATEST = 6
 
 /**
+ * Why most receipts so far are Ma Earth's, and an invitation to other
+ * funding programs (the shared contact form, as on the landing page).
+ * Shown while the data loads too, since that can take a minute.
+ */
+function FundingIntro() {
+  const { openFeedback } = useFeedback()
+  return (
+    <aside className="funding-page__intro" aria-label="About this data">
+      <p>
+        <b>Most of this comes from one round.</b> Ma Earth ran the first large funding round on Certified and
+        recorded its gifts here, so most receipts so far are theirs. As other funding programs record theirs, they
+        will show here too.
+      </p>
+      <div className="funding-page__intro-invite">
+        <p>Running a funding program? You can run it in the open here, with every gift on the record.</p>
+        <Button size="sm" variant="secondary" onClick={() => openFeedback("contact")}>
+          Get in touch
+        </Button>
+      </div>
+    </aside>
+  )
+}
+
+/**
  * Network → Funding (`/funding`): who funded which work. The "Confirmed by"
  * chips decide which receipts count (by default what a trusted source such
  * as Ma Earth recorded, and what both sides confirmed); five views show the
@@ -77,6 +106,9 @@ export default function FundingPage() {
   const { data: ds, error, retry } = useFundingDataset()
   const confirmed = useFundingConfirmedBy()
   const [viewParam, setViewParam] = useUrlParam("view", { defaultValue: "projects" })
+  // The gift sizes Flow draws and Receipts filters by (`?sizes=10-50-250`).
+  const [sizesParam, setSizesParam] = useUrlParam("sizes")
+  const bounds = useMemo(() => parseGiftBounds(sizesParam) ?? [...DEFAULT_GIFT_BOUNDS], [sizesParam])
   const view: View = VIEWS.some((v) => v.value === viewParam) ? (viewParam as View) : "projects"
   const [selectedProject, setSelectedProject] = useState(-1)
   const [registerProject, setRegisterProject] = useState(-1)
@@ -97,6 +129,7 @@ export default function FundingPage() {
   return (
     <PageContainer className="funding-page">
       <PageHeader title="Funding" description="Who funds which work across the Certified network." />
+      <FundingIntro />
       {error && !ds ? (
         <ErrorMessage title="Funding didn't load" message={error} onRetry={retry} />
       ) : !ds || !summary || !counts ? (
@@ -165,7 +198,13 @@ export default function FundingPage() {
                 onShowReceipts={showReceiptsFor}
               />
             ) : view === "flow" ? (
-              <FundingFlow ds={ds} idx={idx} />
+              <FundingFlow
+                ds={ds}
+                idx={idx}
+                totals={totals}
+                bounds={bounds}
+                onBoundsChange={(next) => setSizesParam(giftBoundsParam(next))}
+              />
             ) : view === "timeline" ? (
               <FundingPulse ds={ds} idx={idx} />
             ) : view === "map" ? (
@@ -182,6 +221,7 @@ export default function FundingPage() {
                 ds={ds}
                 idx={idx}
                 project={registerProject}
+                bounds={bounds}
                 onClearProject={() => setRegisterProject(-1)}
                 onOpen={setOpenReceipt}
               />

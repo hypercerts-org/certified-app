@@ -1,20 +1,30 @@
 "use client"
 
-import { useMemo } from "react"
+import { useId, useMemo, useState } from "react"
+import { SlidersHorizontal } from "lucide-react"
+import Button from "@/components/ui/button"
+import SegmentedControl from "@/components/ui/segmented-control"
+import { useUrlParam } from "@/hooks/use-url-param"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { confirmRoleLabel } from "@/lib/funding/labels"
 import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
+import { regionPhrase } from "@/lib/funding/geo"
 import {
-  FLOW_REGIONS,
-  GIFT_SIZES,
+  DEFAULT_GIFT_BOUNDS,
+  destinations,
   giftSizeIndex,
+  giftSizes,
+  isFlowTarget,
   isPrimary,
   primaryRole,
-  regionLabel,
+  type Destinations,
+  type FlowTarget,
+  type ProjectTotal,
 } from "@/lib/funding/select"
 import { formatCount, formatUsd, formatUsdShort } from "@/lib/funding/format"
+import FundingGiftSizes from "./funding-gift-sizes"
 
-const W = 1040
+const W = 1060
 const TOP = 34
 const BOTTOM = 40
 const GAP = 14
@@ -23,27 +33,96 @@ const NW = 12
 const GX = 500
 const GW = 24
 const RX = 812
-const LABEL_GAP = 46
+const H = 470
+/** Least distance between the centres of two labels in a column, so each
+ *  label sits beside its own bar: two lines on the left, a pill in the
+ *  middle, three lines on the right. */
+const PITCH = { left: 38, mid: 30, right: 46 }
+
+const TARGET_OPTIONS: { value: FlowTarget; label: string }[] = [
+  { value: "regions", label: "Regions" },
+  { value: "continents", label: "Continents" },
+  { value: "projects", label: "Projects" },
+]
+
+const AXIS: Record<FlowTarget, string> = { regions: "REGION", continents: "CONTINENT", projects: "PROJECT" }
 
 interface Node {
   y: number
   h: number
 }
 
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
+const many = (n: number, one: string, more: string) => `${formatCount(n)} ${n === 1 ? one : more}`
+
+/** Stack bars top to bottom, pushing each down until its label clears the
+ *  one above. Returns the bars (y from 0) and the column's height. */
+function stack(ids: number[], height: (i: number) => number, pitch: number) {
+  const nodes = new Map<number, Node>()
+  let y = 0
+  let prev = -pitch / 2
+  for (const i of ids) {
+    const h = height(i)
+    let top = y
+    if (top + h / 2 - prev < pitch) top = prev + pitch - h / 2
+    nodes.set(i, { y: top, h })
+    prev = top + h / 2
+    y = top + h + GAP
+  }
+  return { nodes, height: Math.max(y - GAP, prev + pitch / 2) }
+}
+
+/** Where the money went, in words, for a ribbon's tooltip. */
+function destPhrase(dest: Destinations, d: number, ds: FundingDataset): string {
+  const name = dest.names[d]
+  if (dest.by === "projects") {
+    const p = dest.project[d]
+    if (p >= 0) return ds.projects[p].title ?? "an untitled project"
+    return d === dest.none ? "receipts not tied to a project" : "other projects"
+  }
+  if (d === dest.none) return "projects with no location yet"
+  return `projects in ${dest.by === "regions" ? regionPhrase(name) : name}`
+}
+
 /**
  * Follow the money: gifts grouped by size flow through whoever recorded them
- * (a trusted source, or the parties themselves) and out to the region of the
- * project they funded. A second trusted platform shows up as a second gate.
+ * (a trusted source, or the parties themselves) and out to where the money
+ * went: a region, a continent, or the largest projects (`?to=`). A second
+ * trusted platform shows up as a second gate. The sizes are the default
+ * ones unless the visitor sets their own (`?sizes=`, in "Gift sizes").
  */
-export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: readonly number[] }) {
+export default function FundingFlow({
+  ds,
+  idx,
+  totals,
+  bounds,
+  onBoundsChange,
+}: {
+  ds: FundingDataset
+  idx: readonly number[]
+  /** Per-project totals for the selection, largest first. */
+  totals: readonly ProjectTotal[]
+  /** Where each gift size starts, in dollars. */
+  bounds: readonly number[]
+  onBoundsChange: (bounds: number[]) => void
+}) {
+  const [toParam, setTo] = useUrlParam("to", { defaultValue: "regions" })
+  const to: FlowTarget = isFlowTarget(toParam) ? toParam : "regions"
+  const [editing, setEditing] = useState(false)
+  const panelId = useId()
+  const custom = bounds.join("-") !== DEFAULT_GIFT_BOUNDS.join("-")
+
+  const sizeList = useMemo(() => giftSizes(bounds), [bounds])
+  const dest = useMemo(() => destinations(ds, to, totals), [ds, to, totals])
+
   const flow = useMemo(() => {
     const r = ds.receipts
     const gateIndex = new Map<string, number>()
     const gates: { key: string; label: string; total: number; count: number }[] = []
-    const sizes = GIFT_SIZES.map(() => ({ total: 0, count: 0 }))
-    const regions = FLOW_REGIONS.map(() => ({ total: 0, projects: new Map<number, number>() }))
+    const sizes = sizeList.map(() => ({ total: 0, count: 0 }))
+    const targets = dest.names.map(() => ({ total: 0, count: 0, projects: new Map<number, number>() }))
     const sg = new Map<string, number>() // `${size}:${gate}` -> money
-    const gr = new Map<string, number>() // `${gate}:${region}` -> money
+    const gt = new Map<string, number>() // `${gate}:${target}` -> money
     let total = 0
     for (const i of idx) {
       if (!isPrimary(ds, i)) continue
@@ -63,61 +142,99 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
           count: 0,
         })
       }
-      const s = giftSizeIndex(a)
+      const s = giftSizeIndex(a, bounds)
+      const t = dest.of(i)
       const p = r.project[i]
-      const region = p >= 0 ? ds.projects[p].region : null
-      const rg = region ? FLOW_REGIONS.indexOf(region) : FLOW_REGIONS.length - 1
       sizes[s].total += a
       sizes[s].count++
       gates[g].total += a
       gates[g].count++
-      regions[rg].total += a
-      if (p >= 0) regions[rg].projects.set(p, (regions[rg].projects.get(p) ?? 0) + a)
+      targets[t].total += a
+      targets[t].count++
+      if (p >= 0) targets[t].projects.set(p, (targets[t].projects.get(p) ?? 0) + a)
       sg.set(`${s}:${g}`, (sg.get(`${s}:${g}`) ?? 0) + a)
-      gr.set(`${g}:${rg}`, (gr.get(`${g}:${rg}`) ?? 0) + a)
+      gt.set(`${g}:${t}`, (gt.get(`${g}:${t}`) ?? 0) + a)
       total += a
     }
-    // Largest gate on top; keep the original index for the ribbon maps.
-    const gateOrder = gates.map((_, i) => i).sort((a, b) => gates[b].total - gates[a].total)
-    return { sizes, gates, gateOrder, regions, sg, gr, total }
-  }, [ds, idx])
+    const byTotal = (list: { total: number }[]) =>
+      list
+        .map((_, i) => i)
+        .filter((i) => list[i].total > 0)
+        .sort((a, b) => list[b].total - list[a].total)
+    // Largest gate and destination on top; "nowhere" always last. Projects
+    // keep their ranking, with "Other projects" after the named ones.
+    const gateOrder = byTotal(gates)
+    const targetOrder =
+      dest.by === "projects"
+        ? targets.map((_, i) => i).filter((i) => targets[i].total > 0)
+        : byTotal(targets).sort((a, b) => Number(a === dest.none) - Number(b === dest.none))
+    return { sizes, gates, gateOrder, targets, targetOrder, sg, gt, total }
+  }, [ds, idx, dest, sizeList, bounds])
+
+  const bar = (
+    <div className="funding-flow__bar">
+      <Button
+        size="sm"
+        variant="secondary"
+        aria-expanded={editing}
+        aria-controls={panelId}
+        onClick={() => setEditing((v) => !v)}
+      >
+        <SlidersHorizontal size={14} aria-hidden />
+        {custom ? "Gift sizes: your own" : "Gift sizes"}
+      </Button>
+      <SegmentedControl
+        aria-label="Where the money went"
+        size="sm"
+        value={to}
+        onValueChange={(v) => setTo(v)}
+        options={TARGET_OPTIONS}
+      />
+    </div>
+  )
+  const panel = editing ? (
+    <FundingGiftSizes id={panelId} bounds={bounds} onChange={onBoundsChange} />
+  ) : null
 
   if (flow.total <= 0) {
     return (
-      <div className="funding-empty">
-        <p>No funding in US dollars in this selection.</p>
+      <div className="funding-flow">
+        {bar}
+        {panel}
+        <div className="funding-empty">
+          <p>No funding in US dollars in this selection.</p>
+        </div>
       </div>
     )
   }
 
-  const { sizes, gates, gateOrder, regions, sg, gr, total } = flow
+  const { sizes, gates, gateOrder, targets, targetOrder, sg, gt, total } = flow
   const sizeIdx = sizes.map((_, i) => i).filter((i) => sizes[i].total > 0)
-  const regionIdx = regions.map((_, i) => i).filter((i) => regions[i].total > 0)
-  const maxNodes = Math.max(sizeIdx.length, gateOrder.length, regionIdx.length)
-  const H = 470
-  const avail = H - TOP - BOTTOM - (maxNodes - 1) * GAP
-  const k = avail / total
+  const maxNodes = Math.max(sizeIdx.length, gateOrder.length, targetOrder.length)
+  // Room for the money: the chart's usual height, or more with many bars.
+  const content = Math.max(H - TOP - BOTTOM, maxNodes * 34)
+  const k = (content - (maxNodes - 1) * GAP) / total
 
-  const stack = (ids: number[], value: (i: number) => number) => {
-    const h = ids.reduce((s, i) => s + value(i) * k, 0) + (ids.length - 1) * GAP
-    let y = TOP + (H - TOP - BOTTOM - h) / 2
-    const out = new Map<number, Node>()
-    for (const i of ids) {
-      const n = { y, h: value(i) * k }
-      out.set(i, n)
-      y += n.h + GAP
-    }
-    return out
+  const leftCol = stack(sizeIdx, (s) => sizes[s].total * k, PITCH.left)
+  const midCol = stack(gateOrder, (g) => gates[g].total * k, PITCH.mid)
+  const rightCol = stack(targetOrder, (t) => targets[t].total * k, PITCH.right)
+  const inner = Math.max(content, leftCol.height, midCol.height, rightCol.height)
+  const svgH = TOP + inner + BOTTOM
+  // Centre each column in the drawing.
+  const place = (col: ReturnType<typeof stack>) => {
+    const off = TOP + (inner - col.height) / 2
+    return new Map([...col.nodes].map(([i, n]) => [i, { y: n.y + off, h: n.h }]))
   }
-  const left = stack(sizeIdx, (i) => sizes[i].total)
-  const mid = stack(gateOrder, (g) => gates[g].total)
-  const right = stack(regionIdx, (r) => regions[r].total)
+  const left = place(leftCol)
+  const mid = place(midCol)
+  const right = place(rightCol)
 
   const ribbon = (x0: number, y0: number, x1: number, y1: number, t: number) => {
     const xm = (x0 + x1) / 2
     return `M${x0} ${y0}C${xm} ${y0} ${xm} ${y1} ${x1} ${y1}L${x1} ${y1 + t}C${xm} ${y1 + t} ${xm} ${y0 + t} ${x0} ${y0 + t}Z`
   }
-  const opacity = [0.16, 0.28, 0.44, 0.64]
+  // Bigger gifts, darker ribbons.
+  const opacity = (s: number) => 0.14 + (0.5 * s) / Math.max(1, sizes.length - 1)
 
   // Stage 1: size -> gate. Offsets advance per node as ribbons attach.
   const leftOff = new Map([...left].map(([i, n]) => [i, n.y]))
@@ -130,67 +247,85 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
       const t = v * k
       stage1.push({
         d: ribbon(LX + NW, leftOff.get(s)!, GX, midInOff.get(g)!, t),
-        o: opacity[s],
-        title: `${formatUsd(v)} from gifts ${GIFT_SIZES[s].label.toLowerCase()}, recorded by ${gates[g].label}`,
+        o: opacity(s),
+        title: `${formatUsd(v)} from gifts ${sizeList[s].label.toLowerCase()}, recorded by ${gates[g].label}`,
       })
       leftOff.set(s, leftOff.get(s)! + t)
       midInOff.set(g, midInOff.get(g)! + t)
     }
   }
-  // Stage 2: gate -> region.
+  // Stage 2: gate -> destination.
   const midOutOff = new Map([...mid].map(([g, n]) => [g, n.y]))
-  const rightOff = new Map([...right].map(([r, n]) => [r, n.y]))
+  const rightOff = new Map([...right].map(([t, n]) => [t, n.y]))
   const stage2: { d: string; title: string }[] = []
   for (const g of gateOrder) {
-    for (const rg of regionIdx) {
-      const v = gr.get(`${g}:${rg}`) ?? 0
+    for (const d of targetOrder) {
+      const v = gt.get(`${g}:${d}`) ?? 0
       if (v <= 0) continue
       const t = v * k
       stage2.push({
-        d: ribbon(GX + GW, midOutOff.get(g)!, RX, rightOff.get(rg)!, t),
-        title: `${formatUsd(v)} recorded by ${gates[g].label} went to projects in ${regionLabel(FLOW_REGIONS[rg])}`,
+        d: ribbon(GX + GW, midOutOff.get(g)!, RX, rightOff.get(d)!, t),
+        title: `${formatUsd(v)} recorded by ${gates[g].label} went to ${destPhrase(dest, d, ds)}`,
       })
       midOutOff.set(g, midOutOff.get(g)! + t)
-      rightOff.set(rg, rightOff.get(rg)! + t)
+      rightOff.set(d, rightOff.get(d)! + t)
     }
   }
 
-  // Right labels, pushed apart so small regions don't collide.
-  const rightLabels: { rg: number; cy: number; topName: string | null }[] = []
-  for (const rg of regionIdx) {
-    const n = right.get(rg)!
-    const prev = rightLabels.length ? rightLabels[rightLabels.length - 1].cy : -Infinity
-    const cy = Math.max(n.y + n.h / 2, prev + LABEL_GAP)
+  /** The three lines beside a destination's bar. */
+  const targetLines = (d: number): [string, string, string | null] => {
+    const t = targets[d]
+    const money = formatUsdShort(t.total)
+    const p = dest.project[d]
+    if (p >= 0) {
+      const project = ds.projects[p]
+      const owner = ds.accounts[project.owner]
+      return [
+        clip(owner?.name ?? project.title ?? "Project", 26),
+        `${money} · ${many(t.count, "gift", "gifts")}`,
+        owner?.name && project.title ? clip(project.title, 32) : null,
+      ]
+    }
+    if (dest.by === "projects") {
+      return d === dest.none
+        ? ["No project", `${money} · ${many(t.count, "gift", "gifts")}`, null]
+        : ["Other projects", `${money} · ${many(t.projects.size, "project", "projects")}`, null]
+    }
     let top = -1
     let topSum = -1
-    for (const [p, v] of regions[rg].projects) if (v > topSum) [top, topSum] = [p, v]
+    for (const [proj, v] of t.projects) if (v > topSum) [top, topSum] = [proj, v]
     const owner = top >= 0 ? ds.accounts[ds.projects[top].owner] : null
     const topName = owner?.name ?? (top >= 0 ? ds.projects[top].title : null)
-    rightLabels.push({ rg, cy, topName })
+    return [
+      dest.names[d],
+      `${money} · ${many(t.projects.size, "project", "projects")}`,
+      topName ? `Largest: ${clip(topName, 26)}` : null,
+    ]
   }
-  // Gate labels, the same way.
-  const gateLabels: { g: number; cy: number }[] = []
-  for (const g of gateOrder) {
-    const n = mid.get(g)!
-    const prev = gateLabels.length ? gateLabels[gateLabels.length - 1].cy : -Infinity
-    gateLabels.push({ g, cy: Math.max(n.y + n.h / 2, prev + 30) })
-  }
-  const lastCy = rightLabels.length ? rightLabels[rightLabels.length - 1].cy : 0
-  const lastGy = gateLabels.length ? gateLabels[gateLabels.length - 1].cy : 0
-  const svgH = Math.max(H, Math.ceil(lastCy + 30), Math.ceil(lastGy + 24))
 
-  const big = sizes[3]
+  const big = sizes[sizes.length - 1]
   const small = sizes[0]
-  const topRegion = regionIdx.reduce((a, b) => (regions[b].total > regions[a].total ? b : a), regionIdx[0])
+  const lead = targetOrder.find((d) => d !== dest.none)
+  const leadName = (() => {
+    if (lead === undefined) return null
+    const p = dest.project[lead]
+    if (p >= 0) return ds.accounts[ds.projects[p].owner]?.name ?? ds.projects[p].title ?? "One project"
+    if (dest.by === "projects") return null
+    return `Projects in ${dest.by === "regions" ? regionPhrase(dest.names[lead]) : dest.names[lead]}`
+  })()
+  const firstBound = formatUsd(bounds[0])
+  const lastBound = formatUsd(bounds[bounds.length - 1])
 
   return (
     <div className="funding-flow">
+      {bar}
+      {panel}
       <div className="funding-flow__scroll">
         <svg
           className="funding-flow__svg"
           viewBox={`0 0 ${W} ${svgH}`}
           role="img"
-          aria-label={`Money by gift size, by who recorded it, and by region. ${formatUsd(total)} in all.`}
+          aria-label={`Money by gift size, by who recorded it, and by ${AXIS[to].toLowerCase()}. ${formatUsd(total)} in all.`}
         >
           <text x={LX} y={16} className="funding-flow__axis">
             GIFT SIZE
@@ -199,7 +334,7 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
             RECORDED BY
           </text>
           <text x={RX + NW} y={16} textAnchor="end" className="funding-flow__axis">
-            REGION
+            {AXIS[to]}
           </text>
           {stage1.map((r, i) => (
             <path key={`a${i}`} className="funding-flow__ribbon" d={r.d} fillOpacity={r.o}>
@@ -218,10 +353,10 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
               <g key={`l${s}`}>
                 <rect x={LX} y={n.y} width={NW} height={Math.max(1.5, n.h)} className="funding-flow__node" />
                 <text x={LX - 12} y={cy - 3} textAnchor="end" className="funding-flow__label">
-                  {GIFT_SIZES[s].label}
+                  {sizeList[s].label}
                 </text>
                 <text x={LX - 12} y={cy + 13} textAnchor="end" className="funding-flow__sub">
-                  {formatCount(sizes[s].count)} gifts · {formatUsdShort(sizes[s].total)} ·{" "}
+                  {many(sizes[s].count, "gift", "gifts")} · {formatUsdShort(sizes[s].total)} ·{" "}
                   {Math.round((sizes[s].total / total) * 100)}%
                 </text>
               </g>
@@ -240,7 +375,9 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
               />
             )
           })}
-          {gateLabels.map(({ g, cy }) => {
+          {gateOrder.map((g) => {
+            const n = mid.get(g)!
+            const cy = n.y + n.h / 2
             const label = gates[g].label
             const w = Math.max(64, label.length * 7 + 18)
             return (
@@ -252,44 +389,45 @@ export default function FundingFlow({ ds, idx }: { ds: FundingDataset; idx: read
               </g>
             )
           })}
-          {regionIdx.map((rg) => {
-            const n = right.get(rg)!
-            return <rect key={`r${rg}`} x={RX} y={n.y} width={NW} height={Math.max(1.5, n.h)} className="funding-flow__node" />
-          })}
-          {rightLabels.map(({ rg, cy, topName }) => (
-            <g key={`rl${rg}`}>
-              <text x={RX + NW + 12} y={cy - 9} className="funding-flow__label">
-                {regionLabel(FLOW_REGIONS[rg])}
-              </text>
-              <text x={RX + NW + 12} y={cy + 6} className="funding-flow__sub funding-flow__sub--strong">
-                {formatUsdShort(regions[rg].total)} · {formatCount(regions[rg].projects.size)} projects
-              </text>
-              {topName ? (
-                <text x={RX + NW + 12} y={cy + 20} className="funding-flow__sub">
-                  Largest: {topName.length > 26 ? `${topName.slice(0, 25)}…` : topName}
+          {targetOrder.map((d) => {
+            const n = right.get(d)!
+            const cy = n.y + n.h / 2
+            const [name, sub, extra] = targetLines(d)
+            return (
+              <g key={`r${d}`}>
+                <rect x={RX} y={n.y} width={NW} height={Math.max(1.5, n.h)} className="funding-flow__node" />
+                <text x={RX + NW + 12} y={cy - 9} className="funding-flow__label">
+                  {name}
                 </text>
-              ) : null}
-            </g>
-          ))}
+                <text x={RX + NW + 12} y={cy + 6} className="funding-flow__sub funding-flow__sub--strong">
+                  {sub}
+                </text>
+                {extra ? (
+                  <text x={RX + NW + 12} y={cy + 20} className="funding-flow__sub">
+                    {extra}
+                  </text>
+                ) : null}
+              </g>
+            )
+          })}
         </svg>
       </div>
       <p className="funding-note">
         {big.count > 0 ? (
           <span>
-            <b>{formatCount(big.count)} gifts</b> of $1,000 or more carried{" "}
+            <b>{many(big.count, "gift", "gifts")}</b> of {lastBound} or more carried{" "}
             <b>{Math.round((big.total / total) * 100)}%</b> of the money.
           </span>
         ) : null}
         {small.count > 0 ? (
           <span>
-            <b>{formatCount(small.count)} gifts</b> under $25 carried{" "}
+            <b>{many(small.count, "gift", "gifts")}</b> under {firstBound} carried{" "}
             <b>{Math.round((small.total / total) * 100)}%</b>.
           </span>
         ) : null}
-        {topRegion !== undefined && FLOW_REGIONS[topRegion] !== "none" ? (
+        {lead !== undefined && leadName ? (
           <span>
-            Projects in {FLOW_REGIONS[topRegion] === "Americas" ? "the Americas" : regionLabel(FLOW_REGIONS[topRegion])} received{" "}
-            <b>{Math.round((regions[topRegion].total / total) * 100)}%</b>.
+            {leadName} received <b>{Math.round((targets[lead].total / total) * 100)}%</b>.
           </span>
         ) : null}
       </p>

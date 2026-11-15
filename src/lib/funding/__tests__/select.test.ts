@@ -2,8 +2,13 @@ import { describe, it, expect } from "vitest"
 import {
   bucketCounts,
   dailyTotals,
-  flowData,
+  destinationTotals,
+  destinations,
+  giftBoundsParam,
   giftSizeIndex,
+  giftSizes,
+  normalizeGiftBounds,
+  parseGiftBounds,
   primaryRole,
   projectTotals,
   roleMask,
@@ -18,7 +23,7 @@ import {
   BUCKET_TRUSTED,
   type FundingDataset,
 } from "../dataset-types"
-import { regionFor, shapeCenter } from "../geo"
+import { continentFor, regionFor, shapeCenter } from "../geo"
 import type { ConfirmRole } from "@/lib/atproto/funding-provenance"
 
 const DAY = 86_400
@@ -37,8 +42,8 @@ function dataset(): FundingDataset {
     ],
     donors: ["did:plc:donor"],
     projects: [
-      { uri: "at://did:plc:org/org.hypercerts.collection/a", owner: 0, title: "Forest", banner: null, avatar: null, lat: 10, lng: -70, place: null, region: "Americas" },
-      { uri: "at://did:plc:org2/org.hypercerts.collection/b", owner: 1, title: "Reef", banner: null, avatar: null, lat: null, lng: null, place: null, region: null },
+      { uri: "at://did:plc:org/org.hypercerts.collection/a", owner: 0, title: "Forest", banner: null, avatar: null, lat: 10, lng: -70, place: null },
+      { uri: "at://did:plc:org2/org.hypercerts.collection/b", owner: 1, title: "Reef", banner: null, avatar: null, lat: null, lng: null, place: null },
     ],
     receipts: {
       rkey: ["r4", "r3", "r2", "r1"],
@@ -108,20 +113,54 @@ describe("dailyTotals", () => {
   })
 })
 
-describe("flowData", () => {
-  it("splits money by gift size and region, unplaced projects apart", () => {
-    const f = flowData(dataset(), [1, 2, 3])
-    expect(f.total).toBe(1550)
-    expect(f.sizes.map((s) => s.count)).toEqual([1, 1, 0, 1])
-    // Americas (index 0) holds project 0; "none" (last) holds project 1.
-    expect(f.regionTotals[0]).toBe(50)
-    expect(f.regionTotals[f.regionTotals.length - 1]).toBe(1500)
+describe("destinations", () => {
+  it("groups money by region, unplaced projects last", () => {
+    const ds = dataset()
+    const ids = [1, 2, 3]
+    const dest = destinations(ds, "regions", projectTotals(ds, ids))
+    const out = destinationTotals(ds, ids, dest).map((d) => [dest.names[d.dest], d.total, d.projects])
+    // Project 0 sits in Venezuela; project 1 has no location.
+    expect(out).toEqual([
+      ["No location yet", 1500, 1],
+      ["South America", 50, 1],
+    ])
+  })
+  it("groups by continent", () => {
+    const ds = dataset()
+    const dest = destinations(ds, "continents", projectTotals(ds, [2, 3]))
+    expect(destinationTotals(ds, [2, 3], dest).map((d) => dest.names[d.dest])).toEqual(["South America"])
+  })
+  it("names the largest projects, then the rest, then receipts with no project", () => {
+    const ds = dataset()
+    const ids = [0, 1, 2, 3]
+    const dest = destinations(ds, "projects", projectTotals(ds, ids))
+    expect(dest.names).toEqual(["Reef", "Forest", "Other projects", "No project"])
+    expect([0, 1, 2, 3].map(dest.of)).toEqual([3, 0, 1, 1])
   })
 })
 
-describe("giftSizeIndex", () => {
-  it("buckets by the size boundaries", () => {
-    expect([1, 24.99, 25, 99.99, 100, 999, 1000, 58000].map(giftSizeIndex)).toEqual([0, 0, 1, 1, 2, 2, 3, 3])
+describe("gift sizes", () => {
+  it("buckets by the default boundaries", () => {
+    expect([1, 24.99, 25, 99.99, 100, 999, 1000, 58000].map((a) => giftSizeIndex(a))).toEqual([0, 0, 1, 1, 2, 2, 3, 3])
+  })
+  it("labels the default sizes as before", () => {
+    expect(giftSizes().map((s) => s.label)).toEqual(["Under $25", "$25 to $99", "$100 to $999", "$1,000 and up"])
+  })
+  it("labels and buckets your own boundaries", () => {
+    expect(giftSizes([10, 11, 5000]).map((s) => s.label)).toEqual(["Under $10", "$10", "$11 to $4,999", "$5,000 and up"])
+    expect([9, 10, 10.5, 11, 6000].map((a) => giftSizeIndex(a, [10, 11, 5000]))).toEqual([0, 1, 1, 2, 3])
+  })
+  it("cleans boundaries: whole, positive, once each, sorted, at most six", () => {
+    expect(normalizeGiftBounds([100, 25, 25, 0, -3, 99.6])).toEqual([25, 100])
+    expect(normalizeGiftBounds([1, 2, 3, 4, 5, 6, 7])).toEqual([1, 2, 3, 4, 5, 6])
+  })
+  it("reads and writes ?sizes=", () => {
+    expect(parseGiftBounds("50-10-250")).toEqual([10, 50, 250])
+    expect(parseGiftBounds("ten-50")).toBeNull()
+    expect(parseGiftBounds("")).toBeNull()
+    expect(parseGiftBounds("0")).toBeNull()
+    expect(giftBoundsParam([25, 100, 1000])).toBeNull()
+    expect(giftBoundsParam([10, 50])).toBe("10-50")
   })
 })
 
@@ -145,12 +184,31 @@ describe("selectionSentence", () => {
 })
 
 describe("geo", () => {
-  it("places points in rough regions", () => {
-    expect(regionFor(-37.8, 175.3)).toBe("Oceania") // Waikato
-    expect(regionFor(3.6, 98.7)).toBe("Asia") // Medan
-    expect(regionFor(0.3, 32.6)).toBe("Africa") // Kampala
-    expect(regionFor(51.5, -0.1)).toBe("Europe") // London
-    expect(regionFor(9.9, -84.1)).toBe("Americas") // San José
+  it("places points in regions a little smaller than continents", () => {
+    const at: [number, number, string, string][] = [
+      [-37.8, 175.3, "Australia & New Zealand", "Oceania"], // Waikato
+      [-21.2, -175.2, "Pacific Islands", "Oceania"], // Tonga, across the date line
+      [7.7, 134.6, "Pacific Islands", "Oceania"], // Palau
+      [32.2, -111.0, "US & Canada", "North America"], // Tucson
+      [29.0, -109.2, "Central America & Caribbean", "North America"], // Sonora
+      [25.05, -77.35, "Central America & Caribbean", "North America"], // Nassau
+      [9.9, -84.1, "Central America & Caribbean", "North America"], // San José
+      [-0.4, -90.4, "South America", "South America"], // Galápagos
+      [8.6, -71.1, "South America", "South America"], // Mérida
+      [51.5, -0.1, "Europe", "Europe"], // London
+      [35.9, 14.4, "Europe", "Europe"], // Malta
+      [36.8, 10.2, "Middle East & North Africa", "Africa"], // Tunis
+      [32.1, 35.2, "Middle East & North Africa", "Asia"], // Farkha
+      [6.5, 3.4, "West & Central Africa", "Africa"], // Lagos
+      [0.3, 32.6, "East & Southern Africa", "Africa"], // Kampala
+      [43.2, 76.9, "Central Asia", "Asia"], // Almaty
+      [23.8, 90.4, "South Asia", "Asia"], // Dhaka
+      [3.6, 98.7, "Southeast Asia", "Asia"], // Medan
+      [35.7, 139.7, "East Asia", "Asia"], // Tokyo
+    ]
+    expect(at.map(([lat, lng]) => [regionFor(lat, lng), continentFor(lat, lng)])).toEqual(
+      at.map(([, , region, continent]) => [region, continent]),
+    )
   })
   it("centres a polygon on its outer ring", () => {
     const ring = [

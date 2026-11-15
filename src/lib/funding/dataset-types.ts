@@ -9,9 +9,6 @@
  * the payload small: there are ~15,000 of them.
  */
 
-export const REGIONS = ["Americas", "Oceania", "Africa", "Asia", "Europe"] as const
-export type Region = (typeof REGIONS)[number]
-
 /** Bucket bits per receipt — see `CONFIRM_ROLES` in funding-provenance. */
 export const BUCKET_TRUSTED = 1
 export const BUCKET_BOTH = 2
@@ -31,9 +28,9 @@ export interface FundingProject {
   /** A point for the project: the location's point, or a polygon's centre. */
   lat: number | null
   lng: number | null
-  /** The location record's name, when it has one. */
+  /** The location record's name, when it has one. Regions and continents
+   *  are worked out in the browser from the point (`geo.ts`). */
   place: string | null
-  region: Region | null
 }
 
 export interface FundingAccount {

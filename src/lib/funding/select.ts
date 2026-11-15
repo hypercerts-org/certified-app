@@ -6,10 +6,9 @@ import {
   BUCKET_RECIPIENT,
   BUCKET_SENDER,
   BUCKET_TRUSTED,
-  REGIONS,
   type FundingDataset,
-  type Region,
 } from "./dataset-types"
+import { CONTINENTS, REGIONS, continentFor, regionFor } from "./geo"
 
 /**
  * Pure selectors over the /funding dataset. Everything the page shows is
@@ -170,72 +169,190 @@ export function dailyTotals(
   return [...by.values()].sort((a, b) => a.day - b.day)
 }
 
-export const GIFT_SIZES = [
-  { label: "Under $25", max: 25 },
-  { label: "$25 to $99", max: 100 },
-  { label: "$100 to $999", max: 1000 },
-  { label: "$1,000 and up", max: Infinity },
-] as const
+/** Where each gift size starts, in US dollars: under $25, $25 to $99, $100
+ *  to $999, and $1,000 and up. Visitors can set their own (`?sizes=`). */
+export const DEFAULT_GIFT_BOUNDS: readonly number[] = [25, 100, 1000]
+/** At most seven sizes. */
+export const MAX_GIFT_BOUNDS = 6
 
-export function giftSizeIndex(amount: number): number {
-  return GIFT_SIZES.findIndex((s) => amount < s.max)
+export interface GiftSize {
+  label: string
+  /** Inclusive lower bound, exclusive upper bound, in dollars. */
+  min: number
+  max: number
 }
 
-export type FlowRegion = Region | "none"
-export const FLOW_REGIONS: readonly FlowRegion[] = [...REGIONS, "none"]
+const dollars = (n: number) => `$${n.toLocaleString("en-US")}`
 
-export interface FlowData {
-  sizes: { count: number; total: number }[]
-  /** matrix[size][region] = money. */
-  matrix: number[][]
-  regionTotals: number[]
-  /** Distinct projects per region. */
-  regionProjects: number[]
-  /** The largest project per region (index into ds.projects), or -1. */
-  regionTop: number[]
-  total: number
+/** The sizes the boundaries make, smallest first. */
+export function giftSizes(bounds: readonly number[] = DEFAULT_GIFT_BOUNDS): GiftSize[] {
+  const out: GiftSize[] = []
+  for (let i = 0; i <= bounds.length; i++) {
+    const min = i === 0 ? 0 : bounds[i - 1]
+    const max = i === bounds.length ? Infinity : bounds[i]
+    const label =
+      i === 0
+        ? `Under ${dollars(max)}`
+        : max === Infinity
+          ? `${dollars(min)} and up`
+          : max - 1 <= min
+            ? dollars(min)
+            : `${dollars(min)} to ${dollars(max - 1)}`
+    out.push({ label, min, max })
+  }
+  return out
 }
 
-/** Money by gift size and by the region of the project it went to. */
-export function flowData(ds: FundingDataset, idx: readonly number[]): FlowData {
+export function giftSizeIndex(amount: number, bounds: readonly number[] = DEFAULT_GIFT_BOUNDS): number {
+  for (let i = 0; i < bounds.length; i++) if (amount < bounds[i]) return i
+  return bounds.length
+}
+
+/** Whole dollars above zero, each once, smallest first, at most six. */
+export function normalizeGiftBounds(values: readonly number[]): number[] {
+  const whole = values.filter((v) => Number.isFinite(v) && v >= 1).map((v) => Math.round(v))
+  return [...new Set(whole)].sort((a, b) => a - b).slice(0, MAX_GIFT_BOUNDS)
+}
+
+/** `?sizes=10-50-250` back to boundaries; null when missing or not valid. */
+export function parseGiftBounds(param: string | null | undefined): number[] | null {
+  if (!param) return null
+  const parts = param.split("-")
+  if (parts.length > MAX_GIFT_BOUNDS || parts.some((p) => !/^\d{1,9}$/.test(p))) return null
+  const bounds = normalizeGiftBounds(parts.map(Number))
+  return bounds.length > 0 ? bounds : null
+}
+
+/** The `?sizes=` value for boundaries, or null for the default ones. */
+export function giftBoundsParam(bounds: readonly number[]): string | null {
+  const same =
+    bounds.length === DEFAULT_GIFT_BOUNDS.length && bounds.every((b, i) => b === DEFAULT_GIFT_BOUNDS[i])
+  return same ? null : bounds.join("-")
+}
+
+/** What the right side of the Flow groups the money by. */
+export const FLOW_TARGETS = ["regions", "continents", "projects"] as const
+export type FlowTarget = (typeof FLOW_TARGETS)[number]
+
+export function isFlowTarget(v: string | null | undefined): v is FlowTarget {
+  return (FLOW_TARGETS as readonly string[]).includes(v ?? "")
+}
+
+/** How many projects Flow names before "Other projects". */
+export const FLOW_TOP_PROJECTS = 12
+
+const places = new WeakMap<FundingDataset, { region: Int8Array; continent: Int8Array }>()
+
+/** Each project's region and continent (indexes into REGIONS and
+ *  CONTINENTS; -1 without a location), worked out once per dataset. */
+export function projectPlaces(ds: FundingDataset): { region: Int8Array; continent: Int8Array } {
+  let out = places.get(ds)
+  if (!out) {
+    const region = new Int8Array(ds.projects.length).fill(-1)
+    const continent = new Int8Array(ds.projects.length).fill(-1)
+    ds.projects.forEach((p, i) => {
+      if (p.lat == null || p.lng == null) return
+      region[i] = REGIONS.indexOf(regionFor(p.lat, p.lng))
+      continent[i] = CONTINENTS.indexOf(continentFor(p.lat, p.lng))
+    })
+    out = { region, continent }
+    places.set(ds, out)
+  }
+  return out
+}
+
+/** Where money can go under a grouping. */
+export interface Destinations {
+  by: FlowTarget
+  names: string[]
+  /** For "projects": the project each destination is (index into
+   *  ds.projects), or -1 for "Other projects" and "No project". */
+  project: number[]
+  /** The destination for a receipt. */
+  of: (i: number) => number
+  /** The destination for receipts with nowhere to put them (no project, or
+   *  no location): always the last. */
+  none: number
+}
+
+/** The destinations for a grouping. `totals` (largest first) picks the
+ *  projects that get their own place. */
+export function destinations(
+  ds: FundingDataset,
+  by: FlowTarget,
+  totals: readonly ProjectTotal[],
+): Destinations {
   const r = ds.receipts
-  const sizes = GIFT_SIZES.map(() => ({ count: 0, total: 0 }))
-  const matrix = GIFT_SIZES.map(() => FLOW_REGIONS.map(() => 0))
-  const regionTotals = FLOW_REGIONS.map(() => 0)
-  const projectSets = FLOW_REGIONS.map(() => new Map<number, number>())
-  let total = 0
+  if (by === "projects") {
+    const top = totals.slice(0, FLOW_TOP_PROJECTS).map((t) => t.project)
+    const slot = new Map(top.map((p, i) => [p, i]))
+    const other = top.length
+    const none = top.length + 1
+    return {
+      by,
+      names: [...top.map((p) => ds.projects[p].title ?? "Untitled project"), "Other projects", "No project"],
+      project: [...top, -1, -1],
+      of: (i) => {
+        const p = r.project[i]
+        return p < 0 ? none : slot.get(p) ?? other
+      },
+      none,
+    }
+  }
+  const place = projectPlaces(ds)[by === "regions" ? "region" : "continent"]
+  const names: string[] = [...(by === "regions" ? REGIONS : CONTINENTS), "No location yet"]
+  const none = names.length - 1
+  return {
+    by,
+    names,
+    project: names.map(() => -1),
+    of: (i) => {
+      const p = r.project[i]
+      const g = p >= 0 ? place[p] : -1
+      return g >= 0 ? g : none
+    },
+    none,
+  }
+}
+
+export interface DestinationTotal {
+  /** Index into Destinations.names. */
+  dest: number
+  total: number
+  count: number
+  /** Distinct projects. */
+  projects: number
+  /** The project that received most, or -1. */
+  top: number
+}
+
+/** Money per destination in the primary currency, largest first, empty
+ *  destinations left out. */
+export function destinationTotals(
+  ds: FundingDataset,
+  idx: readonly number[],
+  dest: Destinations,
+): DestinationTotal[] {
+  const r = ds.receipts
+  const sums = dest.names.map(() => ({ total: 0, count: 0, projects: new Map<number, number>() }))
   for (const i of idx) {
     if (!isPrimary(ds, i)) continue
     const a = r.amount[i]
-    const s = giftSizeIndex(a)
+    const s = sums[dest.of(i)]
+    s.total += a
+    s.count++
     const p = r.project[i]
-    const region = p >= 0 ? ds.projects[p].region : null
-    const g = region ? FLOW_REGIONS.indexOf(region) : FLOW_REGIONS.length - 1
-    sizes[s].count++
-    sizes[s].total += a
-    matrix[s][g] += a
-    regionTotals[g] += a
-    total += a
-    if (p >= 0) projectSets[g].set(p, (projectSets[g].get(p) ?? 0) + a)
+    if (p >= 0) s.projects.set(p, (s.projects.get(p) ?? 0) + a)
   }
-  const regionTop = projectSets.map((m) => {
-    let best = -1
-    let bestSum = -1
-    for (const [p, sum] of m) if (sum > bestSum) [best, bestSum] = [p, sum]
-    return best
-  })
-  return {
-    sizes,
-    matrix,
-    regionTotals,
-    regionProjects: projectSets.map((m) => m.size),
-    regionTop,
-    total,
-  }
-}
-
-export function regionLabel(region: FlowRegion): string {
-  return region === "none" ? "No location yet" : region
+  return sums
+    .map((s, dest) => {
+      let top = -1
+      let best = -1
+      for (const [p, v] of s.projects) if (v > best) [top, best] = [p, v]
+      return { dest, total: s.total, count: s.count, projects: s.projects.size, top }
+    })
+    .filter((d) => d.total > 0)
+    .sort((a, b) => b.total - a.total)
 }
 
 /** "Showing 14,887 receipts recorded by Ma Earth or confirmed by both sides." */

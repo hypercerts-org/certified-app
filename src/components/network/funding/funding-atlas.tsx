@@ -8,7 +8,7 @@ import SegmentedControl from "@/components/ui/segmented-control"
 import { useUrlParam } from "@/hooks/use-url-param"
 import { recordUrlFromAtUri } from "@/lib/urls"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
-import { FLOW_REGIONS, flowData, regionLabel, type ProjectTotal } from "@/lib/funding/select"
+import { destinationTotals, destinations, type ProjectTotal } from "@/lib/funding/select"
 import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
 import { formatCount, formatUsd, formatPlace } from "@/lib/funding/format"
 import { prepareCanvas, useCanvasColors, useElementWidth } from "./use-element-width"
@@ -145,8 +145,11 @@ export default function FundingAtlas({
     return best ? { t: best, x, y } : null
   }
 
-  const flow = useMemo(() => flowData(ds, idx), [ds, idx])
-  const maxRegion = Math.max(1, ...flow.regionTotals)
+  const regions = useMemo(() => {
+    const dest = destinations(ds, "regions", totals)
+    return destinationTotals(ds, idx, dest).map((d) => ({ ...d, name: dest.names[d.dest], none: d.dest === dest.none }))
+  }, [ds, idx, totals])
+  const maxRegion = Math.max(1, ...regions.map((r) => r.total))
   const current = totals.find((t) => t.project === selected) ?? null
 
   return (
@@ -190,20 +193,19 @@ export default function FundingAtlas({
         </div>
       )}
       {current ? <AtlasSelection ds={ds} t={current} onShowReceipts={onShowReceipts} /> : null}
+      {/* Largest first, places without a location last. */}
       <div className="funding-regions">
-        {FLOW_REGIONS.map((region, i) =>
-          flow.regionTotals[i] > 0 ? (
-            <div key={region} className="funding-regions__item">
-              <b>{regionLabel(region)}</b>
-              <span className="funding-regions__bar">
-                <i style={{ width: `${((flow.regionTotals[i] / maxRegion) * 100).toFixed(1)}%` }} />
-              </span>
-              <span>
-                {formatUsd(flow.regionTotals[i])} · {formatCount(flow.regionProjects[i])} projects
-              </span>
-            </div>
-          ) : null,
-        )}
+        {[...regions.filter((r) => !r.none), ...regions.filter((r) => r.none)].map((r) => (
+          <div key={r.name} className="funding-regions__item">
+            <b title={r.name}>{r.name}</b>
+            <span className="funding-regions__bar">
+              <i style={{ width: `${((r.total / maxRegion) * 100).toFixed(1)}%` }} />
+            </span>
+            <span>
+              {formatUsd(r.total)} · {formatCount(r.projects)} {r.projects === 1 ? "project" : "projects"}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
