@@ -107,8 +107,14 @@ export default async function NotFoundPage() {
             <>
               We couldn&apos;t find a Certified profile for{" "}
               {/* One line: a handle never breaks at its hyphens or dots;
-                  the sentence wraps around it instead. */}
-              <span className="whitespace-nowrap">@{missing.actor}</span>.
+                  the sentence wraps around it instead. A DID reads as
+                  itself, without the handle's "@". */}
+              {missing.actor.startsWith("did:") ? (
+                <span className="break-all">{missing.actor}</span>
+              ) : (
+                <span className="whitespace-nowrap">@{missing.actor}</span>
+              )}
+              .
             </>
           }
           headingLevel={1}

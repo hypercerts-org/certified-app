@@ -13,6 +13,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { deleteFollow, type FollowRecord } from "@/lib/atproto/follow"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import EmptyState from "@/components/ui/empty-state"
+import SectionHeader from "@/components/ui/section-header"
 import Button from "@/components/ui/button"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import ProfilePersonRow from "@/components/profile/profile-person-row"
@@ -108,7 +109,8 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
       variant="segmented"
       className="profile-panel"
     >
-      <h2 className="sr-only">Followers and following</h2>
+      {/* A visible heading, like the other sections'. */}
+      <SectionHeader title="Followers" />
       <div className="profile-panel__head">
         <TabList aria-label="Followers sections">
           <Tab

@@ -8,6 +8,9 @@ export interface ProfileTabItem {
   label: string
   /** Non-interactive (e.g. while editing, only editable sections stay on). */
   disabled?: boolean
+  /** How many the section holds, as a muted number after the label
+   *  ("Activities 12"). Nothing while unknown. */
+  count?: string
 }
 
 interface ProfileTabsProps {
@@ -90,6 +93,7 @@ export default function ProfileTabs({ tabs, active, sticky = true }: ProfileTabs
             key={t.key}
             value={t.key}
             disabled={t.disabled}
+            count={t.count}
             className="profile-tabs__tab"
           >
             {t.label}

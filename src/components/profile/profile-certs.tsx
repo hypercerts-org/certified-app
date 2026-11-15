@@ -5,6 +5,7 @@ import { Inbox, Plus, SearchX } from "lucide-react"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useManagedAuthors } from "@/hooks/use-managed-authors"
 import EmptyState from "@/components/ui/empty-state"
+import SectionHeader from "@/components/ui/section-header"
 import Button from "@/components/ui/button"
 import LoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
@@ -181,7 +182,8 @@ export default function ProfileCerts({
       variant="segmented"
       className="profile-panel"
     >
-      <h2 className="sr-only">Activities</h2>
+      {/* A visible heading, like Projects' and Endorsements'. */}
+      <SectionHeader title="Activities" />
       <div className="profile-panel__head">
         <TabList aria-label="Activities sections">
           <Tab value="created" count={countLabel(created.length, isLoading, hasMore)}>

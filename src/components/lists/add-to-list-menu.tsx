@@ -211,7 +211,7 @@ interface AddToListModalProps {
   onClose: () => void
 }
 
-function AddToListModal({
+export function AddToListModal({
   viewerDid,
   targetUri,
   targetCid,

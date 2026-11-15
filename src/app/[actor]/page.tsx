@@ -33,8 +33,17 @@ import NotFoundMarker from "@/components/layout/not-found-marker"
 import Button from "@/components/ui/button"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import OnboardingBanner from "@/components/onboarding/onboarding-banner"
-import { AlignLeft, Pencil, UserX } from "lucide-react"
+import Skeleton from "@/components/ui/skeleton"
+import { AlignLeft, CloudOff, Pencil, UserX } from "lucide-react"
 import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
+import { formatMonthYear } from "@/lib/utils/format-date"
+import { useProfilePds } from "@/hooks/use-profile-pds"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import {
+  isKnownEmpty,
+  useProfileSummary,
+  type SectionCount,
+} from "@/components/profile/use-profile-summary"
 
 // Non-default tab panels are code-split out of the route's first-load
 // chunk: profiles are the most-shared public URL, and anonymous visitors
@@ -103,6 +112,8 @@ export default function UserProfilePage() {
     isOwnProfile,
     isLoading: isProfileLoading,
     error: profileError,
+    errorKind: profileErrorKind,
+    retry: retryProfile,
     hasCertifiedProfile,
     hasBlueskyProfile,
   } = useUserProfile(handleOrDid)
@@ -127,17 +138,31 @@ export default function UserProfilePage() {
   )
 
   // Detect the org marker on the viewed DID so the header and Overview
-  // switch into organization mode. While loading we treat the profile as a
-  // person; the hook caches per DID so later visits hydrate synchronously.
+  // switch into organization mode. Until the first answer for this DID
+  // the kind is pending: the header holds the avatar's shape and the meta
+  // line rather than drawing a person and flipping to an organization a
+  // second later. The hook caches per DID, so later visits know at once;
+  // a refresh after a save keeps the known kind.
   const {
     isOrg,
     additionalUrls,
     urls: orgUrls,
     marker: orgMarker,
     isLoading: isOrgMarkerLoading,
+    answeredFor: orgMarkerAnsweredFor,
     refresh: refreshOrgMarker,
   } = useOrgMarker(did)
-  const viewIsOrg = isOrgMarkerLoading ? false : isOrg
+  const kindPending = !!did && orgMarkerAnsweredFor !== did
+  // Through a refresh (after a save) the hook keeps the previous answer.
+  const viewIsOrg = kindPending ? false : isOrg
+
+  // What the account has published, loaded once for the tab strip (counts,
+  // which tabs a visitor sees) and the Overview.
+  const summary = useProfileSummary(did)
+  const { isBskyHosted } = useProfilePds(did)
+  // Known while the profile loads, so the header's lead is cut right at
+  // its first paint.
+  const { isDesktop } = useLayoutBreakpoints()
 
   // Recently-viewed: record the viewed DID once it resolves so the
   // /explore "Recently viewed" filter (Accounts kind) can surface this
@@ -285,13 +310,12 @@ export default function UserProfilePage() {
   // -------------------------------------------------------------------
   // Tabs: which exist for this viewer, which is shown.
   // -------------------------------------------------------------------
-  // About is organization-only. It shows when there is a long description,
-  // or when the viewer is this organization (to write one), or mid-edit.
+  // About is organization-only, and only for the organization itself (to
+  // write it) or mid-edit: a visitor reads the description in the
+  // header's lead (or the Overview's About), so a tab would repeat it.
   const aboutEditingForOrg = isEditing && canEditInline && viewIsOrg
   const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
-  const aboutAvailable =
-    viewIsOrg &&
-    (!!displayLongDescription || isViewerThisEntity || aboutEditingForOrg)
+  const aboutAvailable = viewIsOrg && (isViewerThisEntity || aboutEditingForOrg)
   // Groups only while the viewer's *active* identity is this profile: the
   // personal user on their own profile with no group active, or a group on
   // its own profile while acting as it. (Acting as a group on your personal
@@ -304,20 +328,48 @@ export default function UserProfilePage() {
   const isTabEditable = (key: TabKey) =>
     key === "overview" || (viewIsOrg && key === "about")
 
-  const visibleTabs = useMemo<ProfileTabItem[]>(
-    () =>
-      TABS.filter((t) => {
-        if (t.key === "groups") return isActiveIdentityThisProfile
-        if (t.key === "about") return aboutAvailable
-        return true
-      }).map((t) => ({
+  // Counts on the tabs; a visitor doesn't get a tab that would show
+  // nothing (once it's known to be empty, never while loading or failed).
+  const { counts } = summary
+  const visibleTabs = useMemo<ProfileTabItem[]>(() => {
+    const sectionCount: Partial<Record<TabKey, SectionCount>> = {
+      activities: counts.activities,
+      projects: counts.projects,
+      endorsements: counts.endorsements,
+      followers: counts.followers,
+      lists: counts.lists,
+    }
+    const emptyForVisitor = (key: TabKey): boolean => {
+      if (isViewerThisEntity) return false
+      if (key === "endorsements")
+        return isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
+      if (key === "followers")
+        return isKnownEmpty(counts.followers) && counts.following === 0
+      const c = sectionCount[key]
+      return c ? isKnownEmpty(c) : false
+    }
+    return TABS.filter((t) => {
+      if (t.key === "groups") return isActiveIdentityThisProfile
+      if (t.key === "about") return aboutAvailable
+      return !emptyForVisitor(t.key)
+    }).map((t) => {
+      const c = sectionCount[t.key]
+      return {
         key: t.key,
         label: t.label,
+        count: c ? tabCountLabel(c) : undefined,
         disabled:
           editing && !(t.key === "overview" || (viewIsOrg && t.key === "about")),
-      })),
-    [isActiveIdentityThisProfile, aboutAvailable, editing, viewIsOrg],
-  )
+      }
+    })
+  }, [
+    counts,
+    isViewerThisEntity,
+    isActiveIdentityThisProfile,
+    aboutAvailable,
+    editing,
+    viewIsOrg,
+  ])
 
   const settingsHref =
     isAdminOfThisGroup && did
@@ -427,38 +479,76 @@ export default function UserProfilePage() {
 
   if (isProfileLoading) {
     return (
-      <PageContainer width="default" className="profile-page">
+      <PageContainer width="default" className="profile-page" aria-busy="true">
+        <span className="sr-only" role="status">
+          Loading profile
+        </span>
         <ProfileHeaderSkeleton />
+        <ProfilePageBodySkeleton />
+      </PageContainer>
+    )
+  }
+
+  // The lookup itself failed (network, rate limit, server): say so, with
+  // a way to try again. Not the same as an account that doesn't exist.
+  if (profileError && profileErrorKind === "failed") {
+    return (
+      <PageContainer width="default" className="profile-page">
+        <EmptyState
+          icon={CloudOff}
+          title="Couldn't load this profile"
+          description="Something went wrong on our side. Try again in a moment."
+          headingLevel={1}
+          className="pt-16"
+        >
+          <Button variant="secondary" size="sm" onClick={retryProfile}>
+            Try again
+          </Button>
+        </EmptyState>
       </PageContainer>
     )
   }
 
   if (profileError || !did) {
+    const shown = handleOrDid ? displayActor(handleOrDid) : null
     return (
       <PageContainer width="default" className="profile-page">
         <NotFoundMarker />
         <EmptyState
           icon={UserX}
           title="Profile not found"
+          headingLevel={1}
           description={
-            handleOrDid ? (
+            shown ? (
+              // The same words as the server's not-found page.
               <>
                 We couldn&apos;t find a Certified profile for{" "}
-                <span className="whitespace-nowrap">@{handleOrDid}</span>.
+                <span className="break-all">{shown}</span>.
               </>
             ) : (
-              "We couldn't find a Certified profile for this user."
+              "We couldn't find a Certified profile for this account."
             )
           }
           className="pt-16"
-        />
+        >
+          <Button href="/explore" variant="secondary" size="sm">
+            Explore profiles
+          </Button>
+        </EmptyState>
       </PageContainer>
     )
   }
 
   const basePath = pathname || ""
-  const displayName =
-    effectiveProfile?.displayName || resolvedHandle || "this account"
+  const shownHandle = resolvedHandle || (rawHandle ?? null)
+  // The header's lead is the bio; without one, an organization's long
+  // description takes its place, so the Overview's About only appears
+  // when both exist.
+  const hasBio = !!effectiveProfile?.description?.trim()
+  const joined =
+    !isBskyHosted && effectiveProfile?.createdAt
+      ? formatMonthYear(effectiveProfile.createdAt)
+      : null
 
   return (
     <PageContainer width="default" className="profile-page">
@@ -487,17 +577,20 @@ export default function UserProfilePage() {
 
       <ProfileHeader
         did={did}
-        handle={resolvedHandle || (rawHandle ?? null)}
+        handle={shownHandle}
         profile={effectiveProfile}
         avatarUrl={effectiveAvatarUrl}
         bannerUrl={effectiveBannerUrl}
         basePath={basePath}
         isOrg={viewIsOrg}
+        kindPending={kindPending}
         hasCertifiedProfile={hasCertifiedProfile}
         hasBlueskyProfile={hasBlueskyProfile}
         orgTypeTags={displayOrgTypeTags}
         orgLocationName={displayLocation.name}
         orgFoundedDate={displayFoundedDate}
+        longDescription={displayLongDescription}
+        leadLines={isDesktop ? 4 : 3}
         additionalUrls={effectiveAdditionalUrls}
         canEdit={canEditInline}
         settingsHref={canEditInline ? undefined : settingsHref}
@@ -521,16 +614,32 @@ export default function UserProfilePage() {
               {shownTab === "overview" ? (
                 <ProfileOverview
                   did={did}
+                  handle={shownHandle}
                   basePath={basePath}
+                  summary={summary}
                   viewerIsOwner={isViewerThisEntity}
                   isEditing={editing}
                   drafts={drafts}
                   onDraftChange={handleDraftChange}
                   isOrg={viewIsOrg}
-                  orgLongDescription={displayLongDescription}
+                  kindPending={kindPending}
+                  about={viewIsOrg && hasBio ? displayLongDescription : null}
                   orgTypeTags={displayOrgTypeTags}
-                  orgLocationName={displayLocation.name}
-                  orgLocationCoords={displayLocation.coords}
+                  orgFoundedDate={displayFoundedDate}
+                  location={
+                    viewIsOrg
+                      ? {
+                          name: displayLocation.name,
+                          shape:
+                            displayLocation.shape ??
+                            (displayLocation.coords
+                              ? { kind: "point", point: displayLocation.coords }
+                              : null),
+                          resolving: displayLocation.resolving,
+                        }
+                      : null
+                  }
+                  joined={joined}
                 />
               ) : null}
               {shownTab === "about" ? (
@@ -601,5 +710,56 @@ export default function UserProfilePage() {
         </div>
       </Tabs>
     </PageContainer>
+  )
+}
+
+/** A tab's count label: nothing while unknown or failed, "40+" when more
+ *  exist than were counted. */
+function tabCountLabel(c: SectionCount): string | undefined {
+  if (c.isLoading || c.failed || c.value === null) return undefined
+  return `${c.value.toLocaleString()}${c.more && c.value > 0 ? "+" : ""}`
+}
+
+/** How the not-found page names what was asked for: "@handle", or a DID
+ *  as it is (never "@did:…"). */
+function displayActor(actor: string): string {
+  return actor.startsWith("did:") ? actor : `@${actor.replace(/^@/, "")}`
+}
+
+/** The body under the header while the profile loads: the tab strip, the
+ *  reading column's cards, the rail's facts. */
+function ProfilePageBodySkeleton() {
+  return (
+    <div className="profile-page__skeleton" aria-hidden>
+      <div className="profile-page__skeleton-tabs">
+        {[72, 84, 68, 104].map((w) => (
+          <Skeleton key={w} variant="line" width={w} height={14} />
+        ))}
+      </div>
+      <div className="profile-overview">
+        <div className="profile-overview__main">
+          <div className="profile-overview__section">
+            <Skeleton variant="line" width={96} height={16} />
+            <div className="profile-overview__cards">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="profile-overview__card-skeleton">
+                  <div className="profile-overview__card-skeleton-image">
+                    <Skeleton variant="box" width="100%" height="100%" />
+                  </div>
+                  <Skeleton variant="line" width="80%" height={16} />
+                  <Skeleton variant="line" width="50%" height={12} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="profile-overview__rail">
+          <div className="profile-overview__rail-skeleton">
+            <Skeleton variant="box" height={208} />
+            <Skeleton variant="box" height={220} />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

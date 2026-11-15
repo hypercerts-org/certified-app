@@ -3,36 +3,33 @@
 import { useRef, useState, Fragment } from "react"
 import {
   Camera,
-  Check,
   ChevronDown,
   ChevronUp,
-  Copy,
   Link as LinkIcon,
   Pencil,
   Plus,
-  Settings as SettingsIcon,
   X,
 } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import ClampedText from "@/components/ui/clamped-text"
 import Input from "@/components/ui/input"
+import ShareLinkButton from "@/components/ui/share-link-button"
 import Textarea from "@/components/ui/textarea"
 import Skeleton from "@/components/ui/skeleton"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import SmartLink from "@/components/ui/smart-link"
 import Tooltip from "@/components/ui/tooltip"
+import { describeLink, type LinkDescription } from "@/components/ui/smart-link"
+import LeafletDocument from "@/components/leaflet/leaflet-document"
 import BannerUpload from "@/components/profile/banner-upload"
 import ProfileTrustLine from "@/components/profile/profile-trust-line"
+import ProfileMoreMenu from "@/components/profile/profile-more-menu"
 import { FollowEndorseActions } from "@/components/profile/profile-follow-endorse"
-import AddToListMenu from "@/components/lists/add-to-list-menu"
-import { LIST_ACCOUNTS_TYPE } from "@/lib/atproto/typed-lists"
 import { useRegisterPageHeader } from "@/lib/navbar-context"
-import { useAuth } from "@/lib/auth/auth-context"
-import { useOrg } from "@/lib/groups/org-context"
 import { useProfilePds } from "@/hooks/use-profile-pds"
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { getInitials } from "@/lib/utils/initials"
 import { formatMonthYear } from "@/lib/utils/format-date"
+import { shortPlaceName } from "@/lib/atproto/location"
 import { profileUrl } from "@/lib/urls"
 import type { CertifiedProfile } from "@/lib/atproto/types"
 import {
@@ -56,15 +53,25 @@ export interface ProfileHeaderProps {
   basePath: string
   /** The profile carries the organization marker. */
   isOrg: boolean
+  /** Whether this is an organization isn't known yet (its marker is
+   *  loading): the avatar's shape and the meta line wait for it, so an
+   *  organization never first renders as a person. */
+  kindPending?: boolean
   /** An `app.certified.actor.profile` with a display name exists. When
    *  false and a Bluesky profile does, the data came from Bluesky and the
    *  header says so (issue #74). */
   hasCertifiedProfile: boolean
   hasBlueskyProfile: boolean
-  /** Organization facts for the meta line ("Type · Location · Founded …"). */
+  /** Organization facts for the meta line ("Type · Place · Founded …"). */
   orgTypeTags?: string[]
   orgLocationName?: string | null
   orgFoundedDate?: string | null
+  /** The organization's long description. With no bio, it is the lead
+   *  under the name (cut short, "Read more" opens it in place). */
+  longDescription?: unknown
+  /** How many lines of the lead show before "Read more": three on a phone,
+   *  four from 800px (the page knows the width before the header mounts). */
+  leadLines?: number
   /** Extra organization links, shown after the website. */
   additionalUrls?: string[]
   /** The viewer's current identity is this account: Edit profile + Share
@@ -87,11 +94,20 @@ export interface ProfileHeaderProps {
 }
 
 /**
- * The public profile's header, the same on phones and desktop: an optional
- * banner, the avatar, the name as the page's `<h1>` (it registers with the
- * chrome like `<PageHeader>`, so the chrome renders no h1 of its own),
- * the handle, bio, links, a meta line, the actions for this viewer, and the
- * trust line (who endorsed the account, follower counts).
+ * The public profile's header (DESIGN.md §9.12, the public pages): the
+ * banner when the account has one; the avatar beside the name (the page's
+ * `<h1>`; it registers with the chrome like `<PageHeader>`, so the chrome
+ * renders no h1 of its own) and one meta line of facts; the lead (the bio,
+ * or else the organization's description, cut to three lines); the website
+ * as text and social accounts as icon buttons; the trust line (who
+ * endorsed the account, its followers). The viewer's actions sit top
+ * right: Follow, Share, More (Edit profile and Share for the account
+ * itself). On phones the same pieces stack: a 64px avatar beside the
+ * name, then the lead, the links, a full-width row of actions, and the
+ * trust line on one line.
+ *
+ * The handle and the Permanent ID are facts, in the Overview's Account
+ * card (and the More menu copies the Permanent ID).
  *
  * In edit mode the same slots become fields: banner and avatar uploads,
  * name, bio, website, and for organizations the extra links and the
@@ -105,11 +121,14 @@ export default function ProfileHeader({
   bannerUrl,
   basePath,
   isOrg,
+  kindPending = false,
   hasCertifiedProfile,
   hasBlueskyProfile,
   orgTypeTags = [],
   orgLocationName = null,
   orgFoundedDate = null,
+  longDescription = null,
+  leadLines = 3,
   additionalUrls = [],
   canEdit,
   settingsHref,
@@ -146,37 +165,35 @@ export default function ProfileHeader({
   }
 
   // Meta line: organizations name their type, place and founding; people
-  // show when they joined. "Joined" is skipped on Bluesky-hosted accounts,
-  // whose `createdAt` is the Bluesky signup, not the Certified one.
+  // their pronouns and when they joined. "Joined" is skipped on
+  // Bluesky-hosted accounts, whose `createdAt` is the Bluesky signup, not
+  // the Certified one.
   const joined =
-    !isOrg && !isBskyHosted && profile?.createdAt
-      ? formatMonthYear(profile.createdAt)
-      : null
+    !isBskyHosted && profile?.createdAt ? formatMonthYear(profile.createdAt) : null
+  const place = shortPlaceName(orgLocationName)
   const metaItems: string[] = isOrg
     ? [
         orgTypeTags.join(", "),
-        orgLocationName ?? "",
+        place ?? "",
         orgFoundedDate ? `Founded ${orgFoundedDate}` : "",
       ].filter(Boolean)
-    : joined
-      ? [`Joined ${joined}`]
-      : []
+    : [profile?.pronouns ?? "", joined ? `Joined ${joined}` : ""].filter(Boolean)
 
-  const links = [
-    ...(profile?.website ? [profile.website] : []),
-    ...(isOrg
-      ? additionalUrls.filter(
-          (u) => typeof u === "string" && u.length > 0 && u !== profile?.website,
-        )
-      : []),
-  ]
+  // Links: websites read as text, social accounts as labelled icons.
+  const links = collectLinks(profile?.website, isOrg ? additionalUrls : [])
+  const websites = links.filter((l) => l.service === null)
+  const socials = links.filter((l) => l.service !== null)
+
   const fromBluesky = !hasCertifiedProfile && hasBlueskyProfile && !!handle
-
+  const bio = profile?.description?.trim() || null
+  const lead = bio ?? (isOrg ? longDescription : null)
   const hasBannerSlot = editing || showBanner
 
   return (
     <header
-      className={`profile-header${hasBannerSlot ? " profile-header--banner" : ""}`}
+      className={`profile-header${hasBannerSlot ? " profile-header--banner" : ""}${
+        editing ? " profile-header--editing" : ""
+      }`}
     >
       {editing ? (
         <div className="profile-header__banner profile-header__banner--editing">
@@ -204,47 +221,33 @@ export default function ProfileHeader({
         </div>
       ) : null}
 
-      <div className="profile-header__top">
-        <div
-          className={`profile-header__avatar${
-            isOrg ? " profile-header__avatar--square" : ""
-          }`}
-        >
+      <div
+        className={`profile-header__avatar${
+          isOrg && !kindPending ? " profile-header__avatar--square" : ""
+        }`}
+      >
+        {kindPending ? (
+          // A neutral block until we know whether it's a person (circle)
+          // or an organization (square).
+          <Skeleton
+            variant="box"
+            width="var(--profile-avatar-size)"
+            height="var(--profile-avatar-size)"
+            aria-hidden
+          />
+        ) : (
           <Avatar
             size="xl"
             shape={isOrg ? "square" : "circle"}
             src={avatarUrl || undefined}
             fallbackInitials={initials}
             seed={did}
+            className="max-md:h-16 max-md:w-16 max-md:text-h4"
           />
-          {editing && onAvatarFile ? (
-            <AvatarEditButton
-              onFile={onAvatarFile}
-              hasPending={hasPendingAvatar}
-            />
-          ) : null}
-        </div>
-
-        {editing ? null : (
-          <div className="profile-header__actions">
-            {canEdit ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={onEditClick}
-                  data-tour="profile-edit"
-                >
-                  <Pencil size={16} strokeWidth={1.75} aria-hidden />
-                  Edit profile
-                </Button>
-                <ShareButton handle={handle} did={did} />
-              </>
-            ) : (
-              <VisitorActions did={did} settingsHref={settingsHref} />
-            )}
-          </div>
         )}
+        {editing && onAvatarFile ? (
+          <AvatarEditButton onFile={onAvatarFile} hasPending={hasPendingAvatar} />
+        ) : null}
       </div>
 
       {editing && drafts && onDraftChange ? (
@@ -256,175 +259,188 @@ export default function ProfileHeader({
         />
       ) : (
         <div className="profile-header__identity">
-          <h1 className="profile-header__name font-headline text-h2" dir="auto">
-            {displayName}
-          </h1>
-          {handle || profile?.pronouns || fromBluesky ? (
-            <p className="profile-header__handle">
-              {handle ? <span className="profile-header__handle-text">@{handle}</span> : null}
-              {profile?.pronouns ? (
-                <>
-                  {handle ? <span aria-hidden>·</span> : null}
-                  <span>{profile.pronouns}</span>
-                </>
-              ) : null}
-              {fromBluesky ? (
-                <a
-                  href={`https://bsky.app/profile/${encodeURIComponent(handle!)}`}
-                  className="profile-header__tag"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                  title="This profile is imported from Bluesky"
-                >
-                  Bluesky profile
-                  {" "}<span className="sr-only">(opens in new tab)</span>
-                </a>
-              ) : null}
-            </p>
-          ) : null}
+          <div className="profile-header__title">
+            <h1
+              className="profile-header__name font-headline text-h2 max-md:text-h3"
+              dir="auto"
+            >
+              {displayName}
+            </h1>
+            {kindPending ? (
+              <Skeleton variant="line" width={200} height={14} aria-hidden />
+            ) : metaItems.length > 0 || fromBluesky ? (
+              <p className="profile-header__meta">
+                {/* Each item stays whole ("Founded Feb 2023"); the line
+                    wraps between items. */}
+                {metaItems.map((item, i) => (
+                  <Fragment key={item}>
+                    {i > 0 ? (
+                      <span aria-hidden className="profile-header__dot">
+                        ·
+                      </span>
+                    ) : null}
+                    <span className="profile-header__meta-item">{item}</span>
+                  </Fragment>
+                ))}
+                {fromBluesky ? (
+                  <a
+                    href={`https://bsky.app/profile/${encodeURIComponent(handle!)}`}
+                    className="profile-header__tag"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title="This profile is imported from Bluesky"
+                  >
+                    Bluesky profile
+                    {" "}<span className="sr-only">(opens in new tab)</span>
+                  </a>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
 
-          {profile?.description ? (
-            <p className="profile-header__bio" dir="auto">
-              {profile.description}
-            </p>
+          {lead ? (
+            <ClampedText lines={leadLines} className="profile-header__lead">
+              {bio ? (
+                <p className="profile-header__bio" dir="auto">
+                  {bio}
+                </p>
+              ) : (
+                <LeafletDocument
+                  value={lead}
+                  did={did}
+                  className="profile-header__lead-doc"
+                />
+              )}
+            </ClampedText>
+          ) : kindPending ? (
+            // An organization's description may be the lead: hold its
+            // place until we know.
+            <div className="profile-header__lead" aria-hidden>
+              <Skeleton variant="text" lines={3} width="min(100%, 560px)" height={14} />
+            </div>
           ) : null}
 
           {links.length > 0 ? (
             <ul className="profile-header__links" aria-label="Links">
-              {links.map((u) => (
-                <li key={u} className="profile-header__link">
-                  <SmartLink url={u} className="profile-header__link-anchor" />
+              {websites.map((l) => (
+                <li key={l.href} className="profile-header__website">
+                  <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
+                  <a
+                    href={l.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="profile-header__website-link"
+                  >
+                    {l.display}
+                    <span className="sr-only"> (opens in new tab)</span>
+                  </a>
+                </li>
+              ))}
+              {socials.map((l) => (
+                <li key={l.href}>
+                  <Button
+                    href={l.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`${l.display} on ${l.service}`}
+                    className="profile-header__social"
+                  >
+                    <l.Icon width={16} height={16} aria-hidden />
+                  </Button>
                 </li>
               ))}
             </ul>
           ) : null}
 
-          <div className="profile-header__meta">
-            {metaItems.length > 0 ? (
-              <span className="profile-header__meta-text">
-                {/* Each item stays whole ("Founded Feb 2023"); the line
-                    wraps between items. */}
-                {metaItems.map((item, i) => (
-                  <Fragment key={item}>
-                    {i > 0 ? " · " : null}
-                    <span className="whitespace-nowrap">{item}</span>
-                  </Fragment>
-                ))}
-              </span>
-            ) : null}
-            <CopyIdButton did={did} />
-          </div>
+          <ProfileTrustLine did={did} basePath={basePath} isOwner={canEdit} />
         </div>
       )}
 
-      {editing ? null : <ProfileTrustLine did={did} basePath={basePath} />}
+      {editing ? null : (
+        <div className="profile-header__actions">
+          {canEdit ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onEditClick}
+                data-tour="profile-edit"
+              >
+                <Pencil size={16} strokeWidth={1.75} aria-hidden />
+                Edit profile
+              </Button>
+              <ShareLinkButton path={profileUrl(handle || did)} what="Profile link" />
+            </>
+          ) : (
+            <>
+              <FollowEndorseActions did={did} />
+              <ShareLinkButton path={profileUrl(handle || did)} what="Profile link" />
+              <ProfileMoreMenu
+                did={did}
+                handle={handle}
+                onBluesky={hasBlueskyProfile}
+                settingsHref={settingsHref}
+              />
+            </>
+          )}
+        </div>
+      )}
     </header>
   )
+}
+
+/**
+ * The account's links, once each: the profile's website first, then the
+ * organization's other links. Anything that isn't an http(s) URL is left
+ * out.
+ */
+function collectLinks(website: string | undefined, extra: string[]): LinkDescription[] {
+  const out: LinkDescription[] = []
+  const seen = new Set<string>()
+  for (const raw of [website, ...extra]) {
+    if (typeof raw !== "string" || raw.trim().length === 0) continue
+    const link = describeLink(raw)
+    if (!link) continue
+    const key = link.href.replace(/\/+$/, "").replace(/^https?:\/\/(www\.)?/, "").toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(link)
+  }
+  return out
 }
 
 /** Header placeholder while the profile resolves, shaped like the real one. */
 export function ProfileHeaderSkeleton() {
   return (
-    <div className="profile-header" aria-hidden>
-      <div className="profile-header__top">
-        <Skeleton circle width={96} />
+    <div className="profile-header profile-header--skeleton" aria-hidden>
+      <div className="profile-header__avatar">
+        <Skeleton
+          variant="box"
+          width="var(--profile-avatar-size)"
+          height="var(--profile-avatar-size)"
+        />
       </div>
       <div className="profile-header__identity">
-        <Skeleton variant="line" width={240} height={32} />
-        <Skeleton variant="line" width={160} height={16} />
-        <Skeleton variant="text" lines={2} width="min(100%, 480px)" />
-        <Skeleton variant="line" width={280} height={16} />
+        <div className="profile-header__title">
+          <Skeleton variant="line" width="min(100%, 320px)" height={28} />
+          <Skeleton variant="line" width={200} height={14} />
+        </div>
+        <div className="profile-header__lead">
+          <Skeleton variant="text" lines={3} width="min(100%, 560px)" height={14} />
+        </div>
+        <div className="profile-header__links">
+          <Skeleton variant="line" width={180} height={16} />
+        </div>
+      </div>
+      <div className="profile-header__actions">
+        <Skeleton variant="box" width={88} height={32} />
+        <Skeleton variant="box" width={80} height={32} />
       </div>
     </div>
   )
 }
-
-/* ------------------------------ Actions ------------------------------ */
-
-function VisitorActions({
-  did,
-  settingsHref,
-}: {
-  did: string
-  settingsHref?: string
-}) {
-  const { did: viewerDid } = useAuth()
-  const { activeOrg } = useOrg()
-  const isOwnAccount = !!viewerDid && viewerDid === did
-  return (
-    <>
-      <FollowEndorseActions did={did} />
-      {settingsHref ? (
-        <Button
-          href={settingsHref}
-          variant="secondary"
-          size="icon"
-          aria-label="Group settings"
-        >
-          <SettingsIcon size={16} strokeWidth={1.75} aria-hidden />
-        </Button>
-      ) : null}
-      {/* Lists are personal: no list menu while acting as a group, and none
-          on your own account (seen while acting as a group). */}
-      {activeOrg || isOwnAccount ? null : (
-        <AddToListMenu
-          targetUri={`at://${did}/app.certified.actor.profile/self`}
-          targetCid=""
-          targetType={LIST_ACCOUNTS_TYPE}
-        />
-      )}
-    </>
-  )
-}
-
-function ShareButton({ handle, did }: { handle: string | null; did: string }) {
-  const { copied, copy } = useCopyToClipboard()
-  return (
-    <>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() =>
-          void copy(`${window.location.origin}${profileUrl(handle || did)}`)
-        }
-      >
-        {copied ? (
-          <Check size={16} strokeWidth={1.75} aria-hidden />
-        ) : (
-          <LinkIcon size={16} strokeWidth={1.75} aria-hidden />
-        )}
-        {copied ? "Link copied" : "Share"}
-      </Button>
-      <span className="sr-only" aria-live="polite">
-        {copied ? "Profile link copied" : ""}
-      </span>
-    </>
-  )
-}
-
-/** The account's Permanent ID (its DID), click to copy. */
-function CopyIdButton({ did }: { did: string }) {
-  const { copied, copy } = useCopyToClipboard()
-  return (
-    <Tooltip label={copied ? "Copied" : "Copy Permanent ID"}>
-      <button
-        type="button"
-        className="profile-header__id"
-        onClick={() => void copy(did)}
-        aria-label={copied ? "Permanent ID copied" : `Copy Permanent ID ${did}`}
-      >
-        <span className="profile-header__id-label">Permanent ID</span>
-        <span className="profile-header__id-value">{did}</span>
-        {copied ? (
-          <Check size={16} strokeWidth={1.75} aria-hidden />
-        ) : (
-          <Copy size={16} strokeWidth={1.75} aria-hidden />
-        )}
-      </button>
-    </Tooltip>
-  )
-}
-
 /* ----------------------------- Edit mode ----------------------------- */
 
 function AvatarEditButton({

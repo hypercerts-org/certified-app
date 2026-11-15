@@ -1,39 +1,54 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { MapPin, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Check, Copy, MapPin, X } from "lucide-react"
 import Button from "@/components/ui/button"
+import ClampedText from "@/components/ui/clamped-text"
 import EmptyState from "@/components/ui/empty-state"
+import ErrorMessage from "@/components/ui/error-message"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
-import StatRow from "@/components/ui/stat-row"
+import Skeleton from "@/components/ui/skeleton"
+import { FactCard, FactList, type Fact } from "@/components/ui/fact-card"
 import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
+import ActivityCard from "@/components/feed/activity-card"
+import ExploreProjectCard from "@/components/explore-page/explore-project-card"
 import {
   reverseGeocode,
   suggestForwardGeocode,
   type ForwardGeocodeResult,
 } from "@/lib/locations/geocode"
+import { splitLocationName, type LocationShape } from "@/lib/atproto/location"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
-import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
-import { useGivenEndorsements } from "@/hooks/use-endorsements"
-import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
-import { useUserActivityCount } from "@/hooks/use-user-activity-count"
-import { useUserProjects } from "@/hooks/use-user-projects"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
-import type { ActivityRecord } from "@/lib/atproto/activity-types"
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
 import {
-  ProfileActivityRow,
-  ProfileRowsSkeleton,
-} from "@/components/profile/profile-panel"
+  isKnownEmpty,
+  type ProfileSummary,
+} from "@/components/profile/use-profile-summary"
+
+/** The account's place, as the Overview shows it. */
+export interface OverviewLocation {
+  name: string | null
+  /** Point or region, when the location record has one. */
+  shape: LocationShape | null
+  /** The location record is still being read. */
+  resolving?: boolean
+}
 
 interface ProfileOverviewProps {
   did: string
+  /** The account's handle (a fact in the Account card). */
+  handle: string | null
   /** Path of the profile page, without the query. */
   basePath: string
-  /** The viewer's current identity is this account. Adds "New activity"
-   *  to the empty activities state. */
+  /** What the page loaded about the account (activities, projects,
+   *  endorsements), shared with the tab strip. */
+  summary: ProfileSummary
+  /** The viewer's current identity is this account: empty sections stay,
+   *  with the action that fills them. A visitor sees only what there is. */
   viewerIsOwner?: boolean
   /** Inline-edit mode (only sent when the viewer can edit). */
   isEditing?: boolean
@@ -42,349 +57,470 @@ interface ProfileOverviewProps {
     key: K,
     value: ProfileDrafts[K],
   ) => void
-  /** The profile carries the organization marker: adds the About block
-   *  (long description, type, location). */
+  /** The profile carries the organization marker. */
   isOrg?: boolean
-  /** Long description from the org marker (string, inline leaflet
-   *  document or strong-ref; the renderer handles all three). `null`
-   *  when empty. */
-  orgLongDescription?: unknown
-  /** Org-type tags in display order. */
+  /** Whether it is an organization isn't known yet. */
+  kindPending?: boolean
+  /** The long description, shown here as "About" only when the header's
+   *  lead is the bio (otherwise the header already holds it). */
+  about?: unknown
+  /** Org-type labels in display order. */
   orgTypeTags?: string[]
-  /** Free-text location label. */
-  orgLocationName?: string | null
-  /** Map pin from the org marker, when one is set. */
-  orgLocationCoords?: { lat: number; lng: number } | null
+  orgFoundedDate?: string | null
+  location?: OverviewLocation | null
+  /** "Jun 2026", or null when not known (or a Bluesky signup date). */
+  joined?: string | null
 }
 
-const ACTIVITY_PREVIEW = 3
-const ENDORSEMENT_PREVIEW = 3
+const PREVIEW = 3
 
 /**
- * The profile's Overview tab: a quiet row of counts, the organization's
- * About block (organizations only; a person's bio sits in the header),
- * the latest activities as rows and the latest endorsements received as
- * the compact endorsement rows the Workspace Overview uses. From 1100px
- * the activities and endorsements sit side by side.
+ * The profile's Overview tab. A reading column with the account's work —
+ * About (when the header's lead is the bio), the latest activities as image
+ * cards, projects, and the endorsements it received with their notes —
+ * and, from 1100px, a 320px rail beside it: a small map of the account's
+ * place, then the Account facts (type, place, founded, joined, handle,
+ * Permanent ID). On phones the rail follows the content.
+ *
+ * A visitor sees only sections with something in them; the account itself
+ * sees every section, with the action that fills an empty one. A section
+ * that failed to load says so, with "Try again".
  */
 export default function ProfileOverview({
   did,
+  handle,
   basePath,
+  summary,
   viewerIsOwner = false,
   isEditing = false,
   drafts,
   onDraftChange,
   isOrg = false,
-  orgLongDescription = null,
+  kindPending = false,
+  about = null,
   orgTypeTags = [],
-  orgLocationName = null,
-  orgLocationCoords = null,
+  orgFoundedDate = null,
+  location = null,
+  joined = null,
 }: ProfileOverviewProps) {
-  const received = useReceivedEndorsements(did)
-  const given = useGivenEndorsements(did)
-  const { projects, isLoading: projectsLoading } = useUserProjects(did)
-  // The account's own activities (the indexer's totalCount), the same
-  // number the Workspace Overview and Records show and the Activities
-  // tab opens on (Created). Activities it only contributed to stay in the
-  // list below and under Activities → Contributed. Falls back to the first
-  // page's count (with "+") if the count query comes back empty.
-  const activityCount = useUserActivityCount(did)
-  const {
-    created,
-    contributed,
-    dids: activityDids,
-    isLoading: activitiesLoading,
-    hasMore: activitiesHasMore,
-  } = useUserIndexerActivities(did)
+  const { activities, recentActivities, projects, received, counts } = summary
 
-  // Recent activities: merge both buckets (an activity can be in both),
-  // newest first.
-  const mergedActivities = useMemo(() => {
-    const seen = new Set<string>()
-    const merged: ActivityRecord[] = []
-    for (const r of [...created, ...contributed]) {
-      if (seen.has(r.uri)) continue
-      seen.add(r.uri)
-      merged.push(r)
-    }
-    merged.sort((a, b) =>
-      (a.value.createdAt ?? "") < (b.value.createdAt ?? "") ? 1 : -1,
-    )
-    return merged
-  }, [created, contributed])
-  const previewActivities = mergedActivities.slice(0, ACTIVITY_PREVIEW)
+  const previewActivities = recentActivities.slice(0, PREVIEW)
+  const previewProjects = [...projects.projects]
+    .sort((a, b) => (String(a.value.createdAt ?? "") < String(b.value.createdAt ?? "") ? 1 : -1))
+    .slice(0, PREVIEW)
+  const previewEndorsements = [...received.endorsements]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, PREVIEW)
 
-  const previewEndorsements = useMemo(
-    () =>
-      [...received.endorsements]
-        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-        .slice(0, ENDORSEMENT_PREVIEW),
-    [received.endorsements],
-  )
-
-  const activityValue =
-    activityCount ??
-    `${created.length}${activitiesHasMore ? "+" : ""}`
+  const activitiesEmpty = isKnownEmpty(counts.activities)
+  const projectsEmpty = isKnownEmpty(counts.projects)
+  const endorsementsEmpty =
+    isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
+  const showActivities = viewerIsOwner || !activitiesEmpty
+  const showProjects = viewerIsOwner || !projectsEmpty
+  const showEndorsements = viewerIsOwner || !endorsementsEmpty
+  const nothingToShow =
+    !viewerIsOwner && !about && activitiesEmpty && projectsEmpty && endorsementsEmpty
+  // Everything failed at once (the indexer is down): one block, not three.
+  const allFailed =
+    !!activities.error &&
+    recentActivities.length === 0 &&
+    !!projects.error &&
+    !!received.error &&
+    received.endorsements.length === 0
+  const retryAll = () => {
+    void activities.refetch()
+    projects.retry()
+    received.refetch()
+  }
 
   return (
     <div className="profile-overview">
-      {/* Phones: a tidy 2×2 grid instead of wrapping 3 + 1. */}
-      <StatRow
-        aria-label="Counts"
-        className="max-md:grid max-md:grid-cols-2"
-        items={[
-          {
-            label: activityCount === 1 ? "Activity" : "Activities",
-            value:
-              typeof activityValue === "number"
-                ? formatGraphCount(activityValue)
-                : activityValue,
-            loading: activityCount === null && activitiesLoading,
-            href: `${basePath}?tab=activities`,
-          },
-          {
-            label: projects.length === 1 ? "Project" : "Projects",
-            value: projects.length,
-            loading: projectsLoading,
-            href: `${basePath}?tab=projects`,
-          },
-          {
-            label: "Endorsements received",
-            value: received.endorsements.length,
-            loading: received.isLoading && received.endorsements.length === 0,
-            href: `${basePath}?tab=endorsements`,
-          },
-          {
-            label: "Endorsements given",
-            value: given.endorsements.length,
-            loading: given.isLoading && given.endorsements.length === 0,
-            href: `${basePath}?tab=endorsements&sub=given`,
-          },
-        ]}
-      />
+      <div className="profile-overview__main">
+        {isEditing && isOrg ? (
+          <div className="profile-overview__section">
+            <OrgTypePickerSection
+              selected={drafts?.organizationTypes ?? []}
+              other={drafts?.organizationTypeOther ?? ""}
+              onDraftChange={onDraftChange}
+            />
+            <p className="profile-overview__hint">
+              Write the long description in the About tab.
+            </p>
+          </div>
+        ) : null}
 
-      {isOrg ? (
-        <OrgAbout
-          did={did}
-          basePath={basePath}
-          isEditing={isEditing}
-          drafts={drafts}
-          onDraftChange={onDraftChange}
-          longDescription={orgLongDescription}
-          typeTags={orgTypeTags}
-          locationName={orgLocationName}
-          locationCoords={orgLocationCoords}
-        />
-      ) : null}
+        {about && !isEditing ? (
+          <section className="profile-overview__section" aria-labelledby="profile-overview-about">
+            <SectionHeader id="profile-overview-about" title="About" />
+            <ClampedText lines={8} className="profile-overview__about">
+              <LeafletDocument value={about} did={did} />
+            </ClampedText>
+          </section>
+        ) : null}
 
-      <div className="profile-overview__columns">
-        <section
-          className="profile-overview__section"
-          aria-labelledby="profile-overview-activities"
-        >
-          <SectionHeader
-            id="profile-overview-activities"
-            title="Recent activities"
-            action={
-              mergedActivities.length > ACTIVITY_PREVIEW ? (
-                <SeeAllLink
-                  href={`${basePath}?tab=activities`}
-                  label="All activities"
-                />
-              ) : null
-            }
+        {allFailed ? (
+          <ErrorMessage
+            title="Couldn't load this account's records"
+            message="Something went wrong on our side. Try again in a moment."
+            onRetry={retryAll}
           />
-          {activitiesLoading && previewActivities.length === 0 ? (
-            <ProfileRowsSkeleton />
-          ) : previewActivities.length === 0 ? (
-            <div className="profile-overview__empty">
-              <EmptyState
-                variant="inline"
-                title={
-                  viewerIsOwner
-                    ? "No activities yet. Activities you publish or contribute to show here."
-                    : "No activities yet."
-                }
+        ) : null}
+
+        {showActivities && !allFailed ? (
+          <section
+            className="profile-overview__section"
+            aria-labelledby="profile-overview-activities"
+          >
+            <SectionHeader
+              id="profile-overview-activities"
+              title="Activities"
+              action={
+                recentActivities.length > PREVIEW || activities.hasMore ? (
+                  <SeeAllLink href={`${basePath}?tab=activities`} label="All activities" />
+                ) : null
+              }
+            />
+            {activities.error && recentActivities.length === 0 ? (
+              <ErrorMessage
+                title="Couldn't load activities"
+                message="Something went wrong on our side. Try again in a moment."
+                onRetry={() => void activities.refetch()}
               />
-              {viewerIsOwner ? (
+            ) : counts.activities.isLoading ? (
+              <CardsSkeleton />
+            ) : previewActivities.length === 0 ? (
+              <div className="profile-overview__empty">
+                <EmptyState
+                  variant="inline"
+                  title="No activities yet. Activities you publish or contribute to show here."
+                />
                 <Button href="/create" variant="secondary" size="sm">
                   New activity
                 </Button>
-              ) : null}
-            </div>
-          ) : (
-            <ul className="profile-rows">
-              {previewActivities.map((a) => {
-                // Contributions live in another account's repo.
-                const author = activityDids.get(a.uri) ?? did
-                return (
-                  <ProfileActivityRow
-                    key={a.uri}
-                    activity={a}
-                    authorDid={author}
-                    showAuthor={author !== did}
-                  />
-                )
-              })}
-            </ul>
-          )}
-        </section>
+              </div>
+            ) : (
+              <ul className="profile-overview__cards">
+                {previewActivities.map((a) => {
+                  // Contributions live in another account's repo.
+                  const author = activities.dids.get(a.uri) ?? did
+                  return (
+                    <li key={a.uri}>
+                      <ActivityCard
+                        record={a}
+                        did={author}
+                        showAuthor={author !== did}
+                        titleAs="h3"
+                      />
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
+        ) : null}
 
-        <section
-          className="profile-overview__section"
-          aria-labelledby="profile-overview-endorsements"
-        >
-          {/* "All endorsements" whenever there is one: the tab holds more
-              than this preview (the endorsements given, too), and the
-              activities column beside it has its "All activities". */}
-          <SectionHeader
-            id="profile-overview-endorsements"
-            title="Endorsements received"
-            action={
-              received.endorsements.length > 0 ? (
-                <SeeAllLink
-                  href={`${basePath}?tab=endorsements`}
-                  label="All endorsements"
-                />
-              ) : null
-            }
-          />
-          {received.isLoading && previewEndorsements.length === 0 ? (
-            <ProfileRowsSkeleton shape="circle" />
-          ) : previewEndorsements.length === 0 ? (
-            <EmptyState
-              variant="inline"
-              title="No endorsements yet. When another account endorses this one, it shows here."
+        {showProjects && !allFailed ? (
+          <section
+            className="profile-overview__section"
+            aria-labelledby="profile-overview-projects"
+          >
+            <SectionHeader
+              id="profile-overview-projects"
+              title="Projects"
+              action={
+                projects.projects.length > PREVIEW ? (
+                  <SeeAllLink href={`${basePath}?tab=projects`} label="All projects" />
+                ) : null
+              }
             />
-          ) : (
-            // The one endorsement row, shared with the Workspace Overview.
-            <ul className="profile-overview__endorse-list">
-              {previewEndorsements.map((e) => (
-                <EndorsementPreviewRow key={e.uri} endorsement={e} />
-              ))}
-            </ul>
-          )}
-        </section>
+            {projects.error ? (
+              <ErrorMessage
+                title="Couldn't load projects"
+                message="Something went wrong on our side. Try again in a moment."
+                onRetry={projects.retry}
+              />
+            ) : counts.projects.isLoading ? (
+              <CardsSkeleton wide />
+            ) : previewProjects.length === 0 ? (
+              <div className="profile-overview__empty">
+                <EmptyState
+                  variant="inline"
+                  title="No projects yet. A project groups related activities."
+                />
+                <Button href="/project/new" variant="secondary" size="sm">
+                  New project
+                </Button>
+              </div>
+            ) : (
+              <ul className="profile-overview__cards profile-overview__cards--projects">
+                {previewProjects.map((p) => (
+                  <li key={p.uri}>
+                    <ExploreProjectCard project={p} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : null}
+
+        {showEndorsements && !allFailed ? (
+          <section
+            className="profile-overview__section"
+            aria-labelledby="profile-overview-endorsements"
+          >
+            {/* "All endorsements" whenever there is one: the tab holds more
+                than this preview (the endorsements given, too). */}
+            <SectionHeader
+              id="profile-overview-endorsements"
+              title="Endorsements"
+              action={
+                received.endorsements.length > 0 ? (
+                  <SeeAllLink href={`${basePath}?tab=endorsements`} label="All endorsements" />
+                ) : null
+              }
+            />
+            {received.error && received.endorsements.length === 0 ? (
+              <ErrorMessage
+                title="Couldn't load endorsements"
+                message="Something went wrong on our side. Try again in a moment."
+                onRetry={received.refetch}
+              />
+            ) : counts.endorsements.isLoading ? (
+              <EndorsementsSkeleton />
+            ) : (
+              <>
+                {previewEndorsements.length > 0 ? (
+                  // The one endorsement row, shared with the Workspace
+                  // Overview: the endorser, the date, their note.
+                  <ul className="profile-overview__endorse-list">
+                    {previewEndorsements.map((e) => (
+                      <EndorsementPreviewRow key={e.uri} endorsement={e} />
+                    ))}
+                  </ul>
+                ) : viewerIsOwner ? (
+                  <EmptyState
+                    variant="inline"
+                    title="No endorsements yet. When another account endorses this one, it shows here."
+                  />
+                ) : null}
+                {counts.endorsementsGiven > 0 ? (
+                  <SeeAllLink
+                    href={`${basePath}?tab=endorsements&sub=given`}
+                    label={`Endorses ${formatGraphCount(counts.endorsementsGiven)} ${
+                      counts.endorsementsGiven === 1 ? "account" : "accounts"
+                    }`}
+                    className="self-start"
+                  />
+                ) : null}
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {nothingToShow ? (
+          <EmptyState
+            variant="inline"
+            title="No activities, projects or endorsements yet."
+          />
+        ) : null}
       </div>
+
+      <aside className="profile-overview__rail" aria-label="Facts about this account">
+        {isEditing && isOrg ? (
+          <LocationPickerColumn
+            name={drafts?.locationName ?? ""}
+            lat={drafts?.locationLat ?? null}
+            lng={drafts?.locationLng ?? null}
+            onDraftChange={onDraftChange}
+          />
+        ) : kindPending ? (
+          <RailSkeleton />
+        ) : (
+          <AccountFacts
+            did={did}
+            handle={handle}
+            isOrg={isOrg}
+            typeTags={orgTypeTags}
+            foundedDate={orgFoundedDate}
+            location={location}
+            joined={joined}
+          />
+        )}
+      </aside>
     </div>
   )
 }
 
-/* ---------------------------- Org About ------------------------------ */
+/* ------------------------------ Rail ------------------------------ */
 
-function OrgAbout({
+function AccountFacts({
   did,
-  basePath,
-  isEditing,
-  drafts,
-  onDraftChange,
-  longDescription,
+  handle,
+  isOrg,
   typeTags,
-  locationName,
-  locationCoords,
+  foundedDate,
+  location,
+  joined,
 }: {
   did: string
-  basePath: string
-  isEditing: boolean
-  drafts?: ProfileDrafts
-  onDraftChange?: ProfileOverviewProps["onDraftChange"]
-  longDescription: unknown
+  handle: string | null
+  isOrg: boolean
   typeTags: string[]
-  locationName: string | null
-  locationCoords: { lat: number; lng: number } | null
+  foundedDate: string | null
+  location: OverviewLocation | null
+  joined: string | null
 }) {
-  if (isEditing) {
-    return (
-      <div className="profile-overview__about profile-overview__about--with-map">
-        <div className="profile-overview__about-main">
-          <OrgTypePickerSection
-            selected={drafts?.organizationTypes ?? []}
-            other={drafts?.organizationTypeOther ?? ""}
-            onDraftChange={onDraftChange}
-          />
-          <p className="profile-overview__hint">
-            Write the long description in the About tab.
-          </p>
-        </div>
-        <LocationPickerColumn
-          name={drafts?.locationName ?? ""}
-          lat={drafts?.locationLat ?? null}
-          lng={drafts?.locationLng ?? null}
-          onDraftChange={onDraftChange}
-        />
-      </div>
-    )
-  }
+  // The place without a leading Plus Code ("W8VJ+RPH, Nosara" → "Nosara").
+  const rawName = location?.name?.trim() || null
+  const placeName = rawName ? splitLocationName(rawName).name || rawName : null
+  const shape = location?.shape ?? null
+  const realHandle = handle && !handle.startsWith("did:") ? handle : null
 
-  // The type and place already read in the header's meta line; here the
-  // organization gets its own words and, when it set a pin, the map.
-  if (!longDescription && !locationCoords) return null
+  const facts: Fact[] = []
+  if (isOrg && typeTags.length > 0) {
+    facts.push({ label: typeTags.length === 1 ? "Type" : "Types", value: typeTags.join(", ") })
+  }
+  // With a map, the place is named under it instead.
+  if (placeName && !shape) facts.push({ label: "Location", value: placeName })
+  if (isOrg && foundedDate) facts.push({ label: "Founded", value: foundedDate })
+  if (joined) facts.push({ label: "Joined", value: joined })
+  if (realHandle) {
+    facts.push({
+      label: "Handle",
+      value: <span className="profile-facts__handle">@{realHandle}</span>,
+    })
+  }
+  facts.push({ label: "Permanent ID", value: <PermanentId did={did} /> })
 
   return (
-    <section
-      className={`profile-overview__about${
-        locationCoords ? " profile-overview__about--with-map" : ""
-      }`}
-      aria-labelledby="profile-overview-about"
-    >
-      <div className="profile-overview__about-main">
-        <SectionHeader id="profile-overview-about" title="About" />
-        {longDescription ? (
-          <AboutExcerpt
-            did={did}
-            value={longDescription}
-            href={`${basePath}?tab=about`}
-          />
-        ) : typeTags.length > 0 ? (
-          <p className="profile-overview__hint">{typeTags.join(", ")}</p>
-        ) : null}
-      </div>
-      {locationCoords ? (
-        <LocationReadColumn name={locationName} coords={locationCoords} />
+    <>
+      {shape ? (
+        <FactCard className="profile-facts__place">
+          <PlaceMap shape={shape} name={placeName} />
+          {placeName ? (
+            <p className="profile-facts__place-name">
+              <MapPin size={16} strokeWidth={1.75} aria-hidden />
+              <span>{placeName}</span>
+            </p>
+          ) : null}
+        </FactCard>
+      ) : location?.resolving ? (
+        <Skeleton variant="box" height={208} />
       ) : null}
-    </section>
+      <FactCard title="Account" labelledBy="profile-facts-account">
+        <FactList facts={facts} />
+      </FactCard>
+    </>
   )
 }
 
-/**
- * The first lines of the long description. When it runs longer than the
- * excerpt, the last line fades out and "Read more" opens the About tab.
- */
-function AboutExcerpt({
-  did,
-  value,
-  href,
-}: {
-  did: string
-  value: unknown
-  href: string
-}) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [clamped, setClamped] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el || typeof ResizeObserver === "undefined") return
-    // Fires once on observe, then on every resize (fonts, images, width).
-    const ro = new ResizeObserver(() => {
-      setClamped(el.scrollHeight > el.clientHeight + 1)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [value])
+/** A small map of the account's place: its pin, or its region. */
+function PlaceMap({ shape, name }: { shape: LocationShape; name: string | null }) {
+  const label = name ?? undefined
   return (
-    <>
-      <div
-        ref={ref}
-        className={`profile-overview__about-excerpt${
-          clamped ? " profile-overview__about-excerpt--clamped" : ""
-        }`}
+    <div className="profile-facts__map">
+      {shape.kind === "point" ? (
+        <Map
+          pins={[{ lat: shape.point.lat, lng: shape.point.lng, label }]}
+          center={shape.point}
+          zoom={9}
+          height={160}
+          interactive
+          // Scrolling the page past the map must not zoom it; the +/-
+          // buttons, pinch and double-click still do.
+          scrollWheelZoom={false}
+          compactAttribution
+        />
+      ) : (
+        <Map
+          pins={[]}
+          polygons={[{ rings: shape.rings, label }]}
+          zoom={6}
+          height={160}
+          interactive
+          scrollWheelZoom={false}
+          compactAttribution
+        />
+      )}
+    </div>
+  )
+}
+
+/** The account's DID, whole, with a button that copies it. */
+function PermanentId({ did }: { did: string }) {
+  const { copied, copy } = useCopyToClipboard()
+  return (
+    <span className="profile-facts__id">
+      <span className="profile-facts__id-value">{did}</span>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={copied ? "Permanent ID copied" : "Copy Permanent ID"}
+        onClick={() => void copy(did)}
       >
-        <LeafletDocument value={value} did={did} />
-      </div>
-      {clamped ? (
-        <SeeAllLink href={href} label="Read more" className="self-start" />
-      ) : null}
-    </>
+        {copied ? (
+          <Check size={16} strokeWidth={1.75} aria-hidden />
+        ) : (
+          <Copy size={16} strokeWidth={1.75} aria-hidden />
+        )}
+      </Button>
+      <span className="sr-only" aria-live="polite">
+        {copied ? "Permanent ID copied" : ""}
+      </span>
+    </span>
+  )
+}
+
+/* ---------------------------- Skeletons ---------------------------- */
+
+/** Loading cards shaped like the cards they stand in for. */
+function CardsSkeleton({ wide = false }: { wide?: boolean }) {
+  return (
+    <div
+      className={`profile-overview__cards${wide ? " profile-overview__cards--projects" : ""}`}
+      aria-hidden
+    >
+      {Array.from({ length: wide ? 2 : 3 }, (_, i) => (
+        <div key={i} className="profile-overview__card-skeleton">
+          <div
+            className={`profile-overview__card-skeleton-image${
+              wide ? " profile-overview__card-skeleton-image--wide" : ""
+            }`}
+          >
+            <Skeleton variant="box" width="100%" height="100%" />
+          </div>
+          <Skeleton variant="line" width="80%" height={16} />
+          <Skeleton variant="line" width="50%" height={12} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EndorsementsSkeleton() {
+  return (
+    <div className="profile-overview__endorse-list" aria-hidden>
+      {Array.from({ length: 2 }, (_, i) => (
+        <div key={i} className="profile-overview__endorse-skeleton">
+          <Skeleton circle width={32} />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Skeleton variant="line" width={140} height={14} />
+            <Skeleton variant="line" width={80} height={12} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RailSkeleton() {
+  return (
+    <div className="profile-overview__rail-skeleton" aria-hidden>
+      <Skeleton variant="box" height={208} />
+      <Skeleton variant="box" height={220} />
+    </div>
   )
 }
 
@@ -475,40 +611,6 @@ function OrgTypePickerSection({
         />
       ) : null}
     </section>
-  )
-}
-
-// ---------- Location read column ------------------------------------
-
-interface LocationReadColumnProps {
-  name: string | null
-  coords: { lat: number; lng: number }
-}
-
-function LocationReadColumn({ name, coords }: LocationReadColumnProps) {
-  return (
-    <aside className="profile-overview__location" aria-label="Location">
-      <div className="profile-overview__location-map">
-        <Map
-          pins={[{ lat: coords.lat, lng: coords.lng, label: name ?? undefined }]}
-          center={coords}
-          zoom={6}
-          height={220}
-          interactive
-          // Disable wheel-zoom so scrolling the page doesn't get
-          // hijacked when the cursor passes over the map. +/- and
-          // pinch / double-click zoom are still available.
-          scrollWheelZoom={false}
-          compactAttribution
-        />
-      </div>
-      {name ? (
-        <p className="profile-overview__location-name">
-          <MapPin size={14} strokeWidth={1.75} aria-hidden />
-          <span>{name}</span>
-        </p>
-      ) : null}
-    </aside>
   )
 }
 
