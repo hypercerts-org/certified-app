@@ -146,6 +146,30 @@ export function projectImage(
   return raw == null ? null : (raw as ProjectImageSource)
 }
 
+const ACTIVITY_NSID = "org.hypercerts.claim.activity"
+
+/**
+ * The activity URIs in a project's `items`, in order and once each, read
+ * from the record itself (no fetch). Items are `{ itemIdentifier: { uri } }`
+ * or, on older records, `{ uri }`.
+ */
+export function projectActivityUris(items: unknown): string[] {
+  if (!Array.isArray(items)) return []
+  const out: string[] = []
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue
+    const obj = item as { uri?: unknown; itemIdentifier?: { uri?: unknown } }
+    const uri =
+      typeof obj.itemIdentifier?.uri === "string"
+        ? obj.itemIdentifier.uri
+        : typeof obj.uri === "string"
+          ? obj.uri
+          : null
+    if (uri && uri.includes(`/${ACTIVITY_NSID}/`) && !out.includes(uri)) out.push(uri)
+  }
+  return out
+}
+
 /**
  * List `org.hypercerts.collection` records on a DID's PDS with
  * cursor-based pagination. Returns an empty list (not an error) when

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { firstParagraphText, withoutLeadParagraph } from "../strip-lead"
+import { firstParagraphText, leadText, titleAndTeaser, withoutLeadParagraph } from "../strip-lead"
 
 const doc = (...blocks: { $type: string; plaintext?: string }[]) => ({
   $type: "pub.leaflet.pages.linearDocument",
@@ -46,5 +46,56 @@ describe("firstParagraphText", () => {
     )
     expect(firstParagraphText(doc(image()))).toBeNull()
     expect(firstParagraphText(undefined)).toBeNull()
+  })
+})
+
+describe("leadText", () => {
+  const cut = "We work in the commons where buildings drain the rain, instead of retaining, r..."
+  const full =
+    "We work in the commons where buildings drain the rain, instead of retaining, reusing and sharing it."
+
+  it("keeps a whole summary", () => {
+    expect(leadText("Our lead.", "Our lead. More.")).toBe("Our lead.")
+    expect(leadText(null, "Anything")).toBeNull()
+  })
+
+  it("reads a summary cut short in the data from the description", () => {
+    expect(leadText(cut, `${full}\n\nMore.`)).toBe(full)
+    expect(leadText(cut.replace("...", "…"), doc(text(full), text("More.")))).toBe(full)
+  })
+
+  it("drops a stub of a word at the cut when the description doesn't help", () => {
+    expect(leadText(cut, "Something else entirely.")).toBe(
+      "We work in the commons where buildings drain the rain, instead of retaining…",
+    )
+    expect(leadText("Trees, rivers and more...", null)).toBe("Trees, rivers and more...")
+  })
+})
+
+describe("titleAndTeaser", () => {
+  it("takes a title cut short in the data from the body", () => {
+    expect(
+      titleAndTeaser(
+        "Help us turn asphalt into oases watered by harvested stormwate…",
+        "Help us turn asphalt into oases watered by harvested stormwater. Next we plant.",
+      ),
+    ).toEqual({
+      title: "Help us turn asphalt into oases watered by harvested stormwater.",
+      teaser: "Next we plant.",
+    })
+  })
+
+  it("skips a first sentence that repeats the title", () => {
+    expect(titleAndTeaser("Our first harvest", "Our first harvest. It went well.")).toEqual({
+      title: "Our first harvest",
+      teaser: "It went well.",
+    })
+  })
+
+  it("leaves a different body alone", () => {
+    expect(titleAndTeaser("Our first harvest", "It went well.")).toEqual({
+      title: "Our first harvest",
+      teaser: "It went well.",
+    })
   })
 })

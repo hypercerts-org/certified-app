@@ -12,6 +12,9 @@ export interface SectionHeaderProps {
   as?: "h2" | "h3";
   /** Id for the heading, so the section can point `aria-labelledby` at it. */
   id?: string;
+  /** The title for screen readers only: a tab panel whose tab already
+   *  names it on screen. The description and action still show. */
+  titleHidden?: boolean;
   className?: string;
 }
 
@@ -29,8 +32,32 @@ export default function SectionHeader({
   action,
   as: Heading = "h2",
   id,
+  titleHidden = false,
   className = "",
 }: SectionHeaderProps) {
+  if (titleHidden) {
+    const heading = (
+      <Heading id={id} className="sr-only">
+        {title}
+      </Heading>
+    );
+    if (!description && !action) return heading;
+    // The tab names the panel on screen; what's left is a row of the
+    // description and the action.
+    return (
+      <div className={`flex items-center justify-between gap-4 ${className}`.trim()}>
+        {heading}
+        {description ? (
+          <p className="m-0 max-w-measure text-body-sm text-[var(--fg-muted)] text-pretty">
+            {description}
+          </p>
+        ) : (
+          <span />
+        )}
+        {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
+      </div>
+    );
+  }
   return (
     <div className={`flex items-start justify-between gap-4 ${className}`.trim()}>
       <div className="flex min-w-0 flex-col gap-1">

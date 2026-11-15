@@ -58,7 +58,13 @@
   gap: 12px;
 }
 
+/* Up to two lines, never cut at one. */
 .context-updates__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   font-size: var(--text-body);
   font-weight: 600;
   line-height: 1.35;
@@ -66,6 +72,8 @@
   color: var(--fg-primary);
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 /* Short summary line shown above the rich-text body. */
@@ -123,15 +131,42 @@
     background var(--transition-fast);
 }
 
-/* Image: square thumbnail. `display: block` (not flex) so the inner
-   img's object-fit: cover correctly crops the bitmap to fill. */
-.context-updates__attachment--image .context-updates__attachment-link {
-  display: block;
-  width: 88px;
-  height: 88px;
-  background: var(--bg-sunken);
-  overflow: hidden;
+/* Photos: a 3-up grid of 16:9 frames, cover-cropped. On Overview the
+   first three, the last saying how many more the update holds. */
+.context-updates__photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
   padding: 0;
+  list-style: none;
+}
+
+.context-updates__photo {
+  display: flex;
+  min-width: 0;
+}
+
+.context-updates__photo-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.context-updates__photo-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .context-updates__photo-link:hover {
+    outline: 2px solid var(--border-hover);
+    outline-offset: -2px;
+  }
 }
 
 .context-updates__attachment-img {
@@ -141,9 +176,19 @@
   display: block;
 }
 
-.context-updates__attachment--image .context-updates__attachment-link:hover {
-  outline: 2px solid var(--border-hover);
-  outline-offset: -2px;
+/* "+3" over the last photo: a fixed dark scrim (it sits on a photo, in
+   either theme). */
+.context-updates__photo-more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--navy-overlay-70);
+  color: var(--color-white);
+  font-size: var(--text-h4);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Video URI (e.g. YouTube): vertical tile — 16:9 thumbnail on top
@@ -251,10 +296,6 @@
 @media (max-width: 799px) {
   .context-updates__item {
     padding: 0;
-  }
-  .context-updates__attachment--image .context-updates__attachment-link {
-    width: 72px;
-    height: 72px;
   }
   .context-updates__attachment--video .context-updates__attachment-link,
   .context-updates__attachment-thumb {

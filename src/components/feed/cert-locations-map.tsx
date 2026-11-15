@@ -8,6 +8,7 @@ import Map, {
 } from "@/components/map/map-dynamic"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
+import { FactCard } from "@/components/ui/fact-card"
 import Tooltip from "@/components/ui/tooltip"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { loadLocation } from "@/hooks/use-location"
@@ -16,11 +17,14 @@ import { parseAtUri } from "@/lib/atproto/activity-uri"
 import {
   parseLocationShape,
   splitLocationName,
-  type LocationRecord,
+  type LocationShape,
 } from "@/lib/atproto/location"
 import { formatCoordinates, locationLabel } from "@/lib/atproto/location-label"
 import { getBlobRefLink } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/activity-types"
+
+/** The map's height in every Location card (profile, project, activity). */
+export const LOCATION_MAP_HEIGHT = 200
 
 /**
  * When a location record's `location` field is the
@@ -59,180 +63,228 @@ async function fetchSmallBlobText(
   }
 }
 
-interface CertLocationsMapProps {
-  locations: StrongRef[]
-  /** The map's height in px (the larger-map dialog has its own). */
-  height?: number
-  /** Show the place names under the map (default). The project's rail
-   *  names the place in its own card heading, so it can turn them off. */
-  showNames?: boolean
-}
-
-interface ResolvedLocation {
-  uri: string
-  record: LocationRecord | null
+/** One place on a map: its pin or region, and what to call it. */
+export interface MapPlace {
+  key: string
   pin: MapPinT | null
   polygon: MapPolygonT | null
-  /** What to call it (name, address or rounded coordinates), or null. */
+  /** Its name, address or rounded coordinates; null when none. */
   label: string | null
+  /** A Plus Code the name carried, offered as a copyable tag. */
+  plusCode?: string | null
+}
+
+/** A place from a shape the page already has (the profile's location). */
+export function placeFromShape(
+  key: string,
+  shape: LocationShape | null,
+  label: string | null,
+): MapPlace {
+  return {
+    key,
+    pin:
+      shape?.kind === "point"
+        ? { lat: shape.point.lat, lng: shape.point.lng, label: label ?? undefined }
+        : null,
+    polygon:
+      shape?.kind === "polygon" ? { rings: shape.rings, label: label ?? undefined } : null,
+    label,
+    plusCode: label ? splitLocationName(label).plusCode : null,
+  }
 }
 
 /**
- * Resolve every `app.certified.location` strong-ref attached to a record
- * and render the geocoded ones as pins on one shared Leaflet map, with
- * the places named under it and a button that opens a larger map.
- * Locations without coordinates are only named; a location that can't be
- * named or mapped is left out rather than shown as "Unnamed location".
- *
- * The records come from the shared location cache (`loadLocation`), so
- * the page's byline and this map read each one once.
+ * Resolve every `app.certified.location` strong-ref of a record into
+ * places: each record from the shared location cache (`loadLocation`, so
+ * the byline and the map read it once), its point or region (read from a
+ * blob when the record keeps it there) and its label.
  */
-export default function CertLocationsMap({
-  locations,
-  height = 240,
-  showNames = true,
-}: CertLocationsMapProps) {
-  const [resolved, setResolved] = useState<ResolvedLocation[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
+export function useLocationPlaces(locations: readonly StrongRef[]): {
+  places: MapPlace[]
+  isLoading: boolean
+} {
   const key = locations.map((l) => l.uri).join("|")
+  const [state, setState] = useState<{ key: string; places: MapPlace[] }>({
+    key: "",
+    places: [],
+  })
 
   useEffect(() => {
-    if (locations.length === 0) {
-      setResolved([])
-      setIsLoading(false)
-      return
-    }
-
+    if (!key) return
     const controller = new AbortController()
     const signal = controller.signal
-    setIsLoading(true)
-
     Promise.all(
-      locations.map(async (loc): Promise<ResolvedLocation> => {
-        const empty: ResolvedLocation = {
-          uri: loc.uri,
-          record: null,
-          pin: null,
-          polygon: null,
-          label: null,
-        }
-        const parsed = parseAtUri(loc.uri)
+      key.split("|").map(async (uri): Promise<MapPlace> => {
+        const empty: MapPlace = { key: uri, pin: null, polygon: null, label: null }
+        const parsed = parseAtUri(uri)
         if (!parsed) return empty
         try {
-          const record = await loadLocation(loc.uri)
+          const record = await loadLocation(uri)
           if (!record || signal.aborted) return empty
-          // First try the sync path: inline-string + URI variants parse
-          // without a network call. When that returns null AND the
-          // location field is the `smallBlob` variant, fetch the blob's
-          // text content and re-parse with the same logic.
+          // Inline values parse without a request; a `smallBlob` is read
+          // and parsed with the same logic.
           let shape = parseLocationShape(record.locationType, record.location)
           if (shape === null) {
-            const blobText = await fetchSmallBlobText(
-              parsed.did,
-              record.location,
-              signal,
-            )
-            if (blobText) {
-              shape = parseLocationShape(record.locationType, blobText)
-            }
+            const blobText = await fetchSmallBlobText(parsed.did, record.location, signal)
+            if (blobText) shape = parseLocationShape(record.locationType, blobText)
           }
           // Its name or address, else (coordinates read from a blob) the
           // point, rounded.
           const label =
             locationLabel(record) ??
-            (shape?.kind === "point"
-              ? formatCoordinates(shape.point.lat, shape.point.lng)
-              : null)
-          let pin: MapPinT | null = null
-          let polygon: MapPolygonT | null = null
-          if (shape?.kind === "point") {
-            pin = { lat: shape.point.lat, lng: shape.point.lng, label: label ?? undefined }
-          } else if (shape?.kind === "polygon") {
-            polygon = { rings: shape.rings, label: label ?? undefined }
-          }
-          return { uri: loc.uri, record, pin, polygon, label }
+            (shape?.kind === "point" ? formatCoordinates(shape.point.lat, shape.point.lng) : null)
+          const place = placeFromShape(uri, shape, label)
+          return { ...place, plusCode: splitLocationName(record.name?.trim() ?? "").plusCode }
         } catch {
           return empty
         }
       }),
-    )
-      .then((out) => {
-        if (signal.aborted) return
-        setResolved(out)
-      })
-      .finally(() => {
-        if (!signal.aborted) setIsLoading(false)
-      })
-
+    ).then((places) => {
+      if (!signal.aborted) setState({ key, places })
+    })
     return () => controller.abort()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  const pins = useMemo(
-    () => resolved.flatMap((r) => (r.pin ? [r.pin] : [])),
-    [resolved],
-  )
-  const polygons = useMemo(
-    () => resolved.flatMap((r) => (r.polygon ? [r.polygon] : [])),
-    [resolved],
-  )
+  if (!key) return { places: [], isLoading: false }
+  return { places: state.key === key ? state.places : [], isLoading: state.key !== key }
+}
 
-  const hasShapes = pins.length > 0 || polygons.length > 0
-  const named = resolved.filter((r) => r.label)
+/** Corners of a region, to tell a small one from a large one. */
+function regionSpan(polygons: readonly MapPolygonT[]): number {
+  let minLat = 90
+  let maxLat = -90
+  let minLng = 180
+  let maxLng = -180
+  for (const p of polygons) {
+    for (const ring of p.rings) {
+      for (const v of ring) {
+        minLat = Math.min(minLat, v.lat)
+        maxLat = Math.max(maxLat, v.lat)
+        minLng = Math.min(minLng, v.lng)
+        maxLng = Math.max(maxLng, v.lng)
+      }
+    }
+  }
+  return Math.max(maxLat - minLat, maxLng - minLng)
+}
 
+/** The middle of a region's outer ring. */
+function regionCentre(polygon: MapPolygonT): { lat: number; lng: number } | null {
+  const ring = polygon.rings[0] ?? []
+  if (ring.length === 0) return null
+  return {
+    lat: ring.reduce((s, v) => s + v.lat, 0) / ring.length,
+    lng: ring.reduce((s, v) => s + v.lng, 0) / ring.length,
+  }
+}
+
+/**
+ * How the map frames its places. Points zoom to the town (one) or fit
+ * (several). A region shown on its own is fitted, but not so close that
+ * the map shows only its inside: a region named in one word, like a
+ * country ("Indonesia"), shows the country around it; any other, the area
+ * around it. A small region also gets a pin at its middle, so it can be
+ * found at that zoom.
+ */
+function frame(places: readonly MapPlace[]) {
+  const pins = places.flatMap((p) => (p.pin ? [p.pin] : []))
+  const polygons = places.flatMap((p) => (p.polygon ? [p.polygon] : []))
+  if (pins.length > 0 || polygons.length === 0) {
+    return { pins, polygons, zoom: pins.length === 1 ? 9 : 4, fitMaxZoom: 12 }
+  }
+  const countryLike = places.every((p) => !p.polygon || (!!p.label && /^\p{L}+$/u.test(p.label.trim())))
+  const small = regionSpan(polygons) < 0.5
+  const centres = small
+    ? polygons.flatMap((p) => {
+        const c = regionCentre(p)
+        return c ? [{ ...c, label: p.label ?? undefined }] : []
+      })
+    : []
+  return {
+    pins: centres,
+    polygons,
+    zoom: countryLike ? 5 : 8,
+    fitMaxZoom: countryLike ? 5 : 9,
+  }
+}
+
+/**
+ * The Location card in the rail of every public page (profile, project,
+ * activity), one treatment for all three (DESIGN.md §9.14): the map
+ * ({@link LOCATION_MAP_HEIGHT}px), a button that opens a larger map in a
+ * dialog, and the places named under it. A name that the page's header
+ * already says (`headerPlace`) isn't repeated under the map. Renders
+ * nothing when no place can be mapped or named.
+ */
+export function LocationFactCard({
+  places,
+  isLoading = false,
+  headerPlace = null,
+}: {
+  places: readonly MapPlace[]
+  isLoading?: boolean
+  /** The place as the page's header or byline names it. */
+  headerPlace?: string | null
+}) {
   const [expanded, setExpanded] = useState(false)
+  const view = useMemo(() => frame(places), [places])
+  const named = places.filter((p) => p.label)
+  const hasShapes = view.pins.length > 0 || view.polygons.length > 0
 
-  if (locations.length === 0) return null
-
-  if (isLoading && resolved.length === 0) {
+  if (isLoading && places.length === 0) {
     return (
-      <div
-        className="cert-detail__map cert-detail__map--skeleton"
-        style={{ height }}
-        aria-hidden="true"
-      />
+      <FactCard title="Location">
+        <div
+          className="cert-detail__map cert-detail__map--skeleton"
+          style={{ height: LOCATION_MAP_HEIGHT }}
+          aria-hidden="true"
+        />
+      </FactCard>
     )
   }
+  if (!hasShapes && named.length === 0) return null
 
-  // Each place gets a row under the map, its Plus Code (when the name
-  // carries one) as a click-to-copy tag.
-  const namesList =
-    named.length > 0 ? (
+  // The caption names each place, unless it is the one the header names.
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase()
+  const captioned =
+    named.length === 1 && headerPlace && norm(named[0].label!) === norm(headerPlace)
+      ? []
+      : named
+  const namesList = (list: readonly MapPlace[]) =>
+    list.length > 0 ? (
       <ul className="cert-detail__map-locations">
-        {named.map((r) => {
-          const split = splitLocationName(r.record?.name?.trim() ?? "")
-          return (
-            <li key={r.uri} className="cert-detail__map-locations-item">
-              <MapPin size={14} strokeWidth={1.75} aria-hidden />
-              <span className="cert-detail__map-locations-name" dir="auto">
-                {r.label}
-              </span>
-              {split.plusCode && split.name ? <PlusCodeTag code={split.plusCode} /> : null}
-            </li>
-          )
-        })}
+        {list.map((p) => (
+          <li key={p.key} className="cert-detail__map-locations-item">
+            <MapPin size={14} strokeWidth={1.75} aria-hidden />
+            <span className="cert-detail__map-locations-name" dir="auto">
+              {p.label}
+            </span>
+            {p.plusCode && splitLocationName(p.label ?? "").name ? (
+              <PlusCodeTag code={p.plusCode} />
+            ) : null}
+          </li>
+        ))}
       </ul>
     ) : null
 
-  if (!hasShapes && !namesList) return null
-
   return (
-    <div className="cert-detail__map-wrap">
+    <FactCard title="Location">
       {hasShapes ? (
         <div className="cert-detail__map">
           <Map
-            pins={pins}
-            polygons={polygons}
-            zoom={pins.length + polygons.length === 1 ? 8 : 4}
-            height={height}
+            pins={view.pins}
+            polygons={view.polygons}
+            zoom={view.zoom}
+            fitMaxZoom={view.fitMaxZoom}
+            height={LOCATION_MAP_HEIGHT}
+            // Scrolling the page past the map must not zoom it; the +/-
+            // buttons, pinch and double-click still do.
             scrollWheelZoom={false}
             compactAttribution
           />
-          {/* The larger map, top right over the map. The wrapper is the
-              positioned box: the button's tooltip wraps it in an inline
-              span, which left in the flow drew an empty line under the
-              map. */}
+          {/* The wrapper is the positioned box: the button's tooltip
+              wraps it in an inline span, which left in the flow drew an
+              empty line under the map. */}
           <div className="cert-detail__map-expand">
             <Button
               size="icon"
@@ -248,11 +300,11 @@ export default function CertLocationsMap({
         </div>
       ) : null}
 
-      {showNames || !hasShapes ? namesList : null}
+      {hasShapes ? namesList(captioned) : namesList(named)}
 
       {expanded ? (
         <AppDialog
-          ariaLabel="Larger map of the locations"
+          ariaLabel="Larger map"
           className="cert-detail__map-modal"
           maxWidth={1100}
           onClose={() => setExpanded(false)}
@@ -267,19 +319,36 @@ export default function CertLocationsMap({
                   (min(720px, 70vh)), so it tracks resize and rotation
                   while the dialog is open. */}
               <Map
-                pins={pins}
-                polygons={polygons}
-                zoom={pins.length + polygons.length === 1 ? 10 : 4}
+                pins={view.pins}
+                polygons={view.polygons}
+                zoom={Math.min(view.zoom + 1, 10)}
+                fitMaxZoom={Math.min(view.fitMaxZoom + 1, 14)}
                 height="100%"
                 compactAttribution
               />
             </div>
-            {named.length > 1 ? namesList : null}
+            {named.length > 1 ? namesList(named) : null}
           </div>
         </AppDialog>
       ) : null}
-    </div>
+    </FactCard>
   )
+}
+
+/**
+ * A record's Location card: resolves its location strong-refs, then
+ * draws {@link LocationFactCard}.
+ */
+export default function RecordLocationCard({
+  locations,
+  headerPlace = null,
+}: {
+  locations: readonly StrongRef[]
+  headerPlace?: string | null
+}) {
+  const { places, isLoading } = useLocationPlaces(locations)
+  if (locations.length === 0) return null
+  return <LocationFactCard places={places} isLoading={isLoading} headerPlace={headerPlace} />
 }
 
 /**

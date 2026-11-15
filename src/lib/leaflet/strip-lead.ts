@@ -33,6 +33,67 @@ export function firstParagraphText(value: unknown): string | null {
   return null
 }
 
+/** A text that ends in "..." or "…": cut short where it was stored. */
+function cutShort(s: string): string | null {
+  const m = /^([\s\S]*?)\s*(?:\.{3}|…)$/.exec(s.trim())
+  return m && m[1].trim().length > 0 ? m[1].trim() : null
+}
+
+/**
+ * The lead a record page (or card) shows: the stored summary, unless it
+ * was cut short in the data ("…instead of retaining, r...") and the
+ * description starts with the same words; then the description's first
+ * paragraph, whole. Without such a description, a stub of a word left at
+ * the cut goes ("…instead of retaining, r..." -> "…instead of
+ * retaining…"). Null when there is no summary.
+ */
+export function leadText(
+  summary: string | null | undefined,
+  description: unknown,
+): string | null {
+  const short = summary?.trim() || null
+  if (!short) return null
+  const stem = cutShort(short)
+  if (!stem) return short
+  const first = firstParagraphText(description)
+  if (first && normalize(first).startsWith(normalize(stem)) && first.length > stem.length) {
+    return first
+  }
+  // A one- to three-letter stub after a comma was cut mid-word: drop it.
+  const stub = /^([\s\S]{20,}?)[,;:]\s+\p{L}{1,3}$/u.exec(stem)
+  return stub ? `${stub[1]}…` : short
+}
+
+/** The first sentence of a text (up to ". ", "! " or "? "), or all of it. */
+export function firstSentence(text: string): string {
+  const m = /^([\s\S]+?[.!?])(?:\s|$)/.exec(text.trim())
+  return (m ? m[1] : text).trim()
+}
+
+/**
+ * An update's title and its teaser, without saying the same thing twice.
+ * A title cut short in the data ("…harvested stormwate…") whose text the
+ * body starts with becomes the body's first sentence; a body that opens
+ * with the title loses that sentence.
+ */
+export function titleAndTeaser(
+  title: string | null,
+  teaser: string | null,
+): { title: string | null; teaser: string | null } {
+  if (!teaser) return { title, teaser }
+  const body = teaser.trim()
+  const sentence = firstSentence(body)
+  const rest = body.slice(sentence.length).trim() || null
+  if (!title) return { title, teaser: body }
+  const stem = cutShort(title)
+  if (stem && normalize(body).startsWith(normalize(stem))) {
+    return { title: sentence, teaser: rest }
+  }
+  const t = normalize(title).replace(/[.!?]+$/, "")
+  if (normalize(sentence).replace(/[.!?]+$/, "") === t) return { title, teaser: rest }
+  return { title, teaser: body }
+}
+
 /**
  * The description without a first paragraph equal to `lead` (ignoring case
  * and spacing). A plain string loses its first paragraph, a Leaflet

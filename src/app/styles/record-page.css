@@ -47,8 +47,10 @@
   gap: 32px;
   min-width: 0;
   /* Below the strip (see `.record-tabs + *`), or, when a record has
-     only Overview and so no strip, below the header. */
-  margin-top: 32px;
+     only Overview and so no strip, below the header: the same space as
+     between the strip and its content, so no gap is left where the
+     strip would be. */
+  margin-top: 24px;
 }
 
 @media (min-width: 800px) {
@@ -57,7 +59,7 @@
   }
 
   .record-layout__main {
-    margin-top: 48px;
+    margin-top: 32px;
   }
 }
 
@@ -122,32 +124,34 @@
   min-width: 0;
 }
 
-/* The picture on top: the project's 3:1 banner or the activity's 16:9
-   photo (the ratio is set inline), cover-cropped. */
+/* The picture on top, one frame for projects and activities: 2:1, at
+   most 360px tall. A photo covers it; a logo or a wide banner sits whole
+   on the sunken fill (FitImage). */
 .record-head__image {
   width: 100%;
+  aspect-ratio: 2 / 1;
+  max-height: 360px;
   margin-bottom: 24px;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--bg-sunken);
 }
 
-.record-head__image > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* The eyebrow, with the actions at its right: Share, the owner's Edit,
-   then ⋯. On the eyebrow's row at every width, so the title keeps the
-   whole line. */
+/* The eyebrow and title, with the actions at the top right of the block
+   (the profile header's place for them): the owner's Edit, Share, More. */
 .record-head__top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 32px;
+  gap: 24px;
+  min-width: 0;
+}
+
+.record-head__titles {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .record-head__kind {
@@ -191,6 +195,32 @@
   flex: none;
   align-items: center;
   gap: 8px;
+}
+
+/* Phones: the actions are a full-width row under the lead, as on the
+   profile: the text buttons share the row, More keeps its size. */
+@media (max-width: 799px) {
+  .record-head__top {
+    display: contents;
+  }
+
+  .record-head__actions {
+    order: 1;
+    margin-top: 16px;
+  }
+
+  .record-head__actions > button,
+  .record-head__actions > a {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* The other tabs: no picture and no lead, so the tab's content is on
+     the first screen. */
+  .record-head--compact .record-head__image,
+  .record-head--compact .record-head__lead {
+    display: none;
+  }
 }
 
 .record-head__title {
@@ -283,15 +313,20 @@
   top: var(--chrome-top, var(--navbar-height));
   z-index: var(--z-rail-sticky);
   margin: 24px -16px 0;
+  background: var(--bg-canvas);
+}
+
+/* The scrolling row inside; the frame holds the edge fades
+   (.tab-strip-fade, profile.css) over it. */
+.record-tabs__scroller {
   padding: 0 16px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
-  background: var(--bg-canvas);
 }
 
-.record-tabs::-webkit-scrollbar {
+.record-tabs__scroller::-webkit-scrollbar {
   display: none;
 }
 
@@ -327,6 +362,9 @@ html:has(.navbar--hidden) .record-tabs {
 @media (min-width: 800px) {
   .record-tabs {
     margin: 32px 0 0;
+  }
+
+  .record-tabs__scroller {
     padding: 0;
   }
 
@@ -377,7 +415,7 @@ html:has(.navbar--hidden) .record-tabs {
 
 /* ---------- Rail ---------- */
 
-/* "Who's behind it": avatar, name and handle, the bio's start. */
+/* "Who's behind it": avatar and name, the start of its own words. */
 .record-owner {
   display: flex;
   align-items: center;
@@ -387,28 +425,13 @@ html:has(.navbar--hidden) .record-tabs {
   text-decoration: none;
 }
 
-.record-owner__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.3;
-}
-
 .record-owner__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
   font-size: var(--text-body-sm);
   font-weight: 600;
+  line-height: 1.35;
   color: var(--fg-primary);
-}
-
-.record-owner__handle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-caption);
-  color: var(--fg-muted);
+  overflow-wrap: anywhere;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -431,6 +454,39 @@ html:has(.navbar--hidden) .record-tabs {
   overflow-wrap: anywhere;
 }
 
+/* The activity's "Project" card: the project's name, its total. */
+.record-project__name {
+  align-self: flex-start;
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--fg-primary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+a.record-project__name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a.record-project__name:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.record-project__total {
+  font-size: var(--text-h4);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--fg-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 /* A quiet text link in a card ("View profile", a project's name). */
 .record-link {
   align-self: flex-start;
@@ -442,6 +498,18 @@ html:has(.navbar--hidden) .record-tabs {
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
   transition: text-decoration-color var(--transition-fast);
+}
+
+/* A link that leads on to another page: the arrow after its words. */
+.record-link--arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.record-link--arrow > svg {
+  flex: none;
+  color: var(--fg-muted);
 }
 
 .record-link--button {
@@ -478,14 +546,33 @@ html:has(.navbar--hidden) .record-tabs {
   gap: 8px;
 }
 
-/* Work scope chips. */
+/* Work scope tags: sentence case, wrapping (WorkScopeTags). */
 .record-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   margin: 2px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.record-tag {
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-sunken);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--fg-secondary);
+  overflow-wrap: anywhere;
+}
+
+.record-tag--more {
+  background: none;
+  padding-inline: 2px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Contributors as a row of avatars, then "+N". Side by side rather than
@@ -592,8 +679,9 @@ html:has(.navbar--hidden) .record-tabs {
 
 /* The receipts list (rows: explore.css; hairlines: cert-detail.css). The
    columns follow what the record needs: date | from | [to] | [for] |
-   amount | confirmed by. "To" only when some gift went to another
-   account, "For" only on a project whose activities have gifts too. */
+   amount | [confirmed by]. "To" only when some gift went to another
+   account, "For" only on a project whose activities have gifts too,
+   "Confirmed by" only when the gifts differ in who confirmed them. */
 @media (min-width: 800px) {
   .record-funding__list .funding-receipt-row {
     grid-template-columns: 6rem minmax(0, 1.5fr) 8rem minmax(0, 1fr);
@@ -607,11 +695,107 @@ html:has(.navbar--hidden) .record-tabs {
   .record-funding__list--to.record-funding__list--for .funding-receipt-row {
     grid-template-columns: 6rem repeat(3, minmax(0, 1fr)) 8rem minmax(0, 1fr);
   }
+
+  .record-funding__list--no-confirmed .funding-receipt-row {
+    grid-template-columns: 6rem minmax(0, 1fr) 8rem;
+  }
+
+  .record-funding__list--no-confirmed.record-funding__list--to .funding-receipt-row,
+  .record-funding__list--no-confirmed.record-funding__list--for .funding-receipt-row {
+    grid-template-columns: 6rem minmax(0, 1fr) minmax(0, 1fr) 8rem;
+  }
+
+  .record-funding__list--no-confirmed.record-funding__list--to.record-funding__list--for
+    .funding-receipt-row {
+    grid-template-columns: 6rem repeat(3, minmax(0, 1fr)) 8rem;
+  }
 }
 
-/* ---------- Activities in a project ---------- */
+/* The "Unconfirmed" badge over who recorded the gift. */
+.funding-receipt-row__unconfirmed {
+  align-self: flex-end;
+}
 
-.record-work-grid {
+/* Phones: each gift a compact two-line row, hairlines between them: the
+   funder and the amount, then the date (and what it was for). */
+@media (max-width: 799px) {
+  .record-funding__list {
+    gap: 0;
+  }
+
+  .record-funding__list .funding-receipt-row--compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    align-items: center;
+    padding: 12px 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  .record-funding__list > li + li .funding-receipt-row--compact {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .funding-receipt-row--compact .funding-receipt-row__cell-label {
+    display: none;
+  }
+
+  .funding-receipt-row--compact .funding-receipt-row__from {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .funding-receipt-row--compact .funding-receipt-row__amount {
+    grid-column: 2;
+    grid-row: 1;
+    font-weight: 600;
+  }
+
+  .funding-receipt-row--compact .funding-receipt-row__date,
+  .funding-receipt-row--compact .funding-receipt-row__to-cell,
+  .funding-receipt-row--compact .funding-receipt-row__for,
+  .funding-receipt-row--compact .funding-receipt-row__confirmed-by {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    font-size: var(--text-caption);
+  }
+
+  /* Under the name, not the avatar. */
+  .funding-receipt-row--compact:has(.funding-receipt-row__from .funding-receipt-row__party)
+    > :not(.funding-receipt-row__from):not(.funding-receipt-row__amount) {
+    padding-left: 44px;
+  }
+
+  .funding-receipt-row--compact .funding-receipt-row__confirmed-value {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* ---------- Pictures that decide how to fill their frame ----------
+   FitImage: a photo covers its frame; a logo or a banner wider than about
+   2:1 is shown whole on the frame's --bg-sunken (DESIGN.md §4.9). */
+.fit-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fit-image[data-fit="contain"] {
+  object-fit: contain;
+  padding: 8px;
+}
+
+/* ---------- Work cards (activities and projects) ----------
+   One card for a piece of work on the profile and the record pages
+   (ui/work-card.tsx): the 16:9 photo, the serif title, a meta line, the
+   summary. One item is a wide card, two or more a 2-up grid. */
+
+.work-card-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
@@ -620,19 +804,22 @@ html:has(.navbar--hidden) .record-tabs {
   list-style: none;
 }
 
+.work-card-list > li {
+  display: flex;
+  min-width: 0;
+}
+
 @media (min-width: 800px) {
-  .record-work-grid {
+  .work-card-list--grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/* An activity card: the Explore project card's frame with the
-   activity's 16:9 photo. */
-.record-work-card {
+.work-card {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
-  height: 100%;
   overflow: hidden;
   border: 1px solid var(--border-default);
   border-radius: var(--radius);
@@ -642,56 +829,74 @@ html:has(.navbar--hidden) .record-tabs {
   transition: border-color var(--transition-fast);
 }
 
-.record-work-card:focus-visible {
+.work-card:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  a.record-work-card:hover {
+  a.work-card:hover {
     border-color: var(--border-hover);
-    background-image: linear-gradient(var(--overlay-weak), var(--overlay-weak));
+  }
+
+  a.work-card:hover .work-card__title {
+    text-decoration: underline;
+    text-decoration-color: var(--border-hover);
+    text-underline-offset: 3px;
   }
 }
 
-.record-work-card__image {
+.work-card__image {
+  position: relative;
+  flex: none;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: var(--bg-sunken);
 }
 
-.record-work-card__image > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.work-card__image--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
 }
 
-.record-work-card__body {
+.work-card__body {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
   padding: 16px;
 }
 
-.record-work-card__title {
+.work-card__title {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  font-size: var(--text-body);
+  font-family: var(--font-headline), "Noto Serif", serif;
+  font-size: var(--text-h4);
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
   color: var(--fg-primary);
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
-.record-work-card__desc {
-  display: -webkit-box;
+.work-card__meta {
   margin: 0;
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.work-card__summary {
+  display: -webkit-box;
+  margin: 2px 0 0;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -702,32 +907,69 @@ html:has(.navbar--hidden) .record-tabs {
   overflow-wrap: anywhere;
 }
 
-.record-work-card__meta {
-  margin: 4px 0 0;
-  font-size: var(--text-caption);
-  line-height: 1.4;
-  color: var(--fg-muted);
-  font-variant-numeric: tabular-nums;
+.work-card__body > .record-tags {
+  margin-top: 6px;
 }
 
-/* A project's only activity: one row, the photo beside the text. */
+/* A project's activity with the project's own title: what it adds (work
+   scope, contributors, its own dates), then "Open the activity". */
+.work-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
 @media (min-width: 800px) {
-  .record-work-card--wide {
+  .work-facts {
+    padding: 20px 24px;
+  }
+
+  .work-facts__list {
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 16px 32px;
+  }
+}
+
+/* On a phone the photos carry the cards; one without a photo doesn't
+   spend a frame on a placeholder. */
+@media (max-width: 799px) {
+  .work-card__image--empty {
+    display: none;
+  }
+}
+
+/* A list of one: the photo beside the text, the text centred on it. */
+@media (min-width: 800px) {
+  .work-card--wide {
     flex-direction: row;
+    min-height: 200px;
   }
 
-  .record-work-card--wide .record-work-card__image {
-    flex: 0 0 44%;
-    aspect-ratio: 4 / 3;
+  .work-card--wide .work-card__image {
+    flex: 0 0 42%;
+    aspect-ratio: auto;
   }
 
-  .record-work-card--wide .record-work-card__body {
+  .work-card--wide .work-card__image > .fit-image {
+    position: absolute;
+    inset: 0;
+  }
+
+  .work-card--wide .work-card__body {
     justify-content: center;
     padding: 20px 24px;
   }
 
-  .record-work-card--wide .record-work-card__desc {
-    -webkit-line-clamp: 4;
-    line-clamp: 4;
+  .work-card--wide .work-card__title {
+    font-size: var(--text-h3);
+  }
+
+  .work-card--wide.work-card--no-image {
+    min-height: 0;
   }
 }

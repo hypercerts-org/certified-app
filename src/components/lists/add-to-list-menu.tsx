@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Copy, ListPlus, MoreVertical, Pencil, Plus, Share2, Trash2 } from "lucide-react"
+import {
+  Copy,
+  ListPlus,
+  MoreHorizontal,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Share2,
+  Trash2,
+} from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import type { PageRecordEditActions } from "@/lib/navbar-context"
 import Button from "@/components/ui/button"
@@ -55,6 +64,10 @@ interface AddToListMenuProps {
    *  three-dot menu) so they sit beside Share. Omitted when the viewer
    *  can't edit the record. */
   editActions?: PageRecordEditActions | null
+  /** The public pages' header button (a bordered icon button with
+   *  horizontal dots, like the profile's More); the quiet vertical dots
+   *  elsewhere (the navbar). */
+  trigger?: "header" | "quiet"
 }
 
 /**
@@ -77,6 +90,7 @@ export default function AddToListMenu({
   shareTab = null,
   showShare = true,
   editActions = null,
+  trigger = "quiet",
 }: AddToListMenuProps) {
   const router = useRouter()
   const { did: viewerDid, openSignIn } = useAuth()
@@ -125,10 +139,14 @@ export default function AddToListMenu({
         <PopoverTrigger>
           <Button
             size="icon"
-            variant="ghost"
+            variant={trigger === "header" ? "secondary" : "ghost"}
             aria-label="More actions"
           >
-            <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+            {trigger === "header" ? (
+              <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden />
+            ) : (
+              <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end">

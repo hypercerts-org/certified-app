@@ -129,7 +129,7 @@ describe("ActivityDetail as a visitor", () => {
     const { unmount } = renderActivity()
     const eyebrow = document.querySelector(".record-head__kind")
     expect(eyebrow?.textContent).toBe("Activity · Part of Coastal restoration")
-    // In the eyebrow and in the rail's "Part of" card.
+    // In the eyebrow and in the rail's "Project" card.
     expect(screen.getAllByRole("link", { name: "Coastal restoration" })).toHaveLength(2)
     unmount()
 
@@ -138,7 +138,30 @@ describe("ActivityDetail as a visitor", () => {
     ]
     renderActivity()
     expect(document.querySelector(".record-head__kind")?.textContent).toBe("Activity")
-    // The rail still says which project it is in.
-    expect(screen.getByRole("heading", { name: "Part of" })).toBeTruthy()
+    // The rail's Project card leads to it, without repeating the title.
+    expect(screen.getByRole("heading", { name: "Project" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Mangrove Nursery" })).toBeNull()
+    expect(
+      screen
+        .getByRole("link", { name: /Funding, updates and the full story/ })
+        .getAttribute("href"),
+    ).toBe("/did:plc:org/project/p1")
+  })
+
+  it("puts the details in the main column when there is no description", () => {
+    renderActivity()
+    const main = document.querySelector(".record-layout__main")!
+    expect(main.textContent).toContain("Work scope")
+    expect(main.textContent).toContain("Forest protection")
+  })
+
+  it("lists contributors without the board", () => {
+    renderActivity({
+      contributors: [
+        { contributorIdentity: { identity: DID } },
+        { contributorIdentity: { identity: "Ana Lima" } },
+      ],
+    })
+    expect(screen.queryByText(/Contributor board/i)).toBeNull()
   })
 })

@@ -23,11 +23,15 @@ import { useContributorInformationRecord } from "@/hooks/use-contributor-informa
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useOrgMarker } from "@/hooks/use-org-marker"
 import { getInitials } from "@/lib/utils/initials"
-import { deriveIdentity } from "@/lib/utils/identity"
+import { deriveIdentity, isMachineHandle, UNNAMED_ACCOUNT } from "@/lib/utils/identity"
+import { longDescriptionPlainText } from "@/lib/leaflet/guards"
 import Avatar from "@/components/ui/avatar"
 import ClampedText from "@/components/ui/clamped-text"
 import { FactCard } from "@/components/ui/fact-card"
+import FitImage from "@/components/ui/fit-image"
 import Skeleton from "@/components/ui/skeleton"
+import TabStripFades from "@/components/ui/tab-strip-fades"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import Tooltip from "@/components/ui/tooltip"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
@@ -59,6 +63,8 @@ export interface ContributorIdentity {
   /** The contributor's DID when they have an account. */
   did: string | null
   displayName: string
+  /** `displayName` is a fallback ("Unnamed account", "Anonymous"). */
+  unnamed: boolean
   handle: string | null
   avatarUrl: string | null
   initials: string
@@ -69,9 +75,10 @@ export interface ContributorIdentity {
 
 /**
  * Who a contributor is, resolved the same way everywhere: an account
- * (its profile name, @handle and avatar), a `contributorInformation`
- * record (its name and image), or a name written into the record. A
- * written name is shown as is and gives the avatar its initials. While an
+ * (its profile name and avatar; with no name, a handle a person chose,
+ * never a machine handle), a `contributorInformation` record (its name and
+ * image), or a name written into the record. A written name is shown as is
+ * and gives the avatar its initials. While an
  * account is still resolving, `pending` is true, so the row shows a
  * placeholder instead of flashing "Anonymous".
  */
@@ -95,15 +102,20 @@ export function useContributorIdentity(
   const writtenName = inlineIdentity && !inlineIsAccount ? inlineIdentity.trim() : null
   const name = info?.displayName || contribInfo?.displayName || writtenName || null
   const handle = info?.handle && info.handle !== info.did ? info.handle : null
+  const readableHandle = handle && !isMachineHandle(handle) ? handle : null
   const hydrated = !!info?.did || !!name || !!contribInfo?.image?.uri
   const pending = (contribInfoLoading || atprotoLoading) && !hydrated
 
   return {
     did: info?.did ?? null,
-    displayName: name || handle || (strongRefUri ? "Unknown contributor" : "Anonymous"),
+    displayName:
+      name ||
+      readableHandle ||
+      (info?.did ? UNNAMED_ACCOUNT : strongRefUri ? "Unknown contributor" : "Anonymous"),
+    unnamed: !name && !readableHandle,
     handle,
     avatarUrl: info?.avatarUrl || contribInfo?.image?.uri || null,
-    initials: getInitials(name, handle),
+    initials: getInitials(name, readableHandle),
     profileHref: info?.did ? profileUrl(info.handle || info.did) : null,
     pending,
   }
@@ -129,8 +141,8 @@ interface ContributorRowProps {
   readonly weight: string | null
 }
 
-/** One contributor in the Contributors list: avatar, name and role,
- *  @handle, and their share. Links to their profile when they have one. */
+/** One contributor in the Contributors list: avatar, name and role, and
+ *  their share. Links to their profile when they have one. */
 export const ContributorRow = memo(function ContributorRow({
   contributor,
   role,
@@ -147,7 +159,6 @@ export const ContributorRow = memo(function ContributorRow({
         <div className="cert-detail__contributor-avatar-skel" />
         <div className="cert-detail__contributor-meta">
           <div className="cert-detail__contributor-name-skel" />
-          <div className="cert-detail__contributor-handle-skel" />
         </div>
         {weight ? <ContributorShare weight={weight} /> : null}
       </li>
@@ -164,14 +175,11 @@ export const ContributorRow = memo(function ContributorRow({
       />
       <span className="cert-detail__contributor-meta">
         <span className="cert-detail__contributor-name" dir="auto">
-          {who.displayName}
+          <span data-unnamed={who.unnamed || undefined}>{who.displayName}</span>
           {role ? (
             <span className="cert-detail__contributor-role"> · {role}</span>
           ) : null}
         </span>
-        {who.handle ? (
-          <span className="cert-detail__contributor-handle">@{who.handle}</span>
-        ) : null}
       </span>
     </>
   )
@@ -293,33 +301,44 @@ export function ContributorStack({
 /* ---------- Header ---------- */
 
 /**
- * The page's picture, at the top: cover-cropped to `ratio` (the project's
- * 3:1 banner, an activity's 16:9 photo). Renders nothing when there is no
- * picture or it fails to load, so the page never shows an empty frame.
+ * The page's picture, at the top: one frame for projects and activities
+ * (2:1, at most 360px tall). A photo covers it; a logo or a wide banner is
+ * shown whole on `--bg-sunken` (`FitImage`). Renders nothing when there is
+ * no picture or it fails to load, so the page never shows an empty frame.
  */
-export function RecordImage({
-  src,
-  ratio,
-}: {
-  src: string | null
-  ratio: "3 / 1" | "16 / 9"
-}) {
+export function RecordImage({ src }: { src: string | null }) {
   const [failed, setFailed] = useState<string | null>(null)
+  // A banner wider than the frame is shown whole; the frame then takes its
+  // shape (up to 4:1) instead of leaving wide bands above and below it.
+  const [banner, setBanner] = useState<{ src: string; ratio: number } | null>(null)
   if (!src || failed === src) return null
+  const ratio = banner?.src === src ? Math.min(banner.ratio, 4) : null
   return (
-    <div className="record-head__image" style={{ aspectRatio: ratio }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" onError={() => setFailed(src)} />
+    <div
+      className="record-head__image"
+      style={ratio ? { aspectRatio: `${ratio.toFixed(3)} / 1` } : undefined}
+    >
+      <FitImage
+        src={src}
+        loading="eager"
+        onError={() => setFailed(src)}
+        onFit={(fit, r) => setBanner(fit === "contain" && r > 2 ? { src, ratio: r } : null)}
+      />
     </div>
   )
 }
 
 /**
- * The head of a record page (activity and project), the same on both: the
- * picture on top, then the eyebrow ("Project", "Activity · Part of …"),
- * the title as the page's one h1 with the actions (Share, ⋯; the owner's
- * Edit) at its top-right, the byline (who, when, where) and the lead
- * paragraph at reading width.
+ * The head of a record page (activity and project), the same on both and
+ * laid out like the profile's: the picture on top, then the eyebrow
+ * ("Project", "Activity · Part of …") over the title (the page's one h1),
+ * with the actions at the top right of that block (the owner's Edit,
+ * Share, More: the profile's order and buttons), the byline (who, when,
+ * where) and the lead at reading width. On phones the actions are a
+ * full-width row under the lead, as on the profile.
+ *
+ * `compact` (the other tabs, on phones): no picture and no lead, so the
+ * tab's content starts on the first screen.
  *
  * The page registers its header (`useRegisterPageHeader`), so the chrome
  * renders no h1 of its own.
@@ -331,28 +350,32 @@ export function RecordHeader({
   actions,
   byline,
   lead,
+  compact = false,
 }: {
   image?: ReactNode
   /** The record type, and for an activity its project. */
   eyebrow: ReactNode
   title: string
-  /** Share, the owner's Edit, the ⋯ menu. */
+  /** The owner's Edit, Share, the More menu. */
   actions?: ReactNode
   /** `<RecordByline>`. */
   byline?: ReactNode
   /** The short description. */
   lead?: string | null
+  compact?: boolean
 }) {
   return (
-    <header className="record-head">
+    <header className={`record-head${compact ? " record-head--compact" : ""}`}>
       {image}
       <div className="record-head__top">
-        <p className="record-head__kind">{eyebrow}</p>
+        <div className="record-head__titles">
+          <p className="record-head__kind">{eyebrow}</p>
+          <h1 className="record-head__title" dir="auto">
+            {title}
+          </h1>
+        </div>
         {actions ? <div className="record-head__actions">{actions}</div> : null}
       </div>
-      <h1 className="record-head__title" dir="auto">
-        {title}
-      </h1>
       {byline}
       {lead ? (
         <p className="record-head__lead" dir="auto">
@@ -441,7 +464,12 @@ export function RecordDetailSkeleton({ label }: { label: string }) {
   return (
     <div role="status" aria-label={label} className="record-layout">
       <div className="record-layout__header flex flex-col gap-3">
-        <Skeleton variant="box" width="100%" height="auto" className="aspect-[3/1]" />
+        <Skeleton
+          variant="box"
+          width="100%"
+          height="auto"
+          className="aspect-[2/1] max-h-[360px]"
+        />
         <Skeleton variant="line" width="4rem" height="0.75rem" />
         <Skeleton variant="line" width="min(32rem, 85%)" height="2rem" />
         <div className="flex items-center gap-2">
@@ -519,28 +547,33 @@ export function RecordSectionTabs({
     })
   }, [activeKey])
 
+  const edges = useOverflowEdges(stripRef)
+
   return (
-    <div ref={stripRef} className="record-tabs">
-      {/* Link tabs: `value` follows the URL, so onChange has nothing to do. */}
-      <Tabs value={activeKey} onChange={() => {}}>
-        <TabList aria-label={ariaLabel} className="record-tabs__list">
-          {tabs.map((t) => {
-            const count = counts?.[t.key]
-            return (
-              <Tab
-                key={t.key}
-                value={t.key}
-                href={hrefFor(t)}
-                linkProps={{ replace: true, scroll: false }}
-                count={count && count > 0 ? count : undefined}
-                className="record-tabs__tab"
-              >
-                {t.label}
-              </Tab>
-            )
-          })}
-        </TabList>
-      </Tabs>
+    <div className="record-tabs">
+      <div ref={stripRef} className="record-tabs__scroller">
+        {/* Link tabs: `value` follows the URL, so onChange has nothing to do. */}
+        <Tabs value={activeKey} onChange={() => {}}>
+          <TabList aria-label={ariaLabel} className="record-tabs__list">
+            {tabs.map((t) => {
+              const count = counts?.[t.key]
+              return (
+                <Tab
+                  key={t.key}
+                  value={t.key}
+                  href={hrefFor(t)}
+                  linkProps={{ replace: true, scroll: false }}
+                  count={count && count > 0 ? count : undefined}
+                  className="record-tabs__tab"
+                >
+                  {t.label}
+                </Tab>
+              )
+            })}
+          </TabList>
+        </Tabs>
+      </div>
+      <TabStripFades start={edges.start} end={edges.end} />
     </div>
   )
 }
@@ -572,29 +605,34 @@ export function RecordDescription({
 }
 
 /**
- * "Who's behind it": the account that published the record, with its
- * avatar, name, @handle, the start of its bio and a link to its profile.
+ * "Who's behind it": the account that published the record, told in its
+ * own words: the avatar and name, the start of its bio (else of its long
+ * description), three lines, and a link to its profile. The byline already
+ * names the account, so without any words about it the card isn't drawn.
  */
 export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: string; title?: string }) {
   const { info, isLoading } = useAuthorInfo(did)
-  const { isOrg } = useOrgMarker(did)
+  const { isOrg, marker, isLoading: markerLoading } = useOrgMarker(did)
 
-  if (isLoading || !info) {
+  const bio =
+    info?.description?.trim() ||
+    longDescriptionPlainText(marker?.longDescription)?.split(/\n\s*\n/)[0]?.trim() ||
+    null
+
+  if (isLoading || !info || (!bio && markerLoading)) {
     return (
       <FactCard title={title}>
         <div className="flex items-center gap-3" aria-hidden="true">
           <Skeleton variant="circle" width={40} height={40} />
-          <div className="flex flex-col gap-1.5">
-            <Skeleton variant="line" width="9rem" height="0.875rem" />
-            <Skeleton variant="line" width="6rem" height="0.75rem" />
-          </div>
+          <Skeleton variant="line" width="9rem" height="0.875rem" />
         </div>
+        <Skeleton variant="text" lines={2} width="100%" height={12} aria-hidden />
       </FactCard>
     )
   }
+  if (!bio) return null
 
-  const { displayName, handle, initials, profileHref } = deriveIdentity(info, did)
-  const bio = info.description?.trim() || null
+  const { displayName, unnamed, initials, profileHref } = deriveIdentity(info, did)
 
   return (
     <FactCard title={title}>
@@ -606,21 +644,37 @@ export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: strin
           alt=""
           fallbackInitials={initials}
         />
-        <span className="record-owner__text">
-          <span className="record-owner__name" dir="auto">
-            {displayName}
-          </span>
-          {handle ? <span className="record-owner__handle">@{handle}</span> : null}
+        <span className="record-owner__name" data-unnamed={unnamed || undefined} dir="auto">
+          {displayName}
         </span>
       </Link>
-      {bio ? (
-        <p className="record-owner__bio" dir="auto">
-          {bio}
-        </p>
-      ) : null}
+      <p className="record-owner__bio" dir="auto">
+        {bio}
+      </p>
       <Link href={profileHref} className="record-link">
         View profile
       </Link>
     </FactCard>
+  )
+}
+
+/**
+ * Work scope as tags: sentence case, wrapping, the same in the activity's
+ * Details and on a project's activity card.
+ */
+export function WorkScopeTags({ tags, max }: { tags: readonly string[]; max?: number }) {
+  const shown = max ? tags.slice(0, max) : tags
+  const rest = tags.length - shown.length
+  if (shown.length === 0) return null
+  return (
+    <ul className="record-tags" aria-label="Work scope">
+      {shown.map((t) => (
+        <li key={t} className="record-tag">
+          {/* Sentence case: "local-first AI" reads "Local-first AI". */}
+          {t.charAt(0).toUpperCase() + t.slice(1)}
+        </li>
+      ))}
+      {rest > 0 ? <li className="record-tag record-tag--more">+{rest}</li> : null}
+    </ul>
   )
 }

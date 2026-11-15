@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { parseAtUri, profileUrl, recordUrl, recordUrlFromAtUri } from "@/lib/urls"
 import { usePageTitle, useRegisterPageHeader } from "@/lib/navbar-context"
-import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
@@ -23,8 +22,7 @@ import { useCertProjects } from "@/hooks/use-cert-projects"
 import { useLocations } from "@/hooks/use-location"
 import { useFitsViewport } from "@/hooks/use-fits-viewport"
 import { useMediaQuery, WIDE_RECORD_LAYOUT } from "@/hooks/use-media-query"
-import { formatPeriodShort, formatShortDate } from "@/lib/utils/format-date"
-import Badge from "@/components/ui/badge"
+import { formatShortDate, formatPeriodShort } from "@/lib/utils/format-date"
 import EmptyState from "@/components/ui/empty-state"
 import { FactCard, FactList, type Fact } from "@/components/ui/fact-card"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
@@ -36,7 +34,7 @@ import { useContextUpdates } from "@/hooks/use-context-updates"
 import RightsDetailModal from "@/components/feed/rights-detail-modal"
 import Button from "@/components/ui/button"
 import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
-import CertLocationsMap from "./cert-locations-map"
+import RecordLocationCard from "./cert-locations-map"
 import {
   ContributorRow,
   ContributorStack,
@@ -45,13 +43,16 @@ import {
   RecordHeader,
   RecordImage,
   RecordSectionTabs,
+  WorkScopeTags,
 } from "./cert-detail-parts"
+import { sameTitle } from "./work-cards"
 import {
   FundingFactCard,
   RecordFundingSection,
   useRecordFundingFlow,
   useRecordFundingView,
 } from "@/components/funding/record-funding"
+import ProjectFactCard from "@/components/funding/project-fact-card"
 import {
   contributorKey,
   contributionRoleText,
@@ -60,21 +61,10 @@ import {
 import ContextUpdates from "@/components/context/context-updates"
 import type { ActivityContributor, ClaimActivity } from "@/lib/atproto/activity-types"
 import { locationLabel } from "@/lib/atproto/location-label"
-import { withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
+import { leadText, withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
 import { projectTitle } from "@/lib/atproto/collection"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_CERTS_TYPE } from "@/lib/atproto/typed-lists"
-
-// Tab-gated: pulls in d3-hierarchy + the treemap layout. Load it only
-// when the Contributors tab is actually opened, not in the base
-// activity-detail route bundle every viewer downloads.
-const ActivityFancyBoard = dynamic(
-  () =>
-    import("@/components/contributor-board/activity-fancy-board").then(
-      (m) => m.ActivityFancyBoard,
-    ),
-  { ssr: false },
-)
 
 interface ActivityDetailProps {
   did: string
@@ -97,26 +87,22 @@ function isAccount(c: ActivityContributor, did: string): boolean {
   return false
 }
 
-/** Same title, give or take case and spacing. */
-function sameTitle(a: string, b: string): boolean {
-  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase()
-  return norm(a) === norm(b)
-}
-
 /**
  * Detail view of a single activity claim, laid out like the project page
- * (one record layout, cert-detail.css):
+ * (one record layout, record-page.css):
  *
- *   - the header: the work's photo (16:9), "Activity · Part of <project>"
- *     (the project part hidden when it has the activity's own title), the
- *     title as the page's h1 with Share and ⋯ at its right, a byline (who,
- *     when, where) and the summary as the lead;
+ *   - the header: the work's photo, "Activity · Part of <project>" (the
+ *     project part hidden when it has the activity's own title), the title
+ *     as the page's h1 with the owner's Edit, Share and More at its right,
+ *     a byline (who, when, where) and the summary as the lead;
  *   - the rail of facts (from 1100px beside the content, sticky when it
  *     fits; on phones under the header, on Overview): funding, details
- *     (period, place, work scope, rights), contributors, the project;
+ *     (what the byline doesn't say: work scope, rights, published), the
+ *     location, contributors, the project (with its funding);
  *   - the tabs, only those with something in them: Overview (the
- *     description in place, the latest update, where), Contributors (the
- *     list, then the board), Funding and Updates.
+ *     description in place, the latest update; with no description, the
+ *     details, so the column is never empty), Contributors, Funding and
+ *     Updates.
  *
  * Editing happens on the edit page (`/{actor}/activity/{rkey}/edit`).
  */
@@ -162,10 +148,12 @@ export default function ActivityDetail({
           : placeNames.length === 1
             ? placeNames[0]
             : `${placeNames[0]} and ${placeNames.length - 1} more`
+  // The summary, read whole from the description when it was stored cut.
+  const lead = leadText(value.shortDescription, value.description)
   // The description, less a first paragraph that repeats the lead.
   const description = useMemo(
-    () => withoutLeadParagraph(value.description, value.shortDescription),
-    [value.description, value.shortDescription],
+    () => withoutLeadParagraph(value.description, lead),
+    [value.description, lead],
   )
   const showFullDescription = isRenderableDescription(description)
 
@@ -350,8 +338,9 @@ export default function ActivityDetail({
     }
   }, [rkey, did, canEditAsActiveOrg, router])
 
-  // The record's actions at the header's top-right: Share for everyone
-  // (deep-linking the open tab), the owner's Edit, then the ⋯ menu.
+  // The record's actions at the header's top-right, in the profile's
+  // order: the owner's Edit, Share for everyone (deep-linking the open
+  // tab), then More.
   const sharePath = (() => {
     const base =
       (recordUri ? recordUrlFromAtUri(recordUri) : null) ??
@@ -360,7 +349,6 @@ export default function ActivityDetail({
   })()
   const recordActions = (
     <>
-      <ShareLinkButton path={sharePath} what="Activity link" />
       {isCreator ? (
         <Button href={editHref} variant="secondary" size="sm" aria-label="Edit activity">
           <Pencil size={14} strokeWidth={1.75} aria-hidden />
@@ -378,12 +366,14 @@ export default function ActivityDetail({
           Edit
         </Button>
       ) : null}
+      <ShareLinkButton path={sharePath} what="Activity link" />
       {recordUri ? (
         <AddToListMenu
           targetUri={recordUri}
           targetCid={cid}
           targetType={LIST_CERTS_TYPE}
           showShare={false}
+          trigger="header"
           editActions={
             isCreator
               ? {
@@ -426,36 +416,11 @@ export default function ActivityDetail({
     )
 
   // ----- The rail -----
+  // Details holds only what the byline doesn't say: the period and the
+  // place are there (and the place again on the Location card's map).
   const details: Fact[] = []
-  if (period) details.push({ label: "Time period", value: period })
-  if (placeNames.length > 0) {
-    details.push({
-      label: placeNames.length === 1 ? "Place" : "Places",
-      value:
-        placeNames.length === 1 ? (
-          placeNames[0]
-        ) : (
-          <ul className="record-plain-list">
-            {placeNames.map((n, i) => (
-              <li key={`${i}-${n}`}>{n}</li>
-            ))}
-          </ul>
-        ),
-    })
-  }
   if (scopeTags.length > 0) {
-    details.push({
-      label: "Work scope",
-      value: (
-        <ul className="record-tags" aria-label="Work scope">
-          {scopeTags.map((t) => (
-            <li key={t}>
-              <Badge variant="tag">{t}</Badge>
-            </li>
-          ))}
-        </ul>
-      ),
-    })
+    details.push({ label: "Work scope", value: <WorkScopeTags tags={scopeTags} /> })
   }
   if (value.rights) {
     details.push({
@@ -488,18 +453,41 @@ export default function ActivityDetail({
   const railRef = useRef<HTMLElement | null>(null)
   const railFits = useFitsViewport(railRef, 96)
   const contributorsHref = contributorsTabShown ? tabHref("contributors") : null
+  // The project, with its funding: an activity's gifts are often recorded
+  // on its project, so this is where a donor finds the money.
+  const projectCard =
+    projects.length > 0 ? (
+      <ProjectFactCard projects={projects} activityTitle={title} ownGifts={funding.all.length} />
+    ) : !projectsLoading && isCreator ? (
+      <FactCard title="Project">
+        <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
+          Not in a project yet.
+        </p>
+        <Link href="/records" className="record-link">
+          Add to a project
+        </Link>
+      </FactCard>
+    ) : null
+  // On a phone, an activity without gifts of its own leads with its
+  // project's card instead (under the header, where the money goes).
+  const projectLeads =
+    !wide && projects.length > 0 && !funding.isLoading && funding.all.length === 0
   // The Funding tab leads with the same figures, so the card steps aside.
-  const leadCards =
-    activeTab === "funding" ? null : (
-      <FundingFactCard view={funding} href={tabHref("funding")} />
-    )
+  const leadCards = (
+    <>
+      {activeTab === "funding" ? null : (
+        <FundingFactCard view={funding} href={tabHref("funding")} />
+      )}
+      {wide || projectLeads ? projectCard : null}
+    </>
+  )
+  // Without a description the Overview's column would be empty (the map
+  // is in the rail now), so the details go there instead of the rail.
+  const detailsInMain =
+    activeTab === "overview" && !showFullDescription && details.length > 0
   const moreCards = (
     <>
-      {details.length > 0 ? (
-        <FactCard title="Details">
-          <FactList facts={details} />
-        </FactCard>
-      ) : null}
+      {!wide && !projectLeads ? projectCard : null}
       {hasContributors ? (
         <FactCard
           title={
@@ -515,35 +503,10 @@ export default function ActivityDetail({
           <ContributorStack contributors={contributors} />
         </FactCard>
       ) : null}
-      {projects.length > 0 ? (
-        <FactCard title="Part of">
-          <ul className="record-plain-list record-plain-list--spaced">
-            {projects.map((p) => {
-              const parts = parseAtUri(p.uri)
-              const href = parts ? recordUrl(parts.did, "project", parts.rkey) : null
-              const name = projectTitle(p.value)
-              return (
-                <li key={p.uri}>
-                  {href ? (
-                    <Link href={href} className="record-link">
-                      {name}
-                    </Link>
-                  ) : (
-                    name
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </FactCard>
-      ) : !projectsLoading && isCreator ? (
-        <FactCard title="Project">
-          <p className="m-0 text-body-sm text-[var(--fg-secondary)]">
-            Not in a project yet.
-          </p>
-          <Link href="/records" className="record-link">
-            Add to a project
-          </Link>
+      <RecordLocationCard locations={locations} headerPlace={place ?? null} />
+      {details.length > 0 && !detailsInMain ? (
+        <FactCard title="Details">
+          <FactList facts={details} />
         </FactCard>
       ) : null}
     </>
@@ -572,12 +535,13 @@ export default function ActivityDetail({
     <>
       <article className={`record-page record-layout record-layout--tab-${activeTab}`}>
         <RecordHeader
-          image={<RecordImage src={imageUrl} ratio="16 / 9" />}
+          image={<RecordImage src={imageUrl} />}
           eyebrow={eyebrow}
           title={title}
           actions={recordActions}
           byline={<RecordByline did={did} period={period} place={place} />}
-          lead={value.shortDescription}
+          lead={lead}
+          compact={activeTab !== "overview"}
         />
 
         {rail}
@@ -590,7 +554,7 @@ export default function ActivityDetail({
             ariaLabel="Activity sections"
             counts={{
               contributors: contributorCount,
-              funding: funding.summary.gifts,
+              funding: funding.tabCount,
               updates: updates.length,
             }}
           />
@@ -606,6 +570,12 @@ export default function ActivityDetail({
               {showFullDescription ? (
                 <RecordDescription value={description} did={did} />
               ) : null}
+              {detailsInMain ? (
+                <section className="record-section" aria-labelledby="activity-details">
+                  <SectionHeader id="activity-details" title="Details" />
+                  <FactList facts={details} className="record-details" />
+                </section>
+              ) : null}
               {recordUri ? (
                 <ContextUpdates
                   subjectUri={recordUri}
@@ -614,38 +584,29 @@ export default function ActivityDetail({
                   seeAllHref={tabHref("updates")}
                 />
               ) : null}
-              {locations.length > 0 ? (
-                <section className="record-section" aria-labelledby="activity-where">
-                  <SectionHeader id="activity-where" title="Where" />
-                  <CertLocationsMap locations={locations} height={240} />
-                </section>
-              ) : null}
             </>
           ) : activeTab === "contributors" ? (
-            <>
-              <section className="record-section" aria-labelledby="activity-contributors">
-                <h2 id="activity-contributors" className="sr-only">
-                  Contributors
-                </h2>
-                {contributorCount > 0 ? (
-                  <ul className="cert-detail__contributors record-contributors">
-                    {contributors.map((c, i) => (
-                      <ContributorRow
-                        key={contributorKey(c, i)}
-                        contributor={c}
-                        role={contributionRoleText(c.contributionDetails)}
-                        weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
-                      />
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyState variant="inline" title="No contributors listed." />
-                )}
-              </section>
-              {contributorCount > 1 ? (
-                <ActivityFancyBoard did={did} rkey={rkey} contributors={contributors} />
-              ) : null}
-            </>
+            // The list only: the "Contributor board" showed the same
+            // people again, in tiles that cut their names.
+            <section className="record-section" aria-labelledby="activity-contributors">
+              <h2 id="activity-contributors" className="sr-only">
+                Contributors
+              </h2>
+              {contributorCount > 0 ? (
+                <ul className="cert-detail__contributors record-contributors">
+                  {contributors.map((c, i) => (
+                    <ContributorRow
+                      key={contributorKey(c, i)}
+                      contributor={c}
+                      role={contributionRoleText(c.contributionDetails)}
+                      weight={weightPercents.get(i) ?? c.contributionWeight ?? null}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState variant="inline" title="No contributors listed." />
+              )}
+            </section>
           ) : activeTab === "funding" ? (
             <RecordFundingSection
               view={funding}

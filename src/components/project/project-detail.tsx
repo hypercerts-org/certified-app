@@ -9,13 +9,14 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
 import { Inbox, Pencil } from "lucide-react"
-import CertLocationsMap from "@/components/feed/cert-locations-map"
+import RecordLocationCard from "@/components/feed/cert-locations-map"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import { FactCard, FactList, type Fact } from "@/components/ui/fact-card"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import ShareLinkButton from "@/components/ui/share-link-button"
 import Skeleton from "@/components/ui/skeleton"
+import { WorkCardList } from "@/components/ui/work-card"
 import { TabPanelTransition } from "@/components/ui/tab-panel-transition"
 import { PROJECT_DETAIL_TABS, visibleDetailTabs } from "@/lib/detail-tabs"
 import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
@@ -37,21 +38,22 @@ import {
   RecordOwnerCard,
   RecordSectionTabs,
 } from "@/components/feed/cert-detail-parts"
-import ProjectActivityCard from "@/components/project/project-activity-card"
+import { ActivityFactsCard, ActivityWorkCard, sameTitle } from "@/components/feed/work-cards"
 import {
   FundingFactCard,
   RecordFundingSection,
   useRecordFundingFlow,
   useRecordFundingView,
 } from "@/components/funding/record-funding"
+import { MAX_FUNDED_ACTIVITIES } from "@/components/funding/project-fact-card"
 import { useScrollTopOnTabChange } from "@/hooks/use-scroll-top-on-tab-change"
-import { resolveActivityImageUrl } from "@/lib/atproto/activity"
+import { useProjectPicture } from "@/hooks/use-project-picture"
 import { locationLabel } from "@/lib/atproto/location-label"
-import { withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
+import { leadText, withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
 import { formatPeriodShort, formatShortDate } from "@/lib/utils/format-date"
 import {
   asString,
-  projectImage,
+  projectActivityUris,
   projectTitle,
   type CollectionValue,
 } from "@/lib/atproto/collection"
@@ -59,10 +61,6 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 
 /** Activities shown on Overview; "See all" opens the Activities tab. */
 const OVERVIEW_ACTIVITY_PREVIEW = 4
-/** Activities whose funding a project's total takes in. */
-const MAX_FUNDED_ACTIVITIES = 25
-
-const ACTIVITY_NSID = "org.hypercerts.claim.activity"
 
 interface ProjectDetailProps {
   did: string
@@ -76,38 +74,20 @@ interface ProjectDetailProps {
 
 type ProjectTab = "overview" | "activities" | "funding" | "updates"
 
-/** The activity URIs in a project's `items`, in order, read from the
- *  record itself (no fetch), so the funding read can start at once. */
-function activityUris(items: unknown): string[] {
-  if (!Array.isArray(items)) return []
-  const out: string[] = []
-  for (const item of items) {
-    if (!item || typeof item !== "object") continue
-    const obj = item as { uri?: unknown; itemIdentifier?: { uri?: unknown } }
-    const uri =
-      typeof obj.itemIdentifier?.uri === "string"
-        ? obj.itemIdentifier.uri
-        : typeof obj.uri === "string"
-          ? obj.uri
-          : null
-    if (uri && uri.includes(`/${ACTIVITY_NSID}/`) && !out.includes(uri)) out.push(uri)
-  }
-  return out
-}
-
 /**
  * Detail view for a single `org.hypercerts.collection` project record,
- * laid out like the activity page (one record layout, cert-detail.css):
+ * laid out like the activity page (one record layout, record-page.css):
  *
  *   - the header: the banner (or the first activity's photo), "Project",
- *     the title as the page's h1 with Share and ⋯ at its right, a byline
- *     (who, when, where) and the summary as the lead;
+ *     the title as the page's h1 with the owner's Edit, Share and More at
+ *     its right, a byline (who, when, where) and the summary as the lead;
  *   - the rail of facts (from 1100px beside the content, sticky when it
  *     fits; on phones under the header, on Overview): funding, who's
- *     behind it, the location, details;
+ *     behind it (when the account says something about itself), the
+ *     location, details (only what the header doesn't say);
  *   - the tabs, only those with something in them: Overview (the
- *     description in place, the activities as cards, the latest update),
- *     Activities, Funding and Updates.
+ *     description in place, the activities as work cards, the latest
+ *     update), Activities, Funding and Updates.
  *
  * The project's funding is every receipt for the project and for its
  * activities (each receipt has one `for`, so nothing is counted twice).
@@ -151,11 +131,12 @@ export default function ProjectDetail({
   const recordUri = `at://${did}/org.hypercerts.collection/${rkey}`
 
   const title = projectTitle(value)
-  const shortDesc = asString(value.shortDescription)
+  // The summary, read whole from the description when it was stored cut.
+  const lead = leadText(asString(value.shortDescription), value.description)
   // The description, less a first paragraph that repeats the lead.
   const description = useMemo(
-    () => withoutLeadParagraph(value.description, shortDesc),
-    [value.description, shortDesc],
+    () => withoutLeadParagraph(value.description, lead),
+    [value.description, lead],
   )
   const showFullDescription = isRenderableDescription(description)
 
@@ -212,17 +193,9 @@ export default function ProjectDetail({
   const itemCount = Array.isArray(value.items) ? value.items.length : 0
   const activityCount = Math.max(resolutions.length, itemCount)
 
-  // ----- Picture: the banner, else the first activity's photo -----
-  const rawBanner = projectImage(value, "banner")
-  const bannerUrl = rawBanner ? resolveActivityImageUrl(rawBanner, did) : null
-  const firstWithImage = resolvedActivities.find((a) => a.value.image)
-  const fallbackImage = firstWithImage
-    ? resolveActivityImageUrl(
-        firstWithImage.value.image,
-        didByUri.get(firstWithImage.uri) ?? did,
-      )
-    : null
-  const imageUrl = bannerUrl ?? fallbackImage
+  // ----- Picture: the banner, else the first activity's photo (the one
+  // rule every project card uses too) -----
+  const imageUrl = useProjectPicture(value, did, resolvedActivities)
 
   // ----- When: the project's own dates (legacy records), else the span
   // of its activities' -----
@@ -272,7 +245,7 @@ export default function ProjectDetail({
 
   // ----- Funding: the project's receipts and its activities' -----
   const fundingUris = useMemo(
-    () => [recordUri, ...activityUris(value.items).slice(0, MAX_FUNDED_ACTIVITIES)],
+    () => [recordUri, ...projectActivityUris(value.items).slice(0, MAX_FUNDED_ACTIVITIES)],
     [recordUri, value.items],
   )
   const funding = useRecordFundingView(fundingUris, recordUri)
@@ -359,15 +332,15 @@ export default function ProjectDetail({
     }
   }
 
-  // The record's actions at the header's top-right: Share for everyone
-  // (deep-linking the open tab), the owner's Edit, then the ⋯ menu.
+  // The record's actions at the header's top-right, in the profile's
+  // order: the owner's Edit, Share for everyone (deep-linking the open
+  // tab), then More.
   const sharePath = (() => {
     const base = recordUrlFromAtUri(recordUri) ?? recordUrl(did, "project", rkey)
     return activeTab === "overview" ? base : `${base}?tab=${activeTab}`
   })()
   const recordActions = (
     <>
-      <ShareLinkButton path={sharePath} what="Project link" />
       {isOwner ? (
         <Button href={editHref} variant="secondary" size="sm" aria-label="Edit project">
           <Pencil size={14} strokeWidth={1.75} aria-hidden />
@@ -385,11 +358,13 @@ export default function ProjectDetail({
           Edit
         </Button>
       ) : null}
+      <ShareLinkButton path={sharePath} what="Project link" />
       <AddToListMenu
         targetUri={recordUri}
         targetCid={cid}
         targetType={LIST_PROJECTS_TYPE}
         showShare={false}
+        trigger="header"
         editActions={
           isOwner
             ? {
@@ -409,15 +384,10 @@ export default function ProjectDetail({
   )
 
   // ----- The rail -----
+  // Details holds only what the header doesn't say: the period and place
+  // are in the byline, the activity count on the Activities tab.
   const createdAt = asString(value.createdAt)
   const details: Fact[] = []
-  if (period) details.push({ label: "Time period", value: period })
-  if (activityCount > 0) {
-    details.push({
-      label: "Activities",
-      value: activityCount.toLocaleString("en-US"),
-    })
-  }
   if (createdAt) {
     details.push({
       label: "Published",
@@ -438,11 +408,7 @@ export default function ProjectDetail({
   const moreCards = (
     <>
       <RecordOwnerCard did={did} />
-      {locationRefUri ? (
-        <FactCard title="Location">
-          <CertLocationsMap locations={locationStrongRefs} height={200} />
-        </FactCard>
-      ) : null}
+      <RecordLocationCard locations={locationStrongRefs} headerPlace={place ?? null} />
       {details.length > 0 ? (
         <FactCard title="Details">
           <FactList facts={details} />
@@ -470,41 +436,56 @@ export default function ProjectDetail({
       </aside>
     ) : null
 
-  // ----- The activities, as cards -----
+  // ----- The activities, as work cards -----
   const activitiesLoading = (
-    <div className="record-work-grid" role="status" aria-label="Loading activities">
+    <div className="work-card-list work-card-list--grid" role="status" aria-label="Loading activities">
       <Skeleton variant="box" width="100%" height="14rem" />
       <Skeleton variant="box" width="100%" height="14rem" />
     </div>
   )
+  // One activity with the project's own title would repeat the header:
+  // it shows what it adds instead.
   const activityCards = (list: ActivityRecord[]) =>
-    list.length === 1 ? (
-      <ProjectActivityCard
+    list.length === 1 && sameTitle(list[0].value.title, title) ? (
+      <ActivityFactsCard
         record={list[0]}
-        did={didByUri.get(list[0].uri) ?? did}
-        layout="wide"
+        accountDid={did}
+        projectPeriod={period}
+        projectPlace={place}
       />
     ) : (
-      <ul className="record-work-grid">
-        {list.map((rec) => (
-          <li key={rec.uri}>
-            <ProjectActivityCard record={rec} did={didByUri.get(rec.uri) ?? did} />
-          </li>
-        ))}
-      </ul>
+      <WorkCardList
+        items={list}
+        itemKey={(rec) => rec.uri}
+        render={(rec, layout) => (
+          <ActivityWorkCard
+            record={rec}
+            did={didByUri.get(rec.uri) ?? did}
+            layout={layout}
+            // The summary the project leads with isn't repeated.
+            hideSummary={
+              !!lead &&
+              sameTitle(leadText(rec.value.shortDescription, rec.value.description), lead)
+            }
+          />
+        )}
+      />
     )
   const activitiesHref = tabHref("activities")
+  // The other tabs on a phone: the header without its picture and lead.
+  const compactHeader = activeTab !== "overview"
 
   return (
     <>
       <article className={`record-page record-layout record-layout--tab-${activeTab}`}>
         <RecordHeader
-          image={<RecordImage src={imageUrl} ratio="3 / 1" />}
+          image={<RecordImage src={imageUrl} />}
           eyebrow="Project"
           title={title}
           actions={recordActions}
           byline={<RecordByline did={did} period={period} place={place} />}
-          lead={shortDesc}
+          lead={lead}
+          compact={compactHeader}
         />
 
         {rail}
@@ -517,7 +498,7 @@ export default function ProjectDetail({
             ariaLabel="Project sections"
             counts={{
               activities: activityCount,
-              funding: funding.summary.gifts,
+              funding: funding.tabCount,
               updates: updates.length,
             }}
           />
@@ -538,7 +519,9 @@ export default function ProjectDetail({
                 <section className="record-section" aria-labelledby="project-activities">
                   <SectionHeader
                     id="project-activities"
-                    title={activityCount === 1 ? "Activity" : "Activities"}
+                    title={
+                      activityCount === 1 ? "Activity" : "Activities"
+                    }
                     action={
                       activitiesHref && resolvedActivities.length > OVERVIEW_ACTIVITY_PREVIEW ? (
                         <SeeAllLink href={activitiesHref} label="All activities" />

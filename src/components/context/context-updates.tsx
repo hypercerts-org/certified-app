@@ -4,7 +4,7 @@ import { useId, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Button from "@/components/ui/button"
 import Link from "next/link"
-import { firstParagraphText } from "@/lib/leaflet/strip-lead"
+import { firstParagraphText, titleAndTeaser } from "@/lib/leaflet/strip-lead"
 import {
   ExternalLink,
   File,
@@ -309,8 +309,19 @@ function UpdateCard({
 
   // On Overview a teaser: the summary, else the body's first paragraph,
   // a few lines of it, and a link to the update in full on the Updates
-  // tab. (Cutting the body itself sliced embedded videos in half.)
-  const teaserText = teaser ? shortDesc ?? firstParagraphText(value.description) : null
+  // tab. (Cutting the body itself sliced embedded videos in half.) A title
+  // cut short in the data is read whole from the body, and the body
+  // doesn't open by repeating the title.
+  const opening = shortDesc ?? firstParagraphText(value.description)
+  const told = titleAndTeaser(title, opening)
+  const shownTitle = told.title
+  const teaserText = teaser ? told.teaser : null
+  // Photos in a 3-up grid; on Overview the first three, the third
+  // saying how many more there are.
+  const images = attachments.filter((a) => a.kind === "image")
+  const others = attachments.filter((a) => a.kind !== "image")
+  const shownImages = teaser ? images.slice(0, 3) : images
+  const moreImages = images.length - shownImages.length
   const doc =
     !teaser && value.description ? (
       <LeafletDocument
@@ -331,8 +342,8 @@ function UpdateCard({
         </time>
       ) : null}
       <header className="context-updates__item-head">
-        {title ? (
-          <h3 className="context-updates__title" dir="auto">{title}</h3>
+        {shownTitle ? (
+          <h3 className="context-updates__title" dir="auto">{shownTitle}</h3>
         ) : null}
         {canManage ? (
           <span className="ml-auto flex items-center gap-1">
@@ -382,12 +393,29 @@ function UpdateCard({
         </>
       )}
 
-      {attachments.length > 0 && authorDid ? (
+      {shownImages.length > 0 && authorDid ? (
+        <ul
+          className="context-updates__photos"
+          aria-label={`${images.length} ${images.length === 1 ? "photo" : "photos"}`}
+        >
+          {shownImages.map((a, i) => (
+            <AttachmentTile
+              key={`${i}-${attachmentKey(a)}`}
+              attachment={a}
+              did={authorDid}
+              more={i === shownImages.length - 1 && moreImages > 0 ? moreImages : 0}
+              moreHref={readHref}
+            />
+          ))}
+        </ul>
+      ) : null}
+
+      {others.length > 0 && authorDid ? (
         <ul
           className="context-updates__attachments"
-          aria-label={`${attachments.length} attachment${attachments.length === 1 ? "" : "s"}`}
+          aria-label={`${others.length} attachment${others.length === 1 ? "" : "s"}`}
         >
-          {attachments.map((a, i) => (
+          {others.map((a, i) => (
             <AttachmentTile key={`${i}-${attachmentKey(a)}`} attachment={a} did={authorDid} />
           ))}
         </ul>
@@ -423,29 +451,49 @@ function attachmentKey(a: ResolvedAttachment): string {
 function AttachmentTile({
   attachment,
   did,
+  more = 0,
+  moreHref = null,
 }: {
   attachment: ResolvedAttachment
   did: string
+  /** A photo standing for `more` others not shown ("+3"), linking to the
+   *  update in full. */
+  more?: number
+  moreHref?: string | null
 }) {
   if (attachment.kind === "image") {
     const url = buildAvatarUrlFromCid(did, attachment.cid)
     if (!url) return null
+    const photo = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt="" loading="lazy" className="context-updates__attachment-img" />
+    )
+    if (more > 0 && moreHref) {
+      return (
+        <li className="context-updates__photo">
+          <Link
+            href={moreHref}
+            className="context-updates__photo-link"
+            aria-label={`${more} more ${more === 1 ? "photo" : "photos"} in the update`}
+          >
+            {photo}
+            <span className="context-updates__photo-more" aria-hidden="true">
+              +{more}
+            </span>
+          </Link>
+        </li>
+      )
+    }
     return (
-      <li className="context-updates__attachment context-updates__attachment--image">
+      <li className="context-updates__photo">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="context-updates__attachment-link"
-          aria-label="Open image in new tab"
+          className="context-updates__photo-link"
+          aria-label="Open photo in new tab"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt=""
-            loading="lazy"
-            className="context-updates__attachment-img"
-          />
+          {photo}
         </a>
       </li>
     )
