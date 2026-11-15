@@ -741,16 +741,94 @@
   position: relative;
 }
 
-.funding-pulse__chart canvas,
-.funding-atlas__map canvas {
+.funding-pulse__chart canvas {
   display: block;
 }
 
 /* ---- Map ---------------------------------------------------------------- */
 
-.funding-atlas__map {
+/* The flat map and the globe share a frame: the drawing, its zoom buttons
+   in the top-right corner, and a bar underneath to drag it taller. */
+/* Not clipped: a project's hover card may reach past the edge. */
+.funding-map {
   position: relative;
-  cursor: default;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.funding-map__surface {
+  position: relative;
+  cursor: grab;
+  user-select: none;
+}
+
+.funding-map__surface:active {
+  cursor: grabbing;
+}
+
+.funding-map__surface:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.funding-map__surface canvas {
+  display: block;
+}
+
+.funding-map-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Phones: the map is short, so the buttons sit in a row under it. */
+@media (max-width: 799px) {
+  .funding-map-controls {
+    position: static;
+    flex-direction: row;
+    justify-content: flex-end;
+    padding: 6px;
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+.funding-map-resize {
+  display: grid;
+  place-items: center;
+  height: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-elevated);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.funding-map-resize__grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-hover);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.funding-map-resize:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .funding-map-resize:hover .funding-map-resize__grip {
+    background: var(--fg-muted);
+  }
+}
+
+.funding-map-resize:active .funding-map-resize__grip,
+.funding-map-resize:focus-visible .funding-map-resize__grip {
+  background: var(--fg-primary);
 }
 
 .funding-atlas__selection {
@@ -1074,27 +1152,6 @@ a.funding-ledger__project:hover {
   min-width: 0;
   font-size: var(--text-body-sm);
   color: var(--fg-muted);
-}
-
-.funding-globe {
-  position: relative;
-  border-radius: var(--radius);
-  cursor: grab;
-  touch-action: pan-y;
-  user-select: none;
-}
-
-.funding-globe:active {
-  cursor: grabbing;
-}
-
-.funding-globe:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.funding-globe canvas {
-  display: block;
 }
 
 @media (max-width: 799px) {

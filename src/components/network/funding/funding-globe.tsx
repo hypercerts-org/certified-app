@@ -1,18 +1,25 @@
 "use client"
 
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import type { ProjectTotal } from "@/lib/funding/select"
 import { LAND_MASK, unpackLandMask } from "@/lib/funding/land-mask"
 import { formatCount } from "@/lib/funding/format"
 import { useCanvasColors, useElementWidth } from "./use-element-width"
 import FundingProjectTip from "./funding-project-tip"
+import { MapResizeHandle, MapZoomControls } from "./map-controls"
+import { usePanZoom } from "./use-pan-zoom"
 
 const RAD = Math.PI / 180
 const MAX_HEIGHT = 560
+const MAX_DRAG_HEIGHT = 1100
 const SPIN_DEG_PER_S = 5
 /** How far the globe tilts toward a pole, in degrees. */
 const TILT_LIMIT = 60
+const MAX_ZOOM = 10
+/** Largest land dot, in pixels. */
+const MAX_DOT = 2.8
+/** Names on the whole globe; more as it zooms in, where they fit. */
 const LABELS = 5
 /** Where the globe faces before anything is picked: the Atlantic, so the
  *  Americas, Europe and Africa are all in view. */
@@ -39,6 +46,7 @@ function landCells(): Float32Array {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180
 
 interface Mark {
   t: ProjectTotal
@@ -47,11 +55,21 @@ interface Mark {
   r: number
 }
 
+interface View {
+  lon: number
+  lat: number
+  /** 1 is the whole globe in the box. */
+  z: number
+}
+
 /**
  * The projects on a globe: the same dots and circles as the flat map, on an
- * orthographic projection. It turns slowly until the visitor takes over
- * (drag, or the arrow keys when focused); picking a project swings it to the
- * front. Stays still for visitors who prefer reduced motion.
+ * orthographic projection. It turns slowly until the visitor takes over.
+ * Drag (or the arrow keys) to turn it; zoom with the buttons, a pinch, Ctrl
+ * or ⌘ and the scroll wheel, the plus and minus keys, or a double-click,
+ * which also turns toward the point; drag the bar underneath to make it
+ * bigger. Picking a project swings it to the front. Stays still for
+ * visitors who prefer reduced motion.
  */
 export default function FundingGlobe({
   ds,
@@ -67,27 +85,128 @@ export default function FundingGlobe({
   selected: number
   onSelect: (project: number) => void
 }) {
-  const [wrapRef, width] = useElementWidth<HTMLDivElement>()
+  const [measure, width] = useElementWidth<HTMLDivElement>()
+  const surface = useRef<HTMLDivElement | null>(null)
+  const surfaceRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      surface.current = node
+      measure(node)
+    },
+    [measure],
+  )
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const colors = useCanvasColors()
-  const height = Math.min(MAX_HEIGHT, Math.max(280, width))
+  const baseH = Math.min(MAX_HEIGHT, Math.max(280, width))
+  const maxH = Math.max(baseH, Math.min(Math.round(baseH * 2.2), MAX_DRAG_HEIGHT))
+  const [dragged, setDragged] = useState<number | null>(null)
+  const height = Math.min(maxH, Math.max(baseH, dragged ?? baseH))
+  /** The whole globe's radius at zoom 1: a taller box is a bigger globe. */
+  const R0 = Math.max(1, height / 2 - 14)
   const [hover, setHover] = useState<{ t: ProjectTotal; x: number; y: number } | null>(null)
 
   const sel = selected >= 0 ? ds.projects[selected] : null
-  const view = useRef(
+  const view = useRef<View>(
     sel && sel.lat != null && sel.lng != null
-      ? { lon: sel.lng, lat: clamp(sel.lat, -TILT_LIMIT, TILT_LIMIT) }
-      : { ...DEFAULT_VIEW },
+      ? { lon: sel.lng, lat: clamp(sel.lat, -TILT_LIMIT, TILT_LIMIT), z: 1 }
+      : { ...DEFAULT_VIEW, z: 1 },
   )
-  const target = useRef<{ lon: number; lat: number } | null>(null)
-  /** Turns until the visitor first turns it themselves. */
+  const target = useRef<View | null>(null)
+  /** Turns until the visitor first moves it themselves. */
   const spinning = useRef(true)
   const pointerInside = useRef(false)
-  const drag = useRef<{ x: number; y: number; lon: number; lat: number; moved: boolean } | null>(null)
   const marks = useRef<Mark[]>([])
   const selectedRef = useRef(selected)
-  /** Set by the drawing effect: redraw now / run the animation loop. */
-  const api = useRef<{ draw: () => void; kick: () => void }>({ draw: () => {}, kick: () => {} })
+  const kick = useRef<() => void>(() => {})
+  const [z, setZ] = useState(1)
+
+  const take = () => {
+    spinning.current = false
+    setHover(null)
+  }
+
+  const go = (next: View, animate: boolean) => {
+    const v = { lon: wrap(next.lon), lat: clamp(next.lat, -TILT_LIMIT, TILT_LIMIT), z: clamp(next.z, 1, MAX_ZOOM) }
+    if (animate) target.current = v
+    else {
+      target.current = null
+      view.current = v
+    }
+    setZ((prev) => (Math.abs(prev - v.z) < 0.001 ? prev : v.z))
+    kick.current()
+  }
+
+  /** The point on the globe under (x, y), or null off the edge. */
+  const pointAt = (x: number, y: number, v: View): { lon: number; lat: number } | null => {
+    const R = R0 * v.z
+    const px = (x - width / 2) / R
+    const py = -(y - height / 2) / R
+    const rho = Math.hypot(px, py)
+    if (rho > 1) return null
+    if (rho === 0) return { lon: v.lon, lat: v.lat }
+    const c = Math.asin(rho)
+    const phi0 = v.lat * RAD
+    const lat = Math.asin(Math.cos(c) * Math.sin(phi0) + (py * Math.sin(c) * Math.cos(phi0)) / rho)
+    const lon =
+      v.lon * RAD +
+      Math.atan2(px * Math.sin(c), rho * Math.cos(c) * Math.cos(phi0) - py * Math.sin(c) * Math.sin(phi0))
+    return { lon: lon / RAD, lat: lat / RAD }
+  }
+
+  /** Zoom by `f`; zooming in at a point also turns part of the way to it. */
+  const zoomAt = (f: number, x: number, y: number, animate: boolean) => {
+    take()
+    const v = target.current ?? view.current
+    const nz = clamp(v.z * f, 1, MAX_ZOOM)
+    const p = f > 1 ? pointAt(x, y, v) : null
+    const share = p ? 1 - v.z / nz : 0
+    go(
+      {
+        lon: p ? v.lon + wrap(p.lon - v.lon) * share : v.lon,
+        lat: p ? v.lat + (p.lat - v.lat) * share : v.lat,
+        z: nz,
+      },
+      animate,
+    )
+  }
+
+  const reset = () => {
+    take()
+    setDragged(null)
+    go({ ...DEFAULT_VIEW, z: 1 }, true)
+  }
+
+  const hit = (x: number, y: number): ProjectTotal | null => {
+    let best: Mark | null = null
+    for (const m of marks.current) {
+      const dx = m.x - x
+      const dy = m.y - y
+      if (dx * dx + dy * dy <= Math.max(m.r, 6) ** 2 && (!best || m.r < best.r)) best = m
+    }
+    return best?.t ?? null
+  }
+
+  const gestures = usePanZoom(surface, {
+    onPan: (dx, dy) => {
+      take()
+      const v = view.current
+      const R = R0 * v.z
+      go({ lon: v.lon - dx / R / RAD, lat: v.lat + dy / R / RAD, z: v.z }, false)
+    },
+    onZoom: (f, x, y, step) => zoomAt(f, x, y, step === true),
+    onTap: (x, y) => {
+      const t = hit(x, y)
+      if (t) {
+        // The globe is about to turn, so the card would point at nothing.
+        setHover(null)
+        onSelect(t.project)
+      }
+    },
+    onHover: (x, y) => {
+      const t = hit(x, y)
+      setHover((prev) => (t ? { t, x, y } : prev ? null : prev))
+    },
+    onLeave: () => setHover(null),
+  })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -100,15 +219,14 @@ export default function FundingGlobe({
     const ctx = canvas.getContext("2d")
     if (!ctx) return
     const cells = landCells()
-    const R = Math.max(0, Math.min(width, height) / 2 - 14)
     const cx = width / 2
     const cy = height / 2
-    const rScale = Math.max(0.5, R / 300)
-    const labelSet = new Set(placed.slice(0, LABELS).map((t) => t.project))
+    const rScale = Math.max(0.5, R0 / 300)
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
     const draw = () => {
       const v = view.current
+      const R = R0 * v.z
       const lam0 = v.lon * RAD
       const sinP0 = Math.sin(v.lat * RAD)
       const cosP0 = Math.cos(v.lat * RAD)
@@ -126,8 +244,9 @@ export default function FundingGlobe({
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // Land, in four depth bands so each band is one fill.
-      const cell = ((2 * Math.PI * R) / LAND_MASK.cols) * 0.24
+      // Land, in four depth bands so each band is one fill. Closer in, the
+      // dots stay small and spread apart (the grid is 1.5 degrees).
+      const cell = Math.min(MAX_DOT, ((2 * Math.PI * R) / LAND_MASK.cols) * 0.24)
       ctx.fillStyle = colors.muted
       for (let band = 0; band < 4; band++) {
         const lo = band / 4
@@ -143,6 +262,7 @@ export default function FundingGlobe({
           const x = cx + R * cosPhi * Math.sin(dl)
           const y = cy - R * (cosP0 * sinPhi - sinP0 * cosPhi * cosDl)
           const r = Math.max(0.5, cell * Math.sqrt(cosc))
+          if (x < -r || x > width + r || y < -r || y > height + r) continue
           ctx.moveTo(x + r, y)
           ctx.arc(x, y, r, 0, Math.PI * 2)
         }
@@ -151,8 +271,8 @@ export default function FundingGlobe({
       }
 
       // Projects, largest first so small ones stay on top.
+      const grow = Math.pow(v.z, 0.2)
       const next: Mark[] = []
-      const labels: { text: string; x: number; y: number; r: number }[] = []
       for (const t of placed) {
         const p = ds.projects[t.project]
         const phi = p.lat! * RAD
@@ -162,7 +282,8 @@ export default function FundingGlobe({
         if (cosc <= 0.02) continue
         const x = cx + R * Math.cos(phi) * Math.sin(dl)
         const y = cy - R * (cosP0 * Math.sin(phi) - sinP0 * Math.cos(phi) * cosDl)
-        const r = (3 + 24 * Math.sqrt(t.total / maxTotal)) * rScale * (0.55 + 0.45 * cosc)
+        const r = (3 + 24 * Math.sqrt(t.total / maxTotal)) * rScale * grow * (0.55 + 0.45 * cosc)
+        if (x < -r || x > width + r || y < -r || y > height + r) continue
         const isSel = t.project === selectedRef.current
         const fade = 0.35 + 0.65 * cosc
         ctx.beginPath()
@@ -174,185 +295,165 @@ export default function FundingGlobe({
         ctx.globalAlpha = (isSel ? 1 : 0.7) * fade
         ctx.lineWidth = isSel ? 2 : 1
         ctx.stroke()
-        next.push({ t, x, y, r })
-        if (cosc > 0.35 && labelSet.has(t.project)) {
-          const owner = ds.accounts[p.owner]
-          const name = owner?.name ?? p.title ?? ""
-          labels.push({ text: name.length > 28 ? `${name.slice(0, 27)}…` : name, x, y, r })
-        }
+        next.push({ t, x, y, r: cosc > 0.35 ? r : -r })
       }
-      marks.current = next
 
+      // Names of the largest projects facing us, where they don't collide.
       ctx.font = "600 11px Inter, system-ui, sans-serif"
       ctx.textBaseline = "middle"
       ctx.lineJoin = "round"
       ctx.lineWidth = 3
-      for (const l of labels) {
-        const fitsRight = l.x + l.r + 5 + ctx.measureText(l.text).width <= width
-        const tx = fitsRight ? l.x + l.r + 5 : l.x - l.r - 5
-        ctx.textAlign = fitsRight ? "left" : "right"
+      const limit = Math.min(20, Math.round(LABELS * Math.sqrt(v.z)))
+      const boxes: { l: number; r: number; t: number; b: number }[] = []
+      for (const m of next) {
+        if (boxes.length >= limit) break
+        // Near the edge (a negative radius marks it): no name.
+        if (m.r < 0) continue
+        const p = ds.projects[m.t.project]
+        const name = ds.accounts[p.owner]?.name ?? p.title ?? ""
+        if (!name) continue
+        const text = name.length > 28 ? `${name.slice(0, 27)}…` : name
+        const w = ctx.measureText(text).width
+        const right = m.x + m.r + 5 + w <= width
+        const tx = right ? m.x + m.r + 5 : m.x - m.r - 5
+        const box = { l: right ? tx : tx - w, r: right ? tx + w : tx, t: m.y - 8, b: m.y + 8 }
+        if (box.l < 0 || box.t < 0 || box.b > height) continue
+        if (boxes.some((o) => o.l < box.r + 4 && box.l < o.r + 4 && o.t < box.b && box.t < o.b)) continue
+        boxes.push(box)
+        ctx.textAlign = right ? "left" : "right"
         ctx.strokeStyle = colors.bg
         ctx.globalAlpha = 0.9
-        ctx.strokeText(l.text, tx, l.y)
+        ctx.strokeText(text, tx, m.y)
         ctx.fillStyle = colors.fg
         ctx.globalAlpha = 1
-        ctx.fillText(l.text, tx, l.y)
+        ctx.fillText(text, tx, m.y)
       }
       ctx.globalAlpha = 1
+      marks.current = next.map((m) => ({ ...m, r: Math.abs(m.r) }))
     }
 
     let raf = 0
     let last = 0
     let visible = true
     const tick = (now: number) => {
+      raf = 0
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0
       last = now
       const v = view.current
       let moving = false
       if (target.current) {
         const t = target.current
-        const dLon = ((((t.lon - v.lon) % 360) + 540) % 360) - 180
+        const dLon = wrap(t.lon - v.lon)
         const dLat = t.lat - v.lat
-        const k = reduceMotion ? 1 : 1 - Math.pow(0.002, dt)
-        v.lon += dLon * k
-        v.lat += dLat * k
-        if (Math.abs(dLon) < 0.05 && Math.abs(dLat) < 0.05) {
-          v.lon = t.lon
-          v.lat = t.lat
+        const a = reduceMotion ? 1 : 1 - Math.pow(0.002, dt)
+        v.lon = wrap(v.lon + dLon * a)
+        v.lat += dLat * a
+        v.z *= Math.pow(t.z / v.z, a)
+        if (Math.abs(dLon) < 0.05 && Math.abs(dLat) < 0.05 && Math.abs(t.z / v.z - 1) < 0.002) {
+          view.current = { ...t }
           target.current = null
         } else moving = true
-      } else if (spinning.current && !reduceMotion && !pointerInside.current && !drag.current) {
-        v.lon += SPIN_DEG_PER_S * dt
+      } else if (spinning.current && !reduceMotion && !pointerInside.current) {
+        v.lon = wrap(v.lon + SPIN_DEG_PER_S * dt)
         moving = true
       }
       draw()
-      raf = moving && visible ? requestAnimationFrame(tick) : 0
+      if (moving && visible) raf = requestAnimationFrame(tick)
+      else last = 0
     }
-    const kick = () => {
-      if (raf) return
-      last = 0
-      raf = requestAnimationFrame(tick)
+    kick.current = () => {
+      if (!raf) raf = requestAnimationFrame(tick)
     }
-    api.current = { draw, kick }
     const io = new IntersectionObserver(([entry]) => {
       visible = entry?.isIntersecting ?? true
-      if (visible) kick()
+      if (visible) kick.current()
     })
     io.observe(canvas)
     draw()
-    kick()
+    kick.current()
     return () => {
       cancelAnimationFrame(raf)
       io.disconnect()
-      api.current = { draw: () => {}, kick: () => {} }
+      kick.current = () => {}
     }
-  }, [width, height, colors, placed, maxTotal, ds])
+  }, [width, height, R0, colors, placed, maxTotal, ds])
 
   // A project picked elsewhere (the map, the tiles) swings to the front.
   useEffect(() => {
     selectedRef.current = selected
     const p = selected >= 0 ? ds.projects[selected] : null
     if (p && p.lat != null && p.lng != null) {
-      target.current = { lon: p.lng, lat: clamp(p.lat, -TILT_LIMIT, TILT_LIMIT) }
+      target.current = {
+        lon: p.lng,
+        lat: clamp(p.lat, -TILT_LIMIT, TILT_LIMIT),
+        z: (target.current ?? view.current).z,
+      }
       spinning.current = false
     }
-    api.current.kick()
-    api.current.draw()
+    kick.current()
   }, [selected, ds])
 
-  const local = (e: PointerEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
-  }
-  const hit = (x: number, y: number): ProjectTotal | null => {
-    let best: Mark | null = null
-    for (const m of marks.current) {
-      const dx = m.x - x
-      const dy = m.y - y
-      if (dx * dx + dy * dy <= Math.max(m.r, 6) ** 2 && (!best || m.r < best.r)) best = m
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const from = target.current ?? view.current
+    const turn = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, 12], ArrowDown: [0, -12] }[e.key]
+    if (turn) {
+      e.preventDefault()
+      take()
+      go({ lon: from.lon + turn[0] / from.z, lat: from.lat + turn[1] / from.z, z: from.z }, true)
+    } else if (e.key === "+" || e.key === "=") {
+      e.preventDefault()
+      zoomAt(2, width / 2, height / 2, true)
+    } else if (e.key === "-" || e.key === "_") {
+      e.preventDefault()
+      zoomAt(0.5, width / 2, height / 2, true)
+    } else if (e.key === "0") {
+      e.preventDefault()
+      reset()
     }
-    return best?.t ?? null
   }
-  const R = Math.max(1, Math.min(width, height) / 2 - 14)
 
+  const closer = z > 1.001 || height > baseH
   return (
-    <div
-      ref={wrapRef}
-      className="funding-globe"
-      style={{ height }}
-      tabIndex={0}
-      role="group"
-      aria-label="Globe of funded projects. Drag, or use the arrow keys, to turn it."
-      onPointerEnter={() => {
-        pointerInside.current = true
-      }}
-      onPointerLeave={() => {
-        pointerInside.current = false
-        setHover(null)
-        api.current.kick()
-      }}
-      onPointerDown={(e) => {
-        const { x, y } = local(e)
-        drag.current = { x, y, lon: view.current.lon, lat: view.current.lat, moved: false }
-        e.currentTarget.setPointerCapture(e.pointerId)
-      }}
-      onPointerMove={(e) => {
-        const { x, y } = local(e)
-        const d = drag.current
-        if (d) {
-          const dx = x - d.x
-          const dy = y - d.y
-          if (!d.moved && dx * dx + dy * dy < 16) return
-          if (!d.moved) {
-            d.moved = true
-            spinning.current = false
-            target.current = null
-            setHover(null)
-          }
-          view.current.lon = d.lon - dx / R / RAD
-          view.current.lat = clamp(d.lat + dy / R / RAD, -TILT_LIMIT, TILT_LIMIT)
-          api.current.draw()
-          return
-        }
-        const t = hit(x, y)
-        setHover(t ? { t, x, y } : null)
-      }}
-      onPointerUp={(e) => {
-        const d = drag.current
-        drag.current = null
-        if (d && !d.moved) {
-          const { x, y } = local(e)
-          const t = hit(x, y)
-          if (t) {
-            // The globe is about to turn, so the card would point at nothing.
-            setHover(null)
-            onSelect(t.project)
-          }
-        }
-      }}
-      onPointerCancel={() => {
-        drag.current = null
-      }}
-      onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
-        const step = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, 12], ArrowDown: [0, -12] }[e.key]
-        if (!step) return
-        e.preventDefault()
-        setHover(null)
-        spinning.current = false
-        const from = target.current ?? view.current
-        target.current = {
-          lon: from.lon + step[0],
-          lat: clamp(from.lat + step[1], -TILT_LIMIT, TILT_LIMIT),
-        }
-        api.current.kick()
-      }}
-    >
-      <canvas
-        ref={canvasRef}
-        role="img"
-        aria-label={`Globe of ${formatCount(placed.length)} funded projects, sized by money received.`}
-      />
-      {hover ? <FundingProjectTip ds={ds} t={hover.t} x={hover.x} y={hover.y} width={width} /> : null}
+    <div className="funding-map-wrap">
+      <div className="funding-map funding-map--globe">
+        <div
+          ref={surfaceRef}
+          className="funding-map__surface"
+          style={{ height, touchAction: closer ? "none" : "pan-y", cursor: hover ? "pointer" : undefined }}
+          tabIndex={0}
+          role="group"
+          aria-label="Globe of funded projects. Drag or use the arrow keys to turn it; zoom with the buttons, the plus and minus keys, or a pinch."
+          onPointerEnter={() => {
+            pointerInside.current = true
+          }}
+          onKeyDown={onKeyDown}
+          {...gestures}
+          onPointerLeave={() => {
+            pointerInside.current = false
+            gestures.onPointerLeave()
+            kick.current()
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            role="img"
+            aria-label={`Globe of ${formatCount(placed.length)} funded projects, sized by money received.`}
+          />
+          {hover ? <FundingProjectTip ds={ds} t={hover.t} x={hover.x} y={hover.y} width={width} /> : null}
+        </div>
+        <MapZoomControls
+          label="globe"
+          onZoomIn={() => zoomAt(2, width / 2, height / 2, true)}
+          onZoomOut={() => zoomAt(0.5, width / 2, height / 2, true)}
+          onReset={reset}
+          canZoomIn={z < MAX_ZOOM - 0.001}
+          canZoomOut={z > 1.001}
+          canReset={closer}
+        />
+      </div>
+      {width > 0 ? (
+        <MapResizeHandle label="Globe" height={height} min={baseH} max={maxH} onResize={setDragged} />
+      ) : null}
     </div>
   )
 }
