@@ -23,6 +23,9 @@
 @import "./styles/explore.css";
 @import "./styles/funding-form.css";
 @import "./styles/funding.css";
+@import "./styles/map.css";
+@import "./styles/map-countries.css";
+@import "./styles/map-sites.css";
 @import "./styles/home.css";
 @import "./styles/records.css";
 @import "./styles/profile-groups.css";
