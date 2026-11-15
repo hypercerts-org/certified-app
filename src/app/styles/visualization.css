@@ -144,10 +144,57 @@
   background: var(--bg-sunken);
 }
 
-/* ---- Floating controls (top-left of the graph) ----
+/* ---- Beside the graph: its controls, then the stats ----
+   From 1100px one 320px column to the right of the graph, the controls on
+   top and the stats scrolling below them. Below 1100px the column dissolves
+   (display: contents): the controls move above the graph, the stats stay
+   under it. */
+.viz__side {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  min-width: 0;
+  min-height: 0;
+}
+
+.viz__side .viz__sidebar {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.viz__nav:empty {
+  display: none;
+}
+
+/* In the column the panel is part of the page: no float, no shadow. */
+.viz__nav .viz__controls {
+  position: static;
+  width: auto;
+  max-width: none;
+  background: var(--bg-elevated);
+  box-shadow: none;
+}
+
+@media (max-width: 1099px) {
+  .viz__side {
+    display: contents;
+  }
+
+  .viz__nav {
+    order: -1;
+  }
+
+  .viz__side .viz__sidebar {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- Controls ----
    One panel of labelled rows: find, Layout, Show, Lines, then the colour
    key in one line. Every control is the panel's width, so nothing is
-   piled up at three different widths. */
+   piled up at three different widths. Floats over the graph's top-left
+   only where there is no column for it (.viz__nav above). */
 .viz__controls {
   position: absolute;
   top: var(--space-3, 12px);
@@ -483,6 +530,7 @@
 /* ---- Stats sidebar ---- */
 .viz__sidebar {
   flex: 0 0 320px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-6, 24px);

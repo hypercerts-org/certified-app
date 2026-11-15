@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
@@ -63,6 +64,9 @@ interface EndorsementGraphProps {
   /** Emits the stats of the CURRENTLY-VISIBLE (filtered) graph so the
    *  sidebar can mirror the active scope/mutual filters. */
   onStats?: (stats: EndorsementGraphData) => void
+  /** Where the controls go: a slot beside the graph (Visualization), so
+   *  they never cover it. Without one they float over the graph. */
+  controlsHost?: HTMLElement | null
 }
 
 /**
@@ -269,7 +273,14 @@ function linkEndId(end: string | NodeObject<GraphNode> | undefined): string | nu
   return typeof end.id === "string" ? end.id : null
 }
 
-export default function EndorsementGraph({ nodes, links, focusReq, truncated = false, onStats }: EndorsementGraphProps) {
+export default function EndorsementGraph({
+  nodes,
+  links,
+  focusReq,
+  truncated = false,
+  onStats,
+  controlsHost,
+}: EndorsementGraphProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const fgRef = useRef<ForceGraphMethods<FGNode, FGLink> | undefined>(undefined)
   const colorsRef = useRef<ThemeColors | null>(null)
@@ -801,6 +812,135 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
     }
   }, [fullscreenTarget])
 
+  // One panel of labelled rows (find, layout, which accounts, which
+  // lines), the legend a one-line key at its foot.
+  const controls = (
+    <div className="viz__controls" role="group" aria-label="Graph controls">
+      <Combobox<GraphNode>
+        className="viz__search-wrap"
+        listboxClassName="viz__search-results"
+        value={search}
+        onValueChange={(v) => {
+          setSearch(v)
+          setSearchOpen(true)
+        }}
+        items={searchResults}
+        getItemKey={(n) => n.id}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onSelect={(n) => selectSearchResult(n.id)}
+        escapeStage="two-stage"
+        inputProps={{
+          className: "viz__search",
+          placeholder: "Find account",
+          "aria-label": "Find an account in the graph",
+        }}
+        liveStatus={{
+          searching: "Searching",
+          results: (n) => `${n} ${n === 1 ? "account" : "accounts"} found`,
+          empty: "No matching accounts",
+        }}
+        renderOption={({ item: n, highlighted, optionId, onHover, onSelect }) => (
+          <li
+            id={optionId}
+            role="option"
+            aria-selected={highlighted}
+            data-combobox-option
+            className={`viz__search-result${highlighted ? " viz__search-result--active" : ""}`}
+            onMouseEnter={onHover}
+            onMouseDown={onSelect}
+          >
+            <Avatar
+              src={n.avatarUrl || undefined}
+              size="sm"
+              fallbackInitials={getInitials(n.displayName, n.handle)}
+            />
+            <span className="viz__search-result-name">
+              <span className="viz__search-result-primary" dir="auto">
+                {n.displayName ||
+                  (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
+              </span>
+              {n.handle && n.displayName && (
+                <span className="viz__search-result-secondary">@{n.handle}</span>
+              )}
+            </span>
+          </li>
+        )}
+      />
+      <div className="viz__control-row">
+        <span className="viz__control-label" aria-hidden="true">
+          Layout
+        </span>
+        <SegmentedControl
+          className="viz__layout-toggle"
+          aria-label="Graph layout"
+          value={layout}
+          onValueChange={(v) => setLayout(v as LayoutMode)}
+          size="sm"
+          options={LAYOUT_OPTIONS}
+        />
+      </div>
+      <div className="viz__control-row">
+        <span className="viz__control-label" aria-hidden="true">
+          Show
+        </span>
+        <SegmentedControl
+          className="viz__scope-toggle"
+          aria-label="Show accounts"
+          value={evaluatorConnectedOnly ? "evaluator" : "everything"}
+          onValueChange={(v) => setEvaluatorConnectedOnly(v === "evaluator")}
+          size="sm"
+          options={[
+            { value: "evaluator", label: "Evaluator network" },
+            { value: "everything", label: "Everything" },
+          ]}
+        />
+      </div>
+      {/* Which lines the graph draws: the badge kinds, then "Mutual only",
+          all checkboxes (a state, not an action). The last checked kind
+          is disabled so at least one kind is always visible. */}
+      <div className="viz__control-row" role="group" aria-labelledby={linesLabelId}>
+        <span id={linesLabelId} className="viz__control-label">
+          Lines
+        </span>
+        <div className="viz__kind-row">
+          <Checkbox
+            label="Endorsements"
+            checked={showEndorsements}
+            disabled={showEndorsements && !showAwards}
+            onChange={(e) => setShowEndorsements(e.target.checked)}
+          />
+          <Checkbox
+            label="Awards"
+            checked={showAwards}
+            disabled={showAwards && !showEndorsements}
+            onChange={(e) => setShowAwards(e.target.checked)}
+          />
+          <Checkbox
+            label="Mutual only"
+            checked={onlyMutual}
+            onChange={(e) => setOnlyMutual(e.target.checked)}
+          />
+        </div>
+      </div>
+      {/* The key: what each line colour means, in one line. */}
+      <div className="viz__legend" aria-hidden="true">
+        <span className="viz__legend-row">
+          <span className="viz__legend-swatch viz__legend-swatch--uni" />
+          One-way
+        </span>
+        <span className="viz__legend-row">
+          <span className="viz__legend-swatch viz__legend-swatch--mutual" />
+          Mutual
+        </span>
+        <span className="viz__legend-row">
+          <span className="viz__legend-swatch viz__legend-swatch--award" />
+          Award
+        </span>
+      </div>
+    </div>
+  )
+
   return (
     <div ref={hostRef} className="viz__canvas-host">
       {graphMounted && (
@@ -835,132 +975,8 @@ export default function EndorsementGraph({ nodes, links, focusReq, truncated = f
         />
       )}
 
-      {/* controls: one panel of labelled rows (find, layout, which
-          accounts, which lines), the legend a one-line key at its foot. */}
-      <div className="viz__controls" role="group" aria-label="Graph controls">
-        <Combobox<GraphNode>
-          className="viz__search-wrap"
-          listboxClassName="viz__search-results"
-          value={search}
-          onValueChange={(v) => {
-            setSearch(v)
-            setSearchOpen(true)
-          }}
-          items={searchResults}
-          getItemKey={(n) => n.id}
-          open={searchOpen}
-          onOpenChange={setSearchOpen}
-          onSelect={(n) => selectSearchResult(n.id)}
-          escapeStage="two-stage"
-          inputProps={{
-            className: "viz__search",
-            placeholder: "Find account",
-            "aria-label": "Find an account in the graph",
-          }}
-          liveStatus={{
-            searching: "Searching",
-            results: (n) => `${n} ${n === 1 ? "account" : "accounts"} found`,
-            empty: "No matching accounts",
-          }}
-          renderOption={({ item: n, highlighted, optionId, onHover, onSelect }) => (
-            <li
-              id={optionId}
-              role="option"
-              aria-selected={highlighted}
-              data-combobox-option
-              className={`viz__search-result${highlighted ? " viz__search-result--active" : ""}`}
-              onMouseEnter={onHover}
-              onMouseDown={onSelect}
-            >
-              <Avatar
-                src={n.avatarUrl || undefined}
-                size="sm"
-                fallbackInitials={getInitials(n.displayName, n.handle)}
-              />
-              <span className="viz__search-result-name">
-                <span className="viz__search-result-primary" dir="auto">
-                  {n.displayName ||
-                    (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
-                </span>
-                {n.handle && n.displayName && (
-                  <span className="viz__search-result-secondary">@{n.handle}</span>
-                )}
-              </span>
-            </li>
-          )}
-        />
-        <div className="viz__control-row">
-          <span className="viz__control-label" aria-hidden="true">
-            Layout
-          </span>
-          <SegmentedControl
-            className="viz__layout-toggle"
-            aria-label="Graph layout"
-            value={layout}
-            onValueChange={(v) => setLayout(v as LayoutMode)}
-            size="sm"
-            options={LAYOUT_OPTIONS}
-          />
-        </div>
-        <div className="viz__control-row">
-          <span className="viz__control-label" aria-hidden="true">
-            Show
-          </span>
-          <SegmentedControl
-            className="viz__scope-toggle"
-            aria-label="Show accounts"
-            value={evaluatorConnectedOnly ? "evaluator" : "everything"}
-            onValueChange={(v) => setEvaluatorConnectedOnly(v === "evaluator")}
-            size="sm"
-            options={[
-              { value: "evaluator", label: "Evaluator network" },
-              { value: "everything", label: "Everything" },
-            ]}
-          />
-        </div>
-        {/* Which lines the graph draws: the badge kinds, then "Mutual only",
-            all checkboxes (a state, not an action). The last checked kind
-            is disabled so at least one kind is always visible. */}
-        <div className="viz__control-row" role="group" aria-labelledby={linesLabelId}>
-          <span id={linesLabelId} className="viz__control-label">
-            Lines
-          </span>
-          <div className="viz__kind-row">
-            <Checkbox
-              label="Endorsements"
-              checked={showEndorsements}
-              disabled={showEndorsements && !showAwards}
-              onChange={(e) => setShowEndorsements(e.target.checked)}
-            />
-            <Checkbox
-              label="Awards"
-              checked={showAwards}
-              disabled={showAwards && !showEndorsements}
-              onChange={(e) => setShowAwards(e.target.checked)}
-            />
-            <Checkbox
-              label="Mutual only"
-              checked={onlyMutual}
-              onChange={(e) => setOnlyMutual(e.target.checked)}
-            />
-          </div>
-        </div>
-        {/* The key: what each line colour means, in one line. */}
-        <div className="viz__legend" aria-hidden="true">
-          <span className="viz__legend-row">
-            <span className="viz__legend-swatch viz__legend-swatch--uni" />
-            One-way
-          </span>
-          <span className="viz__legend-row">
-            <span className="viz__legend-swatch viz__legend-swatch--mutual" />
-            Mutual
-          </span>
-          <span className="viz__legend-row">
-            <span className="viz__legend-swatch viz__legend-swatch--award" />
-            Award
-          </span>
-        </div>
-      </div>
+      {/* Beside the graph when there's a slot for them. */}
+      {controlsHost ? createPortal(controls, controlsHost) : controls}
 
       {/* zoom controls */}
       <div className="viz__zoom">

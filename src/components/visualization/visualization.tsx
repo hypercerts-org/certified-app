@@ -37,7 +37,8 @@ function GraphLoading() {
 }
 
 /**
- * The endorsement network: the graph plus its stats sidebar. Network →
+ * The endorsement network: the graph, and beside it its controls (find,
+ * layout, which accounts and lines) above the stats. Network →
  * Graph (`/graph`) hosts it `embedded`, inside its page container under the
  * Network tabs. Without `embedded` it takes the full-bleed page layout
  * (`.viz--page`: full shell width, viewport-tall on wide screens), which no
@@ -52,6 +53,9 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
   // component so the sidebar mirrors the active scope / mutual filters.
   // Falls back to the full graph until the first emit.
   const [statsGraph, setStatsGraph] = useState<EndorsementGraphData | null>(null)
+  // The graph's controls render here, beside it, not over it.
+  const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
+  const ready = !isLoading && !error && graph && graph.nodes.length > 0
 
   const handleFocus = useCallback((did: string) => {
     setFocusReq((prev) => ({ did, nonce: prev.nonce + 1 }))
@@ -90,14 +94,19 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
               focusReq={focusReq}
               truncated={graph.truncated}
               onStats={setStatsGraph}
+              controlsHost={controlsHost}
             />
           )}
         </div>
       </div>
 
-      {!isLoading && !error && graph && graph.nodes.length > 0 && (
-        <EndorsementStats graph={statsGraph ?? graph} onFocus={handleFocus} />
-      )}
+      {/* Beside the graph from 1100px: its controls, then the totals and
+          rankings. Below that the controls sit above the graph and the
+          stats under it (visualization.css). */}
+      <div className="viz__side">
+        <div ref={setControlsHost} className="viz__nav" />
+        {ready && <EndorsementStats graph={statsGraph ?? graph} onFocus={handleFocus} />}
+      </div>
     </div>
   )
 }
