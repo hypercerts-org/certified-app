@@ -751,6 +751,14 @@ One page pattern for every top-level page (November 2026 redesign). Build a page
 
 ---
 
+### 9.14 FactCard, ClampedText, ShareLinkButton
+
+Shared by the public pages (profiles, projects, activities), so they read as one product.
+
+- `<FactCard title action>` + `<FactList facts>` (`ui/fact-card.tsx`): the facts beside a page's main column (place, period, money, the people behind it). A bordered `--bg-elevated` card, no shadow, a small `text-ui` 600 title and an optional action on its right, then label/value rows (label `text-caption` muted above a `text-body-sm` value). On phones it sits in the reading order, full width.
+- `<ClampedText lines>` (`ui/clamped-text.tsx`): long text in place, cut by height to a few lines with a fade (a mask, so any backdrop shows through) and a left-aligned underlined "Read more" / "Show less" under it, shown only when the text is longer than the cut. Use it for descriptions instead of a "Read full description" button.
+- `<ShareLinkButton path what>` (`ui/share-link-button.tsx`): Share for every visitor, a secondary `sm` button that copies the page's absolute link and says "Link copied" in place.
+
 ## 10. Async states and copy
 
 ### 10.1 Loading, empty, error
