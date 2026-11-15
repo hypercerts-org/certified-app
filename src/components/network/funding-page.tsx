@@ -80,7 +80,8 @@ function FundingNote() {
   return (
     <aside className="funding-note-card" aria-label="About this data">
       <p>
-        <b>Note:</b> most receipts so far come from one funding round, run by Ma Earth. Running a funding program?{" "}
+        <b>Note:</b> most receipts so far come from one funding round, run by Ma Earth. As other programs run
+        theirs with Certified, they&apos;ll show here too. Running a funding program?{" "}
         <button type="button" className="funding-page__see-all" onClick={() => openFeedback("contact")}>
           Get in touch
         </button>

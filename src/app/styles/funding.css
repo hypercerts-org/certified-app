@@ -117,10 +117,10 @@
   gap: 16px 32px;
 }
 
-/* Why most receipts are Ma Earth's, and an invitation: three short lines
+/* Why most receipts are Ma Earth's, and an invitation: a few short lines
    beside the totals, under them on narrower screens. */
 .funding-note-card {
-  flex: 0 1 340px;
+  flex: 0 1 400px;
   padding: 10px 14px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
