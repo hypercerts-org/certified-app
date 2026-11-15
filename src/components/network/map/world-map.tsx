@@ -130,9 +130,14 @@ const SPHERE = { type: "Sphere" } as const
 /** Loaded imagery tiles by URL (a few hundred at most). */
 const tiles = new Map<string, HTMLImageElement>()
 
-function tile(url: string, onLoad: () => void): HTMLImageElement | null {
+/** A tile if loaded. Starts loading it only when `fetch` is still > 0 (it
+ *  counts down), so a flight across the world never queues hundreds of
+ *  tiles that the destination's then wait behind. */
+function tile(url: string, onLoad: () => void, fetch: { left: number }): HTMLImageElement | null {
   let img = tiles.get(url)
   if (!img) {
+    if (fetch.left <= 0) return null
+    fetch.left--
     if (tiles.size > 400) tiles.delete(tiles.keys().next().value as string)
     img = new Image()
     img.decoding = "async"
@@ -147,8 +152,12 @@ function tileUrl(template: string, z: number, x: number, y: number) {
   return template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y))
 }
 
-/** Satellite tiles under the layers; returns whether any were drawn. */
-function drawImagery(ctx: CanvasRenderingContext2D, v: View, w: number, h: number, onLoad: () => void): boolean {
+/** New tiles one frame may start loading. */
+const TILE_FETCH_PER_FRAME = 30
+
+/** Satellite tiles under the layers; returns whether any were drawn. While
+ *  the map is flying (`moving`) only tiles already loaded are drawn. */
+function drawImagery(ctx: CanvasRenderingContext2D, v: View, w: number, h: number, onLoad: () => void, moving: boolean): boolean {
   const s = flatScale(w, v.k)
   const z = Math.min(19, Math.round(Math.log2((2 * Math.PI * s) / 256)))
   if (z < IMAGERY_FROM) return false
@@ -160,12 +169,13 @@ function drawImagery(ctx: CanvasRenderingContext2D, v: View, w: number, h: numbe
   const labels = getOverlayTileConfig().url
   // Fade in over the first zoom level, so the switch isn't a jump.
   const fade = Math.min(1, Math.max(0, Math.log2((2 * Math.PI * s) / 256) - (IMAGERY_FROM - 0.5)))
+  const fetch = { left: moving ? 0 : TILE_FETCH_PER_FRAME }
   ctx.save()
   ctx.globalAlpha = fade
   for (const template of [base, labels]) {
     for (let ty = Math.max(0, Math.floor(cy - h / 2 / size)); ty <= Math.min(n - 1, Math.floor(cy + h / 2 / size)); ty++) {
       for (let tx = Math.floor(cx - w / 2 / size); tx <= Math.floor(cx + w / 2 / size); tx++) {
-        const img = tile(tileUrl(template, z, ((tx % n) + n) % n, ty), onLoad)
+        const img = tile(tileUrl(template, z, ((tx % n) + n) % n, ty), onLoad, fetch)
         if (!img) continue
         const x = w / 2 + (tx - cx) * size
         const y = h / 2 + (ty - cy) * size
@@ -304,7 +314,7 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
     path(land)
     ctx.fillStyle = c.land
     ctx.fill()
-    const imagery = kd === "flat" && drawImagery(ctx, v, w, h, () => redraw())
+    const imagery = kd === "flat" && drawImagery(ctx, v, w, h, () => redraw(), anim.current !== 0)
     ctx.beginPath()
     path(borders)
     ctx.strokeStyle = imagery ? c.halo : c.border
@@ -383,7 +393,12 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
         const lk = (1 - e) * (1 - e) * lk0 + 2 * (1 - e) * e * lkMid + e * e * lk1
         view.current = { lng: from.lng + dLng * e, lat: from.lat + (to.lat - from.lat) * e, k: Math.exp(lk) }
         paint()
-        anim.current = t < 1 ? requestAnimationFrame(step) : 0
+        if (t < 1) anim.current = requestAnimationFrame(step)
+        else {
+          anim.current = 0
+          // Arrived: draw once more, now loading the tiles for here.
+          redraw()
+        }
       }
       anim.current = requestAnimationFrame(step)
     },
