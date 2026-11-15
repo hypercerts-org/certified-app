@@ -1,0 +1,551 @@
+/* /map — Sites view (map-sites.tsx): a gallery of drawn areas beside the
+   map, each outline at its own scale. Marks, the hover card, the legend and
+   the "used by" chain come from map.css. */
+
+/* ---- Sort and filter ------------------------------------------------------ */
+
+.map-sites__tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-width: 0;
+  padding-block: 10px;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.map-sites__sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-sites__label {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.map-sites__filter-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.map-sites__filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.map-sites__filter {
+  flex-wrap: nowrap;
+}
+
+.map-sites__filter [role="radio"] {
+  white-space: nowrap;
+}
+
+/* On is inverted so the state reads at a glance, as on the Places chips. */
+.map-sites__filter [role="radio"][aria-checked="true"] {
+  background: var(--fg-primary);
+  border-color: var(--fg-primary);
+  color: var(--bg-elevated);
+}
+
+.map-sites__count {
+  margin-left: 6px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+
+/* Swatches for "used" (a solid edge) and "not used yet" (a dashed one). */
+.map-sites__sw {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius);
+  background: var(--map-land);
+}
+
+.map-sites__sw--used {
+  border: 1.5px solid var(--map-activity);
+  background: color-mix(in srgb, var(--map-activity) 18%, var(--map-land));
+}
+
+.map-sites__sw--unused {
+  border: 1.5px dashed var(--map-unused);
+}
+
+/* ---- What the gallery shows ------------------------------------------------ */
+
+.map-sites__read {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 12px;
+  color: var(--fg-muted);
+  font-size: var(--text-ui);
+}
+
+.map-sites__read b {
+  color: var(--fg-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-sites__hidden {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* ---- Gallery beside the map ------------------------------------------------- */
+
+/* The gallery stretches to the map column's height and scrolls inside it. */
+.map-sites__body {
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.map-sites__map {
+  min-width: 0;
+  align-self: start;
+}
+
+.map-sites__gallery {
+  position: relative;
+  min-width: 0;
+  min-height: 320px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.map-sites__scroll {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.map-sites__scroll:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.map-sites__section + .map-sites__section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-default);
+}
+
+.map-sites__country {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 2px 8px;
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-sites__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-sites__cell {
+  display: flex;
+  min-width: 0;
+}
+
+/* ---- A tile ------------------------------------------------------------------ */
+
+.map-sites__tile {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .map-sites__tile:hover {
+    border-color: var(--border-control);
+  }
+}
+
+.map-sites__tile--hot {
+  border-color: var(--border-control);
+}
+
+.map-sites__tile--open,
+.map-sites__tile--open:hover {
+  border-color: var(--fg-primary);
+}
+
+.map-sites__tile--open .map-sites__cap {
+  background: var(--bg-selected);
+}
+
+.map-sites__tile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.map-sites__fig {
+  position: relative;
+  display: block;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--map-land);
+}
+
+.map-sites__tile--hidden .map-sites__fig {
+  background: var(--bg-sunken);
+}
+
+.map-sites__fig svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.map-sites__shape {
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  fill-rule: evenodd;
+  fill-opacity: 0.16;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-sites__shape--activity {
+  fill: var(--map-activity);
+  stroke: var(--map-activity);
+}
+
+.map-sites__shape--project {
+  fill: var(--map-project);
+  stroke: var(--map-project);
+}
+
+.map-sites__shape--org {
+  fill: var(--map-org);
+  stroke: var(--map-org);
+}
+
+.map-sites__shape--unused {
+  fill: var(--map-unused);
+  fill-opacity: 0.12;
+  stroke: var(--map-unused);
+  stroke-dasharray: 3 2;
+}
+
+/* A part too small to see at the tile's scale: a ring around where it is. */
+.map-sites__dot {
+  fill-opacity: 0.35;
+  stroke-dasharray: none;
+}
+
+/* The scale bar: its length is a share of the tile's width. */
+.map-sites__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.map-sites__bar-line {
+  flex: none;
+  height: 4px;
+  margin-left: 8px;
+  border: 1px solid currentcolor;
+  border-top: 0;
+}
+
+/* ×n: the same outline saved n times. */
+.map-sites__x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--fg-primary);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-sites__x--inline {
+  position: static;
+  display: inline-block;
+}
+
+/* Why a usually hidden tile was hidden. */
+.map-sites__why {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 0 4px;
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.map-sites__cap {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px 8px;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.map-sites__name {
+  display: -webkit-box;
+  min-height: 2.7em;
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.map-sites__name--none {
+  color: var(--fg-muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.map-sites__meta,
+.map-sites__who {
+  overflow: hidden;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-sites__who {
+  color: var(--fg-muted);
+}
+
+.map-sites__use {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+}
+
+.map-sites__use > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-sites__plus {
+  flex: none;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- The picked site's details, under its row -------------------------------- */
+
+.map-sites__detail {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.map-sites__card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 14px 14px;
+  border: 1px solid var(--fg-primary);
+  border-radius: var(--radius);
+  background: var(--bg-canvas);
+}
+
+.map-sites__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.map-sites__nav {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-right: -6px;
+}
+
+.map-sites__title {
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.map-sites__size {
+  color: var(--fg-secondary);
+  font-size: var(--text-ui);
+}
+
+.map-sites__size b {
+  color: var(--fg-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-sites__by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+.map-sites__who-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--fg-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-hover);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .map-sites__who-link:hover {
+    text-decoration-color: currentcolor;
+  }
+}
+
+.map-sites__card .map-sites__label {
+  margin-top: 4px;
+}
+
+.map-sites__card-head .map-sites__label {
+  margin-top: 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-sites__note {
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+
+/* ---- Empty and hidden ----------------------------------------------------------- */
+
+.map-sites__empty {
+  padding: 16px 6px;
+  color: var(--fg-muted);
+  font-size: var(--text-body-sm);
+}
+
+.map-sites__more {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+/* ---- Phones and tablets ------------------------------------------------------------ */
+
+/* Below desktop the map comes first, the gallery under it. */
+@media (max-width: 1099px) {
+  .map-sites__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-sites__map {
+    order: -1;
+  }
+
+  .map-sites__gallery {
+    min-height: 0;
+  }
+
+  .map-sites__scroll {
+    position: static;
+    max-height: 70vh;
+  }
+}
+
+@media (max-width: 799px) {
+  .map-sites__grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .map-sites__read {
+    font-size: var(--text-caption);
+  }
+}

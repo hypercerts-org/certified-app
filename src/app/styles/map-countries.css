@@ -1,0 +1,648 @@
+/* /map — Countries view (map-countries.tsx).
+   Each country shaded by a count, region totals and a ranked table beside
+   the map; a picked country turns the panel into that country. */
+
+/* The counted kind's hue, for the legend steps and the table. */
+.map-cx--activity {
+  --cx-hue: var(--map-activity);
+}
+
+.map-cx--project {
+  --cx-hue: var(--map-project);
+}
+
+.map-cx--org {
+  --cx-hue: var(--map-org);
+}
+
+/* ---- What to count, and the legend ---------------------------------------- */
+
+.map-cx__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding-block: 10px;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* Scrolls sideways on a phone instead of widening the page. */
+.map-cx__measure {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.map-cx__measure::-webkit-scrollbar {
+  display: none;
+}
+
+.map-cx__measure [role="radio"] {
+  white-space: nowrap;
+}
+
+.map-cx__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-height: 32px;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+.map-cx__legend-label {
+  color: var(--fg-secondary);
+}
+
+.map-cx__legend--marks {
+  gap: 6px 16px;
+}
+
+.map-cx__legend--marks > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-cx__steps {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-cx__steps li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  font-size: var(--text-label);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The same mixes the canvas paints (STEP_PAINT in countries-view.ts): the
+   hue over the land, then the ink over the hue. */
+.map-cx__step {
+  display: block;
+  width: 34px;
+  height: 10px;
+  border-radius: var(--radius);
+}
+
+.map-cx__step--zero {
+  background: var(--map-land);
+  outline: 1px solid var(--border-hover);
+  outline-offset: -1px;
+}
+
+.map-cx__step--0 {
+  background: color-mix(in srgb, var(--cx-hue) 45%, var(--map-land));
+}
+
+.map-cx__step--1 {
+  background: color-mix(in srgb, var(--cx-hue) 72%, var(--map-land));
+}
+
+.map-cx__step--2 {
+  background: var(--cx-hue);
+}
+
+.map-cx__step--3 {
+  background: color-mix(in srgb, var(--fg-primary) 25%, var(--cx-hue));
+}
+
+.map-cx__step--4 {
+  background: color-mix(in srgb, var(--fg-primary) 50%, var(--cx-hue));
+}
+
+/* ---- Map and panel ---------------------------------------------------------- */
+
+.map-cx__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.map-cx__map {
+  min-width: 0;
+}
+
+/* In the map's top-left corner while a country is open. */
+.map-cx__note {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: var(--z-local-raise);
+  max-width: min(320px, calc(100% - 72px));
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+/* The hover card turns away from the map's right and bottom edges (it is
+   anchored to that edge then, see map-countries.tsx). */
+.map-tip.map-cx__tip--left {
+  transform: translate(-12px, 12px);
+}
+
+.map-tip.map-cx__tip--up {
+  transform: translate(12px, -12px);
+}
+
+.map-tip.map-cx__tip--left.map-cx__tip--up {
+  transform: translate(-12px, -12px);
+}
+
+/* As tall as the map and its drag bar (--cx-h, set inline). */
+.map-cx__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: calc(var(--cx-h, 600px) + 16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.map-cx__head {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-cx__back {
+  margin: -4px 0 4px -10px;
+}
+
+.map-cx__eyebrow {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.map-cx__title {
+  margin: 0;
+  color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+/* Focus lands on the heading so screen readers announce the country; it
+   isn't a control, so it gets no ring. */
+.map-cx__title:focus {
+  outline: none;
+}
+
+.map-cx__sub {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+
+/* ---- Regions ------------------------------------------------------------------ */
+
+.map-cx__regions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-cx__region {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.map-cx__region-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-label);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-cx__region b {
+  color: var(--fg-primary);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-cx__region i {
+  display: block;
+  width: var(--w, 0%);
+  min-width: 2px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--cx-hue);
+}
+
+.map-cx__region[aria-pressed="true"] {
+  background: var(--bg-selected);
+}
+
+.map-cx__region[aria-pressed="true"] .map-cx__region-name {
+  color: var(--fg-primary);
+}
+
+@media (hover: hover) {
+  .map-cx__region[aria-pressed="false"]:hover {
+    background: var(--bg-raised);
+  }
+}
+
+.map-cx__region:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* ---- The table --------------------------------------------------------------- */
+
+.map-cx__table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.map-cx__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-ui);
+}
+
+.map-cx__col-rank {
+  width: 44px;
+}
+
+.map-cx__col-n {
+  width: 54px;
+}
+
+.map-cx__table th,
+.map-cx__table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.map-cx__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-local-raise);
+  padding-block: 4px;
+  border-bottom-color: var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.map-cx__table th.map-cx__rank {
+  padding-left: 12px;
+  padding-right: 0;
+}
+
+.map-cx__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  margin-left: -4px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.map-cx__sort--num {
+  margin-left: auto;
+  margin-right: -4px;
+}
+
+.map-cx__num .map-cx__sort {
+  display: flex;
+}
+
+.map-cx__sort[aria-pressed="true"] {
+  color: var(--fg-primary);
+}
+
+.map-cx__sort-arrow {
+  visibility: hidden;
+}
+
+.map-cx__sort[aria-pressed="true"] .map-cx__sort-arrow {
+  visibility: visible;
+}
+
+@media (hover: hover) {
+  .map-cx__sort:hover {
+    color: var(--fg-primary);
+  }
+}
+
+.map-cx__sort:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.map-cx__table tbody tr {
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.map-cx__table tbody tr.is-hot,
+.map-cx__table tbody tr:focus-within {
+  background: var(--bg-raised);
+}
+
+@media (hover: hover) {
+  .map-cx__table tbody tr:hover,
+  .map-cx__table tfoot tr:hover {
+    background: var(--bg-raised);
+  }
+}
+
+td.map-cx__rank {
+  padding-left: 12px;
+  padding-right: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-cx__name {
+  min-width: 0;
+}
+
+.map-cx__name button {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.map-cx__name button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.map-cx__name small {
+  display: block;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: var(--text-label);
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-cx__table .map-cx__num {
+  color: var(--fg-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-cx__table td.map-cx__num.is-on {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.map-cx__zero {
+  opacity: 0.5;
+}
+
+/* No country: pinned under the table. */
+.map-cx__table tfoot td {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--border-hover);
+  border-bottom: 0;
+  background: var(--bg-elevated);
+  cursor: pointer;
+}
+
+/* ---- One country --------------------------------------------------------------- */
+
+.map-cx__prec {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-cx__prec th,
+.map-cx__prec td {
+  padding: 5px 16px 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-weight: 400;
+  text-align: right;
+}
+
+.map-cx__prec th:first-child {
+  padding-left: 16px;
+  text-align: left;
+}
+
+.map-cx__prec thead th {
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.map-cx__prec tbody th {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-secondary);
+}
+
+.map-cx__prec tbody td {
+  color: var(--fg-muted);
+}
+
+.map-cx__prec tr.is-on th,
+.map-cx__prec tr.is-on td {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+.map-cx__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.map-cx__group-head {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-local-raise);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.map-cx__group-n {
+  color: var(--fg-primary);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
+.map-cx__group-head small {
+  margin-left: auto;
+  font-size: var(--text-label);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.map-cx__entries {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 8px 12px;
+  list-style: none;
+}
+
+.map-cx__entries > li {
+  min-width: 0;
+}
+
+.map-cx__entries .map-chain__nested {
+  margin-left: 14px;
+}
+
+.map-cx__item {
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.map-cx__item.is-on {
+  background: var(--bg-selected);
+}
+
+@media (hover: hover) {
+  .map-cx__item:hover {
+    background: var(--bg-raised);
+  }
+
+  .map-cx__item.is-on:hover {
+    background: var(--bg-selected);
+  }
+}
+
+.map-cx__more {
+  display: flex;
+  justify-content: center;
+  padding: 0 12px 12px;
+}
+
+.map-cx__empty {
+  margin: 0;
+  padding: 16px;
+  color: var(--fg-muted);
+  font-size: var(--text-body-sm);
+}
+
+/* ---- Tablets and phones: the panel under the map ------------------------------ */
+
+@media (max-width: 1099px) {
+  .map-cx__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-cx__panel {
+    height: auto;
+  }
+
+  .map-cx__table-wrap,
+  .map-cx__list {
+    max-height: 70vh;
+  }
+}
+
+@media (max-width: 799px) {
+  .map-cx__legend {
+    width: 100%;
+  }
+
+  .map-cx__head {
+    padding-inline: 12px;
+  }
+
+  .map-cx__regions {
+    padding-inline: 6px;
+  }
+
+  .map-cx__step {
+    width: 28px;
+  }
+}

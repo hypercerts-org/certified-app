@@ -207,6 +207,19 @@
   /* Badges */
   --badge-success-bg: #e8f5e9;
   --badge-success-fg: #1b7a3d;
+
+  /* Map (/map): the basemap and one hue per layer. The layer hues are a
+     categorical set checked for colour-blind separation (blue, orange,
+     aqua) and each also has its own shape on the map, so none rests on
+     colour alone: activity dot, project ring, organization square, place
+     not used yet a grey hollow circle. */
+  --map-sea: #e9e9e7;
+  --map-land: #ffffff;
+  --map-border: #dcdcd8;
+  --map-activity: #2a78d6;
+  --map-project: #eb6834;
+  --map-org: #1baf7a;
+  --map-unused: #8a8486;
   --badge-warning-bg: #fff3e0;
   --badge-warning-fg: #8a5700; /* 5.56:1 on --badge-warning-bg (was 3.63) */
   --badge-neutral-bg: #f5f5f5;
@@ -462,6 +475,15 @@
   /* Badges */
   --badge-success-bg: rgba(46, 204, 113, 0.15);
   --badge-success-fg: #6ee7a7;
+
+  /* Map: the same hues stepped for the dark surface. */
+  --map-sea: #111114;
+  --map-land: #2a2a30;
+  --map-border: #3a3a42;
+  --map-activity: #3987e5;
+  --map-project: #d95926;
+  --map-org: #199e70;
+  --map-unused: #8b8b93;
   --badge-warning-bg: rgba(245, 166, 35, 0.15);
   --badge-warning-fg: #fbbf24;
   --badge-neutral-bg: rgba(255, 255, 255, 0.06);

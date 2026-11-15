@@ -55,27 +55,38 @@ test.describe("routing invariants", () => {
     await expect(page).not.toHaveURL(/\/groups$/)
   })
 
-  test("an unresolvable handle settles into 'Profile not found'", async ({
+  // `/{actor}` is a catch-all, so every unknown top-level path lands on the
+  // actor route. What matters is that it FAILS CLOSED: it must reach a
+  // not-found page rather than spin forever or throw. Which one depends on
+  // the path (src/app/not-found.tsx): only a path that reads as an account
+  // (a handle, which has a dot, or a DID) is a missing profile.
+  //
+  // Role-scoped headings: the miss is signalled by throwing, so the literal
+  // string also appears in Next's dev error overlay and in the source frame
+  // it prints. No console-error assertion for the same reason: dev mode
+  // surfaces the throw in the overlay even though the UI handled it.
+
+  test("a path that isn't a handle gets the generic 'Page not found'", async ({
     page,
   }) => {
-    // There is no 404 here to assert: `/{actor}` is a catch-all, so any
-    // unknown top-level path is treated as a handle and resolved at
-    // runtime. What matters is that resolution FAILS CLOSED — it must
-    // reach the empty state rather than spin forever or throw.
-    await page.goto("/this-handle-does-not-exist", {
+    await page.goto("/this-page-does-not-exist", {
       waitUntil: "domcontentloaded",
     })
+    await expect(
+      page.getByRole("heading", { name: /page not found/i }),
+    ).toBeVisible({ timeout: 20_000 })
+  })
 
-    // Role-scoped: the resolver signals the miss by throwing, so the
-    // literal string also appears in Next's dev error overlay and in the
-    // source frame it prints. Only the rendered heading is the assertion.
+  test("a handle that can't exist settles into 'Profile not found'", async ({
+    page,
+  }) => {
+    // Handle-shaped (it has a dot) but not valid handle syntax (the
+    // underscore), so it is missing without a network lookup and the test
+    // doesn't depend on the appView, DNS or the indexer being reachable.
+    await page.goto("/no_such.handle", { waitUntil: "domcontentloaded" })
     await expect(
       page.getByRole("heading", { name: /profile not found/i }),
     ).toBeVisible({ timeout: 20_000 })
-
-    // No console-error assertion here on purpose: the not-found path is
-    // implemented as throw-and-catch, so dev-mode surfaces it in the
-    // overlay even though the UI handled it correctly.
   })
 })
 

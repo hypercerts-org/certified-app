@@ -1,0 +1,518 @@
+/* ==========================================================================
+   /map — where the work happens
+   The page (stats, view and projection switches), the shared map frame,
+   and the Places view (layer chips, list, map). The Countries and Sites
+   views add their own blocks below.
+   ========================================================================== */
+
+.map-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--fg-muted);
+  font-size: var(--text-body-sm);
+}
+
+.map-page__stats {
+  margin-top: 4px;
+}
+
+.map-page__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.map-page__blurb {
+  margin-top: 10px;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.map-page__view {
+  margin-top: 16px;
+}
+
+.map-page__note {
+  margin-top: 12px;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+/* ---- The map frame (world-map.tsx) -------------------------------------- */
+
+/* Not clipped: a hover card may reach past the edge. The zoom buttons
+   (.funding-map-controls) and the drag bar (.funding-map-resize) are
+   shared with /funding. */
+.world-map {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--map-sea);
+}
+
+.world-map__surface {
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.world-map__surface:active {
+  cursor: grabbing;
+}
+
+.world-map__surface--pointing,
+.world-map__surface--pointing:active {
+  cursor: pointer;
+}
+
+.world-map__surface:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.world-map__canvas {
+  display: block;
+}
+
+.world-map__credit {
+  position: absolute;
+  left: 8px;
+  bottom: 22px;
+  max-width: calc(100% - 16px);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--fg-muted);
+  font-size: var(--text-micro);
+  pointer-events: none;
+}
+
+@media (max-width: 799px) {
+  .world-map__credit {
+    position: static;
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: 0;
+  }
+}
+
+/* A small card that follows the pointer over a mark. */
+.map-tip {
+  position: absolute;
+  z-index: var(--z-popover);
+  display: grid;
+  gap: 2px;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+  color: var(--fg-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  pointer-events: none;
+  transform: translate(12px, 12px);
+}
+
+.map-tip b {
+  color: var(--fg-primary);
+  font-weight: 600;
+}
+
+/* ---- Marks as HTML (chips, legend, list rows) --------------------------- */
+
+.map-swatch {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.map-swatch--activity::before,
+.map-swatch--ringdot::before,
+.map-swatch--project::before,
+.map-swatch--org::before,
+.map-swatch--unused::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.map-swatch--activity::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--map-activity);
+}
+
+.map-swatch--project::before {
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid var(--map-project);
+  border-radius: 50%;
+}
+
+.map-swatch--ringdot::before {
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid var(--map-project);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--map-activity) 0 2.5px, transparent 3px);
+}
+
+.map-swatch--org::before {
+  width: 9px;
+  height: 9px;
+  background: var(--map-org);
+}
+
+.map-swatch--unused::before {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--map-unused);
+  border-radius: 50%;
+}
+
+.map-swatch--disc {
+  border: 1px dashed var(--map-activity);
+  border-radius: 50%;
+  background: var(--map-land);
+}
+
+.map-swatch--hatch {
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  background: repeating-linear-gradient(135deg, var(--fg-muted) 0 1px, transparent 1px 4px);
+}
+
+.map-swatch--area {
+  border: 1.5px solid var(--map-activity);
+  border-radius: var(--radius);
+  background: var(--map-land);
+}
+
+/* ---- Places: layer chips ------------------------------------------------- */
+
+.map-browse__chips {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding-block: 10px;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.map-browse__label {
+  flex: none;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.map-browse__chips-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.map-browse__chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.map-chips {
+  flex-wrap: nowrap;
+}
+
+.map-chips button {
+  white-space: nowrap;
+}
+
+/* On is inverted so the state reads at a glance; off stays outlined. The
+   swatch keeps its colour on both. */
+.map-chips button[aria-pressed="true"] {
+  background: var(--fg-primary);
+  border-color: var(--fg-primary);
+  color: var(--bg-elevated);
+}
+
+.map-chips__count {
+  margin-left: 6px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+
+/* ---- Places: list beside the map ----------------------------------------- */
+
+.map-browse__body {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.map-browse__map {
+  min-width: 0;
+}
+
+.map-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.map-list__tools {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-list__toolrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: var(--text-caption);
+}
+
+.map-list__count {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* As tall as the map beside it (--map-list-max, set inline). */
+.map-list__scroll {
+  max-height: var(--map-list-max, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.map-list__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-list__empty,
+.map-list__note {
+  padding: 16px 12px;
+  font-size: var(--text-body-sm);
+  color: var(--fg-muted);
+}
+
+.map-list__note {
+  padding-top: 8px;
+  font-size: var(--text-caption);
+}
+
+.map-list__more {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+.map-row {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.map-row__head {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.map-row__head .map-swatch {
+  margin-top: 3px;
+}
+
+@media (hover: hover) {
+  .map-row__head:hover {
+    background: var(--bg-raised);
+  }
+}
+
+.map-row__head:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.map-row--open .map-row__head {
+  background: var(--bg-selected);
+}
+
+.map-row__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.map-row__title {
+  overflow: hidden;
+  color: var(--fg-primary);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-row__meta,
+.map-row__counts {
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.map-prec {
+  color: var(--fg-secondary);
+}
+
+.map-row__body {
+  padding: 4px 12px 12px 36px;
+}
+
+/* What is at a spot, as a chain: projects with their activities nested. */
+.map-chain {
+  display: grid;
+  gap: 8px;
+}
+
+.map-chain__group {
+  display: grid;
+  gap: 6px;
+}
+
+.map-chain__nested {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 9px;
+  border-left: 1px solid var(--border-default);
+  list-style: none;
+}
+
+.map-chain__nested > li {
+  padding-left: 10px;
+}
+
+.map-chain__item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.map-chain__item .map-swatch {
+  margin-top: 3px;
+}
+
+.map-chain__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.map-chain__title {
+  color: var(--fg-primary);
+  font-size: var(--text-ui);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--border-hover);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  .map-chain__title:hover {
+    text-decoration-color: currentcolor;
+  }
+}
+
+.map-chain__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+.map-chain__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--fg-secondary);
+}
+
+.map-chain__base {
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-default);
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+/* ---- Legend under the map ------------------------------------------------ */
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 10px;
+  color: var(--fg-muted);
+  font-size: var(--text-caption);
+}
+
+.map-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- Phones and tablets ---------------------------------------------------- */
+
+/* Below desktop the map comes first, the list under it. */
+@media (max-width: 1099px) {
+  .map-browse__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-browse__map {
+    order: -1;
+  }
+
+  .map-list__scroll {
+    max-height: 70vh;
+  }
+}
