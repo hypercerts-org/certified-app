@@ -35,6 +35,7 @@ import type { Organization } from "@/lib/organizations";
 export type Account = {
   did: string;
   name: string;
+  handle: string | null;
   avatarUrl: string | null;
   profile: ProfileFields;
 };
@@ -315,9 +316,16 @@ function AccountMenuContent({ account, onNavigate }: { account: Account; onNavig
     <div className="menu-list">
       <div className="menu-row menu-row-static">
         <Avatar name={account.name} src={account.avatarUrl} size="md" />
-        <Text as="span" tone="ink" className="ellipsis">
-          <ProfileName did={account.did} rendered={account.profile} />
-        </Text>
+        <span className="menu-row-text">
+          <Text as="span" tone="ink" className="ellipsis account-name">
+            <ProfileName did={account.did} rendered={account.profile} />
+          </Text>
+          {account.handle && (
+            <Text as="span" size="body-sm" tone="muted" className="ellipsis">
+              @{account.handle}
+            </Text>
+          )}
+        </span>
       </div>
       <Link href={actorHref(account.did)} className="menu-row" onClick={onNavigate}>
         <UserRound size={16} aria-hidden />
@@ -341,9 +349,14 @@ function DesktopAccountMenu({ account }: { account: Account }) {
     <Popover open={open} onOpenChange={setOpen} className="desktop-only">
       <PopoverTrigger className="account-button" aria-label={`${account.name}, account menu`}>
         <Avatar name={account.name} src={account.avatarUrl} size="sm" />
-        <Text as="span" size="body-sm" tone="ink" className="account-button-name">
-          <ProfileName did={account.did} rendered={account.profile} />
-        </Text>
+        <span className="account-button-meta" aria-hidden>
+          <span className="account-button-name ellipsis">
+            <ProfileName did={account.did} rendered={account.profile} />
+          </span>
+          {account.handle && (
+            <span className="account-button-handle ellipsis">@{account.handle}</span>
+          )}
+        </span>
         <ChevronDown size={14} aria-hidden />
       </PopoverTrigger>
       <PopoverContent label="Account" align="end" className="menu-panel">

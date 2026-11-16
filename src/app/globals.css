@@ -8,11 +8,14 @@
   background: var(--hc-surface-panel);
 }
 
+/* Full width, like the footer of the staging redesign: the bar's hairline runs
+   edge to edge, while the page content keeps the Container's width. */
 .site-header-row {
   display: flex;
   align-items: center;
   gap: 1.5rem;
   min-height: 3.5rem;
+  padding-inline: 1rem;
 }
 
 .site-header .brand {
@@ -64,17 +67,50 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.25rem;
+  max-width: 15rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.125rem;
   border: 0;
   border-radius: var(--hc-radius-control);
   background: none;
-  color: var(--hc-text-ink);
+  color: var(--hc-text-muted);
   font: inherit;
   cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .account-button:hover {
+    background: color-mix(in srgb, var(--hc-text-ink) 6%, transparent);
+  }
+}
+
+/* Name over @handle, from 64rem; narrower bars show the avatar alone. */
+.account-button-meta {
+  display: none;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+  text-align: left;
+}
+
+@media (min-width: 64rem) {
+  .account-button-meta {
+    display: flex;
+  }
 }
 
 .account-button-name {
-  max-width: 12rem;
+  color: var(--hc-text-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.account-button-handle {
+  font-size: 0.75rem;
+}
+
+.account-name {
+  font-weight: 600;
 }
 
 .menu-panel {
