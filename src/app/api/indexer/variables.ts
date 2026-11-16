@@ -405,6 +405,22 @@ export function buildVariables(
         after: readString(vars.after, MAX_AFTER_LEN),
       }
     }
+    case "CommentsForSubjects": {
+      // The activities and projects on one page of feed cards. An empty
+      // list is rejected: callers skip the round-trip instead.
+      const subjectUris = readUriList(vars.subjectUris, MAX_URI_LIST_PER_KIND)
+      if (subjectUris === null || subjectUris.length === 0) return null
+      return { subjectUris, first: clampFirst(vars.first, MAX_FIRST, MAX_FIRST) }
+    }
+    case "CommentsForSubject": {
+      const subjectUri = readString(vars.subjectUri, MAX_URI_LEN)
+      if (!subjectUri || !subjectUri.startsWith("at://")) return null
+      return {
+        subjectUri,
+        first: clampFirst(vars.first, MAX_FIRST, 50),
+        after: readString(vars.after, MAX_AFTER_LEN),
+      }
+    }
     case "EndorsementClosure": {
       // Viewer-centric BFS closure (magic-indexer #117). `viewer`
       // must be a DID; `degree` must be ∈ {1, 2, 3}. Validation here

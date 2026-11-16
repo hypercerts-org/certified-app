@@ -155,6 +155,60 @@ describe("hydrateFeedEvents", () => {
     }
   }
 
+  it("reads a comment attachment as a comment, not an update", async () => {
+    const events = [makeEvent("update.create", "a"), makeEvent("update.create", "b")]
+    const target = "at://did:plc:y/org.hypercerts.collection/p1"
+    respondWith({
+      data: {
+        attachments: {
+          edges: [
+            {
+              node: {
+                uri: events[0].subjectUri,
+                cid: "c1",
+                did: "did:plc:x",
+                createdAt: "2026-05-26T00:00:00.000Z",
+                title: "Lovely to see",
+                shortDescription: null,
+                contentType: "comment",
+                description: {
+                  __typename: "PubLeafletPagesLinearDocument",
+                  blocks: [
+                    { block: { $type: "pub.leaflet.blocks.text", plaintext: "Lovely to see" } },
+                    { block: { $type: "pub.leaflet.blocks.text", plaintext: "the mangroves back." } },
+                  ],
+                },
+                subjects: [{ __typename: "ComAtprotoRepoStrongRef", uri: target, cid: "t" }],
+                content: null,
+              },
+            },
+            {
+              node: {
+                uri: events[1].subjectUri,
+                cid: "c2",
+                did: "did:plc:x",
+                createdAt: "2026-05-26T00:00:00.000Z",
+                title: "Nursery update",
+                shortDescription: "Seedlings are in.",
+                contentType: "update",
+                description: null,
+                subjects: [{ __typename: "ComAtprotoRepoStrongRef", uri: target, cid: "t" }],
+                content: null,
+              },
+            },
+          ],
+        },
+      },
+    })
+    const out = await hydrateFeedEvents(events)
+    expect(out[0].payload).toMatchObject({
+      kind: "comment.create",
+      targetUri: target,
+      shortDescription: "Lovely to see\n\nthe mangroves back.",
+    })
+    expect(out[1].payload).toMatchObject({ kind: "update.create", title: "Nursery update" })
+  })
+
   it("returns [] immediately for an empty input", async () => {
     const out = await hydrateFeedEvents([])
     expect(out).toEqual([])

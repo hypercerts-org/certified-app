@@ -8,6 +8,8 @@ import Avatar from "@/components/ui/avatar"
 import IdentityRow from "@/components/ui/identity-row"
 import Badge, { type BadgeTone } from "@/components/ui/badge"
 import Button from "@/components/ui/button"
+import ClampedText from "@/components/ui/clamped-text"
+import FeedComments from "@/components/feed/feed-comments"
 import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -143,6 +145,16 @@ export const HomeFeedRow = memo(function HomeFeedRow({
       event.kind === "project.created_with_cert" ? (
         <CollectionPreview record={event.record} uri={event.uri} />
       ) : null}
+      {event.kind === "comment.create" && event.shortDescription ? (
+        <blockquote className="home-feed__comment">
+          <ClampedText lines={6} moreLabel="See more" lessLabel="See less">
+            <p className="home-feed__comment-text" dir="auto">
+              {event.shortDescription}
+            </p>
+          </ClampedText>
+        </blockquote>
+      ) : null}
+      <CardComments event={event} />
       {event.kind === "update.create" ? (
         <UpdatePreview
           title={event.title}
@@ -154,6 +166,39 @@ export const HomeFeedRow = memo(function HomeFeedRow({
     </article>
   )
 })
+
+/**
+ * The comment thread under an activity or project card. Lists, portfolios
+ * and the other kinds of card have none.
+ */
+function CardComments({ event }: { event: HomeFeedEvent }) {
+  if (event.kind === "cert.create") {
+    const title =
+      typeof event.record.value.title === "string" && event.record.value.title.trim()
+        ? event.record.value.title
+        : "Untitled activity"
+    return (
+      <FeedComments
+        subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
+        subjectTitle={title}
+        subjectKind="activity"
+      />
+    )
+  }
+  if (event.kind === "collection.create" || event.kind === "project.created_with_cert") {
+    const v = event.record.value as Record<string, unknown>
+    const type = typeof v.type === "string" ? v.type.toLowerCase() : "project"
+    if (type !== "project") return null
+    return (
+      <FeedComments
+        subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
+        subjectTitle={projectTitle(event.record.value, "Untitled project")}
+        subjectKind="project"
+      />
+    )
+  }
+  return null
+}
 
 /** Page size for the expanded subject list. Grouping is designed to
  *  absorb ~1000-endorsement bursts into one row (see MAX_AUTO_LOADS
@@ -306,6 +351,8 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
       return <>created a hyperboard</>
     case "update.create":
       return <TargetSentence verb="posted an update to" targetUri={event.targetUri} fallback="posted an update" />
+    case "comment.create":
+      return <TargetSentence verb="commented on" targetUri={event.targetUri} fallback="commented" />
     case "unknown":
       // The wire kind was known but hydration didn't return a
       // payload (or it was genuinely unknown). Recover the verb

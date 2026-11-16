@@ -105,6 +105,7 @@ export type HomeFeedEvent =
         | "measurement.create"
         | "hyperboard.create"
         | "update.create"
+        | "comment.create"
       title: string | null
       subjectUri: string
       /**
@@ -505,7 +506,8 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
     payload?.kind === "evaluation.create" ||
     payload?.kind === "measurement.create" ||
     payload?.kind === "hyperboard.create" ||
-    payload?.kind === "update.create"
+    payload?.kind === "update.create" ||
+    payload?.kind === "comment.create"
   ) {
     return {
       ...base,

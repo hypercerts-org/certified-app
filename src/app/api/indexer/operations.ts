@@ -13,6 +13,32 @@ import { MAX_URI_LIST_PER_KIND } from "./variables"
  * the validator cap and the on-wire page size).
  */
 
+/** The comment connection both comment ops read (see CommentsForSubjects). */
+const COMMENT_CONNECTION_SELECTION = `
+  totalCount
+  edges {
+    cursor
+    node {
+      uri
+      cid
+      did
+      createdAt
+      title
+      shortDescription
+      subjects {
+        __typename
+        ... on ComAtprotoRepoStrongRef { uri cid }
+      }
+      description {
+        __typename
+        ... on PubLeafletPagesLinearDocument { blocks { block } }
+        ... on OrgHypercertsDefsDescriptionString { value }
+      }
+    }
+  }
+  pageInfo { hasNextPage endCursor }
+`
+
 /** Activity node selection — shared by the three activity ops below. */
 const ACTIVITY_NODE_SELECTION = `
   totalCount
@@ -952,6 +978,36 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Comments (`org.hypercerts.context.attachment` with contentType
+  // "comment") on activities and projects, for the /feed comment threads.
+  // The indexer filters attachments by any of their `subjects` with
+  // `subjectUri`. The batch op reads the comments on a page of feed cards
+  // in one round-trip; the single op pages through one subject's thread.
+  // A comment's text is its description (a Leaflet document or a plain
+  // string), with the title as the fallback.
+  CommentsForSubjects: `
+    query CommentsForSubjects($subjectUris: [String!]!, $first: Int!) {
+      orgHypercertsContextAttachment(
+        first: $first
+        where: { subjectUri: { in: $subjectUris }, contentType: { eq: "comment" } }
+      ) {
+        ${COMMENT_CONNECTION_SELECTION}
+      }
+    }
+  `,
+
+  CommentsForSubject: `
+    query CommentsForSubject($subjectUri: String!, $first: Int!, $after: String) {
+      orgHypercertsContextAttachment(
+        first: $first
+        after: $after
+        where: { subjectUri: { eq: $subjectUri }, contentType: { eq: "comment" } }
+      ) {
+        ${COMMENT_CONNECTION_SELECTION}
+      }
+    }
+  `,
+
   // Viewer-centric endorsement-graph closure — magic-indexer issue
   // #117. Returns DIDs reachable within `degree` hops of `viewer`
   // through active (non-rejected, endorsement-typed) badge awards,
@@ -1198,6 +1254,12 @@ ${ACTIVITY_NODE_SELECTION}
             createdAt
             title
             shortDescription
+            contentType
+            description {
+              __typename
+              ... on PubLeafletPagesLinearDocument { blocks { block } }
+              ... on OrgHypercertsDefsDescriptionString { value }
+            }
             subjects {
               __typename
               ... on ComAtprotoRepoStrongRef { uri cid }

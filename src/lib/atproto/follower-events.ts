@@ -37,6 +37,7 @@ import {
   nodeToCollectionRecord,
 } from "./indexer"
 import { getBlobRefLink } from "./types"
+import { COMMENT_CONTENT_TYPE, commentText } from "./comments"
 
 // ============================================================================
 // Constants
@@ -271,6 +272,7 @@ export interface HydratedPayloadSimpleRecord {
     | "measurement.create"
     | "hyperboard.create"
     | "update.create"
+    | "comment.create"
   title: string | null
   createdAt: string
   targetUri: string | null
@@ -349,6 +351,10 @@ interface AttachmentGraphQLNode {
   createdAt: string
   title: string | null
   shortDescription: string | null
+  /** "update", "comment", … (the lexicon's open set). */
+  contentType?: string | null
+  /** Long text: a Leaflet document or a description string. */
+  description?: unknown
   subjects: StrongRefNode[] | null
   content: AttachmentContentItem[] | null
 }
@@ -589,6 +595,19 @@ export async function hydrateFeedEvents(
   }
   for (const edge of res.data?.attachments?.edges ?? []) {
     if (!edge.node) continue
+    // A comment is an attachment too (contentType "comment"): it reads
+    // "commented on <X>" with its text, not as an update card.
+    if (edge.node.contentType === COMMENT_CONTENT_TYPE) {
+      payloadByUri.set(edge.node.uri, {
+        kind: "comment.create",
+        title: null,
+        createdAt: edge.node.createdAt,
+        targetUri: edge.node.subjects?.[0]?.uri ?? null,
+        shortDescription: commentText(edge.node) || null,
+        imageUrl: null,
+      })
+      continue
+    }
     payloadByUri.set(edge.node.uri, {
       kind: "update.create",
       title: edge.node.title,
