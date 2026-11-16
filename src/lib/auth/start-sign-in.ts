@@ -9,9 +9,10 @@ import { getOAuthClient } from "./oauth-client";
 import { beginSignIn } from "./sign-in-state";
 import { store } from "./valkey";
 
-// Starting a sign-in: from the header's Sign in button (at Certified's PDS,
-// whose page offers an email code, Google, or a handle on any server) and from
-// Certified's hand-off when someone signs in with a handle there.
+// Starting a sign-in: from the Sign in buttons (/oauth/sign-in, at Certified's
+// PDS, whose page offers an email code, Google, or a handle on any server) and
+// from Certified's hand-off when someone signs in with a handle there
+// (/oauth/handle-login).
 
 /** Why a sign-in couldn't start or complete, as the sign-in page explains it. */
 export type SignInError = "denied" | "failed" | "unavailable" | "busy" | "handle";
@@ -34,7 +35,7 @@ async function allowSignIn(): Promise<boolean> {
 /**
  * Where to send the browser: the authorization page of `target` (Certified's
  * PDS, or the server behind a handle), or the sign-in page saying why the
- * sign-in couldn't start. Only in a Server Action or Route Handler.
+ * sign-in couldn't start. Only in a Route Handler.
  */
 export async function signInUrl(
   target: { server: string } | { handle: string },

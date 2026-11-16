@@ -4,20 +4,7 @@ import { redirect } from "next/navigation";
 import { forgetMemberships } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
-import { CERTIFIED_PDS_URL } from "./config";
 import { endAppSession, readAppSession } from "./session";
-import { signInUrl } from "./start-sign-in";
-
-/**
- * Starts sign-in at Certified's PDS, whose own page offers an email code,
- * Google, or a handle on any AT Protocol server ("Sign in with Atmosphere",
- * handed back to /oauth/handle-login). A browser already signed in there
- * returns at once. Redirects either way: to the authorization page, or to the
- * sign-in page saying why it couldn't start.
- */
-export async function signIn(request: { returnTo: string }): Promise<never> {
-  redirect(await signInUrl({ server: CERTIFIED_PDS_URL }, returnPath(request?.returnTo)));
-}
 
 /**
  * Signs this browser out and goes to `next` (a path on this site, default

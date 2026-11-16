@@ -1,15 +1,13 @@
 "use client";
 
 import { Button } from "@hypercerts-org/ui-react";
-import { useMutation } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { signIn } from "@/lib/auth/actions";
 
 /**
  * Goes to Certified's sign-in page, then back to `returnTo` (default: the
- * current page). The action redirects, so the button keeps spinning until the
- * browser leaves.
+ * current page). A plain form posting to /oauth/sign-in: the browser leaves
+ * as after any form, with no waiting state of our own.
  */
 export function SignInButton({
   returnTo,
@@ -21,17 +19,12 @@ export function SignInButton({
   const pathname = usePathname();
   const search = useSearchParams().toString();
   const here = returnTo ?? (search ? `${pathname}?${search}` : pathname);
-  const start = useMutation({ mutationFn: signIn });
   return (
-    <Button
-      variant="primary"
-      size="sm"
-      loading={start.isPending}
-      onClick={() => {
-        if (!start.isPending) start.mutate({ returnTo: here });
-      }}
-    >
-      {children}
-    </Button>
+    <form method="post" action="/oauth/sign-in">
+      <input type="hidden" name="returnTo" value={here} />
+      <Button type="submit" variant="primary" size="sm">
+        {children}
+      </Button>
+    </form>
   );
 }
