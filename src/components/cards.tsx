@@ -15,6 +15,11 @@ export function actorHref(did: string) {
   return `/${did}`;
 }
 
+/** An account's workspace. Acting as an organization is named in the URL. */
+export function workspaceHref(did: string) {
+  return `/${did}/workspace`;
+}
+
 export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
   return `/${project.authorDid}/project/${project.rkey}`;
 }

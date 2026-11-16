@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
   // Extra hosts allowed to load the dev server, for example over Tailscale:
   // ALLOWED_DEV_ORIGINS=myhost.tailnet.ts.net,100.64.0.1 pnpm dev
   allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",") ?? [],
+  // Your organizations are listed in your workspace now.
+  async redirects() {
+    return [{ source: "/settings/organizations", destination: "/workspace", permanent: true }];
+  },
   // Only the embeds may be framed by other sites. Everything else, sign-in and
   // profile editing included, refuses framing (clickjacking).
   async headers() {

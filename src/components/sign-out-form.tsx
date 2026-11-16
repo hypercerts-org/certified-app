@@ -9,9 +9,18 @@ import { signInHref } from "@/lib/validate";
 
 /**
  * Signs this browser out, first forgetting its local saves and cached reads.
- * `next` is where to go afterwards (default: the home page).
+ * `next` is where to go afterwards (default: the home page). `buttonClassName`
+ * replaces the design-system button with a plain one, for a menu row.
  */
-export function SignOutForm({ next, children }: { next?: string; children: ReactNode }) {
+export function SignOutForm({
+  next,
+  buttonClassName,
+  children,
+}: {
+  next?: string;
+  buttonClassName?: string;
+  children: ReactNode;
+}) {
   const queryClient = useQueryClient();
   return (
     <form
@@ -22,9 +31,15 @@ export function SignOutForm({ next, children }: { next?: string; children: React
       }}
     >
       {next && <input type="hidden" name="next" value={next} />}
-      <Button type="submit" variant="ghost" size="sm">
-        {children}
-      </Button>
+      {buttonClassName ? (
+        <button type="submit" className={buttonClassName}>
+          {children}
+        </button>
+      ) : (
+        <Button type="submit" variant="ghost" size="sm">
+          {children}
+        </Button>
+      )}
     </form>
   );
 }

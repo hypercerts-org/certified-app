@@ -38,7 +38,10 @@ Writing also needs `CREATED_VIA_SIGNING_KEY` (see `.env.example` for generating 
 | `/api/activities`, `/api/organizations` | Later pages for "load more", as cacheable GET endpoints (`/api/activities` takes `author` or `project`)                                       |
 | `/api/profiles/{did}`                   | A profile as the index has it right now, uncached, for the write overlay                                                                      |
 | `/{did}/edit`                           | Edit a profile's display name and description: your own, or an organization's you manage, signed by the app                                   |
-| `/settings/organizations`               | The organizations you belong to on the Certified Group Service, with your role                                                                |
+| `/workspace`, `/{did}/workspace`        | A workspace: your own (your profile and the organizations you belong to) or an organization's you belong to, with your role                   |
+| `/api/me/organizations`                 | The signed-in user's organizations, private, for the workspace switcher                                                                       |
+| `/settings`                             | Your account: profile, permanent ID and signing out                                                                                           |
+| `/apps`                                 | Other apps that work with the same account                                                                                                    |
 | `/sign-in`                              | Sign in with a Certified email address, or a handle on any AT Protocol server                                                                 |
 | `/oauth/callback`, `/.well-known/*`     | OAuth callback, client metadata and (for a confidential client) public keys                                                                   |
 

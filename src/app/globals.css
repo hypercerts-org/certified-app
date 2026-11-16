@@ -8,7 +8,7 @@
   background: var(--hc-surface-panel);
 }
 
-.site-header nav {
+.site-header-row {
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -18,11 +18,221 @@
 .site-header .brand {
   display: flex;
   align-items: center;
-  margin-right: auto;
+}
+
+.site-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding-inline: 0.75rem;
+  border: 0;
+  border-radius: var(--hc-radius-control);
+  background: none;
+  color: var(--hc-text-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-link:hover,
+.nav-link[aria-current="page"],
+.nav-link[data-current] {
+  color: var(--hc-text-ink);
+}
+
+.nav-link[aria-current="page"],
+.nav-link[data-current] {
+  background: var(--hc-surface-tint);
+}
+
+.account-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: var(--hc-radius-control);
+  background: none;
+  color: var(--hc-text-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.account-button-name {
+  max-width: 12rem;
+}
+
+.menu-panel {
+  width: 18rem;
+  padding: 0.25rem;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-ink);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+button.menu-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+a.menu-row:hover,
+button.menu-row:hover,
+.menu-row[aria-current="page"] {
+  background: var(--hc-surface-tint);
+}
+
+.menu-row-static {
+  border-bottom: 1px solid var(--hc-line-hairline);
+  border-radius: 0;
+  margin-bottom: 0.25rem;
+}
+
+.menu-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .site-main {
   padding-block: 2rem 4rem;
+}
+
+/* Phones: the destinations move to a tab bar at the bottom of the screen. */
+.bottom-nav {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  display: flex;
+  border-top: 1px solid var(--hc-line-hairline);
+  background: var(--hc-surface-panel);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-height: 3.5rem;
+  border: 0;
+  background: none;
+  color: var(--hc-text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bottom-nav-item[aria-current="page"] {
+  color: var(--hc-text-ink);
+  font-weight: 600;
+}
+
+@media (min-width: 48rem) {
+  .phone-only {
+    display: none;
+  }
+}
+
+@media not all and (min-width: 48rem) {
+  .desktop-only {
+    display: none;
+  }
+
+  .site-main {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.workspace-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  max-width: 48rem;
+}
+
+.app-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-logo {
+  border-radius: var(--hc-radius-control);
 }
 
 .stack {
@@ -177,28 +387,6 @@
   gap: 0.75rem;
   color: inherit;
   text-decoration: none;
-}
-
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 2rem;
-}
-
-.user-menu-account {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.user-menu-name {
-  max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .sign-in-form {
