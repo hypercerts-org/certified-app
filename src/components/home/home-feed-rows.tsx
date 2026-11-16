@@ -9,7 +9,8 @@ import IdentityRow from "@/components/ui/identity-row"
 import Badge, { type BadgeTone } from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import ClampedText from "@/components/ui/clamped-text"
-import FeedComments from "@/components/feed/feed-comments"
+import CommentThread from "@/components/comments/comment-thread"
+import LinkedText from "@/components/ui/linked-text"
 import { useActivity } from "@/hooks/use-activity"
 import { useProject } from "@/hooks/use-project"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -149,12 +150,11 @@ export const HomeFeedRow = memo(function HomeFeedRow({
         <blockquote className="home-feed__comment">
           <ClampedText lines={6} moreLabel="See more" lessLabel="See less">
             <p className="home-feed__comment-text" dir="auto">
-              {event.shortDescription}
+              <LinkedText text={event.shortDescription} />
             </p>
           </ClampedText>
         </blockquote>
       ) : null}
-      <CardComments event={event} />
       {event.kind === "update.create" ? (
         <UpdatePreview
           title={event.title}
@@ -163,13 +163,16 @@ export const HomeFeedRow = memo(function HomeFeedRow({
           imageUrl={event.imageUrl}
         />
       ) : null}
+      {/* Last, under whatever the card shows. */}
+      <CardComments event={event} />
     </article>
   )
 })
 
 /**
- * The comment thread under an activity or project card. Lists, portfolios
- * and the other kinds of card have none.
+ * The comment thread under an activity, project or update card. Lists,
+ * portfolios and the other kinds of card have none. On the feed a comment
+ * starts out from the account the feed is "Seen as".
  */
 function CardComments({ event }: { event: HomeFeedEvent }) {
   if (event.kind === "cert.create") {
@@ -178,10 +181,11 @@ function CardComments({ event }: { event: HomeFeedEvent }) {
         ? event.record.value.title
         : "Untitled activity"
     return (
-      <FeedComments
+      <CommentThread
         subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
         subjectTitle={title}
         subjectKind="activity"
+        defaultAuthor="seen-as"
       />
     )
   }
@@ -190,10 +194,21 @@ function CardComments({ event }: { event: HomeFeedEvent }) {
     const type = typeof v.type === "string" ? v.type.toLowerCase() : "project"
     if (type !== "project") return null
     return (
-      <FeedComments
+      <CommentThread
         subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
         subjectTitle={projectTitle(event.record.value, "Untitled project")}
         subjectKind="project"
+        defaultAuthor="seen-as"
+      />
+    )
+  }
+  if (event.kind === "update.create" && event.recordCid) {
+    return (
+      <CommentThread
+        subject={{ uri: event.subjectUri, cid: event.recordCid }}
+        subjectTitle={event.title?.trim() || "Update"}
+        subjectKind="update"
+        defaultAuthor="seen-as"
       />
     )
   }
@@ -352,7 +367,12 @@ function EventSentence({ event }: { event: HomeFeedEvent }) {
     case "update.create":
       return <TargetSentence verb="posted an update to" targetUri={event.targetUri} fallback="posted an update" />
     case "comment.create":
-      return <TargetSentence verb="commented on" targetUri={event.targetUri} fallback="commented" />
+      // A comment on an update names no page of its own to link.
+      return parseAtUri(event.targetUri ?? "")?.collection === "org.hypercerts.context.attachment" ? (
+        <>commented on an update</>
+      ) : (
+        <TargetSentence verb="commented on" targetUri={event.targetUri} fallback="commented" />
+      )
     case "unknown":
       // The wire kind was known but hydration didn't return a
       // payload (or it was genuinely unknown). Recover the verb

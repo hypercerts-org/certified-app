@@ -278,6 +278,10 @@ export interface HydratedPayloadSimpleRecord {
   targetUri: string | null
   shortDescription: string | null
   imageUrl: string | null
+  /** The record's CID, for attachments (updates and comments), so an
+   *  update's card can take comments (a comment's subject is a strong
+   *  reference). Null for the other kinds. */
+  recordCid?: string | null
 }
 
 export type HydratedPayload =
@@ -602,6 +606,7 @@ export async function hydrateFeedEvents(
         kind: "comment.create",
         title: null,
         createdAt: edge.node.createdAt,
+        recordCid: edge.node.cid,
         targetUri: edge.node.subjects?.[0]?.uri ?? null,
         shortDescription: commentText(edge.node) || null,
         imageUrl: null,
@@ -612,6 +617,7 @@ export async function hydrateFeedEvents(
       kind: "update.create",
       title: edge.node.title,
       createdAt: edge.node.createdAt,
+      recordCid: edge.node.cid,
       // Same heuristic as measurements: the lexicon allows multiple
       // subjects (an attachment can reference an activity claim, a
       // project, an evaluation, etc.). The v1 sentence "posted an

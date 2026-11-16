@@ -133,6 +133,8 @@ export type HomeFeedEvent =
        * project-style card layout (image + title + description).
        */
       imageUrl: string | null
+      /** The attachment's CID (updates and comments), else null. */
+      recordCid: string | null
     })
   | (HomeFeedEventBase & {
       kind: "unknown"
@@ -517,6 +519,7 @@ function hydratedToHomeFeedEvent(h: HydratedFeedEvent): HomeFeedEvent {
       targetUri: payload.targetUri,
       shortDescription: payload.shortDescription,
       imageUrl: payload.imageUrl,
+      recordCid: payload.recordCid ?? null,
     }
   }
 

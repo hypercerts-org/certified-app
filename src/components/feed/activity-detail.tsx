@@ -59,6 +59,7 @@ import {
   buildWeightPercents,
 } from "@/lib/atproto/contributor-display"
 import ContextUpdates from "@/components/context/context-updates"
+import CommentThread from "@/components/comments/comment-thread"
 import type { ActivityContributor, ClaimActivity } from "@/lib/atproto/activity-types"
 import { locationLabel } from "@/lib/atproto/location-label"
 import { leadText, withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
@@ -583,6 +584,14 @@ export default function ActivityDetail({
                   variant="overview"
                   maxItems={1}
                   seeAllHref={tabHref("updates")}
+                />
+              ) : null}
+              {recordUri && cid ? (
+                <CommentThread
+                  layout="section"
+                  subject={{ uri: recordUri, cid }}
+                  subjectTitle={title}
+                  subjectKind="activity"
                 />
               ) : null}
             </>

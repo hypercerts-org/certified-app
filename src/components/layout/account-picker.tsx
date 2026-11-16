@@ -25,6 +25,11 @@ export interface AccountPickerProps {
   onSelect: (next: Group | null) => void
   /** One muted line under the list, e.g. what picking changes. */
   note?: string
+  /** "chip" (default): "<prefix> [avatar] Me ▾" beside a heading.
+   *  "avatar": the account's avatar alone with a small ▾ on its corner,
+   *  where an avatar already stands for who acts (a comment field). Its
+   *  accessible name is "<label>: <account>". */
+  trigger?: "chip" | "avatar"
 }
 
 function AccountPickerItems({
@@ -84,7 +89,14 @@ function AccountPickerItems({
  * menu on desktop, a `<BottomSheet>` on phones. Picking the current one
  * just closes it.
  */
-export default function AccountPicker({ prefix, label, current, onSelect, note }: AccountPickerProps) {
+export default function AccountPicker({
+  prefix,
+  label,
+  current,
+  onSelect,
+  note,
+  trigger = "chip",
+}: AccountPickerProps) {
   const { isAuthenticated } = useAuth()
   const { personal, canSwitch } = useWorkspaceState()
   const { isDesktop } = useLayoutBreakpoints()
@@ -113,6 +125,24 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
   // outweighing it; the ::after keeps a 44px hit area for touch.
   const triggerClass =
     "relative inline-flex h-7 shrink-0 items-center gap-1.5 rounded border border-[var(--border-default)] bg-transparent pl-2 pr-1.5 text-caption font-medium text-[var(--fg-primary)] transition-colors duration-fast hover:border-[var(--border-hover)] hover:bg-[var(--overlay-weak)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 after:absolute after:-inset-x-0 after:-inset-y-2 after:content-[''] motion-reduce:transition-none"
+  const asAvatar = trigger === "avatar"
+  const triggerProps = asAvatar
+    ? {
+        className:
+          "account-picker-avatar relative inline-flex shrink-0 rounded-full border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2",
+        "aria-label": `${label}: ${name}`,
+      }
+    : { className: triggerClass }
+  const triggerContent = asAvatar ? (
+    <>
+      <IdentityAvatar identity={identity} size="sm" />
+      <span className="account-picker-avatar__badge" aria-hidden="true">
+        <ChevronDown size={10} strokeWidth={2.5} />
+      </span>
+    </>
+  ) : (
+    content
+  )
   const items = (mode: MenuMode) => (
     <AccountPickerItems mode={mode} label={label} current={current} note={note} onSelect={select} />
   )
@@ -121,8 +151,8 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger>
-          <button ref={triggerRef} type="button" className={triggerClass}>
-            {content}
+          <button ref={triggerRef} type="button" {...triggerProps}>
+            {triggerContent}
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -145,12 +175,12 @@ export default function AccountPicker({ prefix, label, current, onSelect, note }
       <button
         ref={triggerRef}
         type="button"
-        className={triggerClass}
+        {...triggerProps}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        {content}
+        {triggerContent}
       </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={label} returnFocusRef={triggerRef}>
         <div className="px-2 pb-4">{items("sheet")}</div>

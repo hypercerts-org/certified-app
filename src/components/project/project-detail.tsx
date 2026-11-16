@@ -23,6 +23,7 @@ import { isRenderableDescription } from "@/components/leaflet/leaflet-document"
 import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_PROJECTS_TYPE } from "@/lib/atproto/typed-lists"
 import ContextUpdates from "@/components/context/context-updates"
+import CommentThread from "@/components/comments/comment-thread"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
@@ -551,6 +552,13 @@ export default function ProjectDetail({
                 variant="overview"
                 maxItems={1}
                 seeAllHref={tabHref("updates")}
+              />
+
+              <CommentThread
+                layout="section"
+                subject={{ uri: recordUri, cid }}
+                subjectTitle={title}
+                subjectKind="project"
               />
             </>
           ) : null}

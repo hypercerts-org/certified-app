@@ -102,6 +102,19 @@ describe("buildCommentRecord", () => {
   })
 })
 
+describe("buildCommentRecord links", () => {
+  it("marks web addresses as Leaflet link facets", () => {
+    const record = buildCommentRecord("Photos: https://x.org/p", { uri: P1, cid: "pc" })
+    const block = (record.description as { blocks: { block: Record<string, unknown> }[] }).blocks[0].block
+    expect(block.facets).toEqual([
+      {
+        index: { byteStart: 8, byteEnd: 23 },
+        features: [{ $type: "pub.leaflet.richtext.facet#link", uri: "https://x.org/p" }],
+      },
+    ])
+  })
+})
+
 describe("fetchCommentsForSubjects", () => {
   it("sorts each subject's comments newest first and gives every subject an entry", async () => {
     postIndexer.mockResolvedValue({

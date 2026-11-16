@@ -1,0 +1,274 @@
+/* ---------- Comment threads (components/comments/comment-thread.tsx) ----------
+   On activities, projects and updates, in the feed and on the record
+   pages. The social-feed layout: a Comment button with the count beside
+   it, the latest comments as bubbles (avatar, then name and text on a
+   raised surface, time and actions under it), "View earlier comments"
+   above them, and the field to write one at the bottom. The record pages'
+   Comments section has a heading instead of the button, and its field
+   stays open. */
+
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-thread__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+
+/* Pulled left by the button's own padding, so its icon lines up with the
+   card's text column. */
+.comment-thread__action {
+  gap: 6px;
+  margin-left: -16px;
+}
+
+.comment-thread__count {
+  margin-left: auto;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.comment-thread__more,
+.comment-thread__link {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-ui);
+  font-weight: 600;
+  color: var(--fg-secondary);
+  cursor: pointer;
+}
+
+.comment-thread__more {
+  align-self: flex-start;
+}
+
+.comment-thread__more:hover:not(:disabled),
+.comment-thread__link:hover {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.comment-thread__more:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.comment-thread__more:focus-visible,
+.comment-thread__link:focus-visible,
+.comment-item__name:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.comment-thread__notice {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--fg-secondary);
+}
+
+.comment-thread__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comment-item,
+.comment-composer {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.comment-item__avatar {
+  display: block;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.comment-item__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* As wide as its text, never wider than the column. */
+.comment-item__bubble {
+  align-self: flex-start;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.comment-item__name {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--fg-primary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.comment-item__name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.comment-item__text {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment-item__meta {
+  margin: 0;
+  padding-left: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.comment-item__meta .comment-thread__link {
+  font-size: var(--text-caption);
+}
+
+/* The field and its footer share one bordered box, so the Post button
+   sits inside the field the way chat and comment boxes do. */
+.comment-composer__box {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.comment-composer__box:focus-within {
+  border-color: var(--fg-primary);
+  box-shadow: var(--shadow-ring-weak);
+}
+
+.comment-composer__field {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  max-height: 240px;
+  padding: 10px 12px 2px;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-primary);
+}
+
+.comment-composer__field::placeholder {
+  color: var(--fg-muted);
+}
+
+.comment-composer__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 6px 6px 12px;
+}
+
+.comment-composer__as {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comment-composer__count {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.comment-composer__count.is-over {
+  color: var(--color-error);
+}
+
+.comment-composer__error {
+  grid-column: 2;
+}
+
+/* Links in a comment: like the links in rich text. */
+.comment-item__text a,
+.home-feed__comment-text a {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.comment-item__text a:hover,
+.home-feed__comment-text a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.comment-item__text a:focus-visible,
+.home-feed__comment-text a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ---- The record pages' Comments section ---- */
+
+.comment-thread--section {
+  gap: 12px;
+}
+
+.comment-thread--section .comment-thread__list {
+  gap: 16px;
+}
+
+.comment-thread__signin {
+  align-self: flex-start;
+}
+
+/* ---- Under an update on the Updates tab: set off from the update by a
+   hairline, so the thread reads as the update's own. ---- */
+
+.context-updates__item > .comment-thread {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-default);
+}

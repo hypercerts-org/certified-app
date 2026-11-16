@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import EmptyState from "@/components/ui/empty-state"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
+import CommentThread from "@/components/comments/comment-thread"
 import Skeleton from "@/components/ui/skeleton"
 import { SectionTitleCount } from "@/components/create/form-action-bar"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
@@ -419,6 +420,16 @@ function UpdateCard({
             <AttachmentTile key={`${i}-${attachmentKey(a)}`} attachment={a} did={authorDid} />
           ))}
         </ul>
+      ) : null}
+
+      {/* Comments on the update, under it on the Updates tab (the
+          Overview's teaser leaves them out). */}
+      {!teaser ? (
+        <CommentThread
+          subject={{ uri: record.uri, cid: record.cid }}
+          subjectTitle={shownTitle || "Update"}
+          subjectKind="update"
+        />
       ) : null}
 
       {confirmingDelete ? (

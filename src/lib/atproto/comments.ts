@@ -10,7 +10,9 @@ import {
   longDescriptionPlainText,
   longDescriptionToLinearDocument,
 } from "@/lib/leaflet/guards"
+import { FEATURE_LINK } from "@/lib/leaflet/types"
 import { countGraphemes } from "@/lib/utils/graphemes"
+import { linkFacetRanges } from "@/lib/utils/linkify"
 
 /**
  * Comments on activities and projects. A comment is an
@@ -24,7 +26,7 @@ import { countGraphemes } from "@/lib/utils/graphemes"
  *     lexicon requires a title; a reader that shows only titles still
  *     shows the comment.
  *   - `description`: the full text as a Leaflet document, one text block
- *     per paragraph.
+ *     per paragraph, its web addresses as link facets.
  *
  * Reading accepts any of the shapes the lexicon allows (a Leaflet
  * document, a plain description string, a short description, or only a
@@ -109,10 +111,25 @@ export function buildCommentRecord(
   createdAt: string = new Date().toISOString(),
 ): ContextAttachmentValue {
   const trimmed = text.trim()
+  const doc = longDescriptionToLinearDocument(trimmed)
+  // Links as Leaflet link facets, so other clients show them as links too.
+  if (doc) {
+    for (const entry of doc.blocks) {
+      const block = entry.block as { plaintext?: unknown; facets?: unknown }
+      if (typeof block.plaintext !== "string") continue
+      const ranges = linkFacetRanges(block.plaintext)
+      if (ranges.length > 0) {
+        block.facets = ranges.map((r) => ({
+          index: { byteStart: r.byteStart, byteEnd: r.byteEnd },
+          features: [{ $type: FEATURE_LINK, uri: r.uri }],
+        }))
+      }
+    }
+  }
   return {
     contentType: COMMENT_CONTENT_TYPE,
     title: commentTitle(trimmed),
-    description: longDescriptionToLinearDocument(trimmed) ?? undefined,
+    description: doc ?? undefined,
     subjects: [{ uri: subject.uri, cid: subject.cid }],
     createdAt,
   }
