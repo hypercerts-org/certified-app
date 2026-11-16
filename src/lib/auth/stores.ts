@@ -6,9 +6,9 @@ import type {
   NodeSavedState,
   NodeSavedStateStore,
 } from "@atproto/oauth-client-node";
-import { store } from "./redis";
+import { store } from "./valkey";
 
-// The OAuth client's stores, as JSON strings in Redis.
+// The OAuth client's stores, as JSON strings in Valkey.
 
 /** A JSON value under a key prefix, expiring `ttlSeconds` after each write. */
 function jsonStore<T>(prefix: string, ttlSeconds: number) {

@@ -5,12 +5,12 @@ import { cookies } from "next/headers";
 import { logError } from "@/lib/log";
 import { cookieOptions } from "./config";
 import { getOAuthClient } from "./oauth-client";
-import { store } from "./redis";
+import { store } from "./valkey";
 
 // The app session: which account this browser is signed in as.
 //
-// The cookie holds a random 256-bit token. Redis stores the session under the
-// token's SHA-256 hash, so a leaked Redis snapshot contains no usable cookie
+// The cookie holds a random 256-bit token. Valkey stores the session under the
+// token's SHA-256 hash, so a leaked Valkey snapshot contains no usable cookie
 // values, and no signing secret has to be configured or rotated. The account's
 // OAuth tokens live in the OAuth session store, shared by all its browsers;
 // each account keeps a set of its browsers' sessions so the tokens can be

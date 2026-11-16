@@ -8,14 +8,14 @@ import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
 import { CERTIFIED_PDS_URL, OAUTH_SCOPE } from "./config";
 import { getOAuthClient } from "./oauth-client";
-import { store } from "./redis";
+import { store } from "./valkey";
 import { endAppSession } from "./session";
 import { beginSignIn } from "./sign-in-state";
 
 // A simple shape check only: Certified's sign-in page validates the address.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Starting a sign-in costs DNS, DID and metadata lookups and a Redis write,
+// Starting a sign-in costs DNS, DID and metadata lookups and a Valkey write,
 // on behalf of an anonymous visitor: at most 10 per IP address per minute.
 // A plain fixed window; @upstash/ratelimit would need Upstash-hosted Redis.
 async function allowSignIn(ip: string): Promise<boolean> {
@@ -79,7 +79,7 @@ export async function signOut(form?: FormData): Promise<void> {
   try {
     await endAppSession({ revokeIfLast: true });
   } catch (err) {
-    // The cookie is already cleared; a Redis failure leaves at most an orphaned
+    // The cookie is already cleared; a Valkey failure leaves at most an orphaned
     // session record, which expires.
     logError("[auth] sign-out cleanup failed", err);
   }

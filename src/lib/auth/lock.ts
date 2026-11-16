@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { type RuntimeLock, requestLocalLock } from "@atproto/oauth-client-node";
 import { logError } from "@/lib/log";
-import { store } from "./redis";
+import { store } from "./valkey";
 
 // The OAuth client's requestLock, shared across server instances.
 //
@@ -11,11 +11,11 @@ import { store } from "./redis";
 // may refresh the tokens. Refresh tokens are single-use: if two instances
 // refresh the same session at once, the second replays a used token and the
 // authorization server revokes the session. Calls on one instance queue
-// in-process first; across instances a Redis key with a fixed 45 second lease
+// in-process first; across instances a Valkey key with a fixed 45 second lease
 // serializes them, the pattern the @atproto/oauth-client-node README shows.
 // The client's own timeouts keep the work under the lock well below that.
 //
-// Two Redis commands, so no library: redlock targets ioredis, and
+// Two commands, so no library: redlock targets ioredis, and
 // @upstash/lock needs Upstash-hosted Redis.
 
 const LEASE_MS = 45_000;

@@ -35,7 +35,7 @@ async function restore(did: string): Promise<OAuthSession | "gone"> {
   try {
     return await (await getOAuthClient()).restore(did);
   } catch (err) {
-    // The client's own definition of an unusable session. Redis and network
+    // The client's own definition of an unusable session. Valkey and network
     // failures never match it: the stores wrap them in StoreUnavailableError.
     if (isExpectedSessionError(err)) return "gone";
     logError("[auth] restore failed", err, { did });

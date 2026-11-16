@@ -1,10 +1,10 @@
-# Local Redis for sign-in. Development only.
+# Local Valkey for sign-in. Development only.
 #
 #   docker compose up -d
 #
-# Then in .env.local: REDIS_URL=redis://127.0.0.1:6379
+# Then in .env.local: VALKEY_URL=redis://127.0.0.1:6379
 services:
-  redis:
-    image: redis:7-alpine
+  valkey:
+    image: valkey/valkey:9.0-alpine
     ports:
       - "127.0.0.1:6379:6379"
