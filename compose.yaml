@@ -3,8 +3,16 @@
 #   docker compose up -d
 #
 # Then in .env.local: VALKEY_URL=redis://127.0.0.1:6379
+#
+# The volume keeps sessions across container restarts, so restarting Valkey
+# doesn't sign everyone out. `docker compose down -v` clears it.
 services:
   valkey:
     image: valkey/valkey:9.0-alpine
     ports:
       - "127.0.0.1:6379:6379"
+    volumes:
+      - valkey-data:/data
+
+volumes:
+  valkey-data:

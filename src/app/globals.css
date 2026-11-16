@@ -3,6 +3,14 @@
 
 /* Layout only. Colors, type, radii and spacing scale come from the theme. */
 
+/* The theme names Inter and Noto Serif but ships no font files: these are
+   the faces next/font self-hosts (src/app/layout.tsx), with the theme's own
+   fallbacks. */
+[data-hc-theme="certified"] {
+  --hc-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --hc-font-display: var(--font-noto-serif), Georgia, serif;
+}
+
 /* Short headings without a lone last word. */
 :where(h1, h2, h3) {
   text-wrap: balance;

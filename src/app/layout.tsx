@@ -1,9 +1,21 @@
 import type { Metadata } from "next";
+import { Inter, Noto_Serif } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
+
+// The Certified theme's faces: Inter for text, Noto Serif for headings.
+// next/font downloads them at build time and serves them from this site, so
+// no request goes to Google. globals.css points the theme's font variables at
+// them.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const notoSerif = Noto_Serif({
+  subsets: ["latin"],
+  variable: "--font-noto-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Certified", template: "%s | Certified" },
@@ -14,7 +26,7 @@ export const metadata: Metadata = {
 // providers only. Site chrome lives in the (site) route group.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-hc-theme="certified">
+    <html lang="en" data-hc-theme="certified" className={`${inter.variable} ${notoSerif.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>
