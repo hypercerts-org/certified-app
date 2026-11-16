@@ -66,16 +66,15 @@ export default function HomePage() {
       </div>
 
       <section className="tile">
-        {/* The visible heading names the field. */}
-        <Eyebrow as="p" id="find-organization">
+        <Eyebrow as="label" htmlFor="find-organization">
           Find your organization
         </Eyebrow>
         <Form action="/explore" className="find-form">
           <Input
+            id="find-organization"
             name="q"
             type="search"
             placeholder="Organization name"
-            aria-labelledby="find-organization"
             required
           />
           <Button type="submit" variant="primary">
