@@ -191,8 +191,8 @@ importers:
         specifier: 2.0.1
         version: 2.0.1(@atproto/lex@0.4.2)
       '@hypercerts-org/ui-react':
-        specifier: 0.2.1
-        version: 0.2.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.3.1
+        version: 0.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-query':
         specifier: 5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
@@ -494,8 +494,8 @@ packages:
     peerDependencies:
       '@atproto/lex': ^0.4.2
 
-  '@hypercerts-org/ui-react@0.2.1':
-    resolution: {integrity: sha512-35LCjkF/5PKN0Zz/rMO7WG6yS2JZB/26FuQw392daRTQ6vytaeoE0d1yTMuNhG+yA3M5Q2joxAPPwVGTGu2Y+Q==}
+  '@hypercerts-org/ui-react@0.3.1':
+    resolution: {integrity: sha512-Oh7c0rLzJ4jdJ/4RfmEStPZ79wyXG6b2G6puqWsSSQjKyrkhB2DEjTuxsiFz89GjEv3+rMwi0NnmKzAPsXXSCw==}
     engines: {node: '>=20.12.0'}
     peerDependencies:
       react: ^19.0.0
@@ -2044,7 +2044,7 @@ snapshots:
       '@atproto/lexicon': 0.6.2
       multiformats: 13.4.2
 
-  '@hypercerts-org/ui-react@0.2.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@hypercerts-org/ui-react@0.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       lucide-react: 0.468.0(react@19.3.1)
       react: 19.3.1

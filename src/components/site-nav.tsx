@@ -268,7 +268,7 @@ function DesktopWorkspaceMenu({ account, pathname }: { account: Account; pathnam
   const current = currentWorkspace(pathname, account);
   const organizations = useOrganizations();
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover kind="navigation" open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="nav-link" data-current={current ? "" : undefined}>
         <FolderOpen size={18} strokeWidth={1.5} aria-hidden />
         Workspace
@@ -353,7 +353,7 @@ function AccountMenuContent({ account, onNavigate }: { account: Account; onNavig
 function DesktopAccountMenu({ account }: { account: Account }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popover open={open} onOpenChange={setOpen} className="desktop-only">
+    <Popover kind="navigation" open={open} onOpenChange={setOpen} className="desktop-only">
       <PopoverTrigger className="account-button" aria-label={`${account.name}, account menu`}>
         <Avatar name={account.name} src={account.avatarUrl} size="sm" />
         <span className="account-button-meta" aria-hidden>
