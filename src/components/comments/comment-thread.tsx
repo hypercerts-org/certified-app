@@ -11,6 +11,8 @@ import LinkedText from "@/components/ui/linked-text"
 import SectionHeader from "@/components/ui/section-header"
 import { SectionTitleCount } from "@/components/create/form-action-bar"
 import AccountPicker from "@/components/layout/account-picker"
+import LikeButton, { useLikeActor } from "@/components/comments/like-button"
+import { useLike } from "@/hooks/use-likes"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useSeenAs } from "@/lib/groups/seen-as"
@@ -49,10 +51,12 @@ const COUNT_FROM = MAX_COMMENT_LENGTH - 100
  * bottom. Links in comments are clickable.
  *
  * Two layouts:
- *   - `card` (feed cards, updates): a Comment button with the count beside
- *     it; the button opens and closes the field (the draft is kept).
+ *   - `card` (feed cards, updates): Like and Comment buttons with the
+ *     counts at the right ("12 likes · 3 comments"); Comment opens and
+ *     closes the field (the draft is kept).
  *   - `section` (the record pages' Overview): a "Comments" heading with
- *     the count, more comments at first, and the field always open.
+ *     the count, more comments at first, and the field always open. (The
+ *     page's Like is in its header actions.)
  *
  * Signed out, Comment (or "Sign in to comment") opens sign-in.
  *
@@ -80,6 +84,9 @@ export default function CommentThread({
   const { seenAs } = useSeenAs()
   const thread = useComments(subject.uri)
   const isSection = layout === "section"
+  // The card's bar also likes; its count joins the summary on the right.
+  const likeActor = useLikeActor(defaultAuthor)
+  const likes = useLike(subject, likeActor.actor, likeActor.ownDid)
   const [shown, setShown] = useState(isSection ? SECTION_PREVIEW_COUNT : COMMENT_PREVIEW_COUNT)
   const [composing, setComposing] = useState(false)
   const [draft, setDraft] = useState("")
@@ -144,8 +151,16 @@ export default function CommentThread({
     }
   }
 
-  const countLabel =
-    thread.total === 1 ? "1 comment" : `${thread.total.toLocaleString()} comments`
+  const summary = [
+    likes.count ? (likes.count === 1 ? "1 like" : `${likes.count.toLocaleString()} likes`) : null,
+    thread.total > 0
+      ? thread.total === 1
+        ? "1 comment"
+        : `${thread.total.toLocaleString()} comments`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" \u00b7 ")
 
   const body = (
     <>
@@ -257,6 +272,7 @@ export default function CommentThread({
   return (
     <div className="comment-thread">
       <div className="comment-thread__bar">
+        <LikeButton subject={subject} subjectKind={subjectKind} defaultAuthor={defaultAuthor} />
         <Button
           variant="ghost"
           size="sm"
@@ -268,7 +284,7 @@ export default function CommentThread({
           <MessageCircle size={16} strokeWidth={1.75} aria-hidden />
           Comment
         </Button>
-        {thread.total > 0 ? <span className="comment-thread__count">{countLabel}</span> : null}
+        {summary ? <span className="comment-thread__count">{summary}</span> : null}
       </div>
       {body}
     </div>

@@ -24,6 +24,7 @@ import AddToListMenu from "@/components/lists/add-to-list-menu"
 import { LIST_PROJECTS_TYPE } from "@/lib/atproto/typed-lists"
 import ContextUpdates from "@/components/context/context-updates"
 import CommentThread from "@/components/comments/comment-thread"
+import LikeButton from "@/components/comments/like-button"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useProjectItems } from "@/hooks/use-project-items"
@@ -371,6 +372,7 @@ export default function ProjectDetail({
           Edit
         </Button>
       ) : null}
+      <LikeButton variant="header" subject={{ uri: recordUri, cid }} subjectKind="project" />
       <ShareLinkButton path={sharePath} what="Project link" />
       <AddToListMenu
         targetUri={recordUri}

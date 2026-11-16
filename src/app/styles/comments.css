@@ -13,18 +13,19 @@
   gap: 8px;
 }
 
+/* Like and Comment, then the counts at the right. The bar reaches 16px
+   further left than the column (the buttons' own padding), so the first
+   icon lines up with the card's text; its right edge stays put. */
 .comment-thread__bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   min-height: 32px;
+  margin-left: -16px;
 }
 
-/* Pulled left by the button's own padding, so its icon lines up with the
-   card's text column. */
 .comment-thread__action {
   gap: 6px;
-  margin-left: -16px;
 }
 
 .comment-thread__count {
@@ -271,4 +272,23 @@
   margin-top: 4px;
   padding-top: 8px;
   border-top: 1px solid var(--border-default);
+}
+
+/* ---- Like (components/comments/like-button.tsx) ---- */
+
+.like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Liked: the heart fills (in the text colour, like the rest of the
+   monochrome chrome). */
+.like-button__heart.is-liked {
+  fill: currentColor;
+}
+
+.like-button__error {
+  font-size: var(--text-caption);
+  color: var(--color-error);
 }

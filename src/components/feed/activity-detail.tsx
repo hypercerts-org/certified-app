@@ -60,6 +60,7 @@ import {
 } from "@/lib/atproto/contributor-display"
 import ContextUpdates from "@/components/context/context-updates"
 import CommentThread from "@/components/comments/comment-thread"
+import LikeButton from "@/components/comments/like-button"
 import type { ActivityContributor, ClaimActivity } from "@/lib/atproto/activity-types"
 import { locationLabel } from "@/lib/atproto/location-label"
 import { leadText, withoutLeadParagraph } from "@/lib/leaflet/strip-lead"
@@ -366,6 +367,9 @@ export default function ActivityDetail({
           <Pencil size={14} strokeWidth={1.75} aria-hidden />
           Edit
         </Button>
+      ) : null}
+      {recordUri && cid ? (
+        <LikeButton variant="header" subject={{ uri: recordUri, cid }} subjectKind="activity" />
       ) : null}
       <ShareLinkButton path={sharePath} what="Activity link" />
       {recordUri ? (

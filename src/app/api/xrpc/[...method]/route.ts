@@ -86,6 +86,10 @@ const ALLOWED_WRITE_COLLECTIONS = [
   // the BFF route at `/api/groups/[groupDid]/update`, which allowlists this
   // same NSID itself.
   "org.hypercerts.context.attachment",
+  // Likes on activities, projects and updates (social feedback only: a
+  // like says nothing about the work). Own-repo create / delete; a
+  // group's likes go through `/api/groups/[groupDid]/like`.
+  "app.certified.feed.like",
 ]
 
 const ALLOWED_BLOB_CONTENT_TYPES = [

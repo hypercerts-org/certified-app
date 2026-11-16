@@ -66,8 +66,17 @@ vi.mock("@/lib/atproto/comments", async (importOriginal) => {
 
 const NAMES: Record<string, string> = { "did:plc:ana": "Ana Lima", "did:plc:me": "Me Myself" }
 
+// Likes have their own tests; here they read as none.
+vi.mock("@/lib/atproto/likes", () => ({
+  fetchLikesForSubjects: async () => ({ available: false, bySubject: new Map() }),
+  fetchOwnLikes: async () => new Map(),
+  likeRecord: vi.fn(),
+  unlikeRecord: vi.fn(),
+}))
+
 import CommentThread from "../comment-thread"
 import { __resetCommentsStore } from "@/hooks/use-comments"
+import { __resetLikesStore } from "@/hooks/use-likes"
 
 const SUBJECT = { uri: "at://did:plc:org/org.hypercerts.collection/p1", cid: "pc" }
 
@@ -94,6 +103,7 @@ function card(defaultAuthor: "seen-as" | "workspace" = "workspace") {
 
 beforeEach(() => {
   __resetCommentsStore()
+  __resetLikesStore()
   did = "did:plc:me"
   activeOrg = null
   groups = []

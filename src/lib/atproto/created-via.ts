@@ -46,6 +46,7 @@ export const SIGNED_COLLECTIONS: ReadonlySet<string> = new Set([
   "app.certified.badge.award",
   "app.certified.badge.response",
   "app.certified.graph.follow",
+  "app.certified.feed.like",
   "org.hypercerts.claim.activity",
   "org.hypercerts.claim.contributorInformation",
   "org.hypercerts.collection",

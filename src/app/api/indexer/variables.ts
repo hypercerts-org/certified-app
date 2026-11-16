@@ -405,6 +405,16 @@ export function buildVariables(
         after: readString(vars.after, MAX_AFTER_LEN),
       }
     }
+    case "LikesForSubjects": {
+      const subjectUris = readUriList(vars.subjectUris, MAX_URI_LIST_PER_KIND)
+      if (subjectUris === null || subjectUris.length === 0) return null
+      return { subjectUris, first: clampFirst(vars.first, MAX_FIRST, MAX_FIRST) }
+    }
+    case "LikeCount": {
+      const subjectUri = readString(vars.subjectUri, MAX_URI_LEN)
+      if (!subjectUri || !subjectUri.startsWith("at://")) return null
+      return { subjectUri }
+    }
     case "CommentsForSubjects": {
       // The activities and projects on one page of feed cards. An empty
       // list is rejected: callers skip the round-trip instead.

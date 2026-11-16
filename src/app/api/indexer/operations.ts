@@ -1008,6 +1008,35 @@ ${ACTIVITY_NODE_SELECTION}
     }
   `,
 
+  // Likes (`app.certified.feed.like`) on activities, projects and updates.
+  // Needs the indexer to have the like lexicon installed and a `subject`
+  // filter on it (the strongRef's uri, like funding receipts' `for`);
+  // until then these return a GraphQL error and the app shows likes
+  // without counts. The batch reads the likes on a page of cards; the
+  // single op counts one subject when the batch was cut short.
+  LikesForSubjects: `
+    query LikesForSubjects($subjectUris: [String!]!, $first: Int!) {
+      appCertifiedFeedLike(first: $first, where: { subject: { in: $subjectUris } }) {
+        totalCount
+        edges {
+          node {
+            uri
+            did
+            subject { uri }
+          }
+        }
+      }
+    }
+  `,
+
+  LikeCount: `
+    query LikeCount($subjectUri: String!) {
+      appCertifiedFeedLike(first: 1, where: { subject: { eq: $subjectUri } }) {
+        totalCount
+      }
+    }
+  `,
+
   // Viewer-centric endorsement-graph closure — magic-indexer issue
   // #117. Returns DIDs reachable within `degree` hops of `viewer`
   // through active (non-rejected, endorsement-typed) badge awards,
