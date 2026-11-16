@@ -9,6 +9,8 @@ import "server-only";
 import { Client, type l, XrpcError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app, com } from "@/lexicons";
+import { jsonStore } from "@/lib/auth/stores";
+import { logError } from "@/lib/log";
 
 const CGS_URL = new URL(process.env.CGS_URL || "https://groups.certified.app");
 if (
@@ -90,6 +92,33 @@ export async function listMemberships(session: OAuthSession): Promise<Membership
     cursor = result.cursor;
   }
   return memberships;
+}
+
+// Memberships for display (the workspace switcher and pages), kept in Valkey
+// for five minutes per user, so showing them doesn't cost a service-auth token
+// and a CGS call on every request. Decisions about what the user may do never
+// read it: canEdit asks CGS, and CGS checks the role again on every write. A
+// change made elsewhere shows within five minutes; signing out clears it.
+const membershipCache = jsonStore<Membership[]>("cgs:memberships:", 5 * 60);
+
+/** The user's memberships for display: up to five minutes old. */
+export async function listMembershipsForDisplay(session: OAuthSession): Promise<Membership[]> {
+  // The cache is an optimization: if Valkey fails, ask CGS.
+  const cached = await membershipCache.get(session.did).catch((err) => {
+    logError("[cgs] membership cache read failed", err);
+    return undefined;
+  });
+  if (cached) return cached;
+  const memberships = await listMemberships(session);
+  await membershipCache
+    .set(session.did, memberships)
+    .catch((err) => logError("[cgs] membership cache write failed", err));
+  return memberships;
+}
+
+/** Drops the user's cached memberships (on sign-out). */
+export async function forgetMemberships(did: string): Promise<void> {
+  await membershipCache.del(did);
 }
 
 /**

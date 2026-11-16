@@ -9,7 +9,7 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import {
   Check,
   ChevronDown,
@@ -163,26 +163,31 @@ async function fetchOrganizations(): Promise<Organization[]> {
   return ((await response.json()) as { organizations: Organization[] }).organizations;
 }
 
+/**
+ * Your organizations, loaded as soon as the header shows (not when the
+ * switcher opens), so the list is complete by the time it does. Kept for five
+ * minutes, like the server's cache of them.
+ */
+function useOrganizations() {
+  return useQuery({
+    queryKey: ["me", "organizations"],
+    queryFn: fetchOrganizations,
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** Your workspace, then each organization's, the current one checked. */
 function WorkspaceList({
   account,
   current,
-  enabled,
+  organizations,
   onNavigate,
 }: {
   account: Account;
   current: string | null;
-  enabled: boolean;
+  organizations: UseQueryResult<Organization[]>;
   onNavigate: () => void;
 }) {
-  // Loaded when the list opens, and kept for five minutes.
-  const organizations = useQuery({
-    queryKey: ["me", "organizations"],
-    queryFn: fetchOrganizations,
-    enabled,
-    staleTime: 5 * 60_000,
-  });
-
   return (
     <ul className="menu-list">
       <WorkspaceRow
@@ -261,6 +266,7 @@ function WorkspaceRow({
 function DesktopWorkspaceMenu({ account, pathname }: { account: Account; pathname: string }) {
   const [open, setOpen] = useState(false);
   const current = currentWorkspace(pathname, account);
+  const organizations = useOrganizations();
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="nav-link" data-current={current ? "" : undefined}>
@@ -272,7 +278,7 @@ function DesktopWorkspaceMenu({ account, pathname }: { account: Account; pathnam
         <WorkspaceList
           account={account}
           current={current}
-          enabled={open}
+          organizations={organizations}
           onNavigate={() => setOpen(false)}
         />
       </PopoverContent>
@@ -283,6 +289,7 @@ function DesktopWorkspaceMenu({ account, pathname }: { account: Account; pathnam
 function PhoneWorkspaceTab({ account, pathname }: { account: Account; pathname: string }) {
   const [open, setOpen] = useState(false);
   const current = currentWorkspace(pathname, account);
+  const organizations = useOrganizations();
   return (
     <>
       <button
@@ -300,7 +307,7 @@ function PhoneWorkspaceTab({ account, pathname }: { account: Account; pathname: 
         <WorkspaceList
           account={account}
           current={current}
-          enabled={open}
+          organizations={organizations}
           onNavigate={() => setOpen(false)}
         />
       </BottomSheet>

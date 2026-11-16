@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { OAuthSession } from "@atproto/oauth-client-node";
-import { listMemberships, manages } from "@/lib/cgs";
+import { listMembershipsForDisplay, manages } from "@/lib/cgs";
 import { getActor } from "@/lib/hypercerts/queries";
 
 /** An organization the signed-in user belongs to, as the app shows it. */
@@ -18,12 +18,14 @@ export type Organization = {
 const ROLE_LABEL: Record<string, string> = { member: "Member", admin: "Admin", owner: "Owner" };
 
 /**
- * Every organization the session's user belongs to: memberships from the
- * Certified Group Service, names and avatars from the index (an organization
- * without an indexed profile shows its DID).
+ * Every organization the session's user belongs to, for display: memberships
+ * from the Certified Group Service (up to five minutes old, see
+ * listMembershipsForDisplay), names and avatars from the index (an
+ * organization without an indexed profile shows its DID). Not for deciding
+ * what the user may do: use canEdit.
  */
 export async function listOrganizations(session: OAuthSession): Promise<Organization[]> {
-  const memberships = await listMemberships(session);
+  const memberships = await listMembershipsForDisplay(session);
   return Promise.all(
     memberships.map(async (membership) => {
       const actor = await getActor(membership.groupDid);

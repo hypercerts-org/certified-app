@@ -4,12 +4,13 @@ import { OAuthResolverError } from "@atproto/oauth-client-node";
 import { ipAddress } from "@vercel/functions";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { forgetMemberships } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
 import { CERTIFIED_PDS_URL, OAUTH_SCOPE } from "./config";
 import { getOAuthClient } from "./oauth-client";
 import { store } from "./valkey";
-import { endAppSession } from "./session";
+import { endAppSession, readAppSession } from "./session";
 import { beginSignIn } from "./sign-in-state";
 
 // A simple shape check only: Certified's sign-in page validates the address.
@@ -77,7 +78,9 @@ export async function signIn(request: {
  */
 export async function signOut(form?: FormData): Promise<void> {
   try {
+    const session = await readAppSession();
     await endAppSession({ revokeIfLast: true });
+    if (session) await forgetMemberships(session.did);
   } catch (err) {
     // The cookie is already cleared; a Valkey failure leaves at most an orphaned
     // session record, which expires.

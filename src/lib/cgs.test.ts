@@ -1,6 +1,37 @@
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CgsAuthError, canEdit, listMemberships } from "./cgs";
+import {
+  CgsAuthError,
+  canEdit,
+  forgetMemberships,
+  listMemberships,
+  listMembershipsForDisplay,
+} from "./cgs";
+
+// Valkey, as an in-memory map that can be made to fail.
+const valkey = vi.hoisted(() => ({ data: new Map<string, unknown>(), down: false }));
+vi.mock("@/lib/auth/stores", () => ({
+  jsonStore: (prefix: string) => {
+    const reach = async () => {
+      if (valkey.down) throw new Error("Valkey unreachable");
+    };
+    return {
+      get: async (key: string) => {
+        await reach();
+        return valkey.data.get(prefix + key);
+      },
+      set: async (key: string, value: unknown) => {
+        await reach();
+        valkey.data.set(prefix + key, value);
+      },
+      del: async (key: string) => {
+        await reach();
+        valkey.data.delete(prefix + key);
+      },
+    };
+  },
+}));
+vi.mock("@/lib/log", () => ({ logError: () => {} }));
 
 const user = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";
 const org = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
@@ -38,7 +69,11 @@ describe("CGS calls", () => {
       );
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    valkey.data.clear();
+    valkey.down = false;
+  });
 
   it("lists memberships across pages, each call with its own single-method token", async () => {
     const { session, minted } = fakeSession();
@@ -79,5 +114,41 @@ describe("CGS calls", () => {
     expect((err as Error).message).toContain("AuthRequired");
     expect(minted).toHaveLength(1);
     expect(requests).toHaveLength(0);
+  });
+
+  describe("memberships for display", () => {
+    it("asks CGS once, then shows the cached list without a token or a CGS call", async () => {
+      const { session, minted } = fakeSession();
+      const first = await listMembershipsForDisplay(session);
+      const callsAfterFirst = { minted: minted.length, requests: requests.length };
+      expect(await listMembershipsForDisplay(session)).toEqual(first);
+      expect({ minted: minted.length, requests: requests.length }).toEqual(callsAfterFirst);
+    });
+
+    it("asks CGS again once the user's cache is forgotten (sign-out)", async () => {
+      const { session, minted } = fakeSession();
+      await listMembershipsForDisplay(session);
+      await forgetMemberships(user);
+      await listMembershipsForDisplay(session);
+      expect(minted).toHaveLength(4); // two pages, twice
+    });
+
+    it("falls back to CGS when Valkey is unreachable, rather than failing", async () => {
+      valkey.down = true;
+      expect(await listMembershipsForDisplay(fakeSession().session)).toEqual([
+        { groupDid: memberOf, role: "member" },
+        { groupDid: org, role: "admin" },
+      ]);
+    });
+
+    it("never decides permissions: canEdit asks CGS even when the cache says owner", async () => {
+      const { session } = fakeSession();
+      await listMembershipsForDisplay(session);
+      // A stale cache claiming more than CGS now grants.
+      for (const [key] of valkey.data) {
+        valkey.data.set(key, [{ groupDid: memberOf, role: "owner" }]);
+      }
+      expect(await canEdit(fakeSession().session, memberOf)).toBe(false);
+    });
   });
 });

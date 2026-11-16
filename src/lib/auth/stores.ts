@@ -11,7 +11,7 @@ import { store } from "./valkey";
 // The OAuth client's stores, as JSON strings in Valkey.
 
 /** A JSON value under a key prefix, expiring `ttlSeconds` after each write. */
-function jsonStore<T>(prefix: string, ttlSeconds: number) {
+export function jsonStore<T>(prefix: string, ttlSeconds: number) {
   return {
     async get(key: string): Promise<T | undefined> {
       const raw = await store((r) => r.get(prefix + key));
