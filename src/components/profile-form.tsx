@@ -39,7 +39,9 @@ export function ProfileForm({ did, current }: { did: string; current: ProfileVer
 
   return (
     <form onSubmit={submit} className="profile-form" aria-busy={save.isPending}>
+      {/* Disables every field while saving; the legend names the group. */}
       <fieldset disabled={save.isPending} className="stack">
+        <legend className="visually-hidden">Profile</legend>
         <Field label="Display name">
           {(field) => (
             <Input

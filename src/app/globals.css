@@ -3,8 +3,13 @@
 
 /* Layout only. Colors, type, radii and spacing scale come from the theme. */
 
+/* Short headings without a lone last word. */
+:where(h1, h2, h3) {
+  text-wrap: balance;
+}
+
 .site-header {
-  border-bottom: 1px solid var(--hc-line-hairline);
+  border-block-end: 1px solid var(--hc-line-hairline);
   background: var(--hc-surface-panel);
 }
 
@@ -14,7 +19,7 @@
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  min-height: 3.5rem;
+  min-block-size: 3.5rem;
   padding-inline: 1rem;
 }
 
@@ -27,7 +32,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .site-nav {
@@ -40,7 +45,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 2.25rem;
+  min-block-size: 2.25rem;
   padding-inline: 0.75rem;
   border: 0;
   border-radius: var(--hc-radius-control);
@@ -63,11 +68,37 @@
   background: var(--hc-surface-tint);
 }
 
+/* Forced colors (Windows high contrast) drop the background above, so mark the
+   current destination with an underline there. */
+@media (forced-colors: active) {
+  .nav-link[aria-current="page"],
+  .nav-link[data-current] {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+}
+
+/* The app's own controls get the design system's focus ring, like its
+   components: keyboard focus only, never on a click. */
+:where(.nav-link, .account-button, .menu-row, .bottom-nav-item, .app-link):focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Touch screens: the header's controls are at least 44px (WCAG 2.5.5); a mouse
+   keeps the compact sizes. */
+@media (pointer: coarse) {
+  .site-header-actions :is(a, button) {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
+}
+
 .account-button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  max-width: 15rem;
+  max-inline-size: 15rem;
   padding: 0.125rem 0.5rem 0.125rem 0.125rem;
   border: 0;
   border-radius: var(--hc-radius-control);
@@ -88,9 +119,9 @@
 .account-button-meta {
   display: none;
   flex-direction: column;
-  min-width: 0;
+  min-inline-size: 0;
   line-height: 1.2;
-  text-align: left;
+  text-align: start;
 }
 
 @media (min-width: 64rem) {
@@ -114,7 +145,7 @@
 }
 
 .menu-panel {
-  width: 18rem;
+  inline-size: 18rem;
   padding: 0.25rem;
 }
 
@@ -130,7 +161,7 @@
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  min-height: 2.75rem;
+  min-block-size: 2.75rem;
   padding: 0.375rem 0.75rem;
   border-radius: var(--hc-radius-control);
   color: var(--hc-text-ink);
@@ -139,12 +170,12 @@
 }
 
 button.menu-row {
-  width: 100%;
+  inline-size: 100%;
   border: 0;
   background: none;
   font: inherit;
   font-size: 0.875rem;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -155,16 +186,19 @@ button.menu-row:hover,
 }
 
 .menu-row-static {
-  border-bottom: 1px solid var(--hc-line-hairline);
+  border-block-end: 1px solid var(--hc-line-hairline);
   border-radius: 0;
-  margin-bottom: 0.25rem;
+  margin-block-end: 0.25rem;
 }
 
+/* Names in menus wrap rather than end in "…": there is no other way to read
+   the rest. */
 .menu-row-text {
   display: flex;
   flex: 1;
   flex-direction: column;
-  min-width: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 
 .ellipsis {
@@ -175,8 +209,8 @@ button.menu-row:hover,
 
 .visually-hidden {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inline-size: 1px;
+  block-size: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
@@ -189,12 +223,13 @@ button.menu-row:hover,
 /* Phones: the destinations move to a tab bar at the bottom of the screen. */
 .bottom-nav {
   position: fixed;
-  inset: auto 0 0;
+  inset-block: auto 0;
+  inset-inline: 0;
   z-index: 10;
   display: flex;
-  border-top: 1px solid var(--hc-line-hairline);
+  border-block-start: 1px solid var(--hc-line-hairline);
   background: var(--hc-surface-panel);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-block-end: env(safe-area-inset-bottom);
 }
 
 .bottom-nav-item {
@@ -204,7 +239,7 @@ button.menu-row:hover,
   align-items: center;
   justify-content: center;
   gap: 0.125rem;
-  min-height: 3.5rem;
+  min-block-size: 3.5rem;
   border: 0;
   background: none;
   color: var(--hc-text-muted);
@@ -231,7 +266,7 @@ button.menu-row:hover,
   }
 
   .site-main {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+    padding-block-end: calc(6rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -256,7 +291,7 @@ button.menu-row:hover,
 .settings {
   display: flex;
   flex-direction: column;
-  max-width: 48rem;
+  max-inline-size: 48rem;
 }
 
 .app-link {
@@ -279,11 +314,11 @@ button.menu-row:hover,
 }
 
 .stack > * {
-  width: 100%;
+  inline-size: 100%;
 }
 
 .stack > button {
-  width: auto;
+  inline-size: auto;
 }
 
 .page {
@@ -322,7 +357,7 @@ button.menu-row:hover,
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  min-height: 2rem;
+  min-block-size: 2rem;
 }
 
 .embed-code {
@@ -380,15 +415,15 @@ button.menu-row:hover,
 }
 
 .embed-footer {
-  margin-top: 1rem;
+  margin-block-start: 1rem;
 }
 
 .issued-badge {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--hc-line-hairline);
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .issued-badge-header {
@@ -410,7 +445,7 @@ button.menu-row:hover,
 .find-form {
   display: flex;
   gap: 0.5rem;
-  max-width: 32rem;
+  max-inline-size: 32rem;
 }
 
 .find-form > :first-child {
@@ -426,11 +461,11 @@ button.menu-row:hover,
 }
 
 .profile-form {
-  max-width: 36rem;
+  max-inline-size: 36rem;
 }
 
 .profile-form fieldset {
-  min-width: 0;
+  min-inline-size: 0;
   margin: 0;
   padding: 0;
   border: 0;

@@ -250,7 +250,7 @@ function WorkspaceRow({
       >
         {avatar}
         <span className="menu-row-text">
-          <Text as="span" size="body-sm" tone="ink" className="ellipsis">
+          <Text as="span" size="body-sm" tone="ink">
             {name}
           </Text>
           <Text as="span" size="micro" tone="muted">
@@ -324,11 +324,11 @@ function AccountMenuContent({ account, onNavigate }: { account: Account; onNavig
       <div className="menu-row menu-row-static">
         <Avatar name={account.name} src={account.avatarUrl} size="md" />
         <span className="menu-row-text">
-          <Text as="span" tone="ink" className="ellipsis account-name">
+          <Text as="span" tone="ink" className="account-name">
             <ProfileName did={account.did} rendered={account.profile} />
           </Text>
           {account.handle && (
-            <Text as="span" size="body-sm" tone="muted" className="ellipsis">
+            <Text as="span" size="body-sm" tone="muted">
               @{account.handle}
             </Text>
           )}
