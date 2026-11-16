@@ -26,7 +26,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { actorHref, workspaceHref } from "@/components/cards";
 import { ProfileName } from "@/components/profile-text";
-import { SignInLink } from "@/components/sign-in-link";
+import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import type { ProfileFields } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
@@ -130,7 +130,7 @@ export function SiteNav({ account }: { account: Account | null }) {
             <PhoneAccountMenu account={account} />
           </>
         ) : (
-          <SignInLink />
+          <SignInButton />
         )}
       </div>
 

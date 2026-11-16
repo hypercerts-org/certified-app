@@ -425,10 +425,6 @@ button.menu-row:hover,
   text-decoration: none;
 }
 
-.sign-in-form {
-  max-width: 28rem;
-}
-
 .profile-form {
   max-width: 36rem;
 }

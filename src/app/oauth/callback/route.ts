@@ -4,10 +4,11 @@ import { connection, type NextRequest } from "next/server";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { createAppSession, endAppSession } from "@/lib/auth/session";
 import { completeSignIn, returnPathFromState } from "@/lib/auth/sign-in-state";
+import { signInErrorHref } from "@/lib/auth/start-sign-in";
 import { logError } from "@/lib/log";
 
 function backToSignIn(reason: "denied" | "failed", returnTo: string): never {
-  redirect(`/sign-in?error=${reason}&returnTo=${encodeURIComponent(returnTo)}`);
+  redirect(signInErrorHref(reason, returnTo));
 }
 
 // The authorization server redirects here after sign-in. Exchange the code,

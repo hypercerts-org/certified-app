@@ -1,74 +1,22 @@
 "use server";
 
-import { OAuthResolverError } from "@atproto/oauth-client-node";
-import { ipAddress } from "@vercel/functions";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { forgetMemberships } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
-import { CERTIFIED_PDS_URL, OAUTH_SCOPE } from "./config";
-import { getOAuthClient } from "./oauth-client";
-import { store } from "./valkey";
+import { CERTIFIED_PDS_URL } from "./config";
 import { endAppSession, readAppSession } from "./session";
-import { beginSignIn } from "./sign-in-state";
-
-// A simple shape check only: Certified's sign-in page validates the address.
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Starting a sign-in costs DNS, DID and metadata lookups and a Valkey write,
-// on behalf of an anonymous visitor: at most 10 per IP address per minute.
-// A plain fixed window; @upstash/ratelimit would need Upstash-hosted Redis.
-async function allowSignIn(ip: string): Promise<boolean> {
-  const key = `ratelimit:sign-in:${ip}:${Math.floor(Date.now() / 60_000)}`;
-  const [count] = await store((r) => r.multi().incr(key).expire(key, 60).exec());
-  return Number(count) <= 10;
-}
+import { signInUrl } from "./start-sign-in";
 
 /**
- * Starts sign-in and redirects to the account's authorization server, or
- * returns why it couldn't. An email address (or nothing) signs in with a
- * Certified account; anything else is treated as a handle or DID on any PDS.
+ * Starts sign-in at Certified's PDS, whose own page offers an email code,
+ * Google, or a handle on any AT Protocol server ("Sign in with Atmosphere",
+ * handed back to /oauth/handle-login). A browser already signed in there
+ * returns at once. Redirects either way: to the authorization page, or to the
+ * sign-in page saying why it couldn't start.
  */
-export async function signIn(request: {
-  identifier: string;
-  returnTo: string;
-}): Promise<{ error: string }> {
-  const input = String(request?.identifier ?? "")
-    .trim()
-    .replace(/^@/, "");
-  if (input.length > 254) {
-    return { error: "That is too long for an email address or handle." };
-  }
-  const isHandle = input !== "" && !EMAIL.test(input);
-
-  let url: URL;
-  try {
-    const ip = ipAddress(await headers()) ?? "unknown";
-    if (!(await allowSignIn(ip))) {
-      return { error: "Too many sign-in attempts. Please wait a minute." };
-    }
-    const client = await getOAuthClient();
-    const state = await beginSignIn(returnPath(request?.returnTo));
-    if (isHandle) {
-      url = await client.authorize(input, { scope: OAUTH_SCOPE, state });
-    } else {
-      url = await client.authorize(CERTIFIED_PDS_URL, { scope: OAUTH_SCOPE, state });
-      // Not standard OAuth: the client reserves login_hint for handles, so it
-      // can't go in the pushed request. Certified's PDS reads it from the
-      // authorization URL to prefill the address.
-      if (input) url.searchParams.set("login_hint", input);
-    }
-  } catch (err) {
-    // A handle that doesn't resolve to an account (or whose PDS has no OAuth
-    // server) is the visitor's to fix; anything else is ours.
-    if (isHandle && err instanceof OAuthResolverError) {
-      return { error: `We couldn't find an account for ${input}. Check the spelling.` };
-    }
-    logError("[auth] authorize failed", err);
-    return { error: "Sign-in is unavailable right now. Please try again." };
-  }
-  redirect(url.href);
+export async function signIn(request: { returnTo: string }): Promise<never> {
+  redirect(await signInUrl({ server: CERTIFIED_PDS_URL }, returnPath(request?.returnTo)));
 }
 
 /**

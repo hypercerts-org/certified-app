@@ -9,7 +9,7 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-const { beginSignIn, completeSignIn } = await import("./sign-in-state");
+const { beginSignIn, completeSignIn, pendingReturnTo } = await import("./sign-in-state");
 
 describe("binding a sign-in to its browser", () => {
   beforeEach(() => jar.clear());
@@ -30,5 +30,20 @@ describe("binding a sign-in to its browser", () => {
   it("refuses a callback without app state", async () => {
     await beginSignIn("/");
     expect(await completeSignIn(null)).toBeNull();
+  });
+
+  it("remembers where a sign-in started, for a hand-off to another server", async () => {
+    await beginSignIn("/settings");
+    expect(await pendingReturnTo()).toBe("/settings");
+    jar.clear();
+    expect(await pendingReturnTo()).toBe("/");
+  });
+
+  it("never returns off-site, whatever the cookie says", async () => {
+    await beginSignIn("/");
+    const [name] = [...jar.keys()];
+    const forged = { nonce: "n", returnTo: "//evil.example/" };
+    jar.set(name, Buffer.from(JSON.stringify(forged)).toString("base64url"));
+    expect(await pendingReturnTo()).toBe("/");
   });
 });

@@ -19,6 +19,9 @@ export const OAUTH_SCOPE = "atproto transition:generic";
 
 export const CALLBACK_PATH = "/oauth/callback";
 
+/** Where Certified's PDS hands over a sign-in with a handle on another server. */
+export const HANDLE_LOGIN_PATH = "/oauth/handle-login";
+
 export type OAuthMode =
   | { kind: "web"; publicUrl: string }
   | { kind: "loopback"; redirectUri: `http://127.0.0.1:${number}${string}` };
