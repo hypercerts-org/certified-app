@@ -52,6 +52,23 @@
   min-width: 0;
 }
 
+/* From 1300px the app sidebar lists the Workspace's sections itself
+   (app-sidebar.tsx), so the page drops its own list and the content takes
+   the row; the section's h1 stays for screen readers. */
+@media (min-width: 1300px) {
+  .workspace__layout {
+    display: block;
+  }
+
+  .workspace__nav {
+    display: none;
+  }
+
+  .workspace__layout > .workspace__main {
+    padding-top: 0;
+  }
+}
+
 /* Acting as a group: the group's records (and projects) on its profile,
    then the switch back. */
 .records-group {

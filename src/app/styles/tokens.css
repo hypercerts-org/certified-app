@@ -152,6 +152,7 @@
   --shadow-ring-focus: 0 0 0 2px var(--focus-ring);         /* keyboard focus ring drawn as shadow */
   --shadow-ring-error: 0 0 0 2px var(--color-error-ring);   /* invalid-input halo */
   --shadow-ring-elevated: 0 0 0 3px var(--bg-elevated);     /* surface-colored gap ring (stacked avatars) */
+  --shadow-ring-canvas: 0 0 0 2px var(--bg-canvas);         /* canvas-colored gap ring (the acting-account mark's corner badge, on the chrome) */
   --shadow-outline-subtle: 0 0 0 1px var(--border-subtle);  /* 1px outline outside the box */
   --shadow-inset-subtle: inset 0 0 0 1px var(--border-subtle); /* 1px inner border */
   --shadow-inset-hover: inset 0 0 0 1px var(--border-hover);   /* 1px inner border, hover */
@@ -323,35 +324,45 @@
      under the bar. */
   --chrome-top: var(--navbar-height);
 
-  /* Bottom nav (mobile-first). Base height lives here so the desktop
-     zeroing in the @media block below actually wins — defining the base
-     in layout.css (imported AFTER this file) clobbered the override and
-     left `.app-shell__content` with ~56px of phantom bottom padding on
-     desktop. Zeroed at ≥800px below. */
-  --bottom-nav-height: 56px;
+  /* Phone pill (bottom-nav.tsx, < 800px). It floats --bottom-pill-gap
+     above the safe area; --bottom-nav-height is its whole footprint,
+     which the content padding, toasts, the form action bar and
+     scroll-padding clear. The base lives here so the desktop zeroing in
+     the @media block below actually wins — defining it in layout.css
+     (imported AFTER this file) clobbered the override. Zeroed at ≥800px
+     and whenever the pill isn't mounted, below. */
+  --bottom-pill-height: 56px;
+  --bottom-pill-gap: 12px;
+  --bottom-nav-height: calc(var(--bottom-pill-height) + var(--bottom-pill-gap));
 
-  /* Desktop top bar (rendered ≥800px): one row — brandmark and the five
-     destinations, then search, New and the account button. It scrolls
-     with the page, so nothing sticks below it; `--top-bar-total` is kept
-     as the bar's height for the few layouts that size against it. */
+  /* Desktop sidebar (app-sidebar.tsx): an 88px rail at 800–1299px, the
+     full 248px sidebar from 1300px. The body is padded by it. 0 below
+     800px and whenever the sidebar isn't mounted (routes without the app
+     chrome), below. */
+  --sidebar-width: 0px;
+
+  /* Desktop content strip (rendered ≥800px, beside the sidebar): search
+     and New. It scrolls with the page, so nothing sticks below it;
+     `--top-bar-total` is kept as its height for the few layouts that size
+     against it. */
   --top-bar-row1: 52px;
   --top-bar-total: var(--top-bar-row1);
 
   /* ===== Breakpoints (informational; CSS @media rules hardcode these
      numbers because vanilla CSS can't `var()` inside @media queries.
      Keep CSS in sync with these tokens AND with src/lib/hooks/use-layout-breakpoints.ts. */
-  --bp-gt-mobile: 800px;            /* desktop layout begins; desktop top bar replaces the phone bars */
-  --bp-gt-narrow-desktop: 1100px;   /* account button shows its name; side navs become columns */
-  --bp-gt-desktop: 1300px;          /* widest layouts reach their max width */
+  --bp-gt-mobile: 800px;            /* desktop layout begins; the sidebar (as a rail) replaces the phone bars */
+  --bp-gt-narrow-desktop: 1100px;   /* side navs become columns */
+  --bp-gt-desktop: 1300px;          /* the full sidebar; widest layouts reach their max width */
 
   /* ===== Z-index map — keep all UI layers here. */
   --z-local-raise: 1;               /* raise above overlapping siblings inside a local stacking context */
   --z-rail-sticky: 10;              /* sticky elements inside rails and content columns */
-  --z-rail: 30;                     /* left + right rails (below navbar) */
+  --z-rail: 30;                     /* the desktop sidebar and right rails (below menus) */
   --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
   --z-navbar: 50;                   /* fixed top navbar */
-  --z-bottom-nav: 50;               /* only mounted < 800px; never co-mounts with rails */
-  --z-chrome-menu: 56;              /* menus opened from the top bar (New, account): above the navbar, below sheets/modals */
+  --z-bottom-nav: 50;               /* the phone pill; only mounted < 800px, never with the sidebar */
+  --z-chrome-menu: 56;              /* menus opened from the chrome (account, Network, New): above the bars, below sheets/modals */
   --z-portal-sheet: 60;             /* bottom sheets (account, New, feedback), drawer */
   --z-modal: 100;                   /* generic modals */
   --z-skip-nav: 9999;               /* skip-nav link */
@@ -368,6 +379,13 @@
 @media (min-width: 800px) {
   :root {
     --bottom-nav-height: 0px;
+    --sidebar-width: 88px;
+  }
+}
+
+@media (min-width: 1300px) {
+  :root {
+    --sidebar-width: 248px;
   }
 }
 
@@ -377,6 +395,12 @@
    the viewport bottom. */
 :root:not(:has(.bottom-nav)) {
   --bottom-nav-height: 0px;
+}
+
+/* Likewise the sidebar: unmounted on /welcome, the legal pages and
+   /embed (lib/layout/chrome.ts), so those keep the full width. */
+:root:not(:has(.app-sidebar)) {
+  --sidebar-width: 0px;
 }
 
 /* ========== Dark theme ==========

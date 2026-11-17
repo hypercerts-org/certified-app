@@ -171,8 +171,9 @@ export const HomeFeedRow = memo(function HomeFeedRow({
 
 /**
  * The comment thread under an activity, project or update card. Lists,
- * portfolios and the other kinds of card have none. On the feed a comment
- * starts out from the account the feed is "Seen as".
+ * portfolios and the other kinds of card have none. Likes and comments
+ * start out from the account you act as (the account control), as
+ * everywhere else; "Seen as" only changes what the feed shows.
  */
 function CardComments({ event }: { event: HomeFeedEvent }) {
   if (event.kind === "cert.create") {
@@ -185,7 +186,6 @@ function CardComments({ event }: { event: HomeFeedEvent }) {
         subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
         subjectTitle={title}
         subjectKind="activity"
-        defaultAuthor="seen-as"
       />
     )
   }
@@ -198,7 +198,6 @@ function CardComments({ event }: { event: HomeFeedEvent }) {
         subject={{ uri: event.record.uri || event.uri, cid: event.record.cid }}
         subjectTitle={projectTitle(event.record.value, "Untitled project")}
         subjectKind="project"
-        defaultAuthor="seen-as"
       />
     )
   }
@@ -208,7 +207,6 @@ function CardComments({ event }: { event: HomeFeedEvent }) {
         subject={{ uri: event.subjectUri, cid: event.recordCid }}
         subjectTitle={event.title?.trim() || "Update"}
         subjectKind="update"
-        defaultAuthor="seen-as"
       />
     )
   }

@@ -35,6 +35,14 @@
  *   /dev/preview/activity       — activity DETAIL page (same fixture record)
  *   /dev/preview/project        — project DETAIL page (project fixture)
  *   /dev/preview/update-new     — new UPDATE form on the activity fixture
+ *   /dev/preview/shell          — the app chrome (sidebar, strip, phone top
+ *                                 bar and pill) signed in, around a page:
+ *                                 `?path=/feed` (default), `/home` or
+ *                                 `/records` (with `?kind=`). Add
+ *                                 `managed=1` for groups; set the
+ *                                 `certified_active_org` sessionStorage key
+ *                                 to act as one. The real chrome stays off
+ *                                 this route (lib/layout/chrome.ts).
  *
  * `?fixture=empty` switches every list/connection to its empty variant.
  * `?visitor=1` / `?visitor=signedout` view the profile surfaces as another
@@ -42,6 +50,7 @@
  */
 
 import { Suspense, useMemo } from "react"
+import { useMounted } from "@/hooks/use-mounted"
 import { notFound, useParams, useSearchParams } from "next/navigation"
 // Next resolves `useParams()` from this client context. The /dev/preview
 // route's own param is `{ surface }`, so inside the profile surface
@@ -54,6 +63,7 @@ import { notFound, useParams, useSearchParams } from "next/navigation"
 // byte-identical to production.
 import {
   PathParamsContext,
+  PathnameContext,
   NavigationPromisesContext,
 } from "next/dist/shared/lib/hooks-client-context.shared-runtime"
 
@@ -65,6 +75,11 @@ import { OnboardingProvider } from "@/lib/onboarding/onboarding-context"
 import { NavbarProvider } from "@/lib/navbar-context"
 import { FeedbackProvider } from "@/lib/feedback-context"
 import { ToastProvider } from "@/components/ui/toast"
+// The real chrome, for the shell surface.
+import AppSidebar from "@/components/layout/app-sidebar"
+import DesktopTopBar from "@/components/layout/desktop-top-bar"
+import Navbar from "@/components/layout/navbar"
+import BottomNav from "@/components/layout/bottom-nav"
 
 import MockFetchProvider, {
   type MockScenario,
@@ -108,6 +123,7 @@ const SURFACES = [
   "activity",
   "project",
   "update-new",
+  "shell",
 ] as const
 type Surface = (typeof SURFACES)[number]
 
@@ -163,6 +179,8 @@ function SurfaceBody({
           </PathParamsContext.Provider>
         </NavigationPromisesContext.Provider>
       )
+    case "shell":
+      return null
     case "feed":
       return <Home />
     case "feed-page":
@@ -323,16 +341,20 @@ export default function PreviewPage() {
               <OnboardingProvider>
                 <NavbarProvider>
                   <FeedbackProvider>
-                    <main
-                      id="preview-main"
-                      data-preview-surface={rawSurface}
-                      className="flex-1"
-                    >
-                      <SurfaceBody
-                        surface={rawSurface}
-                        profileScenario={profileScenario}
-                      />
-                    </main>
+                    {rawSurface === "shell" ? (
+                      <ShellPreview path={searchParams?.get("path") ?? "/feed"} />
+                    ) : (
+                      <main
+                        id="preview-main"
+                        data-preview-surface={rawSurface}
+                        className="flex-1"
+                      >
+                        <SurfaceBody
+                          surface={rawSurface}
+                          profileScenario={profileScenario}
+                        />
+                      </main>
+                    )}
                   </FeedbackProvider>
                 </NavbarProvider>
               </OnboardingProvider>
@@ -341,5 +363,43 @@ export default function PreviewPage() {
         </ToastProvider>
       </Providers>
     </MockFetchProvider>
+  )
+}
+
+/**
+ * The real chrome, signed in (the mocked session), around a real page.
+ * The chrome reads its route from `usePathname`, so the page's path is
+ * re-provided here; the app's own chrome stays off /dev/preview/shell.
+ */
+function ShellPreview({ path }: { path: string }) {
+  // Client-only: the server can't see the re-provided path (it renders
+  // for /dev/preview/shell), so rendering on the server would mismatch.
+  const mounted = useMounted()
+  if (!mounted) return null
+  const body =
+    path === "/home" ? <Home /> : path === "/records" ? <RecordsPage /> : <FeedPage />
+  // As for the profile surface: with the navigation promises context
+  // nulled, `usePathname` falls back to the plain PathnameContext, which
+  // this re-provides.
+  return (
+    <NavigationPromisesContext.Provider value={null}>
+    <PathnameContext.Provider value={path}>
+      <Navbar />
+      <AppSidebar />
+      <DesktopTopBar />
+      <main id="preview-main" data-preview-surface="shell" className="flex-1">
+        <div className="app-shell">
+          <div className="app-shell__grid">
+            <div className="app-shell__center">
+              <div className="app-shell__content">
+                <Suspense fallback={null}>{body}</Suspense>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <BottomNav />
+    </PathnameContext.Provider>
+    </NavigationPromisesContext.Provider>
   )
 }

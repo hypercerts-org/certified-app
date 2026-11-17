@@ -8,11 +8,11 @@ import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
 import { SeeAllLink } from "@/components/ui/section-header"
 import WorkspaceShell, {
-  WORKSPACE_SECTIONS,
   WorkspaceFrame,
   workspaceSectionLabel,
   type WorkspaceSection,
 } from "@/components/layout/workspace-shell"
+import { parseRecordKind, type RecordKind } from "@/lib/layout/nav-items"
 import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import { ownProfileUrl } from "@/lib/urls"
 import WorkPane from "@/components/records/work-pane"
@@ -30,18 +30,6 @@ import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
-/** The Workspace sections this page renders (the Overview is /home). */
-type RecordKind = Exclude<WorkspaceSection, "overview">
-
-const KINDS: readonly RecordKind[] = WORKSPACE_SECTIONS.map((s) => s.key).filter(
-  (k): k is RecordKind => k !== "overview",
-)
-
-function parseKind(value: string | null): RecordKind {
-  // The old Following section is now a tab of Followers.
-  if (value === "following") return "followers"
-  return (KINDS as readonly string[]).includes(value ?? "") ? (value as RecordKind) : "activities"
-}
 
 /**
  * `/records` — the Workspace sections that manage what the signed-in
@@ -65,7 +53,7 @@ export default function RecordsPage() {
   const router = useRouter()
   const params = useSearchParams()
   const kindParam = params.get("kind")
-  const kind = parseKind(kindParam)
+  const kind = parseRecordKind(kindParam)
   usePageTitle(workspaceSectionLabel(kind))
   const { isLoading: authLoading, isAuthenticated, did } = useAuth()
   const { handle } = useSession()

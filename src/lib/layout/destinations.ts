@@ -1,28 +1,26 @@
-import { FolderOpen, Globe, LayoutGrid, type LucideIcon } from "lucide-react"
-
 /**
  * The app's destinations, in the one order every navigation surface uses
- * (DESIGN.md §4): the desktop top bar and the phone bottom tab bar:
+ * (DESIGN.md §4): the desktop sidebar (app-sidebar.tsx) and the phone pill
+ * (bottom-nav.tsx):
  *
  *    Workspace | Network · Apps
  *
  *  - **Workspace**: what your account holds and what you manage (the
- *    Overview at /home, and the Records sections and Groups at /records),
- *    behind one side list (`WorkspaceShell`).
+ *    Overview at /home, and the Records sections and Groups at /records).
+ *    The sidebar lists its sections from 1300px (lib/layout/nav-items).
  *  - **Network**: everyone's work, five pages: Feed, Explore, Graph, Map
- *    and Funding. The Network button opens a menu of them (`network-menu.tsx`; a
- *    bottom sheet on phones). Its `href` (Feed, or Explore signed out) is
- *    where it leads when a surface links straight to it.
+ *    and Funding. The sidebar lists them from 1300px; the rail's Network
+ *    and the pill's open a menu of them (`network-menu.tsx`).
  *  - **Apps**: other apps that work with the same account.
  *
- * Nothing else is a top-level destination; Profile, Settings and Help live
- * in the account menu. Signed-out visitors see only the public ones
- * (Network, opening on Explore, and Apps). No destination is ever hidden per account: a section
- * a group can't use explains why in place.
+ * Nothing else is a top-level destination: who you act as, your profile
+ * and signing out are the account control's (account-switcher.tsx); Help
+ * and Settings sit at the bottom of the sidebar and in the pill's More.
+ * Signed-out visitors see Network (without Feed) and Apps. No destination
+ * is ever hidden per account: a section a group can't use explains why in
+ * place.
  */
 export type DestinationKey = "workspace" | "network" | "apps"
-
-export type DestinationGroup = "workspace" | "network"
 
 export interface Destination {
   readonly key: DestinationKey
@@ -32,52 +30,18 @@ export interface Destination {
    *  more than its `href`: Workspace covers /home and /records, Network
    *  its five pages. */
   readonly paths?: readonly string[]
-  readonly group: DestinationGroup
-  readonly icon: LucideIcon
-  /** Shown to signed-out visitors too. */
-  readonly isPublic: boolean
-  /** `data-tour` anchor for the product tour. */
-  readonly tour: string
 }
 
 export const DESTINATIONS: readonly Destination[] = [
-  {
-    key: "workspace",
-    label: "Workspace",
-    href: "/home",
-    paths: ["/home", "/records"],
-    group: "workspace",
-    icon: FolderOpen,
-    isPublic: false,
-    tour: "nav-workspace",
-  },
+  { key: "workspace", label: "Workspace", href: "/home", paths: ["/home", "/records"] },
   {
     key: "network",
     label: "Network",
     href: "/feed",
     paths: ["/feed", "/explore", "/graph", "/map", "/funding"],
-    group: "network",
-    icon: Globe,
-    isPublic: true,
-    tour: "nav-network",
   },
-  // Apps sits beside Network, after the divider, as its own destination.
-  { key: "apps", label: "Apps", href: "/apps", group: "network", icon: LayoutGrid, isPublic: true, tour: "nav-apps" },
+  { key: "apps", label: "Apps", href: "/apps" },
 ]
-
-/** Where Network opens for signed-out visitors: Feed follows your account. */
-const NETWORK_PUBLIC_HREF = "/explore"
-
-/**
- * The destinations to show: all of them signed in; signed out, the public
- * ones (Network, opening on Explore, and Apps).
- */
-export function destinationsFor(isAuthenticated: boolean): readonly Destination[] {
-  if (isAuthenticated) return DESTINATIONS
-  return DESTINATIONS.filter((d) => d.isPublic).map((d) =>
-    d.key === "network" ? { ...d, href: NETWORK_PUBLIC_HREF } : d,
-  )
-}
 
 /** True when `pathname` is one of the destination's paths or a page under one. */
 export function isDestinationActive(

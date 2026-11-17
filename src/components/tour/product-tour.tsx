@@ -48,7 +48,7 @@ interface TourLayout {
 /** Card placement next to the target rect, flipping sides when the
  *  preferred side lacks room and clamping within the viewport. Mirrors the
  *  FLIP/clamp logic in `computePortalCoords` (popover.tsx). */
-function computeCardPos(
+export function computeCardPos(
   target: DOMRect,
   cardW: number,
   cardH: number,
@@ -60,7 +60,17 @@ function computeCardPos(
 
   // Side placement: card sits beside the target, flipping if the preferred
   // side lacks room. Its top aligns to the target's top, clamped to stay on
-  // screen — so it sits next to the visible start of a tall target.
+  // screen — so it sits next to the visible start of a tall target. When
+  // neither side has room (a phone, where the same anchor sits in the top
+  // bar or the pill), it goes above or below instead.
+  const sideFits = (space: number) => space >= cardW + CARD_GAP + VIEWPORT_PAD
+  if (
+    (placement === "left" || placement === "right") &&
+    !sideFits(vw - target.right) &&
+    !sideFits(target.left)
+  ) {
+    placement = target.top + target.height / 2 > vh / 2 ? "top" : "bottom"
+  }
   if (placement === "left" || placement === "right") {
     const spaceRight = vw - target.right
     const spaceLeft = target.left
@@ -129,10 +139,16 @@ function computeCardPos(
 }
 
 /** Scroll the page so the target's TOP sits just below the sticky chrome.
- *  Sticky targets (nav buttons) don't move, so this is a no-op for them; for
- *  in-flow targets (the feed, settings sections) it scrolls their start into
- *  view rather than centering — clamped at the document top. */
-function scrollAnchorToTop(el: HTMLElement): void {
+ *  For in-flow targets (the feed, settings sections) it scrolls their start
+ *  into view rather than centering — clamped at the document top. Targets
+ *  in the fixed chrome (the sidebar, the phone top bar and pill) don't move
+ *  with the page, so the page stays put; a sidebar item only scrolls into
+ *  view within the sidebar's own list. */
+export function scrollAnchorToTop(el: HTMLElement): void {
+  if (el.closest(".app-sidebar, .navbar, .bottom-nav")) {
+    el.scrollIntoView({ block: "nearest" })
+    return
+  }
   const rect = el.getBoundingClientRect()
   const targetTop = globalThis.scrollY + rect.top - SCROLL_TOP_OFFSET
   globalThis.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" })

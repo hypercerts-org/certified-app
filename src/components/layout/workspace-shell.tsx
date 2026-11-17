@@ -1,68 +1,18 @@
 "use client"
 
 import { createContext, useContext } from "react"
-import { FolderGit2, LayoutDashboard, ListChecks, ThumbsUp, Users, UsersRound } from "lucide-react"
 import PageContainer from "@/components/ui/page-container"
-import SideNav, { SIDE_NAV_CONTENT_OFFSET, type SideNavIcon } from "@/components/ui/side-nav"
+import SideNav, { SIDE_NAV_CONTENT_OFFSET } from "@/components/ui/side-nav"
 import { useRegisterPageHeader } from "@/lib/navbar-context"
+import {
+  WORKSPACE_SECTIONS,
+  workspaceSectionLabel,
+  type WorkspaceSection,
+} from "@/lib/layout/nav-items"
 
-/**
- * The Workspace's sections, in side-list order: the Overview (`/home`) and
- * the sections that manage what the account holds (`/records?kind=…`).
- * "activities" is the projects-and-activities folder view (the key keeps
- * existing `?kind=activities` links working).
- */
-export type WorkspaceSection =
-  | "overview"
-  | "activities"
-  | "endorsements"
-  | "followers"
-  | "lists"
-  | "groups"
-
-export const WORKSPACE_SECTIONS: readonly {
-  key: WorkspaceSection
-  label: string
-  href: string
-  icon: SideNavIcon
-}[] = [
-  { key: "overview", label: "Overview", href: "/home", icon: LayoutDashboard },
-  {
-    key: "activities",
-    label: "Projects and activities",
-    href: "/records?kind=activities",
-    icon: FolderGit2,
-  },
-  {
-    key: "endorsements",
-    label: "Endorsements",
-    href: "/records?kind=endorsements",
-    icon: ThumbsUp,
-  },
-  {
-    key: "followers",
-    label: "Followers",
-    href: "/records?kind=followers",
-    icon: Users,
-  },
-  {
-    key: "lists",
-    label: "Lists",
-    href: "/records?kind=lists",
-    icon: ListChecks,
-  },
-  {
-    key: "groups",
-    label: "Groups",
-    href: "/records?kind=groups",
-    icon: UsersRound,
-  },
-]
-
-/** The label of a Workspace section, for page titles. */
-export function workspaceSectionLabel(section: WorkspaceSection): string {
-  return WORKSPACE_SECTIONS.find((s) => s.key === section)?.label ?? "Workspace"
-}
+// The section list lives in lib/layout/nav-items (shared with the app
+// sidebar); re-exported for the pages that import it from here.
+export { WORKSPACE_SECTIONS, workspaceSectionLabel, type WorkspaceSection }
 
 /** The section the shell frames, for `WorkspaceFrame`'s side list. */
 const WorkspaceSectionContext = createContext<WorkspaceSection | null>(null)
@@ -112,8 +62,9 @@ function WorkspaceTitle({ id, children }: { id?: string; children: React.ReactNo
 /**
  * The one "side list + content" frame (DESIGN.md §9.13), as on Settings
  * and Help: the Workspace side list and the content starting on one line.
- * From 1100px the list is a column; below that it is one scrolling row of
- * pills above the content. No section draws a title over it: the current
+ * At 1100–1299px the list is a column; below that it is one scrolling row
+ * of pills above the content; from 1300px the app sidebar lists the
+ * sections itself, so the page hides its own (records.css). No section draws a title over it: the current
  * item in the side list names the page, and the page's h1 is the
  * section's name, for screen readers only (`WorkspaceTitle`). The
  * Overview's h1 is the account name heading its ID box.

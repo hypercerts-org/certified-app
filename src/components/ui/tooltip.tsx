@@ -43,15 +43,23 @@ import { useMounted } from "@/hooks/use-mounted";
  * after every tap. Tooltips are a hover affordance — on a coarse
  * pointer there is no hover, so there is no tooltip.
  */
+export type TooltipSide = "top" | "bottom" | "right";
+
 export interface TooltipProps {
   /** The text shown in the bubble. Empty string disables the tooltip. */
   label: string;
   /** Single focusable trigger element. */
   children: React.ReactElement;
-  /** Preferred side. Flips automatically when there's no room. Default "top". */
-  side?: "top" | "bottom";
+  /** Preferred side. Flips automatically when there's no room. Default
+   *  "top". "right" sits beside the trigger (a sidebar's rail), flipping
+   *  to the left. */
+  side?: TooltipSide;
   /** Hover delay in ms before the bubble appears. Default 300. */
   delay?: number;
+  /** Keep the bubble hidden for now (say, while the trigger's own menu is
+   *  open) without unwrapping the trigger: an empty `label` renders the
+   *  child bare, which remounts it and drops its focus. */
+  suppressed?: boolean;
   /** Extra classes on the wrapper span (e.g. layout helpers). */
   className?: string;
 }
@@ -90,10 +98,18 @@ function computeCoords(
   rect: DOMRect,
   w: number,
   h: number,
-  side: "top" | "bottom",
+  side: TooltipSide,
 ): Coords {
   const vw = globalThis.innerWidth;
   const vh = globalThis.innerHeight;
+
+  if (side === "right") {
+    const fitsRight = vw - rect.right >= w + GAP + PADDING;
+    const left = fitsRight || rect.left < w + GAP + PADDING ? rect.right + GAP : rect.left - GAP - w;
+    let top = rect.top + rect.height / 2 - h / 2;
+    top = Math.min(Math.max(top, PADDING), Math.max(PADDING, vh - PADDING - h));
+    return { left, top };
+  }
 
   const spaceAbove = rect.top;
   const spaceBelow = vh - rect.bottom;
@@ -124,6 +140,7 @@ export default function Tooltip({
   side = "top",
   delay = 300,
   className = "",
+  suppressed = false,
 }: TooltipProps) {
   const mounted = useMounted();
   const hoverCapable = useHoverCapable();
@@ -157,6 +174,12 @@ export default function Tooltip({
 
   useEffect(() => () => clearTimer(), [clearTimer]);
 
+  // Suppressed (the trigger's menu opened): drop any open or pending
+  // bubble, so it can't come back at a stale spot when the menu closes.
+  useEffect(() => {
+    if (suppressed) hide();
+  }, [suppressed, hide]);
+
   // A trigger that has opened its own menu or popover (aria-expanded) keeps
   // the bubble hidden; otherwise it sits over the first menu item.
   const childProps = children.props as {
@@ -165,7 +188,7 @@ export default function Tooltip({
   };
   const expanded =
     childProps["aria-expanded"] === true || childProps["aria-expanded"] === "true";
-  const visible = open && !expanded;
+  const visible = open && !expanded && !suppressed;
 
   // Position when open; reposition on scroll/resize; hide on Esc.
   useLayoutEffect(() => {

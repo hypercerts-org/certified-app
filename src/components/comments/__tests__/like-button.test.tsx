@@ -106,11 +106,12 @@ describe("LikeButton", () => {
     expect(screen.getByRole("button", { name: "Like this project" }).textContent).toBe("Like")
   })
 
-  it("on the feed likes as the account it is seen as", async () => {
-    seenAs = GROUP
+  it("likes as the account you act as, whatever the feed is seen as", async () => {
+    activeOrg = GROUP
+    seenAs = null
     counts([])
     like.mockResolvedValue({ uri: "at://did:plc:grp/app.certified.feed.like/l1", cid: "lc" })
-    render(<LikeButton subject={SUBJECT} subjectKind="update" defaultAuthor="seen-as" />)
+    render(<LikeButton subject={SUBJECT} subjectKind="update" />)
     fireEvent.click(await screen.findByRole("button", { name: "Like" }))
     await waitFor(() => expect(like).toHaveBeenCalledWith("did:plc:me", "did:plc:grp", SUBJECT))
     expect(fetchOwn).toHaveBeenCalledWith("did:plc:grp")

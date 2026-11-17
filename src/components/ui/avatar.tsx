@@ -7,8 +7,9 @@ export interface AvatarProps {
   src?: string;
   alt?: string;
   /** `sm` (32px) is the compact-row avatar, `row` (40px) the people-row
-   *  avatar (DESIGN.md §4, account rows). */
-  size?: "xs" | "sm" | "row" | "md" | "lg" | "xl" | "2xl";
+   *  avatar (DESIGN.md §4, account rows). `2xs` (16px) is the corner badge
+   *  of the acting-account mark (a group's avatar with yours on it). */
+  size?: "2xs" | "xs" | "sm" | "row" | "md" | "lg" | "xl" | "2xl";
   fallbackInitials?: string;
   /** Stable identity string (ideally the DID) the placeholder ring's gradient
    *  is derived from. Falls back to the initials, so the ring is at least
@@ -22,6 +23,7 @@ export interface AvatarProps {
 }
 
 const sizeMap = {
+  "2xs": "h-4 w-4 text-[0.5rem]",
   xs: "h-5 w-5 text-micro",
   sm: "h-8 w-8 text-body-sm",
   row: "h-10 w-10 text-body-sm",
@@ -37,6 +39,7 @@ const sizeMap = {
 // needs explicit width+height (or `fill`); explicit values give it the
 // intrinsic aspect ratio it needs for layout-shift-free rendering.
 const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  "2xs": 16,
   xs: 20,
   sm: 32,
   row: 40,
@@ -49,6 +52,7 @@ const sizePx: Record<NonNullable<AvatarProps["size"]>, number> = {
 // Conic-gradient ring width per size (the avatar's outer padding). Scales
 // with the avatar so the ring stays proportional from chip to profile hero.
 const ringPx: Record<NonNullable<AvatarProps["size"]>, number> = {
+  "2xs": 1,
   xs: 1.5,
   sm: 2,
   row: 2.25,

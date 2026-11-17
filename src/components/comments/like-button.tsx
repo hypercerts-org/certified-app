@@ -5,24 +5,22 @@ import { Heart } from "lucide-react"
 import Button from "@/components/ui/button"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { useSeenAs } from "@/lib/groups/seen-as"
 import { useLike } from "@/hooks/use-likes"
 
 export type LikeSubjectKind = "activity" | "project" | "update"
 
 /**
- * The account likes are made as: on the feed the one it is "Seen as",
- * elsewhere the open workspace (the same start as a comment's author).
+ * The account likes are made as: the one you act as (the account control),
+ * everywhere, the feed included; the same start as a comment's author.
+ * "Seen as" only changes what the feed shows.
  */
-export function useLikeActor(defaultAuthor: "seen-as" | "workspace"): {
+export function useLikeActor(): {
   ownDid: string | null
   actor: string | null
   actorName: string | null
 } {
   const { did } = useAuth()
-  const { activeOrg } = useOrg()
-  const { seenAs } = useSeenAs()
-  const group = defaultAuthor === "seen-as" ? seenAs : activeOrg
+  const { activeOrg: group } = useOrg()
   return {
     ownDid: did ?? null,
     actor: did ? (group?.groupDid ?? did) : null,
@@ -40,23 +38,20 @@ export function useLikeActor(defaultAuthor: "seen-as" | "workspace"): {
  *
  * The heart fills and the label reads "Liked" when the acting account
  * likes it (`aria-pressed`); pressing again takes the like back. Liked as
- * the account the page starts comments from: "Seen as" on the feed, the
- * workspace elsewhere ("Like as <group>" in the tooltip). Signed out it
+ * the account you act as ("Like as <group>" in the tooltip). Signed out it
  * opens sign-in.
  */
 export default function LikeButton({
   subject,
   subjectKind,
   variant = "bar",
-  defaultAuthor = "workspace",
 }: {
   subject: { uri: string; cid: string }
   subjectKind: LikeSubjectKind
   variant?: "bar" | "header"
-  defaultAuthor?: "seen-as" | "workspace"
 }) {
   const { openSignInModal } = useAuth()
-  const { ownDid, actor, actorName } = useLikeActor(defaultAuthor)
+  const { ownDid, actor, actorName } = useLikeActor()
   const like = useLike(subject, actor, ownDid)
   const [error, setError] = useState<string | null>(null)
 

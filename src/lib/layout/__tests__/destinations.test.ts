@@ -1,27 +1,10 @@
 import { describe, it, expect } from "vitest"
-import {
-  DESTINATIONS,
-  destinationsFor,
-  isDestinationActive,
-  isTopLevelPath,
-} from "../destinations"
+import { DESTINATIONS, isDestinationActive, isTopLevelPath } from "../destinations"
 
 describe("destinations", () => {
   it("lists Workspace, then Network and Apps, in the one order every surface uses", () => {
     expect(DESTINATIONS.map((d) => d.label)).toEqual(["Workspace", "Network", "Apps"])
     expect(DESTINATIONS.map((d) => d.href)).toEqual(["/home", "/feed", "/apps"])
-    expect(DESTINATIONS.map((d) => d.group)).toEqual(["workspace", "network", "network"])
-  })
-
-  it("shows all three signed in; signed out, Network (opening on Explore) and Apps", () => {
-    expect(destinationsFor(true)).toHaveLength(3)
-    const out = destinationsFor(false)
-    expect(out.map((d) => d.key)).toEqual(["network", "apps"])
-    expect(out[0].href).toBe("/explore")
-  })
-
-  it("gives every destination a tour anchor", () => {
-    expect(DESTINATIONS.map((d) => d.tour)).toEqual(["nav-workspace", "nav-network", "nav-apps"])
   })
 
   it("marks a destination current on its page and the pages under it", () => {

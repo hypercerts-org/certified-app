@@ -24,11 +24,11 @@ const BP_GT_NARROW_DESKTOP = 1100;
 const BP_GT_DESKTOP = 1300;
 
 export interface LayoutBreakpoints {
-  /** ≥800px: desktop layout begins. The bottom nav and the phone navbar unmount. */
+  /** ≥800px: desktop layout begins (the sidebar, as a rail). The phone pill and navbar unmount. */
   isDesktop: boolean;
   /** ≥1100px: right rail mounted. */
   hasRightRail: boolean;
-  /** ≥1300px: left rail expands to icon+label; right rail at full 300px. */
+  /** ≥1300px: the sidebar is full (248px, every page listed); right rail at full 300px. */
   isFullDesktop: boolean;
   /**
    * True when the app is running as an installed PWA / A2HS web clip —

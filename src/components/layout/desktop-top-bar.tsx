@@ -1,81 +1,47 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleHelp } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context";
+import { hasDesktopChrome } from "@/lib/layout/chrome";
 import { useMounted } from "@/hooks/use-mounted";
-import { destinationsFor, isDestinationActive } from "@/lib/layout/destinations";
-import Button from "@/components/ui/button";
-import Wordmark from "@/components/ui/wordmark";
 import GlobalSearch from "@/components/search/global-search";
-import { DesktopAccountMenu } from "./account-menu";
 import { DesktopNewMenu } from "./new-menu";
-import { DesktopNetworkMenu } from "./network-menu";
-import { DesktopWorkspaceMenu } from "./workspace-menu";
 
 /**
- * Desktop chrome (≥800px). One row:
- *   [Certified.app] [(o) Maya ▾] | [Network ▾] [Apps]  [search] [New] [account]
- *   Signed out: [Certified.app] [Network ▾] [Apps]    [search] [Help] [Sign in]
+ * The desktop content strip (≥800px), above the page and beside the
+ * sidebar (app-sidebar.tsx, which holds the brand, the account control and
+ * the navigation):
  *
- * Workspace names the workspace you are in (you, or a group you act as)
- * and opens a menu to switch workspaces; Network opens a menu of its five
- * pages (Feed, Explore, Graph, Map, Funding).
+ *                                         [search          ] [+ New]
  *
- * A divider separates your Workspace from the network (Feed, Explore,
- * Apps): the two groups in `destinations.ts`.
- *
- * The destinations drop their icons at 800–1099px, so the full wordmark
- * fits beside them (layout.css).
- *
- * Nothing page-specific lives here: pages carry their own back link and
- * title (`<PageHeader>`) and their own section tabs, in the page, at every
- * width. On /explore, which has its own search, the field's slot stays
- * empty, so New and the account button sit where they do on every page.
+ * Search (`/` and Cmd/Ctrl+K focus it) and, signed in, New. On /explore,
+ * which has its own search, the field's slot stays empty, so New sits
+ * where it does on every page. The strip scrolls with the page.
  *
  * Pages render a `<PageHeader>` (their visible h1); a page without one
  * keeps a visually hidden `<h1>` here, so every page has exactly one
- * (DESIGN.md §3.6).
+ * (DESIGN.md §3.6). The sidebar is the page's banner, so the strip is a
+ * plain block (the search field is its own search landmark).
  *
- * The bar scrolls with the page. It is hidden below 800px by CSS — the
- * phone `<Navbar />` and `<BottomNav />` handle that range.
+ * Hidden below 800px by CSS (the phone top bar and pill handle that
+ * range) and absent on routes without the app chrome (chrome.ts).
  */
 export default function DesktopTopBar() {
   const pathname = usePathname();
-
-  const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth();
-  const navbarValues = useNavbarValues();
-  const { pageTitle, desktopTitle, breadcrumb } = navbarValues;
-  // The bar sits in its own Suspense boundary, which can hydrate after the
-  // page has already published its title (or after auth resolved). Until
-  // mounted, render exactly what the server did: no title, no auth-shaped
-  // controls. That keeps hydration clean.
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { pageTitle, desktopTitle, breadcrumb } = useNavbarValues();
+  // The page can publish its title (and auth can resolve) before the strip
+  // hydrates; until mounted, render exactly what the server did.
   const mounted = useMounted();
   const isLoading = authLoading || !mounted;
   const hasPageHeader = useHasPageHeader();
 
-  // Editorial pages use LandingTopBar; suppress the app chrome.
-  // Embeds render bare (board-only) inside a third-party iframe.
-  if (
-    pathname === "/welcome" ||
-    pathname === "/terms" ||
-    pathname === "/privacy" ||
-    pathname === "/imprint" ||
-    pathname === "/dsa" ||
-    (pathname?.startsWith("/embed") ?? false)
-  ) return null;
-
-  // The wordmark goes Home for signed-in viewers and to /welcome once we
-  // know the viewer is signed out (while auth resolves it points Home; that
-  // page's own guard sends a signed-out visitor on).
-  const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home";
+  if (!hasDesktopChrome(pathname)) return null;
 
   // Explore has its own search box at the top of the page; a second one
-  // here would be two ways to do the same thing. The slot keeps its width
-  // there (an empty placeholder), so the bar's layout never shifts.
+  // here would be two ways to do the same thing.
   const showSearch = !(pathname === "/explore" || pathname?.startsWith("/explore/"));
 
   // Fallback h1 for pages without a <PageHeader>: the record's name on
@@ -86,89 +52,21 @@ export default function DesktopTopBar() {
   const fallbackTitle = desktopTitle ?? pageTitle ?? breadcrumbText;
 
   return (
-    <header className="desktop-top-bar" aria-label="App chrome">
+    <div className="desktop-top-bar">
       {mounted && !hasPageHeader && fallbackTitle ? (
         <h1 className="sr-only">{fallbackTitle}</h1>
       ) : null}
-      <div className="desktop-top-bar__row desktop-top-bar__row--chrome">
-        <div className="desktop-top-bar__left">
-          <Link href={brandHref} className="desktop-top-bar__brand" aria-label="Certified home">
-            <Wordmark variant="certified-app" faded height={18} decorative />
-          </Link>
-          {/* Destinations wait for auth, so a signed-in viewer never sees
-              the signed-out set flash first. */}
-          {!isLoading ? (
-            <nav className="desktop-top-bar__nav" aria-label="Main navigation">
-              {destinationsFor(isAuthenticated).map((dest, i, all) => {
-                const Icon = dest.icon;
-                const active = isDestinationActive(dest, pathname);
-                const startsGroup = i > 0 && all[i - 1].group !== dest.group;
-                return (
-                  <React.Fragment key={dest.key}>
-                    {startsGroup ? (
-                      <span className="desktop-top-bar__divider" aria-hidden />
-                    ) : null}
-                    {dest.key === "workspace" ? (
-                      // Names the workspace you are in; switches workspaces.
-                      <DesktopWorkspaceMenu />
-                    ) : dest.key === "network" ? (
-                      // Network opens a menu of its pages.
-                      <DesktopNetworkMenu isAuthenticated={isAuthenticated} />
-                    ) : (
-                      <Link
-                        href={dest.href}
-                        className="desktop-top-bar__nav-link"
-                        aria-current={active ? "page" : undefined}
-                        data-tour={dest.tour}
-                      >
-                        <Icon size={20} strokeWidth={1.5} aria-hidden />
-                        <span>{dest.label}</span>
-                      </Link>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </nav>
-          ) : null}
-        </div>
-
-        <div className="desktop-top-bar__right">
-          {/* `/` and Cmd/Ctrl+K focus it. Also the tour's "search the
-              network" spotlight. "Search", not "Search Certified": the
-              field shrinks to 120px at 800px, which clipped the longer
-              placeholder. */}
-          {showSearch ? (
-            <div className="desktop-top-bar__search" data-tour="navbar-search">
-              <GlobalSearch placeholder="Search" />
-            </div>
-          ) : (
-            <div className="desktop-top-bar__search" aria-hidden="true" />
-          )}
-
-          {isLoading ? null : isAuthenticated ? (
-            <>
-              <DesktopNewMenu />
-              <DesktopAccountMenu />
-            </>
-          ) : (
-            <>
-              {/* Signed-in viewers reach Help from the account menu;
-                  visitors have no menu, so it sits beside Sign in. */}
-              <Link
-                href="/help"
-                className="desktop-top-bar__nav-link"
-                aria-current={isDestinationActive({ href: "/help" }, pathname) ? "page" : undefined}
-              >
-                <CircleHelp size={20} strokeWidth={1.5} aria-hidden />
-                <span>Help</span>
-              </Link>
-              <Button variant="primary" size="sm" onClick={openSignIn}>
-                Sign in
-              </Button>
-            </>
-          )}
-        </div>
+      <div className="desktop-top-bar__row">
+        {/* Also the tour's "search the network" spotlight. */}
+        {showSearch ? (
+          <div className="desktop-top-bar__search" data-tour="navbar-search">
+            <GlobalSearch placeholder="Search" />
+          </div>
+        ) : (
+          <div className="desktop-top-bar__search" aria-hidden="true" />
+        )}
+        {!isLoading && isAuthenticated ? <DesktopNewMenu /> : null}
       </div>
-    </header>
+    </div>
   );
 }

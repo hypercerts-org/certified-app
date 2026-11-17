@@ -10,14 +10,13 @@ import Wordmark from "@/components/ui/wordmark"
  * the right. Wraps to stacked, centred rows on narrow viewports.
  *
  * Rendered by AppShell after `<main>` (not inside it), so it is the
- * page's contentinfo landmark and spans the full viewport width on every
- * page — its border-top reads as a page-frame divider that matches the
- * navbar's border-bottom edge-to-edge.
+ * page's contentinfo landmark and spans the page's width, beside the
+ * desktop sidebar (the body is padded by it).
  *
- * Help and Feedback are here for everyone: signed-out visitors have no
- * account menu (where signed-in people also find them). This is the one
- * Feedback button on the page; there is no floating one. The theme switch
- * lives in the account menu (Appearance), not here.
+ * Help and Feedback are here for everyone (signed-in people also find
+ * them at the bottom of the sidebar and in the phone pill's More). There
+ * is no floating Feedback button. The theme switch lives in Settings
+ * (Appearance), not here.
  *
  * Kept intentionally short — no marketing copy, no newsletter
  * signup, no social rail. Just identity + a handful of links the

@@ -11,26 +11,29 @@
  * falls back to a centered card after a bounded wait (product-tour.tsx,
  * MAX_RESOLVE_FRAMES), so no step can hang.
  *
- * The tour follows the main navigation: for each destination it first
- * spotlights the nav item you'd use (the `nav-*` anchors live on both the
- * desktop top bar and the phone bottom tab bar — the renderer picks
- * whichever is visible), routes to that page, then shows what you can do
- * there. The order mirrors the navigation: Home, Feed, Explore, Records,
- * Apps, then the New button and the account menu (profile, settings,
- * help). The top-bar search step comes on Feed,
- * because the top bar hides its search on /explore (Explore has its own).
+ * The tour follows the main navigation: first the account control (who
+ * you act as), then for each destination it spotlights the nav item you'd
+ * use (the `nav-*` anchors live on both the desktop sidebar and the phone
+ * pill — the renderer picks whichever is visible), routes to that page,
+ * then shows what you can do there. The order mirrors the navigation:
+ * Workspace, Network (Feed, Explore, Graph), Apps, then New, the profile,
+ * Settings and Help. The search step comes on Feed, because the strip
+ * hides its search on /explore (Explore has its own). Sidebar anchors ask
+ * for "right"; on a phone, where there is no room beside them, the card
+ * goes above or below.
  *
  * Anchors are matched against `data-tour="<anchor>"` attributes placed on
  * page content. The same anchor id may appear on more than one element
- * (e.g. a nav item in both the desktop top bar and the phone tab bar) —
+ * (e.g. a nav item in both the desktop sidebar and the phone pill) —
  * the renderer picks the first *rendered* one, so the visible variant wins
  * per layout. Every anchor here exists in the current app:
- *   nav-workspace, nav-network, nav-apps — destinations (nav-network is
- *     the Network menu button on desktop and the Network tab on phones)
+ *   nav-workspace, nav-network, nav-apps — destinations (the sidebar's
+ *     groups from 1300px, its rail items below that, the pill on phones)
  *   graph — the endorsement graph on /graph (graph-page.tsx)
- *   nav-create — the New button (desktop) / the + (phone)
- *   account-menu — the account button (desktop and phone)
- *   navbar-search — the desktop search field (not on /explore)
+ *   nav-create — the New button (desktop strip) / the + (phone top bar)
+ *   account-menu — the account control (top of the sidebar; the right
+ *     end of the phone top bar)
+ *   navbar-search — the desktop strip's search field (not on /explore)
  *   home-account — Home's ID box, the account on top (home.tsx)
  *   feed — the Feed column (home-feed.tsx)
  *   explore-category — Explore's type chips (explore.tsx)
@@ -79,14 +82,24 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nLet's take a quick look around.",
   },
 
+  // ---- Who you act as -------------------------------------------------
+  {
+    id: "account-menu",
+    navigateTo: "/home",
+    anchor: "account-menu",
+    title: "Who you act as",
+    body: "This is the account you're using. If you belong to a group, open it to act as the group: what you create, follow and endorse then comes from the group. Your profile, Settings and signing out are here too.",
+    placement: "right",
+  },
+
   // ---- Workspace -----------------------------------------------------
   {
     id: "nav-workspace",
     navigateTo: "/home",
     anchor: "nav-workspace",
     title: "Workspace",
-    body: "Your Workspace is everything your account holds: your records, endorsements and groups, managed from the list on the side. This button shows whose workspace you're in; if you belong to a group, open it to switch to the group's workspace and act as the group. Network, next to it, is everyone else's work.",
-    placement: "bottom",
+    body: "Your Workspace is everything your account holds: your records, endorsements and groups. Network is everyone else's work.",
+    placement: "right",
   },
   {
     id: "home-account",
@@ -103,8 +116,8 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/feed",
     anchor: "nav-network",
     title: "Network",
-    body: "Network is everyone's work on Certified, five ways: Feed, Explore, Graph, Map and Funding. Open it to pick one.",
-    placement: "bottom",
+    body: "Network is everyone's work on Certified, five ways: Feed, Explore, Graph, Map and Funding.",
+    placement: "right",
   },
 
   // ---- Feed ----------------------------------------------------------
@@ -156,7 +169,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     anchor: "nav-apps",
     title: "Apps",
     body: "Other apps that work with your Certified account. Sign in to any of them with the same account.",
-    placement: "bottom",
+    placement: "right",
   },
   {
     id: "apps-grid",
@@ -192,17 +205,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Publish when you're ready",
     body: "Fill in the details, then publish. Your activity becomes part of your portable record — visible across every compatible app.",
     placement: "top",
-  },
-
-  // ---- Account menu --------------------------------------------------
-  {
-    id: "account-menu",
-    navigateTo: null,
-    anchor: "account-menu",
-    title: "Your account menu",
-    body: "Open this for your public profile, Settings, Help and feedback, or to sign out.",
-    placement: "bottom",
-    align: "end",
   },
 
   // ---- Profile -------------------------------------------------------
@@ -247,7 +249,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/help",
     anchor: null,
     title: "Help",
-    body: "Help has guides for everything we just covered. Open it from the account menu or the link at the bottom of every page. You can replay this walk-through from there too.",
+    body: "Help has guides for everything we just covered: at the bottom of the sidebar on a computer, under More on a phone, and linked at the bottom of every page. You can replay this walk-through from there too.",
   },
 
   {

@@ -11,6 +11,8 @@ const state = vi.hoisted(() => ({
   hasPageHeaderBack: false,
   pageTitle: null as string | null,
   isAuthenticated: true,
+  groups: [] as { groupDid: string }[],
+  navHidden: false,
   transitionBack: vi.fn(),
 }))
 
@@ -42,19 +44,19 @@ vi.mock("@/hooks/use-session", () => ({
 }))
 
 vi.mock("@/lib/groups/org-context", () => ({
-  useOrg: () => ({ activeOrg: null }),
+  useOrg: () => ({ activeOrg: null, groups: state.groups, selfGroup: null }),
 }))
 
 vi.mock("@/hooks/use-scroll-hide-navbar", () => ({
-  useScrollHideNavbar: () => ({ scrolled: false, navHidden: false }),
+  useScrollHideNavbar: () => ({ scrolled: false, navHidden: state.navHidden }),
 }))
 
 vi.mock("@/hooks/use-layout-breakpoints", () => ({
   useLayoutBreakpoints: () => ({ isDesktop: false }),
 }))
 
-vi.mock("../account-menu", () => ({
-  PhoneAccountMenu: () => <button type="button">Account</button>,
+vi.mock("../account-switcher", () => ({
+  PhoneAccountSwitcher: () => <button type="button">Account</button>,
 }))
 
 vi.mock("../new-menu", () => ({
@@ -73,10 +75,25 @@ beforeEach(() => {
   state.hasPageHeaderBack = false
   state.pageTitle = null
   state.isAuthenticated = true
+  state.groups = []
+  state.navHidden = false
   state.transitionBack.mockReset()
 })
 
 describe("Navbar (phone)", () => {
+  it("hides on scroll for an account with nothing to switch", () => {
+    state.navHidden = true
+    const { container } = render(<Navbar />)
+    expect(container.querySelector("header")).toHaveClass("navbar--hidden")
+  })
+
+  it("stays put for someone who can act as a group: it shows who they act as", () => {
+    state.navHidden = true
+    state.groups = [{ groupDid: "did:plc:earth" }]
+    const { container } = render(<Navbar />)
+    expect(container.querySelector("header")).not.toHaveClass("navbar--hidden")
+  })
+
   it("shows the brandmark, New and account on a top-level page", () => {
     state.hasPageHeader = true
     render(<Navbar />)

@@ -12,13 +12,14 @@ import { useOrg } from "@/lib/groups/org-context";
 import { useScrollHideNavbar } from "@/hooks/use-scroll-hide-navbar";
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints";
 import { isTopLevelPath } from "@/lib/layout/destinations";
+import { hasPhoneChrome } from "@/lib/layout/chrome";
 import { parseActor } from "@/lib/urls";
 import Button from "@/components/ui/button";
 import Brandmark from "@/components/ui/brandmark";
 import Wordmark from "@/components/ui/wordmark";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
-import { PhoneAccountMenu } from "./account-menu";
+import { PhoneAccountSwitcher } from "./account-switcher";
 import { PhoneNewMenu } from "./new-menu";
 
 /**
@@ -54,14 +55,19 @@ function isOwnProfilePath(
  *   you were (your feed and its scroll position, say).
  * - **Center:** the compact title, as the page's h1, only when no
  *   `<PageHeader>` is mounted (the header already carries the title).
- * - **Right:** a `+` (the New menu, as a sheet) and the avatar (the
- *   account sheet), or "Sign in" when signed out. A page that still
+ * - **Right:** a `+` (the New menu, as a sheet) and the account control
+ *   (account-switcher.tsx): the avatar of the account you act as (a
+ *   group's with yours on its corner), opening "Act as" and "Signed in
+ *   as" in a sheet. "Sign in" when signed out. A page that still
  *   publishes a record menu gets it first.
  *
  * It's a `<header>` (the banner landmark), not a `<nav>`: it holds the
- * brand and a few buttons, not a list of links.
+ * brand and a few buttons; the navigation is the pill at the bottom
+ * (bottom-nav.tsx).
  *
- * Fixed, translucent, hides on scroll down and returns on scroll up.
+ * Fixed and translucent. It hides on scroll down and returns on scroll
+ * up, except for someone who can switch to a group: then it carries who
+ * they act as, so it stays.
  */
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
@@ -71,7 +77,7 @@ const Navbar: React.FC = () => {
   // the bar then shows the brandmark rather than a second chevron.
   const headerHasBack = useHasPageHeaderBack();
   const { handle } = useSession();
-  const { activeOrg } = useOrg();
+  const { activeOrg, groups, selfGroup } = useOrg();
   const pathname = usePathname();
   const { transitionBack } = useViewTransition();
   const { scrolled, navHidden } = useScrollHideNavbar();
@@ -83,8 +89,12 @@ const Navbar: React.FC = () => {
   // chrome at every width). All early returns sit after every hook.
   if (isLoading) return null;
   if (isDesktop) return null;
-  if (pathname?.startsWith("/embed")) return null;
-  if (pathname === "/welcome") return null;
+  if (!hasPhoneChrome(pathname)) return null;
+
+  // The bar carries who you act as (the account control), so for anyone
+  // who can switch between themselves and a group it stays put instead of
+  // hiding on scroll. An account with nothing to switch keeps the room.
+  const canSwitch = isAuthenticated && !selfGroup && groups.length > 0;
 
   const isOwnProfile =
     isAuthenticated &&
@@ -100,7 +110,7 @@ const Navbar: React.FC = () => {
   const navClasses = [
     "navbar",
     scrolled ? "navbar--scrolled" : "",
-    navHidden ? "navbar--hidden" : "",
+    navHidden && !canSwitch ? "navbar--hidden" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -177,7 +187,7 @@ const Navbar: React.FC = () => {
           {isAuthenticated ? (
             <>
               <PhoneNewMenu />
-              <PhoneAccountMenu />
+              <PhoneAccountSwitcher />
             </>
           ) : (
             <Button variant="secondary" size="sm" onClick={() => void openSignIn()}>

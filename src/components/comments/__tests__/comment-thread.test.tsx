@@ -95,9 +95,9 @@ function serve(list: FeedComment[]) {
   fetchBatch.mockResolvedValue({ bySubject: new Map([[SUBJECT.uri, sorted]]), complete: true })
 }
 
-function card(defaultAuthor: "seen-as" | "workspace" = "workspace") {
+function card() {
   return render(
-    <CommentThread subject={SUBJECT} subjectTitle="Mangrove nursery" subjectKind="project" defaultAuthor={defaultAuthor} />,
+    <CommentThread subject={SUBJECT} subjectTitle="Mangrove nursery" subjectKind="project" />,
   )
 }
 
@@ -180,13 +180,13 @@ describe("CommentThread on a card", () => {
     expect((field as HTMLTextAreaElement).value).toBe("")
   })
 
-  it("on the feed starts from the account it is seen as, and the avatar switches it", async () => {
+  it("starts from the account you act as, whatever the feed is seen as, and the avatar switches it", async () => {
     groups = [GROUP, OTHER]
-    activeOrg = OTHER
-    seenAs = GROUP
+    activeOrg = GROUP
+    seenAs = OTHER
     serve([])
     post.mockResolvedValue(comment(9, "did:plc:grp"))
-    card("seen-as")
+    card()
     fireEvent.click(screen.getByRole("button", { name: "Comment" }))
     const picker = screen.getByRole("combobox", { name: "Comment as" }) as HTMLSelectElement
     expect(picker.value).toBe("did:plc:grp")
@@ -200,11 +200,11 @@ describe("CommentThread on a card", () => {
     expect(post.mock.calls[0].slice(0, 2)).toEqual(["did:plc:me", "did:plc:me"])
   })
 
-  it("elsewhere starts from the open workspace", () => {
+  it("starts from the open workspace on a record page too", () => {
     groups = [GROUP]
     activeOrg = GROUP
     serve([])
-    card("workspace")
+    card()
     fireEvent.click(screen.getByRole("button", { name: "Comment" }))
     expect((screen.getByRole("combobox", { name: "Comment as" }) as HTMLSelectElement).value).toBe("did:plc:grp")
   })

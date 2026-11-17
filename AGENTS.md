@@ -194,32 +194,32 @@ Key principles:
             <FeedbackProvider> <ViewTransitionProvider>
             <a class="skip-nav">       // Skip-to-main link
             <Navbar />                 // Phone top bar (< 800px)
-            <Suspense><DesktopTopBar /></Suspense>   // Desktop top bar (≥ 800px)
+            <AppSidebar />             // Desktop sidebar (≥ 800px; CSS-hidden below)
+            <DesktopTopBar />          // Desktop content strip: search, New (≥ 800px)
             <main id="main-content">
               <AppShell>{children}</AppShell>   // .app-shell + SiteFooter; skipped on /welcome, legal pages, /embed
             </main>
-            <BottomNav />              // Phone tab bar (< 800px)
+            <BottomNav />              // Phone floating pill (< 800px)
             <PwaInstallGuard />
-            <FeedbackModal />          // Opened from the footer, the account menu and Help
+            <FeedbackModal />          // Opened from the footer, the sidebar / More, and Help
             <OnboardingModal /> <ProductTour />
     <Analytics />
 ```
 
-**The shell** (DESIGN.md §4). Three destinations, in one order everywhere: Workspace | Network · Apps (`src/lib/layout/destinations.ts`; Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; Workspace names the workspace you are in and opens a menu to switch between your personal workspace and your groups' (`src/components/layout/workspace-menu.tsx`); Network covers Feed, Explore, Graph (`/graph`), Map (`/map`) and Funding (`/funding`); its button opens a menu of them (`src/components/layout/network-menu.tsx`: a popover on desktop, a bottom sheet from the phone tab), and Feed and Explore carry a "Seen as" switcher after their title (`src/components/network/seen-as-switcher.tsx`, via `<PageHeader titleAside>`): its own setting (`useSeenAs`, `src/lib/groups/seen-as.ts`), separate from the workspace, that alone decides what Feed and Explore show; signed out: Network, opening on Explore, and Apps). Nothing lives only in a drawer, and no destination is hidden per account.
+**The shell** (DESIGN.md §4). Three destinations, in one order everywhere: Workspace | Network · Apps (`src/lib/layout/destinations.ts`; the pages each lists in `src/lib/layout/nav-items.ts`: Workspace covers `/home` and `/records`, framed by `src/components/layout/workspace-shell.tsx`; Network covers Feed, Explore, Graph (`/graph`), Map (`/map`) and Funding (`/funding`); signed out: Network without Feed, and Apps). Which routes get the chrome is `routeChrome()` (`src/lib/layout/chrome.ts`). Desktop is a left sidebar; the phone folds it into a floating pill. Nothing lives only in a drawer, and no destination is hidden per account. Feed and Explore carry a "Seen as" switcher after their title (`src/components/network/seen-as-switcher.tsx`): a reading setting (`useSeenAs`, `src/lib/groups/seen-as.ts`) that decides what Feed and Explore show, never what you write as.
 
-- **Desktop (≥ 800px), `desktop-top-bar.tsx`.** One row on every page: the faded Certified.app wordmark (`<Wordmark variant="certified-app" faded>`), the destinations (Workspace as a fixed-width pill: "My workspace", or the group's avatar and name; the others icon + word, word only at 800–1099px; a divider between Workspace and the network), then search (`/` or Cmd/Ctrl+K focuses it; hidden on `/explore`, which has its own), **New** (`new-menu.tsx`: New activity, New project, New group) and the account button. Signed out: search, Help and Sign in. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs, in the page, at every width.
-- **Phone (< 800px).** `navbar.tsx` (a `<header>`): the normal bar (the faded Certified.app wordmark, a `+` for the New sheet, the avatar for the account sheet) on top-level pages, untitled pages and every page with a `PageHeader`; a back chevron + compact title (the h1) only on a titled page without one. `bottom-nav.tsx`: the five destinations, labelled, in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
+- **Desktop (≥ 800px), `app-sidebar.tsx`** (the banner): fixed on the left, `--sidebar-width` wide. From 1300px (248px): the faded wordmark, the account control, then the Workspace's six sections, the Network's five pages and Apps as labelled groups of rows, then Help and Settings. At 800–1299px an 88px rail: brandmark, the account control as the mark alone, Workspace / Network (opens a menu of its pages to the right) / Apps as icon over label, Help and Settings. Always rendered on the server, switched by CSS (never `useLayoutBreakpoints`); no rows until sign-in is known. `desktop-top-bar.tsx` is now the content strip: search (`/` or Cmd/Ctrl+K; an empty slot on `/explore`) and **New** (`new-menu.tsx`), lined up with the page. Nothing page-specific: pages own their back link (`PageHeader back`) and their section tabs.
+- **Phone (< 800px).** `navbar.tsx` (a `<header>`): the faded wordmark or a back chevron, the compact title when no `PageHeader` owns the h1, then `+` (the New sheet) and the account control at the right end. It stays put (no hide on scroll) for anyone who can switch to a group. `bottom-nav.tsx`: the floating pill, Workspace / Network (a sheet of its pages) / Apps / More (Help, Settings, feedback, legal), in every phone browser; hidden on `/welcome`, `/embed` and create/edit forms (`isFormRoute` in `src/lib/layout/bottom-nav-visibility.ts`).
 - **`<main>` and the footer.** `AppShell` renders `<main id="main-content">` and, after it, `SiteFooter` (the contentinfo landmark), on every route except `/embed`; `/welcome` and the legal pages skip the app column but keep the footer.
-- **`--chrome-top`** (tokens.css): the bottom edge of the fixed top chrome (the phone navbar; 0 on desktop, where the bar scrolls). Sticky elements use `top: var(--chrome-top, var(--navbar-height))`; the root's `scroll-padding-top` uses it.
-- **Account menu**, `account-menu.tsx`: one `AccountMenuContent` rendered in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones. Always the signed-in person, whichever workspace is open: you (+ View profile, your own), Settings (yours), Help, Send feedback, Sign in with another account (replaces the session), Sign out (behind a `ConfirmDialog` that returns focus to the account button). No switching here.
-- **Workspace menu**, `workspace-menu.tsx`: Workspace in both bars names the workspace you are in (desktop: a fixed-width pill, "My workspace" or the group's avatar + name; phone tab: `FolderOpen`, or the group's avatar, over "Workspace") and opens your workspaces (popover on desktop, sheet titled "Workspace" on phones): personal first, then groups sorted by `sortGroupsForSwitcher`, each with a settings gear (`accountSettingsHref()`), then New group. Picking one switches who you act as everywhere and opens it (its Overview from outside the Workspace; the same section inside, unless it is personal-only). With one workspace (no groups, or the account is itself a group) it is a plain link to `/home`. Records' "Switch to personal account" and the Groups list switch through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`).
-- **The h1.** A page with `<PageHeader>` owns its h1. Otherwise the chrome renders `usePageTitle`'s value as the h1: visually hidden in the desktop bar, the compact title in the phone bar (DESIGN.md §3.6).
-- **Acting as a group** (being in a group's workspace) shows in Workspace (the group's square avatar and name) and the Create forms. There is no acting-as banner. The account button and menu always show the signed-in person, whichever workspace is open.
+- **`--chrome-top`** (tokens.css): the bottom edge of the fixed top chrome (the phone navbar; 0 on desktop, where the strip scrolls). Sticky elements use `top: var(--chrome-top, var(--navbar-height))`; the root's `scroll-padding-top` uses it.
+- **Account control**, `account-switcher.tsx`: one control for who you act as, in the sidebar's top slot and at the right of the phone top bar. Its mark (`ActingAvatar`) is your avatar, or the group's square avatar with yours on its corner. One `AccountMenuContent` in a `<Popover>` menu on desktop and a `<BottomSheet>` titled "Account" on phones: **Act as** (you, then groups sorted by `sortGroupsForSwitcher`, each group with a settings gear, then New group; picking one runs `useOpenWorkspace()` from `workspace-menu.tsx`, which switches who you act as and opens its Overview from outside the Workspace or the same section inside unless it is personal-only, and toasts "Now acting as …"; inert on create/edit forms) and **Signed in as** you (View profile, Settings, Sign in with another account, Sign out behind a `ConfirmDialog`). With nothing to switch the first block is your identity. `workspace-menu.tsx` keeps the shared pieces: `useWorkspaceState`, `useOpenWorkspace`, `WorkspaceRow` (also the account pickers' rows) and `groupIdentity`. Records' "Switch to personal account" and the Groups list switch through `useSwitchActor()` (`src/lib/groups/use-switch-actor.ts`).
+- **The h1.** A page with `<PageHeader>` owns its h1. Otherwise the chrome renders `usePageTitle`'s value as the h1: visually hidden in the desktop strip, the compact title in the phone bar (DESIGN.md §3.6).
+- **Acting as a group** shows in the account control's mark (the group's avatar with yours on its corner) and the Create forms' "publishing as". There is no acting-as banner. Likes and comments start from the account you act as on every page, the feed included.
 
 Scoped providers (mounted only where used):
 
 - `AuthGuard` — in `settings/layout.tsx` and `groups/layout.tsx`. Redirects to `/welcome` when unauthenticated; renders a centered loading spinner while auth is initializing.
-- `WelcomeLayout` (`src/app/welcome/layout.tsx`) — the landing page; the app chrome (both top bars, the bottom nav) steps aside on `/welcome` and `LandingTopBar` takes over.
+- `WelcomeLayout` (`src/app/welcome/layout.tsx`) — the landing page; the app chrome (the sidebar and strip, the phone top bar and pill) steps aside on `/welcome` and `LandingTopBar` takes over.
 
 ## 7. Routing Map
 
@@ -238,13 +238,13 @@ Scoped providers (mounted only where used):
 | `/[actor]` | client | open | **Canonical profile URL** (handle-forward). `actor` is a handle (canonical/displayed) or a DID (durable). A DID-addressed URL canonicalizes to the handle form on load. Handles personal and group identities. |
 | `/[actor]/[type]/[rkey]` | client | open | **Canonical record URL.** `type` ∈ `activity \| project` (friendly segment ↔ collection NSID, mapped in `src/lib/urls.ts`). Resolves `actor`→DID, fetches the record, canonicalizes a DID-addressed URL to the handle form. |
 | `/[actor]/[type]/[rkey]/edit` | client | gated (owner) | Record editor. Dispatches to the activity/project editor by `type`; same actor→DID resolution + canonicalization as the read route. |
-| `/settings` | client | gated (AuthGuard) | The signed-in account's settings, whichever workspace is open (`OrgSettings` only when the signed-in account is itself a group). Reached from the account menu. A "for" picker after the title (`settings-for-switcher.tsx`) switches to a group's settings page. |
+| `/settings` | client | gated (AuthGuard) | The signed-in account's settings, whichever workspace is open (`OrgSettings` only when the signed-in account is itself a group). Reached from the sidebar, the pill's More and the account menu. A "for" picker after the title (`settings-for-switcher.tsx`) switches to a group's settings page. |
 | `/settings/edit-profile` | client | gated | Edit personal profile. |
-| `/groups` | server redirect | — | → `/home` (groups live in the account menu and on Home). |
-| `/groups/create` | client | gated | Register a new group. Enforces `MAX_SELF_CREATED_ORGS = 5`. Linked from New and the account menu. |
+| `/groups` | server redirect | — | → `/home` (groups live in the account control's "Act as" and on Home). |
+| `/groups/create` | client | gated | Register a new group. Enforces `MAX_SELF_CREATED_ORGS = 5`. Linked from New and the account control. |
 | `/groups/[groupDid]` | server redirect | — | → the group's `/{handle}` profile. |
 | `/groups/[groupDid]/edit-profile` | client | gated | Edit group profile + metadata. |
-| `/groups/[groupDid]/settings` | client | gated | The group's settings (account, members, ownership, audit log). Reached from Settings' "for" picker, the Workspace menu's gears and the group's profile. Same "for" picker after its title. |
+| `/groups/[groupDid]/settings` | client | gated | The group's settings (account, members, ownership, audit log). Reached from Settings' "for" picker, the gears in the account control's "Act as" and the group's profile. Same "for" picker after its title. |
 | `/endorsements` | server redirect | — | → `/records?kind=endorsements` (endorsements are managed in Records). |
 | `/workspace` | server redirect | — | → `/records`. The old navigation prototype still renders at `/dev/preview/workspace`. |
 | `/endorsement-graph` | server | public | The endorsement network graph (also opened from Help in a pop-up). |
@@ -418,7 +418,7 @@ If you need to write a new collection, **add it to `ALLOWED_WRITE_COLLECTIONS`**
   - `tokens.css` — design tokens (CSS custom properties + dark theme overrides). **The only place raw hex / rgba values live**, with `looks.css`.
   - `looks.css` — the experimental styles (Settings → Appearance → Style; `src/lib/look/looks.ts`): each style's token set on `html[data-look]`, light and dark, plus the picker's previews. DESIGN.md §2.11.
   - `components.css` — primitive component chrome (modals, app-card label, dash-card, error/empty states).
-  - `layout.css` — app shell, phone top bar, desktop top bar (incl. the Workspace trigger), account button, bottom nav.
+  - `layout.css` — app shell, phone top bar, desktop sidebar and content strip, the acting mark, the phone pill.
   - Per-feature: `feed.css`, `profile-*.css`, `cert-detail.css`, `project-detail.css`, `explore.css`, `home.css`, `settings-page.css`, `workspace.css`, `notifications.css`, `landing.css`, `leaflet.css`, etc.
 - Tailwind utilities are used freely *inside* JSX for one-off layout (`flex`, `mt-4`, `max-w-3xl`, …).
 - Tailwind theme is small: `screens` replaced with `md` 800 / `lg` 1100 / `xl` 1300 · `future.hoverOnlyWhenSupported` · `colors.{success, warning, error}` · `fontFamily.{sans, headline, mono}` · the full `fontSize` type ramp (`display`, `h1`-`h4`, `section`, `body`, `body-sm`, `ui`, `caption`, `label`, `micro`) · `letterSpacing.label` · `transitionDuration.{instant, fast, base, slow}` + `transitionTimingFunction.{out, emphasized, in-out}` (defaults: fast + `--ease-out`) · `height` / `minHeight` `control-{compact, sm, md, lg}` · `maxWidth.measure` · `boxShadow.{sm, md, lg, modal}` aliasing the CSS vars · `borderRadius.DEFAULT: 2px` · the `pulse` / `skeleton` animations. See `tailwind.config.ts`.
@@ -442,8 +442,8 @@ Token catalog is the source of truth at `src/app/styles/tokens.css`. The most-us
 - **Motion:** durations `--duration-instant` (100 ms) · `--duration-fast` (150) · `--duration-base` (200) · `--duration-slow` (300); easings `--ease-out` (default UI) · `--ease-emphasized` (dialogs, sheets, drawers; no overshoot) · `--ease-in-out`. `--transition-fast` / `--transition-base` are aliases (`--duration-fast|base` + `--ease-out`); `--transition-slow` is removed. Under reduced motion, spinners keep turning and dialog / toast / tab-panel / popover keep 150 ms fades (DESIGN.md §7.4).
 - **Type:** `--text-display` … `--text-micro` (plus `--text-section`) mirror the Tailwind ramp · `--tracking-label` (0.06em, uppercase only) · `--measure` (65ch).
 - **Control heights:** `--control-h-compact` (32) / `-sm` (36) / `-md` (44) / `-lg` (56) → Tailwind `h-control-*`.
-- **Geometry:** `--radius` (2 px) · `--radius-pill` (999 px) · `--page-width-narrow` / `-default` / `-wide` (720 / 1120 / 1280 px, `<PageContainer>`) · `--navbar-height` (64 px; 0 on desktop) · `--chrome-top` (navbar + phone acting-as bar; the top for sticky elements) · `--top-bar-row1` / `--top-bar-total` (the one-row desktop top bar, 52 px) · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
-- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-chrome-menu` (56; New and account menus) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
+- **Geometry:** `--radius` (2 px) · `--radius-pill` (999 px) · `--page-width-narrow` / `-default` / `-wide` (720 / 1120 / 1280 px, `<PageContainer>`) · `--navbar-height` (64 px; 0 on desktop) · `--chrome-top` (navbar + phone acting-as bar; the top for sticky elements) · `--top-bar-row1` / `--top-bar-total` (the desktop content strip, 52 px) · `--sidebar-width` (0; 88 px rail from 800, 248 px from 1300; 0 where the sidebar isn't mounted) · `--bottom-pill-height` / `--bottom-pill-gap` (56 / 12 px; their sum is `--bottom-nav-height`, the pill's footprint) · `--bp-gt-mobile` (800) / `--bp-gt-narrow-desktop` (1100) / `--bp-gt-desktop` (1300) — informational; CSS `@media` queries hardcode the numbers because vanilla CSS can't `var()` inside `@media`.
+- **Z-index:** `--z-local-raise` (1) · `--z-rail-sticky` (10) · `--z-rail` (30; the desktop sidebar) · `--z-popover` (40) · `--z-navbar` / `--z-bottom-nav` (50) · `--z-chrome-menu` (56; menus opened from the chrome: account, Network, New) · `--z-portal-sheet` (60) · `--z-modal` (100) · `--z-skip-nav` (9999) · `--z-feedback` (10000) · `--z-feedback-above` (10001) · `--z-tour-backdrop` (10015) · `--z-tour-card` (10016) · `--z-tooltip` (10020).
 
 ### Rules
 
@@ -891,17 +891,19 @@ certified-app/
     │   │       ├── ready-cta-content.tsx
     │   │       └── what-you-get.tsx
     │   ├── layout/
-    │   │   ├── account-menu.tsx           # Account menu: desktop popover + phone sheet, sign-out confirm
+    │   │   ├── account-menu.tsx           # useAccountState, IdentityAvatar, identityTag (who is signed in / acted as)
+    │   │   ├── account-switcher.tsx       # The account control: acting mark, "Act as" + "Signed in as" menu / sheet
+    │   │   ├── app-sidebar.tsx            # Desktop sidebar: brand, account control, every page, Help/Settings; rail at 800–1299
     │   │   ├── app-shell.tsx              # .app-shell wrapper + SiteFooter, skipped on /welcome
     │   │   ├── auth-guard.tsx             # Auth redirect with loading spinner
-    │   │   ├── bottom-nav.tsx             # Phone tab bar: Workspace, Network, Apps
-    │   │   ├── desktop-top-bar.tsx        # Desktop bar (one row): destinations, search, New, account
+    │   │   ├── bottom-nav.tsx             # Phone floating pill: Workspace, Network, Apps, More
+    │   │   ├── desktop-top-bar.tsx        # Desktop content strip: search, New
     │   │   ├── menu-row.ts                # Shared row styling for the shell menus
-    │   │   ├── navbar.tsx                 # Phone top bar (faded Certified.app / back, title, New, account)
-    │   │   ├── network-menu.tsx           # Network menu (Feed, Explore, Graph, Map, Funding): popover + phone sheet
+    │   │   ├── navbar.tsx                 # Phone top bar (faded Certified.app / back, title, New, account control)
+    │   │   ├── network-menu.tsx           # Network pages as menu rows + the pill's Network sheet
     │   │   ├── new-menu.tsx               # New activity / project / group: popover + phone sheet
     │   │   ├── site-footer.tsx            # Global footer
-    │   │   └── workspace-menu.tsx         # Workspace switcher (personal + groups): popover + phone sheet
+    │   │   └── workspace-menu.tsx         # Switching pieces: useWorkspaceState, useOpenWorkspace, WorkspaceRow
     │   ├── dashboard/
     │   │   ├── custom-domain-modal.tsx
     │   │   └── username-card.tsx

@@ -253,7 +253,7 @@ export function usePageTitle(title: string) {
  *
  * - A page that renders `<PageHeader>` owns it: the header's title is the
  *   visible h1. While a PageHeader is mounted, the chrome (mobile navbar,
- *   desktop top bar) renders no h1 of its own, visible or visually hidden,
+ *   desktop strip) renders no h1 of its own, visible or visually hidden,
  *   and the phone bar shows no compact title (it keeps its back chevron on
  *   pages that aren't top-level).
  * - A page without a PageHeader keeps the chrome's h1 (the `usePageTitle`

@@ -3,15 +3,8 @@
 import { usePathname } from "next/navigation";
 import { useNavbarContext } from "@/lib/navbar-context";
 import SiteFooter from "@/components/layout/site-footer";
+import { routeChrome } from "@/lib/layout/chrome";
 
-/** Editorial pages: full-width content with no app column, still with the
- *  site footer. */
-const EDITORIAL_PATHS: ReadonlySet<string> = new Set([
-  "/terms",
-  "/privacy",
-  "/imprint",
-  "/dsa",
-]);
 
 /**
  * The page frame: `<main>` and, after it, the site footer.
@@ -44,9 +37,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </main>
   );
 
-  if (pathname.startsWith("/embed")) return main(children);
+  const chrome = routeChrome(pathname);
+  if (chrome === "embed") return main(children);
 
-  if (pathname === "/welcome") {
+  if (chrome === "landing") {
     return (
       <>
         {main(children)}
@@ -57,7 +51,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (EDITORIAL_PATHS.has(pathname)) {
+  // Editorial pages: full-width content with no app column, still with
+  // the site footer.
+  if (chrome === "editorial") {
     return (
       <>
         {main(children)}

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Suspense } from "react";
 import {
   Bricolage_Grotesque,
   DM_Mono,
@@ -24,6 +23,7 @@ import { NavbarProvider } from "@/lib/navbar-context";
 import { ViewTransitionProvider } from "@/lib/view-transitions";
 import Navbar from "@/components/layout/navbar";
 import DesktopTopBar from "@/components/layout/desktop-top-bar";
+import AppSidebar from "@/components/layout/app-sidebar";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
@@ -220,14 +220,13 @@ export default async function RootLayout({
                 <ViewTransitionProvider>
                 <a href="#main-content" className="skip-nav">Skip to main content</a>
                 <Navbar />
-                {/* Suspense is required because DesktopTopBar reads
-                    useSearchParams() to highlight the active profile tab.
-                    Without a boundary, statically-rendered pages (e.g.
-                    /dsa, /terms, /privacy) deopt and fail the build with
-                    missing-suspense-with-csr-bailout. */}
-                <Suspense fallback={<div className="desktop-top-bar desktop-top-bar--placeholder" aria-hidden />}>
-                  <DesktopTopBar />
-                </Suspense>
+                {/* The desktop sidebar (≥800px; hidden by CSS below):
+                    rendered on the server so the content never jumps
+                    sideways. It reads search params only inside its own
+                    Suspense boundary. */}
+                <AppSidebar />
+                {/* The desktop content strip: search and New. */}
+                <DesktopTopBar />
                 {/* <main id="main-content"> and, after it, the site
                     footer (the contentinfo landmark). */}
                 <AppShell>{children}</AppShell>

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent, act } from "@testing-library/react"
 
 const state = vi.hoisted(() => ({
   pathname: "/feed",
   isAuthenticated: true,
   isLoading: false,
   isDesktop: false,
+  openFeedback: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -19,8 +20,9 @@ vi.mock("@/lib/auth/auth-context", () => ({
     isLoading: state.isLoading,
   }),
 }))
-// The Workspace tab shows whose workspace it is; no groups here, so it is
-// a plain link (workspace-menu.test.tsx covers the switcher).
+vi.mock("@/lib/feedback-context", () => ({
+  useFeedback: () => ({ openFeedback: state.openFeedback }),
+}))
 vi.mock("@/lib/groups/org-context", () => ({
   useOrg: () => ({ activeOrg: null, groups: [], selfGroup: null, switchOrg: vi.fn() }),
 }))
@@ -42,12 +44,29 @@ beforeEach(() => {
   state.isDesktop = false
 })
 
-describe("BottomNav", () => {
-  it("shows Workspace, Network and Apps, labelled, in a phone browser tab", () => {
+function polyfillDialog() {
+  const proto = HTMLDialogElement.prototype as unknown as {
+    showModal?: () => void
+    close?: () => void
+    __polyfilled?: boolean
+  }
+  if (proto.__polyfilled) return
+  proto.__polyfilled = true
+  proto.showModal = function () {
+    ;(this as unknown as { open: boolean }).open = true
+  }
+  proto.close = function () {
+    ;(this as unknown as { open: boolean }).open = false
+    ;(this as unknown as HTMLDialogElement).dispatchEvent(new Event("close"))
+  }
+}
+
+describe("BottomNav (the phone pill)", () => {
+  it("shows Workspace, Network, Apps and More, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
     const labels = Array.from(nav.querySelectorAll(".bottom-nav__item .bottom-nav__label"))
-    expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
+    expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps", "More"])
     expect(screen.getByRole("button", { name: "Network" })).toHaveAttribute("aria-current", "page")
     expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
   })
@@ -58,11 +77,25 @@ describe("BottomNav", () => {
     expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
   })
 
-  it("carries no actions: no Create, no Feedback; Network is the one button (it opens its pages)", () => {
+  it("never shows an avatar: who you act as is the top bar's account control", () => {
+    const { container } = render(<BottomNav />)
+    expect(container.querySelector(".acting-avatar")).toBeNull()
+  })
+
+  it("opens More with Help, Settings, feedback and the legal links", async () => {
+    polyfillDialog()
     render(<BottomNav />)
-    expect(screen.queryByText("Create")).toBeNull()
-    expect(screen.queryByText("Feedback")).toBeNull()
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Network"])
+    const more = screen.getByRole("button", { name: "More" })
+    expect(more).toHaveAttribute("aria-haspopup", "dialog")
+    await act(async () => {
+      fireEvent.click(more)
+    })
+    expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/help")
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings")
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }))
+    expect(state.openFeedback).toHaveBeenCalled()
+    const legal = screen.getByRole("navigation", { name: "Legal" })
+    expect(legal).toHaveTextContent("Terms")
   })
 
   it("shows only the public destinations to signed-out visitors", () => {
@@ -73,10 +106,11 @@ describe("BottomNav", () => {
     expect(Array.from(nav.querySelectorAll(".bottom-nav__item")).map((t) => t.textContent)).toEqual([
       "Network",
       "Apps",
+      "More",
     ])
   })
 
-  it("keeps its place but shows no tabs while auth resolves", () => {
+  it("keeps its place but shows no items while auth resolves", () => {
     state.isLoading = true
     render(<BottomNav />)
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument()
@@ -84,14 +118,17 @@ describe("BottomNav", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0)
   })
 
-  it("is absent on desktop and on the landing page", () => {
+  it("is absent on desktop, on the landing page and on forms", () => {
     state.isDesktop = true
     const { unmount } = render(<BottomNav />)
     expect(screen.queryByRole("navigation")).toBeNull()
     unmount()
     state.isDesktop = false
-    state.pathname = "/welcome"
-    render(<BottomNav />)
-    expect(screen.queryByRole("navigation")).toBeNull()
+    for (const path of ["/welcome", "/create"]) {
+      state.pathname = path
+      const { unmount: u } = render(<BottomNav />)
+      expect(screen.queryByRole("navigation")).toBeNull()
+      u()
+    }
   })
 })

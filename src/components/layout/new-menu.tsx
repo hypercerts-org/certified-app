@@ -49,7 +49,7 @@ export function DesktopNewMenu() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <Button variant="primary" size="sm" data-tour="nav-create">
+        <Button variant="primary" size="md" data-tour="nav-create">
           <Plus size={16} strokeWidth={2} aria-hidden />
           New
         </Button>

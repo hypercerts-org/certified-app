@@ -15,7 +15,6 @@ import LikeButton, { useLikeActor } from "@/components/comments/like-button"
 import { useLike } from "@/hooks/use-likes"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { useSeenAs } from "@/lib/groups/seen-as"
 import type { Group } from "@/lib/groups/types"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useComments } from "@/hooks/use-comments"
@@ -61,31 +60,27 @@ const COUNT_FROM = MAX_COMMENT_LENGTH - 100
  * Signed out, Comment (or "Sign in to comment") opens sign-in.
  *
  * Who a comment is posted as: the avatar beside the field switches between
- * you and your groups. It starts on the account the page is about: on the
- * feed the one it is "Seen as" (`defaultAuthor="seen-as"`), elsewhere the
- * open workspace. Authors (and the members of a group that wrote one) can
- * delete comments.
+ * you and your groups. It starts on the account you act as (the account
+ * control), on every page, the feed included. Authors (and the members of
+ * a group that wrote one) can delete comments.
  */
 export default function CommentThread({
   subject,
   subjectTitle,
   subjectKind,
   layout = "card",
-  defaultAuthor = "workspace",
 }: {
   subject: { uri: string; cid: string }
   subjectTitle: string
   subjectKind: CommentSubjectKind
   layout?: "card" | "section"
-  defaultAuthor?: "seen-as" | "workspace"
 }) {
   const { did: ownDid, openSignInModal } = useAuth()
   const { activeOrg, groups } = useOrg()
-  const { seenAs } = useSeenAs()
   const thread = useComments(subject.uri)
   const isSection = layout === "section"
   // The card's bar also likes; its count joins the summary on the right.
-  const likeActor = useLikeActor(defaultAuthor)
+  const likeActor = useLikeActor()
   const likes = useLike(subject, likeActor.actor, likeActor.ownDid)
   const [shown, setShown] = useState(isSection ? SECTION_PREVIEW_COUNT : COMMENT_PREVIEW_COUNT)
   const [composing, setComposing] = useState(false)
@@ -103,8 +98,7 @@ export default function CommentThread({
   // The latest `shown`, read top-down from the oldest of them.
   const visible = thread.comments.slice(0, shown).reverse()
   const earlier = Math.max(0, thread.total - visible.length)
-  const author: Group | null =
-    picked !== undefined ? picked : defaultAuthor === "seen-as" ? seenAs : activeOrg
+  const author: Group | null = picked !== undefined ? picked : activeOrg
   const authorDid = author?.groupDid ?? ownDid ?? null
   const fieldOpen = !!ownDid && (isSection || composing)
 
@@ -272,7 +266,7 @@ export default function CommentThread({
   return (
     <div className="comment-thread">
       <div className="comment-thread__bar">
-        <LikeButton subject={subject} subjectKind={subjectKind} defaultAuthor={defaultAuthor} />
+        <LikeButton subject={subject} subjectKind={subjectKind} />
         <Button
           variant="ghost"
           size="sm"

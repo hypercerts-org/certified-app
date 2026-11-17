@@ -245,34 +245,33 @@
   justify-content: flex-end;
 }
 
-/* ========== Bottom Nav (phone tab bar, < 800px) ==========
-   Shown in every phone browser (bottom-nav-visibility.ts): Home, Feed,
-   Explore, Records, Apps. `--bottom-nav-height` is defined in tokens.css
-   (base 56px, zeroed at ≥800px and whenever the bar is absent) so the
-   desktop override isn't clobbered by import order. */
+/* ========== Bottom Nav (phone pill, < 800px) ==========
+   See bottom-nav.tsx. A small floating pill (Workspace, Network, Apps,
+   More), shown in every phone browser (bottom-nav-visibility.ts). It
+   floats `--bottom-pill-gap` above the safe area; `--bottom-nav-height`
+   (tokens.css) is its whole footprint, zeroed at ≥800px and whenever the
+   pill is absent, so bottom-pinned UI and the content padding clear it. */
 
 .bottom-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  bottom: calc(var(--bottom-pill-gap) + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-bottom-nav);
-  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  translate: -50% 0;
+  height: var(--bottom-pill-height);
+  max-width: calc(100% - 32px);
+  padding: 4px;
   background: var(--bg-floating);
-  border-top: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
 }
 
 .bottom-nav__inner {
-  max-width: 720px;
-  margin: 0 auto;
   height: 100%;
   display: flex;
-  /* Center items vertically so each icon + label cluster sits in the
-     middle of the 56px bar and the full row is a comfortable tap
-     target. */
-  align-items: center;
-  justify-content: space-around;
+  align-items: stretch;
+  gap: 2px;
 }
 
 .bottom-nav__item {
@@ -280,19 +279,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  flex: 1;
-  height: 100%;
-  /* Guarantee WCAG / iOS HIG 44pt touch target even on shorter bars. */
+  gap: 3px;
+  /* Room for the longest label ("Workspace") and a 44pt touch target. */
+  min-width: 68px;
   min-height: 44px;
+  padding: 0 8px;
   border: none;
+  border-radius: var(--radius-pill);
   background: none;
   color: var(--fg-muted);
+  text-decoration: none;
   cursor: pointer;
   /* Transform lives on the base rule so the :active press eases back on
      release instead of snapping. */
-  transition: color var(--transition-fast), transform var(--transition-fast);
-  padding: 0;
+  transition: color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
   /* A long-press shouldn't select the label or open the iOS callout. */
   user-select: none;
@@ -302,15 +302,15 @@
 
 .bottom-nav__icon-wrap {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 /* Gated so a tap doesn't leave a sticky hover colour that reads as a
-   second active item. */
+   second current item. */
 @media (hover: hover) and (pointer: fine) {
   .bottom-nav__item:hover {
     color: var(--fg-primary);
@@ -322,39 +322,47 @@
   transform: scale(0.97);
 }
 
+/* Current: the selected pill behind the item, plus the heavier stroke. */
 .bottom-nav__item--active {
   color: var(--fg-primary);
+  background: var(--bg-selected);
 }
 
-/* Workspace tab in a group's workspace: the group's square avatar instead
-   of the icon. Current: a ring in the tab's colour, following the
-   avatar's shape, in place of the heavier stroke the icons get. */
-.bottom-nav__avatar {
-  display: inline-flex;
+.bottom-nav__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
-.bottom-nav__item--active .bottom-nav__avatar > * {
-  outline: 1.5px solid currentColor;
-  outline-offset: 1.5px;
-}
-
-/* One-word label under each icon, so ambiguous glyphs like Apps / Home
-   read on touch, where tooltips are suppressed. */
+/* One-word label under each icon, so ambiguous glyphs like Apps read on
+   touch, where tooltips are suppressed. */
 .bottom-nav__label {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: var(--text-label);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
 }
 
-/* Bottom nav is phone-only chrome (<800px). On desktop the top bar hosts
-   navigation; hide via CSS here so first paint is correct even before JS
-   hydrates and the component's own `isBottomNavVisible` check runs.
-   Mirrors the analogous rule on .navbar and the inverse opt-in on
-   .desktop-top-bar. */
+/* A fade from the page colour behind the pill, so text scrolling under it
+   doesn't fight its labels. Its own element: the pill's translate would
+   make it the containing block of a fixed ::before. */
+.bottom-nav-fade {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-bottom-nav);
+  height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+  background: linear-gradient(to top, var(--bg-canvas) 45%, transparent);
+  pointer-events: none;
+}
+
+/* The pill is phone-only chrome (<800px); the desktop sidebar hosts the
+   navigation there. Hidden by CSS too, so first paint is right before JS
+   hydrates and the component's own `isBottomNavVisible` check runs. */
 @media (min-width: 800px) {
-  .bottom-nav {
+  .bottom-nav,
+  .bottom-nav-fade {
     display: none;
   }
 }
@@ -488,8 +496,10 @@
 }
 
 @media (min-width: 800px) {
+  /* minmax(0, …): a wide child (a scrolling row of pills) scrolls in its
+     own box instead of widening the page past the viewport. */
   .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page), :has(.page-container)) .app-shell__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .app-shell:is(:has(.home-page), :has(.explore-page), :has(.feed-page), :has(.records-page), :has(.page-container)) .app-shell__content {
     max-width: none;
@@ -1167,303 +1177,138 @@
   border: 0;
 }
 
-/* ========== Desktop Top Bar (≥ 800px) ==========
-   See desktop-top-bar.tsx. One row: brandmark + the five destinations on
-   the left; search, New and the account button on the right. Pages carry
-   their own back link and section tabs (PageHeader, in-page Tabs).
-   Hidden below 800px — the phone <Navbar /> and <BottomNav /> handle
-   that range.
+/* ========== App sidebar (desktop, ≥ 800px) ==========
+   See app-sidebar.tsx. Fixed, full height and `--sidebar-width` wide
+   (tokens.css): an 88px rail at 800–1299px, where each item is an icon
+   over a one-word label, and the full 248px sidebar from 1300px, where
+   items are rows. The body is padded by the same width, so the strip,
+   the page and the footer sit beside it; fixed overlays (dialogs, toasts,
+   the tour) still cover the whole viewport. */
 
-   The bar scrolls with the page (no `position: sticky`) so the whole
-   layout — top bar + content — moves together as the user scrolls. */
-
-.desktop-top-bar {
+.app-sidebar {
   display: none;
 }
 
 @media (min-width: 800px) {
-  .desktop-top-bar {
+  body {
+    padding-left: var(--sidebar-width);
+  }
+
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--z-rail);
+    width: var(--sidebar-width);
     display: flex;
     flex-direction: column;
-    background: var(--navbar-bg);
-    box-shadow: var(--shadow-navbar-hairline);
-  }
-
-  /* Placeholder rendered by the Suspense fallback while the real
-     DesktopTopBar resolves on statically-prerendered pages. Reserves the
-     row-1 height so first paint doesn't jump when the real bar mounts. */
-  .desktop-top-bar--placeholder {
-    height: var(--top-bar-row1);
+    gap: 12px;
+    /* 8px on top puts the brand's centre on the strip's (26px). */
+    padding: 8px 8px 12px;
+    background: var(--bg-canvas);
+    border-right: 1px solid var(--border-default);
   }
 }
 
-.desktop-top-bar__row {
+/* Popover and tooltip wrappers shrink to their trigger; in the sidebar the
+   trigger fills the row like the links around it. */
+.app-sidebar__fill {
   display: flex;
-  align-items: center;
   width: 100%;
-  /* No max-width cap — the chrome stretches viewport-wide on every
-     page so the navbar border-bottom and footer border-top run
-     edge-to-edge in lockstep. */
-  margin: 0 auto;
-  padding: 0 12px;
 }
 
-.desktop-top-bar__row--chrome {
-  height: var(--top-bar-row1);
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.desktop-top-bar__row--chrome {
-  border-bottom: 1px solid var(--border-default);
-}
-
-/* The destinations keep their full width; the search field gives way
-   instead (see .desktop-top-bar__search). */
-.desktop-top-bar__left {
+.app-sidebar__top {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
 }
 
-/* The faded Certified.app wordmark (to Home): a 36px-tall
-   target around the 18px letters; the 4px inset puts the mark on the 16px
-   page edge (the row has 12px padding). */
-.desktop-top-bar__brand {
+.app-sidebar__brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   height: 36px;
   padding: 0 4px;
   color: var(--fg-primary);
   text-decoration: none;
   border-radius: var(--radius);
   transition: opacity var(--transition-fast);
-  flex-shrink: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .desktop-top-bar__brand:hover {
+  .app-sidebar__brand:hover {
     opacity: 0.85;
   }
 }
 
-.desktop-top-bar__brand:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* The five destinations: icon + word. Current = a `--bg-selected` pill
-   (grey in light, a lighter step in dark) + primary text; others
-   secondary. No weight change on current or hover, so the row never
-   shifts. */
-.desktop-top-bar__nav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-}
-
-/* Between your Workspace and the Network (and Apps). */
-.desktop-top-bar__divider {
-  flex-shrink: 0;
-  width: 1px;
-  height: 20px;
-  margin-inline: 6px;
-  background: var(--border-default);
-}
-
-.desktop-top-bar__nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: var(--control-h-sm);
-  /* 8px at 800–1099 so all five fit beside search, New and the account
-     button; 12px once there is room. */
-  padding: 0 8px;
-  font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: var(--text-ui);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--fg-secondary);
-  text-decoration: none;
-  border-radius: var(--radius-pill);
-  transition: background-color var(--transition-fast), color var(--transition-fast);
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-
-@media (min-width: 1100px) {
-  .desktop-top-bar__nav-link {
-    padding: 0 12px;
-  }
-}
-
-.desktop-top-bar__nav-link > svg {
-  flex-shrink: 0;
-}
-
-/* 800–1099px: words only, so the full wordmark, all five destinations,
-   search, New and the account button fit on one row. */
-@media (max-width: 1099px) {
-  .desktop-top-bar__nav-link > svg {
-    display: none;
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .desktop-top-bar__nav-link:hover {
-    background: var(--overlay-weak);
-    color: var(--fg-primary);
-  }
-}
-
-/* Workspace and Network can be buttons (they open menus): reset the
-   button chrome so they match the links. */
-button.desktop-top-bar__nav-link {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.desktop-top-bar__chevron {
-  display: inline-flex;
-  margin-left: -2px;
-  color: var(--fg-muted);
-}
-
-/* Workspace: one fixed width, whatever the workspace is called ("My
-   workspace", or a group's name, which truncates), so the row never
-   shifts when you switch. Sized to "My workspace" (91px in Inter 500 at
-   13px) plus the padding and chevron, with a few px to spare: 128px at
-   800–1099px, words only like the other destinations; 162px from 1100px
-   with the icon or the group's avatar. */
-.desktop-top-bar__workspace {
-  flex-shrink: 0;
-  width: 128px;
-}
-
-.desktop-top-bar__workspace-visual {
+.app-sidebar__wordmark {
   display: none;
-  flex-shrink: 0;
 }
 
-.desktop-top-bar__workspace-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: left;
+.app-sidebar__brandmark {
+  display: inline-flex;
 }
 
-@media (min-width: 1100px) {
-  .desktop-top-bar__workspace {
-    width: 162px;
-  }
-
-  .desktop-top-bar__workspace-visual {
-    display: inline-flex;
-  }
-}
-
-.desktop-top-bar__nav-link[data-current],
-.desktop-top-bar__nav-link[aria-current="page"] {
-  background: var(--bg-selected);
-  color: var(--fg-primary);
-}
-
-.desktop-top-bar__nav-link:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.desktop-top-bar__right {
+/* The account slot: one height whatever fills it (the placeholder, the
+   control, Sign in), so the rows below never move. */
+.app-sidebar__account-slot {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-  flex: 1 1 auto;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
 }
 
-/* Up to 300px; shrinks (to 120px, 96px below 1100px) so the
-   destinations never clip. On /explore the slot is an empty placeholder
-   of the same size, so New and the account button don't move. */
-.desktop-top-bar__search {
-  flex: 0 1 300px;
-  min-width: 120px;
+/* The account control: the acting account's avatar; from 1300px also its
+   name, a second line and a chevron. */
+.app-sidebar__account-wrap {
+  display: flex;
+  width: 100%;
 }
 
-@media (max-width: 1099px) {
-  .desktop-top-bar__search {
-    min-width: 96px;
-  }
-}
-
-/* Account button (desktop): avatar, then name and handle (or the group
-   and "as @you") from 1100px. */
-.account-button {
-  display: inline-flex;
+.app-sidebar__account {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: var(--control-h-sm);
-  padding: 2px 8px 2px 2px;
-  max-width: 240px;
-  background: transparent;
-  border: none;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px;
+  border: 0;
   border-radius: var(--radius);
-  color: var(--fg-secondary);
+  background: transparent;
+  color: var(--fg-primary);
+  text-align: left;
   cursor: pointer;
   transition: background-color var(--transition-fast);
-  flex-shrink: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .account-button:hover {
+  .app-sidebar__account:hover {
     background: var(--overlay-weak);
   }
 }
 
-.account-button:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+.app-sidebar__account[aria-expanded="true"] {
+  background: var(--bg-selected);
 }
 
-.account-button__meta {
+.app-sidebar__account-meta {
   display: none;
+  flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
-  text-align: left;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
-@media (min-width: 1100px) {
-  .account-button__meta {
-    display: flex;
-  }
-}
-
-/* 1100–1299px: a shorter cap, so a long name truncates instead of
-   pushing the row past the viewport. */
-@media (min-width: 1100px) and (max-width: 1299px) {
-  .account-button {
-    max-width: 200px;
-  }
-}
-
-.account-button__name {
+.app-sidebar__account-name {
   font-size: var(--text-ui);
   font-weight: 600;
-  color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.account-button__sub {
+.app-sidebar__account-sub {
   font-size: var(--text-caption);
   color: var(--fg-muted);
   white-space: nowrap;
@@ -1471,8 +1316,248 @@ button.desktop-top-bar__nav-link {
   text-overflow: ellipsis;
 }
 
-.account-button__chevron {
+.app-sidebar__account-chevron {
+  display: none;
   flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+/* While sign-in is being checked: an avatar-sized blank, so nothing moves
+   when the control arrives. */
+.app-sidebar__account-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+}
+
+/* Signed out, the account slot is Sign in: a rail item (icon over the
+   word) on the rail, the primary button from 1300px. Scoped to the
+   sidebar so it outranks the button's own display utility. */
+.app-sidebar .app-sidebar__sign-in--full {
+  display: none;
+  width: 100%;
+}
+
+.app-sidebar__nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.app-sidebar__full {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-sidebar__rail,
+.app-sidebar__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-sidebar__group-label {
+  margin: 0;
+  padding: 0 10px 6px;
+  font-size: var(--text-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* An item: icon over a one-word label on the rail, a row from 1300px. */
+.app-sidebar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  color: var(--fg-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.app-sidebar__item > svg {
+  flex-shrink: 0;
+}
+
+.app-sidebar__label {
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-sidebar__item:hover {
+    background: var(--overlay-weak);
+    color: var(--fg-primary);
+  }
+}
+
+.app-sidebar__item[aria-current="page"],
+.app-sidebar__item[data-current],
+.app-sidebar__item[aria-expanded="true"] {
+  background: var(--bg-selected);
+  color: var(--fg-primary);
+}
+
+.app-sidebar__brand:focus-visible,
+.app-sidebar__account:focus-visible,
+.app-sidebar__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.app-sidebar__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 1300px) {
+  .app-sidebar {
+    padding: 12px;
+  }
+
+  .app-sidebar__top {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  /* One left edge from 1300px: the wordmark, the account avatar and the
+     row icons all start 22px in. */
+  .app-sidebar__brand {
+    align-self: flex-start;
+    padding: 0 10px;
+  }
+
+  .app-sidebar__wordmark {
+    display: inline-flex;
+  }
+
+  .app-sidebar__brandmark,
+  .app-sidebar__rail,
+  .app-sidebar .app-sidebar__sign-in--rail {
+    display: none;
+  }
+
+  .app-sidebar .app-sidebar__sign-in--full {
+    display: inline-flex;
+  }
+
+  .app-sidebar__account {
+    justify-content: flex-start;
+    padding: 6px 10px;
+  }
+
+  .app-sidebar__account-meta {
+    display: flex;
+  }
+
+  .app-sidebar__account-chevron {
+    display: inline-flex;
+  }
+
+  .app-sidebar__full {
+    display: flex;
+  }
+
+  .app-sidebar__list {
+    gap: 2px;
+  }
+
+  .app-sidebar__item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  .app-sidebar__label {
+    font-size: var(--text-ui);
+    line-height: 1.2;
+  }
+}
+
+/* The acting account's mark (account-switcher.tsx): a group's square
+   avatar with yours on its corner, on a ring of the surface colour. */
+.acting-avatar {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.acting-avatar__you {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: inline-flex;
+  border-radius: 50%;
+  box-shadow: var(--shadow-ring-canvas);
+}
+
+/* ========== Desktop content strip (≥ 800px) ==========
+   See desktop-top-bar.tsx. Search and New, right-aligned above the page,
+   beside the sidebar. It scrolls with the page. Hidden below 800px — the
+   phone top bar and pill handle that range. */
+
+.desktop-top-bar {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .desktop-top-bar {
+    display: block;
+  }
+}
+
+/* Lined up with the page: the default page width and its gutters
+   (page-container.tsx), so New ends where the content does. */
+.desktop-top-bar__row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: var(--top-bar-row1);
+  max-width: calc(var(--page-width-default) + 48px);
+  margin-inline: auto;
+  padding: 0 24px;
+}
+
+@media (min-width: 1100px) {
+  .desktop-top-bar__row {
+    max-width: calc(var(--page-width-default) + 64px);
+    padding: 0 32px;
+  }
+}
+
+/* Up to 300px; shrinks to 160px. On /explore the slot is an empty
+   placeholder of the same size, so New doesn't move. */
+.desktop-top-bar__search {
+  flex: 0 1 300px;
+  min-width: 160px;
 }
 
 /* ========== Two-column page layout ==========

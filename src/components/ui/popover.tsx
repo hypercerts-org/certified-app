@@ -96,10 +96,13 @@ export interface PopoverProps {
   /** Controlled-open. When omitted, popover manages its own state. */
   open?: boolean;
   onOpenChange?: (next: boolean) => void;
+  /** Extra classes on the inline wrapper, e.g. to let a trigger fill a
+   *  row (the wrapper otherwise shrinks to the trigger). */
+  className?: string;
   children: React.ReactNode;
 }
 
-export function Popover({ open: controlledOpen, onOpenChange, children }: PopoverProps) {
+export function Popover({ open: controlledOpen, onOpenChange, className = "", children }: PopoverProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
 
@@ -165,7 +168,7 @@ export function Popover({ open: controlledOpen, onOpenChange, children }: Popove
       value={{ open, setOpen, triggerRef, contentRef, contentId, focusInsideRef }}
     >
       {/* Inline wrapper for relative positioning of <PopoverContent>. */}
-      <span className="inline-flex relative">{children}</span>
+      <span className={`inline-flex relative ${className}`.trim()}>{children}</span>
     </PopoverContext.Provider>
   );
 }
@@ -216,8 +219,10 @@ export function PopoverTrigger({ children }: PopoverTriggerProps) {
 
 export type PopoverAlign = "start" | "center" | "end";
 
-/** Vertical side the portaled menu opens toward (portal mode only). */
-export type PopoverSide = "top" | "bottom";
+/** Side the portaled menu opens toward (portal mode only). "left" and
+ *  "right" open beside the trigger (a sidebar's menus); "top" and
+ *  "bottom" above or below it. */
+export type PopoverSide = "top" | "bottom" | "left" | "right";
 
 export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
@@ -252,7 +257,9 @@ export interface PopoverContentProps extends React.HTMLAttributes<HTMLDivElement
   /**
    * Portal mode only: which side of the trigger the menu opens toward.
    * Defaults to 'bottom'. The menu FLIPs to the opposite side if there
-   * isn't room within the viewport (respecting `collisionPadding`).
+   * isn't room within the viewport (respecting `collisionPadding`). On
+   * 'left' / 'right', `align` becomes the vertical edge: 'start' lines up
+   * the top edges, 'end' the bottom edges, 'center' centres the menu.
    */
   side?: PopoverSide;
   /**
@@ -304,15 +311,21 @@ const POPOVER_MOTION_CSS = `
 .popover-panel[data-side="top"] { transform-origin: bottom left; }
 .popover-panel[data-side="top"][data-align="center"] { transform-origin: bottom center; }
 .popover-panel[data-side="top"][data-align="end"] { transform-origin: bottom right; }
+.popover-panel[data-side="right"] { transform-origin: left top; }
+.popover-panel[data-side="right"][data-align="end"] { transform-origin: left bottom; }
+.popover-panel[data-side="left"] { transform-origin: right top; }
+.popover-panel[data-side="left"][data-align="end"] { transform-origin: right bottom; }
 @starting-style {
   .popover-panel { opacity: 0; scale: 0.97; translate: 0 -2px; }
   .popover-panel[data-side="top"] { translate: 0 2px; }
+  .popover-panel[data-side="right"] { translate: -2px 0; }
+  .popover-panel[data-side="left"] { translate: 2px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .popover-panel { transition: opacity var(--duration-fast) var(--ease-out) !important; }
   @starting-style {
     .popover-panel,
-    .popover-panel[data-side="top"] { scale: none; translate: none; }
+    .popover-panel[data-side] { scale: none; translate: none; }
   }
 }
 `;
@@ -371,11 +384,13 @@ interface PortalCoords {
  * menu, given the trigger rect and the measured menu size, then
  * FLIP/clamp so the menu stays within the viewport minus `collisionPadding`.
  *
- *  - `side` picks the preferred vertical side; we FLIP to the opposite
- *    side when the preferred side lacks room but the opposite has more.
- *  - `align` is the horizontal edge: 'start' aligns left edges, 'end'
- *    aligns right edges, 'center' centers on the trigger. The result is
- *    then clamped horizontally within the viewport.
+ *  - `side` picks the preferred side; we FLIP to the opposite side when
+ *    the preferred side lacks room but the opposite has more.
+ *  - On 'top' / 'bottom', `align` is the horizontal edge: 'start' aligns
+ *    left edges, 'end' right edges, 'center' centers on the trigger. On
+ *    'left' / 'right' it is the vertical edge: 'start' aligns top edges,
+ *    'end' bottom edges, 'center' centers. Both axes are then clamped
+ *    within the viewport.
  */
 function computePortalCoords(
   triggerRect: DOMRect,
@@ -388,6 +403,35 @@ function computePortalCoords(
 ): { left: number; top: number } {
   const vw = globalThis.innerWidth;
   const vh = globalThis.innerHeight;
+  const clamp = (value: number, size: number, viewport: number) =>
+    Math.min(
+      Math.max(value, collisionPadding),
+      Math.max(collisionPadding, viewport - collisionPadding - size),
+    );
+
+  if (side === "left" || side === "right") {
+    // --- horizontal (side) with FLIP ---
+    const spaceRight = vw - triggerRect.right;
+    const spaceLeft = triggerRect.left;
+    let resolved = side;
+    if (side === "right" && spaceRight < menuW + sideOffset + collisionPadding && spaceLeft > spaceRight) {
+      resolved = "left";
+    } else if (side === "left" && spaceLeft < menuW + sideOffset + collisionPadding && spaceRight > spaceLeft) {
+      resolved = "right";
+    }
+    const left =
+      resolved === "right"
+        ? triggerRect.right + sideOffset
+        : triggerRect.left - sideOffset - menuW;
+    // --- vertical (align) ---
+    const top =
+      align === "start"
+        ? triggerRect.top
+        : align === "end"
+          ? triggerRect.bottom - menuH
+          : triggerRect.top + triggerRect.height / 2 - menuH / 2;
+    return { left: clamp(left, menuW, vw), top: clamp(top, menuH, vh) };
+  }
 
   // --- vertical (side) with FLIP ---
   const spaceBelow = vh - triggerRect.bottom;

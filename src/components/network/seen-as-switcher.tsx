@@ -7,8 +7,9 @@ import { useSeenAs } from "@/lib/groups/seen-as"
  * "Seen as", right after the Feed and Explore titles: which account the
  * network is shown for, you ("Me") or one of your groups, and a way to
  * switch (`AccountPicker`). Its own setting (`useSeenAs`), separate from
- * the workspace: picking here never changes the workspace, and the
- * Workspace menu never changes this.
+ * who you act as: picking here never changes the account control, and
+ * switching there never changes this. It only decides what you read;
+ * likes and comments go out as the account you act as.
  */
 export default function SeenAsSwitcher() {
   const { seenAs, setSeenAs } = useSeenAs()
