@@ -50,7 +50,9 @@ function ExploreUserCard({
           size="lg"
           src={avatarUrl ?? undefined}
           alt=""
-          fallbackInitials={initials}
+          // Unknown name: the plain fill, not a "?".
+          fallbackInitials={initials === "?" ? "" : initials}
+          seed={actor.did}
           className="explore-user-card__avatar"
         />
         <div className="explore-user-card__id">

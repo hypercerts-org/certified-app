@@ -99,7 +99,13 @@ export default function ImageEditOverlay({
     <div className={wrapperClass}>
       <button
         type="button"
-        className="image-edit-overlay__btn"
+        // Empty, there is no image under the pill: it takes the
+        // theme-aware control colours (`--empty`, components.css).
+        className={
+          isEmpty
+            ? "image-edit-overlay__btn image-edit-overlay__btn--empty"
+            : "image-edit-overlay__btn"
+        }
         onClick={handleClick}
         aria-label={isUploading ? "Uploading image" : changeLabel}
         title={changeLabel}

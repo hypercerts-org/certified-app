@@ -29,7 +29,7 @@ export default function GroupResultModal({
 
   return (
     <AppDialog
-      ariaLabel={created ? "Group created" : "Group removed"}
+      ariaLabel={created ? "Group created" : "No longer a group"}
       role="alertdialog"
       maxWidth={400}
       onClose={onClose}
@@ -53,7 +53,7 @@ export default function GroupResultModal({
           </div>
 
           <h2 className="group-result__title">
-            {created ? "You're a group now" : "Group removed"}
+            {created ? "You're a group now" : "No longer a group"}
           </h2>
 
           <p className="group-result__body">

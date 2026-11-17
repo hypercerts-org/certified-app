@@ -1,9 +1,10 @@
 "use client"
 
 import { useId, useMemo } from "react"
+import Image from "next/image"
 import Link from "next/link"
-import { FolderGit2, Plus } from "lucide-react"
-import AppTile from "@/components/apps/app-tile"
+import { ArrowUpRight, FolderGit2, Plus } from "lucide-react"
+import SsoAppLink from "@/components/apps/sso-app-link"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
 import CertIcon from "@/components/ui/cert-icon"
@@ -389,6 +390,12 @@ export function HomeEndorsements({
 
 // --------------------------------- Apps -------------------------------------
 
+/**
+ * The apps, compact: one hairline row each (the logo on a 32px plate, the
+ * name, the one-line tagline, the "opens elsewhere" arrow), then "All
+ * apps" to /apps, where each has its tile and longer description. Rows,
+ * not tiles, so the section stays a short list under the account's own.
+ */
 export function HomeApps() {
   return (
     <HomeSection
@@ -396,16 +403,47 @@ export function HomeApps() {
       description="Sign in to each of these with your Certified account."
       tour="home-apps"
     >
-      {/* One per row at every width, so each tagline gets its full line
-          (two across, in the ~500px column, clamped them after a few
-          words). */}
-      <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0">
-        {HOME_APPS.map((app) => (
-          <li key={app.name} className="flex">
-            <AppTile app={app} size="sm" />
-          </li>
-        ))}
+      <ul className="home-rows">
+        {HOME_APPS.map((app) => {
+          const monochromeLogo = "monochromeLogo" in app && app.monochromeLogo
+          return (
+            <li key={app.name}>
+              {/* Opens a new tab, signing a signed-in viewer straight in
+                  where the app supports it. */}
+              <SsoAppLink
+                url={app.url}
+                ssoHandleUrl={"ssoHandleUrl" in app ? app.ssoHandleUrl : undefined}
+                className="home-row hover-tint hover-tint--bleed group"
+              >
+                <span className="home-row__thumb home-row__thumb--logo">
+                  {/* A black one-colour mark flips to white in dark mode,
+                      where the plate is near-black (as on /apps). */}
+                  <Image
+                    src={app.logo}
+                    alt=""
+                    width={26}
+                    height={26}
+                    className={monochromeLogo ? "dark:invert" : undefined}
+                  />
+                </span>
+                <span className="home-row__text">
+                  <span className="home-row__title">{app.name}</span>
+                  <span className="home-row__meta">{app.desc}</span>
+                </span>
+                <ArrowUpRight
+                  size={16}
+                  strokeWidth={1.75}
+                  aria-hidden
+                  className="shrink-0 text-[var(--fg-muted)] transition-colors duration-fast group-hover:text-[var(--fg-primary)]"
+                />
+              </SsoAppLink>
+            </li>
+          )
+        })}
       </ul>
+      <div>
+        <SeeAllLink href="/apps" label="All apps" />
+      </div>
     </HomeSection>
   )
 }

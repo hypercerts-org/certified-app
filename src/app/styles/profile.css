@@ -91,7 +91,8 @@
    The public pages' header (DESIGN.md §9.12): the account's banner when it
    has one, inside the container; the avatar beside the name and one meta
    line; the lead at reading width; the links; the trust line. The viewer's
-   actions sit top right from 800px, and in a full-width row on phones. */
+   actions sit top right from 1300px, in a row under the trust line from
+   800px, and in a full-width row on phones. */
 
 .profile-header {
   /* The avatar's size, for its placeholders too. */
@@ -348,6 +349,20 @@
   gap: 8px;
 }
 
+/* "Couldn't follow. Try again." after a failed Follow or revoke (as Like
+   does). In the header's actions it takes a line of its own under the
+   buttons. */
+.profile-action-error {
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--color-error);
+}
+
+.profile-header__actions > .profile-action-error {
+  order: 1;
+  flex: 1 1 100%;
+}
+
 /* Edit mode: the identity block becomes a short form. */
 .profile-header__fields {
   display: flex;
@@ -458,9 +473,9 @@
     flex-shrink: 0;
   }
 
+  /* One row of buttons (they share it); only an error line wraps below. */
   .profile-header__actions {
     order: 5;
-    flex-wrap: nowrap;
   }
 
   /* The text buttons share the row; the More button keeps its size. */
@@ -476,7 +491,8 @@
 }
 
 /* From 800px the header reads across: the avatar on the left, name and
-   details beside it, the viewer's actions on the right. */
+   details beside it, the viewer's actions on the right (from 1300px;
+   below the details before that). */
 @media (min-width: 800px) {
   .profile-header {
     display: grid;
@@ -518,6 +534,30 @@
   /* Center a one-line name on the 96px avatar's upper half. */
   .profile-header__identity {
     padding-top: 8px;
+  }
+}
+
+/* Between 800 and 1300px the actions are a row of their own under the
+   name, lead and trust line (aligned with the name), so they don't
+   squeeze the name and meta line beside them. */
+@media (min-width: 800px) and (max-width: 1299px) {
+  .profile-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "avatar identity"
+      "avatar actions";
+    row-gap: 20px;
+  }
+
+  .profile-header--banner {
+    grid-template-areas:
+      "banner banner"
+      "avatar identity"
+      "avatar actions";
+  }
+
+  .profile-header__actions {
+    justify-content: flex-start;
   }
 }
 
@@ -849,7 +889,7 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   aspect-ratio: 16 / 9;
 }
 
-/* "Supports": the accounts it endorsed, avatar and name, three a row
+/* "Endorses": the accounts it endorsed, avatar and name, three a row
    (two on phones). */
 .profile-supports {
   display: grid;
@@ -1088,6 +1128,14 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+/* The lists are rows of text: they keep the Overview's reading column
+   (the page less the 320px rail and its 48px gap, 752px), so a row's
+   name, note and date stay within reach of each other on a wide screen. */
+.profile-page__panel .profile-panel,
+.profile-page__panel .profile-lists {
+  max-width: calc(var(--page-width-default) - 320px - 48px);
 }
 
 /* The quiet count after a section title: muted tabular digits. */

@@ -815,10 +815,17 @@ function PreviewCard({
   )
 
   if (href) {
+    // The slot takes the card's indent under the byline (home.css, 44px);
+    // inside it the link's hover tint bleeds 8px past the text on both
+    // sides (.hover-tint--bleed), so the title and description start
+    // exactly under the name. On the link itself the indent would win
+    // over the bleed and push the text 8px right of the name.
     return (
-      <Link href={href} className="home-feed__card-body hover-tint hover-tint--bleed">
-        {body}
-      </Link>
+      <div className="home-feed__card-body-slot">
+        <Link href={href} className="home-feed__card-body hover-tint hover-tint--bleed">
+          {body}
+        </Link>
+      </div>
     )
   }
   return <div className="home-feed__card-body">{body}</div>

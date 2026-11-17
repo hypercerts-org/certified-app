@@ -47,7 +47,11 @@ export default function HelpPage() {
         description="How Certified works, and where to get help."
       />
 
-      <article className="flex min-w-0 max-w-measure flex-col gap-8 md:gap-12">
+      {/* The header's 16px plus 8px (phones) / 16px: the first section
+          heading sits clearly apart from the page title, closer to its
+          own text than to the header (proximity). Padding, not margin:
+          a margin would collapse into the header's. */}
+      <article className="flex min-w-0 max-w-measure flex-col gap-8 pt-2 md:gap-12 md:pt-4">
         <section id="about" aria-labelledby="help-about-title" className={sectionCls}>
           <SectionHeader id="help-about-title" title="About Certified" />
           <div className="flex flex-col gap-4">
@@ -89,10 +93,10 @@ export default function HelpPage() {
         >
           <SectionHeader id="help-walk-through-title" title="Take the walk-through" />
           <p className={proseCls}>
-            New here, or want a refresher? The walk-through shows you around in
-            a few quick steps: your Workspace, the Network (Feed, Explore,
-            Graph and Map) and Apps, how to create something, your profile
-            and Settings. You can start it any time.
+            New here, or want a refresher? The walk-through shows you around:
+            who you act as, your Workspace, the Network and its Feed, Apps,
+            where you create something, and Settings. It takes a minute, and
+            you can start it any time.
           </p>
           <div className="mt-1">
             <HelpTourButton />

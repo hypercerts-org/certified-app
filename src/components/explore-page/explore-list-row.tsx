@@ -41,12 +41,15 @@ export interface ExploreListRowProps {
   /** Icon shown when `thumbUrl` is null or fails to load. */
   fallbackIcon?: ReactNode
   /** Replaces the thumbnail in the 40px lead slot (an account's
-   *  `<Avatar size="row">`). */
+   *  `<Avatar size="row">`); marks the row as an account row
+   *  (`cert-list-row--account`), which keeps its short phone form. */
   leading?: ReactNode
   title: string
+  /** The title is a fallback ("Unnamed account"): muted type. */
+  titleMuted?: boolean
   /** Optional second line under the title (e.g. "by Display Name").
    *  Hidden on desktop — there the author shows in its own column;
-   *  surfaced on mobile where the column is dropped. */
+   *  surfaced on phones where the column is dropped. */
   subtitle?: ReactNode
   /** Meta segments rendered as a `·`-separated line under the title.
    *  Empty array hides the meta line. */
@@ -77,6 +80,7 @@ export default function ExploreListRow({
   fallbackIcon = null,
   leading,
   title,
+  titleMuted = false,
   subtitle,
   metaItems,
   authorDid = null,
@@ -140,7 +144,12 @@ export default function ExploreListRow({
         )}
       </div>
       <div className="cert-list-row__body">
-        <h3 className="cert-list-row__title" dir="auto">
+        <h3
+          className={`cert-list-row__title${
+            titleMuted ? " cert-list-row__title--muted" : ""
+          }`}
+          dir="auto"
+        >
           {title}
         </h3>
         {subtitle ? (
@@ -166,7 +175,9 @@ export default function ExploreListRow({
 
   return (
     <article
-      className={`cert-list-row${compact ? " cert-list-row--compact" : ""}`}
+      className={`cert-list-row${compact ? " cert-list-row--compact" : ""}${
+        leading ? " cert-list-row--account" : ""
+      }`}
     >
       {href ? (
         <Link href={href} className="cert-list-row__link">

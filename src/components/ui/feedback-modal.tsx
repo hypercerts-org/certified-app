@@ -16,25 +16,24 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
  *  support inbox can tell the two doors apart. */
 const COPY = {
   feedback: {
-    title: "Share Feedback",
+    title: "Send feedback",
     note: "Certified.app is in beta, and your feedback shapes it.",
     messageLabel: "Tell us what's working, what's not, or what you'd like to see.",
-    emailLabel:
-      "If you would like us to follow up with you regarding your feedback, please provide your email address (optional).",
-    submit: "Send Feedback",
+    emailLabel: "Your email, if you'd like a reply (optional).",
+    submit: "Send feedback",
     success: "Thank you for your feedback!",
-    again: "More Feedback",
+    again: "Send more feedback",
     prefix: "",
   },
   contact: {
-    title: "Get in Touch",
+    title: "Get in touch",
     note: "",
     messageLabel:
       "Tell us about your organization, platform, or program, and what you have in mind.",
     emailLabel: "Your email, so we can get back to you (optional).",
-    submit: "Send Message",
+    submit: "Send message",
     success: "Thank you! We'll get back to you soon.",
-    again: "New Message",
+    again: "New message",
     prefix: "[Contact request] ",
   },
 } as const
@@ -42,8 +41,13 @@ const COPY = {
 export default function FeedbackModal() {
   const { isOpen, variant, closeFeedback } = useFeedback()
   const copy = COPY[variant]
-  const { handle: sessionHandle } = useSession()
+  const { handle: sessionHandle, email: sessionEmail } = useSession()
   const { did } = useAuth()
+  // A signed-in account already has an email we can reply to: send it
+  // along (and say so) instead of asking for it again. Signed out, or
+  // signed in without one (an Atmosphere sign-in), the optional field
+  // stays.
+  const replyEmail = did && sessionEmail ? sessionEmail : null
   // Greeting priority: app.certified.actor.profile displayName →
   // app.bsky.actor.profile displayName → session handle. This is
   // exactly what /api/resolve-did already returns (Certs-first with
@@ -80,14 +84,14 @@ export default function FeedbackModal() {
       return true
     }
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-    setEmailError(valid ? "" : "Please enter a valid email address")
+    setEmailError(valid ? "" : "Enter a valid email address.")
     return valid
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim() || isSubmitting) return
-    if (email && !validateEmail(email)) return
+    if (!replyEmail && email && !validateEmail(email)) return
 
     setIsSubmitting(true)
     setError("")
@@ -97,7 +101,7 @@ export default function FeedbackModal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: copy.prefix + message.trim(),
-          email: email.trim() || undefined,
+          email: replyEmail ?? (email.trim() || undefined),
           // Passed along so the support email includes the sender's
           // identity. DID is also re-derived server-side from the
           // session cookie for trust; this one is used only when the
@@ -146,21 +150,29 @@ export default function FeedbackModal() {
         rows={5}
       />
 
-      <div className="mt-4">
-        <label htmlFor="feedback-email" className="feedback-modal__prompt">
-          {copy.emailLabel}
-        </label>
-        <Input
-          id="feedback-email"
-          type="email"
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
-          onBlur={() => validateEmail(email)}
-          placeholder="your@email.com"
-          disabled={isSubmitting}
-          error={emailError || undefined}
-        />
-      </div>
+      {replyEmail ? (
+        <p className="mt-3 mb-0 text-caption text-[var(--fg-muted)] [overflow-wrap:anywhere]">
+          {variant === "contact"
+            ? `We'll get back to you at ${replyEmail}.`
+            : `We'll reply to ${replyEmail} if we have questions.`}
+        </p>
+      ) : (
+        <div className="mt-4">
+          <label htmlFor="feedback-email" className="feedback-modal__prompt">
+            {copy.emailLabel}
+          </label>
+          <Input
+            id="feedback-email"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
+            onBlur={() => validateEmail(email)}
+            placeholder="you@example.com"
+            disabled={isSubmitting}
+            error={emailError || undefined}
+          />
+        </div>
+      )}
 
       {error && (
         <p className="feedback-modal__error mt-2" role="alert">{error}</p>
@@ -183,7 +195,7 @@ export default function FeedbackModal() {
       open={isOpen}
       onClose={closeFeedback}
       ariaLabel={copy.title}
-      maxWidth={440}
+      maxWidth={420}
       header={<AppDialogHeader title={copy.title} onClose={closeFeedback} />}
     >
       <div className="feedback-modal__body">{body}</div>

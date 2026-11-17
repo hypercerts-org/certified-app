@@ -356,10 +356,11 @@ function Combobox<T>({
           return;
         case "Enter": {
           // A surface-level submit handler (e.g. global search → explore)
-          // takes precedence over row selection: Enter on a non-empty
-          // query jumps to the full results page rather than committing
-          // whatever row the live dropdown happens to be highlighting.
-          if (onSubmit && (submitOnEmpty || value.trim().length > 0)) {
+          // handles Enter unless a row was picked with the arrow keys or
+          // the pointer: then that row opens (a keyboard or screen-reader
+          // user can't otherwise reach a result). Pair it with
+          // `autoHighlight={false}`, so nothing is picked until then.
+          if (onSubmit && highlight < 0 && (submitOnEmpty || value.trim().length > 0)) {
             e.preventDefault();
             onSubmit(value.trim());
             return;

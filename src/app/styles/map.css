@@ -5,36 +5,168 @@
    views add their own blocks below.
    ========================================================================== */
 
-.map-loading {
+/* ---- Tabs: the three views, under the title ---------------------------- */
+
+.map-page__tabs,
+.map-page__panel {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.map-page__tab-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: -4px;
+  padding: 4px;
+}
+
+.map-page__tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.map-page__tab-list {
+  width: max-content;
+  min-width: 100%;
+}
+
+.map-page__panel {
+  padding-top: 16px;
+}
+
+/* The totals: a row from 800px, one muted line on phones. */
+.map-page__stats-line {
+  display: none;
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: 1.5;
   color: var(--fg-muted);
-  font-size: var(--text-body-sm);
+  font-variant-numeric: tabular-nums;
 }
 
-.map-page__stats {
-  margin-top: 4px;
-}
-
-.map-page__toolbar {
+/* What the view shows, with the display switch (flat / globe) at the end
+   of the line, beside the map it changes. */
+.map-page__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 16px;
-  flex-wrap: wrap;
-  margin-top: 24px;
+  gap: 8px 16px;
+  margin-top: 20px;
 }
 
 .map-page__blurb {
-  margin-top: 10px;
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
   font-size: var(--text-body-sm);
   color: var(--fg-muted);
+}
+
+.map-page__controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Places layer chips are in the page from 800px (map-browse.tsx);
+   the Filters button only on phones. */
+.map-page__filters {
+  display: none;
 }
 
 .map-page__view {
   margin-top: 16px;
+}
+
+/* The first load: the main box at the map's height, the message inside,
+   so nothing moves when it fills. */
+.map-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: var(--text-body-sm);
+  text-align: center;
+}
+
+/* The loader's brandmark in a quiet mid-tone, not a bright tile on the dark
+   canvas (LoadingSpinner paints it in --fg-primary). */
+.map-loading svg {
+  color: var(--border-control);
+}
+
+/* The layer chips in the phone Filters sheet: wrapped, every one in view. */
+.map-sheet__group {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.map-sheet__label {
+  margin: 0;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.map-sheet__group .map-chips,
+.map-sheet__group .map-sites__filter {
+  flex-wrap: wrap;
+}
+
+.map-sheet__groups {
+  display: grid;
+  gap: 20px;
+}
+
+@media (max-width: 799px) {
+  .map-page__tab-list {
+    column-gap: 12px;
+  }
+
+  .map-page__stats {
+    display: none;
+  }
+
+  .map-page__stats-line {
+    display: block;
+  }
+
+  /* Phones: the controls first (Filters, flat / globe), the short
+     description under them, then the map. */
+  .map-page__bar {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 12px;
+  }
+
+  .map-page__controls {
+    order: -1;
+    justify-content: space-between;
+  }
+
+  .map-page__filters {
+    display: inline-flex;
+  }
+
+  .map-page__blurb {
+    flex-basis: auto;
+  }
+
+  .map-page__view {
+    margin-top: 12px;
+  }
 }
 
 .map-page__note {
@@ -514,5 +646,23 @@
 
   .map-list__scroll {
     max-height: 70vh;
+  }
+}
+
+/* Phones: the list runs in the page under the map, growing with "Show
+   more", not in a box of its own that scrolls inside the page. */
+@media (max-width: 799px) {
+  .map-list__scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* The layer chips are in the Filters sheet (map-page.tsx). */
+  .map-browse__chips {
+    display: none;
+  }
+
+  .map-browse__body {
+    margin-top: 0;
   }
 }

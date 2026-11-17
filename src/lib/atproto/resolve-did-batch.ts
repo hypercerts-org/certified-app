@@ -22,6 +22,13 @@ import { createBoundedCache } from "@/lib/utils/bounded-cache"
  * degrades a byline to its DID instead of looping retries against an
  * already-limited endpoint. Negative results are cached only briefly so
  * the next view re-attempts them.
+ *
+ * `loadResolvedProfileOutcome` tells the two kinds of `null` apart: the
+ * server answered that the identity doesn't resolve (`missing`, a fact),
+ * or the lookup itself failed (`failed`: a 429, a network error, a 5xx;
+ * unknown, so a caller must not present it as "this account has no
+ * name"). A 429's `Retry-After` stretches the cooldown and rides on the
+ * failed outcome so a caller can wait it out before retrying.
  */
 
 /** The subset of the resolve payload the byline / name hooks consume.
@@ -35,6 +42,19 @@ export interface ResolvedDidResult {
   banner?: string | null
 }
 
+/**
+ * What a lookup came to: the profile, the server's answer that the
+ * identity doesn't resolve, or a failed lookup (nothing is known).
+ */
+export type ResolveOutcome =
+  | { status: "ok"; profile: ResolvedDidResult }
+  | { status: "missing" }
+  | {
+      status: "failed"
+      /** From a 429's `Retry-After`, when the server sent one. */
+      retryAfterMs: number | null
+    }
+
 /** Collect a single render pass's worth of loads before flushing. */
 const BATCH_WINDOW_MS = 16
 /** Mirror the server's per-request cap; larger sets chunk into N POSTs. */
@@ -47,17 +67,28 @@ const NEGATIVE_TTL_MS = 30_000
 /** Pause flushing for this long after a 429, then resume. */
 const COOLDOWN_MS = 5_000
 
+/** The longest `Retry-After` honoured as a cooldown (the server's
+ *  windows are a minute). */
+const MAX_RETRY_AFTER_MS = 60_000
+
 interface QueueEntry {
   identity: string
-  resolve: (value: ResolvedDidResult | null) => void
+  resolve: (outcome: ResolveOutcome) => void
 }
 
-// identity -> settled-or-in-flight promise. A resolved value of `null`
-// means "looked up, not resolvable (yet)". Bounded so a long session
+/** One identity's lookup: the outcome, and the same lookup as a profile
+ *  or `null` (both promises are stable, so callers can dedupe on them). */
+interface CacheEntry {
+  outcome: Promise<ResolveOutcome>
+  profile: Promise<ResolvedDidResult | null>
+}
+
+// identity -> settled-or-in-flight lookup. Bounded so a long session
 // browsing many profiles can't grow the map without limit.
-const cache = createBoundedCache<string, Promise<ResolvedDidResult | null>>(
-  1000
-)
+const cache = createBoundedCache<string, CacheEntry>(1000)
+// Identities whose cached lookup failed (not "missing"): an explicit
+// retry may replace these before the negative TTL lapses.
+const failedIdentities = new Set<string>()
 
 let queue: QueueEntry[] = []
 let flushTimer: ReturnType<typeof setTimeout> | null = null
@@ -74,18 +105,54 @@ const evictionTimers = new Map<string, ReturnType<typeof setTimeout>>()
 export function loadResolvedProfile(
   identity: string
 ): Promise<ResolvedDidResult | null> {
+  const entry = loadEntry(identity, false)
+  return entry ? entry.profile : Promise.resolve(null)
+}
+
+/**
+ * The same batched lookup, telling a failed lookup (`failed`, unknown)
+ * from an identity that doesn't resolve (`missing`). Never rejects.
+ *
+ * `retry: true` replaces a cached *failed* lookup with a fresh one (a
+ * caller's backoff retry, or the person pressing "Try again"); without
+ * it a failure is reused until the negative TTL lapses. A fresh lookup
+ * still waits out any 429 cooldown before it is sent.
+ */
+export function loadResolvedProfileOutcome(
+  identity: string,
+  opts?: { retry?: boolean },
+): Promise<ResolveOutcome> {
+  const entry = loadEntry(identity, !!opts?.retry)
+  return entry ? entry.outcome : Promise.resolve({ status: "missing" })
+}
+
+function loadEntry(identity: string, retryFailed: boolean): CacheEntry | null {
   const key = identity.trim()
-  if (!key) return Promise.resolve(null)
+  if (!key) return null
 
   const existing = cache.get(key)
-  if (existing) return existing
+  if (existing && !(retryFailed && failedIdentities.has(key))) return existing
+  // A fresh lookup: drop the failed one (and its eviction timer). The
+  // failed mark goes either way, in case the bounded cache dropped the
+  // entry on its own.
+  failedIdentities.delete(key)
+  if (existing) {
+    cache.delete(key)
+    const timer = evictionTimers.get(key)
+    if (timer) clearTimeout(timer)
+    evictionTimers.delete(key)
+  }
 
-  const promise = new Promise<ResolvedDidResult | null>((resolve) => {
+  const outcome = new Promise<ResolveOutcome>((resolve) => {
     queue.push({ identity: key, resolve })
   })
-  cache.set(key, promise)
+  const entry: CacheEntry = {
+    outcome,
+    profile: outcome.then((o) => (o.status === "ok" ? o.profile : null)),
+  }
+  cache.set(key, entry)
   scheduleFlush()
-  return promise
+  return entry
 }
 
 function scheduleFlush(): void {
@@ -123,7 +190,7 @@ async function flush(): Promise<void> {
     for (let chunk = chunks.shift(); chunk; chunk = chunks.shift()) {
       // A 429 on a parallel chunk: degrade the rest to fallbacks instead
       // of sending into the cooldown. The negative TTL retries them later.
-      if (Date.now() < cooldownUntil) failChunk(chunk)
+      if (Date.now() < cooldownUntil) failChunk(chunk, retryAfterRemaining())
       else await sendChunk(chunk)
     }
   }
@@ -142,15 +209,20 @@ async function sendChunk(chunk: QueueEntry[]): Promise<void> {
     })
 
     if (res.status === 429) {
-      // Rate-limited: back off so we stop hammering, and degrade this
-      // chunk to fallbacks. The negative TTL lets a later render retry
-      // once the cooldown has lapsed.
-      cooldownUntil = Date.now() + COOLDOWN_MS
-      failChunk(chunk)
+      // Rate-limited: back off so we stop hammering (for as long as the
+      // server's Retry-After asks, when it says), and degrade this chunk
+      // to fallbacks. The negative TTL lets a later render retry once the
+      // cooldown has lapsed.
+      const retryAfterMs = parseRetryAfter(res.headers?.get?.("Retry-After") ?? null)
+      cooldownUntil = Math.max(
+        cooldownUntil,
+        Date.now() + Math.max(COOLDOWN_MS, retryAfterMs ?? 0),
+      )
+      failChunk(chunk, retryAfterMs)
       return
     }
     if (!res.ok) {
-      failChunk(chunk)
+      failChunk(chunk, null)
       return
     }
 
@@ -160,21 +232,45 @@ async function sendChunk(chunk: QueueEntry[]): Promise<void> {
     const results = data.results ?? {}
     for (const entry of chunk) {
       const result = results[entry.identity] ?? null
-      entry.resolve(result)
+      entry.resolve(result ? { status: "ok", profile: result } : { status: "missing" })
       // Positive results stay cached for the session; negatives expire so
       // an identity that wasn't resolvable yet gets another chance.
       if (result === null) scheduleNegativeEviction(entry.identity)
     }
   } catch {
-    failChunk(chunk)
+    failChunk(chunk, null)
   }
 }
 
-function failChunk(chunk: QueueEntry[]): void {
+function failChunk(chunk: QueueEntry[], retryAfterMs: number | null): void {
   for (const entry of chunk) {
-    entry.resolve(null)
+    entry.resolve({ status: "failed", retryAfterMs })
+    failedIdentities.add(entry.identity)
     scheduleNegativeEviction(entry.identity)
   }
+}
+
+/** What's left of the current 429 cooldown, for chunks failed into it. */
+function retryAfterRemaining(): number | null {
+  const left = cooldownUntil - Date.now()
+  return left > 0 ? left : null
+}
+
+/** `Retry-After` in milliseconds: delta-seconds or an HTTP date, capped;
+ *  null when absent or unreadable. */
+export function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  let ms: number
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    ms = Number(trimmed) * 1000
+  } else {
+    const at = Date.parse(trimmed)
+    if (Number.isNaN(at)) return null
+    ms = at - Date.now()
+  }
+  if (!Number.isFinite(ms)) return null
+  return Math.min(Math.max(0, Math.round(ms)), MAX_RETRY_AFTER_MS)
 }
 
 function scheduleNegativeEviction(identity: string): void {
@@ -186,7 +282,10 @@ function scheduleNegativeEviction(identity: string): void {
     evictionTimers.delete(identity)
     // Only evict if this exact negative promise is still cached — never
     // clobber a newer successful re-resolution of the same identity.
-    if (cache.get(identity) === cached) cache.delete(identity)
+    if (cache.get(identity) === cached) {
+      cache.delete(identity)
+      failedIdentities.delete(identity)
+    }
   }, NEGATIVE_TTL_MS)
   evictionTimers.set(identity, timer)
 }
@@ -194,6 +293,7 @@ function scheduleNegativeEviction(identity: string): void {
 /** Test-only: reset all module state between cases. */
 export function __resetResolveDidBatchForTests(): void {
   cache.clear()
+  failedIdentities.clear()
   queue = []
   if (flushTimer) {
     clearTimeout(flushTimer)

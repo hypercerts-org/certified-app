@@ -77,6 +77,11 @@ export interface ContributorIdentityFieldProps {
    *  `alice.social` without the parent prematurely committing them
    *  and hiding the input. */
   onCommit?: (identity: string) => void
+  /** Called when the typed value is offered as final but isn't a
+   *  recognisable handle or DID: blur, or Enter without a pick. The
+   *  parent shows the row's error from then on (until the next edit),
+   *  never while the person is still typing or picking. */
+  onCheck?: () => void
 }
 
 export function ContributorIdentityField({
@@ -87,6 +92,7 @@ export function ContributorIdentityField({
   invalid,
   excludeIdentities,
   onCommit,
+  onCheck,
 }: ContributorIdentityFieldProps) {
   const [results, setResults] = useState<Actor[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -184,11 +190,11 @@ export function ContributorIdentityField({
   const handleSubmitNoMatch = useCallback(
     (raw: string) => {
       const v = raw.trim()
-      if (isContributorIdentityAcceptable(raw) && v.length > 0) {
-        onCommit?.(v)
-      }
+      if (!v) return
+      if (isContributorIdentityAcceptable(raw)) onCommit?.(v)
+      else onCheck?.()
     },
-    [onCommit],
+    [onCommit, onCheck],
   )
 
   const handleBlur = useCallback(() => {
@@ -198,11 +204,15 @@ export function ContributorIdentityField({
     // yet-valid values leave the input mode in place so a half-typed
     // handle (e.g. `alice.so` mid-way to `alice.social`) doesn't
     // commit just because the field briefly matched the handle regex.
+    // An unrecognisable value is checked instead, so its error shows.
     const v = value.trim()
     if (!v) return
-    if (!isContributorIdentityAcceptable(v)) return
+    if (!isContributorIdentityAcceptable(v)) {
+      onCheck?.()
+      return
+    }
     onCommit?.(v)
-  }, [value, onCommit])
+  }, [value, onCommit, onCheck])
 
   return (
     <Combobox<Actor>
@@ -234,7 +244,7 @@ export function ContributorIdentityField({
         // `error` only paints the invalid border in flush mode (and sets
         // aria-invalid); the row shows the message under the fields.
         error: invalid ? "Not a valid handle" : undefined,
-        placeholder: "Name or @handle",
+        placeholder: "Search by name, or type a handle",
         maxLength: 1000,
         onBlur: handleBlur,
         // Always pass the slot (empty while idle) so the input keeps the

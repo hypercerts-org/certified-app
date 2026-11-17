@@ -160,7 +160,7 @@ export default function NewEndorsementPanel({
   const submitLabel = isSubmitting
     ? `Endorsing ${selectedDids.length}…`
     : selectedDids.length > 1
-      ? `Endorse ${selectedDids.length} people`
+      ? `Endorse ${selectedDids.length} accounts`
       : "Endorse"
 
   const canSubmit = selectedDids.length > 0 && !isSubmitting && !hasResults
@@ -171,7 +171,7 @@ export default function NewEndorsementPanel({
         <div className="endorsement-panel__heading-text">
           <span className="endorsement-panel__title">Endorse one or more accounts</span>
           <span className="endorsement-panel__hint">
-            Search by handle or paste a DID. Endorsements can be revoked anytime.
+            Search for an account by name or handle. Endorsements can be revoked anytime.
           </span>
         </div>
         <Button
@@ -189,7 +189,8 @@ export default function NewEndorsementPanel({
       {!hasResults ? (
         <HandleSearch
           label=""
-          placeholder="Search by name or handle…"
+          variant="default"
+          placeholder="Search by name or handle"
           onSelect={handleAddRecipient}
         />
       ) : null}

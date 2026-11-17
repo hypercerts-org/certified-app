@@ -104,8 +104,9 @@ export interface ProfileHeaderProps {
  * or else the organization's description, cut to three lines); the website
  * as text and social accounts as icon buttons; the trust line (who
  * endorsed the account, its followers). The viewer's actions sit top
- * right: Follow, Share, More (Edit profile and Share for the account
- * itself). On phones the same pieces stack: a 64px avatar beside the
+ * right from 1300px (a row under the details from 800px, so they don't
+ * squeeze the name): Follow, Endorse, Share, More (Edit profile and
+ * Share for the account itself). On phones the same pieces stack: a 64px avatar beside the
  * name, then the lead, the links, a full-width row of actions, and the
  * trust line on one line.
  *
@@ -375,12 +376,20 @@ export default function ProfileHeader({
                 <Pencil size={16} strokeWidth={1.75} aria-hidden />
                 Edit profile
               </Button>
-              <ShareLinkButton path={profileUrl(handle || did)} what="Profile link" />
+              <ShareLinkButton
+                path={profileUrl(handle || did)}
+                what="Profile link"
+                title={displayName}
+              />
             </>
           ) : (
             <>
               <FollowEndorseActions did={did} />
-              <ShareLinkButton path={profileUrl(handle || did)} what="Profile link" />
+              <ShareLinkButton
+                path={profileUrl(handle || did)}
+                what="Profile link"
+                title={displayName}
+              />
               <ProfileMoreMenu
                 did={did}
                 handle={handle}

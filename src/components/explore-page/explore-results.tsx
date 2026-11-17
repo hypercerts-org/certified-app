@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { AlertCircle, FolderGit2, HandCoins, Users } from "lucide-react"
+import { AlertCircle, FolderGit2, Users } from "lucide-react"
 import CertIcon from "@/components/ui/cert-icon"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -12,20 +12,13 @@ import ExploreUserCard from "./explore-user-card"
 import ExploreProjectCard from "./explore-project-card"
 import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
-import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
 import {
-  matchesConfirmedBy,
-  type ConfirmRole,
-} from "@/lib/atproto/funding-provenance"
-import {
-  EMPTY_DID_SET,
   type Degree,
-  type ExploreKind,
+  type ExploreType,
   type ListGalleryView,
   type SortOrder,
 } from "./explore-types"
 import type { useExploreData } from "@/hooks/use-explore"
-import { useMergedFunding } from "@/hooks/use-merged-funding"
 
 /** What an empty result names and offers: the search to clear, or the
  *  list to leave for "All". */
@@ -47,11 +40,9 @@ export function ResultsArea({
   sort,
   view,
   degrees,
-  confirmRoles,
-  confirmThirdParties,
   emptyContext,
 }: {
-  kind: ExploreKind
+  kind: ExploreType
   data: ReturnType<typeof useExploreData>
   sort: SortOrder
   view: ListGalleryView
@@ -61,11 +52,6 @@ export function ResultsArea({
    *  `max(degrees)`, this trims the subset the user actually wants
    *  to see. */
   degrees: Set<Degree> | null
-  /** Funding only — the selected "Confirmed by" role buckets + third-party
-   *  attestor DIDs. Receipts are filtered to the union; with both empty,
-   *  nothing shows. */
-  confirmRoles?: ReadonlySet<ConfirmRole>
-  confirmThirdParties?: ReadonlySet<string>
   emptyContext?: EmptyContext
 }) {
   const closure = data.endorsementClosure
@@ -78,27 +64,6 @@ export function ResultsArea({
       return degrees.has(meta.degree)
     },
     [degrees, closure],
-  )
-
-  // Funding "Confirmed by" filter — memoized so an unrelated re-render (a
-  // keystroke in search, a view toggle) doesn't re-run the O(n) attestation
-  // filter over the whole receipt list. Recomputes only when the loaded
-  // receipts or either selection changes.
-  // Merge optimistic confirmations + collapse matchingReceipt pairs (issue
-  // #186) before applying the "Confirmed by" filter.
-  const mergedFundingReceipts = useMergedFunding(data.fundingReceipts)
-  const filteredFundingReceipts = useMemo(
-    () =>
-      confirmRoles
-        ? mergedFundingReceipts.filter((r) =>
-            matchesConfirmedBy(
-              r.attestations,
-              confirmRoles,
-              confirmThirdParties ?? EMPTY_DID_SET,
-            ),
-          )
-        : mergedFundingReceipts,
-    [mergedFundingReceipts, confirmRoles, confirmThirdParties],
   )
 
   // Degree-filtered + sorted lists, memoized so a keystroke in the search
@@ -130,10 +95,9 @@ export function ResultsArea({
     data.isLoading &&
     data.users.length === 0 &&
     data.projects.length === 0 &&
-    data.certs.length === 0 &&
-    data.fundingReceipts.length === 0
+    data.certs.length === 0
   ) {
-    return view === "gallery" && kind !== "funding" && kind !== "accounts" ? (
+    return view === "gallery" && kind !== "accounts" ? (
       <ExploreCardsSkeleton kind={kind} />
     ) : (
       <ExploreRowsSkeleton
@@ -145,23 +109,6 @@ export function ResultsArea({
 
   // A failed fetch is not "no results": say so and offer a retry.
   if (data.error) return <LoadError kind={kind} onRetry={data.refetch} />
-
-  if (kind === "funding") {
-    const receipts = filteredFundingReceipts
-    if (receipts.length === 0) return <EmptyResults kind={kind} context={emptyContext} />
-    return (
-      <ul className="explore__list explore__list--funding">
-        <li>
-          <FundingReceiptHeader />
-        </li>
-        {receipts.map((r) => (
-          <li key={r.uri}>
-            <FundingReceiptRow receipt={r} showTextParties />
-          </li>
-        ))}
-      </ul>
-    )
-  }
 
   if (kind === "accounts") {
     const actors = sortedUsers
@@ -259,21 +206,19 @@ export function ResultsArea({
   )
 }
 
-function kindLabel(kind: ExploreKind): string {
+function kindLabel(kind: ExploreType): string {
   return kind === "accounts"
     ? "accounts"
     : kind === "projects"
       ? "projects"
-      : kind === "funding"
-        ? "funding receipts"
-        : "activities"
+      : "activities"
 }
 
 function LoadError({
   kind,
   onRetry,
 }: {
-  kind: ExploreKind
+  kind: ExploreType
   onRetry: () => void
 }) {
   return (
@@ -293,18 +238,12 @@ function EmptyResults({
   kind,
   context,
 }: {
-  kind: ExploreKind
+  kind: ExploreType
   context?: EmptyContext
 }) {
   const label = kindLabel(kind)
   const icon =
-    kind === "accounts"
-      ? Users
-      : kind === "projects"
-        ? FolderGit2
-        : kind === "funding"
-          ? HandCoins
-          : CertIcon
+    kind === "accounts" ? Users : kind === "projects" ? FolderGit2 : CertIcon
   // Name what narrowed the results and offer to undo it: the search
   // first, then the list.
   if (context?.search) {
@@ -327,7 +266,7 @@ function EmptyResults({
     "ma-earth": `No featured ${label}`,
   }
   const narrowed = context ? listTitle[context.list] : undefined
-  if (context && narrowed && kind !== "funding") {
+  if (context && narrowed) {
     return (
       <EmptyState
         icon={icon}
@@ -396,7 +335,7 @@ export function ExploreRowsSkeleton({
 }
 
 /** Loading cards for the gallery view, shaped like the result cards. */
-function ExploreCardsSkeleton({ kind }: { kind: ExploreKind }) {
+function ExploreCardsSkeleton({ kind }: { kind: ExploreType }) {
   const grid =
     kind === "projects" ? "explore__grid--projects" : "explore__grid--certs"
   return (

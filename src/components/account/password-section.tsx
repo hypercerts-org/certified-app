@@ -6,12 +6,31 @@ import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
+import { accountErrorMessage } from "./account-error";
 
 interface PasswordSectionProps {
   email: string;
 }
 
 type State = "idle" | "requesting" | "form" | "success";
+
+const SEND_FAILED = "Couldn't send the reset code. Try again in a moment";
+const SAVE_FAILED = "Couldn't change your password. Try again in a moment";
+
+/** A failed XRPC response's error name and message, when it has them. */
+async function readError(
+  res: Response,
+): Promise<{ name?: string; message?: string }> {
+  try {
+    const data = (await res.json()) as { error?: unknown; message?: unknown };
+    return {
+      name: typeof data.error === "string" ? data.error : undefined,
+      message: typeof data.message === "string" ? data.message : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
 
 const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   const [state, setState] = useState<State>("idle");
@@ -51,17 +70,17 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         body: JSON.stringify({ email }),
       });
       if (!resetRes.ok) {
-        const data = await resetRes.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || resetRes.statusText);
+        // Upstream answers ("NotFound", "Not authenticated") become a
+        // sentence; the status decides session and server failures.
+        const { name, message } = await readError(resetRes);
+        setIdleError(accountErrorMessage(message ?? name, SEND_FAILED, resetRes.status));
+        setState("idle");
+        return;
       }
       setState("form");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (!msg || msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch")) {
-        setIdleError("Failed to send reset email. Please try again.");
-      } else {
-        setIdleError(msg);
-      }
+    } catch {
+      // The request didn't get through (offline, blocked).
+      setIdleError(`${SEND_FAILED}.`);
       setState("idle");
     }
   };
@@ -105,23 +124,26 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         body: JSON.stringify({ token: token.trim(), password }),
       });
       if (!pwRes.ok) {
-        const data = await pwRes.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error || pwRes.statusText);
+        const { name, message } = await readError(pwRes);
+        // The error name ("ExpiredToken", "InvalidToken") and the message
+        // both say what went wrong with the code.
+        const said = `${name ?? ""} ${message ?? ""}`;
+        if (/expired/i.test(said)) {
+          setFormError("That reset code has expired. Request a new one.");
+        } else if (/invalid/i.test(said)) {
+          setFormError("That reset code doesn't match. Check it and try again.");
+        } else if (/length/i.test(said)) {
+          setFormError("Password is too long (max 256 characters).");
+        } else {
+          setFormError(accountErrorMessage(message ?? name, SAVE_FAILED, pwRes.status));
+        }
+        return;
       }
       clearFormState();
       setState("success");
       setTimeout(() => setState("idle"), 4000);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "An error occurred. Please try again.";
-      if (msg.includes("expired")) {
-        setFormError("Reset code has expired. Please request a new one.");
-      } else if (msg.includes("invalid") || msg.includes("Invalid")) {
-        setFormError("Invalid reset code. Please check and try again.");
-      } else if (msg.includes("length")) {
-        setFormError("Password is too long (max 256 characters).");
-      } else {
-        setFormError(msg);
-      }
+    } catch {
+      setFormError(`${SAVE_FAILED}.`);
     } finally {
       setSaving(false);
     }
@@ -135,9 +157,6 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   if (state === "form") {
     return (
       <div className="dash-card">
-        <div className="password-section__header">
-          <h2 className="dash-card__title" style={{ marginBottom: 0 }}>Password</h2>
-        </div>
         {/* A real <form> so Enter submits; noValidate keeps our own
             validation messages in charge. */}
         <form

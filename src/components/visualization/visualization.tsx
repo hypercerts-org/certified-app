@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import EndorsementStats from "@/components/visualization/endorsement-stats"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import {
   useEndorsementGraph,
   type EndorsementGraph as EndorsementGraphData,
@@ -36,10 +37,26 @@ function GraphLoading() {
   )
 }
 
+function plural(n: number, one: string, many: string): string {
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`
+}
+
+/** The phone's one line of totals above the graph, in place of the
+ *  StatRow: "205 accounts · 258 endorsements · 1 mutual pair". */
+export function graphSummary(g: EndorsementGraphData): string {
+  return [
+    plural(g.nodes.length, "account", "accounts"),
+    plural(g.totalEndorsements, "endorsement", "endorsements"),
+    plural(g.mutualPairs, "mutual pair", "mutual pairs"),
+  ].join(" · ")
+}
+
 /**
  * The endorsement network: the graph, and beside it its controls (find,
- * layout, which accounts and lines) above the stats. Network →
- * Graph (`/graph`) hosts it `embedded`, inside its page container under the
+ * layout, which accounts and lines) above the stats. On phones the graph
+ * comes first: one line of totals, the find field and a Filters button
+ * (Layout, Show, Lines in a bottom sheet), the graph, then the rankings.
+ * Network → Graph (`/graph`) hosts it `embedded`, inside its page container under the
  * Network tabs. Without `embedded` it takes the full-bleed page layout
  * (`.viz--page`: full shell width, viewport-tall on wide screens), which no
  * route uses at the moment (`/endorsement-graph` redirects to `/graph`).
@@ -56,6 +73,7 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
   // The graph's controls render here, beside it, not over it.
   const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
   const ready = !isLoading && !error && graph && graph.nodes.length > 0
+  const { isDesktop } = useLayoutBreakpoints()
 
   const handleFocus = useCallback((did: string) => {
     setFocusReq((prev) => ({ did, nonce: prev.nonce + 1 }))
@@ -102,10 +120,20 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
 
       {/* Beside the graph from 1100px: its controls, then the totals and
           rankings. Below that the controls sit above the graph and the
-          stats under it (visualization.css). */}
+          stats under it; on phones the totals line and the find + Filters
+          row sit above it (visualization.css). */}
       <div className="viz__side">
+        {ready && !isDesktop ? (
+          <p className="viz__summary">{graphSummary(statsGraph ?? graph)}</p>
+        ) : null}
         <div ref={setControlsHost} className="viz__nav" />
-        {ready && <EndorsementStats graph={statsGraph ?? graph} onFocus={handleFocus} />}
+        {ready && (
+          <EndorsementStats
+            graph={statsGraph ?? graph}
+            onFocus={handleFocus}
+            showTotals={isDesktop}
+          />
+        )}
       </div>
     </div>
   )

@@ -1,5 +1,11 @@
 export type ExploreKind = "accounts" | "projects" | "activities" | "funding"
 
+/** The record types the Explore page lists. Funding receipts are not one
+ *  of them: they live on Network → Funding (`/funding`), the one place for
+ *  receipts (`/explore?show=funding` redirects there). The loaders keep the
+ *  "funding" kind. */
+export type ExploreType = Exclude<ExploreKind, "funding">
+
 /** The kind switcher in the top bar plus the synthetic "all" tab,
  *  which isn't a real loader kind — it's a combined view that runs the
  *  three per-kind queries side by side. Used for tab + sidebar wiring;

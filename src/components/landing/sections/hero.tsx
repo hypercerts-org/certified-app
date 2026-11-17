@@ -4,8 +4,8 @@ import GuillocheArt from "@/components/landing/guilloche-art";
 /**
  * Landing hero. Asymmetric two-column composition: copy in the left
  * five columns, the guilloche rosette bleeding off the right edge.
- * Below 800px the artwork becomes a cropped band above the stacked
- * copy.
+ * Below 800px the artwork sits behind the top of the stacked copy, so
+ * the buttons and the way into the network fit on the first screen.
  */
 export default function Hero() {
   return (
@@ -29,7 +29,7 @@ export default function Hero() {
             works across every app in the network.
           </p>
           <div className="lp-hero__reveal">
-            <HeroCta />
+            <HeroCta explore />
             <p className="lp-hero__recognition">
               Already used Certified on another app? Same email, same account.
               Enter it and you&apos;re in. No password needed.

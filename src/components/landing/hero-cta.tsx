@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import Button from "@/components/ui/button";
+import LpArrow from "@/components/landing/lp-arrow";
 import { useAuth } from "@/lib/auth/auth-context";
 
 /**
@@ -9,8 +11,12 @@ import { useAuth } from "@/lib/auth/auth-context";
  * default bounce would contradict it); "Create your account" runs the
  * silent-default flow — new users land on the PDS's account-creation
  * UI, returning users with a live PDS session sign straight in.
+ *
+ * `explore` adds a quieter third way in, a link to the network for
+ * visitors who want to look around before they sign up (donors,
+ * mostly); the hero passes it, the closing section doesn't.
  */
-export default function HeroCta() {
+export default function HeroCta({ explore = false }: { explore?: boolean }) {
   const { openSignInModal, openSignIn } = useAuth();
 
   return (
@@ -26,6 +32,11 @@ export default function HeroCta() {
       >
         Create your account
       </Button>
+      {explore ? (
+        <Link href="/explore" className="lp-link lp-hero__explore">
+          Explore the network <LpArrow />
+        </Link>
+      ) : null}
     </div>
   );
 }

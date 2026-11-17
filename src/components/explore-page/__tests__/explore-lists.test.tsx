@@ -155,3 +155,28 @@ describe("Explore lists (the Show select)", () => {
     expect(nav.push.mock.calls[0][0]).toBe("/explore")
   })
 })
+
+// Funding receipts left Explore: they have one place, Network → Funding.
+describe("Explore types (no Funding)", () => {
+  it("lists All, Activities, Projects and Accounts, no Funding tab", async () => {
+    await renderExplore()
+    const tabs = screen.getAllByRole("tab").map((t) => t.textContent)
+    expect(tabs).toEqual(["All", "Activities", "Projects", "Accounts"])
+  })
+
+  it("has no Funding section on All, and points to the Funding page", async () => {
+    await renderExplore()
+    expect(screen.queryByRole("heading", { name: "Funding" })).toBeNull()
+    const link = screen.getByRole("link", { name: "Funding page" })
+    expect(link.getAttribute("href")).toBe("/funding")
+  })
+
+  it("reads an old ?show=funding as All", async () => {
+    nav.search = "show=funding"
+    await renderExplore()
+    const selected = screen
+      .getAllByRole("tab")
+      .find((t) => t.getAttribute("aria-selected") === "true")
+    expect(selected?.textContent).toBe("All")
+  })
+})

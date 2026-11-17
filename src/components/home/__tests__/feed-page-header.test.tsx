@@ -32,6 +32,15 @@ describe("FeedPageHeader", () => {
     expect(button.textContent).toContain("Filters · 2")
   })
 
+  it("says where the items come from, for you or for the group you act as", async () => {
+    const { FeedPageHeader } = await import("../home-feed")
+    const { rerender } = render(<FeedPageHeader />)
+    expect(screen.getByText(/from accounts you follow, and from accounts your trusted endorsers/)).toBeTruthy()
+    rerender(<FeedPageHeader asGroup />)
+    expect(screen.getByText(/from accounts this group follows/)).toBeTruthy()
+    expect(screen.queryByText(/accounts you follow/)).toBeNull()
+  })
+
   it("is disabled until the feed can open its filters", async () => {
     const { FeedPageHeader } = await import("../home-feed")
     render(<FeedPageHeader />)

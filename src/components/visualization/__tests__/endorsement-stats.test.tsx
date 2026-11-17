@@ -40,11 +40,17 @@ describe("EndorsementStats", () => {
     expect(items.map((li) => li.textContent)).toEqual([
       `${(1234).toLocaleString()}Endorsements`,
       "10Other badges",
-      "3People",
+      "3Accounts",
       "0Mutual pairs",
       "0%Reciprocity",
     ])
     expect(document.querySelector(".viz__stat, .viz__stats-grid")).toBeNull()
+  })
+
+  it("leaves the totals out on phones, where the page shows them as one line", () => {
+    render(<EndorsementStats graph={graph} onFocus={() => {}} showTotals={false} />)
+    expect(screen.queryByRole("list", { name: "Network totals" })).toBeNull()
+    expect(screen.getByRole("region", { name: "Top endorsers" })).toBeTruthy()
   })
 
   it("titles each ranking with a SectionHeader, never the serif", () => {
@@ -76,10 +82,10 @@ function setScroll(
 }
 
 /**
- * Audit GP5: from 1100px the sidebar scrolls inside the graph row, and the
- * last ranking row was cut mid-handle with no cue. While more is below, the
- * sidebar carries `data-more-below` (a fade at its bottom edge); once
- * scrolled to the end, it doesn't.
+ * Audit GP5: where the sidebar scrolls inside a fixed height (the graph in
+ * fullscreen; on /graph it flows with the page), a cut-off ranking row had
+ * no cue. While more is below, the sidebar carries `data-more-below` (a
+ * fade at its bottom edge); once scrolled to the end, it doesn't.
  */
 describe("EndorsementStats fade", () => {
   it("has no fade when everything fits", () => {

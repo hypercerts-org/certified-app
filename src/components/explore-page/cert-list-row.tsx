@@ -4,18 +4,22 @@ import { memo } from "react"
 import CertIcon from "@/components/ui/cert-icon"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import {
-  evaluateWorkScope,
   resolveActivityImageUrl,
+  workScopeTags,
 } from "@/lib/atproto/activity"
 import { activityDetailHref, parseActivityUri } from "@/lib/atproto/activity-uri"
 import { formatTimePeriod } from "@/lib/utils/format-date"
 import ExploreListRow from "./explore-list-row"
+import { useOwnerByline } from "./use-owner-byline"
 
 /**
- * Dense single-row representation of a cert. Shows only the image (or a
- * placeholder), the activity title, the time period, and the work scope
- * — no author/date columns (the compact ExploreListRow variant), so the
- * row spans the full width. Used by /explore and the project detail page.
+ * Dense single-row representation of a cert: the image (or a
+ * placeholder), the activity title, then the time period and the work
+ * scope (as readable words: "Community stewardship", never the raw
+ * `community_stewardship` slug). With `showByline` it adds the author
+ * and date columns, and on phones (where those columns give way) a
+ * "by <owner>" line under the title. Without it, the compact variant
+ * spans the full width.
  */
 function CertListRow({
   record,
@@ -40,7 +44,9 @@ function CertListRow({
     : null
 
   const period = formatTimePeriod(value.startDate ?? null, value.endDate ?? null)
-  const scope = evaluateWorkScope(value.workScope)
+  const scope = workScopeTags(value.workScope).join(", ")
+  // "by <owner>" for the phone row (desktop shows the author column).
+  const byline = useOwnerByline(showByline ? did : null)
 
   // Time period + work scope only, joined by `·`.
   const metaItems = [period, scope].filter(
@@ -60,6 +66,7 @@ function CertListRow({
         />
       }
       title={value.title?.trim() || "Untitled activity"}
+      subtitle={byline}
       metaItems={metaItems}
       authorDid={showByline ? did : null}
       timestampIso={

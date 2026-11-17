@@ -156,6 +156,7 @@ describe("AccountMenuContent", () => {
       "View profile",
       "Settings",
       expect.stringContaining("Sign in with another account"),
+      "Send feedback",
       "Sign out",
     ])
   })
@@ -252,12 +253,12 @@ describe("AccountMenuContent", () => {
     expect(state.toast).toHaveBeenCalledWith({ title: "Now acting as Maya Lin" })
   })
 
-  it("picking a group on a Records section goes to its Overview (Records are personal)", () => {
+  it("picking a group on a Records section stays on it (the section explains itself)", () => {
     state.pathname = "/records"
     renderMenu()
     fireEvent.click(screen.getByRole("menuitemradio", { name: /River Trust/ }))
     expect(state.switchOrg).toHaveBeenCalledWith(RIVER)
-    expect(state.push).toHaveBeenCalledWith("/home")
+    expect(state.push).not.toHaveBeenCalled()
   })
 
   it("on a form, keeps the accounts in view but doesn't switch, so the draft stays", () => {
@@ -312,6 +313,21 @@ describe("AccountMenuContent", () => {
     renderMenu("menu")
     expect(screen.queryByRole("link", { name: "Help" })).toBeNull()
     expect(screen.queryByRole("navigation", { name: "Legal" })).toBeNull()
+  })
+
+  it("on desktop (the menu), offers Send feedback last before Sign out", () => {
+    const { onClose } = renderMenu("menu")
+    const you = screen.getByRole("group", { name: /Signed in as/ })
+    const items = within(you).getAllByRole("menuitem").map((el) => el.textContent)
+    expect(items.slice(-2)).toEqual(["Send feedback", "Sign out"])
+    fireEvent.click(within(you).getByRole("menuitem", { name: "Send feedback" }))
+    expect(onClose).toHaveBeenCalled()
+    expect(state.openFeedback).toHaveBeenCalled()
+  })
+
+  it("on phones (the sheet), keeps a single Send feedback, in the Help block", () => {
+    renderMenu("sheet")
+    expect(screen.getAllByRole("button", { name: "Send feedback" })).toHaveLength(1)
   })
 })
 

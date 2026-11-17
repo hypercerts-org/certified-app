@@ -3,9 +3,11 @@
 import { useState } from "react"
 import { Heart } from "lucide-react"
 import Button from "@/components/ui/button"
+import { useToast } from "@/components/ui/toast"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useLike } from "@/hooks/use-likes"
+import { likeErrorMessage } from "@/lib/atproto/likes"
 
 export type LikeSubjectKind = "activity" | "project" | "update"
 
@@ -27,6 +29,16 @@ export function useLikeActor(): {
   }
 }
 
+/** The app's toasts, or null outside a <ToastProvider> (a test, a
+ *  surface rendered on its own): the button then says it inline. */
+function useOptionalToast(): ReturnType<typeof useToast> | null {
+  try {
+    return useToast()
+  } catch {
+    return null
+  }
+}
+
 /**
  * Like (`app.certified.feed.like`) an activity, project or update.
  *
@@ -38,7 +50,8 @@ export function useLikeActor(): {
  * The heart fills and the label reads "Liked" when the acting account
  * likes it (`aria-pressed`); pressing again takes the like back. Liked as
  * the account you act as ("Like as <group>" in the tooltip). Signed out it
- * opens sign-in.
+ * opens sign-in. A like that fails is put back at once and the reason
+ * shows as an error toast, so the action row never shifts.
  */
 export default function LikeButton({
   subject,
@@ -52,6 +65,8 @@ export default function LikeButton({
   const { openSignInModal } = useAuth()
   const { ownDid, actor, actorName } = useLikeActor()
   const like = useLike(subject, actor, ownDid)
+  const toasts = useOptionalToast()
+  // Only without a toast region (see useOptionalToast).
   const [error, setError] = useState<string | null>(null)
 
   const onClick = async () => {
@@ -60,10 +75,17 @@ export default function LikeButton({
       return
     }
     setError(null)
+    const wasLiked = like.liked
     try {
       await like.toggle()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save the like.")
+      // The store has already put the like back (use-likes).
+      const message = likeErrorMessage(
+        err,
+        wasLiked ? "Couldn't remove the like" : "Couldn't like it",
+      )
+      if (toasts) toasts.toast({ title: message, variant: "error" })
+      else setError(message)
     }
   }
 

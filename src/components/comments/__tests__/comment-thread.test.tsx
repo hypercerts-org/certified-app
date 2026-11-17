@@ -68,6 +68,7 @@ vi.mock("@/lib/atproto/likes", () => ({
   fetchOwnLikes: async () => new Map(),
   likeRecord: vi.fn(),
   unlikeRecord: vi.fn(),
+  likeErrorMessage: (_err: unknown, fallback: string) => fallback,
 }))
 
 import CommentThread from "../comment-thread"

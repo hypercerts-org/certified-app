@@ -23,7 +23,6 @@ import ForceGraph2D, {
 } from "react-force-graph-2d"
 import Link from "next/link"
 import {
-  ArrowUpRight,
   ChevronDown,
   Maximize,
   Maximize2,
@@ -36,6 +35,8 @@ import Button from "@/components/ui/button"
 import Checkbox from "@/components/ui/checkbox"
 import Combobox from "@/components/ui/combobox"
 import SegmentedControl from "@/components/ui/segmented-control"
+import NetworkFiltersSheet from "@/components/network/network-filters-sheet"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
 import { useTrustedEvaluators } from "@/hooks/use-trusted-evaluators"
@@ -188,6 +189,13 @@ const KIND_CURVE: Record<GraphLinkKind, number> = {
 }
 
 export type LayoutMode = "network" | "spread" | "radial"
+
+/** Which accounts the graph shows: the web reachable from the trusted
+ *  endorsers (the default), or every account. */
+export const SCOPE_OPTIONS: { value: "evaluator" | "everything"; label: string }[] = [
+  { value: "evaluator", label: "Trusted endorsers" },
+  { value: "everything", label: "Everyone" },
+]
 
 export const LAYOUT_OPTIONS: { value: LayoutMode; label: string }[] = [
   { value: "network", label: "Network" },
@@ -364,6 +372,25 @@ export default function EndorsementGraph({
       !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
   )
   const camMs = useCallback((ms: number) => (reduceMotion ? 0 : ms), [reduceMotion])
+  // Phones (<800px): the graph comes first. The find field and a Filters
+  // button sit above it, and Layout, Show and Lines open in a bottom sheet.
+  // From 800px the controls are one panel (above the graph, beside it from
+  // 1100px).
+  const { isDesktop } = useLayoutBreakpoints()
+
+  // How many filter settings differ from the defaults (the Filters
+  // button's count), and the way back to them (the sheet's Reset).
+  const changedCount =
+    (layout !== "network" ? 1 : 0) +
+    (evaluatorConnectedOnly ? 0 : 1) +
+    (onlyMutual ? 1 : 0) +
+    GRAPH_LINK_KINDS.filter((k) => shownKinds.has(k) !== DEFAULT_KINDS.includes(k)).length
+  const resetFilters = useCallback(() => {
+    setLayout("network")
+    setEvaluatorConnectedOnly(true)
+    setOnlyMutual(false)
+    setShownKinds(new Set(DEFAULT_KINDS))
+  }, [])
 
   // --- theme colours (re-read on dark-mode flip) -------------------------
   useEffect(() => {
@@ -639,9 +666,9 @@ export default function EndorsementGraph({
   const focusNode = useCallback(
     (did: string | null) => {
       if (!did) return
+      setSelectedId(did)
       const fg = fgRef.current
       if (!fg) return
-      setSelectedId(did)
       const inView = new Set<string>([did])
       for (const n of adjacency.get(did) ?? []) inView.add(n)
       // zoomToFit's third arg filters which nodes must fit in the viewport.
@@ -650,8 +677,21 @@ export default function EndorsementGraph({
     [adjacency, camMs],
   )
 
+  // A focus asked for from outside the canvas (a ranking row) opens the
+  // account's card expanded and, when the graph isn't fully in view (on a
+  // phone the rankings sit below it), brings the graph into view so the
+  // effect of the tap is visible.
   useEffect(() => {
-    if (focusReq.did) focusNode(focusReq.did)
+    if (!focusReq.did) return
+    focusNode(focusReq.did)
+    setPanelCollapsed(false)
+    const graph = hostRef.current?.closest<HTMLElement>(".viz__graph")
+    if (!graph || typeof graph.scrollIntoView !== "function") return
+    const rect = graph.getBoundingClientRect()
+    const chromeTop = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
+    if (rect.top < chromeTop || rect.bottom > window.innerHeight) {
+      graph.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusReq.nonce])
 
@@ -674,6 +714,7 @@ export default function EndorsementGraph({
   const selectSearchResult = useCallback(
     (did: string) => {
       focusNode(did)
+      setPanelCollapsed(false)
       setSearch("")
       setSearchOpen(false)
     },
@@ -851,61 +892,65 @@ export default function EndorsementGraph({
     }
   }, [fullscreenTarget])
 
-  // One panel of labelled rows (find, layout, which accounts, which
-  // lines), the legend a one-line key at its foot.
-  const controls = (
-    <div className="viz__controls" role="group" aria-label="Graph controls">
-      <Combobox<GraphNode>
-        className="viz__search-wrap"
-        listboxClassName="viz__search-results"
-        value={search}
-        onValueChange={(v) => {
-          setSearch(v)
-          setSearchOpen(true)
-        }}
-        items={searchResults}
-        getItemKey={(n) => n.id}
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        onSelect={(n) => selectSearchResult(n.id)}
-        escapeStage="two-stage"
-        inputProps={{
-          className: "viz__search",
-          placeholder: "Find account",
-          "aria-label": "Find an account in the graph",
-        }}
-        liveStatus={{
-          searching: "Searching",
-          results: (n) => `${n} ${n === 1 ? "account" : "accounts"} found`,
-          empty: "No matching accounts",
-        }}
-        renderOption={({ item: n, highlighted, optionId, onHover, onSelect }) => (
-          <li
-            id={optionId}
-            role="option"
-            aria-selected={highlighted}
-            data-combobox-option
-            className={`viz__search-result${highlighted ? " viz__search-result--active" : ""}`}
-            onMouseEnter={onHover}
-            onMouseDown={onSelect}
-          >
-            <Avatar
-              src={n.avatarUrl || undefined}
-              size="sm"
-              fallbackInitials={getInitials(n.displayName, n.handle)}
-            />
-            <span className="viz__search-result-name">
-              <span className="viz__search-result-primary" dir="auto">
-                {n.displayName ||
-                  (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
-              </span>
-              {n.handle && n.displayName && (
-                <span className="viz__search-result-secondary">@{n.handle}</span>
-              )}
+  // The find field: in the controls panel from 800px, beside the Filters
+  // button on phones.
+  const searchField = (
+    <Combobox<GraphNode>
+      className="viz__search-wrap"
+      listboxClassName="viz__search-results"
+      value={search}
+      onValueChange={(v) => {
+        setSearch(v)
+        setSearchOpen(true)
+      }}
+      items={searchResults}
+      getItemKey={(n) => n.id}
+      open={searchOpen}
+      onOpenChange={setSearchOpen}
+      onSelect={(n) => selectSearchResult(n.id)}
+      escapeStage="two-stage"
+      inputProps={{
+        className: "viz__search",
+        placeholder: "Find account",
+        "aria-label": "Find an account in the graph",
+      }}
+      liveStatus={{
+        searching: "Searching",
+        results: (n) => `${n} ${n === 1 ? "account" : "accounts"} found`,
+        empty: "No matching accounts",
+      }}
+      renderOption={({ item: n, highlighted, optionId, onHover, onSelect }) => (
+        <li
+          id={optionId}
+          role="option"
+          aria-selected={highlighted}
+          data-combobox-option
+          className={`viz__search-result${highlighted ? " viz__search-result--active" : ""}`}
+          onMouseEnter={onHover}
+          onMouseDown={onSelect}
+        >
+          <Avatar
+            src={n.avatarUrl || undefined}
+            size="sm"
+            fallbackInitials={getInitials(n.displayName, n.handle)}
+          />
+          <span className="viz__search-result-name">
+            <span className="viz__search-result-primary" dir="auto">
+              {n.displayName ||
+                (n.handle ? `@${n.handle}` : n.id.slice(0, 16) + "…")}
             </span>
-          </li>
-        )}
-      />
+            {n.handle && n.displayName && (
+              <span className="viz__search-result-secondary">@{n.handle}</span>
+            )}
+          </span>
+        </li>
+      )}
+    />
+  )
+
+  // Layout, which accounts, which lines, then the colour key in one line.
+  const filterRows = (
+    <>
       <div className="viz__control-row">
         <span className="viz__control-label" aria-hidden="true">
           Layout
@@ -929,10 +974,7 @@ export default function EndorsementGraph({
           value={evaluatorConnectedOnly ? "evaluator" : "everything"}
           onValueChange={(v) => setEvaluatorConnectedOnly(v === "evaluator")}
           size="sm"
-          options={[
-            { value: "evaluator", label: "Evaluator network" },
-            { value: "everything", label: "Everything" },
-          ]}
+          options={SCOPE_OPTIONS}
         />
       </div>
       {/* Which lines the graph draws: the badge kinds, then "Mutual only",
@@ -975,6 +1017,25 @@ export default function EndorsementGraph({
           Mutual
         </span>
       </div>
+    </>
+  )
+
+  // From 800px: one panel of labelled rows (find, layout, which accounts,
+  // which lines), the legend a one-line key at its foot. Phones: the find
+  // field and a Filters button in one row, the rest in the Filters sheet.
+  const controls = isDesktop ? (
+    <div className="viz__controls" role="group" aria-label="Graph controls">
+      {searchField}
+      {filterRows}
+    </div>
+  ) : (
+    <div className="viz__toolbar">
+      {searchField}
+      <NetworkFiltersSheet changed={changedCount} onReset={resetFilters}>
+        <div className="viz__controls viz__controls--sheet" role="group" aria-label="Graph controls">
+          {filterRows}
+        </div>
+      </NetworkFiltersSheet>
     </div>
   )
 
@@ -1159,16 +1220,8 @@ export default function EndorsementGraph({
           <Link
             href={profileUrl(panelNode.handle || panelNode.id)}
             className="viz__profile-link"
-            target="_blank"
-            rel="noopener noreferrer"
           >
-            <span>View profile</span>
-            <ArrowUpRight
-              className="viz__profile-link-icon"
-              size={16}
-              strokeWidth={1.75}
-              aria-hidden
-            />
+            View profile
           </Link>
           </>
           )}

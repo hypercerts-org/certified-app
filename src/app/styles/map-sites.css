@@ -546,6 +546,13 @@
   }
 
   .map-sites__read {
+    margin-top: 0;
     font-size: var(--text-caption);
+  }
+
+  /* Sort and Show are in the Filters sheet (map-sites.tsx), its button in
+     the page's bar beside flat / globe. */
+  .map-sites__tools {
+    display: none;
   }
 }

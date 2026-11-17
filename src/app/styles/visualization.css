@@ -79,15 +79,24 @@
 }
 
 /* Network → Graph (/graph): the graph inside the page container, under
-   the page header. It fits the window instead of running past it: from
-   1100px the graph + sidebar row takes the height left below the header
-   (the sidebar scrolls inside it); below 1100px, where the sidebar stacks
-   under it, the graph alone does. A taller window gives it more room;
-   400px / 320px is the floor on a short one. The offsets are the chrome
-   and header above it (the top bar, the container's padding, the page
-   header) plus a little air below. */
+   the page header. The graph fits the window instead of running past it:
+   it takes the height left below the header (from 1100px with its side
+   column beside it, below that with the controls above it). A taller
+   window gives it more room; 400px / 320px is the floor on a short one.
+   The offsets are the chrome and header above it (the top bar, the
+   container's padding, the page header) plus a little air below. The side
+   column flows with the page: it can run taller than the graph, and the
+   page scrolls, so no ranking hides in a scroll box of its own.
+   A ranking tap scrolls the graph into view (endorsement-graph.tsx); the
+   root's scroll-padding keeps it clear of the fixed phone top bar, this
+   margin adds a little air. */
 .graph-page .viz__graph {
   min-height: 0;
+  scroll-margin-top: 8px;
+}
+
+.graph-page .viz__sidebar {
+  overflow-y: visible;
 }
 
 /* Inside the page container the graph and its sidebar line up with the
@@ -98,6 +107,11 @@
 
 @media (min-width: 1100px) {
   .graph-page .viz {
+    align-items: flex-start;
+  }
+
+  .graph-page .viz__graph {
+    flex: none;
     height: max(400px, calc(100dvh - 200px));
   }
 }
@@ -110,9 +124,11 @@
 }
 
 @media (max-width: 799px) {
-  /* The phone top bar and tab bar are fixed over the page. */
+  /* The phone top bar and tab bar are fixed over the page; above the
+     graph are the page description, the totals line and the find +
+     Filters row. */
   .graph-page .viz__graph {
-    height: max(300px, calc(100dvh - var(--navbar-height) - var(--bottom-nav-height) - 200px));
+    height: max(300px, calc(100dvh - var(--navbar-height) - var(--bottom-nav-height) - 232px));
   }
 }
 
@@ -136,6 +152,25 @@
 .viz:fullscreen .viz__graph,
 .viz:fullscreen .viz__sidebar {
   min-height: 0;
+}
+
+/* In fullscreen the graph fills the screen's height and the side column
+   scrolls inside it (on /graph both flow with the page otherwise). */
+.viz:fullscreen {
+  align-items: stretch;
+}
+
+.viz:fullscreen .viz__graph {
+  flex: 1 1 auto;
+  height: auto;
+}
+
+.viz:fullscreen .viz__side {
+  min-height: 0;
+}
+
+.viz:fullscreen .viz__sidebar {
+  overflow-y: auto;
 }
 
 /* Fallback: if the `.viz` ancestor can't be found we fullscreen the canvas
@@ -185,9 +220,62 @@
     order: -1;
   }
 
+  .viz__summary {
+    order: -2;
+  }
+
   .viz__side .viz__sidebar {
     flex: 1 1 auto;
   }
+}
+
+/* ---- Phones: totals line, find + Filters row ----
+   Below 800px the graph comes first: one muted line of totals and a row
+   with the find field and the Filters button (Layout, Show and Lines open
+   in a bottom sheet, network-filters-sheet.tsx) sit above it, the
+   rankings below. Rendered on phones only; hidden from 800px in case the
+   breakpoint hook hasn't caught up yet. */
+.viz__summary {
+  margin: 0;
+  font-size: var(--text-ui);
+  line-height: 1.4;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.viz__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.viz__toolbar .viz__search-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.viz__toolbar .network-filters__btn {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 800px) {
+  .viz__summary {
+    display: none;
+  }
+}
+
+/* In the Filters sheet the rows are the sheet's content: no panel of
+   their own. */
+.viz__controls.viz__controls--sheet {
+  position: static;
+  width: auto;
+  max-width: none;
+  gap: 16px;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 
 /* ---- Controls ----
@@ -442,12 +530,17 @@
   min-width: 0;
 }
 
+/* A long name wraps to a second line before it is cut. */
 .viz__panel-name {
-  font-weight: 600;
-  color: var(--fg-primary);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--fg-primary);
 }
 
 .viz__panel-handle {
@@ -540,16 +633,6 @@
   transform: scale(0.98);
 }
 
-.viz__profile-link-icon {
-  color: var(--fg-muted);
-  transition: transform var(--transition-fast);
-}
-
-.viz__profile-link:hover .viz__profile-link-icon {
-  transform: translate(1px, -1px);
-  color: var(--fg-secondary);
-}
-
 /* ---- Stats sidebar ---- */
 .viz__sidebar {
   flex: 0 0 320px;
@@ -560,9 +643,10 @@
   overflow-y: auto;
 }
 
-/* While more of the sidebar is below its scrolled edge (from 1100px, where
-   it scrolls inside the graph row; `data-more-below` is set by
-   endorsement-stats.tsx), its last 48px fade out, so a cut-off row reads
+/* While more of the sidebar is below its scrolled edge (where it scrolls
+   inside a fixed height: the graph in fullscreen, the standalone
+   `.viz--page`; `data-more-below` is set by endorsement-stats.tsx), its
+   last 48px fade out, so a cut-off row reads
    as "scroll for more". Gone once scrolled to the end. A mask rather than
    a gradient to a surface colour: the sidebar has no surface of its own,
    it sits on the page canvas, which a style may paint with a backdrop
@@ -683,7 +767,16 @@
     padding: var(--space-2, 8px);
   }
 
+  /* The card spans the graph's width up to the zoom column on the right
+     (44px buttons + their 12px inset), and scrolls inside the graph when
+     expanded on a short one. */
   .viz__panel {
-    width: 220px;
+    left: var(--space-3, 12px);
+    right: calc(var(--space-3, 12px) + 44px + var(--space-2, 8px));
+    width: auto;
+    max-width: none;
+    max-height: calc(100% - var(--space-6, 24px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }

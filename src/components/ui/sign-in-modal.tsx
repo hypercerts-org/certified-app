@@ -25,6 +25,14 @@ interface SignInModalProps {
 
 type ModalView = "certified" | "atproto"
 
+/** The dialog's title and accessible name. */
+const TITLE = "Sign in or create an account"
+
+/** The Terms and Privacy links in the consent line: muted text, underlined
+ *  so they read as links. */
+const LEGAL_LINK_CLS =
+  "text-[var(--fg-secondary)] underline decoration-[var(--border-hover)] underline-offset-2 transition-[color,text-decoration-color] duration-fast motion-reduce:transition-none hover:text-[var(--fg-primary)] hover:decoration-[var(--fg-primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+
 export default function SignInModal({
   isOpen,
   error,
@@ -111,14 +119,21 @@ export default function SignInModal({
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
-    <AppDialog ariaLabel="Sign in" onClose={handleClose}>
-      <AppDialogHeader title="" bare onClose={handleClose} />
+    <AppDialog ariaLabel={TITLE} onClose={handleClose}>
+      {/* The standard dialog title (DESIGN §9.8), with the brandmark
+          beside it so it's clear whose account this is. One title for
+          both: an email that has no account yet creates one. */}
+      <AppDialogHeader
+        title={
+          <span className="flex items-center gap-3">
+            <Brandmark size={28} decorative className="block shrink-0 text-[var(--fg-primary)]" />
+            <span className="min-w-0">{TITLE}</span>
+          </span>
+        }
+        onClose={handleClose}
+      />
 
       <AppDialogBody>
-        <div className="flex justify-center mb-8 text-[var(--fg-primary)] max-[799px]:mb-6">
-          <Brandmark size={72} decorative className="block" />
-        </div>
-
         <form onSubmit={handleSubmit} className="flex flex-col" method="post" aria-label="Sign in">
           <label
             className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[799px]:text-base"
@@ -140,6 +155,11 @@ export default function SignInModal({
             autoComplete={isCertified ? "email" : "username"}
             disabled={isSubmitting}
             error={error ?? undefined}
+            helperText={
+              isCertified
+                ? "New here? Continuing with your email creates your account."
+                : undefined
+            }
           />
 
           {/* Continue is the normal next step, so it stays the filled
@@ -230,11 +250,19 @@ export default function SignInModal({
           )}
         </form>
 
-        <div
-          className='block mx-auto mt-6 w-[165px] h-[18px] bg-[var(--fg-primary)] dark:bg-[var(--fg-secondary)] [mask-image:url("/assets/powered_by_certified_black.svg")] [mask-size:contain] [mask-repeat:no-repeat] [mask-position:center] [-webkit-mask-image:url("/assets/powered_by_certified_black.svg")] [-webkit-mask-size:contain] [-webkit-mask-repeat:no-repeat] [-webkit-mask-position:center]'
-          role="img"
-          aria-label="Powered by Certified"
-        />
+        {/* Consent, for new and returning accounts alike. The documents
+            open in a new tab so the sign-in in progress isn't lost. */}
+        <p className="mt-5 mb-0 text-caption text-[var(--fg-muted)] text-pretty">
+          By continuing you agree to the{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className={LEGAL_LINK_CLS}>
+            Terms
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className={LEGAL_LINK_CLS}>
+            Privacy Policy
+          </a>
+          .
+        </p>
       </AppDialogBody>
     </AppDialog>
   )

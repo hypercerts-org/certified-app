@@ -35,7 +35,8 @@ import WorldMap, { type MapApi, type WorldMapHandle } from "./world-map"
 import type { MapViewProps } from "./view-props"
 import { font, hatch, haloText } from "./marks"
 import { NO_HITS, drawApproxDiscs, drawAreaOutlines, drawSpotMarks, hitSpots, spotsBounds, sumCounts, type SpotHits } from "./draw-spots"
-import { useMapLayers } from "./use-map-layers"
+import type { MapLayers } from "./use-map-layers"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 
 /**
  * The Map view: what the chosen layers hold, drawn as recorded, with a list
@@ -51,7 +52,10 @@ import { useMapLayers } from "./use-map-layers"
  *    clicking it zooms in.
  */
 
+/** Rows per "Show more": the desktop list scrolls beside the map; on phones
+ *  the list runs in the page under it, so it grows in smaller steps. */
 const LIST_PAGE = 40
+const LIST_PAGE_PHONE = 20
 
 type Selection = { kind: "spot"; key: string } | { kind: "country"; key: string } | null
 
@@ -63,14 +67,79 @@ interface Hover {
   detail: string
 }
 
-export default function MapBrowse({ model, kind, height, resize }: MapViewProps) {
-  const { layers, toggle } = useMapLayers()
+/** How many records each layer holds: the counts on the layer chips. */
+export function layerCountsOf(model: MapModel): LayerCounts {
+  const n = emptyCounts()
+  n.activity = model.activities.filter((a) => a.place).length
+  n.project = model.projects.filter((p) => p.place).length
+  n.org = model.orgs.length
+  n.unused = model.unused.length
+  return n
+}
+
+/**
+ * The layer chips ("Show"): one per layer, with its mark and count. In the
+ * page above the map from 800px; in the Filters sheet on phones, where they
+ * wrap (map-page.tsx).
+ */
+export function MapLayerChips({
+  layers,
+  toggle,
+  counts,
+}: {
+  layers: ReadonlySet<Layer>
+  toggle: (layer: Layer) => void
+  counts: LayerCounts
+}) {
+  return (
+    <ToggleGroup
+      aria-label="Show on the map"
+      className="map-chips"
+      joined={false}
+      shape="pill"
+      size="md"
+      value={LAYERS.filter((l) => layers.has(l))}
+      onValueChange={(next) => {
+        const set = new Set(next)
+        const changed = LAYERS.find((l) => layers.has(l) !== set.has(l))
+        if (changed) toggle(changed)
+      }}
+      options={LAYERS.map((l) => ({
+        value: l,
+        icon: <span className={`map-swatch map-swatch--${l}`} aria-hidden />,
+        label: (
+          <>
+            {LAYER_LABEL[l]}
+            <span className="map-chips__count">{counts[l].toLocaleString("en-US")}</span>
+          </>
+        ),
+      }))}
+    />
+  )
+}
+
+export default function MapBrowse({
+  model,
+  kind,
+  height,
+  resize,
+  layerState,
+}: MapViewProps & {
+  /** The layer chips' state, held by the page so the phone Filters sheet
+   *  and the chips in the page are one control. */
+  layerState: MapLayers
+}) {
+  const { layers, toggle } = layerState
+  const { isDesktop } = useLayoutBreakpoints()
+  const pageSize = isDesktop ? LIST_PAGE : LIST_PAGE_PHONE
   const [query, setQuery] = useState("")
   const [onlyInView, setOnlyInView] = useState(true)
   const [selected, setSelected] = useState<Selection>(null)
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const [tip, setTip] = useState<Hover | null>(null)
-  const [limit, setLimit] = useState(LIST_PAGE)
+  // Pages of the list shown (each `pageSize` rows).
+  const [pages, setPages] = useState(1)
+  const limit = pages * pageSize
   const [inView, setInView] = useState<{ spots: Set<string>; countries: Set<string> } | null>(null)
   const mapRef = useRef<WorldMapHandle>(null)
   const drawn = useRef<SpotHits>(NO_HITS)
@@ -81,14 +150,7 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
   const groups = useMemo(() => groupItems(items), [items])
 
   const bases = useMemo(() => new Map(model.orgs.map((o) => [o.account.i, o])), [model])
-  const layerCounts = useMemo(() => {
-    const n = emptyCounts()
-    n.activity = model.activities.filter((a) => a.place).length
-    n.project = model.projects.filter((p) => p.place).length
-    n.org = model.orgs.length
-    n.unused = model.unused.length
-    return n
-  }, [model])
+  const layerCounts = useMemo(() => layerCountsOf(model), [model])
 
   // --- What's in view (for the list), recomputed at most every 150 ms. ---
   const viewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -218,7 +280,7 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
     // The row may be past the current page of the list.
     const rows = listOrder()
     const at = rows.findIndex((r) => r.key === sel.key)
-    if (at >= limit) setLimit(Math.ceil((at + 1) / LIST_PAGE) * LIST_PAGE)
+    if (at >= limit) setPages(Math.ceil((at + 1) / pageSize))
     requestAnimationFrame(() => {
       const el = listRef.current?.querySelector(`[data-key="${CSS.escape(sel.key)}"]`)
       el?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
@@ -269,34 +331,13 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
 
   return (
     <div className="map-browse">
+      {/* From 800px; phones have them in the Filters sheet (map-page.tsx). */}
       <div className="map-browse__chips">
-        <span className="map-browse__label" id="map-layers-label">
+        <span className="map-browse__label" aria-hidden="true">
           Show
         </span>
         <div className="map-browse__chips-scroll">
-          <ToggleGroup
-            aria-label="Show on the map"
-            className="map-chips"
-            joined={false}
-            shape="pill"
-            size="md"
-            value={LAYERS.filter((l) => layers.has(l))}
-            onValueChange={(next) => {
-              const set = new Set(next)
-              const changed = LAYERS.find((l) => layers.has(l) !== set.has(l))
-              if (changed) toggle(changed)
-            }}
-            options={LAYERS.map((l) => ({
-              value: l,
-              icon: <span className={`map-swatch map-swatch--${l}`} aria-hidden />,
-              label: (
-                <>
-                  {LAYER_LABEL[l]}
-                  <span className="map-chips__count">{layerCounts[l].toLocaleString("en-US")}</span>
-                </>
-              ),
-            }))}
-          />
+          <MapLayerChips layers={layers} toggle={toggle} counts={layerCounts} />
         </div>
       </div>
 
@@ -308,7 +349,7 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value)
-                setLimit(LIST_PAGE)
+                setPages(1)
               }}
               placeholder="Search titles, places, organizations"
               aria-label="Search the map"
@@ -326,7 +367,9 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
             {empty ? (
               <p className="map-list__empty">
                 {layers.size === 0
-                  ? "Turn on a layer above to see it here."
+                  ? isDesktop
+                    ? "Turn on a layer above to see it here."
+                    : "Turn on a layer in Filters to see it here."
                   : query
                     ? "Nothing matches that search here. Try another word, or turn off Only what's on the map."
                     : "Nothing here. Zoom out or move the map."}
@@ -351,8 +394,8 @@ export default function MapBrowse({ model, kind, height, resize }: MapViewProps)
             )}
             {rows.length > limit ? (
               <div className="map-list__more">
-                <Button variant="secondary" size="sm" onClick={() => setLimit((n) => n + LIST_PAGE)}>
-                  Show {Math.min(LIST_PAGE, rows.length - limit)} more
+                <Button variant="secondary" size="sm" onClick={() => setPages((n) => n + 1)}>
+                  Show {Math.min(pageSize, rows.length - limit)} more
                 </Button>
               </div>
             ) : null}

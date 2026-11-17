@@ -36,7 +36,9 @@ export function Providers({
   return (
     <ThemeProvider
       attribute="data-theme"
-      defaultTheme="light"
+      // Follow the device until the person picks Light or Dark (Settings ›
+      // Appearance); signed-out visitors have no picker, so this is theirs.
+      defaultTheme="system"
       enableSystem
       disableTransitionOnChange
       nonce={nonce}

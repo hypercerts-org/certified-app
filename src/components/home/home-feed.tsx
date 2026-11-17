@@ -106,6 +106,10 @@ const MAX_AUTO_LOADS = 25
 const FEED_DESCRIPTION =
   "New activities, projects and endorsements from accounts you follow, and from accounts your trusted endorsers have endorsed."
 
+/** The same line while you act as a group: the follows are the group's. */
+const FEED_DESCRIPTION_GROUP =
+  "New activities, projects and endorsements from accounts this group follows, and from accounts the trusted endorsers have endorsed."
+
 /** Number of entries in `a` or `b` but not both. */
 function differenceCount<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): number {
   let n = 0
@@ -120,21 +124,24 @@ function differenceCount<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): number {
  * Filters button that opens them in a sheet or dialog. `changedCount`
  * shows on the button ("Filters · 2") once the filters differ from the
  * defaults. Without `onOpenFilters` (while the page is still loading) the
- * button renders disabled so the header keeps its size.
+ * button renders disabled so the header keeps its size. `asGroup`: you
+ * act as a group, so the line speaks of the accounts the group follows.
  */
 export function FeedPageHeader({
   changedCount = 0,
   onOpenFilters,
   filtersOpen = false,
+  asGroup = false,
 }: {
   changedCount?: number
   onOpenFilters?: () => void
   filtersOpen?: boolean
+  asGroup?: boolean
 }) {
   return (
     <PageHeader
       title="Feed"
-      description={FEED_DESCRIPTION}
+      description={asGroup ? FEED_DESCRIPTION_GROUP : FEED_DESCRIPTION}
       actions={
         <Button
           variant="secondary"
@@ -172,19 +179,23 @@ export function FeedPageHeader({
  * endorsers have endorsed, narrowed by the account-quality filter; the
  * activity-quality filter narrows the records.
  *
- * Layout: the page header first. At 1100px and wider, three columns: the
- * filters in a sticky box on the left, the list in the middle and `news`
- * on the right. Below 1100px one column, with the filters behind the
- * header's Filters button (a bottom sheet on phones, a dialog from
- * 800px). The list ends in an IntersectionObserver sentinel that calls
- * `useHomeFeed`'s `loadMore` when it enters the viewport.
+ * Layout: the page header first. At 1100px and wider the filters sit in a
+ * sticky box left of the list; from 1300px `news` takes a third column on
+ * the right (none while it has no posts). Below 1100px one column, with
+ * the filters behind the header's Filters button (a bottom sheet on
+ * phones, a dialog from 800px). The list ends in an IntersectionObserver
+ * sentinel that calls `useHomeFeed`'s `loadMore` when it enters the
+ * viewport.
  */
 export default function HomeFeed({
   activeDid,
+  asGroup = false,
   news,
 }: {
   activeDid: string
-  /** Right-column content at 1100px and wider (hidden below). */
+  /** `activeDid` is a group you act as (the header's line says so). */
+  asGroup?: boolean
+  /** Right-column content from 1300px (hidden below). */
   news?: React.ReactNode
 }) {
   // The feed reads ONLY the Certified follow graph
@@ -339,6 +350,7 @@ export default function HomeFeed({
         changedCount={changedCount}
         onOpenFilters={() => setFiltersOpen(true)}
         filtersOpen={filtersOpen}
+        asGroup={asGroup}
       />
 
       <div className="feed-layout">

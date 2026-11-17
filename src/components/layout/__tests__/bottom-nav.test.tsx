@@ -91,6 +91,20 @@ describe("BottomNav (the phone pill)", () => {
     expect(scrims()).toHaveLength(0)
   })
 
+  it("marks the item whose menu is open (the open state in layout.css keys on it)", () => {
+    // On the Feed (Network's page), open the Workspace menu.
+    render(<BottomNav />)
+    const workspace = screen.getByRole("button", { name: "Workspace" })
+    const network = screen.getByRole("button", { name: "Network" })
+    expect(workspace).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(workspace)
+    expect(workspace).toHaveAttribute("aria-expanded", "true")
+    expect(network).toHaveAttribute("aria-expanded", "false")
+    // The page's own item keeps its class; CSS steps it back while the
+    // other menu is open.
+    expect(network).toHaveClass("bottom-nav__item--active")
+  })
+
   it("never shows an avatar: who you act as is the top bar's account control", () => {
     const { container } = render(<BottomNav />)
     expect(container.querySelector(".acting-avatar")).toBeNull()

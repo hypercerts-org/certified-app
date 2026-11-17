@@ -2,14 +2,15 @@
    The signed-in home is about the account. It has no page header: the
    account's identity (avatar, name as the h1, bio, website;
    home-account-card.tsx) heads the ID box. The ID and Your groups are
-   white boxes in a right column (first, on phones), beside the account's
-   sections (records, from others) and Apps.
+   white boxes in a right column (after the sections, on phones), beside
+   the account's sections (records, from others) and Apps.
    <PageContainer> sets the width and gutters; this
    file sets the grid and the hairline rows. The follow feed lives on
    /feed; its card styles stay in this file (.home-feed*). */
 
-/* One column below 1100px, in DOM order: the ID and Your groups boxes,
-   the sections, Apps. */
+/* One column below 1100px, in DOM order: the sections (what the account
+   holds, with New activity, first in view), Your groups and the ID
+   boxes, Apps. */
 .home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -53,6 +54,12 @@
   .home__side {
     grid-area: side;
     gap: 24px;
+  }
+
+  /* The account's ID heads the side column (it follows Your groups in
+     the DOM, the phone order). */
+  .home__box--id {
+    order: -1;
   }
 
   .home__main {
@@ -221,6 +228,18 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* An app's logo (Apps): fitted 3px inside the plate, whole, so a logo
+   on a transparent ground reads as the same size as a full-bleed one
+   (the /apps tiles' rule, at 32px). */
+.home-row__thumb--logo {
+  padding: 3px;
+}
+
+.home-row__thumb--logo img {
+  object-fit: contain;
+  border-radius: var(--radius);
 }
 
 .home-row__text {

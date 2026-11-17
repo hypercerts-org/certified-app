@@ -39,11 +39,12 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
 import { formatMonthYear } from "@/lib/utils/format-date"
 import { useProfilePds } from "@/hooks/use-profile-pds"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useProfileSummary } from "@/components/profile/use-profile-summary"
 import {
-  isKnownEmpty,
-  useProfileSummary,
-  type SectionCount,
-} from "@/components/profile/use-profile-summary"
+  PROFILE_TABS,
+  visibleProfileTabs,
+  type ProfileTabKey,
+} from "@/components/profile/profile-tab-set"
 
 // Non-default tab panels are code-split out of the route's first-load
 // chunk: profiles are the most-shared public URL, and anonymous visitors
@@ -62,30 +63,8 @@ const ProfileLists = dynamic(
   { loading: () => <LoadingSpinner /> },
 )
 
-type TabKey =
-  | "overview"
-  | "about"
-  | "activities"
-  | "projects"
-  | "groups"
-  | "endorsements"
-  | "followers"
-  | "lists"
-
-// Tab strip order. About (organizations only) sits next to Overview;
-// Groups shows only while the viewer's active identity is this account.
-// Other pages link to these keys as `?tab=…`, so keep them stable. The
-// old `?tab=settings` panel is gone: that link now goes to Settings.
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "overview", label: "Overview" },
-  { key: "about", label: "About" },
-  { key: "activities", label: "Activities" },
-  { key: "projects", label: "Projects" },
-  { key: "groups", label: "Groups" },
-  { key: "endorsements", label: "Endorsements" },
-  { key: "followers", label: "Followers" },
-  { key: "lists", label: "Lists" },
-]
+type TabKey = ProfileTabKey
+const TABS = PROFILE_TABS
 
 // Left-to-right key order for the desktop tab-switch slide direction.
 const TAB_ORDER = TABS.map((t) => t.key)
@@ -307,15 +286,22 @@ export default function UserProfilePage() {
   } = inlineEdit
 
 
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const rawTab = searchParams?.get("tab") ?? null
+  const tabFromUrl = useMemo<TabKey>(() => {
+    // Migration shim: the legacy ?tab=certs slug resolves to activities so
+    // old links and bookmarks keep working.
+    const v = rawTab === "certs" ? "activities" : rawTab
+    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
+  }, [rawTab])
+
   // -------------------------------------------------------------------
   // Tabs: which exist for this viewer, which is shown.
   // -------------------------------------------------------------------
-  // About is organization-only, and only for the organization itself (to
-  // write it) or mid-edit: a visitor reads the description in the
-  // header's lead (or the Overview's About), so a tab would repeat it.
-  const aboutEditingForOrg = isEditing && canEditInline && viewIsOrg
+  // The account itself sees the tabs a visitor sees, plus the one a link
+  // opened (visibleProfileTabs).
   const isViewerThisEntity = isOwnProfile || isActingAsThisGroup
-  const aboutAvailable = viewIsOrg && (isViewerThisEntity || aboutEditingForOrg)
   // Groups only while the viewer's *active* identity is this profile: the
   // personal user on their own profile with no group active, or a group on
   // its own profile while acting as it. (Acting as a group on your personal
@@ -328,63 +314,24 @@ export default function UserProfilePage() {
   const isTabEditable = (key: TabKey) =>
     key === "overview" || (viewIsOrg && key === "about")
 
-  // Counts on the tabs; a visitor doesn't get a tab that would show
-  // nothing (once it's known to be empty, never while loading or failed).
   const { counts } = summary
-  const visibleTabs = useMemo<ProfileTabItem[]>(() => {
-    const sectionCount: Partial<Record<TabKey, SectionCount>> = {
-      activities: counts.activities,
-      projects: counts.projects,
-      endorsements: counts.endorsements,
-      followers: counts.followers,
-      lists: counts.lists,
-    }
-    const emptyForVisitor = (key: TabKey): boolean => {
-      if (isViewerThisEntity) return false
-      if (key === "endorsements")
-        return isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
-      if (key === "followers")
-        return isKnownEmpty(counts.followers) && counts.following === 0
-      const c = sectionCount[key]
-      return c ? isKnownEmpty(c) : false
-    }
-    return TABS.filter((t) => {
-      if (t.key === "groups") return isActiveIdentityThisProfile
-      if (t.key === "about") return aboutAvailable
-      return !emptyForVisitor(t.key)
-    }).map((t) => {
-      const c = sectionCount[t.key]
-      return {
-        key: t.key,
-        label: t.label,
-        count: c ? tabCountLabel(c) : undefined,
-        disabled:
-          editing && !(t.key === "overview" || (viewIsOrg && t.key === "about")),
-      }
-    })
-  }, [
-    counts,
-    isViewerThisEntity,
-    isActiveIdentityThisProfile,
-    aboutAvailable,
-    editing,
-    viewIsOrg,
-  ])
+  const visibleTabs = useMemo<ProfileTabItem[]>(
+    () =>
+      visibleProfileTabs({
+        counts,
+        tabFromUrl,
+        isViewerThisEntity,
+        isActiveIdentityThisProfile,
+        isOrg: viewIsOrg,
+        editing,
+      }),
+    [counts, tabFromUrl, isViewerThisEntity, isActiveIdentityThisProfile, viewIsOrg, editing],
+  )
 
   const settingsHref =
     isAdminOfThisGroup && did
       ? `/groups/${encodeURIComponent(did)}/settings`
       : undefined
-
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const rawTab = searchParams?.get("tab") ?? null
-  const tabFromUrl = useMemo<TabKey>(() => {
-    // Migration shim: the legacy ?tab=certs slug resolves to activities so
-    // old links and bookmarks keep working.
-    const v = rawTab === "certs" ? "activities" : rawTab
-    return v && TABS.some((t) => t.key === v) ? (v as TabKey) : "overview"
-  }, [rawTab])
 
   // The old ?tab=settings panel moved to the Settings page (or the group's
   // settings). Send its links there; anyone else lands on the Overview.
@@ -632,8 +579,6 @@ export default function UserProfilePage() {
                   isOrg={viewIsOrg}
                   kindPending={kindPending}
                   about={viewIsOrg && hasBio ? displayLongDescription : null}
-                  orgTypeTags={displayOrgTypeTags}
-                  orgFoundedDate={displayFoundedDate}
                   location={
                     viewIsOrg
                       ? {
@@ -719,13 +664,6 @@ export default function UserProfilePage() {
       </Tabs>
     </PageContainer>
   )
-}
-
-/** A tab's count label: nothing while unknown or failed, "40+" when more
- *  exist than were counted. */
-function tabCountLabel(c: SectionCount): string | undefined {
-  if (c.isLoading || c.failed || c.value === null) return undefined
-  return `${c.value.toLocaleString()}${c.more && c.value > 0 ? "+" : ""}`
 }
 
 /** How the not-found page names what was asked for: "@handle", or a DID

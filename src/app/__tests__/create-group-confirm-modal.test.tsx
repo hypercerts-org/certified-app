@@ -43,6 +43,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+// After a create, the page acts as the new group and says so in a toast.
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}))
+
 vi.mock("@/lib/navbar-context", () => ({
   usePageTitle: () => {},
   useRegisterPageHeader: () => {},

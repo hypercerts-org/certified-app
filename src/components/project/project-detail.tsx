@@ -373,7 +373,7 @@ export default function ProjectDetail({
         </Button>
       ) : null}
       <LikeButton variant="header" subject={{ uri: recordUri, cid }} subjectKind="project" />
-      <ShareLinkButton path={sharePath} what="Project link" />
+      <ShareLinkButton path={sharePath} what="Project link" title={title} />
       <AddToListMenu
         targetUri={recordUri}
         targetCid={cid}
@@ -450,6 +450,21 @@ export default function ProjectDetail({
         {moreCards}
       </aside>
     ) : null
+  // The conversation closes the Overview: from 1100px at the end of the
+  // content column, below that after the facts cards, so the facts aren't
+  // pushed under a thread of comments.
+  const comments = (
+    <CommentThread
+      layout="section"
+      subject={{ uri: recordUri, cid }}
+      subjectTitle={title}
+      subjectKind="project"
+    />
+  )
+  const commentsAfter =
+    !wide && activeTab === "overview" ? (
+      <div className="record-layout__comments">{comments}</div>
+    ) : null
 
   // ----- The activities, as work cards -----
   const activitiesLoading = (
@@ -498,6 +513,7 @@ export default function ProjectDetail({
           eyebrow="Project"
           title={title}
           actions={recordActions}
+          actionsRow={canManage}
           byline={<RecordByline did={did} period={period} place={place} />}
           lead={lead}
           compact={compactHeader}
@@ -556,12 +572,7 @@ export default function ProjectDetail({
                 seeAllHref={tabHref("updates")}
               />
 
-              <CommentThread
-                layout="section"
-                subject={{ uri: recordUri, cid }}
-                subjectTitle={title}
-                subjectKind="project"
-              />
+              {wide ? comments : null}
             </>
           ) : null}
 
@@ -609,6 +620,7 @@ export default function ProjectDetail({
         </TabPanelTransition>
 
         {moreAfter}
+        {commentsAfter}
       </article>
       {fundingFlow.dialogs}
       {deleteOpen ? (

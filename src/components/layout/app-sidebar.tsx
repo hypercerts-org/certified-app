@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useId, useRef } from "react"
+import { Suspense, useEffect, useId, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import {
@@ -34,6 +34,7 @@ import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import Brandmark from "@/components/ui/brandmark"
 import Button from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import Tooltip from "@/components/ui/tooltip"
 import Wordmark from "@/components/ui/wordmark"
 import GlobalSearch from "@/components/search/global-search"
 import { DesktopAccountSwitcher } from "./account-switcher"
@@ -48,20 +49,24 @@ const NETWORK = DESTINATIONS.find((d) => d.key === "network")!
  * the left, full height.
  *
  *   From 1300px (248px):            800–1299px (an 88px rail):
- *     Certified.app                   [mark]
+ *     Certified.app          [⇤]      [mark]
  *     [avatar] Riverbank Trust ⌃⌄     [avatar]
- *     [Search                  ]      Search ▸ (the field, in a menu)
- *     WORKSPACE                       Workspace
+ *     [Search               ⌘K]      Search ▸ (the field, beside it)
+ *     WORKSPACE                       Workspace ▸ (a menu of its sections)
  *       Overview, Projects and …      Network ▸ (a menu of its pages)
  *     NETWORK                         Apps
  *       Feed, Explore, Graph, …
- *     Apps
+ *     ECOSYSTEM
+ *       Apps
  *     ─────                           ─────
- *     Help · Settings                 Help · Settings
+ *     Help · Settings                 Help · Settings (· Expand)
  *
  * The account control at the top shows who you act as (account-switcher).
  * On the rail each item is an icon over a one-word label (as in the phone
- * pill); the Workspace's sections stay in the page's own side list there.
+ * pill). From 1300px the sidebar collapses to the rail with the icon at
+ * the end of the brand row, and expands again from the rail's last item,
+ * Expand. When the list is taller than the window it scrolls, with a
+ * fade over its bottom edge.
  *
  * It always renders on the server and CSS hides it below 800px and
  * switches rail and full list, so the layout never waits for JS; on
@@ -79,6 +84,13 @@ export default function AppSidebar() {
   const isLoading = authLoading || !mounted
   const { pageTitle, desktopTitle, breadcrumb } = useNavbarValues()
   const hasPageHeader = useHasPageHeader()
+  // Collapse (the brand row) and Expand (the rail's last item) hand focus
+  // to each other, since the one you pressed disappears.
+  const collapseRef = useRef<HTMLButtonElement>(null)
+  const expandRef = useRef<HTMLButtonElement>(null)
+  // The list's scroller, for the fade over its bottom edge.
+  const [navEl, setNavEl] = useState<HTMLElement | null>(null)
+  const moreBelow = useMoreBelow(navEl)
 
   if (!hasDesktopChrome(pathname)) return null
 
@@ -99,14 +111,17 @@ export default function AppSidebar() {
         <h1 className="sr-only">{fallbackTitle}</h1>
       ) : null}
       <div className="app-sidebar__top">
-        <Link href={brandHref} className="app-sidebar__brand" aria-label="Certified home">
-          <span className="app-sidebar__wordmark">
-            <Wordmark variant="certified-app" faded height={18} decorative />
-          </span>
-          <span className="app-sidebar__brandmark">
-            <Brandmark size={28} decorative />
-          </span>
-        </Link>
+        <div className="app-sidebar__brand-row">
+          <Link href={brandHref} className="app-sidebar__brand" aria-label="Certified home">
+            <span className="app-sidebar__wordmark">
+              <Wordmark variant="certified-app" faded height={18} decorative />
+            </span>
+            <span className="app-sidebar__brandmark">
+              <Brandmark size={28} decorative />
+            </span>
+          </Link>
+          <CollapseButton buttonRef={collapseRef} handoffRef={expandRef} />
+        </div>
         {/* The account slot keeps one height whatever fills it, so the
             rows below never move. */}
         <div className="app-sidebar__account-slot">
@@ -141,14 +156,19 @@ export default function AppSidebar() {
         <SidebarSearch />
       </div>
 
-      {isLoading ? (
-        <div className="app-sidebar__nav" />
-      ) : (
-        <nav className="app-sidebar__nav" aria-label="Main navigation">
-          <FullList isAuthenticated={isAuthenticated} pathname={pathname} />
-          <RailList isAuthenticated={isAuthenticated} pathname={pathname} />
-        </nav>
-      )}
+      <div className="app-sidebar__nav-frame">
+        {isLoading ? (
+          <div className="app-sidebar__nav" />
+        ) : (
+          <nav ref={setNavEl} className="app-sidebar__nav" aria-label="Main navigation">
+            <FullList isAuthenticated={isAuthenticated} pathname={pathname} />
+            <RailList isAuthenticated={isAuthenticated} pathname={pathname} />
+          </nav>
+        )}
+        {/* More rows below the window's edge (a short window): the list
+            scrolls, and this says so. */}
+        {moreBelow ? <span className="app-sidebar__nav-fade" aria-hidden="true" /> : null}
+      </div>
 
       {/* Filled once sign-in is known (anchored at the bottom, so nothing
           above it moves). */}
@@ -175,38 +195,115 @@ export default function AppSidebar() {
             ) : null}
           </>
         )}
-        <CollapseToggle />
+        <ExpandItem buttonRef={expandRef} handoffRef={collapseRef} />
       </div>
     </header>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Collapse
+// Collapse and expand
 // ---------------------------------------------------------------------------
 
-/**
- * From 1300px: collapse the sidebar to its rail (icons over one-word
+/*
+ * From 1300px the sidebar collapses to its rail (icons over one-word
  * labels, the account control still on top, so who you act as stays in
- * view), or expand it again. Remembered in this browser
- * (lib/layout/sidebar-state). Not shown below 1300px, where the sidebar
- * is always the rail.
+ * view) and expands again. Remembered in this browser
+ * (lib/layout/sidebar-state). Both controls are always rendered and CSS
+ * shows the one that applies (the remembered state is on <html> before
+ * first paint, so nothing flashes): Collapse at the end of the full
+ * sidebar's brand row, Expand as the collapsed rail's last item. Below
+ * 1300px, where the sidebar is always the rail, neither shows.
  */
-function CollapseToggle() {
-  const [collapsed, setCollapsed] = useSidebarCollapsed()
-  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose
-  const label = collapsed ? "Expand" : "Collapse"
+
+type ToggleProps = {
+  buttonRef: RefObject<HTMLButtonElement | null>
+  /** The other control: it takes focus when this one disappears. */
+  handoffRef: RefObject<HTMLButtonElement | null>
+}
+
+/** Pressed from the keyboard: it has focus, and the browser shows it. */
+function hasKeyboardFocus(el: HTMLElement | null): boolean {
+  if (!el || document.activeElement !== el) return false
+  try {
+    return el.matches(":focus-visible")
+  } catch {
+    return true
+  }
+}
+
+function useToggle(collapse: boolean, { buttonRef, handoffRef }: ToggleProps) {
+  const [, setCollapsed] = useSidebarCollapsed()
+  return () => {
+    // Only a keyboard press moves focus on (a click would pop the other
+    // control's tooltip).
+    const handoff = hasKeyboardFocus(buttonRef.current)
+    // Applies to <html> at once, so the other control is already shown.
+    setCollapsed(collapse)
+    if (handoff) handoffRef.current?.focus()
+  }
+}
+
+/** The full sidebar's Collapse: an icon at the end of the brand row. */
+function CollapseButton({ buttonRef, handoffRef }: ToggleProps) {
+  const collapse = useToggle(true, { buttonRef, handoffRef })
+  return (
+    <Tooltip label="Collapse" side="right">
+      <Button
+        ref={buttonRef}
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Collapse sidebar"
+        // Its own tooltip (beside it, like the rail's) replaces the
+        // button's default one above it.
+        tooltip=""
+        className="app-sidebar__collapse"
+        onClick={collapse}
+      >
+        <PanelLeftClose size={18} strokeWidth={1.5} aria-hidden />
+      </Button>
+    </Tooltip>
+  )
+}
+
+/** The collapsed rail's Expand (from 1300px): its last item. */
+function ExpandItem({ buttonRef, handoffRef }: ToggleProps) {
+  const expand = useToggle(false, { buttonRef, handoffRef })
   return (
     <button
+      ref={buttonRef}
       type="button"
-      className="app-sidebar__item app-sidebar__toggle"
-      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      onClick={() => setCollapsed(!collapsed)}
+      className="app-sidebar__item app-sidebar__expand"
+      aria-label="Expand sidebar"
+      onClick={expand}
     >
-      <Icon size={20} strokeWidth={1.5} aria-hidden />
-      <span className="app-sidebar__label">{label}</span>
+      <PanelLeftOpen size={20} strokeWidth={1.5} aria-hidden />
+      <span className="app-sidebar__label">Expand</span>
     </button>
   )
+}
+
+/**
+ * Whether the list has rows below its visible bottom edge (a window too
+ * short for it), kept up to date as it scrolls, resizes or changes
+ * (sign-in, rail and full).
+ */
+function useMoreBelow(el: HTMLElement | null): boolean {
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    if (!el) return
+    const measure = () => setMore(el.scrollHeight - el.clientHeight - el.scrollTop > 1)
+    measure()
+    el.addEventListener("scroll", measure, { passive: true })
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
+    ro?.observe(el)
+    for (const child of Array.from(el.children)) ro?.observe(child)
+    return () => {
+      el.removeEventListener("scroll", measure)
+      ro?.disconnect()
+    }
+  }, [el])
+  return more
 }
 
 // ---------------------------------------------------------------------------
@@ -218,8 +315,9 @@ function CollapseToggle() {
  * network), under the account control: the field itself from 1300px, a
  * Search item on the rail that opens the field to the right. `/` and
  * Cmd/Ctrl+K reach it either way (the field handles them where it is on
- * screen; on the rail they open the menu, which focuses the field). The
- * tour's `navbar-search` anchor.
+ * screen; on the rail they open the popover, which focuses the field);
+ * the full field shows the shortcut at its end. The tour's
+ * `navbar-search` anchor.
  */
 function SidebarSearch() {
   const [open, setOpen] = useRouteScopedOpen()
@@ -250,14 +348,32 @@ function SidebarSearch() {
     return () => globalThis.removeEventListener("keydown", onKey)
   }, [setOpen])
 
+  const shortcut = useSearchShortcut()
+
   return (
     <>
       <div className="app-sidebar__search" data-tour="navbar-search">
         <GlobalSearch placeholder="Search" />
+        {/* The shortcut, quietly at the field's end; CSS hides it once
+            the field has text (the clear button takes its place).
+            Visual only: the field's own handler takes the keys. */}
+        {shortcut ? (
+          <kbd className="app-sidebar__search-kbd" aria-hidden="true">
+            {shortcut}
+          </kbd>
+        ) : null}
       </div>
       <Popover open={open} onOpenChange={setOpen} className="app-sidebar__fill app-sidebar__search-rail">
         <PopoverTrigger>
-          <button ref={railRef} type="button" className="app-sidebar__item" data-tour="navbar-search">
+          {/* Opens a field in a group, not a menu: a plain disclosure
+              (aria-expanded), with no popup type. */}
+          <button
+            ref={railRef}
+            type="button"
+            className="app-sidebar__item"
+            aria-haspopup={false}
+            data-tour="navbar-search"
+          >
             <Search size={20} strokeWidth={1.5} aria-hidden />
             <span className="app-sidebar__label">Search</span>
           </button>
@@ -278,6 +394,16 @@ function SidebarSearch() {
       </Popover>
     </>
   )
+}
+
+/** The search shortcut as this platform writes it, once mounted (the
+ *  server can't know): "⌘K" on Apple devices, "Ctrl K" elsewhere. */
+function useSearchShortcut(): string | null {
+  const mounted = useMounted()
+  if (!mounted) return null
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
+  const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent
+  return /mac|iphone|ipad|ipod/i.test(platform) ? "⌘K" : "Ctrl K"
 }
 
 // ---------------------------------------------------------------------------

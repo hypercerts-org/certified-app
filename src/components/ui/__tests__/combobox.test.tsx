@@ -224,16 +224,27 @@ describe("Combobox — keyboard", () => {
     expect(onSubmitNoMatch).toHaveBeenCalledWith("alice.social");
   });
 
-  it("Enter calls onSubmit with the trimmed value, taking precedence over row selection", () => {
+  it("Enter calls onSubmit with the trimmed value while no row is picked", () => {
     const onSelect = vi.fn();
     const onSubmit = vi.fn();
-    render(<Harness onSelect={onSelect} onSubmit={onSubmit} />);
+    render(<Harness onSelect={onSelect} onSubmit={onSubmit} autoHighlight={false} />);
     const input = getInput();
-    // A row is highlighted (index 0 on mount), but onSubmit wins.
     fireEvent.change(input, { target: { value: "  climate  " } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onSelect).not.toHaveBeenCalled();
     expect(onSubmit).toHaveBeenCalledWith("climate");
+  });
+
+  it("Enter opens the row picked with the arrow keys, not onSubmit", () => {
+    const onSelect = vi.fn();
+    const onSubmit = vi.fn();
+    render(<Harness onSelect={onSelect} onSubmit={onSubmit} autoHighlight={false} />);
+    const input = getInput();
+    fireEvent.change(input, { target: { value: "climate" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it("does not call onSubmit when the typed value is empty", () => {

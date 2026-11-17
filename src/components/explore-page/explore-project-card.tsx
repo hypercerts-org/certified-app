@@ -13,12 +13,14 @@ import {
   projectTitle,
   type CollectionRecord,
 } from "@/lib/atproto/collection"
+import { useOwnerByline } from "./use-owner-byline"
 
 /**
  * Compact project card for the /explore Projects grid. Light-weight
  * cousin of <ProjectBox> in profile-projects — same data shape, but
  * doesn't resolve items (the grid renders many cards; N-times-K item
- * resolution would be wasteful).
+ * resolution would be wasteful). Says whose project it is ("by <owner>")
+ * under the title, as every Explore row does.
  */
 function ExploreProjectCard({
   project,
@@ -46,6 +48,7 @@ function ExploreProjectCard({
   const showImage = !!imageUrl && !imageFailed
 
   const itemCount = countItems(value.items)
+  const byline = useOwnerByline(projectDid || null)
 
   return (
     <Link href={detailHref} className="explore-project-card">
@@ -67,6 +70,9 @@ function ExploreProjectCard({
       </div>
       <div className="explore-project-card__body">
         <h3 className="explore-project-card__title" dir="auto">{title}</h3>
+        {byline ? (
+          <p className="explore-project-card__owner" dir="auto">{byline}</p>
+        ) : null}
         {shortDesc ? (
           <p className="explore-project-card__desc" dir="auto">{shortDesc}</p>
         ) : null}

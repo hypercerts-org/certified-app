@@ -4,7 +4,7 @@ import { memo } from "react"
 import { User } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { deriveIdentity } from "@/lib/utils/identity"
+import { deriveIdentity, isMachineHandle } from "@/lib/utils/identity"
 import { truncateDid } from "@/lib/utils/did"
 import type { NetworkActor } from "@/lib/atproto/workspace"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
@@ -26,6 +26,11 @@ import ExploreListRow from "./explore-list-row"
  * joined (the profile's `createdAt`, null on legacy profiles, which
  * leaves it empty). Phones drop the author column and the description
  * line, so the handle (and badge) move under the name there.
+ *
+ * A handle the PDS made up ("12gkq0.certified.one") names nobody: it
+ * shows muted, as an ID, never as the name. An account with neither a
+ * name nor a chosen handle is "Unnamed account" in muted type, with a
+ * plain avatar (no "?" initials).
  */
 function AccountListRow({
   actor,
@@ -37,7 +42,7 @@ function AccountListRow({
   const { info } = useAuthorInfo(actor.did)
   // Record-level name/avatar (from the Certified actor record) outrank
   // the resolved Bluesky profile — same data the search index returned.
-  const { displayName, handle, initials, profileHref, avatarUrl } =
+  const { displayName, unnamed, handle, initials, profileHref, avatarUrl } =
     deriveIdentity(info, actor.did, {
       preferredName: actor.displayName,
       preferredAvatarUrl: actor.avatarUrl,
@@ -47,6 +52,7 @@ function AccountListRow({
     <EndorsementRowBadge meta={endorsementMeta} />
   ) : null
   const handleText = handle ? `@${handle}` : truncateDid(actor.did)
+  const machine = isMachineHandle(handle)
   const description = actor.description?.trim() || null
 
   return (
@@ -57,11 +63,13 @@ function AccountListRow({
           size="row"
           src={avatarUrl ?? undefined}
           alt=""
-          fallbackInitials={initials}
+          // Unknown name: the plain fill, not a "?".
+          fallbackInitials={initials === "?" ? "" : initials}
           seed={actor.did}
         />
       }
       title={displayName}
+      titleMuted={unnamed}
       subtitle={
         <>
           {handleText}
@@ -74,7 +82,7 @@ function AccountListRow({
           <span
             className={`cert-list-row__handle${
               handle ? "" : " cert-list-row__handle--did"
-            }`}
+            }${machine ? " cert-list-row__handle--machine" : ""}`}
           >
             {handle ? null : <User size={12} strokeWidth={2} aria-hidden />}
             {handleText}

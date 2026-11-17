@@ -11,40 +11,32 @@
  * falls back to a centered card after a bounded wait (product-tour.tsx,
  * MAX_RESOLVE_FRAMES), so no step can hang.
  *
- * The tour follows the main navigation: first the account control (who
- * you act as), then for each destination it spotlights the nav item you'd
- * use (the `nav-*` anchors live on both the desktop sidebar and the phone
- * pill — the renderer picks whichever is visible), routes to that page,
- * then shows what you can do there. The order mirrors the navigation:
- * Workspace, Network (Feed, Explore, Graph), Apps, then creating (from the
- * Workspace), the profile, Settings and Help. The search step (the
- * sidebar's, desktop only) comes on Feed. Sidebar anchors ask
- * for "right"; on a phone, where there is no room beside them, the card
- * goes above or below.
+ * The tour is short (nine steps) and stays on the main pages: the account
+ * control (who you act as), then each destination's nav item (the `nav-*`
+ * anchors live on both the desktop sidebar and the phone pill — the
+ * renderer picks whichever is visible): Workspace, Network and its Feed,
+ * Apps; then where you create (Workspace › Projects and activities, without
+ * opening the form), Settings, and Help to finish. Sidebar anchors ask for
+ * "right"; on a phone, where there is no room beside them, the card goes
+ * above or below.
  *
  * Anchors are matched against `data-tour="<anchor>"` attributes placed on
  * page content. The same anchor id may appear on more than one element
  * (e.g. a nav item in both the desktop sidebar and the phone pill) —
  * the renderer picks the first *rendered* one, so the visible variant wins
- * per layout. Every anchor here exists in the current app:
- *   nav-workspace, nav-network, nav-apps — destinations (the sidebar's
- *     groups from 1300px, its rail items below that, the pill on phones)
- *   graph — the endorsement graph on /graph (graph-page.tsx)
- *   records-new — "New activity" in Workspace › Projects and activities
+ * per layout. The anchors these steps use:
  *   account-menu — the account control (top of the sidebar; the right
  *     end of the phone top bar)
- *   navbar-search — the sidebar's search (the field from 1300px, the
- *     rail's Search item below that; desktop only)
- *   home-account — Home's ID box, the account on top (home.tsx)
+ *   nav-workspace, nav-network, nav-apps — destinations (the sidebar's
+ *     groups from 1300px, its rail items below that, the pill on phones)
  *   feed — the Feed column (home-feed.tsx)
- *   explore-category — Explore's type chips (explore.tsx)
- *   apps-grid — the Apps list (apps/page.tsx)
- *   create-title, create-submit — the New activity form
- *   profile-tabs, profile-edit — the profile's tab strip and Edit button
+ *   records-new — "New activity" in Workspace › Projects and activities
  *   settings-handle — the handle row in Settings › Account
- *   settings-bsky-sync — Settings › Social graph
+ * Other `data-tour` anchors (home-account, navbar-search, explore-category,
+ * graph, apps-grid, create-title/-submit, profile-tabs/-edit,
+ * settings-bsky-sync) stay in the components for a longer tour.
  *
- * Copy mirrors the concept sections on /help; keep them in sync.
+ * The walk-through paragraph on /help lists these steps; keep them in sync.
  */
 
 export interface TourStep {
@@ -80,7 +72,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: null,
     title: "Welcome to Certified",
-    body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nLet's take a quick look around.",
+    body: "The Certified network is where you record and recognize real work and impact. This app is one view into this open network — other apps share the same data, so your work is never locked in.\n\nHere's a short look around.",
   },
 
   // ---- Who you act as -------------------------------------------------
@@ -102,14 +94,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Your Workspace is everything your account holds: your records, endorsements and groups. Network is everyone else's work.",
     placement: "right",
   },
-  {
-    id: "home-account",
-    navigateTo: "/home",
-    anchor: "home-account",
-    title: "Your account",
-    body: "Your profile and your ID. The ID identifies your account in every app. The rest of the page shows your records, the endorsements and follows others have given you, and apps you can use.",
-    placement: "right",
-  },
 
   // ---- Network -------------------------------------------------------
   {
@@ -120,8 +104,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Network is everyone's work on Certified, five ways: Feed, Explore, Graph, Map and Funding.",
     placement: "right",
   },
-
-  // ---- Feed ----------------------------------------------------------
   {
     id: "feed",
     navigateTo: "/feed",
@@ -130,37 +112,6 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Feed is what's happening: new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
     placement: "right",
   },
-  // The sidebar's search (desktop): before Explore, which has its own.
-  {
-    id: "navbar-search",
-    navigateTo: null,
-    anchor: "navbar-search",
-    title: "Search the network",
-    body: "Search finds any activity, project or account across the whole network, from any page. Press / to jump to it.",
-    placement: "right",
-    platform: "desktop",
-  },
-
-  // ---- Explore -------------------------------------------------------
-  {
-    id: "explore-search",
-    navigateTo: "/explore",
-    anchor: "explore-category",
-    title: "Explore",
-    body: "Explore is the whole network: activities, projects and accounts from everyone on Certified. These buttons set what you're looking through; search above them to narrow it down.",
-    placement: "bottom",
-    align: "start",
-  },
-
-  // ---- Graph ---------------------------------------------------------
-  {
-    id: "graph",
-    navigateTo: "/graph",
-    anchor: "graph",
-    title: "Graph",
-    body: "Graph shows who vouches for whom across the network. Each dot is an account, each line a badge one gave the other.",
-    placement: "top",
-  },
 
   // ---- Apps ----------------------------------------------------------
   {
@@ -168,16 +119,8 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/apps",
     anchor: "nav-apps",
     title: "Apps",
-    body: "Other apps that work with your Certified account. Sign in to any of them with the same account.",
+    body: "Other apps that work with your Certified account. Sign in to any of them with the same account: they read and write the same records, so what you publish here shows up there too.",
     placement: "right",
-  },
-  {
-    id: "apps-grid",
-    navigateTo: "/apps",
-    anchor: "apps-grid",
-    title: "One account, every app",
-    body: "Each app reads and writes the same underlying records, so the work you publish here shows up across all of them — your data isn't locked into any single one.",
-    placement: "bottom",
   },
 
   // ---- Create --------------------------------------------------------
@@ -185,44 +128,10 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "nav-create",
     navigateTo: "/records?kind=activities",
     anchor: "records-new",
-    title: "New",
+    title: "Create from your Workspace",
     body: "You publish your own work from your Workspace: new activities and projects here, a new group under Groups.",
     placement: "bottom",
     align: "end",
-  },
-  {
-    id: "create-title",
-    navigateTo: "/create",
-    anchor: "create-title",
-    title: "Give it a title",
-    body: "Publishing starts here. Give your activity a clear title — a verifiable claim about the work or impact you want to record.",
-    placement: "bottom",
-  },
-  {
-    id: "create-submit",
-    navigateTo: "/create",
-    anchor: "create-submit",
-    title: "Publish when you're ready",
-    body: "Fill in the details, then publish. Your activity becomes part of your portable record — visible across every compatible app.",
-    placement: "top",
-  },
-
-  // ---- Profile -------------------------------------------------------
-  {
-    id: "profile-tabs",
-    navigateTo: "/profile",
-    anchor: "profile-tabs",
-    title: "Your public profile",
-    body: "Your profile is what others see: your activities, projects, endorsements, followers, and lists, in these sections.",
-    placement: "bottom",
-  },
-  {
-    id: "profile-edit",
-    navigateTo: "/profile",
-    anchor: "profile-edit",
-    title: "Make it yours",
-    body: "Use Edit to set your display name, bio, avatar, and links.",
-    placement: "bottom",
   },
 
   // ---- Settings ------------------------------------------------------
@@ -234,29 +143,13 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Settings is where you manage your account. This is your handle, the readable part of your ID. Behind it sits a Permanent ID that never changes, so your work stays yours even if you change your handle.",
     placement: "bottom",
   },
-  {
-    id: "settings-sync",
-    navigateTo: "/settings#social-graph",
-    anchor: "settings-bsky-sync",
-    title: "Sync with Bluesky",
-    body: "Certified has its own follow graph, kept separate from Bluesky. Sync here any time so you don't have to rebuild your network from scratch.",
-    placement: "top",
-  },
 
   // ---- Help ----------------------------------------------------------
   {
     id: "help",
     navigateTo: "/help",
     anchor: null,
-    title: "Help",
-    body: "Help has guides for everything we just covered: at the bottom of the sidebar on a computer, in your account menu on a phone, and linked at the bottom of every page. You can replay this walk-through from there too.",
-  },
-
-  {
-    id: "all-set",
-    navigateTo: null,
-    anchor: null,
-    title: "You're all set",
-    body: "That's the tour. You can replay it any time from the Help page. Welcome to Certified!",
+    title: "Help is here",
+    body: "Help answers common questions and takes your feedback: at the bottom of the sidebar on a computer, in your account menu on a phone, and linked at the bottom of every page. You can replay this walk-through from there any time. Welcome to Certified!",
   },
 ] as const

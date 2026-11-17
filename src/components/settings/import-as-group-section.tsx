@@ -7,6 +7,7 @@ import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-password
 import { authFetch } from "@/lib/auth/fetch"
 import { GROUP_PROMOTED_FLAG } from "@/lib/groups/constants"
 import Button from "@/components/ui/button"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { SettingsRow } from "@/components/settings/settings-layout"
 import ErrorMessage from "@/components/ui/error-message"
 import {
@@ -107,45 +108,69 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
 
   const unlock = useUnlockAppPasswords(() => void runImport())
 
+  // The button first asks (ConfirmDialog), saying what changes and that it
+  // can be undone; once confirmed, a second submit (the emailed code when
+  // the account has two-factor sign-in) goes straight through.
+  const [asking, setAsking] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+
   const accountLabel = handle ? `@${handle}` : did
   const busy = unlock.submitting || working
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        void unlock.submit()
-      }}
-      className="import-group"
-    >
-      {/* The same row as every other setting: what it does on the left,
-          the password and the button on the right. */}
-      <SettingsRow
-        label="Turn into a group"
-        description={
-          <>
-            Makes <strong className="font-medium text-[var(--fg-primary)]">{accountLabel}</strong> a
-            group, with you as its owner. The account, its handle and its records stay; nothing is
-            deleted. To confirm, enter your account password: a one-time app password is made in the
-            background and revoked as soon as the group exists, never shown or stored.
-          </>
-        }
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!unlock.canSubmit || busy) return
+          if (confirmed) void unlock.submit()
+          else setAsking(true)
+        }}
+        className="import-group"
       >
-        <div className="flex max-w-[26rem] flex-col gap-4">
-          <UnlockAppPasswordFields state={unlock} />
-          {error && <ErrorMessage message={error} />}
-          <div className="import-group__actions">
-            <Button
-              type="submit"
-              variant="primary"
-              loading={busy}
-              disabled={!unlock.canSubmit || busy}
-            >
-              Turn into a group
-            </Button>
+        {/* The same row as every other setting: what it does on the left,
+            the password and the button on the right. */}
+        <SettingsRow
+          label="Turn into a group"
+          description={
+            <>
+              Makes <strong className="font-medium text-[var(--fg-primary)]">{accountLabel}</strong> a
+              group, with you as its owner. The account, its handle and its records stay; nothing is
+              deleted, and you can turn it back later. To confirm, enter your account password: a one-time app password is made in the
+              background and revoked as soon as the group exists, never shown or stored.
+            </>
+          }
+        >
+          <div className="flex max-w-[26rem] flex-col gap-4">
+            <UnlockAppPasswordFields state={unlock} />
+            {error && <ErrorMessage message={error} />}
+            <div className="import-group__actions">
+              <Button
+                type="submit"
+                variant="primary"
+                loading={busy}
+                disabled={!unlock.canSubmit || busy}
+              >
+                Turn into a group
+              </Button>
+            </div>
           </div>
-        </div>
-      </SettingsRow>
-    </form>
+        </SettingsRow>
+      </form>
+      {asking ? (
+        <ConfirmDialog
+          title={handle ? `Turn @${handle} into a group?` : "Turn this account into a group?"}
+          message="It becomes a group with you as its owner, and you can add people to act for it. Its handle, profile and records stay as they are. You can turn it back into a regular account any time from the group's settings."
+          confirmLabel="Turn into a group"
+          confirmVariant="primary"
+          onCancel={() => setAsking(false)}
+          onConfirm={() => {
+            setAsking(false)
+            setConfirmed(true)
+            void unlock.submit()
+          }}
+        />
+      ) : null}
+    </>
   )
 }

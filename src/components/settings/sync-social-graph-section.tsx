@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -108,10 +109,26 @@ export default function SyncSocialGraphSection({
     !sync.blueskyTruncated &&
     onlyCertified === 0 &&
     onlyBluesky === 0
+  // Why a Sync button is off, when nothing else on screen says so (loading,
+  // a failed load, a too-large list and "already in sync" each have their
+  // own line).
+  const settled = !sync.isLoading && !failed && !inSync
+  const importOffReason =
+    settled && !sync.truncated && onlyBluesky === 0
+      ? "Nothing to sync from Bluesky: you already follow here everyone you follow there."
+      : null
+  const exportOffReason =
+    settled && !sync.blueskyTruncated && onlyCertified === 0
+      ? "Nothing to sync to Bluesky: you already follow there everyone you follow here."
+      : null
+  const reasonId = useId()
 
   return (
     <div className="social-graph-sync" data-tour="settings-bsky-sync">
       <StatRow
+        // Three counts on one row on phones too: a 2 + 1 wrap read as two
+        // groups. The labels wrap under their numbers instead.
+        className="social-graph-sync__stats"
         aria-label="Follows compared"
         items={[
           {
@@ -158,6 +175,7 @@ export default function SyncSocialGraphSection({
           pressed={modalDir === "import"}
           onClick={() => setModalDir((d) => (d === "import" ? null : "import"))}
           disabled={sync.isLoading || sync.truncated || onlyBluesky === 0}
+          aria-describedby={importOffReason ? `${reasonId}-import` : undefined}
         >
           <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
           Sync from Bluesky
@@ -170,11 +188,26 @@ export default function SyncSocialGraphSection({
           disabled={
             sync.isLoading || sync.blueskyTruncated || onlyCertified === 0
           }
+          aria-describedby={exportOffReason ? `${reasonId}-export` : undefined}
         >
           <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
           Sync to Bluesky
         </Button>
       </div>
+      {importOffReason || exportOffReason ? (
+        <div className="social-graph-sync__reasons">
+          {importOffReason ? (
+            <span id={`${reasonId}-import`} className="social-graph-sync__hint">
+              {importOffReason}
+            </span>
+          ) : null}
+          {exportOffReason ? (
+            <span id={`${reasonId}-export`} className="social-graph-sync__hint">
+              {exportOffReason}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* `key` remounts the flow on a direction switch so its step/selection
           state resets to the new direction's candidates. */}

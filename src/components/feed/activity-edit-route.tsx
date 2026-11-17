@@ -408,7 +408,7 @@ export default function ActivityEditRoute({
       back={
         recordHref
           ? { href: recordHref, label: "Activity" }
-          : { href: "/records", label: "Workspace" }
+          : { href: "/records", label: "Projects and activities" }
       }
       title="Edit activity"
       description="Your changes update the published activity."
@@ -490,10 +490,14 @@ export default function ActivityEditRoute({
   }
 
   // ----- submit -----
-  // What still blocks saving (lengths, contributor rows, dates).
+  // What still blocks saving (lengths, contributor rows, dates). The
+  // summary's minimum applies only once the summary is changed, so a
+  // record published under it can still be edited.
+  const savedShortDescription = mountSnapshot?.value.shortDescription ?? ""
   const problems = activityFormProblems({
     title,
     shortDescription,
+    savedShortDescription,
     startDate,
     endDate,
     contributors,
@@ -761,6 +765,7 @@ export default function ActivityEditRoute({
           shortDescription={shortDescription}
           onShortDescriptionChange={setShortDescription}
           shortDescriptionRef={shortDescRef}
+          savedShortDescription={savedShortDescription}
           showAllErrors={submitAttempted}
           description={description}
           onDescriptionChange={setDescription}

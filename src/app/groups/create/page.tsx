@@ -7,6 +7,7 @@ import { ArrowLeftRight, Image as ImageIcon, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
+import { useActAsNewGroup } from "@/lib/groups/use-act-as-new-group"
 import { usePageTitle } from "@/lib/navbar-context"
 import { MAX_SELF_CREATED_ORGS } from "@/lib/groups/constants"
 import {
@@ -66,6 +67,7 @@ export default function CreateGroupPage() {
   const router = useRouter()
   const { did, isLoading: authLoading, openSignIn } = useAuth()
   const { refetchOrgs } = useOrg()
+  const actAsNewGroup = useActAsNewGroup()
   const { isChecking, limitReached } = useOrgCreationLimit()
 
   // Profile fields
@@ -326,8 +328,10 @@ export default function CreateGroupPage() {
         console.error("[groups/create] putOrgMetadata failed", err)
       }
 
+      // Act as the new group on its Overview (once the refetched list
+      // has it), with a toast that says so.
       await refetchOrgs()
-      router.push("/home")
+      actAsNewGroup({ groupDid, name: displayName.trim() })
     } catch (err) {
       console.error("[groups/create] failed", err)
       const message =
@@ -359,7 +363,7 @@ export default function CreateGroupPage() {
   // the page keeps its frame while auth and the group count resolve.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/home", label: "Workspace" }}
+      back={{ href: "/records?kind=groups", label: "Groups" }}
       title="New group"
       description="A shared account your team can publish records as."
     />
@@ -409,8 +413,8 @@ export default function CreateGroupPage() {
           description={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups. Leave or delete one to make room for a new group.`}
           headingLevel={2}
         >
-          <Button variant="secondary" href="/home">
-            Back to Workspace
+          <Button variant="secondary" href="/records?kind=groups">
+            Back to Groups
           </Button>
         </EmptyState>
       </PageContainer>

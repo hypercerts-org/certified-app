@@ -149,13 +149,16 @@ export function EndorsementsPane({
                   onCreated={given.refetch}
                 />
               ) : null}
-              {/* The same rows as Received, with Revoke per row. */}
+              {/* The same rows as Received, with Revoke per row. With the
+                  panel open, "No endorsements given yet" would only repeat
+                  it, so the empty state steps aside. */}
               <GivenEndorsements
                 did={did}
                 endorsements={given.endorsements}
                 isLoading={given.isLoading}
                 error={given.error}
                 onRetry={given.refetch}
+                hideEmpty={endorseOpen}
               />
             </div>
           </TabPanel>

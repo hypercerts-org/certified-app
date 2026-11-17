@@ -334,15 +334,26 @@ export default function LocationPickerDialog({
   const viewportHeight =
     typeof window !== "undefined" ? window.innerHeight : 800
   const modalMaxWidth = Math.max(320, Math.min(1100, viewportWidth - 40))
-  const mapHeight = Math.max(
-    220,
-    Math.min(720, viewportHeight - 40 - NON_MAP_CHROME),
-  )
+  // Phones (below 800px): the dialog takes the viewport's height and is a
+  // flex column down to the map, which takes what the fields and the
+  // actions leave (at least 240px), so Add and Cancel stay in view and
+  // the map never has to be scrolled past. Wider, the map has a computed
+  // height and the dialog fits around it.
+  const isPhone = viewportWidth < 800
+  const mapHeight: number | string = isPhone
+    ? "100%"
+    : Math.max(220, Math.min(720, viewportHeight - 40 - NON_MAP_CHROME))
+  const mapBoxClass = isPhone
+    ? "create-cert__loc-map min-h-[240px] flex-1"
+    : "create-cert__loc-map"
 
   return (
     <AppDialog
       ariaLabel="Add location"
-      className="create-cert__loc-dialog"
+      // On phones the dialog and AppDialog's content wrapper (its one
+      // child) are a flex column of the viewport's height (dvh, so the
+      // browser bars don't push the actions off screen).
+      className="create-cert__loc-dialog max-[799px]:h-[calc(100dvh-40px)] max-[799px]:max-h-[calc(100dvh-40px)] max-[799px]:[&>div]:flex max-[799px]:[&>div]:min-h-0 max-[799px]:[&>div]:flex-1 max-[799px]:[&>div]:flex-col"
       maxWidth={modalMaxWidth}
       onClose={onClose}
     >
@@ -351,7 +362,7 @@ export default function LocationPickerDialog({
         value={mode}
         onChange={(next) => setMode(next as "new" | "existing")}
         variant="segmented"
-        className="create-cert__loc-dialog-body"
+        className="create-cert__loc-dialog-body max-[799px]:min-h-0 max-[799px]:flex-1"
       >
         {/* The tab strip is only useful when there's more than one
             option to choose between. Hide it entirely when the
@@ -370,11 +381,14 @@ export default function LocationPickerDialog({
             the inter-element gap is unchanged; only the active panel mounts
             (default unmount) so we never run two Leaflet maps at once. */}
         <TabPanel value="new" className="contents">
-            <p className="create-cert__loc-hint">
-              Type a place to search, or click anywhere on the map to
-              drop a pin. After picking, you can rename the field to
-              something more specific.
-            </p>
+            {/* Phones keep one instruction, the line under the map. */}
+            {isPhone ? null : (
+              <p className="create-cert__loc-hint">
+                Type a place to search, or click anywhere on the map to
+                drop a pin. After picking, you can rename the field to
+                something more specific.
+              </p>
+            )}
             <div className="create-cert__loc-combobox">
               <input
                 type="text"
@@ -489,7 +503,7 @@ export default function LocationPickerDialog({
                 </ul>
               ) : null}
             </div>
-            <div className="create-cert__loc-map">
+            <div className={mapBoxClass}>
               <Map
                 key={mapKey}
                 pins={pins}
@@ -506,7 +520,9 @@ export default function LocationPickerDialog({
                   ? "Resolving pin…"
                   : coords
                     ? `Pinned at ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`
-                    : "Search above or click the map to drop a pin"}
+                    : isPhone
+                      ? "Search above, or tap the map to drop a pin"
+                      : "Search above or click the map to drop a pin"}
             </p>
         </TabPanel>
 
@@ -543,7 +559,7 @@ export default function LocationPickerDialog({
                     </option>
                   ))}
                 </select>
-                <div className="create-cert__loc-map">
+                <div className={mapBoxClass}>
                   <Map
                     key={mapKey}
                     pins={pins}
@@ -575,7 +591,7 @@ export default function LocationPickerDialog({
           </p>
         ) : null}
 
-        <div className="create-cert__loc-actions">
+        <div className="create-cert__loc-actions max-[799px]:mt-auto">
           <Button
             type="button"
             variant="ghost"

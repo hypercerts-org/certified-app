@@ -558,10 +558,18 @@ export default function WorkPane({
             title="No projects or activities yet"
             description="An activity records a piece of work. Group activities into projects, like folders, to show how they fit together; one activity can sit in several projects."
           >
-            <Button href="/create" variant="secondary" size="sm" data-tour="records-new">
-              <Plus size={16} strokeWidth={1.75} aria-hidden />
-              New activity
-            </Button>
+            {/* The first step, so the primary action; a project can come
+                first too. */}
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button href="/create" variant="primary" data-tour="records-new">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New activity
+              </Button>
+              <Button href="/project/new" variant="secondary">
+                <Plus size={16} strokeWidth={1.75} aria-hidden />
+                New project
+              </Button>
+            </div>
           </EmptyState>
         ) : q && shownProjects.length === 0 && shownLoose.length === 0 ? (
           <EmptyState variant="inline" title={`Nothing matches "${query.trim()}".`}>

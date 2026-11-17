@@ -17,6 +17,9 @@ interface OrgMarkerResult {
    *  typed array). The editor reads this to seed drafts; `null` means
    *  the record didn't exist or wasn't an org. */
   marker: GroupMetadata | null
+  /** The lookup itself failed (a 429, a network error): whether this is
+   *  an organization is unknown, not "no". Never cached. */
+  failed?: boolean
 }
 
 // Module-level cache so re-visiting the same profile doesn't refetch the
@@ -59,7 +62,7 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
       const value = await getOrgMarkerRecord(did)
       // Lookup failed: unknown, so don't cache and let a later mount retry.
       if (value === undefined) {
-        return { isOrg: false, additionalUrls: [], urls: [], marker: null }
+        return { isOrg: false, additionalUrls: [], urls: [], marker: null, failed: true }
       }
       const urls = value ? extractUrls(value) : []
       const result: OrgMarkerResult = {
@@ -71,7 +74,7 @@ async function fetchOrgMarker(did: string): Promise<OrgMarkerResult> {
       cache.set(did, result)
       return result
     } catch {
-      return { isOrg: false, additionalUrls: [], urls: [], marker: null }
+      return { isOrg: false, additionalUrls: [], urls: [], marker: null, failed: true }
     } finally {
       inFlight.delete(did)
     }
@@ -102,6 +105,9 @@ export function useOrgMarker(did: string | null): {
    *  that. A refresh keeps it, so a page can tell "not known yet" (show
    *  neither a person nor an organization) from "re-reading". */
   answeredFor: string | null
+  /** The last lookup failed: the kind is unknown (`isOrg` false is not an
+   *  answer). `refresh()` tries again. */
+  failed: boolean
   /** Force a refetch (bypassing the module cache). Used by editors
    *  after a write so subsequent renders pick up the new record. */
   refresh: () => void
@@ -166,6 +172,7 @@ export function useOrgMarker(did: string | null): {
 
   return {
     ...result,
+    failed: !!result.failed,
     isLoading,
     answeredFor,
     refresh: () => setRefreshTick((t) => t + 1),

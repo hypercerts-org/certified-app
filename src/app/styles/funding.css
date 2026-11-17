@@ -4,13 +4,119 @@
    flow, timeline, map, receipts) and the receipt ledger.
    ========================================================================== */
 
+/* The first load: the main box, its final size, with the message inside
+   (funding-page.tsx FundingLoading), so nothing moves when it fills. */
 .funding-loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  padding: 48px 0;
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
   color: var(--fg-muted);
   font-size: var(--text-body-sm);
+  text-align: center;
+}
+
+/* The loader's brandmark in a quiet mid-tone, not a bright tile on the dark
+   canvas (LoadingSpinner paints it in --fg-primary). */
+.funding-loading svg {
+  color: var(--border-control);
+}
+
+/* ---- Tabs: the five views, under the title ---------------------------- */
+
+.funding-page__tabs,
+.funding-page__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.funding-page__tab-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: -4px;
+  padding: 4px;
+}
+
+.funding-page__tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.funding-page__tab-list {
+  width: max-content;
+  min-width: 100%;
+}
+
+.funding-page__panel {
+  padding-top: 16px;
+}
+
+.funding-page__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.funding-page__stats-line {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-page__bar .network-filters__btn {
+  flex: none;
+}
+
+.funding-page__note-after {
+  margin-top: 24px;
+}
+
+.funding-page__note-after .funding-note-card {
+  display: block;
+}
+
+/* Phones get the one-line totals and the Filters sheet; from 800px the
+   totals row and the chips sit in the page. */
+@media (max-width: 799px) {
+  .funding-page__desktop-only {
+    display: none;
+  }
+
+  .funding-page__tab-list {
+    column-gap: 12px;
+  }
+}
+
+@media (min-width: 800px) {
+  .funding-page__phone-only {
+    display: none;
+  }
+}
+
+/* In the Filters sheet the chips are the sheet's content: no band, and
+   every chip in view. */
+.network-filters .funding-confirmed {
+  margin-top: 0;
+  padding-block: 0;
+  border: 0;
+}
+
+.funding-confirmed__skeleton {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .funding-page__stats {
@@ -146,29 +252,10 @@
   }
 }
 
-/* ---- View switcher ------------------------------------------------------ */
-
-.funding-page__switcher {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 28px;
-  min-width: 0;
-}
-
-.funding-page__switcher-scroll {
-  flex: none;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.funding-page__switcher-scroll::-webkit-scrollbar {
-  display: none;
-}
+/* ---- What the view shows ------------------------------------------------ */
 
 .funding-page__blurb {
-  min-width: 0;
+  margin-top: 20px;
   font-size: var(--text-body-sm);
   color: var(--fg-muted);
 }
@@ -182,30 +269,12 @@
 }
 
 @media (max-width: 799px) {
-  .funding-page__switcher {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+  .funding-page__blurb {
+    margin-top: 12px;
   }
 
-  /* All five views side by side: icon over a short label, equal widths,
-     so none scrolls out of sight. */
-  .funding-page__switcher-scroll {
-    overflow: visible;
-  }
-
-  .funding-page__switcher-scroll [role="radiogroup"] {
-    display: flex;
-    width: 100%;
-  }
-
-  .funding-page__switcher-scroll [role="radio"] {
-    flex: 1 1 0;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-    padding-inline: 0;
-    font-size: var(--text-micro);
+  .funding-page__view {
+    margin-top: 12px;
   }
 
   .funding-confirmed__row {

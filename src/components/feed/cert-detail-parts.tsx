@@ -332,10 +332,12 @@ export function RecordImage({ src }: { src: string | null }) {
  * The head of a record page (activity and project), the same on both and
  * laid out like the profile's: the picture on top, then the eyebrow
  * ("Project", "Activity · Part of …") over the title (the page's one h1),
- * with the actions at the top right of that block (the owner's Edit,
- * Share, More: the profile's order and buttons), the byline (who, when,
- * where) and the lead at reading width. On phones the actions are a
- * full-width row under the lead, as on the profile.
+ * with the actions at the top right of that block from 1300px (the
+ * owner's Edit, Like, Share, More: the profile's order and buttons), the
+ * byline (who, when, where) and the lead at reading width. Below 1300px
+ * (and for the owner's four buttons, `actionsRow`, at every width) the
+ * actions are a row under the lead, so they don't squeeze the title; on
+ * phones that row is full width, as on the profile.
  *
  * `compact` (the other tabs, on phones): no picture and no lead, so the
  * tab's content starts on the first screen.
@@ -351,13 +353,18 @@ export function RecordHeader({
   byline,
   lead,
   compact = false,
+  actionsRow = false,
 }: {
   image?: ReactNode
   /** The record type, and for an activity its project. */
   eyebrow: ReactNode
   title: string
-  /** The owner's Edit, Share, the More menu. */
+  /** The owner's Edit, Like, Share, the More menu. */
   actions?: ReactNode
+  /** The actions are a row of their own under the lead at every width:
+   *  the owner's four buttons would leave the title under half of the
+   *  1300px column beside them. */
+  actionsRow?: boolean
   /** `<RecordByline>`. */
   byline?: ReactNode
   /** The short description. */
@@ -365,7 +372,11 @@ export function RecordHeader({
   compact?: boolean
 }) {
   return (
-    <header className={`record-head${compact ? " record-head--compact" : ""}`}>
+    <header
+      className={`record-head${compact ? " record-head--compact" : ""}${
+        actionsRow ? " record-head--actions-row" : ""
+      }`}
+    >
       {image}
       <div className="record-head__top">
         <div className="record-head__titles">
@@ -386,10 +397,104 @@ export function RecordHeader({
   )
 }
 
+/** Automatic retries of a failed organization-marker read, before the
+ *  account's kind is left unknown. */
+const KIND_RETRY_DELAYS_MS = [1_500, 4_000, 10_000] as const
+
+/**
+ * Whether an account is a person or an organization, for its avatar's
+ * shape: `unknown` while its marker loads, and when the read failed (a
+ * 429), so a failed lookup never draws an organization as a person. A
+ * failed read is retried a few times with backoff (`autoRetry: false`
+ * for a grid of many accounts, so a rate limit isn't met with more
+ * requests).
+ */
+export function useAccountKind(
+  did: string,
+  { autoRetry = true }: { autoRetry?: boolean } = {},
+) {
+  const marker = useOrgMarker(did)
+  const known = marker.answeredFor === did && !marker.failed
+  const kind: "person" | "org" | "unknown" = !known
+    ? "unknown"
+    : marker.isOrg
+      ? "org"
+      : "person"
+
+  // The marker hook's refresh is a new function each render.
+  const refreshRef = useRef(marker.refresh)
+  useEffect(() => {
+    refreshRef.current = marker.refresh
+  })
+  const [tries, setTries] = useState({ did, n: 0 })
+  const n = !autoRetry ? KIND_RETRY_DELAYS_MS.length : tries.did === did ? tries.n : 0
+  const failedNow = marker.failed && !marker.isLoading
+  useEffect(() => {
+    if (!failedNow) return
+    const delay = KIND_RETRY_DELAYS_MS[n]
+    if (delay === undefined) return
+    const timer = setTimeout(() => {
+      setTries({ did, n: n + 1 })
+      refreshRef.current()
+    }, delay)
+    return () => clearTimeout(timer)
+  }, [failedNow, n, did])
+
+  // Out of retries: the kind stays unknown until `retry()`.
+  const failed = failedNow && n >= KIND_RETRY_DELAYS_MS.length
+  return {
+    kind,
+    marker: marker.marker,
+    /** Still reading the marker, or about to retry it. */
+    pending: !known && !failed,
+    failed,
+    retry: () => {
+      setTries({ did, n: KIND_RETRY_DELAYS_MS.length })
+      refreshRef.current()
+    },
+  }
+}
+
+/** The avatar's place while the account's kind isn't known: the
+ *  placeholder block the profile header holds for it (never a person's
+ *  circle), pulsing while the read goes on, still once it has failed. */
+export function KindPendingAvatar({ size, animate }: { size: number; animate: boolean }) {
+  return (
+    <Skeleton
+      variant="box"
+      width={size}
+      height={size}
+      animate={animate}
+      className="flex-none"
+      aria-hidden
+    />
+  )
+}
+
+/** In place of an account's name when looking it up failed: say so, with
+ *  a way to try again. A failed lookup is not an account without a name. */
+function AccountLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <span className="record-account-error" role="status">
+      <span>Couldn&apos;t load this account.</span>{" "}
+      <button
+        type="button"
+        className="record-link record-link--button"
+        onClick={onRetry}
+      >
+        Try again
+      </button>
+    </span>
+  )
+}
+
 /**
  * The byline under a record title, one row that wraps: the account behind
  * the record (avatar and name, to its profile), the time period and the
- * place. Groups get the square avatar.
+ * place. Groups get the square avatar; while it isn't known whether the
+ * account is a group, the avatar is a neutral block. When looking the
+ * account up fails (after its retries), the byline says so, with "Try
+ * again", instead of naming an "Unnamed account".
  */
 export function RecordByline({
   did,
@@ -401,14 +506,23 @@ export function RecordByline({
   /** The place's name; `undefined` while it loads. */
   place?: string | null
 }) {
-  const { info, isLoading } = useAuthorInfo(did)
-  const { isOrg } = useOrgMarker(did)
+  const { info, isLoading, failed, retry } = useAuthorInfo(did)
+  const account = useAccountKind(did)
 
   let who: ReactNode
-  if (isLoading || !info) {
+  if (failed) {
+    who = (
+      <AccountLoadError
+        onRetry={() => {
+          retry()
+          if (account.failed) account.retry()
+        }}
+      />
+    )
+  } else if (isLoading || !info) {
     who = (
       <span className="flex items-center gap-2" aria-hidden="true">
-        <Skeleton variant="circle" width={24} height={24} />
+        <KindPendingAvatar size={20} animate />
         <Skeleton variant="line" width="9rem" height="0.875rem" />
       </span>
     )
@@ -416,13 +530,17 @@ export function RecordByline({
     const { displayName, initials, profileHref } = deriveIdentity(info, did)
     who = (
       <Link href={profileHref} className="record-byline__who">
-        <Avatar
-          size="xs"
-          shape={isOrg ? "square" : "circle"}
-          src={info.avatarUrl || undefined}
-          alt=""
-          fallbackInitials={initials}
-        />
+        {account.kind === "unknown" ? (
+          <KindPendingAvatar size={20} animate={account.pending} />
+        ) : (
+          <Avatar
+            size="xs"
+            shape={account.kind === "org" ? "square" : "circle"}
+            src={info.avatarUrl || undefined}
+            alt=""
+            fallbackInitials={initials}
+          />
+        )}
         <span className="record-byline__name" dir="auto">
           {displayName}
         </span>
@@ -611,19 +729,34 @@ export function RecordDescription({
  * names the account, so without any words about it the card isn't drawn.
  */
 export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: string; title?: string }) {
-  const { info, isLoading } = useAuthorInfo(did)
-  const { isOrg, marker, isLoading: markerLoading } = useOrgMarker(did)
+  const { info, isLoading, failed, retry } = useAuthorInfo(did)
+  const account = useAccountKind(did)
 
   const bio =
     info?.description?.trim() ||
-    longDescriptionPlainText(marker?.longDescription)?.split(/\n\s*\n/)[0]?.trim() ||
+    longDescriptionPlainText(account.marker?.longDescription)?.split(/\n\s*\n/)[0]?.trim() ||
     null
 
-  if (isLoading || !info || (!bio && markerLoading)) {
+  // The account couldn't be looked up, or (with no bio of its own) its
+  // organization record couldn't be read: whether there are words about
+  // it is unknown, so the card says so rather than vanishing.
+  if (failed || (!isLoading && !bio && account.failed)) {
+    return (
+      <FactCard title={title}>
+        <AccountLoadError
+          onRetry={() => {
+            if (failed) retry()
+            if (account.failed) account.retry()
+          }}
+        />
+      </FactCard>
+    )
+  }
+  if (isLoading || !info || (!bio && account.pending)) {
     return (
       <FactCard title={title}>
         <div className="flex items-center gap-3" aria-hidden="true">
-          <Skeleton variant="circle" width={40} height={40} />
+          <KindPendingAvatar size={40} animate />
           <Skeleton variant="line" width="9rem" height="0.875rem" />
         </div>
         <Skeleton variant="text" lines={2} width="100%" height={12} aria-hidden />
@@ -637,13 +770,17 @@ export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: strin
   return (
     <FactCard title={title}>
       <Link href={profileHref} className="record-owner">
-        <Avatar
-          size="row"
-          shape={isOrg ? "square" : "circle"}
-          src={info.avatarUrl || undefined}
-          alt=""
-          fallbackInitials={initials}
-        />
+        {account.kind === "unknown" ? (
+          <KindPendingAvatar size={40} animate={account.pending} />
+        ) : (
+          <Avatar
+            size="row"
+            shape={account.kind === "org" ? "square" : "circle"}
+            src={info.avatarUrl || undefined}
+            alt=""
+            fallbackInitials={initials}
+          />
+        )}
         <span className="record-owner__name" data-unnamed={unnamed || undefined} dir="auto">
           {displayName}
         </span>

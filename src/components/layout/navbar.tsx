@@ -20,6 +20,7 @@ import Wordmark from "@/components/ui/wordmark";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
 import { PhoneAccountSwitcher } from "./account-switcher";
+import PhoneSearch from "./phone-search";
 
 /**
  * True when `pathname` is the profile of the account the viewer acts as
@@ -57,7 +58,9 @@ function isOwnProfilePath(
  *   moves up here and the header's h1 is visually hidden on phones (this
  *   copy is plain text, hidden from assistive tech). On a page without a
  *   PageHeader, the compact title is the page's h1. Otherwise none.
- * - **Right:** the account control (account-switcher.tsx): the avatar of
+ * - **Right:** on the top-level pages, Search (phone-search.tsx: the
+ *   global search in a panel at the top of the screen), signed in or
+ *   out. Then the account control (account-switcher.tsx): the avatar of
  *   the account you act as (a group's with yours on its corner), opening
  *   "Act as", "Signed in as", Help, feedback and the legal links in a
  *   sheet. "Sign in" when signed out. A page that still publishes a
@@ -196,12 +199,18 @@ const Navbar: React.FC = () => {
               />
             </span>
           ) : null}
+          {/* Not on forms (a back-link header) or detail pages: there it
+              would lead away from the draft or record. */}
+          {isTopLevel ? <PhoneSearch /> : null}
           {isAuthenticated ? (
-            <>
-              <PhoneAccountSwitcher />
-            </>
+            <PhoneAccountSwitcher />
           ) : (
-            <Button variant="secondary" size="sm" onClick={() => void openSignIn()}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="navbar__sign-in"
+              onClick={() => void openSignIn()}
+            >
               Sign in
             </Button>
           )}

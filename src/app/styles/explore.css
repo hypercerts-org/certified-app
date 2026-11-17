@@ -209,6 +209,20 @@
   min-width: 0;
 }
 
+/* The All view's last line: where Explore's types end and another page
+   takes over (funding receipts live on /funding). */
+.explore__elsewhere {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
+.explore__elsewhere-link {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Load-more sentinel — sits below the result list, auto-triggers
    the next page when scrolled into view, and renders an explicit
    button as the keyboard fallback / end-of-list affordance. */
@@ -423,7 +437,7 @@
   }
 }
 
-/* ---------- List view (activities, projects, accounts, funding) ----------
+/* ---------- List view (activities, projects, accounts) ----------
    Rows separated by hairlines, no box around the list. The row styles
    (.cert-list-row) are shared with the project page and the profile's
    Lists tab, so explore-only spacing is scoped to `.explore-page`. */
@@ -440,14 +454,12 @@
    the line lines up with the section title, the tab rule and the search
    field, not 8px past them. */
 .explore__list > li + li .cert-list-row,
-.explore__list > li + li .explore-skeleton-row,
-.explore__list > li + li .funding-receipt-row {
+.explore__list > li + li .explore-skeleton-row {
   position: relative;
 }
 
 .explore__list > li + li .cert-list-row::before,
-.explore__list > li + li .explore-skeleton-row::before,
-.explore__list > li + li .funding-receipt-row::before {
+.explore__list > li + li .explore-skeleton-row::before {
   content: "";
   position: absolute;
   top: 0;
@@ -471,24 +483,13 @@
     padding-left: 8px;
     padding-right: 8px;
   }
-
-  .explore-page .explore__list--funding .funding-receipt-row > :first-child {
-    padding-left: 8px;
-  }
-
-  .explore-page .explore__list--funding .funding-receipt-row > :last-child {
-    padding-right: 8px;
-  }
 }
 
 /* Skip layout/paint for offscreen rows — load-more appends 50 per page
    with no cap. Estimate matches the ~64px row (40px thumb + padding);
    rendered rows are re-measured via the `auto` keyword, keeping
    back-button scroll restoration stable.
-   Scoped to the three variants it helps: --funding is excluded because
-   its desktop subgrid rows need `display: contents` on the li, and
-   content-visibility / containment cannot apply to a boxless element
-   — the declaration would be inert there. */
+   Scoped to the three list variants. */
 .explore__list--certs > li,
 .explore__list--accounts > li,
 .explore__list--projects > li {
@@ -626,6 +627,12 @@
   white-space: nowrap;
 }
 
+/* "Unnamed account": a fallback, not a name. */
+.cert-list-row__title--muted {
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
 /* "by Display Name" line under a project row's title. Hidden on
    desktop (the avatar author column carries the byline there); shown on
    phones, where the column is dropped (see the phone block below). */
@@ -710,6 +717,11 @@
   color: var(--fg-secondary);
 }
 
+/* A handle the PDS made up: an ID, not a name, so it reads as one. */
+.cert-list-row__handle--machine {
+  color: var(--fg-muted);
+}
+
 .cert-list-row__handle--did {
   display: inline-flex;
   align-items: center;
@@ -726,16 +738,19 @@
   text-align: right;
 }
 
-/* Phone: rows run full width between hairlines, the author column and
-   the per-row meta give way to a "by …" line, and the date stays pinned
-   right. */
+/* Phone: rows run full width between hairlines, and the author and
+   date columns give way. One pattern for every record row (activities,
+   projects): the thumbnail, the title on up to two lines, "by <owner>",
+   then the meta line (time period · work scope, or count · place),
+   wrapping rather than clipped. Account rows keep their own short form:
+   the name, the @handle under it, the joined date pinned right. */
 @media (max-width: 799px) {
   .cert-list-row {
     padding: 16px 0;
   }
 
   .cert-list-row__body {
-    gap: 4px;
+    gap: 2px;
   }
 
   .cert-list-row__meta {
@@ -748,19 +763,18 @@
     align-items: flex-start;
   }
 
-  /* Let the activity meta (time period · work scope) wrap on phones so
-     the work scope stays visible instead of being clipped by the
-     single-line ellipsis. The dot separator is hidden at wrap points by
+  /* Let the meta (time period · work scope) wrap on phones so the work
+     scope stays visible instead of being clipped by the single-line
+     ellipsis. The dot separator is hidden at wrap points by
      ExploreListRow's line-start measurement. */
-  .cert-list-row.cert-list-row--compact .cert-list-row__meta {
+  .cert-list-row.cert-list-row--compact .cert-list-row__meta,
+  .cert-list-row:not(.cert-list-row--compact):not(.cert-list-row--account)
+    .cert-list-row__meta {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
   }
 
-  /* Non-compact rows: [thumb + title / "by …"] on the left, the date
-     pinned to the right of the same row. The author avatar column and
-     the meta line are dropped on phones. */
   .cert-list-row:not(.cert-list-row--compact) {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "link time";
@@ -778,13 +792,44 @@
     color: var(--fg-muted);
   }
 
-  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__author-col,
-  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__meta {
+  .cert-list-row:not(.cert-list-row--compact) .cert-list-row__author-col {
     display: none;
   }
 
   .cert-list-row:not(.cert-list-row--compact) .cert-list-row__subtitle {
     display: block;
+  }
+
+  /* Record rows: the title may take two lines, the thumbnail sits at the
+     top of the text, and the date column goes (the meta line says when). */
+  .cert-list-row:not(.cert-list-row--compact):not(.cert-list-row--account) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "link";
+  }
+
+  .cert-list-row:not(.cert-list-row--compact):not(.cert-list-row--account)
+    .cert-list-row__link {
+    align-items: flex-start;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact):not(.cert-list-row--account)
+    .cert-list-row__title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .cert-list-row:not(.cert-list-row--compact):not(.cert-list-row--account)
+    .cert-list-row__time {
+    display: none;
+  }
+
+  /* Account rows: the description stays on the profile. */
+  .cert-list-row--account .cert-list-row__meta {
+    display: none;
   }
 }
 
@@ -1210,44 +1255,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Explore funding list → a true table. The <ul> owns the column tracks
-   (content-sized amount / from / date, flexible to) and each row adopts
-   them via `subgrid`, so the four columns line up tightly across every
-   item — not just aligned but content-fitted, the way the other list
-   surfaces read. The row keeps its own box, so the hairline divider and
-   hover wash still work. Desktop only; phones use the stacked layout
-   below. */
-@media (min-width: 800px) {
-  .explore__list--funding {
-    display: grid;
-    /* date | from | to | for | amount | confirmed-by. Date + amount are
-       content-sized; from / to / for / confirmed-by all flex equally
-       (minmax(0,1fr)) so the columns share the row evenly and truncate
-       long names rather than sizing every row to the widest one (which
-       left big ragged gaps after short wallet-address parties). */
-    grid-template-columns:
-      max-content minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) max-content
-      minmax(0, 1fr);
-  }
-  .explore__list--funding > li {
-    display: contents;
-  }
-  .explore__list--funding .funding-receipt-row {
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
-    padding: 12px 0;
-    column-gap: 16px;
-  }
-  /* Edge inset: keep content off the list border while letting the row
-     background (hover) and the divider span the full width. */
-  .explore__list--funding .funding-receipt-row > :first-child {
-    padding-left: 14px;
-  }
-  .explore__list--funding .funding-receipt-row > :last-child {
-    padding-right: 14px;
-  }
-}
-
 @media (max-width: 799px) {
   /* Phones: the dense desktop table has too many columns to read on a
      narrow screen, so each receipt becomes a self-labelling card. The
@@ -1257,16 +1264,8 @@
     display: none;
   }
 
-  /* The /explore funding list drops its own bordered-card container on
-     mobile (it would double-up with the per-receipt cards); both the
-     /explore and activity-detail lists become a simple gapped stack. */
-  .explore__list--funding {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    overflow: visible;
-  }
-  .explore__list--funding,
+  /* The activity-detail funding list becomes a simple gapped stack of
+     self-labelling cards. */
   .cert-detail__funding-list {
     display: flex;
     flex-direction: column;
@@ -1282,11 +1281,7 @@
     border-radius: var(--radius);
     background: var(--bg-elevated);
   }
-  /* The list now spaces cards via its own gap; drop the desktop inter-row
-     hairline (it would draw a line through the card border). */
-  .explore__list > li + li .funding-receipt-row::before {
-    content: none;
-  }
+
   .cert-detail__funding-list > li + li .funding-receipt-row {
     border-top: none;
   }
@@ -1424,6 +1419,16 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
+}
+
+/* Whose project it is, under the title (as on every Explore row). */
+.explore-project-card__owner {
+  margin: 0;
+  font-size: var(--text-ui);
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .explore-project-card__desc {

@@ -16,6 +16,7 @@ import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import { ActivityWorkCard, ProjectWorkCard, sameTitle } from "@/components/feed/work-cards"
 import { LocationFactCard, placeFromShape } from "@/components/feed/cert-locations-map"
+import { KindPendingAvatar, useAccountKind } from "@/components/feed/cert-detail-parts"
 import { FundingFactCard, useRecordFundingView } from "@/components/funding/record-funding"
 import { projectFundingUris } from "@/components/funding/project-fact-card"
 import {
@@ -33,10 +34,9 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import { deriveIdentity } from "@/lib/utils/identity"
-import { parseAtUri, recordUrl } from "@/lib/urls"
+import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
-import { useOrgMarker } from "@/hooks/use-org-marker"
 import type { GivenEndorsement } from "@/hooks/use-endorsements"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
@@ -80,9 +80,6 @@ interface ProfileOverviewProps {
   /** The long description, shown here as "About" only when the header's
    *  lead is the bio (otherwise the header already holds it). */
   about?: unknown
-  /** Org-type labels in display order. */
-  orgTypeTags?: string[]
-  orgFoundedDate?: string | null
   location?: OverviewLocation | null
   /** "Jun 2026", or null when not known (or a Bluesky signup date). */
   joined?: string | null
@@ -92,7 +89,7 @@ interface ProfileOverviewProps {
 const PREVIEW = 4
 /** Endorsements on Overview. */
 const ENDORSEMENTS_PREVIEW = 3
-/** Accounts in the "Supports" grid. */
+/** Accounts in the "Endorses" grid. */
 const SUPPORTS_PREVIEW = 12
 /** Projects whose funding the profile's total takes in. Each is read with
  *  its activities (up to 25 each), so the total stops at the newest ten
@@ -115,11 +112,11 @@ function coveredByProject(a: ActivityRecord, projects: readonly CollectionRecord
  * About (when the header's lead is the bio), the latest activities and
  * projects as work cards (one is a wide card, more a 2-up grid; an
  * activity its same-titled project already shows is left out), the
- * accounts it supports (endorsed), and the endorsements it received with
- * their notes — and, from 1100px, a 320px rail beside it: the funding
- * across its projects, its Location, then the Account facts (type,
- * founded, joined, handle, Permanent ID). On phones the rail follows the
- * content.
+ * accounts it endorses, and the endorsements it received with their
+ * notes — and, from 1100px, a 320px rail beside it: the funding across
+ * its projects, its Location, then the Account facts (joined, handle,
+ * Permanent ID; the type and founding are on the header). On phones the
+ * rail follows the content.
  *
  * A visitor sees only sections with something in them; the account itself
  * sees every section, with the action that fills an empty one. A section
@@ -137,8 +134,6 @@ export default function ProfileOverview({
   isOrg = false,
   kindPending = false,
   about = null,
-  orgTypeTags = [],
-  orgFoundedDate = null,
   location = null,
   joined = null,
 }: ProfileOverviewProps) {
@@ -339,14 +334,15 @@ export default function ProfileOverview({
             <SectionHeader
               id="profile-overview-supports"
               title={
+                // "Endorses", not "Supports": on a funder's profile
+                // "Supports 148" reads as money given.
                 <>
-                  Supports{" "}
+                  Endorses{" "}
                   <span className="font-normal tabular-nums text-[var(--fg-muted)]">
                     {formatGraphCount(supported.length)}
                   </span>
                 </>
               }
-              description="Accounts it has endorsed"
               action={
                 supported.length > SUPPORTS_PREVIEW ? (
                   <SeeAllLink
@@ -410,10 +406,10 @@ export default function ProfileOverview({
         ) : null}
 
         {nothingToShow ? (
-          <EmptyState
-            variant="inline"
-            title="No activities, projects or endorsements yet."
-          />
+          // Not "activities, projects or endorsements": a donor's profile
+          // has none of those, and the words would cast it as an empty
+          // organization.
+          <EmptyState variant="inline" title="No public records yet." />
         ) : null}
       </div>
 
@@ -433,9 +429,6 @@ export default function ProfileOverview({
             <AccountFacts
               did={did}
               handle={handle}
-              isOrg={isOrg}
-              typeTags={orgTypeTags}
-              foundedDate={orgFoundedDate}
               location={location}
               joined={joined}
             />
@@ -483,11 +476,26 @@ function ProfileFundingCard({
   return <FundingFactCard view={view} href={href} scope={scope} />
 }
 
-/** One account the profile endorsed: its avatar and name, to its profile. */
+/** One account the profile endorsed: its avatar and name, to its profile.
+ *  While it isn't known whether the account is a group, the avatar is a
+ *  neutral block; when looking the account up failed, the tile says so
+ *  rather than naming an "Unnamed account". */
 function SupportedAccount({ endorsement }: { endorsement: GivenEndorsement }) {
   const did = endorsement.subjectDid
-  const { info, isLoading } = useAuthorInfo(did)
-  const { isOrg } = useOrgMarker(did)
+  const { info, isLoading, failed } = useAuthorInfo(did)
+  const account = useAccountKind(did, { autoRetry: false })
+  if (failed) {
+    return (
+      <li className="profile-supports__item">
+        <Link href={profileUrl(did)} className="profile-supports__link">
+          <KindPendingAvatar size={40} animate={false} />
+          <span className="profile-supports__name" data-unnamed>
+            Couldn&apos;t load this account
+          </span>
+        </Link>
+      </li>
+    )
+  }
   if (isLoading && !info) {
     return (
       <li className="profile-supports__item" aria-hidden="true">
@@ -502,14 +510,18 @@ function SupportedAccount({ endorsement }: { endorsement: GivenEndorsement }) {
   return (
     <li className="profile-supports__item">
       <Link href={profileHref} className="profile-supports__link">
-        <Avatar
-          size="row"
-          shape={isOrg ? "square" : "circle"}
-          src={avatarUrl ?? undefined}
-          alt=""
-          fallbackInitials={initials}
-          seed={did}
-        />
+        {account.kind === "unknown" ? (
+          <KindPendingAvatar size={40} animate={account.pending} />
+        ) : (
+          <Avatar
+            size="row"
+            shape={account.kind === "org" ? "square" : "circle"}
+            src={avatarUrl ?? undefined}
+            alt=""
+            fallbackInitials={initials}
+            seed={did}
+          />
+        )}
         <span className="profile-supports__name" data-unnamed={unnamed || undefined} dir="auto">
           {displayName}
         </span>
@@ -518,20 +530,21 @@ function SupportedAccount({ endorsement }: { endorsement: GivenEndorsement }) {
   )
 }
 
+/**
+ * The Account card (and the Location card above it when the place has a
+ * point or an area). It holds what the header doesn't: the place when it
+ * has no map, when the account joined, its handle and Permanent ID. An
+ * organization's type and founding are on the header's meta line, so
+ * they aren't repeated here.
+ */
 function AccountFacts({
   did,
   handle,
-  isOrg,
-  typeTags,
-  foundedDate,
   location,
   joined,
 }: {
   did: string
   handle: string | null
-  isOrg: boolean
-  typeTags: string[]
-  foundedDate: string | null
   location: OverviewLocation | null
   joined: string | null
 }) {
@@ -542,12 +555,8 @@ function AccountFacts({
   const realHandle = handle && !handle.startsWith("did:") ? handle : null
 
   const facts: Fact[] = []
-  if (isOrg && typeTags.length > 0) {
-    facts.push({ label: typeTags.length === 1 ? "Type" : "Types", value: typeTags.join(", ") })
-  }
   // With a map, the place is named under it instead.
   if (placeName && !shape) facts.push({ label: "Location", value: placeName })
-  if (isOrg && foundedDate) facts.push({ label: "Founded", value: foundedDate })
   if (joined) facts.push({ label: "Joined", value: joined })
   if (realHandle) {
     facts.push({

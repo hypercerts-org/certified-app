@@ -65,6 +65,11 @@ vi.mock("../account-switcher", () => ({
   PhoneAccountSwitcher: () => <button type="button">Account</button>,
 }))
 
+// The search panel has its own tests (phone-search.test.tsx).
+vi.mock("../phone-search", () => ({
+  default: () => <button type="button">Search</button>,
+}))
+
 
 vi.mock("@/components/lists/add-to-list-menu", () => ({
   default: () => null,
@@ -194,6 +199,45 @@ describe("Navbar (phone)", () => {
     state.isAuthenticated = false
     render(<Navbar />)
     expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument()
+    // On the 16px gutter (layout.css).
+    expect(screen.getByRole("button", { name: "Sign in" })).toHaveClass("navbar__sign-in")
+  })
+
+  it("puts Search before the account control on a top-level page", () => {
+    state.pathname = "/feed"
+    state.hasPageHeader = true
+    state.barTitle = "Feed"
+    const { container } = render(<Navbar />)
+    const right = container.querySelector<HTMLElement>(".navbar__right")!
+    expect(Array.from(right.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "Search",
+      "Account",
+    ])
+  })
+
+  it("offers Search signed out too, before Sign in", () => {
+    state.pathname = "/explore"
+    state.hasPageHeader = true
+    state.isAuthenticated = false
+    const { container } = render(<Navbar />)
+    const right = container.querySelector<HTMLElement>(".navbar__right")!
+    expect(Array.from(right.querySelectorAll("button")).map((b) => b.textContent)).toEqual([
+      "Search",
+      "Sign in",
+    ])
+  })
+
+  it("has no Search on a detail page or a form", () => {
+    for (const [pathname, hasPageHeaderBack] of [
+      ["/maya.certified.app/activity/3k2", false],
+      ["/create", true],
+    ] as const) {
+      state.pathname = pathname
+      state.hasPageHeader = true
+      state.hasPageHeaderBack = hasPageHeaderBack
+      const { unmount } = render(<Navbar />)
+      expect(screen.queryByRole("button", { name: "Search" })).toBeNull()
+      unmount()
+    }
   })
 })

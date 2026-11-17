@@ -12,7 +12,8 @@
    sticky when it fits in the window. Below 1100px it is one column in
    reading order, and the page places the cards itself (useMediaQuery):
    on Overview the funding card under the header (`__lead`), the others
-   after the content (`__more`); other tabs show none of them. */
+   after the content (`__more`), then the comments (`__comments`); other
+   tabs show none of them. */
 
 .record-layout {
   display: flex;
@@ -38,6 +39,15 @@
 }
 
 .record-layout__more {
+  margin-top: 48px;
+}
+
+/* Below 1100px the comments close the Overview after the facts cards (in
+   the two-column layout they end the content column). */
+.record-layout__comments {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   margin-top: 48px;
 }
 
@@ -138,7 +148,8 @@
 }
 
 /* The eyebrow and title, with the actions at the top right of the block
-   (the profile header's place for them): the owner's Edit, Share, More. */
+   from 1300px (the profile header's place for them): the owner's Edit,
+   Like, Share, More. */
 .record-head__top {
   display: flex;
   align-items: flex-start;
@@ -197,9 +208,21 @@
   gap: 8px;
 }
 
-/* Phones: the actions are a full-width row under the lead, as on the
-   profile: the text buttons share the row, More keeps its size. */
-@media (max-width: 799px) {
+/* Below 1300px the actions are a row of their own under the lead, so
+   they don't squeeze the title into three or four lines beside them (at
+   1100px the content column is about 580px). From 1300px they sit at the
+   top right, except the owner's four (Edit, Like, Share, More), which
+   would leave the title under half of the 620px column at 1300px. */
+.record-head--actions-row .record-head__top {
+  display: contents;
+}
+
+.record-head--actions-row .record-head__actions {
+  order: 1;
+  margin-top: 16px;
+}
+
+@media (max-width: 1299px) {
   .record-head__top {
     display: contents;
   }
@@ -208,7 +231,11 @@
     order: 1;
     margin-top: 16px;
   }
+}
 
+/* Phones: that row is full width, as on the profile: the text buttons
+   share it, More keeps its size. */
+@media (max-width: 799px) {
   .record-head__actions > button,
   .record-head__actions > a {
     flex: 1 1 0;
@@ -290,6 +317,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* "Couldn't load this account. Try again", where the account's name
+   would be (the byline, "Who's behind it"). */
+.record-account-error {
+  font-size: var(--text-body-sm);
+  line-height: 1.4;
+  color: var(--fg-secondary);
+}
+
+.record-account-error > .record-link {
+  font-size: inherit;
 }
 
 .record-byline__item {
@@ -965,7 +1004,11 @@ a.record-project__name:focus-visible {
     padding: 20px 24px;
   }
 
+  /* The wide card has the height for a third line of title; two would
+     cut most titles at the larger size. */
   .work-card--wide .work-card__title {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
     font-size: var(--text-h3);
   }
 

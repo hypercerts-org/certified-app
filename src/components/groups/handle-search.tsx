@@ -18,6 +18,9 @@ interface Actor {
 interface HandleSearchProps {
   label?: string
   placeholder?: string
+  /** The field: the compact underline (default), or the standard boxed
+   *  `<Input>` at its default size, as in a form. */
+  variant?: "underline" | "default"
   onSelect: (did: string, handle: string) => void
 }
 
@@ -39,6 +42,7 @@ function looksLikeCompleteHandle(value: string): boolean {
 export default function HandleSearch({
   label = "Handle",
   placeholder = "Search by handle…",
+  variant = "underline",
   onSelect,
 }: HandleSearchProps) {
   const [query, setQuery] = useState("")
@@ -209,8 +213,8 @@ export default function HandleSearch({
       escapeStage="close-only"
       liveStatus={null}
       inputProps={{
-        size: "sm",
-        variant: "underline",
+        size: variant === "default" ? "md" : "sm",
+        variant,
         label: label || undefined,
         placeholder,
         "aria-label": label ? undefined : "Search for user",

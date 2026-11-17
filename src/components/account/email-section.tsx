@@ -14,6 +14,7 @@ import {
 } from "@/lib/atproto/account-email";
 import UnlockAppPasswordsDialog from "@/components/settings/unlock-app-passwords-dialog";
 import { updateCachedSessionEmail } from "@/hooks/use-session";
+import { accountErrorMessage } from "./account-error";
 
 interface EmailSectionProps {
   email: string;
@@ -90,9 +91,10 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         return;
       }
       setIdleError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't start the email change. Please try again.",
+        accountErrorMessage(
+          err instanceof Error ? err.message : undefined,
+          "Couldn't start the email change. Try again in a moment",
+        ),
       );
       setState("idle");
     }
@@ -114,9 +116,10 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         return;
       }
       setFormError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't send the confirmation code.",
+        accountErrorMessage(
+          err instanceof Error ? err.message : undefined,
+          "Couldn't send the confirmation code. Try again in a moment",
+        ),
       );
     } finally {
       setSaving(false);
@@ -172,12 +175,11 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         setUnlockOpen(true);
         return;
       }
-      const msg =
-        err instanceof Error ? err.message : "Couldn't update your email.";
+      const msg = err instanceof Error ? err.message : "";
       setFormError(
         /token|code/i.test(msg)
           ? "That code looks wrong or expired. Request a new one."
-          : msg,
+          : accountErrorMessage(msg, "Couldn't update your email"),
       );
       setSaving(false);
     }
@@ -204,12 +206,11 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         setUnlockOpen(true);
         return;
       }
-      const msg =
-        err instanceof Error ? err.message : "Couldn't confirm your email.";
+      const msg = err instanceof Error ? err.message : "";
       setFormError(
         /token|code/i.test(msg)
           ? "That code looks wrong or expired. Resend a new one."
-          : msg,
+          : accountErrorMessage(msg, "Couldn't confirm your email"),
       );
     } finally {
       setSaving(false);

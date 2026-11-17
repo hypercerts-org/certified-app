@@ -104,9 +104,9 @@
 
 /* ========== Navbar (phone top bar, < 800px) ==========
    See navbar.tsx. One bar: brandmark (top-level pages) or back chevron
-   (everything else) | the compact title when no PageHeader owns it | New +
-   account (or Sign in). The grid keeps the title centred whatever the
-   side slots hold. */
+   (everything else) | the compact title when no PageHeader owns it |
+   Search (top-level pages) + account (or Sign in). The grid keeps the
+   title centred whatever the side slots hold. */
 .navbar {
   position: fixed;
   top: 0;
@@ -155,7 +155,9 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 8px;
+  /* The targets' own inner space adds to it: 12px or more between the
+     title and the nearest mark. */
+  gap: 4px;
 }
 
 .navbar__left {
@@ -206,9 +208,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   /* Centred between two equal side columns, each as wide as the widest
-     slot (the brand or back mark, the account control). 100vw minus both, the 8px
-     inner padding and the two 8px gaps. */
-  max-width: min(60vw, calc(100vw - 216px));
+     slot: the right one signed in, Search and the account control (two
+     44px targets, 88px). 100vw minus both columns, the 8px + 10px inner
+     padding and the two 4px gaps: "Projects and activities" (170px)
+     fits at 375px; at 320px titles truncate. Signed out, the right slot
+     (Search + Sign in) is wider; the grid keeps its room, and a long
+     title moves over a little rather than under it. */
+  max-width: min(60vw, calc(100vw - 202px));
 }
 
 .navbar__title-part {
@@ -229,12 +235,26 @@
   font-weight: 400;
 }
 
+/* Its content's width is the column's minimum (no min-width: 0), so a
+   wide slot (Search + Sign in) is never overlapped by the title. The
+   44px targets carry their own space between their marks. */
 .navbar__right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
-  min-width: 0;
+  /* "Sign in" on one line, so the slot's minimum is its real width. */
+  white-space: nowrap;
+}
+
+/* The 44px targets keep their size; the title gives way instead. */
+.navbar__right > * {
+  flex-shrink: 0;
+}
+
+/* Signed out: the button's edge on the 16px gutter (the inner padding is
+   10px, sized for the avatar's 44px target). */
+.navbar__sign-in {
+  margin-right: 6px;
 }
 
 /* Record-level overflow menu (Share / Add to list / Copy AT URI) in the
@@ -244,6 +264,64 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+}
+
+/* ========== Phone search (phone-search.tsx) ==========
+   The top bar's Search opens the global search as a panel across the top
+   of the screen (an <AppDialog>, so the page behind is dimmed and inert):
+   the field and a close button on one row, the results under them,
+   in the panel's flow, scrolling on their own. */
+dialog.phone-search {
+  inset: 0 0 auto;
+  width: 100%;
+  max-width: none;
+  max-height: 100dvh;
+  margin: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  border-width: 0 0 1px;
+  overflow: hidden;
+  animation: phoneSearchDrop var(--duration-base) var(--ease-emphasized);
+}
+
+@keyframes phoneSearchDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.phone-search {
+    animation: modalFadeIn var(--duration-fast) var(--ease-out);
+  }
+}
+
+/* The field on the 16px gutter; the close button's X on the other. */
+.phone-search__bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 4px 8px 16px;
+}
+
+/* Takes what the close button leaves (the field's own width is 100%). */
+.phone-search__field {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+/* The results: in the flow under the field, out to the right gutter
+   (past the close button: 44px + the 4px gap, less the 12px between the
+   X and the screen's edge), bare rows rather than a floating card. */
+.phone-search .people-search__dropdown {
+  position: static;
+  margin: 8px -36px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 76px);
 }
 
 /* ========== Bottom Nav (phone pill, < 800px) ==========
@@ -367,6 +445,28 @@
 .bottom-nav__item--active {
   color: var(--fg-primary);
   background: var(--bg-selected);
+}
+
+/* Open: the item whose menu is up (Workspace, Network) looks current
+   while it is, and the page's own item steps back, so one item reads as
+   selected. The stroke follows (the icon's own width is set for the
+   page's item). */
+.bottom-nav__item[aria-expanded="true"] {
+  color: var(--fg-primary);
+  background: var(--bg-selected);
+}
+
+.bottom-nav__item[aria-expanded="true"] svg {
+  stroke-width: 2.5;
+}
+
+.bottom-nav__inner:has([aria-expanded="true"]) .bottom-nav__item--active:not([aria-expanded="true"]) {
+  color: var(--fg-muted);
+  background: none;
+}
+
+.bottom-nav__inner:has([aria-expanded="true"]) .bottom-nav__item--active:not([aria-expanded="true"]) svg {
+  stroke-width: 1.5;
 }
 
 .bottom-nav__item:focus-visible {
@@ -1268,6 +1368,14 @@
   margin-bottom: -8px;
 }
 
+/* The brand, and from 1300px the Collapse icon at the row's end. */
+.app-sidebar__brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
 .app-sidebar__brand {
   display: inline-flex;
   align-items: center;
@@ -1385,11 +1493,50 @@
 }
 
 /* Search: the field from 1300px; on the rail a Search item that opens
-   it in a menu to the right. The field's results are wider than the
+   it in a popover to the right. The field's results are wider than the
    sidebar and open over the page. */
 .app-sidebar__search {
+  position: relative;
   display: none;
   width: 100%;
+}
+
+/* The shortcut (⌘K / Ctrl K), quiet at the field's end while it is
+   empty; the clear button takes its place once you type. */
+.app-sidebar__search-kbd {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  translate: 0 -50%;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: transparent;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.app-sidebar__search:has(input:not(:placeholder-shown)) .app-sidebar__search-kbd {
+  display: none;
+}
+
+/* The list scrolls when the window is too short for it; the frame holds
+   the fade over its bottom edge (app-sidebar.tsx shows it while rows are
+   hidden below), so the cut reads as "scroll for more". */
+.app-sidebar__nav-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .app-sidebar__nav {
@@ -1398,6 +1545,16 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+.app-sidebar__nav-fade {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--bg-canvas) 85%);
+  pointer-events: none;
 }
 
 .app-sidebar__full {
@@ -1473,6 +1630,13 @@
   color: var(--fg-primary);
 }
 
+/* The page you're on also reads in its label's weight, not only its
+   fill: in light mode the fill is close to the hover wash. */
+.app-sidebar__item[aria-current="page"] .app-sidebar__label,
+.app-sidebar__item[data-current] .app-sidebar__label {
+  font-weight: 600;
+}
+
 .app-sidebar__brand:focus-visible,
 .app-sidebar__account:focus-visible,
 .app-sidebar__item:focus-visible {
@@ -1503,10 +1667,19 @@
   }
 
   /* One left edge from 1300px: the wordmark, the account avatar and the
-     row icons all start 22px in. */
+     row icons all start 22px in. Collapse sits at the row's other end,
+     its icon centred over the account control's chevron. */
+  :root:not([data-sidebar="rail"]) .app-sidebar__brand-row {
+    justify-content: space-between;
+  }
+
   :root:not([data-sidebar="rail"]) .app-sidebar__brand {
-    align-self: flex-start;
     padding: 0 10px;
+  }
+
+  :root:not([data-sidebar="rail"]) .app-sidebar .app-sidebar__collapse {
+    display: inline-flex;
+    margin-right: 2px;
   }
 
   :root:not([data-sidebar="rail"]) .app-sidebar__wordmark {
@@ -1553,11 +1726,13 @@
     display: flex;
   }
 
+  /* 32px rows (4px apart), so every page, Apps included, fits a
+     laptop window (1440×789 with the browser's own bars). */
   :root:not([data-sidebar="rail"]) .app-sidebar__item {
     flex-direction: row;
     justify-content: flex-start;
     gap: 10px;
-    min-height: 36px;
+    min-height: 32px;
     padding: 0 10px;
   }
 
@@ -1567,13 +1742,16 @@
   }
 }
 
-/* Collapse / Expand: only from 1300px, where the sidebar can be full. */
-.app-sidebar .app-sidebar__toggle {
+/* Collapse (the full sidebar's brand row) and Expand (the collapsed
+   rail's last item): only from 1300px, where the sidebar can be full;
+   each only in its own state. */
+.app-sidebar .app-sidebar__collapse,
+.app-sidebar .app-sidebar__expand {
   display: none;
 }
 
 @media (min-width: 1300px) {
-  .app-sidebar .app-sidebar__toggle {
+  :root[data-sidebar="rail"] .app-sidebar .app-sidebar__expand {
     display: flex;
   }
 }

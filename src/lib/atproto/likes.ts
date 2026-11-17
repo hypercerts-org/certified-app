@@ -2,7 +2,7 @@ import { authFetch } from "@/lib/auth/fetch"
 import { postIndexer } from "@/lib/atproto/indexer-client"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { writeToRepo } from "@/lib/atproto/repo-write"
-import { extractError } from "@/lib/utils/api"
+import { extractError, toUserErrorMessage } from "@/lib/utils/api"
 
 /**
  * Likes on activities, projects and updates: `app.certified.feed.like`
@@ -141,6 +141,28 @@ export async function fetchOwnLikes(
   return out
 }
 
+const LIKE_FAILED = "Couldn't like it"
+const UNLIKE_FAILED = "Couldn't remove the like"
+
+/**
+ * What a failed like or unlike says to the reader. The server's message
+ * goes through `toUserErrorMessage` (technical words become the plain
+ * fallback); a bare error code ("NotFound", "InvalidRequest": the
+ * atproto discriminators a group route or the PDS may send back) or a
+ * bare HTTP reason ("Not found") is not a sentence for anyone, so it
+ * becomes the fallback too.
+ */
+export function likeErrorMessage(err: unknown, fallback: string): string {
+  const raw = err instanceof Error ? err.message.trim() : ""
+  if (!raw || !/\s/.test(raw) || HTTP_REASON.test(raw)) return fallback
+  return toUserErrorMessage(400, raw, fallback)
+}
+
+/** The bare HTTP reason phrases a route sends back for an upstream
+ *  error (`extractRouteError`): true, but they don't say what failed. */
+const HTTP_REASON =
+  /^(bad request|not found|forbidden|conflict|internal server error|too many requests|temporarily unavailable)\.?$/i
+
 /** Like `subject` as `actorDid` (you, or a group you act for). */
 export async function likeRecord(
   ownDid: string,
@@ -152,21 +174,25 @@ export async function likeRecord(
     subject: { uri: subject.uri, cid: subject.cid },
     createdAt: new Date().toISOString(),
   }
-  return writeToRepo<{ uri: string; cid: string }>({
-    ownDid,
-    targetDid: actorDid,
-    ownPath: {
-      url: "/api/xrpc/com/atproto/repo/createRecord",
-      method: "POST",
-      body: { repo: ownDid, collection: LIKE_COLLECTION, record },
-    },
-    groupPath: {
-      url: `/api/groups/${encodeURIComponent(actorDid)}/like`,
-      method: "POST",
-      body: { subject: record.subject },
-    },
-    errorFallback: "Couldn't like it",
-  })
+  try {
+    return await writeToRepo<{ uri: string; cid: string }>({
+      ownDid,
+      targetDid: actorDid,
+      ownPath: {
+        url: "/api/xrpc/com/atproto/repo/createRecord",
+        method: "POST",
+        body: { repo: ownDid, collection: LIKE_COLLECTION, record },
+      },
+      groupPath: {
+        url: `/api/groups/${encodeURIComponent(actorDid)}/like`,
+        method: "POST",
+        body: { subject: record.subject },
+      },
+      errorFallback: LIKE_FAILED,
+    })
+  } catch (err) {
+    throw new Error(likeErrorMessage(err, LIKE_FAILED))
+  }
 }
 
 /** Take a like back. */
@@ -185,5 +211,7 @@ export async function unlikeRecord(ownDid: string, actorDid: string, likeUri: st
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rkey }),
         })
-  if (!res.ok) throw new Error(await extractError(res, "Couldn't remove the like"))
+  if (!res.ok) {
+    throw new Error(likeErrorMessage(new Error(await extractError(res, UNLIKE_FAILED)), UNLIKE_FAILED))
+  }
 }

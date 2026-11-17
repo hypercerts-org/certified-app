@@ -2,12 +2,15 @@
 
 /**
  * Stats panel beside the endorsement graph. All figures are derived from
- * the already-loaded graph data (no extra fetch). Clicking a ranked person
+ * the already-loaded graph data (no extra fetch). Clicking a ranked account
  * focuses that node in the graph via `onFocus`.
  *
- * From 1100px the panel scrolls inside the graph row; while more of it is
- * below the visible edge it carries `data-more-below`, which fades its
- * bottom edge (visualization.css), so a cut-off row reads as "more below".
+ * On /graph the panel flows with the page (beside the graph from 1100px,
+ * under it below that). Where it scrolls inside a fixed height (the graph
+ * in fullscreen, the standalone `.viz--page` layout) it carries
+ * `data-more-below` while more of it is below the visible edge, which
+ * fades its bottom edge (visualization.css), so a cut-off row reads as
+ * "more below".
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
@@ -20,6 +23,9 @@ import type { EndorsementGraph, GraphNode } from "@/hooks/use-endorsement-graph"
 interface EndorsementStatsProps {
   graph: EndorsementGraph
   onFocus: (did: string) => void
+  /** The network totals as a StatRow at the top. Phones leave them out:
+   *  the page shows them as one line above the graph. */
+  showTotals?: boolean
 }
 
 function Rank({
@@ -66,7 +72,11 @@ function Rank({
   )
 }
 
-export default function EndorsementStats({ graph, onFocus }: EndorsementStatsProps) {
+export default function EndorsementStats({
+  graph,
+  onFocus,
+  showTotals = true,
+}: EndorsementStatsProps) {
   const { nodes, totalEndorsements, totalOtherBadges, mutualPairs } = graph
 
   const stats = useMemo(() => {
@@ -125,16 +135,18 @@ export default function EndorsementStats({ graph, onFocus }: EndorsementStatsPro
       data-more-below={moreBelow ? "" : undefined}
       onScroll={checkMoreBelow}
     >
-      <StatRow
-        aria-label="Network totals"
-        items={[
-          { label: "Endorsements", value: totalEndorsements.toLocaleString() },
-          { label: "Other badges", value: totalOtherBadges.toLocaleString() },
-          { label: "People", value: stats.participants.toLocaleString() },
-          { label: "Mutual pairs", value: mutualPairs.toLocaleString() },
-          { label: "Reciprocity", value: `${stats.reciprocity}%` },
-        ]}
-      />
+      {showTotals ? (
+        <StatRow
+          aria-label="Network totals"
+          items={[
+            { label: "Endorsements", value: totalEndorsements.toLocaleString() },
+            { label: "Other badges", value: totalOtherBadges.toLocaleString() },
+            { label: "Accounts", value: stats.participants.toLocaleString() },
+            { label: "Mutual pairs", value: mutualPairs.toLocaleString() },
+            { label: "Reciprocity", value: `${stats.reciprocity}%` },
+          ]}
+        />
+      ) : null}
 
       {topEndorsers.length > 0 && (
         <Rank

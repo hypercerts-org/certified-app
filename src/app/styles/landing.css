@@ -400,8 +400,9 @@
   z-index: var(--z-local-raise);
 }
 
+/* 640px: room for both buttons and the Explore link on one line. */
 .lp-hero__copy {
-  max-width: 600px;
+  max-width: 640px;
 }
 
 .lp-hero__art {
@@ -444,6 +445,15 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* The quieter way in beside the two buttons: a link into the network,
+   as tall as the buttons so it sits level with their text. */
+.lp-hero__explore {
+  min-height: var(--control-h-md);
+  align-self: center;
+  padding: 0 4px;
+  font-size: 0.9375rem;
 }
 
 .lp-hero__recognition {
@@ -521,40 +531,36 @@
   .lp-hero {
     display: block;
     min-height: auto;
-    /* No top padding: on /welcome the topbar (.lp-topbar) is in normal
-       flow, so its 64px already sits above the hero (the wordmark is
-       vertically centered, leaving ~21px of intrinsic space below it).
-       Any extra padding-top double-counted the gap. */
-    padding: 0 20px 48px;
+    /* The topbar (.lp-topbar) is in normal flow, so its 64px already
+       sits above the hero (the wordmark is vertically centered, leaving
+       ~21px of intrinsic space below it); 12px more parts the eyebrow
+       from it. */
+    padding: 12px 20px 48px;
   }
-  /* Cropped seal band above the stacked copy. */
+  /* The seal sits behind the top right of the copy, bleeding off the
+     edge as on desktop, instead of a band above it: the band pushed the
+     buttons below the first screen (390 x 664). The copy paints over
+     its hairlines (.lp-hero__inner is raised). */
   .lp-hero__art {
-    position: relative;
-    top: auto;
-    right: auto;
+    top: -64px;
+    right: -42%;
     transform: none;
-    width: 130%;
-    margin: 0 0 12px -15%;
-    aspect-ratio: auto;
-    height: 34vh;
-    overflow: hidden;
+    width: 112%;
   }
-  .lp-hero__art .lp-guilloche,
-  .lp-hero__art .lp-guilloche svg,
-  .lp-hero__art .lp-g3d-tilt,
-  .lp-hero__art .lp-g3d-spin,
-  .lp-hero__art .lp-guilloche__plate {
-    height: auto;
-  }
+  /* Quieter behind text. On the plate, not the wrapper, whose fade-in
+     animates opacity to 1. */
   .lp-hero__art .lp-guilloche {
-    margin-top: -8%;
+    opacity: 0.7;
   }
-  /* The perspective tilt fights the cropped band — flat plate here.
-     (Scroll scrubbing goes dormant with it; the morph + wanderers
-     still carry the motion.) */
+  /* The perspective tilt fights the crop — flat plate here. (Scroll
+     scrubbing goes dormant with it; the morph + wanderers still carry
+     the motion.) */
   .lp-hero__art .lp-g3d-tilt,
   .lp-hero__art .lp-g3d-spin {
     transform: none;
+  }
+  .lp-hero__subline {
+    margin-bottom: 24px;
   }
   .lp-hero__actions {
     flex-direction: column;
@@ -1772,8 +1778,9 @@
   color: var(--color-accent-hover);
 }
 
-/* Compact in-page contents list under "Last updated" on Terms / Privacy.
-   Two columns from 800px so a 26-clause list stays short. */
+/* Compact in-page contents list under "Last updated" on Terms, Privacy
+   and the DSA page. Two columns from 800px so a 26-clause list stays
+   short. */
 .legal-toc ol {
   margin: 0;
   padding: 0;
@@ -1800,6 +1807,17 @@
   .legal-toc ol {
     columns: 2;
     column-gap: 32px;
+  }
+}
+
+/* Phones: each entry is a 44px touch row (the line-height alone left
+   17px-tall links). A long title wraps inside its row. */
+@media (max-width: 799px) {
+  .legal-toc .legal-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--control-h-md);
+    padding: 4px 0;
   }
 }
 

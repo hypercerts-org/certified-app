@@ -153,10 +153,22 @@ describe("AppSidebar", () => {
     ])
   })
 
-  it("keeps Help and Settings at the bottom, then Collapse", () => {
+  it("keeps Help and Settings at the bottom, then the collapsed rail's Expand", () => {
     const { container } = render(<AppSidebar />)
     const bottom = container.querySelector<HTMLElement>(".app-sidebar__bottom")!
-    expect(labels(bottom)).toEqual(["Help", "Settings", "Collapse"])
+    // Expand is always rendered; CSS shows it only on the collapsed rail
+    // from 1300px.
+    expect(labels(bottom)).toEqual(["Help", "Settings", "Expand"])
+    expect(within(bottom).queryByRole("button", { name: "Collapse sidebar" })).toBeNull()
+  })
+
+  it("puts Collapse at the end of the brand row, as an icon", () => {
+    const { container } = render(<AppSidebar />)
+    const row = container.querySelector<HTMLElement>(".app-sidebar__brand-row")!
+    expect(within(row).getByRole("link", { name: "Certified home" })).toBeInTheDocument()
+    const collapse = within(row).getByRole("button", { name: "Collapse sidebar" })
+    expect(collapse).toHaveClass("app-sidebar__collapse")
+    expect(collapse).toHaveTextContent("")
   })
 
   it("collapses to the rail and back, remembered in this browser", () => {
@@ -174,14 +186,89 @@ describe("AppSidebar", () => {
     expect(localStorage.getItem("certified_sidebar")).toBeNull()
   })
 
+  it("hands focus from Collapse to Expand and back when pressed from the keyboard", () => {
+    // jsdom has no focus-visible heuristics: a focused control counts as
+    // keyboard-focused here.
+    const matches = Element.prototype.matches
+    const spy = vi
+      .spyOn(Element.prototype, "matches")
+      .mockImplementation(function (this: Element, selector: string) {
+        return selector === ":focus-visible" ? document.activeElement === this : matches.call(this, selector)
+      })
+    render(<AppSidebar />)
+    const collapse = screen.getByRole("button", { name: "Collapse sidebar" })
+    const expand = screen.getByRole("button", { name: "Expand sidebar" })
+    collapse.focus()
+    fireEvent.click(collapse)
+    expect(expand).toHaveFocus()
+    fireEvent.click(expand)
+    expect(collapse).toHaveFocus()
+    spy.mockRestore()
+  })
+
+  it("leaves focus alone after a click (no stray tooltip on the other control)", () => {
+    render(<AppSidebar />)
+    const collapse = screen.getByRole("button", { name: "Collapse sidebar" })
+    collapse.focus()
+    fireEvent.click(collapse)
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).not.toHaveFocus()
+  })
+
   it("holds the search: the field (from 1300px) and the rail's Search item", () => {
     const { container } = render(<AppSidebar />)
     expect(container.querySelector(".app-sidebar__search")).toContainElement(
       screen.getByRole("searchbox", { name: "Search" }),
     )
     const item = screen.getByRole("button", { name: "Search" })
+    // It opens a field in a group, not a menu.
+    expect(item).toHaveAttribute("aria-haspopup", "false")
+    expect(item).toHaveAttribute("aria-expanded", "false")
     fireEvent.click(item)
+    expect(item).toHaveAttribute("aria-expanded", "true")
     expect(screen.getByRole("group", { name: "Search" })).toBeInTheDocument()
+  })
+
+  it("shows the search shortcut at the field's end, as this platform writes it", () => {
+    const platform = vi.spyOn(navigator, "platform", "get")
+    platform.mockReturnValue("MacIntel")
+    const { container, unmount } = render(<AppSidebar />)
+    const kbd = container.querySelector(".app-sidebar__search kbd")
+    expect(kbd).toHaveTextContent("⌘K")
+    expect(kbd).toHaveAttribute("aria-hidden", "true")
+    unmount()
+    platform.mockReturnValue("Win32")
+    const other = render(<AppSidebar />)
+    expect(other.container.querySelector(".app-sidebar__search kbd")).toHaveTextContent("Ctrl K")
+    platform.mockRestore()
+  })
+
+  it("fades the list's bottom edge while rows are hidden below it", () => {
+    const proto = HTMLElement.prototype
+    const isNav = (el: HTMLElement) => el.classList.contains("app-sidebar__nav")
+    const scrollHeight = vi
+      .spyOn(proto, "scrollHeight", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return isNav(this) ? 600 : 0
+      })
+    const clientHeight = vi
+      .spyOn(proto, "clientHeight", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return isNav(this) ? 400 : 0
+      })
+    const { container } = render(<AppSidebar />)
+    expect(container.querySelector(".app-sidebar__nav-fade")).not.toBeNull()
+    // Scrolled to the end: nothing more below.
+    const nav = container.querySelector<HTMLElement>("nav.app-sidebar__nav")!
+    nav.scrollTop = 200
+    fireEvent.scroll(nav)
+    expect(container.querySelector(".app-sidebar__nav-fade")).toBeNull()
+    scrollHeight.mockRestore()
+    clientHeight.mockRestore()
+  })
+
+  it("has no fade when every row fits", () => {
+    const { container } = render(<AppSidebar />)
+    expect(container.querySelector(".app-sidebar__nav-fade")).toBeNull()
   })
 
   it("gives a page without a PageHeader its h1, visually hidden", () => {
@@ -202,7 +289,7 @@ describe("AppSidebar", () => {
     expect(state.openSignIn).toHaveBeenCalled()
     expect(labels(full(container))).toEqual(["Explore", "Graph", "Map", "Funding", "Apps"])
     expect(labels(rail(container))).toEqual(["Network", "Apps"])
-    expect(labels(container.querySelector<HTMLElement>(".app-sidebar__bottom")!)).toEqual(["Help", "Collapse"])
+    expect(labels(container.querySelector<HTMLElement>(".app-sidebar__bottom")!)).toEqual(["Help", "Expand"])
   })
 
   it("while sign-in is checked, shows a placeholder and no rows, so nothing is inserted later", () => {

@@ -138,10 +138,11 @@ export interface AccountMenuContentProps {
  *    inert, so switching can't drop a draft. With nothing to switch, the
  *    block is your identity instead.
  * 2. **Signed in as** you: View profile (and Settings, when there is no
- *    "Act as" and so no gear), Sign in with another account, Sign out.
+ *    "Act as" and so no gear), Sign in with another account, Send
+ *    feedback (desktop only; the sheet has it in block 3), Sign out.
  * 3. On phones only (the sheet), where there is no sidebar: Help, Send
- *    feedback and the legal links. The desktop has them at the bottom of
- *    the sidebar and in the site footer.
+ *    feedback and the legal links. The desktop has Help at the bottom of
+ *    the sidebar and the legal links in the site footer.
  *
  * One component for both presentations: inside `<PopoverContent>`
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
@@ -305,6 +306,22 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
             ) : null}
           </span>
         </button>
+        {/* Desktop: feedback is otherwise only in the footer and on /help.
+            The phone sheet has it in its own block below. */}
+        {isMenu ? (
+          <button
+            type="button"
+            {...item}
+            className={row()}
+            onClick={() => {
+              onClose()
+              openFeedback()
+            }}
+          >
+            <MessageSquare size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            Send feedback
+          </button>
+        ) : null}
         <button
           type="button"
           {...item}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FolderOpen, Plus, UsersRound } from "lucide-react"
+import { Plus, UsersRound } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -12,7 +12,7 @@ import WorkspaceShell, {
   workspaceSectionLabel,
   type WorkspaceSection,
 } from "@/components/layout/workspace-shell"
-import { parseRecordKind, type RecordKind } from "@/lib/layout/nav-items"
+import { parseRecordKind, WORKSPACE_SECTIONS, type RecordKind } from "@/lib/layout/nav-items"
 import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import { ownProfileUrl } from "@/lib/urls"
 import WorkPane from "@/components/records/work-pane"
@@ -30,6 +30,38 @@ import { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
+/**
+ * Acting as a group, each section says in one sentence where the group's
+ * own records of that kind are, and links to that tab of its profile
+ * (`?tab=` keys of the profile page). Groups is a personal list and has
+ * its own state.
+ */
+const GROUP_SECTIONS: Record<
+  Exclude<RecordKind, "groups">,
+  { title: string; description?: string; tab: string; link: string }
+> = {
+  activities: {
+    title: "A group's projects and activities show on its profile",
+    description: "What you create here is published as the group.",
+    tab: "activities",
+    link: "Open activities",
+  },
+  endorsements: {
+    title: "A group's endorsements show on its profile",
+    tab: "endorsements",
+    link: "Open endorsements",
+  },
+  followers: {
+    title: "A group's followers show on its profile",
+    tab: "followers",
+    link: "Open followers",
+  },
+  lists: {
+    title: "A group's lists show on its profile",
+    tab: "lists",
+    link: "Open lists",
+  },
+}
 
 /**
  * `/records` — the Workspace sections that manage what the signed-in
@@ -45,8 +77,9 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * list, New group); the top bar's New is the global one.
  *
  * Personal account only: the sections write to the session DID's repo.
- * While acting as a group they point to the group's records on its
- * profile and offer to switch back.
+ * While acting as a group each section says where the group's records of
+ * its kind are (that tab of the group's profile) and offers to switch
+ * back; Projects and activities still creates, as the group.
  */
 export default function RecordsPage() {
   const router = useRouter()
@@ -104,16 +137,15 @@ export default function RecordsPage() {
       )
     }
 
-    // Acting as a group: the sections stay in the side list and explain
-    // themselves. The group's records live on its profile (the same target
-    // as the Overview's "All records"); switching back is the way to manage
-    // your own. Groups are a personal list. No description: it speaks of
-    // your own account.
+    // Acting as a group: the sections stay in the side list and each
+    // explains itself: where the group's records of that kind are (a tab
+    // of its profile, linked), and the way back to your own. Groups are a
+    // personal list.
     if (activeOrg) {
       const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
-      return (
-        <WorkspaceFrame>
-          {kind === "groups" ? (
+      if (kind === "groups") {
+        return (
+          <WorkspaceFrame>
             <EmptyState
               icon={UsersRound}
               headingLevel={2}
@@ -124,17 +156,24 @@ export default function RecordsPage() {
                 Switch to personal account
               </Button>
             </EmptyState>
-          ) : (
-            <EmptyState
-              icon={FolderOpen}
-              headingLevel={2}
-              title="This group's records are on its profile"
-              description="What you create here is published as the group. To manage your own records, switch to your personal account."
-            >
+          </WorkspaceFrame>
+        )
+      }
+      const section = GROUP_SECTIONS[kind]
+      const icon = WORKSPACE_SECTIONS.find((s) => s.key === kind)?.icon
+      return (
+        <WorkspaceFrame>
+          <EmptyState
+            icon={icon}
+            headingLevel={2}
+            title={section.title}
+            description={section.description}
+          >
+            <div className="records-group">
               {/* Creating lives in the Workspace (there is no global New),
                   so a group creates from here; /create and /project/new
                   publish as the account you act as. */}
-              <div className="records-group">
+              {kind === "activities" ? (
                 <div className="records-group__actions">
                   <Button variant="primary" href="/create">
                     <Plus size={16} strokeWidth={1.75} aria-hidden />
@@ -145,16 +184,13 @@ export default function RecordsPage() {
                     New project
                   </Button>
                 </div>
-                <div className="records-group__actions">
-                  <SeeAllLink href={`${groupProfile}?tab=activities`} label="Open activities" />
-                  <SeeAllLink href={`${groupProfile}?tab=projects`} label="Open projects" />
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => switchActor(null)}>
-                  Switch to personal account
-                </Button>
-              </div>
-            </EmptyState>
-          )}
+              ) : null}
+              <SeeAllLink href={`${groupProfile}?tab=${section.tab}`} label={section.link} />
+              <Button variant="ghost" size="sm" onClick={() => switchActor(null)}>
+                Switch to personal account
+              </Button>
+            </div>
+          </EmptyState>
         </WorkspaceFrame>
       )
     }

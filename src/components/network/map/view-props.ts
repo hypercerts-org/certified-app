@@ -9,4 +9,7 @@ export interface MapViewProps {
   height: number
   /** The bar under the map that drags it taller (pass to WorldMap). */
   resize: { min: number; max: number; onResize: (height: number) => void }
+  /** Where a view puts its phone Filters button: a slot in the page's bar,
+   *  beside the flat / globe switch (shown only on phones). */
+  filtersHost?: HTMLElement | null
 }

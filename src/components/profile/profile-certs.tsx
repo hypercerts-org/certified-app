@@ -51,7 +51,9 @@ const SORT_OPTIONS: SortOption<SortKey>[] = [
  *   - Contributed to: activities in someone else's repo that list this
  *     account as a contributor.
  *
- * Both come from the indexer (one query per bucket, so an activity where
+ * A visitor sees only the sub-tabs with something in them; with one
+ * left, there are no sub-tabs. Both come from the indexer (one query per
+ * bucket, so an activity where
  * the account is both author and contributor appears in both); scrolling
  * to the end loads the next page of both. A search field and a sort menu
  * appear once a list is long.
@@ -79,7 +81,21 @@ export default function ProfileCerts({
     authoredAuthors: aggregateOwned ? authors : undefined,
   })
 
-  const [tab, setTab] = useState<SubTab>("created")
+  const [chosenTab, setTab] = useState<SubTab>("created")
+  // A visitor isn't shown a list known to be empty ("Contributed to 0"):
+  // its segment goes, and with one list left there are no segments at
+  // all (as on Endorsements and Followers). The account itself keeps both.
+  const loaded = !isLoading && !error
+  const showCreatedSegment = !!viewerIsOwner || !(loaded && created.length === 0)
+  const showContributedSegment =
+    !!viewerIsOwner || !(loaded && contributed.length === 0)
+  const segmented = showCreatedSegment && showContributedSegment
+  const tab: SubTab =
+    chosenTab === "created" && !showCreatedSegment && showContributedSegment
+      ? "contributed"
+      : chosenTab === "contributed" && !showContributedSegment && showCreatedSegment
+        ? "created"
+        : chosenTab
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("created-desc")
 
@@ -182,29 +198,36 @@ export default function ProfileCerts({
       variant="segmented"
       className="profile-panel"
     >
-      {/* The tab names the panel; the heading is for screen readers. */}
-      <SectionHeader title="Activities" titleHidden />
-      <div className="profile-panel__head">
-        <TabList aria-label="Activities sections">
-          <Tab value="created" count={countLabel(created.length, isLoading, hasMore)}>
-            Created
-          </Tab>
-          <Tab
-            value="contributed"
-            count={countLabel(contributed.length, isLoading, hasMore)}
-          >
-            Contributed to
-          </Tab>
-        </TabList>
-        {/* The empty Created list carries "New activity" itself. */}
-        {viewerIsOwner &&
-        !(tab === "created" && created.length === 0 && !isLoading && !error) ? (
-          <Button href="/create" variant="secondary" size="sm">
-            <Plus size={16} strokeWidth={1.75} aria-hidden />
-            New activity
-          </Button>
-        ) : null}
-      </div>
+      {/* The tab names the panel; the heading is for screen readers. With
+          only the contributions left (no segments), it says what they are. */}
+      {!segmented && tab === "contributed" ? (
+        <SectionHeader title="Contributed to" />
+      ) : (
+        <SectionHeader title="Activities" titleHidden />
+      )}
+      {segmented ? (
+        <div className="profile-panel__head">
+          <TabList aria-label="Activities sections">
+            <Tab value="created" count={countLabel(created.length, isLoading, hasMore)}>
+              Created
+            </Tab>
+            <Tab
+              value="contributed"
+              count={countLabel(contributed.length, isLoading, hasMore)}
+            >
+              Contributed to
+            </Tab>
+          </TabList>
+          {/* The empty Created list carries "New activity" itself. */}
+          {viewerIsOwner &&
+          !(tab === "created" && created.length === 0 && !isLoading && !error) ? (
+            <Button href="/create" variant="secondary" size="sm">
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New activity
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {showTools ? (
         <PanelTools

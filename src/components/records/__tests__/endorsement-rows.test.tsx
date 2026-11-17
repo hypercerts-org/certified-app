@@ -154,4 +154,19 @@ describe("Given rows (EN2, EN3)", () => {
     )
     expect(screen.getByRole("heading", { name: "No endorsements given yet" })).toBeInTheDocument()
   })
+
+  it("leaves the empty state out while the Endorse someone panel is open", () => {
+    const { container } = render(
+      <GivenEndorsements
+        did="did:plc:me"
+        endorsements={[]}
+        isLoading={false}
+        error={null}
+        onRetry={vi.fn()}
+        hideEmpty
+      />,
+    )
+    expect(screen.queryByRole("heading", { name: "No endorsements given yet" })).toBeNull()
+    expect(container).toBeEmptyDOMElement()
+  })
 })

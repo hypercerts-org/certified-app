@@ -1,6 +1,7 @@
 "use client"
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { geoContains } from "d3-geo"
@@ -15,6 +16,7 @@ import type { MapViewProps } from "./view-props"
 import type { MapColors } from "./map-colors"
 import { formatArea, formatDate } from "./map-browse"
 import { MARK_R, dot, hollow, pill, ring, ringDot, selectRing, square } from "./marks"
+import NetworkFiltersSheet from "../network-filters-sheet"
 
 /**
  * The Sites view: the boundaries people drew around the land they work on,
@@ -57,7 +59,7 @@ interface Tip {
   detail: string
 }
 
-export default function MapSites({ model, kind, height, resize }: MapViewProps) {
+export default function MapSites({ model, kind, height, resize, filtersHost }: MapViewProps) {
   const [sort, setSort] = useState<Sort>("size")
   const [filter, setFilter] = useState<Filter>("all")
   const [showHidden, setShowHidden] = useState(false)
@@ -374,41 +376,75 @@ export default function MapSites({ model, kind, height, resize }: MapViewProps) 
     ),
   })
 
+  const sortControl = (
+    <SegmentedControl
+      aria-label="Sort the outlines"
+      size="sm"
+      value={sort}
+      onValueChange={(v) => setSort(v as Sort)}
+      options={[
+        { value: "size", label: "Size" },
+        { value: "name", label: "Name" },
+        { value: "country", label: "Country" },
+      ]}
+    />
+  )
+  const filterControl = (
+    <SegmentedControl
+      aria-label="Show"
+      className="map-sites__filter"
+      joined={false}
+      shape="pill"
+      value={filter}
+      onValueChange={(v) => changeShown(v as Filter, showHidden)}
+      options={[
+        filterOption("all", "All"),
+        filterOption("used", "Used by work", <span className="map-sites__sw map-sites__sw--used" aria-hidden />),
+        filterOption("unused", "Saved, not used yet", <span className="map-sites__sw map-sites__sw--unused" aria-hidden />),
+      ]}
+    />
+  )
+
   return (
     <div className="map-sites">
+      {/* From 800px in the page; on phones in the Filters sheet, whose
+          button sits in the page's bar (filtersHost). */}
       <div className="map-sites__tools">
         <div className="map-sites__sort">
           <span className="map-sites__label" aria-hidden>
             Sort
           </span>
-          <SegmentedControl
-            aria-label="Sort the outlines"
-            size="sm"
-            value={sort}
-            onValueChange={(v) => setSort(v as Sort)}
-            options={[
-              { value: "size", label: "Size" },
-              { value: "name", label: "Name" },
-              { value: "country", label: "Country" },
-            ]}
-          />
+          {sortControl}
         </div>
-        <div className="map-sites__filter-scroll">
-          <SegmentedControl
-            aria-label="Show"
-            className="map-sites__filter"
-            joined={false}
-            shape="pill"
-            value={filter}
-            onValueChange={(v) => changeShown(v as Filter, showHidden)}
-            options={[
-              filterOption("all", "All"),
-              filterOption("used", "Used by work", <span className="map-sites__sw map-sites__sw--used" aria-hidden />),
-              filterOption("unused", "Saved, not used yet", <span className="map-sites__sw map-sites__sw--unused" aria-hidden />),
-            ]}
-          />
-        </div>
+        <div className="map-sites__filter-scroll">{filterControl}</div>
       </div>
+      {filtersHost
+        ? createPortal(
+            <NetworkFiltersSheet
+              changed={(sort !== "size" ? 1 : 0) + (filter !== "all" ? 1 : 0)}
+              onReset={() => {
+                setSort("size")
+                changeShown("all", showHidden)
+              }}
+            >
+              <div className="map-sheet__groups">
+                <div className="map-sheet__group">
+                  <p className="map-sheet__label" aria-hidden>
+                    Sort
+                  </p>
+                  {sortControl}
+                </div>
+                <div className="map-sheet__group">
+                  <p className="map-sheet__label" aria-hidden>
+                    Show
+                  </p>
+                  {filterControl}
+                </div>
+              </div>
+            </NetworkFiltersSheet>,
+            filtersHost,
+          )
+        : null}
 
       <p className="map-sites__read" aria-live="polite">
         <span>

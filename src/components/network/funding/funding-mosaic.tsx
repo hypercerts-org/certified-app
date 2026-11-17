@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy"
 import Avatar from "@/components/ui/avatar"
@@ -147,22 +147,41 @@ function initials(name: string | null | undefined): string {
     .join("")
 }
 
-function TileImage({ ds, t }: { ds: FundingDataset; t: ProjectTotal }) {
+/**
+ * A project's banner photo, or, with none or once it fails to load, the
+ * project's avatar mark (its picture, else initials on the account's ring),
+ * never the browser's broken-image icon. The failure is kept per URL, so a
+ * new banner gets its own try.
+ */
+export function useBannerFailed(src: string | null | undefined): [boolean, () => void] {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  return [!!src && failedSrc === src, () => setFailedSrc(src ?? null)]
+}
+
+function ProjectMark({ ds, t }: { ds: FundingDataset; t: ProjectTotal }) {
   const p = ds.projects[t.project]
   const owner = ds.accounts[p.owner]
-  if (p.banner) {
+  return (
+    <Avatar
+      src={p.avatar ?? owner?.avatar ?? undefined}
+      alt=""
+      size="lg"
+      seed={owner?.did}
+      fallbackInitials={initials(owner?.name ?? p.title)}
+    />
+  )
+}
+
+export function TileImage({ ds, t }: { ds: FundingDataset; t: ProjectTotal }) {
+  const p = ds.projects[t.project]
+  const [failed, onError] = useBannerFailed(p.banner)
+  if (p.banner && !failed) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img className="funding-tile__photo" src={p.banner} alt="" loading="lazy" decoding="async" />
+    return <img className="funding-tile__photo" src={p.banner} alt="" loading="lazy" decoding="async" onError={onError} />
   }
   return (
     <span className="funding-tile__mark">
-      <Avatar
-        src={p.avatar ?? owner?.avatar ?? undefined}
-        alt=""
-        size="lg"
-        seed={owner?.did}
-        fallbackInitials={initials(owner?.name ?? p.title)}
-      />
+      <ProjectMark ds={ds} t={t} />
     </span>
   )
 }
@@ -259,20 +278,15 @@ function ProjectPanel({
     [ds, idx, t.project],
   )
   const anonShare = t.count > 0 ? Math.round((t.anonymous / t.count) * 100) : 0
+  const [bannerFailed, onBannerError] = useBannerFailed(p.banner)
   return (
     <aside className="funding-panel" aria-label="Selected project">
       <div className="funding-panel__banner">
-        {p.banner ? (
+        {p.banner && !bannerFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.banner} alt="" loading="lazy" decoding="async" />
+          <img src={p.banner} alt="" loading="lazy" decoding="async" onError={onBannerError} />
         ) : (
-          <Avatar
-            src={p.avatar ?? owner?.avatar ?? undefined}
-            alt=""
-            size="lg"
-            seed={owner?.did}
-            fallbackInitials={initials(owner?.name ?? p.title)}
-          />
+          <ProjectMark ds={ds} t={t} />
         )}
       </div>
       <div className="funding-panel__body">

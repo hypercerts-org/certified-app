@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeAll } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest"
+import { render, screen, fireEvent, within } from "@testing-library/react"
 import type { EndorsementGraph as EndorsementGraphData, GraphNode } from "@/hooks/use-endorsement-graph"
 
 // The canvas itself is out of scope here (and needs a real canvas); these
@@ -8,6 +8,22 @@ vi.mock("react-force-graph-2d", () => ({ default: () => null }))
 vi.mock("@/hooks/use-trusted-evaluators", () => ({
   useTrustedEvaluators: () => ({ evaluatorDids: [], isLoading: false }),
 }))
+
+// Desktop (>=800px) unless a test says otherwise; also drives the
+// Filters sheet's sheet-or-dialog choice.
+const bp = vi.hoisted(() => ({ isDesktop: true }))
+vi.mock("@/hooks/use-layout-breakpoints", () => ({
+  useLayoutBreakpoints: () => ({
+    isDesktop: bp.isDesktop,
+    hasRightRail: bp.isDesktop,
+    isFullDesktop: bp.isDesktop,
+    isStandalone: false,
+  }),
+}))
+
+beforeEach(() => {
+  bp.isDesktop = true
+})
 
 import EndorsementGraph from "../endorsement-graph"
 
@@ -38,13 +54,13 @@ const links = [
   { source: "p", target: "a", kind: "participation" as const, mutual: false },
 ]
 
-function renderGraph() {
+function renderGraph(focusReq: { did: string | null; nonce: number } = { did: null, nonce: 0 }) {
   const onStats = vi.fn<(s: EndorsementGraphData) => void>()
   render(
     <EndorsementGraph
       nodes={nodes}
       links={links}
-      focusReq={{ did: null, nonce: 0 }}
+      focusReq={focusReq}
       onStats={onStats}
     />,
   )
@@ -118,5 +134,76 @@ describe("EndorsementGraph controls", () => {
     expect(panel).toContainElement(screen.getByRole("radiogroup", { name: "Graph layout" }))
     expect(panel).toContainElement(screen.getByRole("radiogroup", { name: "Show accounts" }))
     expect(panel.querySelector(".viz__legend")).not.toBeNull()
+  })
+})
+
+describe("EndorsementGraph names", () => {
+  it("names the scopes Trusted endorsers and Everyone, Trusted endorsers first", () => {
+    renderGraph()
+    const show = screen.getByRole("radiogroup", { name: "Show accounts" })
+    const options = within(show).getAllByRole("radio")
+    expect(options.map((o) => o.textContent)).toEqual(["Trusted endorsers", "Everyone"])
+    expect(options[0]).toHaveAttribute("aria-checked", "true")
+  })
+})
+
+/**
+ * NET-04 / NET-09: a ranking row asks the graph to focus an account
+ * (`focusReq`); its card opens expanded, and "View profile" stays in this
+ * tab.
+ */
+describe("EndorsementGraph account card", () => {
+  it("opens expanded when a ranking row focuses an account", () => {
+    renderGraph({ did: "a", nonce: 1 })
+    expect(screen.getByRole("button", { name: "Collapse details" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    )
+    expect(screen.getByText("Endorsed by")).toBeTruthy()
+  })
+
+  it("links View profile in the same tab, with no outward arrow", () => {
+    renderGraph({ did: "a", nonce: 1 })
+    const link = screen.getByRole("link", { name: "View profile" })
+    expect(link).not.toHaveAttribute("target")
+    expect(link).not.toHaveAttribute("rel")
+    expect(link.querySelector("svg")).toBeNull()
+  })
+})
+
+/**
+ * NET-02: on phones the graph comes first. Above it only the find field
+ * and a Filters button; Layout, Show and Lines open in a bottom sheet,
+ * whose button counts the settings that differ from the defaults.
+ */
+describe("EndorsementGraph on phones", () => {
+  it("keeps find in the page and puts Layout, Show and Lines in the Filters sheet", () => {
+    bp.isDesktop = false
+    renderGraph()
+    expect(screen.getByRole("combobox", { name: /find an account/i })).toBeTruthy()
+    expect(screen.queryByRole("radiogroup", { name: "Graph layout" })).toBeNull()
+    expect(screen.queryByRole("checkbox", { name: "Mutual only" })).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+    const sheet = screen.getByRole("dialog", { name: "Filters" })
+    expect(within(sheet).getByRole("radiogroup", { name: "Graph layout" })).toBeTruthy()
+    expect(within(sheet).getByRole("radiogroup", { name: "Show accounts" })).toBeTruthy()
+    expect(within(sheet).getByRole("group", { name: "Lines" })).toBeTruthy()
+  })
+
+  it("counts changed filters on the button and resets them", () => {
+    bp.isDesktop = false
+    const { last } = renderGraph()
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+    const sheet = screen.getByRole("dialog", { name: "Filters" })
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: "Mutual only" }))
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: "Participation" }))
+    expect(screen.getByRole("button", { name: "Filters, 2 changed" })).toBeTruthy()
+    expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b"])
+
+    fireEvent.click(within(sheet).getByRole("button", { name: "Reset" }))
+    expect(within(sheet).getByRole("checkbox", { name: "Mutual only" })).not.toBeChecked()
+    expect(screen.getByRole("button", { name: "Filters" })).toBeTruthy()
+    expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "d"])
   })
 })

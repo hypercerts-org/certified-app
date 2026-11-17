@@ -52,7 +52,7 @@ export default function SiteFooter() {
                 className="site-footer__link site-footer__link--button"
                 onClick={() => openFeedback()}
               >
-                Feedback
+                Send feedback
               </button>
               <a
                 href="https://docs.hypercerts.org/"

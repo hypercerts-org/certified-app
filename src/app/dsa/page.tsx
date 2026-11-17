@@ -28,9 +28,69 @@ export default function DsaPage() {
 
         <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: May 6, 2026</p>
 
+        <nav aria-label="Contents" className="legal-toc mb-8">
+          <ol>
+            <li>
+              <a href="#about-this-page" className="legal-link">
+                1. About this page
+              </a>
+            </li>
+            <li>
+              <a href="#service-provider" className="legal-link">
+                2. Service provider
+              </a>
+            </li>
+            <li>
+              <a href="#legal-representative-in-the-european-union" className="legal-link">
+                3. Legal representative in the European Union
+              </a>
+            </li>
+            <li>
+              <a href="#point-of-contact" className="legal-link">
+                4. Point of contact
+              </a>
+            </li>
+            <li>
+              <a href="#notice-and-action-procedure" className="legal-link">
+                5. Notice-and-action procedure
+              </a>
+            </li>
+            <li>
+              <a href="#content-restrictions" className="legal-link">
+                6. Content restrictions
+              </a>
+            </li>
+            <li>
+              <a href="#statement-of-reasons" className="legal-link">
+                7. Statement of reasons
+              </a>
+            </li>
+            <li>
+              <a href="#internal-complaint-handling" className="legal-link">
+                8. Internal complaint-handling
+              </a>
+            </li>
+            <li>
+              <a href="#trusted-flaggers" className="legal-link">
+                9. Trusted flaggers
+              </a>
+            </li>
+            <li>
+              <a href="#transparency" className="legal-link">
+                10. Transparency
+              </a>
+            </li>
+            <li>
+              <a href="#limitation" className="legal-link">
+                11. Limitation
+              </a>
+            </li>
+          </ol>
+        </nav>
+
         <div className="legal-prose space-y-8">
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">1. About this page</h2>
+            <h2 id="about-this-page" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">1. About this page</h2>
             <p>
               This page provides information required under the Digital Services Act (Regulation
               (EU) 2022/2065) (&quot;DSA&quot;) regarding the hosting services operated by the
@@ -44,7 +104,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">2. Service provider</h2>
+            <h2 id="service-provider" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">2. Service provider</h2>
             <p>
               <strong>Hypercerts Foundation</strong>
               <br />
@@ -70,7 +130,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="legal-representative-in-the-european-union" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               3. Legal representative in the European Union
             </h2>
             <p>
@@ -92,7 +152,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">4. Point of contact</h2>
+            <h2 id="point-of-contact" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">4. Point of contact</h2>
             <p>
               In accordance with Article 11 of the DSA, the single point of contact for
               communications with EU member state authorities, the European Commission, and the
@@ -114,7 +174,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="notice-and-action-procedure" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               5. Notice-and-action procedure
             </h2>
             <p>
@@ -193,7 +253,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="content-restrictions" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               6. Content restrictions
             </h2>
             <p>
@@ -228,7 +288,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="statement-of-reasons" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               7. Statement of reasons
             </h2>
             <p>
@@ -252,7 +312,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="internal-complaint-handling" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               8. Internal complaint-handling
             </h2>
             <p>
@@ -274,7 +334,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">
+            <h2 id="trusted-flaggers" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">
               9. Trusted flaggers
             </h2>
             <p>
@@ -285,7 +345,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">10. Transparency</h2>
+            <h2 id="transparency" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">10. Transparency</h2>
             <p>
               The Hypercerts Foundation will publish{" "}
               <strong>annual transparency reports</strong> in accordance with Article 15 of the
@@ -303,7 +363,7 @@ export default function DsaPage() {
           </section>
 
           <section>
-            <h2 className="font-headline text-h2 text-[var(--fg-primary)] mb-4">11. Limitation</h2>
+            <h2 id="limitation" className="font-headline text-h2 text-[var(--fg-primary)] mb-4 scroll-mt-24">11. Limitation</h2>
             <p>
               The Hypercerts Foundation is not responsible for content moderation decisions made by
               third-party applications that access data through the AT Protocol.

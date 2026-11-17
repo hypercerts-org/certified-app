@@ -9,18 +9,38 @@ import type { ProfileSummary, SectionCount } from "../use-profile-summary"
 
 // The endorser's name and avatar come from the indexer block below; the
 // fallback lookup is never needed. A supported account resolves to a
-// name from its DID.
+// name from its DID; "did:plc:subjectfail…" stands for a failed lookup.
 vi.mock("@/hooks/use-author-info", () => ({
-  useAuthorInfo: (did: string | null) => ({
-    info: did?.startsWith("did:plc:subject")
-      ? { did, handle: `${did.slice(8)}.test`, displayName: `Org ${did.slice(15)}`, avatarUrl: null }
-      : null,
-    isLoading: false,
-    error: null,
-  }),
+  useAuthorInfo: (did: string | null) => {
+    const failed = !!did?.startsWith("did:plc:subjectfail")
+    return {
+      info: failed
+        ? { did, handle: did, displayName: null, avatarUrl: null }
+        : did?.startsWith("did:plc:subject")
+          ? { did, handle: `${did.slice(8)}.test`, displayName: `Org ${did.slice(15)}`, avatarUrl: null }
+          : null,
+      isLoading: false,
+      error: failed ? "Couldn't load this account." : null,
+      failed,
+      retry: () => {},
+    }
+  },
 }))
+// Organizations, known at once, except "…subjectwait…" (still reading
+// its organization record) and "…subjectfail…" (the read failed).
 vi.mock("@/hooks/use-org-marker", () => ({
-  useOrgMarker: () => ({ isOrg: true, marker: null, isLoading: false }),
+  useOrgMarker: (did: string) => {
+    const waiting = did.startsWith("did:plc:subjectwait")
+    const failed = did.startsWith("did:plc:subjectfail")
+    return {
+      isOrg: !waiting && !failed,
+      marker: null,
+      isLoading: waiting,
+      answeredFor: waiting ? null : did,
+      failed,
+      refresh: () => {},
+    }
+  },
 }))
 vi.mock("@/hooks/use-location", () => ({
   useLocations: () => ({ locations: [], isLoading: false }),
@@ -215,7 +235,9 @@ describe("ProfileOverview: Endorsements", () => {
         summary={summary({ received: [endorsement(1)], given: 148 })}
       />,
     )
-    expect(screen.getByRole("heading", { name: /Supports/ })).toBeTruthy()
+    // "Endorses", not "Supports" (which reads as money on a funder).
+    expect(screen.getByRole("heading", { name: /^Endorses/ })).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: /Supports/ })).toBeNull()
     const tiles = container.querySelectorAll(".profile-supports__item")
     expect(tiles).toHaveLength(12)
     // Names, never handles.
@@ -225,7 +247,7 @@ describe("ProfileOverview: Endorsements", () => {
     expect(all.getAttribute("href")).toBe("/me.certified.app?tab=endorsements&sub=given")
   })
 
-  it("has no Supports section for an account that endorsed nobody", () => {
+  it("has no Endorses section for an account that endorsed nobody", () => {
     render(
       <ProfileOverview
         did="did:plc:me"
@@ -234,7 +256,39 @@ describe("ProfileOverview: Endorsements", () => {
         summary={summary({ received: [endorsement(1)] })}
       />,
     )
-    expect(screen.queryByRole("heading", { name: /Supports/ })).toBeNull()
+    expect(screen.queryByRole("heading", { name: /^Endorses/ })).toBeNull()
+  })
+
+  it("never draws an endorsed account whose kind isn't known as a person, nor a failed lookup as an unnamed account", () => {
+    const tile = (subjectDid: string): GivenEndorsement =>
+      ({ ...givenTo(1), uri: `at://x/${subjectDid}`, subjectDid }) as GivenEndorsement
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={{
+          ...summary(),
+          given: {
+            endorsements: [tile("did:plc:subjectwait1"), tile("did:plc:subjectfail2")],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          },
+        } as unknown as ProfileSummary}
+      />,
+    )
+    const tiles = container.querySelectorAll(".profile-supports__item")
+    expect(tiles).toHaveLength(2)
+    // Kind still being read: a placeholder block, no avatar at all (so no
+    // person's circle).
+    const waiting = Array.from(tiles).find((t) => t.textContent?.includes("Org"))!
+    expect(waiting.querySelector('[data-shape]')).toBeNull()
+    // The failed lookup says so, and still links to the profile.
+    const failed = Array.from(tiles).find((t) => t.textContent?.includes("Couldn't load"))!
+    expect(failed.textContent).toBe("Couldn't load this account")
+    expect(failed.textContent).not.toContain("Unnamed account")
+    expect(failed.querySelector("a")!.getAttribute("href")).toBe("/did:plc:subjectfail2")
   })
 })
 
@@ -286,7 +340,8 @@ describe("ProfileOverview: what a visitor sees", () => {
     expect(screen.queryByRole("heading", { name: "Projects" })).toBeNull()
     expect(screen.queryByRole("heading", { name: "Endorsements" })).toBeNull()
     expect(screen.queryByText(/No endorsements yet/)).toBeNull()
-    expect(screen.getAllByText(/No activities, projects or endorsements yet/)).toHaveLength(1)
+    // Not "activities, projects or endorsements": a donor has none of those.
+    expect(screen.getAllByText("No public records yet.")).toHaveLength(1)
   })
 
   it("keeps every section for the account itself, with the action that fills it", () => {
@@ -367,7 +422,7 @@ describe("ProfileOverview: load failures", () => {
 })
 
 describe("ProfileOverview: the Account facts", () => {
-  it("lists the type, place, founding, joining, handle and Permanent ID", () => {
+  it("lists the place, joining, handle and Permanent ID, not the header's type and founding", () => {
     render(
       <ProfileOverview
         did="did:plc:me"
@@ -375,18 +430,17 @@ describe("ProfileOverview: the Account facts", () => {
         basePath="/me.certified.app"
         summary={summary()}
         isOrg
-        orgTypeTags={["Nonprofit"]}
-        orgFoundedDate="2003"
         joined="Jun 2026"
         location={{ name: "W8VJ+RPH, Nosara, Costa Rica", shape: null }}
       />,
     )
     const card = screen.getByRole("region", { name: "Account" })
     const text = card.textContent ?? ""
-    expect(text).toContain("TypeNonprofit")
+    // The header's meta line names the type and founding.
+    expect(text).not.toContain("Type")
+    expect(text).not.toContain("Founded")
     // The Plus Code is dropped from the place.
     expect(text).toContain("LocationNosara, Costa Rica")
-    expect(text).toContain("Founded2003")
     expect(text).toContain("JoinedJun 2026")
     expect(text).toContain("Handle@me.certified.app")
     expect(text).toContain("did:plc:me")

@@ -98,3 +98,46 @@ describe("SignInModal errors", () => {
     expect((screen.getByLabelText("Your email") as HTMLInputElement).value).toBe("")
   })
 })
+
+describe("SignInModal copy", () => {
+  it("is titled for signing in and for creating an account", () => {
+    renderModal()
+
+    expect(
+      screen.getByRole("heading", { name: "Sign in or create an account" }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Sign in or create an account" })).toBeInTheDocument()
+  })
+
+  it("says under the email field that a new email creates an account", () => {
+    renderModal()
+
+    expect(screen.getByLabelText("Your email")).toHaveAccessibleDescription(
+      "New here? Continuing with your email creates your account.",
+    )
+  })
+
+  it("drops the new-account line on the handle view", () => {
+    renderModal()
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Atmosphere" }))
+
+    expect(screen.queryByText(/creates your account/)).toBeNull()
+  })
+
+  it("links the Terms and the Privacy Policy, opening in a new tab", () => {
+    renderModal()
+
+    const terms = screen.getByRole("link", { name: "Terms" })
+    const privacy = screen.getByRole("link", { name: "Privacy Policy" })
+    expect(terms).toHaveAttribute("href", "/terms")
+    expect(privacy).toHaveAttribute("href", "/privacy")
+    expect(terms).toHaveAttribute("target", "_blank")
+    expect(screen.getByText(/By continuing you agree to the/)).toBeInTheDocument()
+  })
+
+  it("doesn't say it's powered by Certified inside Certified", () => {
+    renderModal()
+
+    expect(screen.queryByRole("img", { name: "Powered by Certified" })).toBeNull()
+  })
+})

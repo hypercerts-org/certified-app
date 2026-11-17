@@ -1,6 +1,15 @@
 "use client"
 
-import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpDown,
@@ -29,8 +38,6 @@ import SharedLoadMoreSentinel from "@/components/ui/load-more-sentinel"
 import CertListRow from "./cert-list-row"
 import ProjectListRow from "./project-list-row"
 import AccountListRow from "./account-list-row"
-import FundingReceiptRow, { FundingReceiptHeader } from "./funding-receipt-row"
-import FundingConfirmedByPopover from "./funding-confirmed-by-popover"
 import ExploreSearchField from "./explore-search-field"
 import {
   EMPTY_SELECTION_SENTINEL,
@@ -45,15 +52,8 @@ import {
   sortUsers,
   type EmptyContext,
 } from "./explore-results"
-import {
-  DEFAULT_CONFIRM_ROLES,
-  matchesConfirmedBy,
-  type ConfirmRole,
-} from "@/lib/atproto/funding-provenance"
 import { MA_EARTH_FILTER } from "@/lib/atproto/featured"
-import { useFundingConfirmedBy } from "@/hooks/use-funding-confirmed-by"
 import {
-  EMPTY_DID_SET,
   SUB_OPTIONS,
   defaultFilterForView,
   filtersForView,
@@ -61,11 +61,11 @@ import {
   viewFilterToKindFilter,
   type Degree,
   type ExploreKind,
+  type ExploreType,
   type ListGalleryView,
   type SortOrder,
 } from "./explore-types"
 import { useExploreData } from "@/hooks/use-explore"
-import { useMergedFunding } from "@/hooks/use-merged-funding"
 import { useScrollRestoration } from "@/hooks/use-scroll-restoration"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
@@ -88,15 +88,6 @@ function parseView(v: string | null): ListGalleryView {
 }
 
 const ALL_DEGREES: readonly Degree[] = [1, 2, 3] as const
-
-/** Default funding "Confirmed by" selection — trusted sources + both sides,
- *  no specific third parties. The single-kind funding view starts here (the
- *  user can change it);
- *  the combined All view applies it as a fixed filter (no control), so its
- *  funding block matches the funding tab's default. */
-const DEFAULT_CONFIRM_ROLE_SET: ReadonlySet<ConfirmRole> = new Set(
-  DEFAULT_CONFIRM_ROLES,
-)
 
 /**
  * Parse the URL into a `Set<Degree>` of selected endorsement rings.
@@ -162,7 +153,7 @@ function isEndorsementFilter(kind: ExploreKind, filter: string): boolean {
 
 /**
  * /explore entry point: the page header, then the type tabs (All ·
- * Activities · Projects · Accounts · Funding, `?show=`) and the type's
+ * Activities · Projects · Accounts, `?show=`) and the type's
  * panel: the toolbar (search, the result actions and the "Show" select
  * of lists: Whole network, Accounts I follow, Endorsed accounts,
  * Recently viewed, `?filter=`) and the results: on "All", one short
@@ -191,18 +182,12 @@ function isValidViewFilter(filter: string): boolean {
 }
 
 /** Which type the page is showing. "all" renders one capped section per
- *  type; a concrete kind shows that type in full (with pagination).
- *  Backed by the `?show=` URL param. */
-type AllShow = "all" | ExploreKind
+ *  type; a concrete type shows that type in full (with pagination).
+ *  Backed by the `?show=` URL param; anything else reads as "all". */
+type AllShow = "all" | ExploreType
 
 function parseAllShow(v: string | null): AllShow {
-  if (
-    v === "activities" ||
-    v === "projects" ||
-    v === "accounts" ||
-    v === "funding"
-  )
-    return v
+  if (v === "activities" || v === "projects" || v === "accounts") return v
   return "all"
 }
 
@@ -211,7 +196,6 @@ const SHOW_OPTIONS: { key: AllShow; label: string }[] = [
   { key: "activities", label: "Activities" },
   { key: "projects", label: "Projects" },
   { key: "accounts", label: "Accounts" },
-  { key: "funding", label: "Funding" },
 ]
 
 /** Shared URL state: the list (`?filter=`), the type (`?show=`), the
@@ -509,7 +493,7 @@ function emptyContextFor(view: AllView): EmptyContext {
 // ------------------------- Single type ----------------------------------------
 
 interface ExploreMainProps {
-  kind: ExploreKind
+  kind: ExploreType
   /** Already resolved to the kind-specific filter key
    *  (`viewFilterToKindFilter`). */
   filter: string
@@ -517,8 +501,8 @@ interface ExploreMainProps {
 }
 
 /**
- * One type shown in full: the toolbar (search, view toggle, sort, quality
- * and, for funding, "Confirmed by"), a row for the accounts sub-type and
+ * One type shown in full: the toolbar (search, view toggle, sort and
+ * quality), a row for the accounts sub-type and
  * the endorsement rings when they apply, then the results with
  * pagination. `kind` + `filter` come in as props; everything else (sub /
  * sort / view / quality / degrees / q) is read from and written to the
@@ -530,10 +514,6 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
   const { setUrl, search } = allView
 
   const sub = parseSubForKind(kind, searchParams?.get("sub") ?? null)
-  // Funding "Confirmed by" filter (client-side — the role buckets aren't a
-  // single indexer arg). URL-backed state shared with the activity detail
-  // page via `useFundingConfirmedBy`. Only meaningful on the funding kind.
-  const confirmedBy = useFundingConfirmedBy()
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
   const { isDesktop } = useLayoutBreakpoints()
@@ -565,7 +545,6 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
 
   const [sortOpen, setSortOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
-  const [confirmedByOpen, setConfirmedByOpen] = useState(false)
 
   // Read the target's `data-*` attribute instead of capturing the
   // iteration variable in a closure. The SWC minifier (Next 16's
@@ -615,22 +594,21 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
     excludeCertLabels: kind === "activities" ? quality.excludeCertLabels : undefined,
     includeCertLabels: kind === "activities" ? quality.includeCertLabels : undefined,
     // Org-quality filter — used on accounts (filters the actor list),
-    // certs (filters certs whose author org carries the tier), projects
-    // and funding (filters receipts whose creator account carries the
-    // tier).
+    // certs (filters certs whose author org carries the tier) and
+    // projects.
     excludeOrgLabels: quality.excludeOrgLabels,
     includeOrgLabels: quality.includeOrgLabels,
-    // The funding "Confirmed by" filter is applied client-side (see
-    // ResultsArea); the loader fetches the full receipt set so the popover
-    // can offer every third-party attestor as a candidate.
   })
 
   // Restore the window scroll offset when the reader returns from a
   // project/activity detail page (back button). Keyed by the full URL so
   // each kind/filter/search combination restores independently; gated on
-  // the list having finished its initial load so the page is tall enough.
+  // the first rows having rendered (the loader starts idle, before its
+  // fetch, so "not loading" alone is too early).
   const scrollKey = `${pathname}?${searchParams?.toString() ?? ""}`
-  useScrollRestoration(scrollKey, !data.isLoading)
+  const hasRows =
+    data.certs.length + data.projects.length + data.users.length > 0
+  useScrollRestoration(scrollKey, !data.isLoading && hasRows)
 
   const onDegreesChange = useCallback(
     (next: Set<Degree>) => {
@@ -651,9 +629,7 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
 
   const actions = (
     <>
-      {/* Funding receipts have a single list layout (no gallery card),
-          so the list/gallery toggle is suppressed there. */}
-      {isDesktop && kind !== "funding" && (
+      {isDesktop && (
         <SegmentedControl
           aria-label={`${kind === "activities" ? "Activity" : kind === "projects" ? "Project" : "Account"} view`}
           value={view}
@@ -718,29 +694,13 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
 
       {/* Activity + account quality filter — shared with the All view.
           The cert (Activity Labeler) section shows only on activities;
-          the account (Orglabeler) section shows on every kind. On
-          funding it filters receipts by the creator account's tier. */}
+          the account (Orglabeler) section shows on every type. */}
       <QualityFilterPopover
         q={quality}
         showCertSection={kind === "activities"}
         open={qualityOpen}
         onOpenChange={setQualityOpen}
       />
-      {/* Funding also offers the "Confirmed by" filter (role buckets +
-          specific third-party attestors). */}
-      {kind === "funding" ? (
-        <FundingConfirmedByPopover
-          receipts={data.fundingReceipts}
-          roles={confirmedBy.roles}
-          onToggleRole={confirmedBy.toggleRole}
-          thirdParties={confirmedBy.thirdParties}
-          onToggleThirdParty={confirmedBy.toggleThirdParty}
-          isDefault={confirmedBy.isDefault}
-          onReset={confirmedBy.reset}
-          open={confirmedByOpen}
-          onOpenChange={setConfirmedByOpen}
-        />
-      ) : null}
     </>
   )
 
@@ -795,10 +755,6 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
         sort={sort}
         view={effectiveView}
         degrees={showsDegreeControl ? degrees : null}
-        confirmRoles={kind === "funding" ? confirmedBy.roles : undefined}
-        confirmThirdParties={
-          kind === "funding" ? confirmedBy.thirdParties : undefined
-        }
         emptyContext={emptyContext}
       />
       {data.hasMore || data.isLoadingMore ? (
@@ -816,7 +772,7 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
 
 /**
  * The All type: one short section per type (Activities, Projects,
- * Accounts, Funding), each with up to {@link ALL_VIEW_BLOCK_SIZE} rows and
+ * Accounts), each with up to {@link ALL_VIEW_BLOCK_SIZE} rows and
  * a "See all" link that switches to that type. On the plain All list with
  * no search, a Featured section (Ma Earth's picks) leads.
  *
@@ -825,6 +781,8 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
  */
 function ExploreAllBlocks({ view }: { view: AllView }) {
   const { filter, search, hrefWith, setUrl } = view
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   // Quality filter shared with the single-type view. The All view
   // always includes the activities block, so it shows both the cert
   // (Activity Labeler) and account (Orglabeler) sections.
@@ -868,19 +826,6 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
     excludeOrgLabels: quality.excludeOrgLabels,
     includeOrgLabels: quality.includeOrgLabels,
   })
-  // Funding has no social-graph / featured filters and no quality axis;
-  // the loader lists receipts gated to an AT Protocol account on either
-  // side, so it always runs with the plain "all" filter.
-  // Keeps the default PAGE_SIZE window (no pageSize cap): the fixed
-  // "Confirmed by" filter below is client-side and can drop most
-  // receipts, so a trimmed page could leave the block short.
-  const funding = useExploreData({
-    kind: "funding",
-    filter: "all",
-    sub: "all",
-    search,
-  })
-
   const activityItems = useMemo(
     () => sortCerts(activities.certs, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [activities.certs],
@@ -893,34 +838,28 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
     () => sortUsers(accounts.users, "newest").slice(0, ALL_VIEW_BLOCK_SIZE),
     [accounts.users],
   )
-  // Same default "Confirmed by" filter as the funding type — what a trusted
-  // source recorded and what both sides confirmed; one-sided and
-  // unknown-source receipts are hidden. Fixed here (the All view has no
-  // confirmer control). Merge optimistic confirmations first so a just-confirmed pair
-  // shows as one row.
-  const mergedFunding = useMergedFunding(funding.fundingReceipts)
-  const fundingItems = useMemo(
-    () =>
-      mergedFunding
-        .filter((r) =>
-          matchesConfirmedBy(r.attestations, DEFAULT_CONFIRM_ROLE_SET, EMPTY_DID_SET),
-        )
-        .slice(0, ALL_VIEW_BLOCK_SIZE),
-    [mergedFunding],
+  const blocks = [activities, projects, accounts]
+  const allLoaded = blocks.every((b) => !b.isLoading)
+  const itemCount =
+    activityItems.length + projectItems.length + accountItems.length
+  const nothingFound =
+    allLoaded && blocks.every((b) => !b.error) && itemCount === 0
+
+  const showFeatured = filter === "all" && search === ""
+  // The Featured section (its own loader) settles on its own; until it has,
+  // the sections under it are not where they will be.
+  const [featuredSettled, setFeaturedSettled] = useState(false)
+  const onFeaturedSettled = useCallback(() => setFeaturedSettled(true), [])
+
+  // Back from a record lands where the reader left (see ExploreMain):
+  // restored once every section, Featured included, has its rows.
+  const scrollKey = `${pathname}?${searchParams?.toString() ?? ""}`
+  useScrollRestoration(
+    scrollKey,
+    allLoaded && itemCount > 0 && (!showFeatured || featuredSettled),
   )
 
-  const blocks = [activities, projects, accounts, funding]
-  const allLoaded = blocks.every((b) => !b.isLoading)
-  const nothingFound =
-    allLoaded &&
-    blocks.every((b) => !b.error) &&
-    activityItems.length === 0 &&
-    projectItems.length === 0 &&
-    accountItems.length === 0 &&
-    fundingItems.length === 0
-
-  const seeAll = (kind: ExploreKind) => hrefWith({ show: kind })
-  const showFeatured = filter === "all" && search === ""
+  const seeAll = (kind: ExploreType) => hrefWith({ show: kind })
 
   const actions = (
     <QualityFilterPopover
@@ -949,6 +888,7 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
             <FeaturedSection
               quality={quality}
               seeAllHref={hrefWith({ filter: MA_EARTH_FILTER, show: "activities" })}
+              onSettled={onFeaturedSettled}
             />
           ) : null}
 
@@ -1013,28 +953,15 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
             </ul>
           </AllSection>
 
-          <AllSection
-            title="Funding"
-            description="Payments to and from accounts on Certified."
-            seeAllHref={seeAll("funding")}
-            seeAllLabel="All funding"
-            isLoading={funding.isLoading}
-            error={funding.error}
-            onRetry={funding.refetch}
-            isEmpty={fundingItems.length === 0}
-            emptyText={sectionEmptyText("funding receipts", "all", search)}
-          >
-            <ul className="explore__list explore__list--funding">
-              <li>
-                <FundingReceiptHeader />
-              </li>
-              {fundingItems.map((r) => (
-                <li key={r.uri}>
-                  <FundingReceiptRow receipt={r} showTextParties />
-                </li>
-              ))}
-            </ul>
-          </AllSection>
+          {/* Funding receipts have one place, Network → Funding; Explore
+              points there instead of listing them a second way. */}
+          <p className="explore__elsewhere">
+            Funding receipts are on the{" "}
+            <Link href="/funding" className="explore__elsewhere-link">
+              Funding page
+            </Link>
+            .
+          </p>
         </div>
       )}
     </>
@@ -1042,7 +969,7 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
 }
 
 /** The one-line empty text of an All-type section, naming the search or
- *  list that left it empty. Funding ignores the list (it has none). */
+ *  list that left it empty. */
 function sectionEmptyText(noun: string, filter: string, search: string): string {
   if (search) return `No ${noun} match “${search}”.`
   if (filter === "follows") return `No ${noun} from accounts you follow.`
@@ -1068,7 +995,7 @@ function AllEmpty({
         icon={SearchX}
         headingLevel={2}
         title={`Nothing matches “${search}”`}
-        description="No activities, projects, accounts or funding receipts match this search. Try another word."
+        description="No activities, projects or accounts match this search. Try another word."
       >
         <Button variant="secondary" size="sm" onClick={onClearSearch}>
           Clear search
@@ -1100,9 +1027,12 @@ function AllEmpty({
 function FeaturedSection({
   quality,
   seeAllHref,
+  onSettled,
 }: {
   quality: ReturnType<typeof useQualityFilters>
   seeAllHref: string
+  /** Called once the section has its final shape (rows, or left out). */
+  onSettled?: () => void
 }) {
   const featured = useExploreData({
     kind: "activities",
@@ -1116,6 +1046,16 @@ function FeaturedSection({
     includeOrgLabels: quality.includeOrgLabels,
   })
   const items = featured.certs.slice(0, ALL_VIEW_BLOCK_SIZE)
+  // Settled: rows arrived, or the load (which starts idle, before its
+  // fetch) ran and came back empty or failed.
+  const started = useRef(false)
+  useEffect(() => {
+    if (featured.isLoading) {
+      started.current = true
+      return
+    }
+    if (items.length > 0 || featured.error || started.current) onSettled?.()
+  }, [featured.isLoading, featured.error, items.length, onSettled])
   // Nothing curated (or the curated set failed): leave the section out
   // rather than lead the page with an empty box.
   if (!featured.isLoading && (featured.error || items.length === 0)) return null
@@ -1307,9 +1247,8 @@ function EndorsementDegreeBar({
   )
 }
 
-function searchPlaceholder(kind: ExploreKind): string {
+function searchPlaceholder(kind: ExploreType): string {
   if (kind === "accounts") return "Search accounts"
   if (kind === "projects") return "Search projects"
-  if (kind === "funding") return "Search funding"
   return "Search activities"
 }

@@ -15,6 +15,8 @@ vi.mock("@/lib/auth/fetch", () => ({
 
 import {
   loadResolvedProfile,
+  loadResolvedProfileOutcome,
+  parseRetryAfter,
   __resetResolveDidBatchForTests,
 } from "../resolve-did-batch"
 
@@ -227,5 +229,114 @@ describe("resolve-did batch coalescer", () => {
     expect(await p).toBeNull()
     await vi.advanceTimersByTimeAsync(20)
     expect(authFetch).not.toHaveBeenCalled()
+  })
+
+  it("tells a failed lookup from an identity that doesn't resolve", async () => {
+    authFetch.mockResolvedValueOnce(
+      jsonResponse({
+        results: {
+          "did:plc:a": { did: "did:plc:a", handle: "a.test" },
+          "did:plc:b": null,
+        },
+      }),
+    )
+    const a = loadResolvedProfileOutcome("did:plc:a")
+    const b = loadResolvedProfileOutcome("did:plc:b")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await a).toMatchObject({ status: "ok", profile: { handle: "a.test" } })
+    expect(await b).toEqual({ status: "missing" })
+
+    authFetch.mockResolvedValueOnce(jsonResponse({ error: "boom" }, 500))
+    const c = loadResolvedProfileOutcome("did:plc:c")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await c).toEqual({ status: "failed", retryAfterMs: null })
+
+    authFetch.mockRejectedValueOnce(new TypeError("network"))
+    const d = loadResolvedProfileOutcome("did:plc:d")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await d).toEqual({ status: "failed", retryAfterMs: null })
+  })
+
+  it("shares one lookup between the profile and the outcome APIs", async () => {
+    authFetch.mockResolvedValue(
+      jsonResponse({ results: { "did:plc:a": { did: "did:plc:a", handle: "a.test" } } }),
+    )
+    const profile = loadResolvedProfile("did:plc:a")
+    const outcome = loadResolvedProfileOutcome("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await profile).toMatchObject({ handle: "a.test" })
+    expect((await outcome).status).toBe("ok")
+    expect(authFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("honours a 429's Retry-After: on the outcome, and as the cooldown", async () => {
+    authFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "rate limited" }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "12" },
+      }),
+    )
+    const first = loadResolvedProfileOutcome("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await first).toEqual({ status: "failed", retryAfterMs: 12_000 })
+
+    // A fresh identity waits out the 12s, not just the 5s default.
+    authFetch.mockResolvedValue(
+      jsonResponse({ results: { "did:plc:b": { did: "did:plc:b", handle: "b.test" } } }),
+    )
+    const second = loadResolvedProfileOutcome("did:plc:b")
+    await vi.advanceTimersByTimeAsync(6_000)
+    expect(authFetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(6_500)
+    expect((await second).status).toBe("ok")
+    expect(authFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("replaces a cached failure only when asked to retry", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse({ error: "boom" }, 500))
+    const first = loadResolvedProfileOutcome("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect((await first).status).toBe("failed")
+
+    // Without `retry` the failure is reused (no new request).
+    const reused = loadResolvedProfileOutcome("did:plc:a")
+    expect(reused).toBe(first)
+    await vi.advanceTimersByTimeAsync(20)
+    expect(authFetch).toHaveBeenCalledTimes(1)
+
+    // With it, a fresh lookup goes out.
+    authFetch.mockResolvedValue(
+      jsonResponse({ results: { "did:plc:a": { did: "did:plc:a", handle: "a.test" } } }),
+    )
+    const retried = loadResolvedProfileOutcome("did:plc:a", { retry: true })
+    await vi.advanceTimersByTimeAsync(20)
+    expect((await retried).status).toBe("ok")
+    expect(authFetch).toHaveBeenCalledTimes(2)
+
+    // A success isn't replaced by a retry.
+    const again = loadResolvedProfileOutcome("did:plc:a", { retry: true })
+    expect(again).toBe(retried)
+  })
+
+  it("doesn't replace an identity that doesn't resolve on retry", async () => {
+    authFetch.mockResolvedValueOnce(jsonResponse({ results: { "did:plc:a": null } }))
+    const first = loadResolvedProfileOutcome("did:plc:a")
+    await vi.advanceTimersByTimeAsync(20)
+    expect(await first).toEqual({ status: "missing" })
+    expect(loadResolvedProfileOutcome("did:plc:a", { retry: true })).toBe(first)
+  })
+})
+
+describe("parseRetryAfter", () => {
+  it("reads seconds and HTTP dates, capped at a minute", () => {
+    expect(parseRetryAfter(null)).toBeNull()
+    expect(parseRetryAfter("soon")).toBeNull()
+    expect(parseRetryAfter("3")).toBe(3_000)
+    expect(parseRetryAfter("0")).toBe(0)
+    expect(parseRetryAfter("3600")).toBe(60_000)
+    const inTenSeconds = new Date(Date.now() + 10_000).toUTCString()
+    const ms = parseRetryAfter(inTenSeconds)!
+    expect(ms).toBeGreaterThan(8_000)
+    expect(ms).toBeLessThanOrEqual(10_000)
   })
 })

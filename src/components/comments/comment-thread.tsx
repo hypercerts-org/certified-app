@@ -190,7 +190,7 @@ export default function CommentThread({
           missing thread matters: a section, or a field someone opened. */}
       {(isSection || composing) && thread.status === "error" && thread.comments.length === 0 ? (
         <p className="comment-thread__notice">
-          Couldn&rsquo;t load the comments.{" "}
+          Couldn&apos;t load the comments.{" "}
           <button type="button" className="comment-thread__link" onClick={thread.retry}>
             Try again
           </button>

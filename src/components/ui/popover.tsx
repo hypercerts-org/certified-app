@@ -206,7 +206,10 @@ export function PopoverTrigger({ children }: PopoverTriggerProps) {
   );
   return React.cloneElement(children, {
     ref,
-    "aria-haspopup": "menu",
+    // A menu unless the trigger says otherwise (a popover holding a field
+    // is no menu: its trigger passes `aria-haspopup={false}`).
+    "aria-haspopup":
+      (childProps["aria-haspopup"] as React.AriaAttributes["aria-haspopup"]) ?? "menu",
     "aria-expanded": ctx.open,
     "aria-controls": ctx.contentId,
     onClick: (e: React.MouseEvent) => {

@@ -371,7 +371,7 @@ export default function ActivityDetail({
       {recordUri && cid ? (
         <LikeButton variant="header" subject={{ uri: recordUri, cid }} subjectKind="activity" />
       ) : null}
-      <ShareLinkButton path={sharePath} what="Activity link" />
+      <ShareLinkButton path={sharePath} what="Activity link" title={title} />
       {recordUri ? (
         <AddToListMenu
           targetUri={recordUri}
@@ -536,6 +536,22 @@ export default function ActivityDetail({
         {moreCards}
       </aside>
     ) : null
+  // The conversation closes the Overview: from 1100px at the end of the
+  // content column, below that after the facts cards, so the facts aren't
+  // pushed under a thread of comments.
+  const comments =
+    recordUri && cid ? (
+      <CommentThread
+        layout="section"
+        subject={{ uri: recordUri, cid }}
+        subjectTitle={title}
+        subjectKind="activity"
+      />
+    ) : null
+  const commentsAfter =
+    !wide && activeTab === "overview" && comments ? (
+      <div className="record-layout__comments">{comments}</div>
+    ) : null
 
   return (
     <>
@@ -545,6 +561,7 @@ export default function ActivityDetail({
           eyebrow={eyebrow}
           title={title}
           actions={recordActions}
+          actionsRow={canManage}
           byline={<RecordByline did={did} period={period} place={place} />}
           lead={lead}
           compact={activeTab !== "overview"}
@@ -590,14 +607,7 @@ export default function ActivityDetail({
                   seeAllHref={tabHref("updates")}
                 />
               ) : null}
-              {recordUri && cid ? (
-                <CommentThread
-                  layout="section"
-                  subject={{ uri: recordUri, cid }}
-                  subjectTitle={title}
-                  subjectKind="activity"
-                />
-              ) : null}
+              {wide ? comments : null}
             </>
           ) : activeTab === "contributors" ? (
             // The list only: the "Contributor board" showed the same
@@ -640,6 +650,7 @@ export default function ActivityDetail({
         </TabPanelTransition>
 
         {moreAfter}
+        {commentsAfter}
       </article>
       {fundingFlow.dialogs}
       {deleteOpen ? (

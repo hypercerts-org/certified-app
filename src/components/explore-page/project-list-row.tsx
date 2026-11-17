@@ -6,7 +6,6 @@ import { recordUrl } from "@/lib/urls"
 import { resolveActivityImageUrl } from "@/lib/atproto/activity"
 import { parseAtUri } from "@/lib/atproto/activity-uri"
 import { useLocation } from "@/hooks/use-location"
-import { useAuthorInfo } from "@/hooks/use-author-info"
 import {
   asString,
   projectImage,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/atproto/collection"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import ExploreListRow from "./explore-list-row"
+import { useOwnerByline } from "./use-owner-byline"
 
 /**
  * Dense single-row representation of a project for the /explore list
@@ -50,10 +50,8 @@ function ProjectListRow({
 
   // Author byline for the mobile "by Display Name" subtitle. Desktop
   // keeps the avatar byline column (rendered by ExploreListRow); this
-  // resolves the bare name the compact mobile row shows under the title.
-  const { info: authorInfo } = useAuthorInfo(did || "")
-  const authorName = authorInfo?.displayName || authorInfo?.handle || null
-  const subtitle = authorName ? `by ${authorName}` : null
+  // resolves the bare name the phone row shows under the title.
+  const subtitle = useOwnerByline(did || null)
 
   const itemCount = countItems(value.items)
   const countLabel = `${itemCount} ${itemCount === 1 ? "activity" : "activities"}`

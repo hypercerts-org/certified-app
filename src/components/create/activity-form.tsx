@@ -94,21 +94,38 @@ export function duplicateContributorIdentities(
 }
 
 /**
+ * Whether the short description's minimum applies. Always on /create; on
+ * edit (`saved` is the published summary) only once the summary has been
+ * changed, so a record published under the minimum can still be saved
+ * with its other fields edited. An empty saved summary is no exemption.
+ */
+export function shortDescriptionMinApplies(value: string, saved?: string): boolean {
+  if (saved === undefined) return true
+  const before = saved.trim()
+  return before.length === 0 || value.trim() !== before
+}
+
+/**
  * What still stands between the form and a save, in the words the action
  * bar shows ("Before publishing: …"), plus the first text field to focus.
  * Dates use the sortable YYYY-MM-DD shape of `<input type="date">`, so a
  * string comparison is a calendar comparison; equal dates are fine.
+ * `savedShortDescription` (edit only): the published summary; the
+ * minimum then applies only once it has been changed.
  */
 export function activityFormProblems(values: {
   title: string
   shortDescription: string
+  savedShortDescription?: string
   startDate: string
   endDate: string
   contributors: ContributorRow[]
 }): { unmet: string[]; focus: "title" | "shortDescription" | null } {
   const title = countGraphemes(values.title.trim())
   const titleOver = countGraphemes(values.title) > ACTIVITY_TITLE_MAX
-  const shortDesc = countGraphemes(values.shortDescription.trim())
+  const shortDescUnder =
+    shortDescriptionMinApplies(values.shortDescription, values.savedShortDescription) &&
+    countGraphemes(values.shortDescription.trim()) < ACTIVITY_SHORT_DESC_MIN
   const shortDescOver =
     countGraphemes(values.shortDescription) > ACTIVITY_SHORT_DESC_MAX
   const contributorsValid = values.contributors.every(
@@ -122,13 +139,13 @@ export function activityFormProblems(values: {
     !values.startDate || !values.endDate || values.startDate <= values.endDate
 
   const titleBad = title < ACTIVITY_TITLE_MIN || titleOver
-  const shortDescBad = shortDesc < ACTIVITY_SHORT_DESC_MIN || shortDescOver
+  const shortDescBad = shortDescUnder || shortDescOver
   const unmet = [
     title < ACTIVITY_TITLE_MIN &&
       `the title needs at least ${ACTIVITY_TITLE_MIN} characters`,
     titleOver &&
       `the title must be ${ACTIVITY_TITLE_MAX} characters or fewer`,
-    shortDesc < ACTIVITY_SHORT_DESC_MIN &&
+    shortDescUnder &&
       `the short description needs at least ${ACTIVITY_SHORT_DESC_MIN} characters`,
     shortDescOver &&
       `the short description must be ${ACTIVITY_SHORT_DESC_MAX} characters or fewer`,
@@ -158,6 +175,9 @@ export interface ActivityFormFieldsProps {
   shortDescription: string
   onShortDescriptionChange: (value: string) => void
   shortDescriptionRef?: RefObject<HTMLTextAreaElement | null>
+  /** Edit only: the published summary. Its minimum then applies only once
+   *  the summary has been changed (`shortDescriptionMinApplies`). */
+  savedShortDescription?: string
   /** Flag every under-minimum count, edited or not (after a save attempt).
    *  Otherwise a count only turns red once its field has been edited, so
    *  a saved record doesn't open with errors. */
@@ -208,6 +228,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
     shortDescription,
     onShortDescriptionChange,
     shortDescriptionRef,
+    savedShortDescription,
     showAllErrors = false,
     description,
     onDescriptionChange,
@@ -255,6 +276,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
   const shortDescUnder =
     (touched.shortDescription || showAllErrors) &&
     (shortDescTrimmed > 0 || showAllErrors) &&
+    shortDescriptionMinApplies(shortDescription, savedShortDescription) &&
     shortDescTrimmed < ACTIVITY_SHORT_DESC_MIN
 
   const datesValid = !startDate || !endDate || startDate <= endDate
@@ -492,6 +514,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
           contributors={contributors}
           setContributors={setContributors}
           selfDid={selfDid}
+          showAllErrors={showAllErrors}
         />
       </div>
     </article>
@@ -508,12 +531,27 @@ function ContributorsEditor({
   contributors,
   setContributors,
   selfDid,
+  showAllErrors,
 }: {
   contributors: ContributorRow[]
   setContributors: Dispatch<SetStateAction<ContributorRow[]>>
   selfDid: string | null
+  /** After a save attempt: every unrecognisable row shows its error. */
+  showAllErrors: boolean
 }) {
   const id = useId()
+  // Rows whose typed value was offered as final (blur, or Enter without a
+  // pick) and isn't a handle: they show the error until the next edit.
+  // Never while typing with suggestions open.
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set())
+  const setRowChecked = (key: string, on: boolean) =>
+    setChecked((prev) => {
+      if (prev.has(key) === on) return prev
+      const next = new Set(prev)
+      if (on) next.add(key)
+      else next.delete(key)
+      return next
+    })
   // "Add me" names whoever is publishing: the group while acting as one,
   // otherwise the signed-in account (handle preferred, DID as fallback).
   const { info: selfInfo } = useAuthorInfo(selfDid)
@@ -583,6 +621,9 @@ function ContributorsEditor({
           {contributors.map((c, idx) => {
             const n = idx + 1
             const identityValid = isContributorIdentityAcceptable(c.identity)
+            // The "not a handle" error waits for blur, Enter or a save.
+            const identityError =
+              !identityValid && (showAllErrors || checked.has(c.key))
             const weightValid = isContributorWeightAcceptable(c.weight)
             const normalized = normalizeIdentity(c.identity)
             const identityDuplicate =
@@ -617,11 +658,15 @@ function ContributorsEditor({
                   ) : (
                     <ContributorIdentityField
                       value={c.identity}
-                      onChange={(next) => update(c.key, { identity: next })}
+                      onChange={(next) => {
+                        setRowChecked(c.key, false)
+                        update(c.key, { identity: next })
+                      }}
                       onCommit={() => update(c.key, { picked: true })}
+                      onCheck={() => setRowChecked(c.key, true)}
                       ariaLabel={`Contributor ${n}: name or handle`}
                       idx={idx}
-                      invalid={!identityValid || identityDuplicate}
+                      invalid={identityError || identityDuplicate}
                       excludeIdentities={otherIdentities}
                     />
                   )}
@@ -669,9 +714,10 @@ function ContributorsEditor({
                     />
                   </div>
                 </div>
-                {!identityValid ? (
+                {identityError ? (
                   <p className="create-cert__field-error" role="alert">
-                    Use a handle like alice.bsky.social.
+                    Pick someone from the list, or type a full handle (like
+                    name.certified.app).
                   </p>
                 ) : identityDuplicate ? (
                   <p className="create-cert__field-error" role="alert">

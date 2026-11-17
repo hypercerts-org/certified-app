@@ -33,9 +33,10 @@ import { appendItemToList } from "@/lib/atproto/collection"
  * The Follow + Endorse action pair for someone else's profile, shown in
  * the profile header's actions (`<ProfileHeader>`).
  *
- * Renders nothing for own-profile views; a "Follow" that opens sign-in
- * when signed out; the live Follow + Endorse toggles otherwise. Returns
- * the buttons directly; the caller supplies the row wrapper.
+ * Renders nothing for own-profile views; "Follow" and "Endorse" that
+ * open sign-in when signed out; the live Follow + Endorse toggles
+ * otherwise. Returns the buttons directly; the caller supplies the row
+ * wrapper.
  *
  * Acting-as-group is honoured: when a group is active the writes route to
  * the group's repo and the button state tracks the group's follow /
@@ -61,19 +62,30 @@ export function FollowEndorseActions({ did }: { did: string }) {
   if (isOwnProfile) return null
 
   if (!isAuthenticated || !viewerDid || !actingDid) {
-    // Signed out: Follow asks you to sign in rather than sitting there
-    // disabled with no explanation. Disabled only while the session is
-    // still resolving.
+    // Signed out: Follow and Endorse ask you to sign in rather than
+    // sitting there disabled with no explanation (or Endorse not being
+    // there at all). Disabled only while the session is still resolving.
     return (
-      <Button
-        variant="primary"
-        size="sm"
-        disabled={authLoading}
-        onClick={openSignIn}
-      >
-        <UserPlus size={14} strokeWidth={1.75} aria-hidden />
-        Follow
-      </Button>
+      <>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={authLoading}
+          onClick={openSignIn}
+        >
+          <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+          Follow
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={authLoading}
+          onClick={openSignIn}
+        >
+          <ThumbsUp size={14} strokeWidth={1.75} aria-hidden />
+          Endorse
+        </Button>
+      </>
     )
   }
 
@@ -148,6 +160,9 @@ export function FollowButton({
   onUnfollowed,
 }: FollowButtonProps) {
   const [isWriting, setIsWriting] = useState(false)
+  // A failed write: the button keeps its state (it only flips once the
+  // write lands) and says so beside it, like Like does.
+  const [error, setError] = useState<string | null>(null)
   const disabled = isLoading || isWriting
   // The repo the follow record lives in — the group when delegating, the
   // viewer otherwise.
@@ -157,6 +172,7 @@ export function FollowButton({
     if (disabled) return
     const next = !isFollowing
     setIsWriting(true)
+    setError(null)
     try {
       if (next) {
         const result = await createFollow(viewerDid, subjectDid, { targetDid })
@@ -178,29 +194,43 @@ export function FollowButton({
       }
     } catch (err) {
       console.error("Follow toggle failed:", err)
+      setError(next ? "Couldn't follow. Try again." : "Couldn't unfollow. Try again.")
     } finally {
       setIsWriting(false)
     }
   }
 
   return (
-    <Button
-      variant={isFollowing ? "secondary" : "primary"}
-      size="sm"
-      onClick={handleClick}
-      disabled={disabled}
-      aria-pressed={isFollowing}
-      aria-label={
-        subjectName ? `${isFollowing ? "Following" : "Follow"} ${subjectName}` : undefined
-      }
-    >
-      {isFollowing ? (
-        <Check size={14} strokeWidth={1.75} aria-hidden />
-      ) : (
-        <UserPlus size={14} strokeWidth={1.75} aria-hidden />
-      )}
-      {isFollowing ? "Following" : "Follow"}
-    </Button>
+    <>
+      <Button
+        variant={isFollowing ? "secondary" : "primary"}
+        size="sm"
+        onClick={handleClick}
+        disabled={disabled}
+        aria-pressed={isFollowing}
+        aria-label={
+          subjectName ? `${isFollowing ? "Following" : "Follow"} ${subjectName}` : undefined
+        }
+      >
+        {isFollowing ? (
+          <Check size={14} strokeWidth={1.75} aria-hidden />
+        ) : (
+          <UserPlus size={14} strokeWidth={1.75} aria-hidden />
+        )}
+        {isFollowing ? "Following" : "Follow"}
+      </Button>
+      {error ? <ActionError message={error} /> : null}
+    </>
+  )
+}
+
+/** A short line saying a Follow or Endorse write didn't go through. In the
+ *  profile header's actions it takes a line of its own under the buttons. */
+function ActionError({ message }: { message: string }) {
+  return (
+    <span className="profile-action-error" role="alert">
+      {message}
+    </span>
   )
 }
 
@@ -244,6 +274,8 @@ export function EndorseButton({
   const [isWriting, setIsWriting] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const [reasonOpen, setReasonOpen] = useState(false)
+  // A failed revoke: the button goes back to "Endorsed" and says so.
+  const [revokeError, setRevokeError] = useState<string | null>(null)
   // Optimistic flip — the hook's `endorsements` refetch may lag the PDS
   // write by a beat, so we override locally until it catches up.
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
@@ -264,6 +296,7 @@ export function EndorseButton({
 
   const handleEndorseClick = () => {
     if (disabled) return
+    setRevokeError(null)
     setReasonOpen(true)
   }
 
@@ -303,6 +336,7 @@ export function EndorseButton({
     if (!existing || disabled) return
     setOptimistic(false)
     setIsWriting(true)
+    setRevokeError(null)
     try {
       await deleteEndorsementAward(viewerDid, existing.rkey, { targetDid })
       removeOptimisticReceivedEndorsement(subjectDid, existing.uri)
@@ -310,7 +344,10 @@ export function EndorseButton({
       setConfirmRevoke(false)
     } catch (err) {
       console.error("Revoke endorsement failed:", err)
+      // Back to "Endorsed", the dialog closed, and the reason beside it.
       setOptimistic(null)
+      setConfirmRevoke(false)
+      setRevokeError("Couldn't revoke the endorsement. Try again.")
     } finally {
       setIsWriting(false)
     }
@@ -332,7 +369,14 @@ export function EndorseButton({
       <Button
         variant="secondary"
         size="sm"
-        onClick={isEndorsed ? () => setConfirmRevoke(true) : handleEndorseClick}
+        onClick={
+          isEndorsed
+            ? () => {
+                setRevokeError(null)
+                setConfirmRevoke(true)
+              }
+            : handleEndorseClick
+        }
         disabled={disabled}
         aria-pressed={isEndorsed}
       >
@@ -343,6 +387,7 @@ export function EndorseButton({
         )}
         {isEndorsed ? "Endorsed" : "Endorse"}
       </Button>
+      {revokeError ? <ActionError message={revokeError} /> : null}
       {reasonOpen ? (
         <EndorseReasonModal
           subjectLabel={subjectLabel}

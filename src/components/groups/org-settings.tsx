@@ -113,7 +113,7 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "members",
-    label: "Members & roles",
+    label: "Members and roles",
     icon: Users,
     description: "Who can act for this group, and what each person can do.",
   },
@@ -284,7 +284,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       setRemoved(true)
     } catch (err) {
       setDestroyError(
-        err instanceof Error ? err.message : "Failed to remove group",
+        err instanceof Error
+          ? err.message
+          : "Couldn't turn the group back into a regular account.",
       )
       setConfirmDestroy(false)
     } finally {
@@ -636,7 +638,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
                     password): you enter the group's email and reset against it. */}
                 <SettingsRow
                   label="Password"
-                  description="Reset the group's password using its sign-in email. Enter the group's own email (this changes the password of whichever account the email belongs to); you'll need access to that mailbox."
+                  description="Set a new password for the group with a code sent to its sign-in email, so you need access to that mailbox. Enter the group's email, not your own: the reset applies to whichever account the address belongs to."
                 >
                   <GroupPasswordReset groupDid={groupDid} />
                 </SettingsRow>
@@ -1068,21 +1070,22 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       // Danger zone — owner-only (gated by `visibleCategories` above).
       case "danger":
         return (
+          // Nothing is deleted, so no trash icon or delete wording: named
+          // for what it does, and not styled as destructive.
           <SettingsRow
-            label="Remove group"
-            description="Turn this group back into a regular account. The group features go away; the account and everything it published stay, and you can make it a group again later."
+            label="Turn back into a regular account"
+            description="Members can no longer act for it and the group features go away. The account and everything it published stay, and you can make it a group again later."
           >
             <div className="flex flex-col items-start gap-3">
               {destroyError && <ErrorMessage message={destroyError} />}
               <Button
-                variant="destructive"
+                variant="secondary"
                 size="sm"
                 onClick={() => setConfirmDestroy(true)}
                 loading={destroying}
                 disabled={destroying}
               >
-                <Trash2 size={14} aria-hidden />
-                Remove group
+                Turn back into a regular account
               </Button>
             </div>
           </SettingsRow>
@@ -1154,8 +1157,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       {confirmDestroy ? (
         <ConfirmDialog
           title={`Turn @${org.handle} back into a regular account?`}
-          message="The group features go away. The account and everything it published stay."
-          confirmLabel="Remove group"
+          message="Members can no longer act for it and the group features go away. The account, its handle and everything it published stay, and you can make it a group again later."
+          confirmLabel="Turn back"
+          confirmVariant="primary"
           confirmPhrase={org.handle}
           isConfirming={destroying}
           onCancel={() => setConfirmDestroy(false)}

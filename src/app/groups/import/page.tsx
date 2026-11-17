@@ -6,6 +6,7 @@ import Link from "next/link"
 import { KeyRound, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
+import { useActAsNewGroup } from "@/lib/groups/use-act-as-new-group"
 import { usePageTitle } from "@/lib/navbar-context"
 import { importGroup, RegisterGroupError } from "@/lib/groups/api"
 import { authFetch } from "@/lib/auth/fetch"
@@ -38,6 +39,7 @@ export default function ImportGroupPage() {
   const router = useRouter()
   const { did, isLoading: authLoading, openSignIn } = useAuth()
   const { refetchOrgs } = useOrg()
+  const actAsNewGroup = useActAsNewGroup()
 
   const [handle, setHandle] = useState<string | null>(null)
   const [appPassword, setAppPassword] = useState("")
@@ -68,8 +70,10 @@ export default function ImportGroupPage() {
       setError(null)
       try {
         await importGroup(appPassword.trim())
+        // The group is the account you're signed in as (`did`): open its
+        // Overview, saying it is a group now.
         await refetchOrgs()
-        router.push("/home")
+        actAsNewGroup({ groupDid: did, name: handle ? `@${handle}` : "your account" })
       } catch (err) {
         if (err instanceof RegisterGroupError && err.code === "GroupAlreadyRegistered") {
           setError("This account is already registered as a group.")
@@ -85,13 +89,13 @@ export default function ImportGroupPage() {
         setIsImporting(false)
       }
     },
-    [did, appPassword, isImporting, refetchOrgs, router],
+    [did, appPassword, isImporting, refetchOrgs, actAsNewGroup, handle],
   )
 
   // The page's one header (DESIGN.md §9.13), shared by every state below.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/home", label: "Workspace" }}
+      back={{ href: "/records?kind=groups", label: "Groups" }}
       title="Turn an account into a group"
       description="Keep the account and its records, and manage it as a group."
     />

@@ -18,11 +18,14 @@
    settings lists (members, activity log) and the group-result modal.
    ======================================================================== */
 
-/* The sections' tab strip: under the title, its hairline across the page.
-   On phones it runs to the screen's edges and scrolls sideways, with a
-   fade where more tabs are. */
+/* The sections' tab strip: under the title, its hairline as wide as the
+   open section. On phones it runs to the screen's edges and scrolls
+   sideways, with a fade where more tabs are. */
 .settings-tabs {
   position: relative;
+  /* The section's reading width (.settings-section), so the strip's
+     hairline ends where the rows' hairlines do. */
+  max-width: 48rem;
   margin-bottom: 24px;
 }
 
@@ -109,6 +112,17 @@
 
 .settings-row__control {
   min-width: 0;
+}
+
+/* What a disclosure row (Appearance's "Experimental styles") opens: its
+   blocks join the section's rows as if they were siblings, hairline
+   included. */
+.settings-disclosure {
+  display: contents;
+}
+
+.settings-disclosure > .settings-block:first-child {
+  border-top: 1px solid var(--border-subtle);
 }
 
 .settings-block {

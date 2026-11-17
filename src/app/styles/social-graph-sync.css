@@ -12,7 +12,17 @@
   gap: 16px;
 }
 
-/* The three counts are a <StatRow> (ui/stat-row.tsx); no tile chrome. */
+/* The three counts are a <StatRow> (ui/stat-row.tsx); no tile chrome.
+   On phones the three would wrap 2 + 1 at 390px; three equal columns keep
+   them on one row, each label wrapping under its number. */
+@media (max-width: 799px) {
+  /* Two classes to outrank the StatRow's flex and gap utilities. */
+  .social-graph-sync .social-graph-sync__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+}
 
 /* ---- Status text + actions row ---- */
 
@@ -42,6 +52,14 @@
   font-size: 0.75rem;
   color: var(--fg-muted);
   line-height: 1.4;
+}
+
+/* Why a Sync button is off, one line each, under the buttons. */
+.social-graph-sync__reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: -8px;
 }
 
 /* ============== Sync flow (inline panel) — choose + select ============== */

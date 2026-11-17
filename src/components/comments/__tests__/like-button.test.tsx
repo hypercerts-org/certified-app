@@ -23,15 +23,21 @@ const fetchCounts = vi.fn()
 const fetchOwn = vi.fn()
 const like = vi.fn()
 const unlike = vi.fn()
-vi.mock("@/lib/atproto/likes", () => ({
-  fetchLikesForSubjects: (...a: unknown[]) => fetchCounts(...a),
-  fetchOwnLikes: (...a: unknown[]) => fetchOwn(...a),
-  likeRecord: (...a: unknown[]) => like(...a),
-  unlikeRecord: (...a: unknown[]) => unlike(...a),
-}))
+vi.mock("@/lib/atproto/likes", async () => {
+  const real = await vi.importActual<typeof import("@/lib/atproto/likes")>("@/lib/atproto/likes")
+  return {
+    likeErrorMessage: real.likeErrorMessage,
+    fetchLikesForSubjects: (...a: unknown[]) => fetchCounts(...a),
+    fetchOwnLikes: (...a: unknown[]) => fetchOwn(...a),
+    likeRecord: (...a: unknown[]) => like(...a),
+    unlikeRecord: (...a: unknown[]) => unlike(...a),
+  }
+})
 
 import LikeButton from "../like-button"
+import { ToastProvider } from "@/components/ui/toast"
 import { __resetLikesStore } from "@/hooks/use-likes"
+import { likeErrorMessage } from "@/lib/atproto/likes"
 
 const SUBJECT = { uri: "at://did:plc:org/org.hypercerts.collection/p1", cid: "pc" }
 
@@ -94,6 +100,42 @@ describe("LikeButton", () => {
     expect(button.getAttribute("aria-pressed")).toBe("false")
   })
 
+  it("in the app, says a failed like in an error toast and keeps the row as it was", async () => {
+    counts([])
+    // A group route or the PDS can answer with a bare code.
+    like.mockRejectedValue(new Error("NotFound"))
+    const { container } = render(
+      <ToastProvider>
+        <LikeButton subject={SUBJECT} subjectKind="activity" />
+      </ToastProvider>,
+    )
+    const button = await screen.findByRole("button", { name: "Like" })
+    fireEvent.click(button)
+    const toast = await screen.findByRole("alert")
+    expect(toast.textContent).toContain("Couldn't like it")
+    expect(toast.textContent).not.toContain("NotFound")
+    // Rolled back, and nothing new in the action row.
+    expect(button.getAttribute("aria-pressed")).toBe("false")
+    expect(button.textContent).toContain("Like")
+    expect(container.querySelector(".like-button__error")).toBeNull()
+  })
+
+  it("says a failed unlike as a failed unlike, and puts the like back", async () => {
+    counts(["did:plc:me"])
+    fetchOwn.mockResolvedValue(new Map([[SUBJECT.uri, "at://did:plc:me/app.certified.feed.like/l1"]]))
+    unlike.mockRejectedValue(new Error("Forbidden"))
+    render(
+      <ToastProvider>
+        <LikeButton subject={SUBJECT} subjectKind="activity" />
+      </ToastProvider>,
+    )
+    const button = await screen.findByRole("button", { name: "Like" })
+    await waitFor(() => expect(button.getAttribute("aria-pressed")).toBe("true"))
+    fireEvent.click(button)
+    expect((await screen.findByRole("alert")).textContent).toContain("Couldn't remove the like")
+    await waitFor(() => expect(button.getAttribute("aria-pressed")).toBe("true"))
+  })
+
   it("without counts from the indexer still likes, with no number", async () => {
     counts(null, false)
     render(<LikeButton variant="header" subject={SUBJECT} subjectKind="project" />)
@@ -118,5 +160,23 @@ describe("LikeButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Like" }))
     expect(openSignInModal).toHaveBeenCalled()
     expect(like).not.toHaveBeenCalled()
+  })
+})
+
+describe("likeErrorMessage", () => {
+  const FALLBACK = "Couldn't like it"
+  it("never shows a bare error code or HTTP reason", () => {
+    expect(likeErrorMessage(new Error("NotFound"), FALLBACK)).toBe(FALLBACK)
+    expect(likeErrorMessage(new Error("InvalidRequest"), FALLBACK)).toBe(FALLBACK)
+    expect(likeErrorMessage(new Error("Not found"), FALLBACK)).toBe(FALLBACK)
+    expect(likeErrorMessage(new Error(""), FALLBACK)).toBe(FALLBACK)
+    expect(likeErrorMessage("oops", FALLBACK)).toBe(FALLBACK)
+  })
+
+  it("keeps a sentence written for people, but not protocol words", () => {
+    expect(
+      likeErrorMessage(new Error("Your session has expired. Sign in again to continue."), FALLBACK),
+    ).toBe("Your session has expired. Sign in again to continue.")
+    expect(likeErrorMessage(new Error("PDS unreachable"), FALLBACK)).toBe(FALLBACK)
   })
 })

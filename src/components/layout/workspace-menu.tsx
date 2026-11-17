@@ -48,9 +48,10 @@ export function useWorkspaceState() {
 /**
  * Switch who you act as, **in place**: you stay on the page you're on (the
  * Feed and Explore switch to the new account's network, the Overview to
- * its account), unless the page only works for your personal account. The
- * Records sections and the group pages are personal-only, so picking a
- * group there goes to its Overview (`targetAfterActorSwitch`). Switching
+ * its account), unless the page only works for your personal account: the
+ * group pages are personal-only, so picking a group there goes to its
+ * Overview (`targetAfterActorSwitch`). The Records sections stay: acting
+ * as a group, each says where that group's records are. Switching
  * changes what you create, follow, endorse, like and comment as, and what
  * the Feed and Explore show.
  */
@@ -62,8 +63,7 @@ export function useOpenWorkspace() {
   return (next: Group | null) => {
     const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
     if (!isCurrent) switchOrg(next)
-    const target =
-      next && pathname?.startsWith("/records") ? "/home" : targetAfterActorSwitch(pathname, next)
+    const target = targetAfterActorSwitch(pathname, next)
     if (target !== pathname) router.push(target)
   }
 }

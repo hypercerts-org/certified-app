@@ -197,7 +197,7 @@ export default function CreateProjectPage() {
   // signed-out states so the page doesn't jump when the session settles.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/records", label: "Workspace" }}
+      back={{ href: "/records", label: "Projects and activities" }}
       title="New project"
       description="Group related activities under one project."
     />

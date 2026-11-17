@@ -161,9 +161,10 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* Right under the tab strip, its line is the list's top edge: no second
-   hairline 16px below it. */
-.records-pane__tab-body > .records-list:first-child {
+/* Right under the tab strip or a head row, their line is the list's top
+   edge: no second hairline just below it. */
+.records-pane__tab-body > .records-list:first-child,
+.records-pane__headrow + .records-list {
   border-top: 0;
 }
 

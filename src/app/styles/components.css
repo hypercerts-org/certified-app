@@ -1375,6 +1375,19 @@
   background: var(--color-white);
 }
 
+/* On an empty slot ("Add image"): nothing under the pill, so it is a
+   plain control in the primary button's theme-aware colours. The fixed
+   dark scrim, made to sit over a photo, all but vanished on the sunken
+   slot in dark mode. */
+.image-edit-overlay__btn--empty {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+
+.image-edit-overlay__btn--empty:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
 /* Visually-hidden file input. `tabIndex={-1}` keeps it out of the
    tab order so the only keyboard-reachable affordance is the
    Change pill. */

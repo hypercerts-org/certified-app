@@ -122,4 +122,39 @@ describe("AccountListRow", () => {
     expect(handle?.textContent).not.toContain("@")
     expect(container.querySelector(".cert-list-row__meta")).toBeNull()
   })
+
+  it("marks the row as an account row (its own short phone form)", () => {
+    const { container } = render(<AccountListRow actor={actor()} />)
+    expect(
+      container.querySelector("article")?.classList.contains("cert-list-row--account"),
+    ).toBe(true)
+  })
+
+  it("shows a made-up handle muted, as an ID, never as the name", () => {
+    author.info = { did: DID, handle: "12gkq0.certified.one", displayName: null, avatarUrl: null }
+    const { container } = render(<AccountListRow actor={actor({ displayName: null })} />)
+    const handle = container.querySelector(".cert-list-row__handle")
+    expect(handle?.classList.contains("cert-list-row__handle--machine")).toBe(true)
+    expect(handle?.textContent).toBe("@12gkq0.certified.one")
+    // The title is the muted fallback, not the handle.
+    const title = screen.getByRole("heading", { level: 3 })
+    expect(title.textContent).toBe("Unnamed account")
+    expect(title.classList.contains("cert-list-row__title--muted")).toBe(true)
+  })
+
+  it("keeps a chosen handle in the normal handle style", () => {
+    const { container } = render(<AccountListRow actor={actor()} />)
+    const handle = container.querySelector(".cert-list-row__handle")
+    expect(handle?.classList.contains("cert-list-row__handle--machine")).toBe(false)
+    expect(
+      screen.getByRole("heading", { level: 3 }).classList.contains("cert-list-row__title--muted"),
+    ).toBe(false)
+  })
+
+  it("draws a plain avatar for an unnamed account, no \"?\"", () => {
+    author.info = { did: DID, handle: "12gkq0.certified.one", displayName: null, avatarUrl: null }
+    const { container } = render(<AccountListRow actor={actor({ displayName: null })} />)
+    const avatar = container.querySelector('[data-centerpiece="avatar"]')
+    expect(avatar?.textContent).toBe("")
+  })
 })

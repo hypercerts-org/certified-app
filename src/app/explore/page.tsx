@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
+import { redirect } from "next/navigation"
 import Explore from "@/components/explore-page/explore"
 
 export const metadata: Metadata = {
@@ -53,7 +54,16 @@ export const metadata: Metadata = {
  */
 export const dynamic = "force-dynamic"
 
-export default function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  // Funding receipts left Explore: they have one place, Network →
+  // Funding. An old `?show=funding` link lands there.
+  const { show } = await searchParams
+  if ((Array.isArray(show) ? show[0] : show) === "funding") redirect("/funding")
+
   // Suspense boundary still required by Next 16 because <Explore>
   // reads useSearchParams() at the top level. Without it, even dynamic
   // rendering bails per

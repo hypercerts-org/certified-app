@@ -1,8 +1,8 @@
 "use client"
 
-import React from "react"
+import React, { useId, useState } from "react"
 import dynamic from "next/dynamic"
-import { CircleUser, Key, Palette, Share2, Users } from "lucide-react"
+import { ChevronDown, CircleUser, Key, Palette, Share2, Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useSession } from "@/hooks/use-session"
 import { useOrg } from "@/lib/groups/org-context"
@@ -190,18 +190,7 @@ export default function SettingsPanel() {
             <SettingsRow label="Theme" description="Light, dark, or follow your device.">
               <ThemeToggle variant="cards" />
             </SettingsRow>
-            <SettingsBlock
-              title="Style"
-              description="Experimental. Try a design direction for Certified on this device: colours, typefaces and corners change everywhere, in light and dark. Only you see it."
-            >
-              <LookPicker />
-            </SettingsBlock>
-            <SettingsBlock
-              title="Make a style from a website"
-              description="Experimental. Certified's server opens the website to read its CSS and take screenshots, and Claude makes a style for Certified from its colours, typefaces and look, kept in this browser with the others. It runs on your own Claude API key, so Anthropic bills your account for each style."
-            >
-              <CustomLookMaker />
-            </SettingsBlock>
+            <ExperimentalStyles />
           </LookRunProvider>
         )
       case "social-graph":
@@ -231,5 +220,59 @@ export default function SettingsPanel() {
     >
       {renderBody(selected.key)}
     </SettingsLayout>
+  )
+}
+
+/**
+ * The experimental styles (the style gallery and the maker, with its Claude
+ * API key) behind one closed disclosure: most people only need the theme,
+ * and an API key field shouldn't greet everyone. Closed on every visit; a
+ * style being made keeps going while it's closed (the run lives in
+ * `LookRunProvider`) and shows its progress again on opening.
+ */
+function ExperimentalStyles() {
+  const [open, setOpen] = useState(false)
+  const regionId = useId()
+  return (
+    <>
+      <SettingsRow
+        label="Experimental styles"
+        description="Try a different look for Certified on this device: other colours, typefaces and corners. Only you see it."
+      >
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-expanded={open}
+          aria-controls={regionId}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? "Hide styles" : "Show styles"}
+          <ChevronDown
+            size={16}
+            strokeWidth={1.75}
+            aria-hidden
+            className={`transition-transform duration-fast motion-reduce:transition-none ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </Button>
+      </SettingsRow>
+      {open ? (
+        <div id={regionId} className="settings-disclosure">
+          <SettingsBlock
+            title="Style"
+            description="Colours, typefaces and corners change everywhere, in light and dark."
+          >
+            <LookPicker />
+          </SettingsBlock>
+          <SettingsBlock
+            title="Make a style from a website"
+            description="Certified's server opens the website to read its CSS and take screenshots, and Claude makes a style for Certified from its colours, typefaces and look, kept in this browser with the others. It runs on your own Claude API key, so Anthropic bills your account for each style."
+          >
+            <CustomLookMaker />
+          </SettingsBlock>
+        </div>
+      ) : null}
+    </>
   )
 }

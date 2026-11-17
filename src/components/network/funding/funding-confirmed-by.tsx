@@ -10,7 +10,8 @@ import FundingSeal from "./funding-seal"
 /**
  * The "Confirmed by" switch: one chip per bucket, each with its mark and how
  * many receipts it holds, so a visitor sees at rest that there is more to
- * turn on. Under it, a sentence that says what is showing.
+ * turn on. Under it, a sentence that says what is showing. In the page from
+ * 800px; in the Filters sheet on phones (funding-page.tsx).
  */
 export default function FundingConfirmedBy({
   roles,
@@ -32,9 +33,7 @@ export default function FundingConfirmedBy({
   return (
     <div className="funding-confirmed">
       <div className="funding-confirmed__row">
-        <span className="funding-confirmed__label" id="funding-confirmed-label">
-          Confirmed by
-        </span>
+        <span className="funding-confirmed__label">Confirmed by</span>
         <div className="funding-confirmed__scroll">
           <ToggleGroup
             aria-label="Confirmed by"

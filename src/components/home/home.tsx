@@ -29,15 +29,18 @@ import {
  * own page, /feed.
  *
  *   ≥ 1100px                                      < 1100px (one column)
- *   ┌──────┐ ┌──────────────────┐ ┌───────────┐   side list (pills)
- *   │ side │ │ Your records     │ │ avatar,   │   ID (box): avatar, name,
- *   │ list │ │ Endorsements and │ │ name, bio │     bio, website; ID
+ *   ┌──────┐ ┌──────────────────┐ ┌───────────┐   Your records
+ *   │ side │ │ Your records     │ │ avatar,   │   Endorsements and
+ *   │ list │ │ Endorsements and │ │ name, bio │     followers
  *   │      │ │   followers      │ │ ID        │   Your groups (box)
- *   │      │ │ Apps             │ └───────────┘   Your records
- *   │      │ │                  │ ┌───────────┐   Endorsements and
- *   └──────┘ └──────────────────┘ │ Your      │     followers
- *                                 │ groups    │   Apps
+ *   │      │ │ Apps             │ └───────────┘   ID (box): avatar, name,
+ *   │      │ │                  │ ┌───────────┐     bio, website; ID
+ *   └──────┘ └──────────────────┘ │ Your      │   Apps
+ *                                 │ groups    │
  *                                 └───────────┘
+ *
+ * Below 1100px what the account holds comes first, so New activity and
+ * the counts are in view on a phone; the boxes follow, then Apps.
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the Workspace menu. "Your groups" is
@@ -118,44 +121,15 @@ function HomeAccount({
   const identity = { did, profile, avatarUrl, handle, isLoading }
 
   return (
-    // No frame header: the account heads the ID box. The content opens
-    // with "Your records" (a section heading), so it takes the frame's
-    // offset and sits level with the first side-list label.
+    // The content opens with "Your records" (a section heading), so it
+    // takes the frame's offset and sits level with the first side-list
+    // label.
     <WorkspaceFrame>
-      {/* DOM order is the phone order: the ID and Your groups boxes, the
-          sections (records, from others), Apps. From 1100px a grid puts
-          the two boxes in a column on the right, its top level with the
-          sections (home.css). */}
+      {/* DOM order is the phone order: the sections (records, from
+          others), Your groups and the ID boxes, Apps. From 1100px a grid
+          puts the two boxes in a column on the right, its top level with
+          the sections, the ID first (home.css). */}
       <div className="home__layout">
-        {/* White boxes, so the ID and the groups stand out from the open
-            sections. */}
-        <div className="home__side">
-          {/* The ID card, the account's identity on top: a centerpiece
-              every style can redraw (looks.css); data-did feeds Banknote's
-              microtext. */}
-          <Card
-            unpadded
-            className="home__box"
-            data-centerpiece="id"
-            data-did={did}
-            data-tour="home-account"
-          >
-            <HomeAccountIdentity identity={identity} activeGroup={activeGroup} />
-            <HomeIdSection
-              identity={identity}
-              isGroup={isGroup}
-              canEditHandle={
-                !activeGroup || activeGroup.role === "owner" || activeGroup.role === "admin"
-              }
-            />
-          </Card>
-          {isGroup ? null : (
-            <Card unpadded className="home__box">
-              <HomeGroups />
-            </Card>
-          )}
-        </div>
-
         <div className="home__main">
           <HomeRecords
             did={did}
@@ -171,6 +145,35 @@ function HomeAccount({
             counts={counts}
             countsLoading={countsLoading}
           />
+        </div>
+
+        {/* White boxes, so the groups and the ID stand out from the open
+            sections. */}
+        <div className="home__side">
+          {isGroup ? null : (
+            <Card unpadded className="home__box">
+              <HomeGroups />
+            </Card>
+          )}
+          {/* The ID card, the account's identity: a centerpiece every
+              style can redraw (looks.css); data-did feeds Banknote's
+              microtext. On top of the side column from 1100px. */}
+          <Card
+            unpadded
+            className="home__box home__box--id"
+            data-centerpiece="id"
+            data-did={did}
+            data-tour="home-account"
+          >
+            <HomeAccountIdentity identity={identity} activeGroup={activeGroup} />
+            <HomeIdSection
+              identity={identity}
+              isGroup={isGroup}
+              canEditHandle={
+                !activeGroup || activeGroup.role === "owner" || activeGroup.role === "admin"
+              }
+            />
+          </Card>
         </div>
 
         <div className="home__apps">

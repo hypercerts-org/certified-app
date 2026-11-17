@@ -66,6 +66,7 @@ export default function GivenEndorsements({
   isLoading,
   error,
   onRetry,
+  hideEmpty = false,
 }: {
   did: string
   endorsements: GivenEndorsement[]
@@ -73,6 +74,8 @@ export default function GivenEndorsements({
   error: string | null
   /** Loads them again; also what a revoke calls once it is written. */
   onRetry: () => void | Promise<void>
+  /** No empty state (while the Endorse someone panel is open above). */
+  hideEmpty?: boolean
 }) {
   if (isLoading && endorsements.length === 0) return <RowsSkeleton shape="circle" rows={4} />
   if (error && endorsements.length === 0) {
@@ -86,6 +89,7 @@ export default function GivenEndorsements({
   }
   // No button of its own: "Endorse someone" is in the pane's header.
   if (endorsements.length === 0) {
+    if (hideEmpty) return null
     return (
       <EmptyState
         icon={ThumbsUp}

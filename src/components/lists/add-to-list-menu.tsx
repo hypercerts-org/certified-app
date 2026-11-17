@@ -128,7 +128,7 @@ export default function AddToListMenu({
     return () => window.clearTimeout(t)
   }, [anyCopied])
 
-  // Shown to logged-out viewers too: "Copy AT URI" works without auth,
+  // Shown to logged-out viewers too: "Copy Permanent ID" works without auth,
   // and "Add to list" funnels them to sign-in. Only the URI→type guard
   // can hide the menu (defensive against a malformed strongRef).
   if (!itemUriMatchesType(targetUri, targetType)) return null
@@ -208,7 +208,8 @@ export default function AddToListMenu({
           </PopoverItem>
           <PopoverItem onClick={() => void copyUri(targetUri)}>
             <Copy size={14} strokeWidth={1.75} aria-hidden />
-            {uriCopied ? "Copied" : "Copy AT URI"}
+            {/* The record's at:// address, named as on the profile's menu. */}
+            {uriCopied ? "Permanent ID copied" : "Copy Permanent ID"}
           </PopoverItem>
         </PopoverContent>
       </Popover>

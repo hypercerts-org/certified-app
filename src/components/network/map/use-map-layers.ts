@@ -21,7 +21,24 @@ const isDefault = (s: ReadonlySet<Layer>) => s.size === DEFAULT_LAYERS.length &&
  * written straight to history with a null state, as the funding chips do, so
  * Next.js keeps its search params in step without a navigation.
  */
-export function useMapLayers(): { layers: ReadonlySet<Layer>; toggle: (layer: Layer) => void } {
+export interface MapLayers {
+  layers: ReadonlySet<Layer>
+  toggle: (layer: Layer) => void
+  /** Back to the default layers (activities and projects). */
+  reset: () => void
+  /** How many layers differ from the default: the phone Filters count. */
+  changed: number
+}
+
+function writeAddress(next: ReadonlySet<Layer>): void {
+  const search = new URLSearchParams(window.location.search)
+  if (isDefault(next)) search.delete(KEY)
+  else search.set(KEY, LAYERS.filter((l) => next.has(l)).join(","))
+  const qs = search.toString()
+  window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+}
+
+export function useMapLayers(): MapLayers {
   const params = useSearchParams()
   const [layers, setLayers] = useState<Set<Layer>>(() => parse(params.get(KEY)))
 
@@ -30,14 +47,18 @@ export function useMapLayers(): { layers: ReadonlySet<Layer>; toggle: (layer: La
       const next = new Set(prev)
       if (next.has(layer)) next.delete(layer)
       else next.add(layer)
-      const search = new URLSearchParams(window.location.search)
-      if (isDefault(next)) search.delete(KEY)
-      else search.set(KEY, LAYERS.filter((l) => next.has(l)).join(","))
-      const qs = search.toString()
-      window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+      writeAddress(next)
       return next
     })
   }, [])
 
-  return { layers, toggle }
+  const reset = useCallback(() => {
+    const next = new Set(DEFAULT_LAYERS)
+    writeAddress(next)
+    setLayers(next)
+  }, [])
+
+  const changed = LAYERS.filter((l) => layers.has(l) !== DEFAULT_LAYERS.includes(l)).length
+
+  return { layers, toggle, reset, changed }
 }
