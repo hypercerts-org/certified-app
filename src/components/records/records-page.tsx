@@ -37,11 +37,10 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * endorsements given and received, followers and who they follow, lists,
  * and their groups. `?kind=` picks the section; Endorsements, Followers
  * and Lists have tabs (`&tab=`). The Workspace frame (`WorkspaceShell`
- * and `WorkspaceFrame`) carries the side list, shared with the Overview
- * (`/home`).
+ * and `WorkspaceFrame`), shared with the Overview (`/home`), puts the
+ * section's title over it; the navigation lists the sections.
  *
- * The side list names the page (the frame's h1 is for screen readers
- * only), and each section carries its own create action in its tab row
+ * Each section carries its own create action in its tab row
  * (New activity and New project, Endorse someone, Find accounts, New
  * list, New group); the top bar's New is the global one.
  *

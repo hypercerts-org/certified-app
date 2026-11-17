@@ -81,6 +81,16 @@ describe("BottomNav (the phone pill)", () => {
     expect(screen.getByRole("menuitem", { name: "Followers" })).toHaveAttribute("aria-current", "page")
   })
 
+  it("dims the page behind an open menu, and lifts it when the menu closes", () => {
+    render(<BottomNav />)
+    const scrims = () => document.querySelectorAll(".pill-scrim[data-open]")
+    expect(scrims()).toHaveLength(0)
+    fireEvent.click(screen.getByRole("button", { name: "Network" }))
+    expect(scrims()).toHaveLength(1)
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(scrims()).toHaveLength(0)
+  })
+
   it("never shows an avatar: who you act as is the top bar's account control", () => {
     const { container } = render(<BottomNav />)
     expect(container.querySelector(".acting-avatar")).toBeNull()

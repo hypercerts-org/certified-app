@@ -10,7 +10,6 @@ import { profileEditUrl } from "@/components/profile/profile-edit-url"
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
 import ImportAsGroupSection from "@/components/settings/import-as-group-section"
 import AppPasswordsSection from "@/components/settings/app-passwords-section"
-import SettingsFor from "@/components/settings/settings-for"
 import SettingsLayout, {
   SettingsBlock,
   SettingsRow,
@@ -223,9 +222,6 @@ export default function SettingsPanel() {
 
   return (
     <SettingsLayout
-      // "Settings for [you]" says whose settings these are; no second line
-      // repeating it.
-      titleAside={<SettingsFor account={null} />}
       navLabel="Settings sections"
       sections={SECTIONS}
       current={selected.key}

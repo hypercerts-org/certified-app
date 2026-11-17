@@ -99,6 +99,13 @@ describe("AppSidebar", () => {
       "Funding",
       "Apps",
     ])
+    // Each group under a heading, Apps too.
+    expect(
+      Array.from(full(container).querySelectorAll(".app-sidebar__group-label")).map((l) => l.textContent),
+    ).toEqual(["Workspace", "Network", "Ecosystem"])
+    expect(within(full(container)).getByRole("list", { name: "Ecosystem" })).toContainElement(
+      within(full(container)).getByRole("link", { name: "Apps" }),
+    )
     expect(within(full(container)).getByRole("link", { name: "Feed" })).toHaveAttribute("aria-current", "page")
   })
 
@@ -113,7 +120,24 @@ describe("AppSidebar", () => {
     state.search = "kind=lists"
     const { container } = render(<AppSidebar />)
     expect(within(full(container)).getByRole("link", { name: "Lists" })).toHaveAttribute("aria-current", "page")
-    expect(within(rail(container)).getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
+    expect(within(rail(container)).getByRole("button", { name: "Workspace" })).toHaveAttribute("data-current")
+  })
+
+  it("opens the Workspace's sections from the rail as a menu, as Network does its pages", () => {
+    state.pathname = "/records"
+    state.search = "kind=lists"
+    const { container } = render(<AppSidebar />)
+    fireEvent.click(within(rail(container)).getByRole("button", { name: "Workspace" }))
+    const menu = screen.getByRole("menu", { name: "Workspace" })
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "Overview",
+      "Projects and activities",
+      "Endorsements",
+      "Followers",
+      "Lists",
+      "Groups",
+    ])
+    expect(within(menu).getByRole("menuitem", { name: "Lists" })).toHaveAttribute("aria-current", "page")
   })
 
   it("opens the Network's pages from the rail as a menu", () => {

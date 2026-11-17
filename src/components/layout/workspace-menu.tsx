@@ -7,6 +7,7 @@ import { Check, FolderOpen, Settings } from "lucide-react"
 import Button from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
+import PillMenuScrim from "./pill-menu-scrim"
 import { useOrg } from "@/lib/groups/org-context"
 import { targetAfterActorSwitch } from "@/lib/groups/navigation"
 import type { Group } from "@/lib/groups/types"
@@ -154,39 +155,57 @@ export function WorkspaceRow({
  *  checked. */
 function WorkspaceSectionItems({
   current,
+  touch,
   onSelect,
 }: {
   current: WorkspaceSection | null
+  touch: boolean
   onSelect: () => void
 }) {
   return (
     <>
-      {WORKSPACE_SECTIONS.map(({ key, label, href, icon: Icon }) => (
-        <Link
-          key={key}
-          href={href}
-          {...menuItemProps("menu")}
-          className={menuRowClass("sheet")}
-          aria-current={key === current ? "page" : undefined}
-          onClick={onSelect}
-        >
-          <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-          <span className="flex-1">{label}</span>
-          {key === current ? (
-            <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
-          ) : null}
-        </Link>
-      ))}
+        {WORKSPACE_SECTIONS.map(({ key, label, href, icon: Icon }) => (
+          <Link
+            key={key}
+            href={href}
+            {...menuItemProps("menu")}
+            className={menuRowClass(touch ? "sheet" : "menu")}
+            aria-current={key === current ? "page" : undefined}
+            onClick={onSelect}
+          >
+            <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            <span className="flex-1">{label}</span>
+            {key === current ? (
+              <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
+            ) : null}
+          </Link>
+        ))}
     </>
   )
 }
 
 /** The rows with the current section, read from `?kind=` (only while the
  *  menu is open, in its own Suspense boundary). */
-function CurrentWorkspaceSectionItems({ onSelect }: { onSelect: () => void }) {
+function CurrentWorkspaceSectionItems({ touch, onSelect }: { touch: boolean; onSelect: () => void }) {
   const pathname = usePathname()
   const kind = useSearchParams()?.get("kind") ?? null
-  return <WorkspaceSectionItems current={workspaceSectionFor(pathname, kind)} onSelect={onSelect} />
+  return (
+    <WorkspaceSectionItems current={workspaceSectionFor(pathname, kind)} touch={touch} onSelect={onSelect} />
+  )
+}
+
+/**
+ * The Workspace's six sections as menu rows, the current one checked (from
+ * the path and `?kind=`, read in its own boundary): the pill's Workspace
+ * menu on phones (`touch`: 44px rows) and the rail's on desktop, as
+ * `NetworkMenuItems` are Network's.
+ */
+export function WorkspaceMenuItems({ touch = false, onSelect }: { touch?: boolean; onSelect: () => void }) {
+  return (
+    <Suspense fallback={<WorkspaceSectionItems current={null} touch={touch} onSelect={onSelect} />}>
+      <CurrentWorkspaceSectionItems touch={touch} onSelect={onSelect} />
+    </Suspense>
+  )
 }
 
 /**
@@ -202,35 +221,36 @@ export function PhoneWorkspaceTab() {
   const active = isDestinationActive(WORKSPACE, usePathname())
   const close = () => setOpen(false)
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button
-          type="button"
-          className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
-          aria-current={active ? "page" : undefined}
-          data-tour="nav-workspace"
+    <>
+      <PillMenuScrim open={open} />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger>
+          <button
+            type="button"
+            className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
+            aria-current={active ? "page" : undefined}
+            data-tour="nav-workspace"
+          >
+            <span className="bottom-nav__icon-wrap">
+              <FolderOpen size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
+            </span>
+            <span className="bottom-nav__label">Workspace</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          portal
+          side="top"
+          align="center"
+          offset={12}
+          collisionPadding={16}
+          minWidth={0}
+          aria-label="Workspace"
+          className="pill-menu"
+          style={{ zIndex: "var(--z-chrome-menu)" }}
         >
-          <span className="bottom-nav__icon-wrap">
-            <FolderOpen size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
-          </span>
-          <span className="bottom-nav__label">Workspace</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        portal
-        side="top"
-        align="center"
-        offset={12}
-        collisionPadding={16}
-        minWidth={0}
-        aria-label="Workspace"
-        className="pill-menu"
-        style={{ zIndex: "var(--z-chrome-menu)" }}
-      >
-        <Suspense fallback={<WorkspaceSectionItems current={null} onSelect={close} />}>
-          <CurrentWorkspaceSectionItems onSelect={close} />
-        </Suspense>
-      </PopoverContent>
-    </Popover>
+          <WorkspaceMenuItems touch onSelect={close} />
+        </PopoverContent>
+      </Popover>
+    </>
   )
 }

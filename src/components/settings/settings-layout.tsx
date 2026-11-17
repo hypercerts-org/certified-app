@@ -71,11 +71,8 @@ export function useHashSection<K extends string>(
 
 export interface SettingsLayoutProps<K extends string> {
   /** An optional line under the title (a group: what your role there
-   *  lets you do). The picker already names the account. */
+   *  lets you do). The account control names the account. */
   description?: React.ReactNode
-  /** Right after the "Settings" title: the "for" picker (you or one of
-   *  your groups). */
-  titleAside?: React.ReactNode
   /** Names the SideNav for assistive tech. */
   navLabel: string
   sections: SettingsSectionDef<K>[]
@@ -89,7 +86,6 @@ export interface SettingsLayoutProps<K extends string> {
 
 export default function SettingsLayout<K extends string>({
   description,
-  titleAside,
   navLabel,
   sections,
   current,
@@ -165,7 +161,7 @@ export default function SettingsLayout<K extends string>({
 
   return (
     <PageContainer>
-      <PageHeader title="Settings" titleAside={titleAside} description={description} />
+      <PageHeader title="Settings" description={description} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:items-start lg:gap-12">
         <div ref={navRef} className="min-w-0">
           <SideNav aria-label={navLabel} items={items} />

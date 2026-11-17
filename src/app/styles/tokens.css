@@ -108,7 +108,7 @@
   /* Scrim — the one dimming layer behind every blocking surface
      (AppDialog ::backdrop, Drawer, BottomSheet, feedback modal), so a
      dialog and a sheet showing the same content dim the page equally. */
-  --scrim: rgba(0, 0, 0, 0.4);
+  --scrim: rgba(0, 0, 0, 0.5);
 
   /* Media letterbox — opaque backdrop behind embedded video / iframe
      content. Intentionally invariant (not overridden in dark mode): a
@@ -360,7 +360,9 @@
   --z-rail: 30;                     /* the desktop sidebar and right rails (below menus) */
   --z-popover: 40;                  /* in-flow popovers / typeahead dropdowns */
   --z-navbar: 50;                   /* fixed top navbar */
-  --z-bottom-nav: 50;               /* the phone pill; only mounted < 800px, never with the sidebar */
+  --z-bottom-nav-fade: 50;          /* the fade behind the phone pill */
+  --z-pill-scrim: 51;               /* dims the page and the top bar behind a menu opened from the pill */
+  --z-bottom-nav: 52;               /* the phone pill (above its scrim); only mounted < 800px, never with the sidebar */
   --z-chrome-menu: 56;              /* menus opened from the chrome (account, Network, New): above the bars, below sheets/modals */
   --z-portal-sheet: 60;             /* bottom sheets (account, New, feedback), drawer */
   --z-modal: 100;                   /* generic modals */

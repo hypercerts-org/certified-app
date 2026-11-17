@@ -258,6 +258,40 @@
   width: calc(100vw - 32px);
 }
 
+/* The page fades behind them (pill-menu-scrim.tsx): the top bar too, not
+   the pill. Hidden after its fade-out, so it catches taps until then. */
+.pill-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-pill-scrim);
+  background: var(--scrim);
+  opacity: 0;
+  visibility: hidden;
+  touch-action: none;
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    visibility 0s linear var(--duration-base);
+}
+
+.pill-scrim[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-scrim,
+  .pill-scrim[data-open] {
+    transition: none;
+  }
+}
+
+@media (min-width: 800px) {
+  .pill-scrim {
+    display: none;
+  }
+}
+
 .bottom-nav {
   position: fixed;
   left: 50%;
@@ -357,7 +391,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: var(--z-bottom-nav);
+  z-index: var(--z-bottom-nav-fade);
   height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
   background: linear-gradient(to top, var(--bg-canvas) 45%, transparent);
   pointer-events: none;

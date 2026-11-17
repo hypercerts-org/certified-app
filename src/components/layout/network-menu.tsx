@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { Check, Globe } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
+import PillMenuScrim from "./pill-menu-scrim"
 import {
   NETWORK_SECTIONS,
   networkSectionFor,
@@ -36,22 +37,22 @@ export function NetworkMenuItems({
 }) {
   return (
     <>
-      {networkSectionsFor(isAuthenticated).map(({ key, label, href, icon: Icon }) => (
-        <Link
-          key={key}
-          href={href}
-          {...menuItemProps(mode)}
-          className={menuRowClass(touch ? "sheet" : mode)}
-          aria-current={key === current ? "page" : undefined}
-          onClick={onSelect}
-        >
-          <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-          <span className="flex-1">{label}</span>
-          {key === current ? (
-            <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
-          ) : null}
-        </Link>
-      ))}
+        {networkSectionsFor(isAuthenticated).map(({ key, label, href, icon: Icon }) => (
+          <Link
+            key={key}
+            href={href}
+            {...menuItemProps(mode)}
+            className={menuRowClass(touch ? "sheet" : mode)}
+            aria-current={key === current ? "page" : undefined}
+            onClick={onSelect}
+          >
+            <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            <span className="flex-1">{label}</span>
+            {key === current ? (
+              <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
+            ) : null}
+          </Link>
+        ))}
     </>
   )
 }
@@ -68,39 +69,42 @@ export function PhoneNetworkTab({ isAuthenticated }: { isAuthenticated: boolean 
   const current = networkSectionFor(usePathname())
   const active = current !== null
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button
-          type="button"
-          className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
-          aria-current={active ? "page" : undefined}
-          data-tour="nav-network"
+    <>
+      <PillMenuScrim open={open} />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger>
+          <button
+            type="button"
+            className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
+            aria-current={active ? "page" : undefined}
+            data-tour="nav-network"
+          >
+            <span className="bottom-nav__icon-wrap">
+              <Globe size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
+            </span>
+            <span className="bottom-nav__label">Network</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          portal
+          side="top"
+          align="center"
+          offset={12}
+          collisionPadding={16}
+          minWidth={0}
+          aria-label="Network"
+          className="pill-menu"
+          style={{ zIndex: "var(--z-chrome-menu)" }}
         >
-          <span className="bottom-nav__icon-wrap">
-            <Globe size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
-          </span>
-          <span className="bottom-nav__label">Network</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        portal
-        side="top"
-        align="center"
-        offset={12}
-        collisionPadding={16}
-        minWidth={0}
-        aria-label="Network"
-        className="pill-menu"
-        style={{ zIndex: "var(--z-chrome-menu)" }}
-      >
-        <NetworkMenuItems
-          mode="menu"
-          touch
-          isAuthenticated={isAuthenticated}
-          current={current}
-          onSelect={() => setOpen(false)}
-        />
-      </PopoverContent>
-    </Popover>
+          <NetworkMenuItems
+            mode="menu"
+            touch
+            isAuthenticated={isAuthenticated}
+            current={current}
+            onSelect={() => setOpen(false)}
+          />
+        </PopoverContent>
+      </Popover>
+    </>
   )
 }

@@ -274,7 +274,7 @@ fieldset.pe__field > legend {
 .pe__footer {
   position: sticky;
   /* Pin the bar ABOVE the fixed mobile bottom nav rather than flush to the
-     viewport bottom — otherwise it sticks under the bar (--z-bottom-nav (50)
+     viewport bottom — otherwise it sticks under the bar (--z-bottom-nav (52)
      > --z-rail-sticky (10)) and the Save/Cancel row is half-hidden.
      `--bottom-nav-height` is 0px at ≥800px, so on desktop this resolves to
      the original `bottom: 0` (+ safe-area, which is also 0px there). */

@@ -1,8 +1,7 @@
 /* ---------- /records ----------
    The Workspace sections that manage what the account holds. The
-   Workspace frame (below) sets the side list and the page's h1 (for
-   screen readers: the side list names the page); each pane carries its
-   own create action in its tab row. */
+   Workspace frame (below) puts the section's title over each; each pane
+   carries its own create action in its tab row. */
 
 .records-page__loading {
   display: flex;
@@ -12,62 +11,11 @@
 }
 
 /* ---------- Workspace frame (workspace-shell.tsx) ----------
-   The Overview (/home) and the Records sections share one frame: the
-   Workspace side list and the section starting on one line, no title
-   drawn over them. At 800-1099px the list is one scrolling row of pills
-   above the section. On phones there is no list (the pill's Workspace
-   menu lists the sections) and the section's name is the page title. */
-.workspace__layout {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-@media (min-width: 1100px) {
-  .workspace__layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 48px;
-    align-items: start;
-  }
-}
-
-@media (max-width: 799px) {
-  .workspace__nav {
-    display: none;
-  }
-}
-
-/* The pill row bleeds into the page gutter so the last pill can scroll
-   fully into view; the list's own 4px padding puts the first pill on the
-   gutter. */
-@media (min-width: 800px) and (max-width: 1099px) {
-  .workspace__nav {
-    margin-inline: calc(-1 * var(--page-gutter));
-    padding-inline: calc(var(--page-gutter) - 4px);
-  }
-}
-
+   The section's title (a PageHeader), then the section. The Workspace's
+   sections are listed by the navigation (sidebar, rail menu, pill menu),
+   never on the page. */
 .workspace__main {
   min-width: 0;
-}
-
-/* From 1300px the full app sidebar lists the Workspace's sections itself
-   (app-sidebar.tsx), so the page drops its own list and the content takes
-   the row; the section's h1 stays for screen readers. Collapsed to the
-   rail (data-sidebar on <html>), the page keeps its list. */
-@media (min-width: 1300px) {
-  :root:not([data-sidebar="rail"]) .workspace__layout {
-    display: block;
-  }
-
-  :root:not([data-sidebar="rail"]) .workspace__nav {
-    display: none;
-  }
-
-  :root:not([data-sidebar="rail"]) .workspace__layout > .workspace__main {
-    padding-top: 0;
-  }
 }
 
 /* Acting as a group: the group's records (and projects) on its profile,

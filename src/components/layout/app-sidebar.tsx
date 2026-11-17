@@ -38,6 +38,7 @@ import Wordmark from "@/components/ui/wordmark"
 import GlobalSearch from "@/components/search/global-search"
 import { DesktopAccountSwitcher } from "./account-switcher"
 import { NetworkMenuItems } from "./network-menu"
+import { WorkspaceMenuItems } from "./workspace-menu"
 
 const WORKSPACE = DESTINATIONS.find((d) => d.key === "workspace")!
 const NETWORK = DESTINATIONS.find((d) => d.key === "network")!
@@ -363,7 +364,10 @@ function FullList({ isAuthenticated, pathname }: { isAuthenticated: boolean; pat
           </li>
         ))}
       </SidebarGroup>
-      <SidebarGroup>
+      {/* Apps gets a heading too, so the three groups read alike: other
+          apps that work with the same account. The rail and the phone
+          pill have no headings, so it is just "Apps" there. */}
+      <SidebarGroup label="Ecosystem">
         <li>
           <SidebarLink
             href="/apps"
@@ -404,13 +408,7 @@ function RailList({ isAuthenticated, pathname }: { isAuthenticated: boolean; pat
     <ul className="app-sidebar__rail">
       {isAuthenticated ? (
         <li>
-          <SidebarLink
-            href={WORKSPACE.href}
-            label="Workspace"
-            icon={FolderOpen}
-            current={isDestinationActive(WORKSPACE, pathname)}
-            tour="nav-workspace"
-          />
+          <RailWorkspaceMenu pathname={pathname} />
         </li>
       ) : null}
       <li>
@@ -426,6 +424,40 @@ function RailList({ isAuthenticated, pathname }: { isAuthenticated: boolean; pat
         />
       </li>
     </ul>
+  )
+}
+
+/** The rail's Workspace: opens a menu of its six sections to the right,
+ *  as Network does its pages (the pages have no list of their own). */
+function RailWorkspaceMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useRouteScopedOpen()
+  const active = isDestinationActive(WORKSPACE, pathname)
+  return (
+    <Popover open={open} onOpenChange={setOpen} className="app-sidebar__fill">
+      <PopoverTrigger>
+        <button
+          type="button"
+          className="app-sidebar__item"
+          data-current={active ? "" : undefined}
+          aria-current={active ? "true" : undefined}
+          data-tour="nav-workspace"
+        >
+          <FolderOpen size={20} strokeWidth={active ? 2 : 1.5} aria-hidden />
+          <span className="app-sidebar__label">Workspace</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        portal
+        side="right"
+        align="start"
+        offset={12}
+        minWidth={240}
+        aria-label="Workspace"
+        style={{ zIndex: "var(--z-chrome-menu)" }}
+      >
+        <WorkspaceMenuItems onSelect={() => setOpen(false)} />
+      </PopoverContent>
+    </Popover>
   )
 }
 

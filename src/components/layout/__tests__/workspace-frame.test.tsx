@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 
 import WorkspaceShell, { WorkspaceFrame } from "../workspace-shell"
-import { SIDE_NAV_CONTENT_OFFSET } from "@/components/ui/side-nav"
 
 // ---------------------------------------------------------------------------
 // Mocks for the pages that use the frame (RecordsPage, Home).
@@ -50,25 +49,22 @@ import RecordsPage from "@/components/records/records-page"
 import Home from "@/components/home/home"
 
 /**
- * The frame's order: the page's h1 (the section's name, for screen
- * readers only: the side list names the page), then the Workspace side
- * list, then the content. No title is drawn over the frame.
+ * The frame's order: the section's title (the page's visible h1, as on
+ * the Network's pages), then the content. The page never lists the
+ * Workspace's sections: the navigation does.
  */
 function expectFrame(container: HTMLElement, opts: { h1?: string } = {}) {
-  const sideList = screen.getByRole("navigation", { name: "Workspace" })
   const main = container.querySelector(".workspace__main")
   expect(main).not.toBeNull()
-  expect(container.querySelector(".workspace__header")).toBeNull()
-  expect(sideList.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.queryByRole("navigation", { name: "Workspace" })).toBeNull()
   if (opts.h1) {
     const h1 = screen.getByRole("heading", { level: 1, name: opts.h1 })
-    // The page title on phones (no section list there), for screen readers
-    // only from 800px, where the list names the page.
-    expect(h1).toHaveClass("md:sr-only")
-    expect(h1.compareDocumentPosition(sideList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(h1).not.toHaveClass("sr-only")
+    expect(h1).not.toHaveClass("md:sr-only")
+    expect(h1.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(main!.contains(h1)).toBe(false)
   }
-  return { sideList, main: main as HTMLElement }
+  return { main: main as HTMLElement }
 }
 
 beforeEach(() => {
@@ -82,7 +78,7 @@ beforeEach(() => {
 })
 
 describe("WorkspaceFrame", () => {
-  it("renders the section's h1 (for screen readers), then the side list, then the content", () => {
+  it("renders the section's title, then the content, and no list of sections", () => {
     const { container } = render(
       <WorkspaceShell current="followers">
         <WorkspaceFrame titleId="followers-title">
@@ -90,34 +86,10 @@ describe("WorkspaceFrame", () => {
         </WorkspaceFrame>
       </WorkspaceShell>,
     )
-    const { main, sideList } = expectFrame(container, { h1: "Followers" })
+    const { main } = expectFrame(container, { h1: "Followers" })
     expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute("id", "followers-title")
     expect(within(main).getByText("Rows")).toBeInTheDocument()
-    expect(within(sideList).getByRole("link", { name: "Followers" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    )
-    expect(within(sideList).getByRole("link", { name: "Overview" })).not.toHaveAttribute(
-      "aria-current",
-    )
-  })
-
-  it("offsets the content to the first side-list label unless told not to", () => {
-    const { container, rerender } = render(
-      <WorkspaceShell current="overview">
-        <WorkspaceFrame>x</WorkspaceFrame>
-      </WorkspaceShell>,
-    )
-    const offset = SIDE_NAV_CONTENT_OFFSET.split(" ")[0]
-    expect(container.querySelector(".workspace__main")).toHaveClass(offset)
-    rerender(
-      <WorkspaceShell current="overview">
-        <WorkspaceFrame offset={false}>
-          x
-        </WorkspaceFrame>
-      </WorkspaceShell>,
-    )
-    expect(container.querySelector(".workspace__main")).not.toHaveClass(offset)
+    expect(screen.queryByRole("link", { name: "Overview" })).toBeNull()
   })
 
   it("must sit inside WorkspaceShell", () => {
@@ -130,7 +102,7 @@ describe("WorkspaceFrame", () => {
 })
 
 describe("Records sections render the frame in every state", () => {
-  it("while auth loads: the section's h1, the side list, a spinner", () => {
+  it("while auth loads: the section's title, a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
@@ -161,7 +133,7 @@ describe("Records sections render the frame in every state", () => {
     ).toBeInTheDocument()
   })
 
-  it("a section: its h1, the side list, and its region named by the h1", () => {
+  it("a section: its title, and its region named by it", () => {
     org.groups = []
     const { container } = render(<RecordsPage />)
     const { main } = expectFrame(container, { h1: "Groups" })
@@ -193,18 +165,13 @@ describe("Records sections render the frame in every state", () => {
 })
 
 describe("Overview renders the frame", () => {
-  it("while auth loads: no section h1 (the account heads the ID box), the side list, a spinner", () => {
+  it("while auth loads: no title (the account heads the ID box), a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<Home />)
     expect(container.querySelector("h1")).toBeNull()
-    const sideList = screen.getByRole("navigation", { name: "Workspace" })
-    const main = container.querySelector(".workspace__main")!
-    expect(sideList.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(sideList).getByRole("link", { name: "Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    )
+    expect(container.querySelector(".workspace__main")).not.toBeNull()
+    expect(screen.queryByRole("navigation", { name: "Workspace" })).toBeNull()
   })
 })

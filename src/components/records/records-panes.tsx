@@ -107,7 +107,7 @@ export function EndorsementsPane({
   }
 
   return (
-    <WorkspaceFrame offset={false} titleId={titleId}>
+    <WorkspaceFrame titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={(v) => setTabParam(v)}>
           <PaneTabBar
@@ -262,7 +262,7 @@ export function FollowersPane({
   const followers = useFollowers(did)
 
   return (
-    <WorkspaceFrame offset={false} titleId={titleId}>
+    <WorkspaceFrame titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <Tabs value={tab} onChange={(v) => setTabParam(v)}>
           <PaneTabBar
@@ -487,7 +487,7 @@ export function ListsPane({ did }: { did: string }) {
   // "Try again" on a failed load remounts the tabs, which loads again.
   const [attempt, setAttempt] = useState(0)
   return (
-    <WorkspaceFrame offset={false} titleId={titleId}>
+    <WorkspaceFrame titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         <ListsTabs key={attempt} did={did} onRetry={() => setAttempt((n) => n + 1)} />
       </section>
@@ -586,7 +586,7 @@ export function GroupsPane() {
     </Button>
   )
   return (
-    <WorkspaceFrame offset={false} titleId={titleId}>
+    <WorkspaceFrame titleId={titleId}>
       <section className="records-pane" aria-labelledby={titleId}>
         {isLoading && groups.length === 0 ? (
           <RowsSkeleton shape="square" rows={3} />

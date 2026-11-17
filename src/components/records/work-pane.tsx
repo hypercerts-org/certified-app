@@ -484,11 +484,7 @@ export default function WorkPane({
   }
 
   return (
-    <WorkspaceFrame
-      // The content opens with the toolbar, a control row, not a heading.
-      offset={false}
-      titleId={titleId}
-    >
+    <WorkspaceFrame titleId={titleId}>
       <section
         className="records-pane records-work"
         aria-labelledby={titleId}
