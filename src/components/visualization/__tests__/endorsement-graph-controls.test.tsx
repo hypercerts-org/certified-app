@@ -89,12 +89,14 @@ describe("EndorsementGraph controls", () => {
     expect(lines).toContainElement(screen.getByRole("checkbox", { name: "Mutual only" }))
   })
 
-  it("has a checkbox per badge kind, all on but Participation", () => {
+  it("has a checkbox per badge kind, only Endorsements and Awards on at first", () => {
     renderGraph()
-    for (const name of ["Endorsements", "Recognitions", "Certifications", "Awards"]) {
+    for (const name of ["Endorsements", "Awards"]) {
       expect(screen.getByRole("checkbox", { name })).toBeChecked()
     }
-    expect(screen.getByRole("checkbox", { name: "Participation" })).not.toBeChecked()
+    for (const name of ["Recognitions", "Certifications", "Participation"]) {
+      expect(screen.getByRole("checkbox", { name })).not.toBeChecked()
+    }
   })
 
   it("adds participation lines, and the accounts they bring, when checked", () => {

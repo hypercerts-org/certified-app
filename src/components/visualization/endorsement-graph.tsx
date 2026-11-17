@@ -167,9 +167,10 @@ function nodeRadius(n: { given: number; received: number }): number {
 // one can be picked per dataset. Every mode runs a collision force so avatars
 // never overlap (the original default had none — hence the overlapping logos).
 
-/** The Lines checkboxes' names, and which kinds start checked: every one
- *  but participation, which would turn the graph into a few big stars
- *  around the programs that hand it out. */
+/** The Lines checkboxes' names, and which kinds start checked: endorsements
+ *  and awards. Recognitions, certifications and participation start off
+ *  (participation alone would turn the graph into a few big stars around
+ *  the programs that hand it out). */
 const KIND_LABELS: Record<GraphLinkKind, string> = {
   endorsement: "Endorsements",
   recognition: "Recognitions",
@@ -177,7 +178,7 @@ const KIND_LABELS: Record<GraphLinkKind, string> = {
   award: "Awards",
   participation: "Participation",
 }
-const DEFAULT_KINDS: GraphLinkKind[] = GRAPH_LINK_KINDS.filter((k) => k !== "participation")
+const DEFAULT_KINDS: GraphLinkKind[] = ["endorsement", "award"]
 const KIND_CURVE: Record<GraphLinkKind, number> = {
   endorsement: 0,
   recognition: 0.08,
@@ -326,7 +327,7 @@ export default function EndorsementGraph({
   const [repaintEpoch, setRepaintEpoch] = useState(0)
   const [onlyMutual, setOnlyMutual] = useState(false)
   const linesLabelId = useId()
-  // Badge-kind checkboxes: every kind but participation on by default
+  // Badge-kind checkboxes: endorsements and awards on by default
   // (DEFAULT_KINDS); the UI disables the last checked one so at least one
   // kind is always shown.
   const [shownKinds, setShownKinds] = useState<ReadonlySet<GraphLinkKind>>(() => new Set(DEFAULT_KINDS))
