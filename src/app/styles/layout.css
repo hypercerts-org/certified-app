@@ -205,7 +205,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   /* Centred between two equal side columns, each as wide as the widest
-     slot (New + account: 2 x 44px + 4px). 100vw minus both, the 8px
+     slot (the brand or back mark, the account control). 100vw minus both, the 8px
      inner padding and the two 8px gaps. */
   max-width: min(60vw, calc(100vw - 216px));
 }

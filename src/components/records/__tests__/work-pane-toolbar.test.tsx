@@ -6,6 +6,7 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 const DID = "did:plc:me"
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/create",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 

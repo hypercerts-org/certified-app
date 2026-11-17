@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   hasPageHeader: false,
   hasPageHeaderBack: false,
   pageTitle: null as string | null,
+  barTitle: null as string | null,
   isAuthenticated: true,
   groups: [] as { groupDid: string }[],
   navHidden: false,
@@ -30,7 +31,12 @@ vi.mock("@/lib/auth/auth-context", () => ({
 }))
 
 vi.mock("@/lib/navbar-context", () => ({
-  useNavbarValues: () => ({ pageTitle: state.pageTitle, breadcrumb: null, recordMenu: null }),
+  useNavbarValues: () => ({
+    pageTitle: state.pageTitle,
+    breadcrumb: null,
+    recordMenu: null,
+    barTitle: state.barTitle,
+  }),
   useHasPageHeader: () => state.hasPageHeader,
   useHasPageHeaderBack: () => state.hasPageHeaderBack,
 }))
@@ -71,6 +77,7 @@ beforeEach(() => {
   state.hasPageHeader = false
   state.hasPageHeaderBack = false
   state.pageTitle = null
+  state.barTitle = null
   state.isAuthenticated = true
   state.groups = []
   state.navHidden = false
@@ -113,6 +120,28 @@ describe("Navbar (phone)", () => {
     expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
     expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument()
     expect(container.querySelector(".navbar__logo--wordmark")).toBeNull()
+  })
+
+  it("on a top-level page, shows the page header's title beside the brandmark", () => {
+    state.pathname = "/feed"
+    state.hasPageHeader = true
+    state.barTitle = "Feed"
+    const { container } = render(<Navbar />)
+    expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
+    expect(container.querySelector(".navbar__logo--wordmark")).toBeNull()
+    const title = container.querySelector(".navbar__title")
+    expect(title).toHaveTextContent("Feed")
+    // The h1 stays the page header's (visually hidden on phones).
+    expect(title).toHaveAttribute("aria-hidden", "true")
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
+  })
+
+  it("keeps the wordmark on a top-level page without a title (the Overview)", () => {
+    state.pathname = "/home"
+    state.hasPageHeader = true
+    const { container } = render(<Navbar />)
+    expect(container.querySelector(".navbar__logo--wordmark")).not.toBeNull()
+    expect(container.querySelector(".navbar__title")).toBeNull()
   })
 
   it("treats your own profile as top-level", () => {

@@ -36,6 +36,7 @@ vi.mock("@/lib/groups/use-org-limit", () => ({
 }))
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/create",
   useRouter: () => ({ push: vi.fn() }),
 }))
 

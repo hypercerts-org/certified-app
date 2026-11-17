@@ -15,6 +15,7 @@ vi.mock("@/lib/groups/org-context", () => ({
 }))
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/create",
   useRouter: () => ({ push: vi.fn() }),
 }))
 

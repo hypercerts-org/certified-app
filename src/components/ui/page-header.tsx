@@ -2,7 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { isTopLevelPath } from "@/lib/layout/destinations";
 import { useRegisterPageHeader } from "@/lib/navbar-context";
 
 export interface PageHeaderBack {
@@ -42,7 +44,9 @@ export interface PageHeaderProps {
  *
  * Mounting it registers with the navbar context (`useRegisterPageHeader`),
  * which tells the chrome that the page owns its `<h1>`, so the chrome
- * skips its own. Render one per page, as the first thing inside
+ * skips its own. On a top-level page (Feed, a Workspace section, Apps,
+ * Settings...) the title moves into the phone top bar: the h1 stays, but
+ * visually hidden below 800px. Render one per page, as the first thing inside
  * `<PageContainer>`; the container handles the space above it, and the
  * header carries the 16px below it.
  */
@@ -56,7 +60,13 @@ export default function PageHeader({
   className = "",
   titleId,
 }: PageHeaderProps) {
-  useRegisterPageHeader({ hasBack: !!back });
+  const pathname = usePathname();
+  const barTitle =
+    !back && typeof title === "string" && isTopLevelPath(pathname) ? title : null;
+  useRegisterPageHeader({ hasBack: !!back, barTitle });
+  const titleClass = `m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance${
+    barTitle ? " max-[799px]:sr-only" : ""
+  }`;
 
   return (
     <header className={`mb-4 flex flex-col gap-2 ${className}`.trim()}>
@@ -79,7 +89,7 @@ export default function PageHeader({
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <h1
                   id={titleId}
-                  className="m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance"
+                  className={titleClass}
                 >
                   {title}
                 </h1>
@@ -88,7 +98,7 @@ export default function PageHeader({
             ) : (
               <h1
                 id={titleId}
-                className="m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance"
+                className={titleClass}
               >
                 {title}
               </h1>

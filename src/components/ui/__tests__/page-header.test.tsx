@@ -1,7 +1,19 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
+
+const nav = vi.hoisted(() => ({ pathname: null as string | null }))
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }))
+
 import PageHeader from "../page-header"
-import { NavbarProvider, useHasPageHeader } from "@/lib/navbar-context"
+import { NavbarProvider, useHasPageHeader, useNavbarValues } from "@/lib/navbar-context"
+
+beforeEach(() => {
+  nav.pathname = null
+})
+
+function BarTitleProbe() {
+  return <span data-testid="bar-title">{useNavbarValues().barTitle ?? ""}</span>
+}
 
 // Reads the chrome side of the h1 contract: what the navbar would check
 // before rendering its own h1.
@@ -31,6 +43,38 @@ describe("PageHeader", () => {
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/home")
     // Exactly one h1 on the page.
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1)
+  })
+
+  it("on a top-level page, hands its title to the phone bar and hides its h1 on phones", () => {
+    nav.pathname = "/feed"
+    render(
+      <NavbarProvider>
+        <BarTitleProbe />
+        <PageHeader title="Feed" description="What's happening." />
+      </NavbarProvider>,
+    )
+    expect(screen.getByTestId("bar-title")).toHaveTextContent("Feed")
+    expect(screen.getByRole("heading", { level: 1, name: "Feed" })).toHaveClass("max-[799px]:sr-only")
+  })
+
+  it("keeps its title elsewhere, and with its own back link", () => {
+    nav.pathname = "/maya.certified.app/activity/3k2"
+    const { rerender } = render(
+      <NavbarProvider>
+        <BarTitleProbe />
+        <PageHeader title="Mangrove replanting" />
+      </NavbarProvider>,
+    )
+    expect(screen.getByTestId("bar-title")).toHaveTextContent("")
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveClass("max-[799px]:sr-only")
+    nav.pathname = "/settings"
+    rerender(
+      <NavbarProvider>
+        <BarTitleProbe />
+        <PageHeader title="Settings" back={{ href: "/home", label: "Home" }} />
+      </NavbarProvider>,
+    )
+    expect(screen.getByTestId("bar-title")).toHaveTextContent("")
   })
 
   it("registers with the navbar context while mounted", () => {

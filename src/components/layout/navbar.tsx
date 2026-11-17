@@ -46,14 +46,17 @@ function isOwnProfilePath(
  *
  * - **Left:** the faded Certified.app wordmark on the top-level pages (Home,
  *   Feed, Explore, Records, Apps, Settings, Help and your own profile);
- *   the square brandmark instead when the compact title shares the row,
- *   so the title keeps its room. Everywhere else
+ *   the square brandmark instead whenever a title shares the row, so the
+ *   title keeps its room. Everywhere else
  *   (a record, someone else's profile, a group page, a form) a back
  *   chevron, whether or not the page renders a `<PageHeader>`: the
  *   installed app has no browser Back, so this is the way back to where
  *   you were (your feed and its scroll position, say).
- * - **Center:** the compact title, as the page's h1, only when no
- *   `<PageHeader>` is mounted (the header already carries the title).
+ * - **Center:** the page's title. On a top-level page with a
+ *   `<PageHeader>` (Feed, Map, a Workspace section...), the header's title
+ *   moves up here and the header's h1 is visually hidden on phones (this
+ *   copy is plain text, hidden from assistive tech). On a page without a
+ *   PageHeader, the compact title is the page's h1. Otherwise none.
  * - **Right:** the account control (account-switcher.tsx): the avatar of
  *   the account you act as (a group's with yours on its corner), opening
  *   "Act as", "Signed in as", Help, feedback and the legal links in a
@@ -71,7 +74,7 @@ function isOwnProfilePath(
  */
 const Navbar: React.FC = () => {
   const { isLoading, isAuthenticated, did, openSignIn } = useAuth();
-  const { pageTitle, breadcrumb, recordMenu } = useNavbarValues();
+  const { pageTitle, breadcrumb, recordMenu, barTitle } = useNavbarValues();
   const hasPageHeader = useHasPageHeader();
   // A page header with its own back link ("‹ Records") is the way back;
   // the bar then shows the brandmark rather than a second chevron.
@@ -105,7 +108,12 @@ const Navbar: React.FC = () => {
   const isTopLevel = isTopLevelPath(pathname) || isOwnProfile;
 
   // The compact title is the page's h1 only while no PageHeader owns it.
-  const showTitle = !hasPageHeader && !!(pageTitle || breadcrumb);
+  const showChromeH1 = !hasPageHeader && !!(pageTitle || breadcrumb);
+  // On a top-level page the PageHeader's title moves up here (its h1 is
+  // visually hidden on phones), as plain text: the h1 stays the header's.
+  const headerTitle = hasPageHeader && isTopLevelPath(pathname) ? barTitle : null;
+  // With a title on the row, the brandmark replaces the wordmark.
+  const showTitle = showChromeH1 || !!headerTitle;
 
   const navClasses = [
     "navbar",
@@ -149,7 +157,11 @@ const Navbar: React.FC = () => {
             </Button>
           )}
         </div>
-        {showTitle ? (
+        {headerTitle ? (
+          <p className="navbar__title" aria-hidden="true">
+            {headerTitle}
+          </p>
+        ) : showChromeH1 ? (
           <h1 className="navbar__title">
             {breadcrumb ? (
               <>

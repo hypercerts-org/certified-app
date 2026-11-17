@@ -12,6 +12,7 @@ import {
 // Stub both; neither participates in attachment thumbnailing.
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/create",
   useRouter: () => ({ push: vi.fn() }),
 }))
 

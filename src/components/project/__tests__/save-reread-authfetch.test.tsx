@@ -18,6 +18,7 @@ const DID = "did:plc:owner"
 const RKEY = "proj1"
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/create",
   useParams: () => ({ did: DID, rkey: RKEY }),
   useRouter: () => ({ push: vi.fn() }),
 }))

@@ -97,6 +97,10 @@ interface NavbarValues {
   /** A mounted `<PageHeader>` renders its own back link, so the phone
    *  bar shows no second back chevron. */
   hasPageHeaderBack: boolean;
+  /** On a top-level page, the mounted `<PageHeader>`'s title: on phones the
+   *  top bar shows it (beside the brandmark) and the header's h1 is
+   *  visually hidden there. Null elsewhere. */
+  barTitle: string | null;
 }
 
 /**
@@ -113,7 +117,14 @@ interface NavbarSetters {
   setProfileOverlay: (v: boolean) => void;
   /** Register a mounted `<PageHeader>`. Returns the matching unregister
    *  function. Ref-counted, so nested or remounting headers are safe. */
-  registerPageHeader: (opts?: { hasBack?: boolean }) => () => void;
+  registerPageHeader: (opts?: PageHeaderRegistration) => () => void;
+}
+
+export interface PageHeaderRegistration {
+  hasBack?: boolean;
+  /** The title the phone bar shows instead of the header (a top-level
+   *  page's), or null. */
+  barTitle?: string | null;
 }
 
 type NavbarContextValue = NavbarValues & NavbarSetters;
@@ -126,6 +137,7 @@ const defaultValues: NavbarValues = {
   profileOverlay: false,
   hasPageHeader: false,
   hasPageHeaderBack: false,
+  barTitle: null,
 };
 
 const defaultSetters: NavbarSetters = {
@@ -152,10 +164,13 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
   const [pageHeaderCount, setPageHeaderCount] = useState(0);
   // Of those, how many carry their own back link (same ref-counting).
   const [pageHeaderBackCount, setPageHeaderBackCount] = useState(0);
-  const registerPageHeader = useCallback((opts?: { hasBack?: boolean }) => {
+  const [barTitle, setBarTitle] = useState<string | null>(null);
+  const registerPageHeader = useCallback((opts?: PageHeaderRegistration) => {
     const hasBack = !!opts?.hasBack;
+    const title = opts?.barTitle ?? null;
     setPageHeaderCount((n) => n + 1);
     if (hasBack) setPageHeaderBackCount((n) => n + 1);
+    if (title) setBarTitle(title);
     let registered = true;
     return () => {
       // Guard against a double unregister driving the count below zero.
@@ -163,6 +178,8 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       registered = false;
       setPageHeaderCount((n) => Math.max(0, n - 1));
       if (hasBack) setPageHeaderBackCount((n) => Math.max(0, n - 1));
+      // Only clear the title this header set, not a newer header's.
+      if (title) setBarTitle((t) => (t === title ? null : t));
     };
   }, []);
   const hasPageHeader = pageHeaderCount > 0;
@@ -196,8 +213,18 @@ export function NavbarProvider({ children }: { children: ReactNode }) {
       profileOverlay,
       hasPageHeader,
       hasPageHeaderBack,
+      barTitle,
     }),
-    [pageTitle, desktopTitle, breadcrumb, recordMenu, profileOverlay, hasPageHeader, hasPageHeaderBack]
+    [
+      pageTitle,
+      desktopTitle,
+      breadcrumb,
+      recordMenu,
+      profileOverlay,
+      hasPageHeader,
+      hasPageHeaderBack,
+      barTitle,
+    ]
   );
   return (
     <NavbarSettersContext.Provider value={setters}>
@@ -252,10 +279,12 @@ export function usePageTitle(title: string) {
  * `<h1>`:
  *
  * - A page that renders `<PageHeader>` owns it: the header's title is the
- *   visible h1. While a PageHeader is mounted, the chrome (mobile navbar,
- *   desktop strip) renders no h1 of its own, visible or visually hidden,
- *   and the phone bar shows no compact title (it keeps its back chevron on
- *   pages that aren't top-level).
+ *   h1. While a PageHeader is mounted, the chrome (the phone bar, the
+ *   desktop sidebar) renders no h1 of its own, visible or visually hidden.
+ *   On a top-level page the phone bar shows the header's title instead
+ *   (`barTitle`, as plain text, hidden from assistive tech) and the
+ *   header's h1 is visually hidden on phones; elsewhere the bar keeps its
+ *   back chevron and shows no title.
  * - A page without a PageHeader keeps the chrome's h1 (the `usePageTitle`
  *   value) as the fallback.
  *
@@ -263,10 +292,11 @@ export function usePageTitle(title: string) {
  * unregisters on unmount. The registry is ref-counted, so nested,
  * remounting or briefly overlapping headers are fine.
  */
-export function useRegisterPageHeader(opts?: { hasBack?: boolean }) {
+export function useRegisterPageHeader(opts?: PageHeaderRegistration) {
   const { registerPageHeader } = useContext(NavbarSettersContext);
   const hasBack = !!opts?.hasBack;
-  useEffect(() => registerPageHeader({ hasBack }), [registerPageHeader, hasBack]);
+  const barTitle = opts?.barTitle ?? null;
+  useEffect(() => registerPageHeader({ hasBack, barTitle }), [registerPageHeader, hasBack, barTitle]);
 }
 
 /**
