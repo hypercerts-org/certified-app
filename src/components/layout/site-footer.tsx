@@ -1,20 +1,22 @@
 "use client"
 
 import Link from "next/link"
+import { ArrowUpRight } from "lucide-react"
 import { useFeedback } from "@/lib/feedback-context"
 import Wordmark from "@/components/ui/wordmark"
 
 /**
  * Minimal site footer — GitHub-flavour. Single horizontal row at
  * desktop: wordmark + copyright on the left, the links and Feedback on
- * the right. Wraps to stacked, centred rows on narrow viewports.
+ * the right. On phones one left-aligned column: the wordmark, the links
+ * in two columns (the app's, the legal ones), the copyright last.
  *
  * Rendered by AppShell after `<main>` (not inside it), so it is the
  * page's contentinfo landmark and spans the page's width, beside the
  * desktop sidebar (the body is padded by it).
  *
  * Help and Feedback are here for everyone (signed-in people also find
- * them at the bottom of the sidebar and in the phone pill's More). There
+ * them at the bottom of the sidebar and in the phone account sheet). There
  * is no floating Feedback button. The theme switch lives in Settings
  * (Appearance), not here.
  *
@@ -35,8 +37,8 @@ export default function SiteFooter() {
           </span>
         </div>
         <div className="site-footer__end">
-          {/* Two groups: on phones each is its own line (the app's links,
-              then the legal ones); on desktop they share the row. */}
+          {/* Two groups: on phones two columns (the app's links, then the
+              legal ones); on desktop they share the row. */}
           <nav className="site-footer__nav" aria-label="Footer links">
             <span className="site-footer__group">
               <Link href="/welcome" className="site-footer__link">
@@ -59,6 +61,7 @@ export default function SiteFooter() {
                 className="site-footer__link"
               >
                 Docs
+                <ArrowUpRight size={12} strokeWidth={1.75} aria-hidden />
               </a>
             </span>
             <span className="site-footer__group">

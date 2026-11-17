@@ -67,9 +67,14 @@ export default function PageHeader({
   const titleClass = `m-0 font-headline text-h2 text-[var(--fg-primary)] text-balance${
     barTitle ? " max-[799px]:sr-only" : ""
   }`;
+  // With the title in the bar, a header with nothing else to show takes
+  // no room on phones, so the page starts 24px below the bar either way.
+  const emptyOnPhone = !!barTitle && !description && !actions && !visual && !titleAside;
 
   return (
-    <header className={`mb-4 flex flex-col gap-2 ${className}`.trim()}>
+    <header
+      className={`mb-4 flex flex-col gap-2${emptyOnPhone ? " max-[799px]:mb-0" : ""} ${className}`.trim()}
+    >
       {back ? (
         <Link
           href={back.href}
@@ -104,7 +109,11 @@ export default function PageHeader({
               </h1>
             )}
             {description ? (
-              <p className="mb-0 mt-1 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty">
+              <p
+                className={`mb-0 mt-1 max-w-measure text-body-sm text-[var(--fg-secondary)] text-pretty${
+                  barTitle ? " max-[799px]:mt-0" : ""
+                }`}
+              >
                 {description}
               </p>
             ) : null}

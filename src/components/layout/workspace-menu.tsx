@@ -241,7 +241,9 @@ export function PhoneWorkspaceTab() {
           portal
           side="top"
           align="center"
-          offset={12}
+          // 8px above the pill: its 4px padding and 1px border sit
+          // between the item and its edge.
+          offset={13}
           collisionPadding={16}
           minWidth={0}
           aria-label="Workspace"

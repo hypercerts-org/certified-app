@@ -147,9 +147,10 @@
 .navbar__inner {
   max-width: 1536px;
   margin: 0 auto;
-  /* 8px: the 44px icon buttons carry their own inner space, so their
-     glyphs still line up with the page's 16px gutter. */
-  padding: 0 8px;
+  /* The 44px targets carry their own inner space, so their marks sit on
+     the page's 16px gutter: 8px left (the 28px brandmark centred in its
+     44px), 10px right (the 32px avatar centred in its 44px). */
+  padding: 0 10px 0 8px;
   height: 100%;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -1261,6 +1262,10 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  /* On the rail the top ends with the Search item: pull the list up so
+     Search sits 4px above Workspace, like every other item (the
+     sidebar's own gap is 12px). */
+  margin-bottom: -8px;
 }
 
 .app-sidebar__brand {
@@ -1493,6 +1498,8 @@
   :root:not([data-sidebar="rail"]) .app-sidebar__top {
     align-items: stretch;
     gap: 8px;
+    /* 16px to the first group's heading, as between the groups. */
+    margin-bottom: 4px;
   }
 
   /* One left edge from 1300px: the wordmark, the account avatar and the
@@ -1544,10 +1551,6 @@
 
   :root:not([data-sidebar="rail"]) .app-sidebar__full {
     display: flex;
-  }
-
-  :root:not([data-sidebar="rail"]) .app-sidebar__list {
-    gap: 2px;
   }
 
   :root:not([data-sidebar="rail"]) .app-sidebar__item {
@@ -2141,9 +2144,7 @@
    is 0px at ≥800px, so this collapses back to the base 24px on desktop. */
 @media (max-width: 799px) {
   .site-footer {
-    padding-bottom: calc(
-      var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px
-    );
+    padding: 24px 16px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
   }
 }
 
@@ -2155,10 +2156,37 @@
   gap: 12px;
 }
 
+/* Phones: one left-aligned column on the page's gutter. The wordmark,
+   then the links in two columns (the app's, then the legal ones), then
+   the copyright line last. */
 @media (max-width: 799px) {
   .site-footer__row {
-    justify-content: center;
-    text-align: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "brand"
+      "links"
+      "copy";
+    justify-items: start;
+    gap: 16px;
+  }
+
+  /* Scoped, to outrank the base rule further down. */
+  .site-footer .site-footer__left {
+    display: contents;
+  }
+
+  .site-footer__wordmark {
+    grid-area: brand;
+  }
+
+  .site-footer__copy {
+    grid-area: copy;
+  }
+
+  .site-footer__end {
+    grid-area: links;
+    width: 100%;
   }
 }
 
@@ -2176,11 +2204,6 @@
   gap: 8px 16px;
 }
 
-@media (max-width: 799px) {
-  .site-footer__end {
-    justify-content: center;
-  }
-}
 
 /* Legal pages and /help widen the reading column past the default
    600/720px app-shell cap (the inner .app-page__inner is max-w-3xl, so
@@ -2267,20 +2290,35 @@
   transition: color var(--transition-fast);
 }
 
+/* Docs leaves the app: a small arrow after the word. */
+.site-footer__link > svg {
+  display: inline-block;
+  margin-left: 2px;
+  vertical-align: -1px;
+}
+
 /* 44px touch targets on phones: the row of short words would otherwise
    be ~18px tall. */
 @media (max-width: 799px) {
-  /* Two lines: Welcome, Help, Feedback, Docs; then Terms, Privacy,
-     Imprint. */
+  /* Two columns: Welcome, Help, Feedback, Docs; Terms, Privacy, Imprint.
+     Each link a full-height row at the UI size, the legal ones quieter. */
   .site-footer__nav {
-    flex-direction: column;
-    gap: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    column-gap: 16px;
+    width: 100%;
   }
   .site-footer__group {
-    justify-content: center;
-    gap: 0 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  :where(.site-footer__group:first-child) .site-footer__link {
+    color: var(--fg-secondary);
   }
   .site-footer__link {
+    font-size: var(--text-ui);
     display: inline-flex;
     align-items: center;
     min-height: 44px;
