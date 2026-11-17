@@ -13,6 +13,16 @@ const group = (over: Partial<Group>): Group => ({
 describe("routeForActorSwitch", () => {
   const org = group({})
 
+  it("opens the new account's settings from a settings page", () => {
+    expect(routeForActorSwitch("/settings", org)).toBe(
+      `/groups/${encodeURIComponent(org.groupDid)}/settings`,
+    )
+    expect(routeForActorSwitch("/groups/did%3Aplc%3Aother/settings", null)).toBe("/settings")
+    expect(routeForActorSwitch("/groups/did%3Aplc%3Aother/settings", org)).toBe(
+      `/groups/${encodeURIComponent(org.groupDid)}/settings`,
+    )
+  })
+
   it("stays on the current page by default", () => {
     expect(routeForActorSwitch("/feed", org)).toBe("/feed")
     expect(routeForActorSwitch("/create", null)).toBe("/create")

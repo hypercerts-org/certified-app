@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   openSignIn: vi.fn(),
   pageTitle: null as string | null,
   hasPageHeader: true,
+  activeOrg: null as { groupDid: string } | null,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -23,6 +24,10 @@ vi.mock("@/lib/auth/auth-context", () => ({
     isAuthenticated: state.isAuthenticated,
     openSignIn: state.openSignIn,
   }),
+}))
+
+vi.mock("@/lib/groups/org-context", () => ({
+  useOrg: () => ({ activeOrg: state.activeOrg }),
 }))
 
 vi.mock("@/hooks/use-mounted", () => ({ useMounted: () => true }))
@@ -51,6 +56,7 @@ beforeEach(() => {
   state.isLoading = false
   state.pageTitle = null
   state.hasPageHeader = true
+  state.activeOrg = null
   state.openSignIn.mockReset()
   delete document.documentElement.dataset.sidebar
   localStorage.clear()
@@ -132,12 +138,13 @@ describe("AppSidebar", () => {
   it("collapses to the rail and back, remembered in this browser", () => {
     render(<AppSidebar />)
     const toggle = screen.getByRole("button", { name: "Collapse sidebar" })
-    expect(toggle).toHaveAttribute("aria-expanded", "true")
+    // Not aria-expanded: the sidebar styles that as a selected (open) item.
+    expect(toggle).not.toHaveAttribute("aria-expanded")
     fireEvent.click(toggle)
     expect(document.documentElement.dataset.sidebar).toBe("rail")
     expect(localStorage.getItem("certified_sidebar")).toBe("rail")
     const expand = screen.getByRole("button", { name: "Expand sidebar" })
-    expect(expand).toHaveAttribute("aria-expanded", "false")
+    expect(expand).not.toHaveAttribute("aria-expanded")
     fireEvent.click(expand)
     expect(document.documentElement.dataset.sidebar).toBeUndefined()
     expect(localStorage.getItem("certified_sidebar")).toBeNull()
@@ -187,6 +194,26 @@ describe("AppSidebar", () => {
       const { container } = render(<AppSidebar />)
       expect(container).toBeEmptyDOMElement()
       cleanup()
+    }
+  })
+})
+
+describe("AppSidebar Settings", () => {
+  it("opens the settings of the account you act as, and is current on any account's settings", () => {
+    state.activeOrg = { groupDid: "did:plc:earth" }
+    state.pathname = "/groups/did%3Aplc%3Aearth/settings"
+    render(<AppSidebar />)
+    const links = screen.getAllByRole("link", { name: "Settings" })
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/groups/did%3Aplc%3Aearth/settings")
+      expect(link).toHaveAttribute("aria-current", "page")
+    }
+  })
+
+  it("opens yours when you act as yourself", () => {
+    render(<AppSidebar />)
+    for (const link of screen.getAllByRole("link", { name: "Settings" })) {
+      expect(link).toHaveAttribute("href", "/settings")
     }
   })
 })

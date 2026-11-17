@@ -23,6 +23,9 @@ export function routeForActorSwitch(
   next: Group | null,
 ): string {
   if (!pathname) return "/home"
+  // Settings belong to the account you act as: switching on a settings
+  // page opens the new account's settings.
+  if (isAccountSettingsPath(pathname)) return accountSettingsHref(next)
   const routeKey = pathnameToPersonalOnlyRoute(pathname)
   const nextIsOrg = !!next
   if (routeKey && !isRouteVisibleToActor(routeKey, nextIsOrg)) {
@@ -52,8 +55,22 @@ export function sortGroupsForSwitcher(groups: readonly Group[]): Group[] {
 }
 
 /** Where an account's settings live: yours on /settings, a group's on its
- *  own page. Used by Settings' "for" switcher and the Workspace menu's
- *  settings icons. */
+ *  own page. The sidebar's Settings (for the account you act as) and the
+ *  account menu's gears. */
 export function accountSettingsHref(group: Pick<Group, "groupDid"> | null): string {
   return group ? `/groups/${encodeURIComponent(group.groupDid)}/settings` : "/settings"
+}
+
+/** Whether a path is an account's settings page: yours or a group's. */
+export function isAccountSettingsPath(pathname: string): boolean {
+  return pathname === "/settings" || /^\/groups\/[^/]+\/settings$/.test(pathname)
+}
+
+/** Where to go after switching: `routeForActorSwitch`, keeping the
+ *  settings section (#account, #social-graph) when both accounts have it. */
+export function targetAfterActorSwitch(pathname: string | null, next: Group | null): string {
+  const target = routeForActorSwitch(pathname, next)
+  return isAccountSettingsPath(target) && typeof window !== "undefined"
+    ? `${target}${window.location.hash}`
+    : target
 }

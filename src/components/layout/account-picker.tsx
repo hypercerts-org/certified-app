@@ -83,8 +83,8 @@ function AccountPickerItems({
 /**
  * A small account picker for a page heading's `titleAside`: "<prefix>
  * [avatar] Me ▾" (or the group's name), opening a list of you and your
- * groups, the current one checked. Settings' "for" is this (and the
- * comment field's author, with an avatar trigger). Shown only to a signed-in person in at least
+ * groups, the current one checked. The comment field's author is this
+ * (with an avatar trigger). Shown only to a signed-in person in at least
  * one group: with one account there is nothing to pick. A `<Popover>`
  * menu on desktop, a `<BottomSheet>` on phones. Picking the current one
  * just closes it.

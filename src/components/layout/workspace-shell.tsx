@@ -46,14 +46,18 @@ export default function WorkspaceShell({
   )
 }
 
-/** The section's name as the page's h1, for screen readers and the
- *  document outline: the side list already shows it, so it isn't drawn.
- *  It registers like a `<PageHeader>`, so the chrome adds no h1 of its
- *  own. */
+/** The section's name as the page's h1. On phones it is the page title
+ *  (the pill's Workspace menu lists the sections, so the page has no list
+ *  to name it); from 800px the side list or the sidebar shows it, so it is
+ *  for screen readers only. It registers like a `<PageHeader>`, so the
+ *  chrome adds no h1 of its own. */
 function WorkspaceTitle({ id, children }: { id?: string; children: React.ReactNode }) {
   useRegisterPageHeader()
   return (
-    <h1 id={id} className="sr-only">
+    <h1
+      id={id}
+      className="mb-4 mt-0 font-headline text-h2 text-[var(--fg-primary)] text-balance md:sr-only"
+    >
       {children}
     </h1>
   )
@@ -62,12 +66,13 @@ function WorkspaceTitle({ id, children }: { id?: string; children: React.ReactNo
 /**
  * The one "side list + content" frame (DESIGN.md §9.13), as on Settings
  * and Help: the Workspace side list and the content starting on one line.
- * At 1100–1299px the list is a column; below that it is one scrolling row
- * of pills above the content; from 1300px the app sidebar lists the
- * sections itself, so the page hides its own (records.css). No section draws a title over it: the current
- * item in the side list names the page, and the page's h1 is the
- * section's name, for screen readers only (`WorkspaceTitle`). The
- * Overview's h1 is the account name heading its ID box.
+ * At 1100–1299px the list is a column; at 800–1099px one scrolling row of
+ * pills above the content; from 1300px the app sidebar lists the sections
+ * itself, and on phones the pill's Workspace menu does, so the page hides
+ * its own in both (records.css). The page's h1 is the section's name
+ * (`WorkspaceTitle`): drawn on phones, for screen readers only from 800px,
+ * where the current item in the list names the page. The Overview's h1 is
+ * the account name heading its ID box.
  *
  * Each section keeps its own `<section aria-labelledby>` in `children`,
  * pointing at `titleId`; its actions sit in its tab row.

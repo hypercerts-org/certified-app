@@ -237,13 +237,13 @@ Scoped providers (mounted only where used):
 | `/[actor]` | client | open | **Canonical profile URL** (handle-forward). `actor` is a handle (canonical/displayed) or a DID (durable). A DID-addressed URL canonicalizes to the handle form on load. Handles personal and group identities. |
 | `/[actor]/[type]/[rkey]` | client | open | **Canonical record URL.** `type` ∈ `activity \| project` (friendly segment ↔ collection NSID, mapped in `src/lib/urls.ts`). Resolves `actor`→DID, fetches the record, canonicalizes a DID-addressed URL to the handle form. |
 | `/[actor]/[type]/[rkey]/edit` | client | gated (owner) | Record editor. Dispatches to the activity/project editor by `type`; same actor→DID resolution + canonicalization as the read route. |
-| `/settings` | client | gated (AuthGuard) | The signed-in account's settings, whichever workspace is open (`OrgSettings` only when the signed-in account is itself a group). Reached from the sidebar, the pill's More and the account menu. A "for" picker after the title (`settings-for-switcher.tsx`) switches to a group's settings page. |
+| `/settings` | client | gated (AuthGuard) | The signed-in account's settings, whichever workspace is open (`OrgSettings` only when the signed-in account is itself a group). Reached from the sidebar (when you act as yourself) and the account menu (your row's gear, or a Settings row with no groups). "for [you]" after the title (`settings-for.tsx`) is a label: whose settings these are follows the account you act as. |
 | `/settings/edit-profile` | client | gated | Edit personal profile. |
 | `/groups` | server redirect | — | → `/home` (groups live in the account control's "Act as" and on Home). |
 | `/groups/create` | client | gated | Register a new group. Enforces `MAX_SELF_CREATED_ORGS = 5`. Linked from New and the account control. |
 | `/groups/[groupDid]` | server redirect | — | → the group's `/{handle}` profile. |
 | `/groups/[groupDid]/edit-profile` | client | gated | Edit group profile + metadata. |
-| `/groups/[groupDid]/settings` | client | gated | The group's settings (account, members, ownership, audit log). Reached from Settings' "for" picker, the gears in the account control's "Act as" and the group's profile. Same "for" picker after its title. |
+| `/groups/[groupDid]/settings` | client | gated | The group's settings (account, members, ownership, audit log). Reached from the sidebar's Settings while acting as the group, its gear in the account control's "Act as" (which acts as the group) and the group's profile. The same "for" label after its title. |
 | `/endorsements` | server redirect | — | → `/records?kind=endorsements` (endorsements are managed in Records). |
 | `/workspace` | server redirect | — | → `/records`. The old navigation prototype still renders at `/dev/preview/workspace`. |
 | `/endorsement-graph` | server | public | The endorsement network graph (also opened from Help in a pop-up). |

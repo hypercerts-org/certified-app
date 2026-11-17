@@ -87,8 +87,10 @@ export function PhoneNetworkTab({ isAuthenticated }: { isAuthenticated: boolean 
         side="top"
         align="center"
         offset={12}
-        minWidth={220}
+        collisionPadding={16}
+        minWidth={0}
         aria-label="Network"
+        className="pill-menu"
         style={{ zIndex: "var(--z-chrome-menu)" }}
       >
         <NetworkMenuItems

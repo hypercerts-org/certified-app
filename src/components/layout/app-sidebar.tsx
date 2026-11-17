@@ -16,6 +16,8 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { accountSettingsHref, isAccountSettingsPath } from "@/lib/groups/navigation"
+import { useOrg } from "@/lib/groups/org-context"
 import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context"
 import { hasDesktopChrome } from "@/lib/layout/chrome"
 import { useSidebarCollapsed } from "@/lib/layout/sidebar-state"
@@ -70,6 +72,7 @@ const NETWORK = DESTINATIONS.find((d) => d.key === "network")!
 export default function AppSidebar() {
   const pathname = usePathname()
   const { isLoading: authLoading, isAuthenticated, openSignIn } = useAuth()
+  const { activeOrg } = useOrg()
   // Hydrate with exactly what the server rendered (auth unknown).
   const mounted = useMounted()
   const isLoading = authLoading || !mounted
@@ -158,11 +161,15 @@ export default function AppSidebar() {
               current={isDestinationActive({ href: "/help" }, pathname)}
             />
             {isAuthenticated ? (
+              // The settings of the account you act as.
               <SidebarLink
-                href="/settings"
+                href={accountSettingsHref(activeOrg)}
                 label="Settings"
                 icon={Settings}
-                current={isDestinationActive({ href: "/settings" }, pathname)}
+                current={
+                  isDestinationActive({ href: "/settings" }, pathname) ||
+                  isAccountSettingsPath(pathname ?? "")
+                }
               />
             ) : null}
           </>
@@ -193,7 +200,6 @@ function CollapseToggle() {
       type="button"
       className="app-sidebar__item app-sidebar__toggle"
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      aria-expanded={!collapsed}
       onClick={() => setCollapsed(!collapsed)}
     >
       <Icon size={20} strokeWidth={1.5} aria-hidden />

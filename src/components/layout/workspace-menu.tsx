@@ -8,7 +8,7 @@ import Button from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import { useOrg } from "@/lib/groups/org-context"
-import { routeForActorSwitch } from "@/lib/groups/navigation"
+import { targetAfterActorSwitch } from "@/lib/groups/navigation"
 import type { Group } from "@/lib/groups/types"
 import { DESTINATIONS, isDestinationActive } from "@/lib/layout/destinations"
 import { WORKSPACE_SECTIONS, workspaceSectionFor, type WorkspaceSection } from "@/lib/layout/nav-items"
@@ -49,7 +49,7 @@ export function useWorkspaceState() {
  * Feed and Explore switch to the new account's network, the Overview to
  * its account), unless the page only works for your personal account. The
  * Records sections and the group pages are personal-only, so picking a
- * group there goes to its Overview (`routeForActorSwitch`). Switching
+ * group there goes to its Overview (`targetAfterActorSwitch`). Switching
  * changes what you create, follow, endorse, like and comment as, and what
  * the Feed and Explore show.
  */
@@ -62,7 +62,7 @@ export function useOpenWorkspace() {
     const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
     if (!isCurrent) switchOrg(next)
     const target =
-      next && pathname?.startsWith("/records") ? "/home" : routeForActorSwitch(pathname, next)
+      next && pathname?.startsWith("/records") ? "/home" : targetAfterActorSwitch(pathname, next)
     if (target !== pathname) router.push(target)
   }
 }
@@ -70,7 +70,7 @@ export function useOpenWorkspace() {
 /** One account in a switcher: avatar, name, then role · @handle (or a
  *  `note` first, e.g. "You · @handle"), a check on the current one. The
  *  rows of the account menu's "Act as" and of the account pickers (the
- *  comment author, Settings' "for"). With `settings`, a gear after the row opens that
+ *  comment author). With `settings`, a gear after the row opens that
  *  account's settings: its own menu item, not part of the row, so the row
  *  still just switches. `disabled` keeps the row visible but inert (on a
  *  form, where switching would drop the draft). */
@@ -221,8 +221,10 @@ export function PhoneWorkspaceTab() {
         side="top"
         align="center"
         offset={12}
-        minWidth={240}
+        collisionPadding={16}
+        minWidth={0}
         aria-label="Workspace"
+        className="pill-menu"
         style={{ zIndex: "var(--z-chrome-menu)" }}
       >
         <Suspense fallback={<WorkspaceSectionItems current={null} onSelect={close} />}>

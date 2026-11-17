@@ -99,7 +99,7 @@ beforeEach(() => {
 describe("Lists (X11, LI1, LI2)", () => {
   it("draws no title or line over the pane: the side list names it, the h1 is for screen readers", () => {
     renderPane()
-    expect(screen.getByRole("heading", { level: 1, name: "Lists" })).toHaveClass("sr-only")
+    expect(screen.getByRole("heading", { level: 1, name: "Lists" })).toHaveClass("md:sr-only")
     expect(screen.queryByText(/Open a list to rename/)).toBeNull()
   })
 

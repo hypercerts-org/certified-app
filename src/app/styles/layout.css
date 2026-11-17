@@ -252,6 +252,12 @@
    (tokens.css) is its whole footprint, zeroed at ≥800px and whenever the
    pill is absent, so bottom-pinned UI and the content padding clear it. */
 
+/* The menus the pill's Workspace and Network open just above it: the
+   screen's width, less the 16px gutters (the popover clamps it there). */
+.pill-menu {
+  width: calc(100vw - 32px);
+}
+
 .bottom-nav {
   position: fixed;
   left: 50%;

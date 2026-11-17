@@ -14,8 +14,9 @@
 /* ---------- Workspace frame (workspace-shell.tsx) ----------
    The Overview (/home) and the Records sections share one frame: the
    Workspace side list and the section starting on one line, no title
-   drawn over them. Below 1100px the list is one scrolling row of pills
-   above the section. */
+   drawn over them. At 800-1099px the list is one scrolling row of pills
+   above the section. On phones there is no list (the pill's Workspace
+   menu lists the sections) and the section's name is the page title. */
 .workspace__layout {
   display: flex;
   flex-direction: column;
@@ -31,16 +32,15 @@
   }
 }
 
-/* The pill row bleeds into the page gutter so the last pill can scroll
-   fully into view; the list's own 4px padding puts the first pill on the
-   gutter. Phones: the shell's 16px; 800-1099px: the container's. */
 @media (max-width: 799px) {
   .workspace__nav {
-    margin-inline: -16px;
-    padding-inline: 12px;
+    display: none;
   }
 }
 
+/* The pill row bleeds into the page gutter so the last pill can scroll
+   fully into view; the list's own 4px padding puts the first pill on the
+   gutter. */
 @media (min-width: 800px) and (max-width: 1099px) {
   .workspace__nav {
     margin-inline: calc(-1 * var(--page-gutter));

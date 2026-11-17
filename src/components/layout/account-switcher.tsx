@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/lib/auth/auth-context"
 import { useFeedback } from "@/lib/feedback-context"
 import { accountSettingsHref } from "@/lib/groups/navigation"
+import { useOrg } from "@/lib/groups/org-context"
 import type { Group } from "@/lib/groups/types"
 import { isFormRoute } from "@/lib/layout/bottom-nav-visibility"
 import { useSidebarIsFull } from "@/lib/layout/sidebar-state"
@@ -151,6 +152,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
   const { personal, groups, activeOrg, canSwitch } = useWorkspaceState()
   const { profileHref } = useAccountState()
   const openWorkspace = useOpenWorkspace()
+  const { switchOrg } = useOrg()
   const { toast } = useToast()
   const onForm = isFormRoute(usePathname())
   const actId = useId()
@@ -175,6 +177,18 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
     }
   }
 
+  // A gear opens that account's settings as that account (its link does
+  // the navigating), so Settings always belong to the account the control
+  // shows.
+  const openSettings = (next: Group | null) => {
+    onClose()
+    const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
+    if (!isCurrent) {
+      switchOrg(next)
+      toast({ title: `Now acting as ${next ? groupIdentity(next).name : personal.name}` })
+    }
+  }
+
   return (
     <div className="flex flex-col">
       {canSwitch ? (
@@ -182,7 +196,8 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
           <Heading id={actId} className={headingClass}>
             Act as
           </Heading>
-          {/* Every account's settings behind the same gear, yours too. */}
+          {/* Every account's settings behind the same gear, yours too;
+              opening them acts as that account. */}
           <WorkspaceRow
             mode={mode}
             identity={personal}
@@ -190,7 +205,11 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
             current={!activeOrg}
             disabled={onForm}
             onSelect={() => select(null)}
-            settings={{ href: accountSettingsHref(null), label: "Your settings", onNavigate: onClose }}
+            settings={{
+              href: accountSettingsHref(null),
+              label: "Your settings",
+              onNavigate: () => openSettings(null),
+            }}
           />
           {groups.map((group) => {
             const identity = groupIdentity(group)
@@ -205,7 +224,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
                 settings={{
                   href: accountSettingsHref(group),
                   label: `${identity.name} settings`,
-                  onNavigate: onClose,
+                  onNavigate: () => openSettings(group),
                 }}
               />
             )

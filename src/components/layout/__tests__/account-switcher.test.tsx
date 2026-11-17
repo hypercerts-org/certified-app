@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, within, act } from "@testing-library/react"
+import { render, screen, fireEvent, within, act, cleanup } from "@testing-library/react"
 import type { Group } from "@/lib/groups/types"
 
 // Who is signed in (auth, session, profile), who they act as (org context)
@@ -201,6 +201,16 @@ describe("AccountMenuContent", () => {
     expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull()
   })
 
+  it("a gear acts as that account as it opens its settings; yours, while you are you, just opens them", () => {
+    renderMenu()
+    fireEvent.click(screen.getByRole("menuitem", { name: "Your settings" }))
+    expect(state.switchOrg).not.toHaveBeenCalled()
+    cleanup()
+    renderMenu()
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ma Earth settings" }))
+    expect(state.switchOrg).toHaveBeenCalledWith(expect.objectContaining({ displayName: "Ma Earth" }))
+  })
+
   it("switches in place: on the Feed it stays on the Feed, and says so", () => {
     const { onClose } = renderMenu()
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
@@ -218,11 +228,18 @@ describe("AccountMenuContent", () => {
     expect(state.toast).not.toHaveBeenCalled()
   })
 
-  it("leaves a group-only page for the Overview when switching to a group", () => {
-    state.pathname = "/groups/did:plc:river/settings"
+  it("leaves a personal-only page for the Overview when switching to a group", () => {
+    state.pathname = "/groups"
     renderMenu()
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
     expect(state.push).toHaveBeenCalledWith("/home")
+  })
+
+  it("on a settings page, opens the new account's settings", () => {
+    state.pathname = "/groups/did:plc:river/settings"
+    renderMenu()
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
+    expect(state.push).toHaveBeenCalledWith(expect.stringMatching(/^\/groups\/[^/]+\/settings$/))
   })
 
   it("inside the Workspace, stays on the section when it works for the new account", () => {

@@ -62,7 +62,9 @@ function expectFrame(container: HTMLElement, opts: { h1?: string } = {}) {
   expect(sideList.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   if (opts.h1) {
     const h1 = screen.getByRole("heading", { level: 1, name: opts.h1 })
-    expect(h1).toHaveClass("sr-only")
+    // The page title on phones (no section list there), for screen readers
+    // only from 800px, where the list names the page.
+    expect(h1).toHaveClass("md:sr-only")
     expect(h1.compareDocumentPosition(sideList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(main!.contains(h1)).toBe(false)
   }
@@ -196,7 +198,7 @@ describe("Overview renders the frame", () => {
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<Home />)
-    expect(container.querySelector("h1.sr-only")).toBeNull()
+    expect(container.querySelector("h1")).toBeNull()
     const sideList = screen.getByRole("navigation", { name: "Workspace" })
     const main = container.querySelector(".workspace__main")!
     expect(sideList.compareDocumentPosition(main) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

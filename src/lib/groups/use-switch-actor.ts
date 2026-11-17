@@ -3,7 +3,7 @@
 import { useCallback } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useOrg } from "./org-context"
-import { routeForActorSwitch } from "./navigation"
+import { targetAfterActorSwitch } from "./navigation"
 import type { Group } from "./types"
 
 /**
@@ -24,7 +24,7 @@ export function useSwitchActor(): (next: Group | null) => void {
   return useCallback(
     (next: Group | null) => {
       switchOrg(next)
-      const target = routeForActorSwitch(pathname, next)
+      const target = targetAfterActorSwitch(pathname, next)
       if (target !== pathname) router.push(target)
     },
     [switchOrg, router, pathname],

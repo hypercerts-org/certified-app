@@ -32,7 +32,7 @@ const PasswordSection = dynamic(
   () => import("@/components/account/password-section"),
 )
 import SyncSocialGraphSection from "@/components/settings/sync-social-graph-section"
-import SettingsForSwitcher from "@/components/settings/settings-for-switcher"
+import SettingsFor from "@/components/settings/settings-for"
 import SettingsLayout, {
   SettingsBlock,
   SettingsNote,
@@ -1102,9 +1102,9 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   return (
     <>
       <SettingsLayout
-        titleAside={<SettingsForSwitcher current={org} />}
-        // The picker names the group; the line under it says only what
-        // your role lets you do.
+        titleAside={<SettingsFor account={org} />}
+        // "for" names the group; the line under it says only what your
+        // role lets you do.
         description={ROLE_PHRASE[org.role]}
         navLabel="Group settings sections"
         sections={visibleCategories}
