@@ -2,11 +2,12 @@
    Settings (personal /settings and group settings)
 
    The frame is components/settings/settings-layout.tsx: <PageContainer>
-   + <PageHeader> + a <SideNav> of sections beside the selected section
-   (a pill row above it below 1100px). This file styles what goes inside
-   a section:
+   + <PageHeader> + the sections as a tab strip (.settings-tabs) + the open
+   section (.settings-section, at a reading width). This file styles the
+   strip and what goes inside a section:
 
-     .settings-section__body   the rows and blocks under the SectionHeader
+     .settings-section__description   the section's one line
+     .settings-section__body   the rows and blocks under it
        .settings-row             one setting: label + explanation, control
          .settings-row__control
        .settings-block           a full-width part (a list, a sync panel)
@@ -16,6 +17,59 @@
    password, DID pill, app passwords, promote-to-group), the group
    settings lists (members, activity log) and the group-result modal.
    ======================================================================== */
+
+/* The sections' tab strip: under the title, its hairline across the page.
+   On phones it runs to the screen's edges and scrolls sideways, with a
+   fade where more tabs are. */
+.settings-tabs {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.settings-tabs__scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.settings-tabs__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-tabs__list {
+  min-width: 100%;
+  width: max-content;
+}
+
+.settings-tabs__list [role="tab"] {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 799px) {
+  .settings-tabs {
+    margin-inline: -16px;
+  }
+
+  .settings-tabs__scroller {
+    padding: 0 16px;
+  }
+}
+
+/* The open section, at a reading width: a row's label and its control
+   stay close enough to read as one. */
+.settings-section {
+  max-width: 48rem;
+}
+
+.settings-section__description {
+  margin: 0 0 16px;
+  max-width: var(--measure);
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
 
 .settings-section__body {
   display: flex;

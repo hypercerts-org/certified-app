@@ -3,27 +3,30 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
-import SectionHeader from "@/components/ui/section-header"
-import SideNav, { SIDE_NAV_CONTENT_OFFSET, type SideNavIcon } from "@/components/ui/side-nav"
+import type { SideNavIcon } from "@/components/ui/side-nav"
+import TabStripFades, { revealActiveTab } from "@/components/ui/tab-strip-fades"
+import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 
 /**
  * The frame shared by personal settings (`SettingsPanel`) and group settings
- * (`OrgSettings`): the page header naming the account, a SideNav of sections
- * (a pill row below 1100px, a sticky column from 1100px) and the one
- * selected section beside it.
+ * (`OrgSettings`): the "Settings" header, the sections as a tab strip under
+ * it (a page's own sections are tabs, as on Endorsements or a profile; the
+ * app's navigation only lists pages, so there is no second menu), then the
+ * open section at a reading width. The strip scrolls sideways on phones.
  *
  * One section shows at a time, picked by the URL hash (`/settings#account`),
  * so deep links, the product tour and `window.location.hash = …` hand-offs
  * keep working. Choosing a section replaces the hash rather than pushing a
- * history entry, and moves focus to the new section's heading so a
- * keyboard or screen-reader user hears which section opened.
+ * history entry; focus stays on the tab (arrow keys move between them).
  */
 
 export interface SettingsSectionDef<K extends string> {
   key: K
-  /** Short label for the SideNav. */
+  /** Short label for the tab. */
   label: string
-  icon: SideNavIcon
+  /** Kept on the definitions; the tabs show labels only. */
+  icon?: SideNavIcon
 }
 
 /** The section heading's id; the section region points at it. */
@@ -94,91 +97,49 @@ export default function SettingsLayout<K extends string>({
   sectionDescription,
   children,
 }: SettingsLayoutProps<K>) {
-  const navRef = useRef<HTMLDivElement>(null)
-  const mainRef = useRef<HTMLElement>(null)
-  // The section a nav click asked for; its heading takes focus once it has
-  // rendered. Deep links and the first render leave focus alone.
-  const focusPending = useRef<K | null>(null)
+  const stripRef = useRef<HTMLDivElement>(null)
+  const revealedRef = useRef(false)
 
-  // Focus the selected section's heading (tabindex -1: focusable from
-  // script, not a Tab stop). Focus lands on the heading, so its name is
-  // announced and Tab continues into the section. No scroll: the click
-  // handler has already brought the section into view.
-  const focusTitle = useCallback(() => {
-    const heading = document.getElementById(SECTION_TITLE_ID)
-    if (!heading) return
-    heading.tabIndex = -1
-    heading.focus({ preventScroll: true })
-  }, [])
-
+  // Keep the open section's tab in view in the sideways-scrolling strip
+  // (phones): a deep link can open a section whose tab starts off-screen.
+  // Scrolls the strip only, never the page.
   useEffect(() => {
-    if (focusPending.current !== current) return
-    focusPending.current = null
-    focusTitle()
-  }, [current, focusTitle])
-
-  // Phones: keep the current pill in view in the scrolling row (a deep link
-  // can pick a section whose pill starts off-screen). Scrolls the row only,
-  // never the page; a no-op from 1100px, where the list doesn't scroll.
-  useEffect(() => {
-    const list = navRef.current?.querySelector("ul")
-    const pill = list?.querySelector("[aria-current]")
-    if (!list || !pill || list.scrollWidth <= list.clientWidth) return
-    const row = list.getBoundingClientRect()
-    const box = pill.getBoundingClientRect()
-    if (box.left < row.left || box.right > row.right) {
-      list.scrollLeft += box.left - row.left - 16
-    }
+    const strip = stripRef.current
+    if (!strip) return
+    revealActiveTab(strip, revealedRef.current)
+    revealedRef.current = true
   }, [current])
 
-  const items = sections.map(({ key, label, icon }) => ({
-    key,
-    label,
-    icon,
-    href: `#${key}`,
-    current: key === current,
-    // A plain click swaps the section in place (no history entry, no
-    // jump); modified clicks fall through to the link so "open in new
-    // tab" still lands on the section.
-    onClick: (e?: React.MouseEvent) => {
-      if (e && (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) {
-        return
-      }
-      e?.preventDefault()
-      // If the section's top has scrolled up under the top bar (a long
-      // section, with the sticky nav still in view), bring it back.
-      const top = mainRef.current?.getBoundingClientRect().top ?? 0
-      if (top < 0) window.scrollTo({ top: 0 })
-      if (key === current) {
-        // Already showing: nothing re-renders, so focus it now.
-        focusTitle()
-        return
-      }
-      focusPending.current = key
-      onSelect(key)
-    },
-  }))
+  const edges = useOverflowEdges(stripRef)
 
   return (
     <PageContainer>
       <PageHeader title="Settings" description={description} />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:items-start lg:gap-12">
-        <div ref={navRef} className="min-w-0">
-          <SideNav aria-label={navLabel} items={items} />
+      <Tabs value={current} onChange={(next) => onSelect(next as K)}>
+        <div className="settings-tabs">
+          <div ref={stripRef} className="settings-tabs__scroller">
+            <TabList aria-label={navLabel} className="settings-tabs__list">
+              {sections.map(({ key, label }) => (
+                <Tab key={key} value={key}>
+                  {label}
+                </Tab>
+              ))}
+            </TabList>
+          </div>
+          <TabStripFades start={edges.start} end={edges.end} />
         </div>
-        <section
-          ref={mainRef}
-          aria-labelledby={SECTION_TITLE_ID}
-          className={`flex min-w-0 flex-col gap-4 ${SIDE_NAV_CONTENT_OFFSET}`}
-        >
-          <SectionHeader
-            id={SECTION_TITLE_ID}
-            title={title}
-            description={sectionDescription}
-          />
+        <TabPanel value={current} className="settings-section">
+          {/* The tab names the section; the heading stays for the outline
+              and screen readers. */}
+          <h2 id={SECTION_TITLE_ID} className="sr-only">
+            {title}
+          </h2>
+          {sectionDescription ? (
+            <p className="settings-section__description">{sectionDescription}</p>
+          ) : null}
           <div className="settings-section__body">{children}</div>
-        </section>
-      </div>
+        </TabPanel>
+      </Tabs>
     </PageContainer>
   )
 }

@@ -165,13 +165,11 @@ describe("Records sections render the frame in every state", () => {
 })
 
 describe("Overview renders the frame", () => {
-  it("while auth loads: no title (the account heads the ID box), a spinner", () => {
+  it("while auth loads: the title Overview, like every section, then a spinner", () => {
     auth.isLoading = true
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<Home />)
-    expect(container.querySelector("h1")).toBeNull()
-    expect(container.querySelector(".workspace__main")).not.toBeNull()
-    expect(screen.queryByRole("navigation", { name: "Workspace" })).toBeNull()
+    expectFrame(container, { h1: "Overview" })
   })
 })

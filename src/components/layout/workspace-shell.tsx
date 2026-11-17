@@ -50,8 +50,8 @@ export default function WorkspaceShell({
  * title (a `<PageHeader>`, as the Network's pages have), then the section.
  * The Workspace's sections are listed by the navigation, never on the
  * page: the full sidebar's Workspace group from 1300px, the rail's
- * Workspace menu below that, the pill's on phones. The Overview has no
- * title: its h1 is the account name heading its ID box.
+ * Workspace menu below that, the pill's on phones. The Overview too: its
+ * title is "Overview" (the account name heads its ID box, an h2).
  *
  * Each section keeps its own `<section aria-labelledby>` in `children`,
  * pointing at `titleId`; its actions sit in its tab row.
@@ -70,7 +70,7 @@ export function WorkspaceFrame({
   }
   return (
     <>
-      {current !== "overview" ? <PageHeader title={workspaceSectionLabel(current)} titleId={titleId} /> : null}
+      <PageHeader title={workspaceSectionLabel(current)} titleId={titleId} />
       <div className="workspace__main">{children}</div>
     </>
   )

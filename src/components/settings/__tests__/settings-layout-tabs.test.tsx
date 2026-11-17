@@ -34,28 +34,30 @@ function Harness() {
 
 afterEach(() => cleanup())
 
-// a11y: picking a section swaps the content in place, so focus moves to the
-// new section's heading; a screen-reader user hears which section opened.
-describe("SettingsLayout section focus", () => {
+// The sections are a tab strip under the title (no second menu beside the
+// app's sidebar); picking one swaps the panel in place.
+describe("SettingsLayout tabs", () => {
   it("leaves focus alone on first render", () => {
     render(<Harness />)
     expect(document.activeElement).toBe(document.body)
   })
 
-  it("moves focus to the new section's heading when a section is picked", () => {
+  it("shows the sections as tabs, the open one selected, its panel named by it", () => {
     render(<Harness />)
-    fireEvent.click(screen.getByRole("link", { name: "Appearance" }))
-    const heading = screen.getByRole("heading", { level: 2, name: "Appearance" })
-    expect(document.activeElement).toBe(heading)
-    // Focusable from script only, not a Tab stop.
-    expect(heading).toHaveAttribute("tabindex", "-1")
+    const list = screen.getByRole("tablist", { name: "Settings sections" })
+    expect(list).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tabpanel", { name: "Account" })).toHaveTextContent("Control in Account")
+    // No side list of sections any more.
+    expect(screen.queryByRole("navigation", { name: "Settings sections" })).toBeNull()
   })
 
-  it("focuses the heading when the current section is picked again", () => {
+  it("opens a section from its tab", () => {
     render(<Harness />)
-    fireEvent.click(screen.getByRole("link", { name: "Account" }))
-    expect(document.activeElement).toBe(
-      screen.getByRole("heading", { level: 2, name: "Account" }),
-    )
+    fireEvent.click(screen.getByRole("tab", { name: "Appearance" }))
+    expect(screen.getByRole("tab", { name: "Appearance" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tabpanel", { name: "Appearance" })).toHaveTextContent("Control in Appearance")
+    // The section keeps a heading for the outline.
+    expect(screen.getByRole("heading", { level: 2, name: "Appearance" })).toBeInTheDocument()
   })
 })

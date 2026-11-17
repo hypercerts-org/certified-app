@@ -161,6 +161,12 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Right under the tab strip, its line is the list's top edge: no second
+   hairline 16px below it. */
+.records-pane__tab-body > .records-list:first-child {
+  border-top: 0;
+}
+
 .records-row,
 .records-person {
   display: flex;

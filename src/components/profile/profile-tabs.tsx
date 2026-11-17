@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { TabList, Tab } from "@/components/ui/tabs"
-import TabStripFades from "@/components/ui/tab-strip-fades"
+import TabStripFades, { revealActiveTab } from "@/components/ui/tab-strip-fades"
 import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 
 export interface ProfileTabItem {
@@ -22,29 +22,6 @@ interface ProfileTabsProps {
   /** Pin the strip below the top bar while scrolling (off while editing,
    *  when the edit bar takes that place). */
   sticky?: boolean
-}
-
-/**
- * Scrolls `strip` sideways just enough to show its selected tab, leaving a
- * little room past it. A no-op when the tab is already in view or when
- * everything fits.
- */
-function revealActiveTab(strip: HTMLElement, smooth: boolean) {
-  const tab = strip.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-  if (!tab || strip.scrollWidth <= strip.clientWidth) return
-  const tabLeft =
-    tab.getBoundingClientRect().left -
-    strip.getBoundingClientRect().left +
-    strip.scrollLeft
-  const tabRight = tabLeft + tab.offsetWidth
-  const viewLeft = strip.scrollLeft
-  const viewRight = viewLeft + strip.clientWidth
-  if (tabLeft >= viewLeft && tabRight <= viewRight) return
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  strip.scrollTo({
-    left: tabLeft < viewLeft ? tabLeft - 24 : tabRight - strip.clientWidth + 32,
-    behavior: smooth && !reduceMotion ? "smooth" : "auto",
-  })
 }
 
 /**

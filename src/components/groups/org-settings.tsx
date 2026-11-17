@@ -148,7 +148,7 @@ const CATEGORY_ALIASES: Readonly<Record<string, CategoryKey>> = {
 }
 
 const ROLE_PHRASE: Record<OrgRole, string> = {
-  owner: "You're its owner.",
+  owner: "You're the owner.",
   admin: "You're an admin.",
   member: "You're a member.",
 }

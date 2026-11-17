@@ -58,7 +58,9 @@ export function useAccountState() {
     name: profile?.displayName || handle || "Your account",
     handle: handle ?? null,
     avatarUrl: avatarUrl || undefined,
-    initials: getInitials(profile?.displayName, handle),
+    // Nothing to show until the name or handle has loaded: the plain fill,
+    // not a "?" that reads like an error or a help button.
+    initials: profile?.displayName || handle ? getInitials(profile?.displayName, handle) : "",
     seed: did ?? undefined,
     role: selfGroup?.role,
   }

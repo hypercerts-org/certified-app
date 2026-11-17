@@ -14,7 +14,6 @@ import type { CertifiedProfile } from "@/lib/atproto/types"
 import type { Group } from "@/lib/groups/types"
 import { getInitials } from "@/lib/utils/initials"
 import { profileUrl } from "@/lib/urls"
-import { useRegisterPageHeader } from "@/lib/navbar-context"
 
 /** The account Home describes, as `useUserProfile` resolved it. */
 export interface HomeIdentity {
@@ -109,13 +108,11 @@ export function HomeAccountIdentity({
   )
 }
 
-/** The account name: the page's visible h1. It stands in for a
- *  `<PageHeader>`, so it registers like one and the chrome skips its own
- *  h1 (navbar-context). */
+/** The account name, heading the ID box: an h2 under the page's
+ *  "Overview" title (the Workspace frame's `<PageHeader>`). */
 function IdentityHeading({ children }: { children: React.ReactNode }) {
-  useRegisterPageHeader()
   return (
-    <h1 className="m-0 break-words font-headline text-h3 text-[var(--fg-primary)] text-balance">{children}</h1>
+    <h2 className="m-0 break-words font-headline text-h3 text-[var(--fg-primary)] text-balance">{children}</h2>
   )
 }
 
@@ -178,20 +175,24 @@ export function HomeIdSection({
                 <div className={canEditHandle ? "home-id__handle" : undefined}>
                   <CopyPill value={handle} display={`@${handle}`} label="handle" />
                   {canEditHandle ? (
-                    <Tooltip label="Change handle" className="home-id__edit">
-                      <Button
-                        href={
-                          isGroup
-                            ? `/groups/${encodeURIComponent(did)}/settings#account`
-                            : "/settings#account"
-                        }
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Change handle in Settings"
-                      >
-                        <Pencil size={14} strokeWidth={1.75} aria-hidden />
-                      </Button>
-                    </Tooltip>
+                    // Positioned by its own wrapper: on touch screens the
+                    // Tooltip renders no wrapper of its own.
+                    <span className="home-id__edit">
+                      <Tooltip label="Change handle">
+                        <Button
+                          href={
+                            isGroup
+                              ? `/groups/${encodeURIComponent(did)}/settings#account`
+                              : "/settings#account"
+                          }
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Change handle in Settings"
+                        >
+                          <Pencil size={14} strokeWidth={1.75} aria-hidden />
+                        </Button>
+                      </Tooltip>
+                    </span>
                   ) : null}
                 </div>
               ) : (
