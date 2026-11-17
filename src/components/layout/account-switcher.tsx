@@ -3,12 +3,22 @@
 import { useId, useRef, useState, type RefObject } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronsUpDown, LogIn, LogOut, Plus, Settings, UserRound } from "lucide-react"
+import {
+  ChevronsUpDown,
+  CircleHelp,
+  LogIn,
+  LogOut,
+  MessageSquare,
+  Plus,
+  Settings,
+  UserRound,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useFeedback } from "@/lib/feedback-context"
 import { accountSettingsHref } from "@/lib/groups/navigation"
 import type { Group } from "@/lib/groups/types"
 import { isFormRoute } from "@/lib/layout/bottom-nav-visibility"
-import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useSidebarIsFull } from "@/lib/layout/sidebar-state"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import Badge from "@/components/ui/badge"
 import BottomSheet from "@/components/ui/bottom-sheet"
@@ -120,19 +130,24 @@ export interface AccountMenuContentProps {
 
 /**
  * 1. **Act as** (only with something to switch to): you first, then each
- *    of your groups, each with a gear to its settings, then New group.
+ *    of your groups, each with a gear to its settings (yours too), then
+ *    New group.
  *    Picking one switches who you act as (`useOpenWorkspace`) and says so
  *    in a toast. On a create or edit form the rows stay visible but
  *    inert, so switching can't drop a draft. With nothing to switch, the
  *    block is your identity instead.
- * 2. **Signed in as** you: View profile, Settings, Sign in with another
- *    account, Sign out.
+ * 2. **Signed in as** you: View profile (and Settings, when there is no
+ *    "Act as" and so no gear), Sign in with another account, Sign out.
+ * 3. On phones only (the sheet), where there is no sidebar: Help, Send
+ *    feedback and the legal links. The desktop has them at the bottom of
+ *    the sidebar and in the site footer.
  *
  * One component for both presentations: inside `<PopoverContent>`
  * (role="menu") on desktop and inside a `<BottomSheet>` on phones.
  */
 export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountMenuContentProps) {
   const { openSignInAnotherAccount } = useAuth()
+  const { openFeedback } = useFeedback()
   const { personal, groups, activeOrg, canSwitch } = useWorkspaceState()
   const { profileHref } = useAccountState()
   const openWorkspace = useOpenWorkspace()
@@ -167,8 +182,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
           <Heading id={actId} className={headingClass}>
             Act as
           </Heading>
-          {/* No gear on your own row: your Settings are in the block
-              below (and the sidebar). */}
+          {/* Every account's settings behind the same gear, yours too. */}
           <WorkspaceRow
             mode={mode}
             identity={personal}
@@ -176,6 +190,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
             current={!activeOrg}
             disabled={onForm}
             onSelect={() => select(null)}
+            settings={{ href: accountSettingsHref(null), label: "Your settings", onNavigate: onClose }}
           />
           {groups.map((group) => {
             const identity = groupIdentity(group)
@@ -241,10 +256,14 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
           <UserRound size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
           View profile
         </Link>
-        <Link href="/settings" {...item} className={row()} onClick={onClose}>
-          <Settings size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
-          Settings
-        </Link>
+        {/* With "Act as", your settings are your row's gear; without it
+            (nothing to switch), they are a row here. */}
+        {canSwitch ? null : (
+          <Link href="/settings" {...item} className={row()} onClick={onClose}>
+            <Settings size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            Settings
+          </Link>
+        )}
         {/* "Sign in with another account" asks the PDS who is signing in
             (never the silent bounce back into this account) and replaces
             this session, so it says so. */}
@@ -280,6 +299,48 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
           Sign out
         </button>
       </div>
+
+      {/* Phones: the app's own help and fine print, one tap from the
+          avatar (the desktop keeps them in the sidebar and the footer). */}
+      {!isMenu ? (
+        <>
+          {separator}
+          <Link href="/help" className={row()} onClick={onClose}>
+            <CircleHelp size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            Help
+          </Link>
+          <button
+            type="button"
+            className={row()}
+            onClick={() => {
+              onClose()
+              openFeedback()
+            }}
+          >
+            <MessageSquare size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+            Send feedback
+          </button>
+          <nav
+            aria-label="Legal"
+            className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--border-subtle)] px-3 pt-3 text-caption"
+          >
+            {[
+              { href: "/terms", label: "Terms" },
+              { href: "/privacy", label: "Privacy" },
+              { href: "/imprint", label: "Imprint" },
+            ].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className="inline-flex min-h-control-md items-center text-[var(--fg-muted)] no-underline hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -300,7 +361,8 @@ export function DesktopAccountSwitcher() {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const signOut = useSignOutConfirm(triggerRef)
   const { current, personal } = useAccountState()
-  const { isFullDesktop } = useLayoutBreakpoints()
+  // The full sidebar (from 1300px, unless collapsed to the rail).
+  const isFullDesktop = useSidebarIsFull()
   const sub =
     current.kind === "personal" && current.handle ? `@${current.handle}` : identityTag(current)
 

@@ -1,15 +1,20 @@
 "use client"
 
-import { usePathname, useRouter } from "next/navigation"
-import { Check, Settings } from "lucide-react"
+import { Suspense } from "react"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Check, FolderOpen, Settings } from "lucide-react"
 import Button from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import { useOrg } from "@/lib/groups/org-context"
 import { routeForActorSwitch } from "@/lib/groups/navigation"
 import type { Group } from "@/lib/groups/types"
 import { DESTINATIONS, isDestinationActive } from "@/lib/layout/destinations"
+import { WORKSPACE_SECTIONS, workspaceSectionFor, type WorkspaceSection } from "@/lib/layout/nav-items"
 import { getInitials } from "@/lib/utils/initials"
 import { IdentityAvatar, useAccountState, type AccountIdentity } from "./account-menu"
-import { menuItemProps, menuRowClass, type MenuMode } from "./menu-row"
+import { MENU_ICON_CLASS, menuItemProps, menuRowClass, type MenuMode } from "./menu-row"
 import { ORG_ROLE_LABEL } from "./role-label"
 
 const WORKSPACE = DESTINATIONS.find((d) => d.key === "workspace")!
@@ -40,13 +45,13 @@ export function useWorkspaceState() {
 }
 
 /**
- * Open a workspace. From outside the Workspace (Network, Apps, Settings…)
- * it goes to that workspace's Overview. Inside it, it stays on the same
- * section when the section works for the new account: the Records
- * sections and Groups are personal-only, so picking a group there goes to
- * its Overview. Switching changes who you act as (what you create, follow
- * and endorse as); what Feed and Explore show is "Seen as", a separate
- * setting (lib/groups/seen-as).
+ * Switch who you act as, **in place**: you stay on the page you're on (the
+ * Feed and Explore switch to the new account's network, the Overview to
+ * its account), unless the page only works for your personal account. The
+ * Records sections and the group pages are personal-only, so picking a
+ * group there goes to its Overview (`routeForActorSwitch`). Switching
+ * changes what you create, follow, endorse, like and comment as, and what
+ * the Feed and Explore show.
  */
 export function useOpenWorkspace() {
   const { activeOrg, switchOrg } = useOrg()
@@ -56,20 +61,16 @@ export function useOpenWorkspace() {
   return (next: Group | null) => {
     const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
     if (!isCurrent) switchOrg(next)
-    const inWorkspace = isDestinationActive(WORKSPACE, pathname)
-    const target = !inWorkspace
-      ? "/home"
-      : next && pathname?.startsWith("/records")
-        ? "/home"
-        : routeForActorSwitch(pathname, next)
+    const target =
+      next && pathname?.startsWith("/records") ? "/home" : routeForActorSwitch(pathname, next)
     if (target !== pathname) router.push(target)
   }
 }
 
 /** One account in a switcher: avatar, name, then role · @handle (or a
- *  `note` first, e.g. "You · @handle"), a check on the current one. The rows of the
- *  account menu's "Act as" and of the account pickers ("Seen as",
- *  Settings' "for"). With `settings`, a gear after the row opens that
+ *  `note` first, e.g. "You · @handle"), a check on the current one. The
+ *  rows of the account menu's "Act as" and of the account pickers (the
+ *  comment author, Settings' "for"). With `settings`, a gear after the row opens that
  *  account's settings: its own menu item, not part of the row, so the row
  *  still just switches. `disabled` keeps the row visible but inert (on a
  *  form, where switching would drop the draft). */
@@ -142,5 +143,92 @@ export function WorkspaceRow({
         <Settings size={16} strokeWidth={1.75} aria-hidden />
       </Button>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// The phone pill's Workspace
+// ---------------------------------------------------------------------------
+
+/** The Workspace's sections as touch-sized menu rows, the current one
+ *  checked. */
+function WorkspaceSectionItems({
+  current,
+  onSelect,
+}: {
+  current: WorkspaceSection | null
+  onSelect: () => void
+}) {
+  return (
+    <>
+      {WORKSPACE_SECTIONS.map(({ key, label, href, icon: Icon }) => (
+        <Link
+          key={key}
+          href={href}
+          {...menuItemProps("menu")}
+          className={menuRowClass("sheet")}
+          aria-current={key === current ? "page" : undefined}
+          onClick={onSelect}
+        >
+          <Icon size={16} strokeWidth={1.75} className={MENU_ICON_CLASS} aria-hidden />
+          <span className="flex-1">{label}</span>
+          {key === current ? (
+            <Check size={16} strokeWidth={1.75} className="shrink-0" aria-hidden />
+          ) : null}
+        </Link>
+      ))}
+    </>
+  )
+}
+
+/** The rows with the current section, read from `?kind=` (only while the
+ *  menu is open, in its own Suspense boundary). */
+function CurrentWorkspaceSectionItems({ onSelect }: { onSelect: () => void }) {
+  const pathname = usePathname()
+  const kind = useSearchParams()?.get("kind") ?? null
+  return <WorkspaceSectionItems current={workspaceSectionFor(pathname, kind)} onSelect={onSelect} />
+}
+
+/**
+ * The phone pill's Workspace item (signed in): opens the Workspace's
+ * sections (Overview, Projects and activities, Endorsements, Followers,
+ * Lists, Groups) as a small menu just above the pill, like Network's.
+ * Always the folder icon: who you act as is the top bar's account
+ * control. Current on the Overview and the Records sections; the tour's
+ * `nav-workspace` anchor on phones.
+ */
+export function PhoneWorkspaceTab() {
+  const [open, setOpen] = useRouteScopedOpen()
+  const active = isDestinationActive(WORKSPACE, usePathname())
+  const close = () => setOpen(false)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>
+        <button
+          type="button"
+          className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
+          aria-current={active ? "page" : undefined}
+          data-tour="nav-workspace"
+        >
+          <span className="bottom-nav__icon-wrap">
+            <FolderOpen size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
+          </span>
+          <span className="bottom-nav__label">Workspace</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        portal
+        side="top"
+        align="center"
+        offset={12}
+        minWidth={240}
+        aria-label="Workspace"
+        style={{ zIndex: "var(--z-chrome-menu)" }}
+      >
+        <Suspense fallback={<WorkspaceSectionItems current={null} onSelect={close} />}>
+          <CurrentWorkspaceSectionItems onSelect={close} />
+        </Suspense>
+      </PopoverContent>
+    </Popover>
   )
 }

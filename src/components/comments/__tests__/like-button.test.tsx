@@ -10,7 +10,6 @@ const GROUP: Group = { groupDid: "did:plc:grp", handle: "grp.test", displayName:
 
 let did: string | null = "did:plc:me"
 let activeOrg: Group | null = null
-let seenAs: Group | null = null
 const openSignInModal = vi.fn()
 
 vi.mock("@/lib/auth/auth-context", () => ({
@@ -18,9 +17,6 @@ vi.mock("@/lib/auth/auth-context", () => ({
 }))
 vi.mock("@/lib/groups/org-context", () => ({
   useOrg: () => ({ activeOrg, groups: activeOrg ? [activeOrg] : [], selfGroup: null }),
-}))
-vi.mock("@/lib/groups/seen-as", () => ({
-  useSeenAs: () => ({ seenAs }),
 }))
 
 const fetchCounts = vi.fn()
@@ -50,7 +46,6 @@ beforeEach(() => {
   __resetLikesStore()
   did = "did:plc:me"
   activeOrg = null
-  seenAs = null
   openSignInModal.mockReset()
   fetchCounts.mockReset()
   fetchOwn.mockReset()
@@ -106,9 +101,8 @@ describe("LikeButton", () => {
     expect(screen.getByRole("button", { name: "Like this project" }).textContent).toBe("Like")
   })
 
-  it("likes as the account you act as, whatever the feed is seen as", async () => {
+  it("likes as the account you act as", async () => {
     activeOrg = GROUP
-    seenAs = null
     counts([])
     like.mockResolvedValue({ uri: "at://did:plc:grp/app.certified.feed.like/l1", cid: "lc" })
     render(<LikeButton subject={SUBJECT} subjectKind="update" />)

@@ -52,19 +52,20 @@
   min-width: 0;
 }
 
-/* From 1300px the app sidebar lists the Workspace's sections itself
+/* From 1300px the full app sidebar lists the Workspace's sections itself
    (app-sidebar.tsx), so the page drops its own list and the content takes
-   the row; the section's h1 stays for screen readers. */
+   the row; the section's h1 stays for screen readers. Collapsed to the
+   rail (data-sidebar on <html>), the page keeps its list. */
 @media (min-width: 1300px) {
-  .workspace__layout {
+  :root:not([data-sidebar="rail"]) .workspace__layout {
     display: block;
   }
 
-  .workspace__nav {
+  :root:not([data-sidebar="rail"]) .workspace__nav {
     display: none;
   }
 
-  .workspace__layout > .workspace__main {
+  :root:not([data-sidebar="rail"]) .workspace__layout > .workspace__main {
     padding-top: 0;
   }
 }

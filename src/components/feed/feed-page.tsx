@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useSeenAs } from "@/lib/groups/seen-as"
+import { useActingViewer } from "@/lib/groups/viewer"
 import { usePageTitle } from "@/lib/navbar-context"
 import Card from "@/components/ui/card"
 import PageContainer from "@/components/ui/page-container"
@@ -21,14 +21,14 @@ const NEWS_ACTOR_DID = "did:plc:apun3uo5jqm34pxzqq6on754"
  * first, then the feed; at 1100px and wider the filters sit on the left
  * and "News from Certified" on the right (see HomeFeed). Below 1100px the
  * header's Filters button opens the filters in a sheet or dialog.
- * Shown for the account picked in "Seen as" (you or one of your groups),
- * not the workspace: the two are separate settings (lib/groups/seen-as).
+ * Shown for the account you act as (you or one of your groups), the one
+ * the account control names; switching there switches the feed in place.
  */
 export default function FeedPage() {
   usePageTitle("Feed")
   const router = useRouter()
   const { isLoading: authLoading, isAuthenticated } = useAuth()
-  const { viewerDid: activeDid, isResolving } = useSeenAs()
+  const { viewerDid: activeDid, isResolving } = useActingViewer()
 
   // Signed-in only, like /home: send signed-out visitors to the landing.
   useEffect(() => {
@@ -37,8 +37,8 @@ export default function FeedPage() {
     }
   }, [authLoading, isAuthenticated, router])
 
-  // Also holds while a remembered "Seen as" group waits on the groups
-  // list, so the feed doesn't load as you first and then switch.
+  // Also holds while your groups (and the group you act as) load, so the
+  // feed doesn't load as you first and then switch.
   if (authLoading || !isAuthenticated || !activeDid || isResolving) {
     // Same frame as the loaded page, so nothing jumps when it arrives.
     return (
@@ -55,7 +55,7 @@ export default function FeedPage() {
 
   return (
     <PageContainer className="feed-page">
-      {/* Keyed on the account so switching "Seen as" starts a fresh feed
+      {/* Keyed on the account so switching accounts starts a fresh feed
           instead of showing the previous account's items while it loads. */}
       <HomeFeed
         key={activeDid}

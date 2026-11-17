@@ -35,8 +35,8 @@
  *   /dev/preview/activity       — activity DETAIL page (same fixture record)
  *   /dev/preview/project        — project DETAIL page (project fixture)
  *   /dev/preview/update-new     — new UPDATE form on the activity fixture
- *   /dev/preview/shell          — the app chrome (sidebar, strip, phone top
- *                                 bar and pill) signed in, around a page:
+ *   /dev/preview/shell          — the app chrome (sidebar, phone top bar
+ *                                 and pill) signed in, around a page:
  *                                 `?path=/feed` (default), `/home` or
  *                                 `/records` (with `?kind=`). Add
  *                                 `managed=1` for groups; set the
@@ -77,7 +77,6 @@ import { FeedbackProvider } from "@/lib/feedback-context"
 import { ToastProvider } from "@/components/ui/toast"
 // The real chrome, for the shell surface.
 import AppSidebar from "@/components/layout/app-sidebar"
-import DesktopTopBar from "@/components/layout/desktop-top-bar"
 import Navbar from "@/components/layout/navbar"
 import BottomNav from "@/components/layout/bottom-nav"
 
@@ -386,7 +385,6 @@ function ShellPreview({ path }: { path: string }) {
     <PathnameContext.Provider value={path}>
       <Navbar />
       <AppSidebar />
-      <DesktopTopBar />
       <main id="preview-main" data-preview-surface="shell" className="flex-1">
         <div className="app-shell">
           <div className="app-shell__grid">

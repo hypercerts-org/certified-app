@@ -59,9 +59,6 @@ vi.mock("../account-switcher", () => ({
   PhoneAccountSwitcher: () => <button type="button">Account</button>,
 }))
 
-vi.mock("../new-menu", () => ({
-  PhoneNewMenu: () => <button type="button">New</button>,
-}))
 
 vi.mock("@/components/lists/add-to-list-menu", () => ({
   default: () => null,
@@ -94,12 +91,13 @@ describe("Navbar (phone)", () => {
     expect(container.querySelector("header")).not.toHaveClass("navbar--hidden")
   })
 
-  it("shows the brandmark, New and account on a top-level page", () => {
+  it("shows the brandmark and the account control on a top-level page, and no +", () => {
     state.hasPageHeader = true
     render(<Navbar />)
     expect(screen.getByRole("link", { name: "Certified home" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Go back" })).toBeNull()
-    expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument()
+    // You create from the Workspace; the bar has no New.
+    expect(screen.queryByRole("button", { name: "New" })).toBeNull()
     expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument()
   })
 

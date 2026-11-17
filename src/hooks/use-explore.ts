@@ -18,7 +18,7 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { useSeenAs } from "@/lib/groups/seen-as"
+import { useActingViewer } from "@/lib/groups/viewer"
 import { managedAuthorDids as computeManagedAuthorDids } from "@/lib/groups/managed"
 import { useFollowing } from "@/hooks/use-following"
 import type { ExploreKind } from "@/components/explore-page/explore-types"
@@ -176,12 +176,11 @@ export function useExploreData(opts: {
   )
   const { did: personalDid } = useAuth()
   const { groups } = useOrg()
-  // Explore is shown for the account picked in "Seen as" (you or one of
-  // your groups), never the workspace: the two are separate settings
-  // (lib/groups/seen-as). "My X", "Accounts I follow" and "Endorsed
-  // accounts" are all that account's: seen as a group, they are the
-  // group's records, follows and endorsements, as on the Feed.
-  const { seenAs, viewerDid } = useSeenAs()
+  // Explore is shown for the account you act as (you or one of your
+  // groups; the account control). "My X", "Accounts I follow" and
+  // "Endorsed accounts" are all that account's: acting as a group, they
+  // are the group's records, follows and endorsements, as on the Feed.
+  const { viewer, viewerDid } = useActingViewer()
   const { subjects: followedDids } = useFollowing(viewerDid)
   // "My organizations" — DIDs of every group the human belongs to.
   // Always personal-scoped (membership is a human relationship).
@@ -203,14 +202,14 @@ export function useExploreData(opts: {
       })),
     [groups],
   )
-  // Author set for the "My projects" / "My activities" filters. Seen as a
-  // group: just that group's records. Seen as you: your own records PLUS
+  // Author set for the "My projects" / "My activities" filters. As a
+  // group: just that group's records. As you: your own records PLUS
   // every group you own or admin, so group-owned records surface under "My
   // X" attributed to the group (the row's author column shows the owning
   // DID).
   const managedAuthorDids = useMemo<string[]>(
-    () => computeManagedAuthorDids(seenAs, personalDid, groups),
-    [seenAs, personalDid, groups],
+    () => computeManagedAuthorDids(viewer, personalDid, groups),
+    [viewer, personalDid, groups],
   )
 
   // Subscribe to the closure-cache invalidation token. When an

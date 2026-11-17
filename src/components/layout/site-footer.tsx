@@ -35,37 +35,43 @@ export default function SiteFooter() {
           </span>
         </div>
         <div className="site-footer__end">
+          {/* Two groups: on phones each is its own line (the app's links,
+              then the legal ones); on desktop they share the row. */}
           <nav className="site-footer__nav" aria-label="Footer links">
-            <Link href="/welcome" className="site-footer__link">
-              Welcome
-            </Link>
-            <Link href="/help" className="site-footer__link">
-              Help
-            </Link>
-            <button
-              type="button"
-              className="site-footer__link site-footer__link--button"
-              onClick={() => openFeedback()}
-            >
-              Feedback
-            </button>
-            <a
-              href="https://docs.hypercerts.org/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="site-footer__link"
-            >
-              Docs
-            </a>
-            <Link href="/terms" className="site-footer__link">
-              Terms
-            </Link>
-            <Link href="/privacy" className="site-footer__link">
-              Privacy
-            </Link>
-            <Link href="/imprint" className="site-footer__link">
-              Imprint
-            </Link>
+            <span className="site-footer__group">
+              <Link href="/welcome" className="site-footer__link">
+                Welcome
+              </Link>
+              <Link href="/help" className="site-footer__link">
+                Help
+              </Link>
+              <button
+                type="button"
+                className="site-footer__link site-footer__link--button"
+                onClick={() => openFeedback()}
+              >
+                Feedback
+              </button>
+              <a
+                href="https://docs.hypercerts.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="site-footer__link"
+              >
+                Docs
+              </a>
+            </span>
+            <span className="site-footer__group">
+              <Link href="/terms" className="site-footer__link">
+                Terms
+              </Link>
+              <Link href="/privacy" className="site-footer__link">
+                Privacy
+              </Link>
+              <Link href="/imprint" className="site-footer__link">
+                Imprint
+              </Link>
+            </span>
           </nav>
         </div>
       </div>

@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   toast: vi.fn(),
   openSignInAnotherAccount: vi.fn(),
   signOut: vi.fn(),
+  openFeedback: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -57,6 +58,10 @@ vi.mock("@/hooks/use-org-profile", () => ({
 
 vi.mock("@/hooks/use-layout-breakpoints", () => ({
   useLayoutBreakpoints: () => ({ isDesktop: true, isFullDesktop: state.isFullDesktop }),
+}))
+
+vi.mock("@/lib/feedback-context", () => ({
+  useFeedback: () => ({ openFeedback: state.openFeedback }),
 }))
 
 vi.mock("@/components/ui/toast", () => ({
@@ -115,6 +120,7 @@ beforeEach(() => {
     state.toast,
     state.openSignInAnotherAccount,
     state.signOut,
+    state.openFeedback,
   ]) {
     fn.mockReset()
   }
@@ -184,31 +190,39 @@ describe("AccountMenuContent", () => {
     expect(screen.getByRole("group", { name: "Signed in as Maya Lin" })).toBeInTheDocument()
   })
 
-  it("puts a settings gear on each group, apart from the row that switches; yours is Settings below", () => {
+  it("puts a settings gear on every account, yours too, apart from the row that switches", () => {
     renderMenu()
-    expect(screen.queryByRole("menuitem", { name: "Your settings" })).toBeNull()
+    expect(screen.getByRole("menuitem", { name: "Your settings" })).toHaveAttribute("href", "/settings")
     expect(screen.getByRole("menuitem", { name: "Ma Earth settings" })).toHaveAttribute(
       "href",
       expect.stringContaining("/groups/"),
     )
-    expect(screen.getByRole("menuitem", { name: "Settings" })).toHaveAttribute("href", "/settings")
+    // So no separate Settings row under "Signed in as".
+    expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull()
   })
 
-  it("from outside the Workspace, switches, opens the Overview and says so", () => {
+  it("switches in place: on the Feed it stays on the Feed, and says so", () => {
     const { onClose } = renderMenu()
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
     expect(onClose).toHaveBeenCalled()
     expect(state.switchOrg).toHaveBeenCalledWith(EARTH)
-    expect(state.push).toHaveBeenCalledWith("/home")
+    expect(state.push).not.toHaveBeenCalled()
     expect(state.toast).toHaveBeenCalledWith({ title: "Now acting as Ma Earth" })
   })
 
-  it("picking the account you already act as just opens it, without a toast", () => {
+  it("picking the account you already act as just closes the menu", () => {
     renderMenu()
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
     expect(state.switchOrg).not.toHaveBeenCalled()
-    expect(state.push).toHaveBeenCalledWith("/home")
+    expect(state.push).not.toHaveBeenCalled()
     expect(state.toast).not.toHaveBeenCalled()
+  })
+
+  it("leaves a group-only page for the Overview when switching to a group", () => {
+    state.pathname = "/groups/did:plc:river/settings"
+    renderMenu()
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /Ma Earth/ }))
+    expect(state.push).toHaveBeenCalledWith("/home")
   })
 
   it("inside the Workspace, stays on the section when it works for the new account", () => {
@@ -267,6 +281,20 @@ describe("AccountMenuContent", () => {
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View profile" })).not.toHaveAttribute("tabindex")
     expect(screen.getByRole("heading", { name: "Act as" })).toBeInTheDocument()
+  })
+
+  it("on phones (the sheet) also holds Help, feedback and the legal links", () => {
+    renderMenu("sheet")
+    expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/help")
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }))
+    expect(state.openFeedback).toHaveBeenCalled()
+    expect(screen.getByRole("navigation", { name: "Legal" })).toHaveTextContent("Terms")
+  })
+
+  it("leaves Help and the legal links to the sidebar and footer on desktop (the menu)", () => {
+    renderMenu("menu")
+    expect(screen.queryByRole("link", { name: "Help" })).toBeNull()
+    expect(screen.queryByRole("navigation", { name: "Legal" })).toBeNull()
   })
 })
 

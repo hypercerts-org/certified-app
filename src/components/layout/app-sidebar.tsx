@@ -1,11 +1,24 @@
 "use client"
 
-import { Suspense, useId } from "react"
+import { Suspense, useEffect, useId, useRef } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { CircleHelp, FolderOpen, Globe, LayoutGrid, LogIn, Settings, type LucideIcon } from "lucide-react"
+import {
+  CircleHelp,
+  FolderOpen,
+  Globe,
+  LayoutGrid,
+  LogIn,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Settings,
+  type LucideIcon,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useHasPageHeader, useNavbarValues } from "@/lib/navbar-context"
 import { hasDesktopChrome } from "@/lib/layout/chrome"
+import { useSidebarCollapsed } from "@/lib/layout/sidebar-state"
 import { DESTINATIONS, isDestinationActive } from "@/lib/layout/destinations"
 import {
   WORKSPACE_SECTIONS,
@@ -20,6 +33,7 @@ import Brandmark from "@/components/ui/brandmark"
 import Button from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import Wordmark from "@/components/ui/wordmark"
+import GlobalSearch from "@/components/search/global-search"
 import { DesktopAccountSwitcher } from "./account-switcher"
 import { NetworkMenuItems } from "./network-menu"
 
@@ -33,6 +47,7 @@ const NETWORK = DESTINATIONS.find((d) => d.key === "network")!
  *   From 1300px (248px):            800–1299px (an 88px rail):
  *     Certified.app                   [mark]
  *     [avatar] Riverbank Trust ⌃⌄     [avatar]
+ *     [Search                  ]      Search ▸ (the field, in a menu)
  *     WORKSPACE                       Workspace
  *       Overview, Projects and …      Network ▸ (a menu of its pages)
  *     NETWORK                         Apps
@@ -58,13 +73,27 @@ export default function AppSidebar() {
   // Hydrate with exactly what the server rendered (auth unknown).
   const mounted = useMounted()
   const isLoading = authLoading || !mounted
+  const { pageTitle, desktopTitle, breadcrumb } = useNavbarValues()
+  const hasPageHeader = useHasPageHeader()
 
   if (!hasDesktopChrome(pathname)) return null
 
   const brandHref = !isLoading && !isAuthenticated ? "/welcome" : "/home"
 
+  // Fallback h1 for pages without a <PageHeader> (DESIGN.md §3.6): the
+  // record's name on detail pages, else the page title, else the
+  // breadcrumb. Visually hidden; the sidebar is display:none on phones,
+  // where the top bar's compact title is the h1.
+  const breadcrumbText = breadcrumb
+    ? [breadcrumb.left.text, breadcrumb.right?.text].filter(Boolean).join(" / ")
+    : null
+  const fallbackTitle = desktopTitle ?? pageTitle ?? breadcrumbText
+
   return (
     <header className="app-sidebar">
+      {mounted && !hasPageHeader && fallbackTitle ? (
+        <h1 className="sr-only">{fallbackTitle}</h1>
+      ) : null}
       <div className="app-sidebar__top">
         <Link href={brandHref} className="app-sidebar__brand" aria-label="Certified home">
           <span className="app-sidebar__wordmark">
@@ -105,6 +134,7 @@ export default function AppSidebar() {
             </>
           )}
         </div>
+        <SidebarSearch />
       </div>
 
       {isLoading ? (
@@ -137,8 +167,109 @@ export default function AppSidebar() {
             ) : null}
           </>
         )}
+        <CollapseToggle />
       </div>
     </header>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Collapse
+// ---------------------------------------------------------------------------
+
+/**
+ * From 1300px: collapse the sidebar to its rail (icons over one-word
+ * labels, the account control still on top, so who you act as stays in
+ * view), or expand it again. Remembered in this browser
+ * (lib/layout/sidebar-state). Not shown below 1300px, where the sidebar
+ * is always the rail.
+ */
+function CollapseToggle() {
+  const [collapsed, setCollapsed] = useSidebarCollapsed()
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose
+  const label = collapsed ? "Expand" : "Collapse"
+  return (
+    <button
+      type="button"
+      className="app-sidebar__item app-sidebar__toggle"
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      aria-expanded={!collapsed}
+      onClick={() => setCollapsed(!collapsed)}
+    >
+      <Icon size={20} strokeWidth={1.5} aria-hidden />
+      <span className="app-sidebar__label">{label}</span>
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+/**
+ * The global search (activities, projects and accounts across the
+ * network), under the account control: the field itself from 1300px, a
+ * Search item on the rail that opens the field to the right. `/` and
+ * Cmd/Ctrl+K reach it either way (the field handles them where it is on
+ * screen; on the rail they open the menu, which focuses the field). The
+ * tour's `navbar-search` anchor.
+ */
+function SidebarSearch() {
+  const [open, setOpen] = useRouteScopedOpen()
+  const railRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isModK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"
+      const isSlash = e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey
+      if (!isModK && !isSlash) return
+      // Only on the rail (the item is on screen); the full field handles
+      // its own keys.
+      if (!railRef.current || railRef.current.getClientRects().length === 0) return
+      const target = e.target
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+      e.preventDefault()
+      setOpen(true)
+    }
+    globalThis.addEventListener("keydown", onKey)
+    return () => globalThis.removeEventListener("keydown", onKey)
+  }, [setOpen])
+
+  return (
+    <>
+      <div className="app-sidebar__search" data-tour="navbar-search">
+        <GlobalSearch placeholder="Search" />
+      </div>
+      <Popover open={open} onOpenChange={setOpen} className="app-sidebar__fill app-sidebar__search-rail">
+        <PopoverTrigger>
+          <button ref={railRef} type="button" className="app-sidebar__item" data-tour="navbar-search">
+            <Search size={20} strokeWidth={1.5} aria-hidden />
+            <span className="app-sidebar__label">Search</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          portal
+          role="group"
+          side="right"
+          align="start"
+          offset={12}
+          minWidth={360}
+          aria-label="Search"
+          className="w-[400px] p-2"
+          style={{ zIndex: "var(--z-chrome-menu)" }}
+        >
+          <GlobalSearch placeholder="Search" />
+        </PopoverContent>
+      </Popover>
+    </>
   )
 }
 

@@ -16,9 +16,9 @@ import { groupIdentity, useWorkspaceState, WorkspaceRow } from "./workspace-menu
 export const ACCOUNT_PICKER_ME = "Me"
 
 export interface AccountPickerProps {
-  /** The words before the account on the button: "Seen as", "for". */
+  /** The words before the account on the button, e.g. "for". */
   prefix: string
-  /** Names the menu and the phone sheet: "Seen as", "Settings for". */
+  /** Names the menu and the phone sheet, e.g. "Settings for". */
   label: string
   /** The account picked now: a group, or null for you. */
   current: Group | null
@@ -83,8 +83,8 @@ function AccountPickerItems({
 /**
  * A small account picker for a page heading's `titleAside`: "<prefix>
  * [avatar] Me ▾" (or the group's name), opening a list of you and your
- * groups, the current one checked. Feed and Explore's "Seen as" and
- * Settings' "for" are this. Shown only to a signed-in person in at least
+ * groups, the current one checked. Settings' "for" is this (and the
+ * comment field's author, with an avatar trigger). Shown only to a signed-in person in at least
  * one group: with one account there is nothing to pick. A `<Popover>`
  * menu on desktop, a `<BottomSheet>` on phones. Picking the current one
  * just closes it.
@@ -112,7 +112,7 @@ export default function AccountPicker({
     const isCurrent = next ? current?.groupDid === next.groupDid : !current
     if (!isCurrent) onSelect(next)
   }
-  // The visible text is the accessible name: "Seen as Me", "for Ma Earth".
+  // The visible text is the accessible name: "for Me", "for Ma Earth".
   const content = (
     <>
       <span className="font-normal text-[var(--fg-muted)]">{prefix}</span>

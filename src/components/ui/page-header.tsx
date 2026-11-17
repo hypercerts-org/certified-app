@@ -26,9 +26,8 @@ export interface PageHeaderProps {
   /** Optional leading avatar or icon beside the title. */
   visual?: React.ReactNode;
   /**
-   * A small control right after the title, on its line (e.g. Feed and
-   * Explore's "Seen as" switcher). Wraps under the title when the line is
-   * too narrow. Keep it out of `title`, so the `<h1>` stays just the name.
+   * A small control right after the title, on its line (e.g. Settings'
+   * "for" picker). Wraps under the title when the line is too narrow. Keep it out of `title`, so the `<h1>` stays just the name.
    */
   titleAside?: React.ReactNode;
   className?: string;

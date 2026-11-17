@@ -336,16 +336,15 @@
   --bottom-nav-height: calc(var(--bottom-pill-height) + var(--bottom-pill-gap));
 
   /* Desktop sidebar (app-sidebar.tsx): an 88px rail at 800–1299px, the
-     full 248px sidebar from 1300px. The body is padded by it. 0 below
+     full 248px sidebar from 1300px (or the rail again when collapsed). The body is padded by it. 0 below
      800px and whenever the sidebar isn't mounted (routes without the app
      chrome), below. */
   --sidebar-width: 0px;
 
-  /* Desktop content strip (rendered ≥800px, beside the sidebar): search
-     and New. It scrolls with the page, so nothing sticks below it;
-     `--top-bar-total` is kept as its height for the few layouts that size
-     against it. */
-  --top-bar-row1: 52px;
+  /* There is no desktop top bar any more (the sidebar holds search and
+     the navigation), so the top chrome is 0px tall on desktop; kept for
+     the few layouts that size against it (the graph, right rails). */
+  --top-bar-row1: 0px;
   --top-bar-total: var(--top-bar-row1);
 
   /* ===== Breakpoints (informational; CSS @media rules hardcode these
@@ -383,8 +382,10 @@
   }
 }
 
+/* The full sidebar from 1300px, unless collapsed to the rail
+   (data-sidebar on <html>, lib/layout/sidebar-state.ts). */
 @media (min-width: 1300px) {
-  :root {
+  :root:not([data-sidebar="rail"]) {
     --sidebar-width: 248px;
   }
 }

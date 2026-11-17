@@ -16,9 +16,9 @@
  * use (the `nav-*` anchors live on both the desktop sidebar and the phone
  * pill — the renderer picks whichever is visible), routes to that page,
  * then shows what you can do there. The order mirrors the navigation:
- * Workspace, Network (Feed, Explore, Graph), Apps, then New, the profile,
- * Settings and Help. The search step comes on Feed, because the strip
- * hides its search on /explore (Explore has its own). Sidebar anchors ask
+ * Workspace, Network (Feed, Explore, Graph), Apps, then creating (from the
+ * Workspace), the profile, Settings and Help. The search step (the
+ * sidebar's, desktop only) comes on Feed. Sidebar anchors ask
  * for "right"; on a phone, where there is no room beside them, the card
  * goes above or below.
  *
@@ -30,10 +30,11 @@
  *   nav-workspace, nav-network, nav-apps — destinations (the sidebar's
  *     groups from 1300px, its rail items below that, the pill on phones)
  *   graph — the endorsement graph on /graph (graph-page.tsx)
- *   nav-create — the New button (desktop strip) / the + (phone top bar)
+ *   records-new — "New activity" in Workspace › Projects and activities
  *   account-menu — the account control (top of the sidebar; the right
  *     end of the phone top bar)
- *   navbar-search — the desktop strip's search field (not on /explore)
+ *   navbar-search — the sidebar's search (the field from 1300px, the
+ *     rail's Search item below that; desktop only)
  *   home-account — Home's ID box, the account on top (home.tsx)
  *   feed — the Feed column (home-feed.tsx)
  *   explore-category — Explore's type chips (explore.tsx)
@@ -129,15 +130,14 @@ export const TOUR_STEPS: readonly TourStep[] = [
     body: "Feed is what's happening: new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
     placement: "right",
   },
-  // Before Explore: the top-bar search steps aside on /explore, which has
-  // its own search box.
+  // The sidebar's search (desktop): before Explore, which has its own.
   {
     id: "navbar-search",
     navigateTo: null,
     anchor: "navbar-search",
     title: "Search the network",
-    body: "The search bar up here finds any activity, project or account across the whole network, from any page. Press / to jump to it.",
-    placement: "bottom",
+    body: "Search finds any activity, project or account across the whole network, from any page. Press / to jump to it.",
+    placement: "right",
     platform: "desktop",
   },
 
@@ -183,10 +183,10 @@ export const TOUR_STEPS: readonly TourStep[] = [
   // ---- Create --------------------------------------------------------
   {
     id: "nav-create",
-    navigateTo: null,
-    anchor: "nav-create",
+    navigateTo: "/records?kind=activities",
+    anchor: "records-new",
     title: "New",
-    body: "This button is where you publish your own work: new activities and projects, or a new group.",
+    body: "You publish your own work from your Workspace: new activities and projects here, a new group under Groups.",
     placement: "bottom",
     align: "end",
   },
@@ -249,7 +249,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/help",
     anchor: null,
     title: "Help",
-    body: "Help has guides for everything we just covered: at the bottom of the sidebar on a computer, under More on a phone, and linked at the bottom of every page. You can replay this walk-through from there too.",
+    body: "Help has guides for everything we just covered: at the bottom of the sidebar on a computer, in your account menu on a phone, and linked at the bottom of every page. You can replay this walk-through from there too.",
   },
 
   {

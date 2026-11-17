@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, act } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 
 const state = vi.hoisted(() => ({
   pathname: "/feed",
+  search: "",
   isAuthenticated: true,
   isLoading: false,
   isDesktop: false,
@@ -12,6 +13,7 @@ const state = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({
   usePathname: () => state.pathname,
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(state.search),
 }))
 vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({
@@ -39,42 +41,44 @@ import BottomNav from "../bottom-nav"
 
 beforeEach(() => {
   state.pathname = "/feed"
+  state.search = ""
   state.isAuthenticated = true
   state.isLoading = false
   state.isDesktop = false
 })
 
-function polyfillDialog() {
-  const proto = HTMLDialogElement.prototype as unknown as {
-    showModal?: () => void
-    close?: () => void
-    __polyfilled?: boolean
-  }
-  if (proto.__polyfilled) return
-  proto.__polyfilled = true
-  proto.showModal = function () {
-    ;(this as unknown as { open: boolean }).open = true
-  }
-  proto.close = function () {
-    ;(this as unknown as { open: boolean }).open = false
-    ;(this as unknown as HTMLDialogElement).dispatchEvent(new Event("close"))
-  }
-}
-
 describe("BottomNav (the phone pill)", () => {
-  it("shows Workspace, Network, Apps and More, labelled, in a phone browser tab", () => {
+  it("shows Workspace, Network and Apps, labelled, in a phone browser tab", () => {
     render(<BottomNav />)
     const nav = screen.getByRole("navigation", { name: "Main navigation" })
     const labels = Array.from(nav.querySelectorAll(".bottom-nav__item .bottom-nav__label"))
-    expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps", "More"])
+    expect(labels.map((t) => t.textContent)).toEqual(["Workspace", "Network", "Apps"])
     expect(screen.getByRole("button", { name: "Network" })).toHaveAttribute("aria-current", "page")
-    expect(screen.getByRole("link", { name: "Workspace" })).not.toHaveAttribute("aria-current")
+    expect(screen.getByRole("button", { name: "Workspace" })).not.toHaveAttribute("aria-current")
   })
 
   it("keeps Workspace current on the Records sections", () => {
     state.pathname = "/records"
     render(<BottomNav />)
-    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByRole("button", { name: "Workspace" })).toHaveAttribute("aria-current", "page")
+  })
+
+  it("opens the Workspace's sections as a menu above the pill, the current one checked", () => {
+    state.pathname = "/records"
+    state.search = "kind=followers"
+    render(<BottomNav />)
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }))
+    const menu = screen.getByRole("menu", { name: "Workspace" })
+    expect(menu).toHaveAttribute("data-side", "top")
+    expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
+      "Overview",
+      "Projects and activities",
+      "Endorsements",
+      "Followers",
+      "Lists",
+      "Groups",
+    ])
+    expect(screen.getByRole("menuitem", { name: "Followers" })).toHaveAttribute("aria-current", "page")
   })
 
   it("never shows an avatar: who you act as is the top bar's account control", () => {
@@ -82,20 +86,10 @@ describe("BottomNav (the phone pill)", () => {
     expect(container.querySelector(".acting-avatar")).toBeNull()
   })
 
-  it("opens More with Help, Settings, feedback and the legal links", async () => {
-    polyfillDialog()
+  it("has no More: Settings, Help, feedback and the legal links are in the account sheet", () => {
     render(<BottomNav />)
-    const more = screen.getByRole("button", { name: "More" })
-    expect(more).toHaveAttribute("aria-haspopup", "dialog")
-    await act(async () => {
-      fireEvent.click(more)
-    })
-    expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/help")
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings")
-    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }))
-    expect(state.openFeedback).toHaveBeenCalled()
-    const legal = screen.getByRole("navigation", { name: "Legal" })
-    expect(legal).toHaveTextContent("Terms")
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull()
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Workspace", "Network"])
   })
 
   it("shows only the public destinations to signed-out visitors", () => {
@@ -106,7 +100,6 @@ describe("BottomNav (the phone pill)", () => {
     expect(Array.from(nav.querySelectorAll(".bottom-nav__item")).map((t) => t.textContent)).toEqual([
       "Network",
       "Apps",
-      "More",
     ])
   })
 

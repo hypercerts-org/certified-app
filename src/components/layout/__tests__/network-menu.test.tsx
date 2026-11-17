@@ -39,15 +39,17 @@ describe("NetworkMenuItems", () => {
 })
 
 describe("PhoneNetworkTab", () => {
-  it("opens the five pages as a sheet, current on any Network page", () => {
+  it("opens the five pages as a menu above the pill, current on any Network page", () => {
     render(<PhoneNetworkTab isAuthenticated />)
     const tab = screen.getByRole("button", { name: "Network" })
     expect(tab).toHaveAttribute("aria-current", "page")
+    expect(tab).toHaveAttribute("aria-haspopup", "menu")
     fireEvent.click(tab)
-    const sheet = screen.getByRole("dialog", { name: "Network" })
-    expect(sheet).toBeInTheDocument()
-    for (const label of ["Feed", "Explore", "Graph", "Map", "Funding"]) {
-      expect(screen.getByRole("link", { name: label })).toBeInTheDocument()
-    }
+    const menu = screen.getByRole("menu", { name: "Network" })
+    expect(menu).toHaveAttribute("data-side", "top")
+    const items = screen.getAllByRole("menuitem")
+    expect(items.map((i) => i.textContent)).toEqual(["Feed", "Explore", "Graph", "Map", "Funding"])
+    // Touch-sized rows (44px), unlike the desktop menu's 36px.
+    expect(items[0].className).toContain("min-h-control-md")
   })
 })

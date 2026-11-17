@@ -14,7 +14,6 @@ const OTHER: Group = { groupDid: "did:plc:grp2", handle: "grp2.test", displayNam
 let did: string | null = "did:plc:me"
 let activeOrg: Group | null = null
 let groups: Group[] = []
-let seenAs: Group | null = null
 const openSignInModal = vi.fn()
 
 vi.mock("@/lib/auth/auth-context", () => ({
@@ -22,9 +21,6 @@ vi.mock("@/lib/auth/auth-context", () => ({
 }))
 vi.mock("@/lib/groups/org-context", () => ({
   useOrg: () => ({ activeOrg, groups, selfGroup: null }),
-}))
-vi.mock("@/lib/groups/seen-as", () => ({
-  useSeenAs: () => ({ seenAs, viewerDid: seenAs?.groupDid ?? did, isResolving: false, setSeenAs: () => {} }),
 }))
 // The real picker opens a popover or sheet; a select stands in for it.
 vi.mock("@/components/layout/account-picker", () => ({
@@ -107,7 +103,6 @@ beforeEach(() => {
   did = "did:plc:me"
   activeOrg = null
   groups = []
-  seenAs = null
   openSignInModal.mockReset()
   fetchBatch.mockReset()
   post.mockReset()
@@ -180,10 +175,9 @@ describe("CommentThread on a card", () => {
     expect((field as HTMLTextAreaElement).value).toBe("")
   })
 
-  it("starts from the account you act as, whatever the feed is seen as, and the avatar switches it", async () => {
+  it("starts from the account you act as, and the avatar switches it", async () => {
     groups = [GROUP, OTHER]
     activeOrg = GROUP
-    seenAs = OTHER
     serve([])
     post.mockResolvedValue(comment(9, "did:plc:grp"))
     card()

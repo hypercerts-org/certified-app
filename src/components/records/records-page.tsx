@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { FolderOpen, UsersRound } from "lucide-react"
+import { FolderOpen, Plus, UsersRound } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -130,18 +130,29 @@ export default function RecordsPage() {
               icon={FolderOpen}
               headingLevel={2}
               title="This group's records are on its profile"
-              description="To manage your own records, switch to your personal account."
+              description="What you create here is published as the group. To manage your own records, switch to your personal account."
             >
+              {/* Creating lives in the Workspace (there is no global New),
+                  so a group creates from here; /create and /project/new
+                  publish as the account you act as. */}
               <div className="records-group">
                 <div className="records-group__actions">
-                  <Button variant="primary" href={`${groupProfile}?tab=activities`}>
-                    Open activities
+                  <Button variant="primary" href="/create">
+                    <Plus size={16} strokeWidth={1.75} aria-hidden />
+                    New activity
                   </Button>
-                  <Button variant="secondary" onClick={() => switchActor(null)}>
-                    Switch to personal account
+                  <Button variant="secondary" href="/project/new">
+                    <Plus size={16} strokeWidth={1.75} aria-hidden />
+                    New project
                   </Button>
                 </div>
-                <SeeAllLink href={`${groupProfile}?tab=projects`} label="Open projects" />
+                <div className="records-group__actions">
+                  <SeeAllLink href={`${groupProfile}?tab=activities`} label="Open activities" />
+                  <SeeAllLink href={`${groupProfile}?tab=projects`} label="Open projects" />
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => switchActor(null)}>
+                  Switch to personal account
+                </Button>
               </div>
             </EmptyState>
           )}

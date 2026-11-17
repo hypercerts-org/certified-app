@@ -1339,6 +1339,14 @@
   width: 100%;
 }
 
+/* Search: the field from 1300px; on the rail a Search item that opens
+   it in a menu to the right. The field's results are wider than the
+   sidebar and open over the page. */
+.app-sidebar__search {
+  display: none;
+  width: 100%;
+}
+
 .app-sidebar__nav {
   flex: 1 1 auto;
   min-height: 0;
@@ -1435,59 +1443,74 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Full only while not collapsed to the rail (data-sidebar on <html>,
+   lib/layout/sidebar-state.ts). */
 @media (min-width: 1300px) {
-  .app-sidebar {
+  :root:not([data-sidebar="rail"]) .app-sidebar {
     padding: 12px;
   }
 
-  .app-sidebar__top {
+  :root:not([data-sidebar="rail"]) .app-sidebar__top {
     align-items: stretch;
     gap: 8px;
   }
 
   /* One left edge from 1300px: the wordmark, the account avatar and the
      row icons all start 22px in. */
-  .app-sidebar__brand {
+  :root:not([data-sidebar="rail"]) .app-sidebar__brand {
     align-self: flex-start;
     padding: 0 10px;
   }
 
-  .app-sidebar__wordmark {
+  :root:not([data-sidebar="rail"]) .app-sidebar__wordmark {
     display: inline-flex;
   }
 
-  .app-sidebar__brandmark,
-  .app-sidebar__rail,
-  .app-sidebar .app-sidebar__sign-in--rail {
+  :root:not([data-sidebar="rail"]) .app-sidebar__brandmark,
+  :root:not([data-sidebar="rail"]) .app-sidebar__rail,
+  :root:not([data-sidebar="rail"]) .app-sidebar .app-sidebar__sign-in--rail {
     display: none;
   }
 
-  .app-sidebar .app-sidebar__sign-in--full {
+  :root:not([data-sidebar="rail"]) .app-sidebar .app-sidebar__sign-in--full {
     display: inline-flex;
   }
 
-  .app-sidebar__account {
+  :root:not([data-sidebar="rail"]) .app-sidebar__search {
+    display: block;
+  }
+
+  :root:not([data-sidebar="rail"]) .app-sidebar .app-sidebar__search-rail {
+    display: none;
+  }
+
+  :root:not([data-sidebar="rail"]) .app-sidebar__search .people-search__dropdown {
+    right: auto;
+    width: 400px;
+  }
+
+  :root:not([data-sidebar="rail"]) .app-sidebar__account {
     justify-content: flex-start;
     padding: 6px 10px;
   }
 
-  .app-sidebar__account-meta {
+  :root:not([data-sidebar="rail"]) .app-sidebar__account-meta {
     display: flex;
   }
 
-  .app-sidebar__account-chevron {
+  :root:not([data-sidebar="rail"]) .app-sidebar__account-chevron {
     display: inline-flex;
   }
 
-  .app-sidebar__full {
+  :root:not([data-sidebar="rail"]) .app-sidebar__full {
     display: flex;
   }
 
-  .app-sidebar__list {
+  :root:not([data-sidebar="rail"]) .app-sidebar__list {
     gap: 2px;
   }
 
-  .app-sidebar__item {
+  :root:not([data-sidebar="rail"]) .app-sidebar__item {
     flex-direction: row;
     justify-content: flex-start;
     gap: 10px;
@@ -1495,9 +1518,20 @@
     padding: 0 10px;
   }
 
-  .app-sidebar__label {
+  :root:not([data-sidebar="rail"]) .app-sidebar__label {
     font-size: var(--text-ui);
     line-height: 1.2;
+  }
+}
+
+/* Collapse / Expand: only from 1300px, where the sidebar can be full. */
+.app-sidebar .app-sidebar__toggle {
+  display: none;
+}
+
+@media (min-width: 1300px) {
+  .app-sidebar .app-sidebar__toggle {
+    display: flex;
   }
 }
 
@@ -1516,48 +1550,6 @@
   display: inline-flex;
   border-radius: 50%;
   box-shadow: var(--shadow-ring-canvas);
-}
-
-/* ========== Desktop content strip (≥ 800px) ==========
-   See desktop-top-bar.tsx. Search and New, right-aligned above the page,
-   beside the sidebar. It scrolls with the page. Hidden below 800px — the
-   phone top bar and pill handle that range. */
-
-.desktop-top-bar {
-  display: none;
-}
-
-@media (min-width: 800px) {
-  .desktop-top-bar {
-    display: block;
-  }
-}
-
-/* Lined up with the page: the default page width and its gutters
-   (page-container.tsx), so New ends where the content does. */
-.desktop-top-bar__row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  height: var(--top-bar-row1);
-  max-width: calc(var(--page-width-default) + 48px);
-  margin-inline: auto;
-  padding: 0 24px;
-}
-
-@media (min-width: 1100px) {
-  .desktop-top-bar__row {
-    max-width: calc(var(--page-width-default) + 64px);
-    padding: 0 32px;
-  }
-}
-
-/* Up to 300px; shrinks to 160px. On /explore the slot is an empty
-   placeholder of the same size, so New doesn't move. */
-.desktop-top-bar__search {
-  flex: 0 1 300px;
-  min-width: 160px;
 }
 
 /* ========== Two-column page layout ==========
@@ -2221,7 +2213,8 @@
   cursor: pointer;
 }
 
-.site-footer__nav {
+.site-footer__nav,
+.site-footer__group {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
@@ -2237,7 +2230,14 @@
 /* 44px touch targets on phones: the row of short words would otherwise
    be ~18px tall. */
 @media (max-width: 799px) {
+  /* Two lines: Welcome, Help, Feedback, Docs; then Terms, Privacy,
+     Imprint. */
   .site-footer__nav {
+    flex-direction: column;
+    gap: 0;
+  }
+  .site-footer__group {
+    justify-content: center;
     gap: 0 16px;
   }
   .site-footer__link {

@@ -9,8 +9,8 @@ import type { Group } from "@/lib/groups/types"
  * "for", right after the Settings title: whose settings these are, you
  * ("Me") or one of your groups, and a way to switch (`AccountPicker`).
  * Picking opens that account's settings page, keeping the section when it
- * has one of the same name (#account, #social-graph). Independent of the
- * workspace and of "Seen as".
+ * has one of the same name (#account, #social-graph). Navigation only:
+ * it never changes who you act as.
  */
 export default function SettingsForSwitcher({ current }: { current: Group | null }) {
   const router = useRouter()

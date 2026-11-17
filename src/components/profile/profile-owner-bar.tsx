@@ -13,9 +13,9 @@ interface ProfileOwnerBarProps {
 
 /**
  * The slim bar at the top of your own profile (or your group's, while
- * acting as it): it says this is the public view and offers the way back
- * Home, plus the group's settings for its admins. "Edit profile" lives in
- * the header's actions.
+ * acting as it): it says this is the public view, plus the group's
+ * settings for its admins. "Edit profile" lives in the header's actions;
+ * the way back is the navigation itself (the sidebar, the phone pill).
  */
 export default function ProfileOwnerBar({
   isGroup = false,
@@ -29,16 +29,13 @@ export default function ProfileOwnerBar({
           ? "This is how others see this group's profile."
           : "This is how others see your profile."}
       </p>
-      <div className="profile-owner-bar__links">
-        {groupSettingsHref ? (
+      {groupSettingsHref ? (
+        <div className="profile-owner-bar__links">
           <Link href={groupSettingsHref} className="profile-owner-bar__link">
             Group settings
           </Link>
-        ) : null}
-        <Link href="/home" className="profile-owner-bar__link">
-          Back to Workspace
-        </Link>
-      </div>
+        </div>
+      ) : null}
     </div>
   )
 }

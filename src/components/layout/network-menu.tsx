@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Check, Globe } from "lucide-react"
-import BottomSheet from "@/components/ui/bottom-sheet"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import {
   NETWORK_SECTIONS,
@@ -18,16 +18,18 @@ export { NETWORK_SECTIONS, type NetworkSection }
 
 /**
  * The Network's pages as menu rows (no Feed signed out), the current one
- * checked: the rail's Network menu on desktop and the pill's Network sheet
- * on phones.
+ * checked: the rail's Network menu on desktop and the pill's on phones.
+ * `touch` keeps the menu's roles but makes each row a 44px touch target.
  */
 export function NetworkMenuItems({
   mode,
+  touch = false,
   isAuthenticated,
   current,
   onSelect,
 }: {
   mode: MenuMode
+  touch?: boolean
   isAuthenticated: boolean
   current: NetworkSection | null
   onSelect: () => void
@@ -39,7 +41,7 @@ export function NetworkMenuItems({
           key={key}
           href={href}
           {...menuItemProps(mode)}
-          className={menuRowClass(mode)}
+          className={menuRowClass(touch ? "sheet" : mode)}
           aria-current={key === current ? "page" : undefined}
           onClick={onSelect}
         >
@@ -56,8 +58,9 @@ export function NetworkMenuItems({
 
 /**
  * The phone pill's Network item: looks like the other items (and is
- * current on any Network page), but opens the five pages as a bottom
- * sheet, so Explore, Map and Funding stay one tap away. Also the tour's
+ * current on any Network page), but opens the five pages as a small menu
+ * just above the pill (as the rail's opens beside it on desktop), so
+ * Explore, Map and Funding stay one tap away. Also the tour's
  * `nav-network` anchor on phones.
  */
 export function PhoneNetworkTab({ isAuthenticated }: { isAuthenticated: boolean }) {
@@ -65,31 +68,37 @@ export function PhoneNetworkTab({ isAuthenticated }: { isAuthenticated: boolean 
   const current = networkSectionFor(usePathname())
   const active = current !== null
   return (
-    <>
-      <button
-        type="button"
-        className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-current={active ? "page" : undefined}
-        onClick={() => setOpen(true)}
-        data-tour="nav-network"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger>
+        <button
+          type="button"
+          className={`bottom-nav__item${active ? " bottom-nav__item--active" : ""}`}
+          aria-current={active ? "page" : undefined}
+          data-tour="nav-network"
+        >
+          <span className="bottom-nav__icon-wrap">
+            <Globe size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
+          </span>
+          <span className="bottom-nav__label">Network</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        portal
+        side="top"
+        align="center"
+        offset={12}
+        minWidth={220}
+        aria-label="Network"
+        style={{ zIndex: "var(--z-chrome-menu)" }}
       >
-        <span className="bottom-nav__icon-wrap">
-          <Globe size={22} strokeWidth={active ? 2.5 : 1.5} aria-hidden />
-        </span>
-        <span className="bottom-nav__label">Network</span>
-      </button>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Network">
-        <div className="flex flex-col gap-0.5 px-2 pb-4">
-          <NetworkMenuItems
-            mode="sheet"
-            isAuthenticated={isAuthenticated}
-            current={current}
-            onSelect={() => setOpen(false)}
-          />
-        </div>
-      </BottomSheet>
-    </>
+        <NetworkMenuItems
+          mode="menu"
+          touch
+          isAuthenticated={isAuthenticated}
+          current={current}
+          onSelect={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }

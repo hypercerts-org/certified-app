@@ -20,7 +20,6 @@ import Wordmark from "@/components/ui/wordmark";
 import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
 import { PhoneAccountSwitcher } from "./account-switcher";
-import { PhoneNewMenu } from "./new-menu";
 
 /**
  * True when `pathname` is the profile of the account the viewer acts as
@@ -55,11 +54,12 @@ function isOwnProfilePath(
  *   you were (your feed and its scroll position, say).
  * - **Center:** the compact title, as the page's h1, only when no
  *   `<PageHeader>` is mounted (the header already carries the title).
- * - **Right:** a `+` (the New menu, as a sheet) and the account control
- *   (account-switcher.tsx): the avatar of the account you act as (a
- *   group's with yours on its corner), opening "Act as" and "Signed in
- *   as" in a sheet. "Sign in" when signed out. A page that still
- *   publishes a record menu gets it first.
+ * - **Right:** the account control (account-switcher.tsx): the avatar of
+ *   the account you act as (a group's with yours on its corner), opening
+ *   "Act as", "Signed in as", Help, feedback and the legal links in a
+ *   sheet. "Sign in" when signed out. A page that still publishes a
+ *   record menu gets it first. There is no `+`: you create from the
+ *   Workspace (its sections' own New buttons).
  *
  * It's a `<header>` (the banner landmark), not a `<nav>`: it holds the
  * brand and a few buttons; the navigation is the pill at the bottom
@@ -186,7 +186,6 @@ const Navbar: React.FC = () => {
           ) : null}
           {isAuthenticated ? (
             <>
-              <PhoneNewMenu />
               <PhoneAccountSwitcher />
             </>
           ) : (

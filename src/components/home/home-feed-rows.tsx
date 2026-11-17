@@ -173,7 +173,7 @@ export const HomeFeedRow = memo(function HomeFeedRow({
  * The comment thread under an activity, project or update card. Lists,
  * portfolios and the other kinds of card have none. Likes and comments
  * start out from the account you act as (the account control), as
- * everywhere else; "Seen as" only changes what the feed shows.
+ * everywhere else.
  */
 function CardComments({ event }: { event: HomeFeedEvent }) {
   if (event.kind === "cert.create") {

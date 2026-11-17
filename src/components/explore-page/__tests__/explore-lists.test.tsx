@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import { render, screen, cleanup, within, fireEvent } from "@testing-library/react"
 
-// "Seen as" reads the signed-in account and groups; it has its own tests
-// (seen-as-switcher.test.tsx), so it stays out of this page's.
-vi.mock("@/components/network/seen-as-switcher", () => ({ default: () => null }))
 
 // The Explore lists, picked with the "Show" select in the toolbar (it
 // replaced a side list with the same options and URL behaviour): "Whole

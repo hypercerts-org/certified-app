@@ -502,7 +502,7 @@ export default function WorkPane({
           <div className="records-pane__toolbar">
             <SearchField value={query} onChange={setQuery} label="Search projects and activities" />
             <div className="records-pane__actions">
-              <Button href="/create" variant="primary" size="md">
+              <Button href="/create" variant="primary" size="md" data-tour="records-new">
                 <Plus size={16} strokeWidth={1.75} aria-hidden />
                 New activity
               </Button>
@@ -562,7 +562,7 @@ export default function WorkPane({
             title="No projects or activities yet"
             description="An activity records a piece of work. Group activities into projects, like folders, to show how they fit together; one activity can sit in several projects."
           >
-            <Button href="/create" variant="secondary" size="sm">
+            <Button href="/create" variant="secondary" size="sm" data-tour="records-new">
               <Plus size={16} strokeWidth={1.75} aria-hidden />
               New activity
             </Button>

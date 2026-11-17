@@ -7,6 +7,8 @@ const state = vi.hoisted(() => ({
   isAuthenticated: true,
   isLoading: false,
   openSignIn: vi.fn(),
+  pageTitle: null as string | null,
+  hasPageHeader: true,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -25,6 +27,16 @@ vi.mock("@/lib/auth/auth-context", () => ({
 
 vi.mock("@/hooks/use-mounted", () => ({ useMounted: () => true }))
 
+vi.mock("@/lib/navbar-context", () => ({
+  useNavbarValues: () => ({ pageTitle: state.pageTitle, desktopTitle: null, breadcrumb: null }),
+  useHasPageHeader: () => state.hasPageHeader,
+}))
+
+// The search has its own tests; here it only needs to take its place.
+vi.mock("@/components/search/global-search", () => ({
+  default: () => <input type="search" aria-label="Search" />,
+}))
+
 // The account control has its own tests (account-switcher.test.tsx).
 vi.mock("../account-switcher", () => ({
   DesktopAccountSwitcher: () => <button type="button">Maya Lin, account menu</button>,
@@ -37,7 +49,11 @@ beforeEach(() => {
   state.search = ""
   state.isAuthenticated = true
   state.isLoading = false
+  state.pageTitle = null
+  state.hasPageHeader = true
   state.openSignIn.mockReset()
+  delete document.documentElement.dataset.sidebar
+  localStorage.clear()
 })
 
 afterEach(() => cleanup())
@@ -107,10 +123,41 @@ describe("AppSidebar", () => {
     ])
   })
 
-  it("keeps Help and Settings at the bottom", () => {
+  it("keeps Help and Settings at the bottom, then Collapse", () => {
     const { container } = render(<AppSidebar />)
     const bottom = container.querySelector<HTMLElement>(".app-sidebar__bottom")!
-    expect(labels(bottom)).toEqual(["Help", "Settings"])
+    expect(labels(bottom)).toEqual(["Help", "Settings", "Collapse"])
+  })
+
+  it("collapses to the rail and back, remembered in this browser", () => {
+    render(<AppSidebar />)
+    const toggle = screen.getByRole("button", { name: "Collapse sidebar" })
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+    fireEvent.click(toggle)
+    expect(document.documentElement.dataset.sidebar).toBe("rail")
+    expect(localStorage.getItem("certified_sidebar")).toBe("rail")
+    const expand = screen.getByRole("button", { name: "Expand sidebar" })
+    expect(expand).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(expand)
+    expect(document.documentElement.dataset.sidebar).toBeUndefined()
+    expect(localStorage.getItem("certified_sidebar")).toBeNull()
+  })
+
+  it("holds the search: the field (from 1300px) and the rail's Search item", () => {
+    const { container } = render(<AppSidebar />)
+    expect(container.querySelector(".app-sidebar__search")).toContainElement(
+      screen.getByRole("searchbox", { name: "Search" }),
+    )
+    const item = screen.getByRole("button", { name: "Search" })
+    fireEvent.click(item)
+    expect(screen.getByRole("group", { name: "Search" })).toBeInTheDocument()
+  })
+
+  it("gives a page without a PageHeader its h1, visually hidden", () => {
+    state.hasPageHeader = false
+    state.pageTitle = "Funding"
+    render(<AppSidebar />)
+    expect(screen.getByRole("heading", { level: 1, name: "Funding" })).toHaveClass("sr-only")
   })
 
   it("signed out: Sign in in the account slot, the public pages, Help", () => {
@@ -124,7 +171,7 @@ describe("AppSidebar", () => {
     expect(state.openSignIn).toHaveBeenCalled()
     expect(labels(full(container))).toEqual(["Explore", "Graph", "Map", "Funding", "Apps"])
     expect(labels(rail(container))).toEqual(["Network", "Apps"])
-    expect(labels(container.querySelector<HTMLElement>(".app-sidebar__bottom")!)).toEqual(["Help"])
+    expect(labels(container.querySelector<HTMLElement>(".app-sidebar__bottom")!)).toEqual(["Help", "Collapse"])
   })
 
   it("while sign-in is checked, shows a placeholder and no rows, so nothing is inserted later", () => {

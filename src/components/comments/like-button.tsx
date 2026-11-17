@@ -12,7 +12,6 @@ export type LikeSubjectKind = "activity" | "project" | "update"
 /**
  * The account likes are made as: the one you act as (the account control),
  * everywhere, the feed included; the same start as a comment's author.
- * "Seen as" only changes what the feed shows.
  */
 export function useLikeActor(): {
   ownDid: string | null

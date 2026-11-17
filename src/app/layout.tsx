@@ -22,8 +22,8 @@ import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import { ViewTransitionProvider } from "@/lib/view-transitions";
 import Navbar from "@/components/layout/navbar";
-import DesktopTopBar from "@/components/layout/desktop-top-bar";
 import AppSidebar from "@/components/layout/app-sidebar";
+import { SIDEBAR_INIT_SCRIPT } from "@/lib/layout/sidebar-state";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";
@@ -196,6 +196,10 @@ export default async function RootLayout({
         {/* Applies the style chosen in Settings → Appearance before first
             paint (data-look on <html>), so it never flashes the default. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: LOOK_INIT_SCRIPT }} />
+        {/* Collapses the desktop sidebar to its rail before first paint
+            when that was chosen (data-sidebar on <html>), so it never
+            flashes open. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(groupJsonLd) }}
@@ -225,8 +229,6 @@ export default async function RootLayout({
                     sideways. It reads search params only inside its own
                     Suspense boundary. */}
                 <AppSidebar />
-                {/* The desktop content strip: search and New. */}
-                <DesktopTopBar />
                 {/* <main id="main-content"> and, after it, the site
                     footer (the contentinfo landmark). */}
                 <AppShell>{children}</AppShell>

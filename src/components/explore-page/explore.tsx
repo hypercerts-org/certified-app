@@ -21,7 +21,6 @@ import Tooltip from "@/components/ui/tooltip"
 import Button from "@/components/ui/button"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
-import SeenAsSwitcher from "@/components/network/seen-as-switcher"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Select from "@/components/ui/select"
 import SegmentedControl, { ToggleGroup } from "@/components/ui/segmented-control"
@@ -336,7 +335,6 @@ function ExploreAll() {
     <PageContainer className="explore-page">
       <PageHeader
         title="Explore"
-        titleAside={<SeenAsSwitcher />}
         description="Activities, projects and accounts across the Certified network."
       />
       {/* The type tabs (`?show=`) stay mounted while the panel under them
