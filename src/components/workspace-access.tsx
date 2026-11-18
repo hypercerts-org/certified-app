@@ -9,40 +9,43 @@ import { logError } from "@/lib/log";
 import { listOrganizations } from "@/lib/organizations";
 import { isDid, signInHref } from "@/lib/validate";
 
-// Who may open a workspace, shared by its pages. Your own opens at once: the
-// signed-in account is part of the cached page per session, and what a
-// workspace shows is public data about the account, cached and prefetched.
-// An organization's waits for your OAuth session, to check that you belong
-// to it.
+// Who may open a workspace. The check sits in the workspace's layout, which
+// Next.js renders once and keeps while you move between the workspace's
+// pages: entering it checks, switching its pages and tabs doesn't. The pages
+// hold only public data about the account, cached, so their links prefetch
+// them.
+//
+// Your own workspace opens at once: the signed-in account is part of the
+// cached page per session. An organization's waits for your OAuth session,
+// to check that you belong to it.
 
-export type WorkspaceViewer = {
-  did: string;
-  /** Your own workspace, not an organization's. */
-  own: boolean;
-  /** Whether you may edit the account (yours, or one you manage). */
-  canEdit: boolean;
-};
+/** The workspace's account, from the URL. */
+export async function workspaceDid(params: Promise<{ actor: string }>): Promise<string> {
+  const did = decodeURIComponent((await params).actor);
+  if (!isDid(did)) notFound();
+  return did;
+}
+
+/** Whether the workspace is the signed-in account's own (not an organization's). */
+export async function isOwnWorkspace(did: string): Promise<boolean> {
+  return (await getUser())?.did === did;
+}
 
 export async function WorkspaceAccess({
   params,
-  section = "",
   children,
 }: {
   params: Promise<{ actor: string }>;
-  /** The page under the workspace ("/projects"), for sign-in's way back. */
-  section?: string;
-  children: (viewer: WorkspaceViewer) => ReactNode;
+  children: ReactNode;
 }) {
-  const did = decodeURIComponent((await params).actor);
-  if (!isDid(did)) notFound();
-  const here = `${workspaceHref(did)}${section}`;
+  const did = await workspaceDid(params);
   const user = await getUser();
-  if (!user) redirect(signInHref(here));
-  if (did === user.did) return children({ did, own: true, canEdit: true });
+  if (!user) redirect(signInHref(workspaceHref(did)));
+  if (did === user.did) return children;
 
-  return withSession(here, did, async (session) => {
-    const organization = (await listOrganizations(session)).find((o) => o.did === did);
-    if (!organization) {
+  return withSession(workspaceHref(did), did, async (session) => {
+    const organizations = await listOrganizations(session);
+    if (!organizations.some((o) => o.did === did)) {
       return (
         <Text>
           This isn't one of your workspaces. You can open your own and those of the organizations
@@ -50,8 +53,26 @@ export async function WorkspaceAccess({
         </Text>
       );
     }
-    return children({ did, own: false, canEdit: organization.manages });
+    return children;
   });
+}
+
+/** Shown when you may edit the workspace's account: yours, or an organization you manage. */
+export function EditorOnly({ did, children }: { did: string; children: ReactNode }) {
+  return <EditorGate did={did}>{children}</EditorGate>;
+}
+
+async function EditorGate({ did, children }: { did: string; children: ReactNode }) {
+  if (await isOwnWorkspace(did)) return children;
+  let session: Awaited<ReturnType<typeof readOAuthSession>>;
+  try {
+    session = await readOAuthSession();
+  } catch {
+    return null;
+  }
+  if (!session || session === "expired") return null;
+  const organization = (await listOrganizations(session)).find((o) => o.did === did);
+  return organization?.manages ? children : null;
 }
 
 /** Runs `load` with your OAuth session, or explains why it can't. */

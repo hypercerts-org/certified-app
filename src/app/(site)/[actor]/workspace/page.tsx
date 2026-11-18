@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
-import { WorkspaceAccess, withSession } from "@/components/workspace-access";
+import { isOwnWorkspace, withSession, workspaceDid } from "@/components/workspace-access";
 import {
   OrganizationsSection,
   OrganizationsSkeleton,
@@ -18,9 +18,9 @@ export const metadata: Metadata = { title: "Workspace", robots: { index: false }
 //
 // Most of the overview is public data about the account, cached and shared
 // (its records, endorsements, followers, profile), so a link prefetches it and
-// the page shows at once. Only your organizations wait for your OAuth
-// session (and, on an organization's workspace, the check that it is one of
-// yours: workspace-access.tsx).
+// the page shows at once. Your organizations and "Edit profile" on an
+// organization's workspace wait for your OAuth session. Who may open the
+// workspace is checked by its layout (workspace-access.tsx).
 
 async function YourOrganizations({ did }: { did: string }) {
   return withSession(workspaceHref(did), did, async (session) => (
@@ -28,24 +28,27 @@ async function YourOrganizations({ did }: { did: string }) {
   ));
 }
 
+async function Overview({ params }: { params: Promise<{ actor: string }> }) {
+  const did = await workspaceDid(params);
+  const own = await isOwnWorkspace(did);
+  return (
+    <WorkspaceOverview
+      did={did}
+      organizations={
+        own ? (
+          <Suspense fallback={<OrganizationsSkeleton />}>
+            <YourOrganizations did={did} />
+          </Suspense>
+        ) : null
+      }
+    />
+  );
+}
+
 export default function WorkspacePage({ params }: PageProps<"/[actor]/workspace">) {
   return (
     <Suspense fallback={<OverviewSkeleton />}>
-      <WorkspaceAccess params={params}>
-        {({ did, own, canEdit }) => (
-          <WorkspaceOverview
-            did={did}
-            canEdit={canEdit}
-            organizations={
-              own ? (
-                <Suspense fallback={<OrganizationsSkeleton />}>
-                  <YourOrganizations did={did} />
-                </Suspense>
-              ) : null
-            }
-          />
-        )}
-      </WorkspaceAccess>
+      <Overview params={params} />
     </Suspense>
   );
 }

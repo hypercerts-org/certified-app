@@ -7,7 +7,7 @@ import {
   WorkFoldersSkeleton,
   type WorkRow,
 } from "@/components/work-folders";
-import { WorkspaceAccess } from "@/components/workspace-access";
+import { workspaceDid } from "@/components/workspace-access";
 import { getWork, type Work } from "@/lib/hypercerts/queries";
 import type { ActivityCard } from "@/lib/hypercerts/views";
 
@@ -74,7 +74,8 @@ function toFolders(did: string, work: Work): WorkFolder[] {
   return folders;
 }
 
-async function WorkSection({ did }: { did: string }) {
+async function WorkSection({ params }: { params: Promise<{ actor: string }> }) {
+  const did = await workspaceDid(params);
   const work = await getWork(did);
   return (
     <WorkFolders
@@ -89,9 +90,7 @@ export default function ProjectsPage({ params }: PageProps<"/[actor]/workspace/p
     <>
       <h1 className="workspace-title">Projects and activities</h1>
       <Suspense fallback={<WorkFoldersSkeleton />}>
-        <WorkspaceAccess params={params} section="/projects">
-          {({ did }) => <WorkSection did={did} />}
-        </WorkspaceAccess>
+        <WorkSection params={params} />
       </Suspense>
     </>
   );

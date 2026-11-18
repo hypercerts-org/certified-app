@@ -34,6 +34,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { actorHref, projectHref, workspaceHref } from "@/components/cards";
+import { EditorOnly } from "@/components/workspace-access";
 import { APPS } from "@/lib/apps";
 import {
   type Count,
@@ -52,12 +53,9 @@ const LATEST_ENDORSEMENTS = 3;
 
 export function WorkspaceOverview({
   did,
-  canEdit,
   organizations,
 }: {
   did: string;
-  /** Whether the viewer may edit the account's profile. */
-  canEdit: boolean;
   /** Your organizations, on your own workspace; null on an organization's. */
   organizations: ReactNode | null;
 }) {
@@ -78,7 +76,7 @@ export function WorkspaceOverview({
         <div className="overview-side">
           <Card variant="panel" className="overview-box">
             <Suspense fallback={<IdentitySkeleton />}>
-              <IdentityBox did={did} canEdit={canEdit} />
+              <IdentityBox did={did} />
             </Suspense>
           </Card>
           {organizations && (
@@ -425,19 +423,11 @@ function firstLine(text: string | null): string | null {
   );
 }
 
-async function IdentityBox({ did, canEdit }: { did: string; canEdit: boolean }) {
-  return <IdentityView did={did} canEdit={canEdit} actor={await getActor(did)} />;
+async function IdentityBox({ did }: { did: string }) {
+  return <IdentityView did={did} actor={await getActor(did)} />;
 }
 
-function IdentityView({
-  did,
-  canEdit,
-  actor,
-}: {
-  did: string;
-  canEdit: boolean;
-  actor: ActorDetail | null;
-}) {
+function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }) {
   const handle = actor?.handle ?? null;
   const name = actor?.displayName ?? (handle ? `@${handle}` : did);
   const bio = firstLine(actor?.description ?? null);
@@ -483,11 +473,15 @@ function IdentityView({
               <span className="visually-hidden"> (opens in a new tab)</span>
             </a>
           )}
-          {canEdit && (
-            <Link href={`${actorHref(did)}/edit`} className="overview-edit">
-              Edit profile
-            </Link>
-          )}
+          {/* Yours, or an organization's you manage: a check of its own, so
+              the rest of the box stays in the cached page. */}
+          <Suspense fallback={null}>
+            <EditorOnly did={did}>
+              <Link href={`${actorHref(did)}/edit`} className="overview-edit">
+                Edit profile
+              </Link>
+            </EditorOnly>
+          </Suspense>
         </div>
       </div>
       <section aria-labelledby={idTitleId} className="overview-id">
