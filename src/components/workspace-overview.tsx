@@ -29,12 +29,19 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import { ArrowUpRight, FolderGit2, Plus, Search, SquareCheckBig } from "lucide-react";
+import {
+  ArrowUpRight,
+  FileBadge,
+  FolderGit2,
+  Link2,
+  Plus,
+  Search,
+  SquareCheckBig,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { actorHref, projectHref, workspaceHref } from "@/components/cards";
-import { EditorOnly } from "@/components/workspace-access";
 import { APPS } from "@/lib/apps";
 import {
   type Count,
@@ -98,27 +105,39 @@ export function WorkspaceOverview({
 function Section({
   title,
   description,
+  action,
   children,
 }: {
   title: string;
   description?: string;
+  /** Beside the title, on the right ("New activity", "New group"). */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const titleId = useId();
   return (
     <section className="overview-section" aria-labelledby={titleId}>
-      <div className="overview-section-header">
-        <Heading level={2} size="heading" id={titleId}>
-          {title}
-        </Heading>
-        {description && (
-          <Text size="body-sm" tone="muted">
-            {description}
-          </Text>
-        )}
+      <div className="overview-section-head">
+        <div className="overview-section-header">
+          <h2 className="overview-heading" id={titleId}>
+            {title}
+          </h2>
+          {description && <p className="overview-description">{description}</p>}
+        </div>
+        {action}
       </div>
       {children}
     </section>
+  );
+}
+
+/** A write that isn't available yet: shown, disabled, until the SDK ships it. */
+function Placeholder({ children }: { children: ReactNode }) {
+  return (
+    <Button variant="secondary" size="sm" disabled title="Coming soon">
+      <Plus size={16} aria-hidden />
+      {children}
+    </Button>
   );
 }
 
@@ -167,7 +186,7 @@ function IdentitySkeleton() {
 
 export function OrganizationsSkeleton() {
   return (
-    <Section title="Your organizations">
+    <Section title="Your groups">
       <RowsSkeleton rows={2} />
     </Section>
   );
@@ -250,24 +269,32 @@ async function RecordsSection({ did }: { did: string }) {
     counts.lists.value === 0;
 
   return (
-    <Section title="Your records" description="What you have published, here or in other apps.">
+    <Section
+      title="Your records"
+      description="What you have published, here or in other apps."
+      // With records, New activity sits beside the title; without, the
+      // empty state carries it (as on staging).
+      action={empty ? undefined : <Placeholder>New activity</Placeholder>}
+    >
       {empty ? (
         <EmptyState
+          className="overview-empty"
+          icon={<FileBadge size={40} strokeWidth={1.25} aria-hidden />}
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
           action={
             // New activity and New project are placeholders until the
             // Hypercerts SDK ships those writes.
             <div className="empty-actions">
-              <Button variant="primary" size="sm" disabled title="Coming soon">
+              <Button variant="primary" disabled title="Coming soon">
                 <Plus size={16} aria-hidden />
                 New activity
               </Button>
-              <Button variant="secondary" size="sm" disabled title="Coming soon">
+              <Button variant="secondary" disabled title="Coming soon">
                 <Plus size={16} aria-hidden />
                 New project
               </Button>
-              <Button href="/explore" variant="secondary" size="sm">
+              <Button href="/explore" variant="secondary">
                 <Search size={16} aria-hidden />
                 Find accounts
               </Button>
@@ -397,7 +424,8 @@ async function EndorsementsSection({ did }: { did: string }) {
             {endorsements.latestReceived.map((endorsement) => (
               <li key={endorsement.uri}>
                 <IdentityRow
-                  size="sm"
+                  size="md"
+                  className={endorsement.issuer.isOrganization ? "identity-org" : undefined}
                   name={endorsement.issuer.displayName}
                   avatarSrc={endorsement.issuer.avatarUrl}
                   href={actorHref(endorsement.issuer)}
@@ -442,7 +470,12 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
   return (
     <>
       <div className="overview-identity">
-        <Avatar name={name.replace(/^@/, "")} src={actor?.avatarUrl} size="lg" />
+        <Avatar
+          name={name.replace(/^@/, "")}
+          src={actor?.avatarUrl}
+          size="lg"
+          className={isOrganization ? "overview-avatar avatar-square" : "overview-avatar"}
+        />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
             <Link
@@ -473,45 +506,42 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
               target="_blank"
               rel="noopener noreferrer"
             >
+              <Link2 size={16} aria-hidden />
               {website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               <span className="visually-hidden"> (opens in a new tab)</span>
             </a>
           )}
-          {/* Yours, or an organization's you manage: a check of its own, so
-              the rest of the box stays in the cached page. */}
-          <Suspense fallback={null}>
-            <EditorOnly did={did}>
-              <Link href={`${actorHref(did)}/edit`} className="overview-edit">
-                Edit profile
-              </Link>
-            </EditorOnly>
-          </Suspense>
         </div>
       </div>
       <section aria-labelledby={idTitleId} className="overview-id">
         <div className="overview-section-header">
-          <Heading level={2} size="heading" id={idTitleId}>
+          <h2 className="overview-heading" id={idTitleId}>
             ID
-          </Heading>
-          <Text size="body-sm" tone="muted">
+          </h2>
+          <p className="overview-description">
             {isOrganization
-              ? "Identifies this organization's account in every app."
+              ? "Identifies this group's account in every app."
               : "Identifies your account in every app."}
-          </Text>
+          </p>
         </div>
         <dl className="overview-id-list">
           {handle && (
             <div className="overview-id-item">
               <dt>Handle</dt>
               <dd>
-                <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" />
+                <CopyableId
+                  value={handle}
+                  displayValue={`@${handle}`}
+                  label="Handle"
+                  className="overview-id-field"
+                />
               </dd>
             </div>
           )}
           <div className="overview-id-item">
             <dt>Permanent ID</dt>
             <dd>
-              <CopyableId value={did} label="Permanent ID" />
+              <CopyableId value={did} label="Permanent ID" className="overview-id-field" />
             </dd>
           </div>
         </dl>
@@ -522,12 +552,13 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
 
 // Organizations --------------------------------------------------------------
 
+/** Your groups (organizations on CGS), as staging names them, with New group. */
 export function OrganizationsSection({ organizations }: { organizations: Organization[] }) {
   return (
-    <Section title="Your organizations">
+    <Section title="Your groups" action={<NewGroup />}>
       {organizations.length === 0 ? (
         <Text size="body-sm" tone="muted">
-          You don't belong to any organization yet.
+          You don't belong to any group yet.
         </Text>
       ) : (
         <ul className="overview-rows">
@@ -535,16 +566,32 @@ export function OrganizationsSection({ organizations }: { organizations: Organiz
             <li key={organization.did}>
               <IdentityRow
                 size="sm"
+                className="identity-org"
                 name={organization.name}
                 avatarSrc={organization.avatarUrl}
                 href={actorHref(organization)}
-                secondary={organization.roleLabel}
+                secondary={[
+                  organization.roleLabel,
+                  organization.handle && `@${organization.handle}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               />
             </li>
           ))}
         </ul>
       )}
     </Section>
+  );
+}
+
+/** New group: a quiet placeholder until groups can be created here. */
+function NewGroup() {
+  return (
+    <Button variant="ghost" size="sm" disabled title="Coming soon">
+      <Plus size={16} aria-hidden />
+      New group
+    </Button>
   );
 }
 
