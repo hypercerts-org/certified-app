@@ -114,18 +114,17 @@ describe("ActivityFormFields", () => {
   // C5: one rule for every form: no red while typing; the error shows
   // once the field is left (or after a save attempt), then follows the
   // typing live.
-  it("doesn't flag a short description until it is edited and left", () => {
+  // The summary follows the lexicon: required, up to 300, no minimum.
+  it("accepts any non-empty short description and never shows red while typing", () => {
     const { container } = renderForm()
-    expect(container.querySelector(".create-cert__counter--under")).toBeNull()
-
     const summary = screen.getByLabelText("Short description")
-    fireEvent.change(summary, { target: { value: "Still too short." } })
+    fireEvent.change(summary, { target: { value: "Short." } })
+    fireEvent.blur(summary)
     expect(container.querySelector(".create-cert__counter--under")).toBeNull()
     expect(summary).not.toHaveAttribute("aria-invalid")
-
-    fireEvent.blur(summary)
-    expect(container.querySelector(".create-cert__counter--under")).not.toBeNull()
-    expect(summary).toHaveAttribute("aria-invalid", "true")
+    const count = document.getElementById(summary.getAttribute("aria-describedby")!.split(" ")[0])
+    expect(count).toHaveTextContent("6/300")
+    expect(count).not.toHaveTextContent("min.")
   })
 
   it("keeps the title's count grey while typing, red once left short, live after", () => {
@@ -168,62 +167,22 @@ describe("ActivityFormFields", () => {
     )
   })
 
-  it("flags every under-minimum count after a save attempt", () => {
-    const { container } = renderForm({ title: "", showAllErrors: true })
+  it("flags an empty title and an empty summary after a save attempt", () => {
+    const { container } = renderForm({ title: "", shortDescription: "", showAllErrors: true })
     expect(container.querySelectorAll(".create-cert__counter--under")).toHaveLength(2)
+    expect(screen.getByText("Add a short description.")).toBeInTheDocument()
   })
 
-  // W2: on edit, a published summary under the minimum doesn't block a
-  // save of the other fields; changing it brings the minimum back.
-  it("on edit, flags a short saved summary only once it is changed", () => {
-    const saved = "Too short for the minimum."
+  // With no minimum, editing a short published summary never blocks a save.
+  it("on edit, a short summary is fine, changed or not", () => {
+    const saved = "Short."
     const { container } = renderForm({
-      shortDescription: saved,
+      shortDescription: "Shorter",
       savedShortDescription: saved,
       showAllErrors: true,
     })
     expect(container.querySelector(".create-cert__counter--under")).toBeNull()
     expect(screen.getByLabelText("Short description")).not.toHaveAttribute("aria-invalid")
-    cleanup()
-
-    const changed = renderForm({
-      shortDescription: "Still too short.",
-      savedShortDescription: saved,
-      showAllErrors: true,
-    })
-    const summary = screen.getByLabelText("Short description")
-    expect(summary).toHaveAttribute("aria-invalid", "true")
-    expect(changed.container.querySelectorAll(".create-cert__counter--under")).toHaveLength(1)
-  })
-
-  // WS-10: the red counter on a changed summary comes with its reason
-  // and the way back.
-  it("on edit, says why a changed short summary is flagged", () => {
-    const saved = "A published summary, under the minimum."
-    const line = () =>
-      screen.queryByText(
-        "A changed summary needs at least 100 characters. Undo your change to keep the current one.",
-      )
-    renderForm({ shortDescription: saved, savedShortDescription: saved, showAllErrors: true })
-    expect(line()).toBeNull()
-    cleanup()
-
-    renderForm({
-      shortDescription: "Changed, still short.",
-      savedShortDescription: saved,
-      showAllErrors: true,
-    })
-    const summary = screen.getByLabelText("Short description")
-    expect(summary.getAttribute("aria-describedby")).toContain(line()!.id)
-    cleanup()
-
-    // /create (nothing published) and an empty published summary: the
-    // counter alone, there is nothing to undo to.
-    renderForm({ shortDescription: "Short.", showAllErrors: true })
-    expect(line()).toBeNull()
-    cleanup()
-    renderForm({ shortDescription: "Short.", savedShortDescription: "", showAllErrors: true })
-    expect(line()).toBeNull()
   })
 
   // WS-03: the main column comes first in the DOM, so the keyboard goes
@@ -415,34 +374,25 @@ describe("activityFormProblems", () => {
   it("lists what blocks a save and the field to focus", () => {
     const result = activityFormProblems({
       title: "Long enough",
-      shortDescription: "short",
+      shortDescription: "   ",
       startDate: "2024-03-01",
       endDate: "2024-01-01",
       contributors: [],
     })
     expect(result.focus).toBe("shortDescription")
     expect(result.unmet).toEqual([
-      "the short description needs at least 100 characters",
+      "add a short description",
       "the end date must be on or after the start date",
     ])
   })
 
-  it("on edit, applies the summary minimum only once the summary is changed", () => {
+  it("requires a summary (any length up to 300), on create and on edit", () => {
     const base = { title: "Long enough", startDate: "", endDate: "", contributors: [] }
-    const saved = "A 77-character summary published before the minimum."
-    // Unchanged (whitespace aside): nothing blocks the save.
+    expect(activityFormProblems({ ...base, shortDescription: "Short." })).toEqual({ unmet: [], focus: null })
     expect(
-      activityFormProblems({ ...base, shortDescription: `${saved} `, savedShortDescription: saved }),
+      activityFormProblems({ ...base, shortDescription: "Shorter", savedShortDescription: "Short." }),
     ).toEqual({ unmet: [], focus: null })
-    // Changed and still short: the minimum applies again.
-    expect(
-      activityFormProblems({ ...base, shortDescription: "Shorter.", savedShortDescription: saved }).unmet,
-    ).toEqual(["the short description needs at least 100 characters"])
-    // /create (no saved summary) keeps the rule.
-    expect(activityFormProblems({ ...base, shortDescription: saved }).focus).toBe("shortDescription")
-    // An empty saved summary is no exemption.
-    expect(
-      activityFormProblems({ ...base, shortDescription: "", savedShortDescription: "" }).focus,
-    ).toBe("shortDescription")
+    expect(activityFormProblems({ ...base, shortDescription: "" }).unmet).toEqual(["add a short description"])
+    expect(activityFormProblems({ ...base, shortDescription: "x".repeat(301) }).focus).toBe("shortDescription")
   })
 })

@@ -51,11 +51,13 @@ import type { StrongRef } from "@/lib/atproto/location"
  * before the contributors on screen but after them in keyboard order).
  */
 
-// Lexicon caps: title.maxLength = 256, shortDescription maxGraphemes = 300.
-// The minimums are a product floor, not a lexicon constraint.
+// Lexicon (org.hypercerts.claim.activity): title maxLength 256;
+// shortDescription required, maxGraphemes 300 (maxLength 3000), no
+// minimum. The summary follows the lexicon exactly: any non-empty text up
+// to 300. The title's minimum is a product floor, not a lexicon rule.
 export const ACTIVITY_TITLE_MIN = 5
 export const ACTIVITY_TITLE_MAX = 256
-export const ACTIVITY_SHORT_DESC_MIN = 100
+export const ACTIVITY_SHORT_DESC_MIN = 1
 export const ACTIVITY_SHORT_DESC_MAX = 300
 
 export interface ContributorRow {
@@ -149,8 +151,7 @@ export function activityFormProblems(values: {
       `the title needs at least ${ACTIVITY_TITLE_MIN} characters`,
     titleOver &&
       `the title must be ${ACTIVITY_TITLE_MAX} characters or fewer`,
-    shortDescUnder &&
-      `the short description needs at least ${ACTIVITY_SHORT_DESC_MIN} characters`,
+    shortDescUnder && "add a short description",
     shortDescOver &&
       `the short description must be ${ACTIVITY_SHORT_DESC_MAX} characters or fewer`,
     !contributorsValid && "fix the highlighted contributor rows",
@@ -290,11 +291,6 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
     shortDescriptionMinApplies(shortDescription, savedShortDescription) &&
     shortDescTrimmed < ACTIVITY_SHORT_DESC_MIN
 
-  // Editing a published summary: the minimum applies only once it has
-  // been changed, so say so, with the way back (undo the change).
-  const changedSummaryUnder =
-    shortDescUnder && savedShortDescription !== undefined && savedShortDescription.trim() !== ""
-
   const datesValid = !startDate || !endDate || startDate <= endDate
   const showDateError = !datesValid && (touched.endDate || showAllErrors)
 
@@ -345,7 +341,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             ref={shortDescriptionRef}
             id={`${id}-summary`}
             aria-describedby={
-              changedSummaryUnder
+              shortDescUnder
                 ? `${id}-summary-count ${id}-summary-min`
                 : `${id}-summary-count`
             }
@@ -360,13 +356,11 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             id={`${id}-summary-count`}
             className={counterClass(shortDescOver, shortDescUnder)}
           >
-            {shortDescCount}/{ACTIVITY_SHORT_DESC_MAX} · min.{" "}
-            {ACTIVITY_SHORT_DESC_MIN} characters
+            {shortDescCount}/{ACTIVITY_SHORT_DESC_MAX}
           </p>
-          {changedSummaryUnder ? (
+          {shortDescUnder ? (
             <p id={`${id}-summary-min`} className="create-cert__field-error">
-              A changed summary needs at least {ACTIVITY_SHORT_DESC_MIN} characters. Undo
-              your change to keep the current one.
+              Add a short description.
             </p>
           ) : null}
         </div>

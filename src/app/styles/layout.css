@@ -2472,7 +2472,7 @@ dialog.phone-search {
       "links"
       "copy";
     justify-items: start;
-    gap: 16px;
+    gap: 12px;
   }
 
   /* Scoped, to outrank the base rule further down. */
@@ -2601,8 +2601,8 @@ dialog.phone-search {
   vertical-align: -1px;
 }
 
-/* 44px touch targets on phones: the row of short words would otherwise
-   be ~18px tall. */
+/* Phones: 32px rows (a comfortable target, well over WCAG's 24px, without
+   spreading the short list over most of a screen). */
 @media (max-width: 799px) {
   /* Two columns: Welcome, Help, Feedback, Docs; Terms, Privacy, Imprint.
      Each link a full-height row at the UI size, the legal ones quieter. */
@@ -2625,8 +2625,8 @@ dialog.phone-search {
     font-size: var(--text-ui);
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
-    /* Short words ("Help", "Terms") get a 44px-wide target too; the text
+    min-height: 32px;
+    /* Short words ("Help", "Terms") get a wider target too; the text
        stays on the column's left edge. */
     min-width: 44px;
   }
