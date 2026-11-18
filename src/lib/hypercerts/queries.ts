@@ -425,68 +425,82 @@ export type NetworkCounts = {
   endorsements: Count | null;
 };
 
-/** A count, or null when it can't be had: one bad record fails a page's validation. */
-const orNull = (count: Promise<Count>) =>
-  count.catch((err: unknown) => {
-    logError("[network counts] count failed", err);
-    return null;
-  });
+type NetworkKind = keyof NetworkCounts;
 
 /**
- * The network's size, by paging the API (it has no count endpoint yet),
- * each kind capped at MAX_COUNTED. Cached for hours: the landing page shows
- * it to everyone.
+ * One kind's size across the network: cached for hours, or null cached for
+ * minutes when it can't be had (one bad record fails a whole page's
+ * validation), so a failure is asked again soon and never fails the page.
+ * The API has no count endpoint except badge awards' includeTotal, so the
+ * other kinds page through, capped at MAX_COUNTED.
  */
-export async function getNetworkCounts(): Promise<NetworkCounts> {
+async function countNetwork(kind: NetworkKind): Promise<Count | null> {
   "use cache";
-  cacheLife("hours");
+  try {
+    const count = await fetchNetworkCount(kind);
+    cacheLife("hours");
+    return count;
+  } catch (err) {
+    logError("[network counts] count failed", err, { kind });
+    cacheLife("minutes");
+    return null;
+  }
+}
 
+async function fetchNetworkCount(kind: NetworkKind): Promise<Count> {
   const page = { limit: 100 };
-  const [people, organizations, projects, activities, endorsements] = await Promise.all([
-    orNull(
-      countPages(async (cursor) => {
+  switch (kind) {
+    case "people":
+      return countPages(async (cursor) => {
         const r = await api.call(app.certified.actor.listProfiles, { ...page, cursor }, read());
         return { count: r.profiles.length, cursor: r.cursor };
-      }),
-    ),
-    orNull(
-      countPages(async (cursor) => {
+      });
+    case "organizations":
+      return countPages(async (cursor) => {
         const r = await api.call(
           app.certified.actor.listOrganizations,
           { ...page, cursor },
           read(),
         );
         return { count: r.actors.length, cursor: r.cursor };
-      }),
-    ),
-    orNull(
-      countPages(async (cursor) => {
+      });
+    case "projects":
+      return countPages(async (cursor) => {
         const r = await api.call(
           org.hypercerts.collection.listCollections,
           { ...page, types: ["project"], cursor },
           read(),
         );
         return { count: r.collections.length, cursor: r.cursor };
-      }),
-    ),
-    orNull(
-      countPages(async (cursor) => {
+      });
+    case "activities":
+      return countPages(async (cursor) => {
         const r = await api.call(org.hypercerts.claim.listActivities, { ...page, cursor }, read());
         return { count: r.activities.length, cursor: r.cursor };
-      }),
-    ),
-    orNull(
-      countPages(async (cursor) => {
-        const r = await api.call(
-          app.certified.badge.listBadgeAwards,
-          { ...page, badgeTypes: ["endorsement"], cursor },
-          read(),
-        );
-        return { count: r.badgeAwards.length, cursor: r.cursor };
-      }),
-    ),
-  ]);
-  return { people, organizations, projects, activities, endorsements };
+      });
+    case "endorsements": {
+      const r = await api.call(
+        app.certified.badge.listBadgeAwards,
+        { badgeTypes: ["endorsement"], includeTotal: true, limit: 1 },
+        read(),
+      );
+      return { value: r.totalCount ?? r.badgeAwards.length, capped: false };
+    }
+  }
+}
+
+const NETWORK_KINDS: NetworkKind[] = [
+  "people",
+  "organizations",
+  "projects",
+  "activities",
+  "endorsements",
+];
+
+/** The network's size for the landing page, each kind cached on its own. */
+export async function getNetworkCounts(): Promise<NetworkCounts> {
+  const counts = await Promise.all(NETWORK_KINDS.map(countNetwork));
+  return Object.fromEntries(NETWORK_KINDS.map((kind, i) => [kind, counts[i]])) as NetworkCounts;
 }
 
 /** What a workspace's Projects and activities lists. */
