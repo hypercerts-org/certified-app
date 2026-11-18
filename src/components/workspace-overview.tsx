@@ -289,7 +289,11 @@ async function RecordsSection({ did }: { did: string }) {
                 value: counts.projects,
                 href: work,
               },
-              { label: byCount(counts.lists.value, "List", "Lists"), value: counts.lists },
+              {
+                label: byCount(counts.lists.value, "List", "Lists"),
+                value: counts.lists,
+                href: `${workspaceHref(did)}/lists`,
+              },
             ]}
           />
           {latest.length > 0 && (

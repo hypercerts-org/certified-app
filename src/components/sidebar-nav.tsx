@@ -14,7 +14,6 @@ import {
   Search,
   Settings,
   ThumbsUp,
-  UsersRound,
 } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
@@ -64,8 +63,12 @@ function workspaceItems(overview: string): Item[] {
       href: `${overview}/endorsements`,
       isActive: under(`${overview}/endorsements`),
     },
-    { label: "Lists", icon: ListChecks, href: null },
-    { label: "Groups", icon: UsersRound, href: null },
+    {
+      label: "Lists",
+      icon: ListChecks,
+      href: `${overview}/lists`,
+      isActive: under(`${overview}/lists`),
+    },
   ];
 }
 

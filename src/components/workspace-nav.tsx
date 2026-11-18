@@ -8,7 +8,6 @@ import {
   type LucideIcon,
   Settings,
   ThumbsUp,
-  UsersRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,8 +26,7 @@ const SECTIONS: readonly Section[] = [
   { label: "Overview", icon: LayoutDashboard, path: "" },
   { label: "Projects and activities", icon: FolderGit2, path: "/projects" },
   { label: "Endorsements", icon: ThumbsUp, path: "/endorsements" },
-  { label: "Lists", icon: ListChecks, path: null },
-  { label: "Groups", icon: UsersRound, path: null },
+  { label: "Lists", icon: ListChecks, path: "/lists" },
 ];
 
 /** `overview` is the workspace's own address. */

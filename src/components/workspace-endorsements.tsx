@@ -4,19 +4,11 @@
 // keeps. Hiding, showing, revoking and endorsing someone come with the
 // Hypercerts SDK's writes: until then their buttons are placeholders.
 
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Heading,
-  IdentityRow,
-  Skeleton,
-  Text,
-} from "@hypercerts-org/ui-react";
+import { Badge, Button, EmptyState, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { actorHref } from "@/components/cards";
+import { LIST_KINDS, ListCards, type ListKind } from "@/components/workspace-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
 import type { ListCard, PersonRow } from "@/lib/hypercerts/views";
 
@@ -118,37 +110,10 @@ export function GivenEndorsements({ page }: { page: PeoplePage }) {
 
 /** The account's lists of endorsements. */
 export function EndorsementLists({ lists, more }: { lists: ListCard[]; more: boolean }) {
-  if (lists.length === 0) {
-    return (
-      <EmptyState
-        title="No endorsement lists yet"
-        description="A list gathers endorsements to show together, like a set of references."
-      />
-    );
-  }
-  return (
-    <>
-      <ul className="work-grid">
-        {lists.map((list) => (
-          <Card as="li" variant="panel" className="card" key={list.uri}>
-            <Heading level={2} size="heading">
-              {list.title}
-            </Heading>
-            <Text size="body-sm" tone="muted">
-              {list.itemCount} {list.itemCount === 1 ? "endorsement" : "endorsements"}
-            </Text>
-            {list.summary && <Text size="body-sm">{list.summary}</Text>}
-          </Card>
-        ))}
-      </ul>
-      {more && (
-        <Text size="body-sm" tone="muted">
-          Showing the latest {lists.length}.
-        </Text>
-      )}
-    </>
-  );
+  return <ListCards kind={ENDORSEMENT_LISTS} lists={lists} more={more} />;
 }
+
+const ENDORSEMENT_LISTS = LIST_KINDS.find((kind) => kind.label === "Endorsements") as ListKind;
 
 /** Shaped like four rows of accounts, so nothing moves when they arrive. */
 export function EndorsementRowsSkeleton() {

@@ -2078,3 +2078,8 @@ details[open] > .work-folder-head .work-folder-chevron {
   background: none;
   font-weight: inherit;
 }
+
+/* Workspace → Lists (src/components/workspace-lists.tsx): a list card's shape. */
+.skeleton-list-card {
+  block-size: 7rem;
+}
