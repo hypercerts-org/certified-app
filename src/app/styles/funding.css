@@ -830,6 +830,14 @@
   overflow-x: auto;
 }
 
+/* The gifts the chart leaves out (no location, or no project), in one
+   line under it. */
+.funding-flow__left-out {
+  margin: 12px 0 0;
+  font-size: var(--text-body-sm);
+  color: var(--fg-secondary);
+}
+
 .funding-flow__hint {
   margin: 6px 0 0;
   font-size: var(--text-caption);

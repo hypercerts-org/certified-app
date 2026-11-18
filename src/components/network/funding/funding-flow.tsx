@@ -135,10 +135,20 @@ export default function FundingFlow({
     const sg = new Map<string, number>() // `${size}:${gate}` -> money
     const gt = new Map<string, number>() // `${gate}:${target}` -> money
     let total = 0
+    // Gifts with nowhere to go under this grouping (no location, or no
+    // project) stay out of the chart, in every column, so it stays
+    // balanced; a line under it says how many.
+    const left = { total: 0, count: 0 }
     for (const i of idx) {
       if (!isPrimary(ds, i)) continue
       const a = r.amount[i]
       if (a <= 0) continue
+      const t = dest.of(i)
+      if (t === dest.none) {
+        left.total += a
+        left.count++
+        continue
+      }
       // A trusted source's gate holds what it recorded, named after it
       // (Ma Earth, GainForest); a receipt another account wrote and a source
       // confirmed joins that source's gate.
@@ -157,7 +167,6 @@ export default function FundingFlow({
         })
       }
       const s = giftSizeIndex(a, bounds)
-      const t = dest.of(i)
       const p = r.project[i]
       sizes[s].total += a
       sizes[s].count++
@@ -182,8 +191,23 @@ export default function FundingFlow({
       dest.by === "projects"
         ? targets.map((_, i) => i).filter((i) => targets[i].total > 0)
         : byTotal(targets).sort((a, b) => Number(a === dest.none) - Number(b === dest.none))
-    return { sizes, gates, gateOrder, targets, targetOrder, sg, gt, total }
+    return { sizes, gates, gateOrder, targets, targetOrder, sg, gt, total, left }
   }, [ds, idx, dest, sizeList, bounds])
+
+  /** The gifts the chart leaves out, in a sentence (null when none). */
+  const leftOut =
+    flow.left.count > 0 ? (
+      <p className="funding-flow__left-out">
+        <b>{many(flow.left.count, "gift", "gifts")}</b> ({formatUsd(flow.left.total)}){" "}
+        {dest.by === "projects"
+          ? flow.left.count === 1
+            ? "isn't for a specific project, so it isn't in the chart."
+            : "aren't for a specific project, so they aren't in the chart."
+          : flow.left.count === 1
+            ? "has no location yet, so it isn't in the chart."
+            : "have no location yet, so they aren't in the chart."}
+      </p>
+    ) : null
 
   const bar = (
     <div className="funding-flow__bar">
@@ -216,8 +240,15 @@ export default function FundingFlow({
         {bar}
         {panel}
         <div className="funding-empty">
-          <p>No funding in US dollars in this selection.</p>
+          <p>
+            {flow.left.count > 0
+              ? dest.by === "projects"
+                ? "None of the funding in this selection is for a specific project."
+                : "None of the funding in this selection has a location yet."
+              : "No funding in US dollars in this selection."}
+          </p>
         </div>
+        {leftOut}
       </div>
     )
   }
@@ -388,6 +419,7 @@ export default function FundingFlow({
             })}
           />
         </div>
+        {leftOut}
         {note}
       </div>
     )
@@ -495,6 +527,7 @@ export default function FundingFlow({
       {edges.start || edges.end ? (
         <p className="funding-flow__hint">Scroll sideways for the whole chart.</p>
       ) : null}
+      {leftOut}
       {note}
     </div>
   )
