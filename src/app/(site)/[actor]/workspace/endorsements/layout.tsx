@@ -3,7 +3,7 @@ import { workspaceHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs } from "@/components/profile-actions";
 import { EndorseSomeone } from "@/components/workspace-endorsements";
-import { listEndorsements, listLists } from "@/lib/hypercerts/queries";
+import { getEndorsements, listLists } from "@/lib/hypercerts/queries";
 
 // Workspace → Endorsements: received, given and the endorsement lists, each
 // its own page under the tab bar. Every count and row is public data about
@@ -30,21 +30,17 @@ async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [received, given, { lists }] = await Promise.all([
-    listEndorsements(did, "received", true),
-    listEndorsements(did, "given"),
-    listLists(did),
-  ]);
-  const hidden = received.rows.filter((row) => row.hidden).length;
-  const shown = numberFormat.format(received.rows.length - hidden);
+  const [endorsements, { lists }] = await Promise.all([getEndorsements(did, 1), listLists(did)]);
+  const { receivedCount, hiddenCount, given } = endorsements;
+  const shown = numberFormat.format(receivedCount);
   return (
     <ProfileTabs
       label="Endorsements"
       tabs={tabs(base, {
-        // The shown ones, the number the profile and the Overview give; the
-        // hidden ones beside it.
-        received: hidden > 0 ? `${shown} · ${numberFormat.format(hidden)} hidden` : shown,
-        given: numberFormat.format(given.rows.length),
+        // The API's totals, the numbers the profile and the Overview give,
+        // with the hidden ones beside them.
+        received: hiddenCount > 0 ? `${shown} · ${numberFormat.format(hiddenCount)} hidden` : shown,
+        given: numberFormat.format(given),
         lists: numberFormat.format(lists.filter((list) => list.kind === "Endorsements").length),
       })}
     />

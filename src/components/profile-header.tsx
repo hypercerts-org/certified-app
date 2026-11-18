@@ -14,7 +14,7 @@ import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { OwnerOnly } from "@/components/viewer-only";
 import { getActingAs } from "@/lib/acting-as";
-import { getEndorsers, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
+import { getEndorsers, getFollowCounts, isFollowing } from "@/lib/hypercerts/queries";
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
 
@@ -165,19 +165,9 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
       did={actor.did}
       path={base}
       title={actor.displayName}
-      following={actingAs ? await follows(actingAs, actor.did) : false}
+      following={actingAs ? await isFollowing(actingAs, actor.did) : false}
     />
   );
-}
-
-/**
- * Whether `viewer` follows `did`, from the latest page of whom it follows
- * (an account following more than a page of others may show Follow for an
- * older one).
- */
-async function follows(viewer: string, did: string): Promise<boolean> {
-  const { rows } = await listFollows(viewer, "following");
-  return rows.some((row) => row.actor.did === did);
 }
 
 /** The account's own profile, seen by whoever acts as it, says it's the public view. */

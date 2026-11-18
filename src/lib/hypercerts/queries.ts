@@ -569,6 +569,8 @@ export async function getWork(did: string): Promise<Work> {
 export type Endorsements = {
   /** Received, leaving out those the account rejected. */
   receivedCount: number;
+  /** Received and hidden by the account (rejected). */
+  hiddenCount: number;
   given: number;
   latestReceived: EndorsementCard[];
 };
@@ -582,7 +584,7 @@ export async function getEndorsements(did: string, latest: number): Promise<Endo
   publicData(tags.endorsements(did));
 
   const badgeTypes = ["endorsement"];
-  const [received, given] = await Promise.all([
+  const [received, hidden, given] = await Promise.all([
     api.call(
       app.certified.badge.listBadgeAwards,
       {
@@ -596,15 +598,33 @@ export async function getEndorsements(did: string, latest: number): Promise<Endo
     ),
     api.call(
       app.certified.badge.listBadgeAwards,
+      { subjects: [did], badgeTypes, responses: ["rejected"], includeTotal: true, limit: 1 },
+      read(),
+    ),
+    api.call(
+      app.certified.badge.listBadgeAwards,
       { authors: [did as Did], badgeTypes, includeTotal: true, limit: 1 },
       read(),
     ),
   ]);
   return {
     receivedCount: received.totalCount ?? received.badgeAwards.length,
+    hiddenCount: hidden.totalCount ?? hidden.badgeAwards.length,
     given: given.totalCount ?? given.badgeAwards.length,
     latestReceived: await withHandlesIn(received.badgeAwards.map(toEndorsementCard), "issuer"),
   };
+}
+
+/** Whether `actor` follows `subject`: one lookup, not a page of follows. */
+export async function isFollowing(actor: string, subject: string): Promise<boolean> {
+  "use cache";
+  publicData(tags.follows(actor));
+  const { follow } = await api.call(
+    app.certified.graph.getFollow,
+    { actor: actor as Did, subject: subject as Did },
+    read(),
+  );
+  return Boolean(follow);
 }
 
 export type FollowCounts = { followers: number; following: number };

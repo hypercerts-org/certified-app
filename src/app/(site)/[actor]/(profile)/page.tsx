@@ -17,6 +17,7 @@ import { IntentLink } from "@/components/intent-link";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
+  getEndorsements,
   listActivitiesPage,
   listEndorsements,
   listFollows,
@@ -274,17 +275,17 @@ async function EndorsedBy({ did, base }: { did: string; base: string }) {
  */
 async function NothingPublic({ did, base, about }: { did: string; base: string; about: boolean }) {
   if (about) return null;
-  const [activities, projects, given, received] = await Promise.all([
+  // Counts, not lists: whether anything is there at all.
+  const [activities, projects, endorsements] = await Promise.all([
     listActivitiesPage({ author: did, limit: 1 }),
     listProjectsPage({ author: did }),
-    listEndorsements(did, "given"),
-    listEndorsements(did, "received"),
+    getEndorsements(did, 1),
   ]);
   const empty =
     activities.items.length === 0 &&
     projects.items.length === 0 &&
-    given.rows.length === 0 &&
-    received.rows.length === 0;
+    endorsements.given === 0 &&
+    endorsements.receivedCount === 0;
   if (!empty) return null;
   const following = await listFollows(did, "following");
   const followed = uniqueActors(following.rows).map(({ actor }) => actor);
