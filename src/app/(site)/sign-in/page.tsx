@@ -1,4 +1,5 @@
-import { Banner, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { l } from "@atproto/lex";
+import { Banner, Button, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -30,6 +31,22 @@ async function SignIn({ searchParams }: Pick<PageProps<"/sign-in">, "searchParam
   const returnTo = returnPath(first(params.returnTo));
   if (await getUser()) redirect(returnTo);
   const error = ERRORS[first(params.error) as SignInError];
+  // Handed over from Certified's page with a handle on another server
+  // (/oauth/handle-login): continue only when the visitor says so.
+  const handle = first(params.handle);
+  if (!error && handle && l.isHandleString(handle)) {
+    return (
+      <form method="post" action="/oauth/handle-login" className="stack">
+        <Text>Continue signing in as @{handle}, at its own server.</Text>
+        <input type="hidden" name="handle" value={handle} />
+        <div>
+          <Button type="submit" variant="primary" size="sm">
+            Continue as @{handle}
+          </Button>
+        </div>
+      </form>
+    );
+  }
   return (
     <div className="stack">
       {error && <Banner tone="danger">{error}</Banner>}
