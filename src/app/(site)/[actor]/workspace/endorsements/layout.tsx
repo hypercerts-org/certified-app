@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import { ProfileTabs } from "@/components/profile-actions";
 import { EndorseSomeone } from "@/components/workspace-endorsements";
 import { listEndorsements, listLists } from "@/lib/hypercerts/queries";
@@ -56,7 +57,7 @@ export default function EndorsementsLayout({
 }: LayoutProps<"/[actor]/workspace/endorsements">) {
   return (
     <>
-      <h1 className="workspace-title">Endorsements</h1>
+      <PageTitle className="workspace-title">Endorsements</PageTitle>
       <div className="workspace-tabbar">
         <Suspense fallback={<div className="profile-tabs" />}>
           <Tabs params={params} />

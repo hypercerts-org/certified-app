@@ -1,8 +1,9 @@
 import { l } from "@atproto/lex";
-import { Banner, Button, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Banner, Button, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { PageTitle } from "@/components/page-title";
 import { SignInButton } from "@/components/sign-in-button";
 import { getUser } from "@/lib/auth/dal";
 import type { SignInError } from "@/lib/auth/start-sign-in";
@@ -59,9 +60,7 @@ export default function SignInPage(props: PageProps<"/sign-in">) {
   return (
     <div className="page">
       <div className="stack">
-        <Heading level={1} size="display-3">
-          Sign in
-        </Heading>
+        <PageTitle>Sign in</PageTitle>
         <Text tone="muted">
           Sign in with your Certified account: an email code, Google, or a handle on Bluesky or any
           other AT Protocol server.

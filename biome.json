@@ -51,10 +51,7 @@
   },
   "overrides": [
     {
-      "includes": [
-        "src/components/landing/**",
-        "src/app/landing.css"
-      ],
+      "includes": ["src/components/landing/**", "src/app/landing.css"],
       "linter": {
         "rules": {
           "suspicious": {

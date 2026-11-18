@@ -1,7 +1,8 @@
-import { Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { PageTitle } from "@/components/page-title";
 import { ProfileForm } from "@/components/profile-form";
 import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
@@ -49,9 +50,7 @@ export default function EditProfilePage(props: PageProps<"/[actor]/edit">) {
   return (
     <div className="page">
       <div className="stack">
-        <Heading level={1} size="display-3">
-          Edit profile
-        </Heading>
+        <PageTitle>Edit profile</PageTitle>
         <Text tone="muted">
           Saved to the account's own repository, and signed by certified.app so other apps can see
           where the change was made.

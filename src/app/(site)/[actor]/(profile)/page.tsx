@@ -62,7 +62,7 @@ function Section({
   return (
     <section className="profile-section">
       <div className="profile-section-header">
-        <Heading level={2} size="heading">
+        <Heading level={2} size="display-3">
           {title}
           {count && <span className="profile-section-count"> {count}</span>}
         </Heading>
@@ -294,7 +294,7 @@ async function NothingPublic({ did, base, about }: { did: string; base: string; 
   return (
     <VisitorOnly did={did}>
       <div className="profile-nothing">
-        <Heading level={2} size="heading">
+        <Heading level={2} size="display-3">
           No public records yet.
         </Heading>
         <Text tone="muted">When this account publishes something, it shows here.</Text>

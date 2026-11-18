@@ -16,7 +16,7 @@ export function Tile({
   return (
     <section className="tile">
       <div className="tile-header">
-        <Heading level={2} size="heading">
+        <Heading level={2} size="display-3">
           {title}
         </Heading>
         {embedPath && <EmbedButton path={embedPath} title={title} />}

@@ -1,8 +1,9 @@
-import { Button, CopyableId, Heading, SettingRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Button, CopyableId, SettingRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { actorHref, workspaceHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import { SignOutForm } from "@/components/sign-out-form";
 import { getUser } from "@/lib/auth/dal";
 import { signInHref } from "@/lib/validate";
@@ -46,9 +47,7 @@ export default function SettingsPage() {
   return (
     <div className="page">
       <div className="stack">
-        <Heading level={1} size="display-3">
-          Settings
-        </Heading>
+        <PageTitle>Settings</PageTitle>
         <Text tone="muted">Your account on Certified.</Text>
       </div>
       <Suspense fallback={<Skeleton variant="text" lines={4} />}>

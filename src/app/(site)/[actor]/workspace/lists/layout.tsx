@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { ListTabAction } from "@/components/list-tab-action";
+import { PageTitle } from "@/components/page-title";
 import { ProfileTabs } from "@/components/profile-actions";
 import { LIST_KINDS } from "@/components/workspace-lists";
 import { listLists } from "@/lib/hypercerts/queries";
@@ -45,7 +46,7 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 export default function ListsLayout({ children, params }: LayoutProps<"/[actor]/workspace/lists">) {
   return (
     <>
-      <h1 className="workspace-title">Lists</h1>
+      <PageTitle className="workspace-title">Lists</PageTitle>
       <div className="workspace-tabbar">
         <Suspense fallback={<div className="profile-tabs" />}>
           <Tabs params={params} />

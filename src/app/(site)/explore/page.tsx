@@ -1,8 +1,9 @@
-import { Heading, Skeleton } from "@hypercerts-org/ui-react";
+import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ExploreSearch } from "@/components/explore-search";
 import { OrganizationList } from "@/components/organization-list";
+import { PageTitle } from "@/components/page-title";
 import { listOrganizationsPage } from "@/lib/hypercerts/queries";
 
 export const metadata: Metadata = { title: "Explore" };
@@ -27,9 +28,7 @@ async function Results({ searchParams }: Pick<PageProps<"/explore">, "searchPara
 export default function ExplorePage(props: PageProps<"/explore">) {
   return (
     <div className="page">
-      <Heading level={1} size="display-3">
-        Organizations
-      </Heading>
+      <PageTitle>Organizations</PageTitle>
       <div className="stack">
         <Suspense fallback={<Skeleton variant="text" lines={4} />}>
           <Results searchParams={props.searchParams} />

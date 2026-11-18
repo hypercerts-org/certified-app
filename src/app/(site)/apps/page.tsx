@@ -1,6 +1,7 @@
 import { Card, Heading, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { PageTitle } from "@/components/page-title";
 import { APPS } from "@/lib/apps";
 
 export const metadata: Metadata = {
@@ -12,9 +13,7 @@ export default function AppsPage() {
   return (
     <div className="page">
       <div className="stack">
-        <Heading level={1} size="display-3">
-          Apps
-        </Heading>
+        <PageTitle>Apps</PageTitle>
         <Text tone="muted">Apps you can sign in to with your Certified account.</Text>
       </div>
       <ul className="grid">

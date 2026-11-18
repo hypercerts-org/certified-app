@@ -24,6 +24,7 @@ import {
   Card,
   CopyableId,
   EmptyState,
+  Eyebrow,
   Heading,
   IdentityRow,
   Skeleton,
@@ -42,6 +43,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { actorHref, projectHref, workspaceHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import { APPS } from "@/lib/apps";
 import {
   type Count,
@@ -68,7 +70,7 @@ export function WorkspaceOverview({
 }) {
   return (
     <>
-      <h1 className="workspace-title">Overview</h1>
+      <PageTitle className="workspace-title">Overview</PageTitle>
       <div className="overview">
         <div className="overview-main">
           <Suspense fallback={<StatsSkeleton title="Your records" stats={3} rows={3} />}>
@@ -106,12 +108,15 @@ function Section({
   title,
   description,
   action,
+  inBox = false,
   children,
 }: {
   title: string;
   description?: string;
   /** Beside the title, on the right ("New activity", "New group"). */
   action?: ReactNode;
+  /** In a box on the side: a box's heading size, not a section's. */
+  inBox?: boolean;
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -119,10 +124,10 @@ function Section({
     <section className="overview-section" aria-labelledby={titleId}>
       <div className="overview-section-head">
         <div className="overview-section-header">
-          <h2 className="overview-heading" id={titleId}>
+          <Heading level={2} size={inBox ? "heading" : "display-3"} id={titleId}>
             {title}
-          </h2>
-          {description && <p className="overview-description">{description}</p>}
+          </Heading>
+          {description && <Text tone="muted">{description}</Text>}
         </div>
         {action}
       </div>
@@ -186,7 +191,7 @@ function IdentitySkeleton() {
 
 export function OrganizationsSkeleton() {
   return (
-    <Section title="Your groups">
+    <Section title="Your groups" inBox>
       <RowsSkeleton rows={2} />
     </Section>
   );
@@ -196,7 +201,7 @@ export function OrganizationsSkeleton() {
 export function OverviewSkeleton() {
   return (
     <>
-      <h1 className="workspace-title">Overview</h1>
+      <PageTitle className="workspace-title">Overview</PageTitle>
       <div className="overview">
         <div className="overview-main">
           <StatsSkeleton title="Your records" stats={3} rows={3} />
@@ -251,7 +256,13 @@ function StatRow({ label, stats }: { label: string; stats: Stat[] }) {
 }
 
 function ListLabel({ children }: { children: ReactNode }) {
-  return <h3 className="overview-list-label">{children}</h3>;
+  // A heading for the outline, an eyebrow to look at (Eyebrow can't be a
+  // heading itself: toolkit gap).
+  return (
+    <h3 className="overview-list-label">
+      <Eyebrow as="span">{children}</Eyebrow>
+    </h3>
+  );
 }
 
 // Records --------------------------------------------------------------------
@@ -515,14 +526,14 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
       </div>
       <section aria-labelledby={idTitleId} className="overview-id">
         <div className="overview-section-header">
-          <h2 className="overview-heading" id={idTitleId}>
+          <Heading level={2} size="heading" id={idTitleId}>
             ID
-          </h2>
-          <p className="overview-description">
+          </Heading>
+          <Text tone="muted">
             {isOrganization
               ? "Identifies this group's account in every app."
               : "Identifies your account in every app."}
-          </p>
+          </Text>
         </div>
         <dl className="overview-id-list">
           {handle && (
@@ -565,7 +576,7 @@ export function OrganizationsSection({
   organizations: Organization[] | "unavailable" | "expired";
 }) {
   return (
-    <Section title="Your groups" action={<NewGroup />}>
+    <Section title="Your groups" inBox action={<NewGroup />}>
       {organizations === "unavailable" || organizations === "expired" ? (
         <Text size="body-sm" tone="muted">
           {organizations === "expired"

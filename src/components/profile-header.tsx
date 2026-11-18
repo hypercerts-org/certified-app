@@ -9,6 +9,7 @@ import { Eye, Link2 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { OwnerOnly } from "@/components/viewer-only";
@@ -75,9 +76,11 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
           }
         />
         <div className="profile-identity">
-          <h1 className="profile-name" dir="auto">
-            <ProfileName did={actor.did} rendered={actor.profile} fallback={actor.displayName} />
-          </h1>
+          <PageTitle className="profile-name">
+            <span dir="auto">
+              <ProfileName did={actor.did} rendered={actor.profile} fallback={actor.displayName} />
+            </span>
+          </PageTitle>
           {facts.length > 0 && (
             <p className="profile-meta">
               {facts.map((fact, i) => (

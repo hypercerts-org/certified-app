@@ -1,10 +1,11 @@
-import { Avatar, Eyebrow, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Avatar, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActivityList } from "@/components/activity-list";
 import { actorHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import { Tile } from "@/components/tile";
 import { TileSlot } from "@/components/tile-slot";
 import { getActor, getProject, listProjectActivitiesPage } from "@/lib/hypercerts/queries";
@@ -45,9 +46,7 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
     <>
       <div className="stack">
         <Eyebrow>Project</Eyebrow>
-        <Heading level={1} size="display-3">
-          {project.title}
-        </Heading>
+        <PageTitle>{project.title}</PageTitle>
         <Link prefetch href={actorHref(actor)} className="meta-author">
           <Avatar name={actor.displayName} src={actor.avatarUrl} size="sm" />
           <Text as="span" size="body-sm">

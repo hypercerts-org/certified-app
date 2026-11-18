@@ -236,13 +236,21 @@
    interpolate). Reversed wanderers lead with the pattern start, so
    their dots reuse the unshifted lpRingSpin lap. */
 @keyframes lpWanderDot6 {
-  from { stroke-dashoffset: -6; }
-  to { stroke-dashoffset: -106; }
+  from {
+    stroke-dashoffset: -6;
+  }
+  to {
+    stroke-dashoffset: -106;
+  }
 }
 
 @keyframes lpWanderDot8 {
-  from { stroke-dashoffset: -8; }
-  to { stroke-dashoffset: -108; }
+  from {
+    stroke-dashoffset: -8;
+  }
+  to {
+    stroke-dashoffset: -108;
+  }
 }
 
 .lp-guilloche__wander-dot {
@@ -347,7 +355,9 @@
   color: var(--color-mid-gray);
   text-decoration: none;
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .lp-topbar__btn:hover {
@@ -392,7 +402,9 @@
     pointer-events: none;
     /* Only the colour and hairline fade; backdrop-filter switches (a
        transitioned blur re-runs every frame). */
-    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition:
+      background-color var(--transition-fast),
+      box-shadow var(--transition-fast);
   }
   .lp-topbar__actions > * {
     pointer-events: auto;
@@ -543,15 +555,22 @@
   animation-fill-mode: both;
 }
 
-.lp-hero__copy > .lp-hero__reveal:nth-child(1) { animation-delay: 0ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(2) { animation-delay: 60ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(3) { animation-delay: 120ms; }
-.lp-hero__copy > .lp-hero__reveal:nth-child(4) { animation-delay: 180ms; }
+.lp-hero__copy > .lp-hero__reveal:nth-child(1) {
+  animation-delay: 0ms;
+}
+.lp-hero__copy > .lp-hero__reveal:nth-child(2) {
+  animation-delay: 60ms;
+}
+.lp-hero__copy > .lp-hero__reveal:nth-child(3) {
+  animation-delay: 120ms;
+}
+.lp-hero__copy > .lp-hero__reveal:nth-child(4) {
+  animation-delay: 180ms;
+}
 
 /* The global reduced-motion kill-switch (tokens.css) collapses these
    animations to 0.01ms; with `forwards` fill the elements land visible,
    so no explicit override is needed here. */
-
 
 /* Tablet band: the seal would crowd the copy — push it further off-edge
    and let the copy sit over its hairlines. */
@@ -679,50 +698,110 @@
 }
 
 @keyframes lpRecA {
-  0%, 22% { opacity: 0.9; }
-  32%, 100% { opacity: 0.22; }
+  0%,
+  22% {
+    opacity: 0.9;
+  }
+  32%,
+  100% {
+    opacity: 0.22;
+  }
 }
 
 @keyframes lpRecB {
-  0%, 22% { opacity: 0.22; }
-  32%, 47% { opacity: 0.9; }
-  57%, 100% { opacity: 0.22; }
+  0%,
+  22% {
+    opacity: 0.22;
+  }
+  32%,
+  47% {
+    opacity: 0.9;
+  }
+  57%,
+  100% {
+    opacity: 0.22;
+  }
 }
 
 @keyframes lpRecC {
-  0%, 47% { opacity: 0.22; }
-  57%, 72% { opacity: 0.9; }
-  82%, 100% { opacity: 0.22; }
+  0%,
+  47% {
+    opacity: 0.22;
+  }
+  57%,
+  72% {
+    opacity: 0.9;
+  }
+  82%,
+  100% {
+    opacity: 0.22;
+  }
 }
 
 @keyframes lpRecD {
-  0%, 72% { opacity: 0.22; }
-  82%, 100% { opacity: 0.9; }
+  0%,
+  72% {
+    opacity: 0.22;
+  }
+  82%,
+  100% {
+    opacity: 0.9;
+  }
 }
 
 /* Supporters: the highlight travels through the parts — connector,
    left endorser, right endorser, then the countersigned seal, which
    stays lit (the markup's finished state). */
 @keyframes lpSupA {
-  0%, 22% { opacity: 0.9; }
-  32%, 100% { opacity: 0.28; }
+  0%,
+  22% {
+    opacity: 0.9;
+  }
+  32%,
+  100% {
+    opacity: 0.28;
+  }
 }
 
 @keyframes lpSupB {
-  0%, 22% { opacity: 0.28; }
-  32%, 47% { opacity: 0.9; }
-  57%, 100% { opacity: 0.28; }
+  0%,
+  22% {
+    opacity: 0.28;
+  }
+  32%,
+  47% {
+    opacity: 0.9;
+  }
+  57%,
+  100% {
+    opacity: 0.28;
+  }
 }
 
 @keyframes lpSupC {
-  0%, 47% { opacity: 0.28; }
-  57%, 72% { opacity: 0.9; }
-  82%, 100% { opacity: 0.28; }
+  0%,
+  47% {
+    opacity: 0.28;
+  }
+  57%,
+  72% {
+    opacity: 0.9;
+  }
+  82%,
+  100% {
+    opacity: 0.28;
+  }
 }
 
 @keyframes lpSupD {
-  0%, 72% { opacity: 0.28; }
-  82%, 100% { opacity: 0.9; }
+  0%,
+  72% {
+    opacity: 0.28;
+  }
+  82%,
+  100% {
+    opacity: 0.9;
+  }
 }
 
 @supports (animation-timeline: view()) {
@@ -828,7 +907,9 @@
 /* Resting state is muted; the active step inks in. */
 .lp-story__step .lp-item__num,
 .lp-story__step .lp-item__title {
-  transition: color 300ms ease-out, opacity 300ms ease-out;
+  transition:
+    color 300ms ease-out,
+    opacity 300ms ease-out;
 }
 
 .lp-story__step[data-active="false"] .lp-item__title {
@@ -844,13 +925,25 @@
   transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.lp-story[data-step="1"] .lp-story__art--diagonal .lp-story__token { transform: translate(115px, 135px); }
-.lp-story[data-step="2"] .lp-story__art--diagonal .lp-story__token { transform: translate(320px, 320px); }
-.lp-story[data-step="3"] .lp-story__art--diagonal .lp-story__token { transform: translate(525px, 505px); }
+.lp-story[data-step="1"] .lp-story__art--diagonal .lp-story__token {
+  transform: translate(115px, 135px);
+}
+.lp-story[data-step="2"] .lp-story__art--diagonal .lp-story__token {
+  transform: translate(320px, 320px);
+}
+.lp-story[data-step="3"] .lp-story__art--diagonal .lp-story__token {
+  transform: translate(525px, 505px);
+}
 
-.lp-story[data-step="1"] .lp-story__art--row .lp-story__token { transform: translate(115px, 120px); }
-.lp-story[data-step="2"] .lp-story__art--row .lp-story__token { transform: translate(320px, 120px); }
-.lp-story[data-step="3"] .lp-story__art--row .lp-story__token { transform: translate(525px, 120px); }
+.lp-story[data-step="1"] .lp-story__art--row .lp-story__token {
+  transform: translate(115px, 120px);
+}
+.lp-story[data-step="2"] .lp-story__art--row .lp-story__token {
+  transform: translate(320px, 120px);
+}
+.lp-story[data-step="3"] .lp-story__art--row .lp-story__token {
+  transform: translate(525px, 120px);
+}
 
 /* The active platform frame inks in with the step. */
 .lp-story__frame {
@@ -908,7 +1001,9 @@
   object-fit: cover;
   filter: grayscale(100%);
   opacity: 0.65;
-  transition: filter var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    filter var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .lp-apps__cell:hover .lp-apps__logo {
@@ -1015,7 +1110,9 @@
 .lp-explore__arrow {
   color: var(--color-navy);
   opacity: 0.5;
-  transition: transform var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .lp-explore__row:hover .lp-explore__arrow {
@@ -1412,13 +1509,17 @@
   display: grid;
   grid-template-rows: 0fr;
   visibility: hidden;
-  transition: grid-template-rows var(--transition-base), visibility 0s var(--transition-base);
+  transition:
+    grid-template-rows var(--transition-base),
+    visibility 0s var(--transition-base);
 }
 
 .lp-faq__answer--open {
   grid-template-rows: 1fr;
   visibility: visible;
-  transition: grid-template-rows var(--transition-base), visibility 0s;
+  transition:
+    grid-template-rows var(--transition-base),
+    visibility 0s;
 }
 
 .lp-faq__answer-inner {

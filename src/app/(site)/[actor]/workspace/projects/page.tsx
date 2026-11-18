@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { actorHref, projectHref } from "@/components/cards";
+import { PageTitle } from "@/components/page-title";
 import {
   type WorkFolder,
   WorkFolders,
@@ -88,7 +89,7 @@ async function WorkSection({ params }: { params: Promise<{ actor: string }> }) {
 export default function ProjectsPage({ params }: PageProps<"/[actor]/workspace/projects">) {
   return (
     <>
-      <h1 className="workspace-title">Projects and activities</h1>
+      <PageTitle className="workspace-title">Projects and activities</PageTitle>
       <Suspense fallback={<WorkFoldersSkeleton />}>
         <WorkSection params={params} />
       </Suspense>
