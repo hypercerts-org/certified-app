@@ -14,6 +14,7 @@ import WorkspaceShell, {
 } from "@/components/layout/workspace-shell"
 import { parseRecordKind, WORKSPACE_SECTIONS, type RecordKind } from "@/lib/layout/nav-items"
 import { useSwitchActor } from "@/lib/groups/use-switch-actor"
+import { isManagingRole } from "@/lib/groups/managed"
 import { ownProfileUrl } from "@/lib/urls"
 import WorkPane from "@/components/records/work-pane"
 import {
@@ -21,6 +22,7 @@ import {
   FollowersPane,
   GroupsPane,
   ListsPane,
+  type PaneGroup,
 } from "@/components/records/records-panes"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -31,13 +33,15 @@ import { usePageTitle } from "@/lib/navbar-context"
 import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
- * Acting as a group, each section says in one sentence where the group's
- * own records of that kind are (naming the group), and links to those
- * tabs of its profile (`?tab=` keys of the profile page). Groups is a
- * personal list and has its own state.
+ * Acting as a group, Projects and activities and Lists say in one
+ * sentence where the group's own records of that kind are (naming the
+ * group), and link to those tabs of its profile (`?tab=` keys of the
+ * profile page). Endorsements and Followers show the group's own (its
+ * panes, read for its DID and written as the group); Groups is a personal
+ * list and has its own state.
  */
 const GROUP_SECTIONS: Record<
-  Exclude<RecordKind, "groups">,
+  Exclude<RecordKind, "groups" | "endorsements" | "followers">,
   {
     /** What shows on the profile, after the group's name. */
     what: string
@@ -52,14 +56,6 @@ const GROUP_SECTIONS: Record<
       { tab: "activities", label: "Open activities" },
       { tab: "projects", label: "Open projects" },
     ],
-  },
-  endorsements: {
-    what: "endorsements",
-    links: [{ tab: "endorsements", label: "Open endorsements" }],
-  },
-  followers: {
-    what: "followers",
-    links: [{ tab: "followers", label: "Open followers" }],
   },
   lists: {
     what: "lists",
@@ -85,10 +81,13 @@ export function groupSectionTitle(groupName: string, what: string): string {
  * (New activity and New project, Endorse someone, Find accounts, New
  * list, New group); the top bar's New is the global one.
  *
- * Personal account only: the sections write to the session DID's repo.
- * While acting as a group each section says where the group's records of
- * its kind are (that tab of the group's profile) and offers to switch
- * back; Projects and activities still creates, as the group.
+ * The sections write to the session DID's repo. While acting as a group,
+ * Endorsements and Followers show the group's own (read for its DID;
+ * owners and admins endorse, revoke, hide, follow and unfollow as the
+ * group through the group routes, a member reads); the other sections say
+ * where the group's records of their kind are (that tab of the group's
+ * profile) and offer to switch back; Projects and activities still
+ * creates, as the group.
  */
 export default function RecordsPage() {
   const router = useRouter()
@@ -104,8 +103,11 @@ export default function RecordsPage() {
   // so both of its loads run again.
   const [workAttempt, setWorkAttempt] = useState(0)
 
-  const following = useFollowing(did ?? null)
-  const given = useGivenEndorsements(did ?? null)
+  // The account the sections show: you, or the group you act as (its
+  // follows and given endorsements, read for its DID).
+  const accountDid = activeOrg?.groupDid ?? did ?? null
+  const following = useFollowing(accountDid)
+  const given = useGivenEndorsements(accountDid)
 
   // Kept here (not in the panes) so they survive switching sections and
   // back while the indexer still lags: projects and activities deleted on
@@ -146,11 +148,38 @@ export default function RecordsPage() {
       )
     }
 
-    // Acting as a group: the sections stay in the side list and each
-    // explains itself: where the group's records of that kind are (a tab
-    // of its profile, linked), and the way back to your own. Groups are a
-    // personal list.
+    // Acting as a group: Endorsements and Followers are the group's own,
+    // keyed on it so switching groups starts each pane afresh. The other
+    // sections explain themselves: where the group's records of that kind
+    // are (a tab of its profile, linked), and the way back to your own.
+    // Groups are a personal list.
     if (activeOrg) {
+      const groupName = activeOrg.displayName?.trim() || `@${activeOrg.handle}`
+      if (kind === "endorsements" || kind === "followers") {
+        const group: PaneGroup = {
+          name: groupName,
+          sessionDid: did,
+          canWrite: isManagingRole(activeOrg.role),
+        }
+        const groupActor = activeOrg.handle || activeOrg.groupDid
+        return kind === "endorsements" ? (
+          <EndorsementsPane
+            key={activeOrg.groupDid}
+            did={activeOrg.groupDid}
+            actor={groupActor}
+            given={given}
+            group={group}
+          />
+        ) : (
+          <FollowersPane
+            key={activeOrg.groupDid}
+            did={activeOrg.groupDid}
+            actor={groupActor}
+            following={following}
+            group={group}
+          />
+        )
+      }
       const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
       if (kind === "groups") {
         return (
@@ -170,7 +199,6 @@ export default function RecordsPage() {
       }
       const section = GROUP_SECTIONS[kind]
       const icon = WORKSPACE_SECTIONS.find((s) => s.key === kind)?.icon
-      const groupName = activeOrg.displayName?.trim() || `@${activeOrg.handle}`
       return (
         <WorkspaceFrame>
           <EmptyState

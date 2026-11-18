@@ -18,10 +18,14 @@ import { RowsSkeleton } from "@/components/records/records-shared"
 function GivenRow({
   endorsement,
   did,
+  targetDid,
+  canRevoke,
   onAfterRevoke,
 }: {
   endorsement: GivenEndorsement
   did: string
+  targetDid?: string
+  canRevoke: boolean
   onAfterRevoke: () => void | Promise<void>
 }) {
   const { info, isLoading } = useAuthorInfo(endorsement.subjectDid)
@@ -42,13 +46,16 @@ function GivenRow({
         showHandle
         trailing={
           <div className="records-person__action">
-            <RevokeGivenButton
-              appearance="text"
-              viewerDid={did}
-              rkeys={endorsement.rkeys}
-              subjectDisplay={displayName}
-              onAfterRevoke={onAfterRevoke}
-            />
+            {canRevoke ? (
+              <RevokeGivenButton
+                appearance="text"
+                viewerDid={did}
+                targetDid={targetDid}
+                rkeys={endorsement.rkeys}
+                subjectDisplay={displayName}
+                onAfterRevoke={onAfterRevoke}
+              />
+            ) : null}
           </div>
         }
       />
@@ -58,17 +65,30 @@ function GivenRow({
 
 /**
  * Endorsements you gave, newest first, each with Revoke (it asks first,
- * then deletes every award you gave that account).
+ * then deletes every award you gave that account). Acting as a group,
+ * the group's, revoked as the group (`targetDid`); without the role to
+ * write (`readOnly`), no Revoke.
  */
 export default function GivenEndorsements({
   did,
+  targetDid,
+  readOnly = false,
+  groupName,
   endorsements,
   isLoading,
   error,
   onRetry,
   hideEmpty = false,
 }: {
+  /** The signed-in person's DID: the revoke is made through it. */
   did: string
+  /** Acting as a group: the group's DID; the awards live in its repo and
+   *  the revoke goes through the group route. */
+  targetDid?: string
+  /** No Revoke (a member acting as the group). */
+  readOnly?: boolean
+  /** Acting as a group: its name, for the empty state. */
+  groupName?: string
   endorsements: GivenEndorsement[]
   isLoading: boolean
   error: string | null
@@ -80,7 +100,14 @@ export default function GivenEndorsements({
   if (isLoading && endorsements.length === 0) return <RowsSkeleton shape="circle" rows={4} />
   if (error && endorsements.length === 0) {
     return (
-      <EmptyState variant="inline" title="Couldn't load the endorsements you gave.">
+      <EmptyState
+        variant="inline"
+        title={
+          groupName
+            ? `Couldn't load the endorsements ${groupName} gave.`
+            : "Couldn't load the endorsements you gave."
+        }
+      >
         <Button variant="ghost" size="sm" onClick={() => void onRetry()}>
           Try again
         </Button>
@@ -95,14 +122,23 @@ export default function GivenEndorsements({
         icon={ThumbsUp}
         headingLevel={2}
         title="No endorsements given yet"
-        description="Accounts you endorse show here."
+        description={
+          groupName ? `Accounts ${groupName} endorses show here.` : "Accounts you endorse show here."
+        }
       />
     )
   }
   return (
     <ul className="records-list">
       {endorsements.map((e) => (
-        <GivenRow key={e.uri} endorsement={e} did={did} onAfterRevoke={onRetry} />
+        <GivenRow
+          key={e.uri}
+          endorsement={e}
+          did={did}
+          targetDid={targetDid}
+          canRevoke={!readOnly}
+          onAfterRevoke={onRetry}
+        />
       ))}
     </ul>
   )

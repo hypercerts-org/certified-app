@@ -36,9 +36,16 @@ describe("routeForActorSwitch", () => {
     expect(routeForActorSwitch("/create", org)).toBe("/create")
   })
 
+  it("keeps Endorsements when switching to a group: it shows the group's own", () => {
+    // The retired /endorsements redirects to Records → Endorsements, which
+    // a group has too; Records stays for every section.
+    expect(routeForActorSwitch("/endorsements", org)).toBe("/endorsements")
+    expect(routeForActorSwitch("/records", group({ role: "owner" }))).toBe("/records")
+  })
+
   it("leaves personal-only pages for Home when switching to a group", () => {
     expect(routeForActorSwitch("/groups/create", org)).toBe("/home")
-    expect(routeForActorSwitch("/endorsements", org)).toBe("/home")
+    expect(routeForActorSwitch("/groups", org)).toBe("/home")
   })
 })
 

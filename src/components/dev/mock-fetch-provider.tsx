@@ -73,6 +73,8 @@ import {
   managedGroupsMembershipsResponse,
   managedOrgProfile,
   managedPlcDidDocument,
+  managedGroupRepoRecords,
+  managedGroupWriteResponse,
 } from "@/lib/dev/fixtures/managed"
 
 export type MockScenario = "populated" | "empty"
@@ -335,6 +337,12 @@ function xrpcResponse(
   }
 
   if (method === "com.atproto.repo.listRecords") {
+    // Managed scenario: a managed group's own repo (its follows, given
+    // endorsements, lists and responses), for the Workspace acting as it.
+    if (managed && !empty) {
+      const groupRecords = managedGroupRepoRecords(params.get("repo") ?? "", collection)
+      if (groupRecords) return json(groupRecords)
+    }
     if (collection === "app.certified.graph.follow") {
       return json(empty ? { records: [] } : followRecords())
     }
@@ -504,6 +512,12 @@ function installMockFetch(
             ? managedGroupsMembershipsResponse()
             : groupsMembershipsResponse(),
         )
+      }
+      if (managed) {
+        // The group writes (follow, endorse, response) acting as a managed
+        // group: accepted, nothing stored, never the real routes.
+        const written = managedGroupWriteResponse(path, (init?.method ?? "GET").toUpperCase())
+        if (written) return json(written)
       }
       if (managed && /^\/api\/groups\/[^/]+\/profile$/.test(path)) {
         // Per-group org profile (`getOrgProfile`) — drives `displayName`

@@ -11,9 +11,10 @@ import { createEndorsementAward } from "@/lib/atproto/badges"
 
 interface NewEndorsementPanelProps {
   /** The current user's DID — endorsement records are written to
-   *  this repo. */
+   *  this repo (to the group's, with `targetDid`). */
   readonly ownDid: string
-  /** DIDs the user has already endorsed (used to block duplicates). */
+  /** DIDs the endorsing account (you, or the group) has already
+   *  endorsed (used to block duplicates). */
   readonly existingSubjectDids: ReadonlySet<string>
   /** DIDs to pre-select when the panel opens. Caller
    *  is responsible for validating these (not self, not duplicate)
@@ -27,6 +28,13 @@ interface NewEndorsementPanelProps {
    *  refetch. Continue-on-error semantics: fires even if some writes
    *  in the batch failed, as long as at least one succeeded. */
   readonly onCreated: () => void | Promise<void>
+  /** Acting as a group: the group's DID. The awards are the group's,
+   *  written through the group route (`createEndorsementAward`'s
+   *  `targetDid` path, as the profile's Endorse does); `ownDid` stays the
+   *  signed-in person's. */
+  readonly targetDid?: string
+  /** The group's name, for the copy (who endorses), with `targetDid`. */
+  readonly groupName?: string
 }
 
 /** Per-recipient write status — drives the inline status badge on
@@ -54,7 +62,13 @@ export default function NewEndorsementPanel({
   initialDids,
   onClose,
   onCreated,
+  targetDid,
+  groupName,
 }: NewEndorsementPanelProps) {
+  // The account that endorses: the group you act as, or you.
+  const asGroup = !!targetDid && targetDid !== ownDid
+  const endorserDid = asGroup ? targetDid : ownDid
+  const groupLabel = groupName || "The group"
   const [selectedDids, setSelectedDids] = useState<string[]>(() =>
     initialDids ? Array.from(initialDids) : [],
   )
@@ -81,12 +95,16 @@ export default function NewEndorsementPanel({
 
   const handleAddRecipient = (did: string, handle: string) => {
     setPickError(null)
-    if (did === ownDid) {
-      setPickError("You can't endorse yourself.")
+    if (did === endorserDid) {
+      setPickError(asGroup ? "A group can't endorse itself." : "You can't endorse yourself.")
       return
     }
     if (existingSubjectDids.has(did)) {
-      setPickError("You've already endorsed this account.")
+      setPickError(
+        asGroup
+          ? `${groupLabel} has already endorsed this account.`
+          : "You've already endorsed this account.",
+      )
       return
     }
     if (selectedDids.includes(did)) {
@@ -123,8 +141,14 @@ export default function NewEndorsementPanel({
     // Parallel writes with continue-on-error. ensureEndorsementDefinition
     // is singleflight per-DID inside the lib, so the first write does
     // the definition create and the rest await its strongRef.
+    // As a group, `ensureGroupEndorsementDefinition` is singleflight per
+    // group in the same way.
     const settled = await Promise.allSettled(
-      selectedDids.map((did) => createEndorsementAward(ownDid, did)),
+      selectedDids.map((did) =>
+        asGroup
+          ? createEndorsementAward(ownDid, did, undefined, { targetDid })
+          : createEndorsementAward(ownDid, did),
+      ),
     )
 
     const next: Record<string, WriteStatus> = {}
@@ -171,7 +195,9 @@ export default function NewEndorsementPanel({
         <div className="endorsement-panel__heading-text">
           <span className="endorsement-panel__title">Endorse one or more accounts</span>
           <span className="endorsement-panel__hint">
-            Search for an account by name or handle. Endorsements can be revoked anytime.
+            {asGroup
+              ? `Search for an account by name or handle. ${groupLabel} endorses them; endorsements can be revoked anytime.`
+              : "Search for an account by name or handle. Endorsements can be revoked anytime."}
           </span>
         </div>
         <Button

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { ownedOrAdminGroups, managedAuthorDids } from "@/lib/groups/managed"
+import { ownedOrAdminGroups, managedAuthorDids, isManagingRole } from "@/lib/groups/managed"
 import type { Group, OrgRole } from "@/lib/groups/types"
 
 function group(groupDid: string, role: OrgRole): Group {
@@ -85,5 +85,27 @@ describe("managedAuthorDids — the 'My X' author set", () => {
     expect(managedAuthorDids(null, VIEWER, [group("did:plc:member", "member")])).toEqual([
       VIEWER,
     ])
+  })
+})
+
+// Workspace → Endorsements and Followers acting as a group: owners and
+// admins write as the group; a member reads (CGS lets a member delete only
+// the records that member wrote, which the app can't tell apart).
+describe("isManagingRole: who writes as the group in the Workspace", () => {
+  it("owner and admin write; member, unknown and missing roles read", () => {
+    expect(isManagingRole("owner")).toBe(true)
+    expect(isManagingRole("admin")).toBe(true)
+    expect(isManagingRole("member")).toBe(false)
+    expect(isManagingRole("superuser")).toBe(false)
+    expect(isManagingRole("")).toBe(false)
+    expect(isManagingRole(null)).toBe(false)
+    expect(isManagingRole(undefined)).toBe(false)
+  })
+
+  it("agrees with ownedOrAdminGroups", () => {
+    const roles: OrgRole[] = ["owner", "admin", "member"]
+    for (const role of roles) {
+      expect(ownedOrAdminGroups([group("did:plc:x", role)]).length === 1).toBe(isManagingRole(role))
+    }
   })
 })

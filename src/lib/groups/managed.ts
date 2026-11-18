@@ -20,6 +20,18 @@ import type { Group } from "./types"
 const MANAGING_ROLES = new Set(["owner", "admin"])
 
 /**
+ * Whether a role manages the group: owner or admin. Also the gate for
+ * the Workspace's writes as the group (Endorsements and Followers:
+ * endorse, revoke, hide or show, follow, unfollow), as for editing its
+ * records and profile. CGS lets a member delete only the records that
+ * member wrote, which the app can't tell apart, and hiding an
+ * endorsement curates the group's profile; so a member reads.
+ */
+export function isManagingRole(role: string | null | undefined): boolean {
+  return !!role && MANAGING_ROLES.has(role)
+}
+
+/**
  * Filter a list of groups down to the ones the viewer owns or
  * administers. Pure — safe to call outside React. Preserves input
  * order so callers control sort.

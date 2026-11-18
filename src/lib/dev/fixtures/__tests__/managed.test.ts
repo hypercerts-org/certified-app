@@ -13,6 +13,8 @@ import {
   managedGroups,
   managedOrgProfile,
   managedPlcDidDocument,
+  managedGroupRepoRecords,
+  managedGroupWriteResponse,
 } from "@/lib/dev/fixtures/managed"
 
 /**
@@ -109,5 +111,39 @@ describe("managed fixtures — group resolution wiring", () => {
     ])
     expect(managedOrgProfile("did:plc:unknown")).toBeNull()
     expect(managedPlcDidDocument("did:plc:unknown")).toBeNull()
+  })
+})
+
+// The Workspace's Endorsements and Followers acting as a group read the
+// group's own repo; the preview serves it only for the managed groups.
+describe("a managed group's own repo (preview)", () => {
+  it("serves its follows, given endorsements, a list and a hidden response", () => {
+    const repo = MANAGED_OWNER_GROUP_DID
+    const follows = managedGroupRepoRecords(repo, "app.certified.graph.follow")!.records
+    expect(follows.length).toBeGreaterThan(0)
+    for (const f of follows) expect(f.uri.startsWith(`at://${repo}/`)).toBe(true)
+    const [def] = managedGroupRepoRecords(repo, "app.certified.badge.definition")!.records
+    const awards = managedGroupRepoRecords(repo, "app.certified.badge.award")!.records
+    for (const a of awards) expect((a.value.badge as { uri: string }).uri).toBe(def.uri)
+    const [list] = managedGroupRepoRecords(repo, "org.hypercerts.collection")!.records
+    expect(list.value.type).toBe("list:endorsements")
+    const [response] = managedGroupRepoRecords(repo, "app.certified.badge.response")!.records
+    expect(response.value.response).toBe("rejected")
+  })
+
+  it("leaves your own repo and other collections alone", () => {
+    expect(managedGroupRepoRecords(MOCK_DID, "app.certified.graph.follow")).toBeNull()
+    expect(managedGroupRepoRecords(MANAGED_OWNER_GROUP_DID, "app.certified.actor.profile")).toBeNull()
+  })
+
+  it("accepts the group write routes for managed groups only", () => {
+    const enc = encodeURIComponent(MANAGED_ADMIN_GROUP_DID)
+    expect(managedGroupWriteResponse(`/api/groups/${enc}/follow`, "POST")).toMatchObject({
+      uri: expect.stringContaining(`at://${MANAGED_ADMIN_GROUP_DID}/app.certified.graph.follow/`),
+    })
+    expect(managedGroupWriteResponse(`/api/groups/${enc}/response`, "DELETE")).toEqual({ ok: true })
+    expect(managedGroupWriteResponse(`/api/groups/${enc}/profile`, "POST")).toBeNull()
+    expect(managedGroupWriteResponse(`/api/groups/${enc}/follow`, "GET")).toBeNull()
+    expect(managedGroupWriteResponse("/api/groups/did%3Aplc%3Aother/follow", "POST")).toBeNull()
   })
 })

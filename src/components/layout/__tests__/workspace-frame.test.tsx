@@ -125,15 +125,18 @@ describe("Records sections render the frame in every state", () => {
       displayName: "Estuary",
       role: "admin",
     }
-    nav.kind = "endorsements"
+    nav.kind = "lists"
     const { container } = render(<RecordsPage />)
-    const { main } = expectFrame(container, { h1: "Endorsements" })
+    const { main } = expectFrame(container, { h1: "Lists" })
     expect(
-      within(main).getByRole("heading", { name: "Estuary's endorsements show on its profile" }),
+      within(main).getByRole("heading", { name: "Estuary's lists show on its profile" }),
     ).toBeInTheDocument()
   })
 
-  it("acting as a group, each section names its own place on the group's profile", () => {
+  // Endorsements and Followers show the group's own while acting as it
+  // (records/__tests__/group-sections.test.tsx); the other sections
+  // explain where the group's records are.
+  it("acting as a group, Lists and Projects and activities name their place on the group's profile", () => {
     org.activeOrg = {
       groupDid: "did:plc:group",
       handle: "group.certified.app",
@@ -143,8 +146,6 @@ describe("Records sections render the frame in every state", () => {
     // WS-06: the heading names the group; Projects and activities links
     // both of its profile tabs.
     const cases = [
-      { kind: "endorsements", heading: "Estuary's endorsements show on its profile", links: [["Open endorsements", "endorsements"]] },
-      { kind: "followers", heading: "Estuary's followers show on its profile", links: [["Open followers", "followers"]] },
       { kind: "lists", heading: "Estuary's lists show on its profile", links: [["Open lists", "lists"]] },
       {
         kind: "activities",
@@ -189,11 +190,11 @@ describe("Records sections render the frame in every state", () => {
       displayName: "  ",
       role: "admin",
     }
-    nav.kind = "followers"
+    nav.kind = "lists"
     const { container } = render(<RecordsPage />)
     const main = container.querySelector(".workspace__main") as HTMLElement
     expect(
-      within(main).getByRole("heading", { name: "@group.certified.app's followers show on its profile" }),
+      within(main).getByRole("heading", { name: "@group.certified.app's lists show on its profile" }),
     ).toBeInTheDocument()
   })
 

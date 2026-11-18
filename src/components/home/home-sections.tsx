@@ -122,10 +122,21 @@ type LatestRecord = {
   imageUrl: string | null
 }
 
+/** The Workspace's Endorsements and Followers: the account's own, for a
+ *  group too (Records shows the group's while acting as it). */
+const SOCIAL_HREFS = {
+  endorsements: "/records?kind=endorsements",
+  endorsementsReceived: "/records?kind=endorsements&tab=received",
+  endorsementsGiven: "/records?kind=endorsements&tab=given",
+  followers: "/records?kind=followers",
+  following: "/records?kind=followers&tab=following",
+} as const
+
 /** Where the counts lead (the side list is the way to each whole list).
- *  The personal account manages
- *  its records on /records; a group's records live on its profile (Records
- *  only explains how to switch back while acting as a group). */
+ *  The personal account manages its records on /records. A group's
+ *  endorsements and followers are on /records too; its projects,
+ *  activities and lists live on its profile (Records explains that while
+ *  acting as a group). */
 function recordsHrefs(isGroup: boolean, profileBase: string) {
   return isGroup
     ? {
@@ -133,11 +144,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: `${profileBase}?tab=activities`,
         projects: `${profileBase}?tab=projects`,
         lists: `${profileBase}?tab=lists`,
-        endorsements: `${profileBase}?tab=endorsements`,
-        endorsementsReceived: `${profileBase}?tab=endorsements&sub=received`,
-        endorsementsGiven: `${profileBase}?tab=endorsements&sub=given`,
-        followers: `${profileBase}?tab=followers`,
-        following: `${profileBase}?tab=followers&sub=following`,
+        ...SOCIAL_HREFS,
       }
     : {
         all: "/records",
@@ -145,11 +152,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: "/records?kind=activities",
         projects: "/records?kind=activities",
         lists: "/records?kind=lists",
-        endorsements: "/records?kind=endorsements",
-        endorsementsReceived: "/records?kind=endorsements&tab=received",
-        endorsementsGiven: "/records?kind=endorsements&tab=given",
-        followers: "/records?kind=followers",
-        following: "/records?kind=followers&tab=following",
+        ...SOCIAL_HREFS,
       }
 }
 

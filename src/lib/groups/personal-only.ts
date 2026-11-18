@@ -11,24 +11,23 @@
  *   - "groups"       : would be self-referential when already in a
  *                      group context — the group is reachable via the
  *                      account menu.
- *   - "endorsements" : the underlying record lives in the personal
- *                      repo only; no group analogue exists.
  *
  * Not listed:
- *   - Records stays reachable while acting as a group and shows "Records
- *     are managed on your personal account" with a switch button, so
- *     switching accounts on /records doesn't redirect.
+ *   - Records stays reachable while acting as a group, so switching
+ *     accounts on /records doesn't redirect: Endorsements and Followers
+ *     show the group's own (its endorsements, followers and follows, read
+ *     for its DID, written as the group); the other sections say where
+ *     the group's records are.
+ *   - `/endorsements` (retired; it redirects to Records → Endorsements),
+ *     which a group has too.
  *   - Create (`/create`): a group can create activities; the create flow
  *     writes as the group being acted as. Switching accounts on /create
  *     keeps the form. "create" stays in the type so existing callers that
  *     ask about it get `true`.
  */
-export type PersonalOnlyRoute = "create" | "groups" | "endorsements"
+export type PersonalOnlyRoute = "create" | "groups"
 
-const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = [
-  "groups",
-  "endorsements",
-]
+const PERSONAL_ONLY_ROUTES: readonly PersonalOnlyRoute[] = ["groups"]
 
 /**
  * Returns true when `route` should be shown in the nav. Takes the
@@ -57,8 +56,5 @@ export function pathnameToPersonalOnlyRoute(
   pathname: string,
 ): PersonalOnlyRoute | null {
   if (pathname === "/groups" || pathname.startsWith("/groups/")) return "groups"
-  if (pathname === "/endorsements" || pathname.startsWith("/endorsements/")) {
-    return "endorsements"
-  }
   return null
 }

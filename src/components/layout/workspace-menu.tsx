@@ -51,7 +51,8 @@ export function useWorkspaceState() {
  * its account), unless the page only works for your personal account: the
  * group pages are personal-only, so picking a group there goes to its
  * Overview (`targetAfterActorSwitch`). The Records sections stay: acting
- * as a group, each says where that group's records are. Switching
+ * as a group, Endorsements and Followers show the group's own, the others
+ * say where that group's records are. Switching
  * changes what you create, follow, endorse, like and comment as, and what
  * the Feed and Explore show.
  */

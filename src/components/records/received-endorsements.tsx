@@ -65,15 +65,21 @@ function useIssuerInfo(e: ReceivedEndorsement): { info: AuthorInfo | null; isLoa
  * contrast.
  * Hiding writes a "rejected" response record on your account; showing
  * again removes your responses to it (the same writes the profile's
- * controls make).
+ * controls make). Acting as a group (`targetDid`), the responses are the
+ * group's, written and removed through the group route
+ * (`/api/groups/<did>/response`); `ownStates` is then the group's.
  */
 function ReceivedRow({
   endorsement,
   did,
+  targetDid,
+  canRespond,
   ownStates,
 }: {
   endorsement: ReceivedEndorsement
   did: string
+  targetDid?: string
+  canRespond: boolean
   ownStates: OwnStates
 }) {
   const { info, isLoading } = useIssuerInfo(endorsement)
@@ -95,10 +101,12 @@ function ReceivedRow({
     setBusy(true)
     setOptimistic(next)
     try {
+      // With a group, the group route; without, your own repo.
+      const opts = targetDid ? { targetDid } : undefined
       if (next) {
-        await createResponse(did, { uri: endorsement.uri, cid: endorsement.cid }, "rejected")
+        await createResponse(did, { uri: endorsement.uri, cid: endorsement.cid }, "rejected", opts)
       } else {
-        await deleteAllResponsesForAward(did, endorsement.uri, ownStates.responses)
+        await deleteAllResponsesForAward(did, endorsement.uri, ownStates.responses, opts)
       }
       ownStates.invalidate()
       await ownStates.refetch()
@@ -138,15 +146,17 @@ function ReceivedRow({
             {/* As Followers' Follow / Following: the exception (a hidden
                 endorsement) gets the filled button, so it stands out in
                 the list; the usual state is the quiet outlined one. */}
-            <Button
-              variant={hidden ? "primary" : "secondary"}
-              size="sm"
-              loading={busy}
-              onClick={() => void toggle()}
-              aria-label={`${hidden ? "Show on profile" : "Hide from profile"}: the endorsement from ${displayName}`}
-            >
-              {hidden ? "Show on profile" : "Hide from profile"}
-            </Button>
+            {canRespond ? (
+              <Button
+                variant={hidden ? "primary" : "secondary"}
+                size="sm"
+                loading={busy}
+                onClick={() => void toggle()}
+                aria-label={`${hidden ? "Show on profile" : "Hide from profile"}: the endorsement from ${displayName}`}
+              >
+                {hidden ? "Show on profile" : "Hide from profile"}
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -157,10 +167,15 @@ function ReceivedRow({
 /**
  * Endorsements other accounts gave you, hidden ones included (this is where
  * you show them again). Hidden ones are tagged "Hidden"; the rest show on
- * your profile.
+ * your profile. Acting as a group, the group's, hidden or shown as the
+ * group (`targetDid`); without the role to write (`readOnly`), the tags
+ * without the buttons.
  */
 export default function ReceivedEndorsements({
   did,
+  targetDid,
+  readOnly = false,
+  groupName,
   endorsements,
   isLoading,
   error,
@@ -168,8 +183,17 @@ export default function ReceivedEndorsements({
   ownStates,
   profileHref,
 }: {
+  /** The signed-in person's DID: the responses are written through it. */
   did: string
-  /** The viewer's own profile, for the empty state's action. */
+  /** Acting as a group: the group's DID; its responses live in its repo
+   *  and are written through the group route. */
+  targetDid?: string
+  /** No Hide / Show (a member acting as the group). */
+  readOnly?: boolean
+  /** Acting as a group: its name, for the empty state. */
+  groupName?: string
+  /** The account's profile (yours or the group's), for the empty
+   *  state's action. */
   profileHref: string
   endorsements: ReceivedEndorsement[]
   isLoading: boolean
@@ -180,7 +204,10 @@ export default function ReceivedEndorsements({
   if (isLoading && endorsements.length === 0) return <RowsSkeleton shape="circle" rows={4} />
   if (error && endorsements.length === 0) {
     return (
-      <EmptyState variant="inline" title="Couldn't load your endorsements.">
+      <EmptyState
+        variant="inline"
+        title={groupName ? `Couldn't load ${groupName}'s endorsements.` : "Couldn't load your endorsements."}
+      >
         <Button variant="ghost" size="sm" onClick={onRetry}>
           Try again
         </Button>
@@ -193,10 +220,14 @@ export default function ReceivedEndorsements({
         icon={ThumbsUp}
         headingLevel={2}
         title="No endorsements received yet"
-        description="When another account endorses yours, it shows here. You choose which ones show on your profile."
+        description={
+          groupName
+            ? `When another account endorses ${groupName}, it shows here.`
+            : "When another account endorses yours, it shows here. You choose which ones show on your profile."
+        }
       >
         <Button href={profileHref} variant="secondary" size="sm">
-          View your profile
+          {groupName ? "View its profile" : "View your profile"}
         </Button>
       </EmptyState>
     )
@@ -204,7 +235,14 @@ export default function ReceivedEndorsements({
   return (
     <ul className="records-list">
       {endorsements.map((e) => (
-        <ReceivedRow key={e.uri} endorsement={e} did={did} ownStates={ownStates} />
+        <ReceivedRow
+          key={e.uri}
+          endorsement={e}
+          did={did}
+          targetDid={targetDid}
+          canRespond={!readOnly}
+          ownStates={ownStates}
+        />
       ))}
     </ul>
   )

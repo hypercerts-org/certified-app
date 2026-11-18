@@ -31,6 +31,8 @@
 
 import type { RemoteMembership, OrgRole } from "@/lib/groups/types"
 import { MOCK_DID } from "./session"
+import { MOCK_ACTORS } from "./authors"
+import { receivedEndorsementsConnection } from "./groups"
 
 /** One managed group per role. Same `did:plc:` shape as MOCK_DID so
  *  `isValidDid` and the PLC-directory URL builder accept them. The
@@ -312,4 +314,131 @@ export function managedPlcDidDocument(groupDid: string): {
       },
     ],
   }
+}
+
+/** ---- a group's own social graph (Workspace → Endorsements, Followers) */
+
+type RepoRecord = { uri: string; cid: string; value: Record<string, unknown> }
+
+/** The accounts a managed group follows and endorses: the directory
+ *  after the viewer and the first issuer, so its lists differ from yours. */
+function groupSubjects(): typeof MOCK_ACTORS {
+  return MOCK_ACTORS.slice(2)
+}
+
+/**
+ * `listRecords` on a managed group's repo, for the collections the
+ * Workspace's Endorsements and Followers read acting as the group: its
+ * follows, its endorsement definition and awards (Given), one endorsement
+ * list, and its responses (one received endorsement hidden). Null for any
+ * other repo or collection, so every other preview is unchanged.
+ */
+export function managedGroupRepoRecords(
+  repo: string,
+  collection: string,
+): { records: RepoRecord[] } | null {
+  if (!managedGroupByDid(repo)) return null
+  const subjects = groupSubjects()
+  const defUri = `at://${repo}/app.certified.badge.definition/endorsement`
+  const defCid = "bafygroupdef000000000000000000000000000000000000000000000"
+  const awards: RepoRecord[] = subjects.slice(0, 2).map((a, i) => ({
+    uri: `at://${repo}/app.certified.badge.award/given${i}`,
+    cid: `bafygroupaward${i}00000000000000000000000000000000000000000000`,
+    value: {
+      $type: "app.certified.badge.award",
+      badge: { uri: defUri, cid: defCid },
+      subject: { $type: "app.certified.defs#did", did: a.did },
+      note: i === 0 ? "Partnered with us on two estuary surveys." : undefined,
+      createdAt: `2025-0${i + 3}-14T10:00:00.000Z`,
+    },
+  }))
+  switch (collection) {
+    case "app.certified.graph.follow":
+      return {
+        records: subjects.map((a, i) => ({
+          uri: `at://${repo}/app.certified.graph.follow/groupfollow${i}`,
+          cid: `bafygroupfollow${i}0000000000000000000000000000000000000000000`,
+          value: { $type: "app.certified.graph.follow", subject: a.did, createdAt: a.createdAt },
+        })),
+      }
+    case "app.certified.badge.definition":
+      return {
+        records: [
+          {
+            uri: defUri,
+            cid: defCid,
+            value: {
+              $type: "app.certified.badge.definition",
+              badgeType: "endorsement",
+              title: "Endorsement",
+              createdAt: "2025-01-10T10:00:00.000Z",
+            },
+          },
+        ],
+      }
+    case "app.certified.badge.award":
+      return { records: awards }
+    case "app.certified.badge.response": {
+      // The group hid the second endorsement it received.
+      const hidden = receivedEndorsementsConnection(repo).edges[1]?.node
+      if (!hidden) return { records: [] }
+      return {
+        records: [
+          {
+            uri: `at://${repo}/app.certified.badge.response/hidden0`,
+            cid: "bafygroupresponse0000000000000000000000000000000000000000",
+            value: {
+              $type: "app.certified.badge.response",
+              badgeAward: { uri: hidden.uri, cid: hidden.cid },
+              response: "rejected",
+              createdAt: "2025-05-01T10:00:00.000Z",
+            },
+          },
+        ],
+      }
+    }
+    case "org.hypercerts.collection":
+      return {
+        records: [
+          {
+            uri: `at://${repo}/org.hypercerts.collection/partnerslist`,
+            cid: "bafygrouplist00000000000000000000000000000000000000000000",
+            value: {
+              $type: "org.hypercerts.collection",
+              type: "list:endorsements",
+              title: "Survey partners",
+              description: "Organizations we run estuary surveys with.",
+              createdAt: "2025-04-02T10:00:00.000Z",
+              items: [{ itemIdentifier: { uri: awards[0].uri, cid: awards[0].cid } }],
+            },
+          },
+        ],
+      }
+    default:
+      return null
+  }
+}
+
+/** Accepting stand-ins for the group write routes the Workspace's
+ *  Endorsements and Followers call acting as a group, so the preview can
+ *  be clicked through without reaching a server. Nothing is stored. */
+export function managedGroupWriteResponse(
+  path: string,
+  method: string,
+): Record<string, unknown> | null {
+  const match = /^\/api\/groups\/([^/]+)\/(follow|endorse|response|endorsement-definition)$/.exec(path)
+  if (!match || (method !== "POST" && method !== "DELETE")) return null
+  const groupDid = decodeURIComponent(match[1])
+  if (!managedGroupByDid(groupDid)) return null
+  if (method === "DELETE") return { ok: true }
+  const collection =
+    match[2] === "follow"
+      ? "app.certified.graph.follow"
+      : match[2] === "response"
+        ? "app.certified.badge.response"
+        : match[2] === "endorse"
+          ? "app.certified.badge.award"
+          : "app.certified.badge.definition"
+  const rkey = `preview${Date.now()}`
+  return { uri: `at://${groupDid}/${collection}/${rkey}`, cid: `bafypreviewwrite${rkey}` }
 }

@@ -53,10 +53,11 @@ const EMPTY_ENTRY: StoreEntry = {
   error: null,
 }
 
-// Per-DID state, per-DID subscribers, per-DID inflight promise.
+// Per-DID state, per-DID subscribers, per-DID inflight load (with the
+// signal it runs under).
 const store = new Map<string, StoreEntry>()
 const subscribersByDid = new Map<string, Set<() => void>>()
-const inflightByDid = new Map<string, Promise<void>>()
+const inflightByDid = new Map<string, { promise: Promise<void>; signal?: AbortSignal }>()
 
 function notify(did: string): void {
   const subs = subscribersByDid.get(did)
@@ -71,8 +72,11 @@ function setEntry(did: string, patch: Partial<StoreEntry>): void {
 }
 
 function loadInto(did: string, signal?: AbortSignal, opts?: { force?: boolean }): Promise<void> {
+  // An aborted load (its component unmounted: StrictMode's double effect,
+  // or a pane remounted mid-load) never writes the store, so a new caller
+  // doesn't join it: it starts its own.
   const existing = inflightByDid.get(did)
-  if (existing) return existing
+  if (existing && !existing.signal?.aborted) return existing.promise
 
   const entry = store.get(did)
   if (!opts?.force && entry && Date.now() - entry.fetchedAt < STALE_MS) {
@@ -81,7 +85,11 @@ function loadInto(did: string, signal?: AbortSignal, opts?: { force?: boolean })
 
   setEntry(did, { isLoading: true, error: null })
 
-  const promise = (async () => {
+  const slot: { promise: Promise<void>; signal?: AbortSignal } = {
+    promise: Promise.resolve(),
+    signal,
+  }
+  slot.promise = (async () => {
     try {
       // Forced refetches (callers explicitly invalidated and
       // re-asked) bypass the XRPC proxy's 5s Cache-Control window
@@ -104,12 +112,13 @@ function loadInto(did: string, signal?: AbortSignal, opts?: { force?: boolean })
         error: err instanceof Error ? err.message : "Failed to load responses",
       })
     } finally {
-      inflightByDid.delete(did)
+      // Only our own slot: a newer load may have taken it.
+      if (inflightByDid.get(did) === slot) inflightByDid.delete(did)
     }
   })()
 
-  inflightByDid.set(did, promise)
-  return promise
+  inflightByDid.set(did, slot)
+  return slot.promise
 }
 
 /**
