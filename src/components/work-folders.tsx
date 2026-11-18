@@ -11,9 +11,9 @@
 // deleting and moving activities between projects come with the Hypercerts
 // SDK's writes: until then New activity and New project are placeholders.
 
-import { Button, EmptyState, Skeleton } from "@hypercerts-org/ui-react";
-import { ArrowRight, ChevronRight, Folder, Plus, Search, SquareCheckBig } from "lucide-react";
-import { useId, useState } from "react";
+import { Button, EmptyState, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
+import { ArrowRight, ChevronRight, Folder, Plus, SquareCheckBig } from "lucide-react";
+import { useState } from "react";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { IntentLink } from "@/components/intent-link";
 
@@ -45,23 +45,17 @@ const OPEN_BY_DEFAULT = 3;
 const matches = (text: string, query: string) => text.toLowerCase().includes(query);
 
 function Toolbar({ query, onQuery }: { query: string; onQuery: (query: string) => void }) {
-  const id = useId();
   return (
     <div className="work-toolbar">
-      <div className="work-search">
-        <Search size={16} aria-hidden className="work-search-icon" />
-        <label htmlFor={id} className="visually-hidden">
-          Search projects and activities
-        </label>
-        <input
-          id={id}
-          type="search"
-          placeholder="Search projects and activities"
-          value={query}
-          onChange={(event) => onQuery(event.target.value)}
-          autoComplete="off"
-        />
-      </div>
+      {/* Filters what's on the page: no debounce needed. */}
+      <SearchInput
+        className="work-search"
+        label="Search projects and activities"
+        placeholder="Search projects and activities"
+        value={query}
+        debounceMs={0}
+        onChange={onQuery}
+      />
       <NewButtons />
     </div>
   );

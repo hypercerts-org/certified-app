@@ -1751,29 +1751,6 @@ button.sidebar-item:hover,
   max-inline-size: 24rem;
 }
 
-.work-search input {
-  inline-size: 100%;
-  min-block-size: 2.5rem;
-  padding-inline: 2.25rem 0.75rem;
-  border: 1px solid var(--hc-line-hairline);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-page);
-  color: var(--hc-text-ink);
-  font: inherit;
-  font-size: 0.9375rem;
-}
-
-.work-search input::placeholder {
-  color: var(--hc-text-muted);
-}
-
-.work-search-icon {
-  position: absolute;
-  inset-inline-start: 0.75rem;
-  color: var(--hc-text-muted);
-  pointer-events: none;
-}
-
 .skeleton-search {
   flex: 1 1 16rem;
   max-inline-size: 24rem;
