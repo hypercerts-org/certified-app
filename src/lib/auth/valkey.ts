@@ -6,7 +6,9 @@ import { logError } from "@/lib/log";
 // Valkey, shared by every server instance: OAuth state, OAuth sessions, the
 // token-refresh lock, app sessions and the sign-in rate limit. Valkey speaks
 // the Redis protocol, so the standard `redis` client connects to it, and any
-// Redis-compatible provider works. VALKEY_URL is a redis:// (or rediss://) URL.
+// Redis-compatible provider works. VALKEY_URL is a redis:// (or rediss://) URL;
+// without it, REDIS_URL, the name the Vercel Marketplace's Redis integrations
+// (Upstash, Redis Cloud) set.
 
 function createValkey(url: string) {
   return createClient({
@@ -25,8 +27,8 @@ let connecting: Promise<Client> | undefined;
 /** One connection per server instance, reopened after a failed connect. */
 function connect(): Promise<Client> {
   if (!connecting) {
-    const url = process.env.VALKEY_URL;
-    if (!url) throw new Error("VALKEY_URL is not set.");
+    const url = process.env.VALKEY_URL || process.env.REDIS_URL;
+    if (!url) throw new Error("VALKEY_URL (or REDIS_URL) is not set.");
     const pending = createValkey(url).connect();
     pending.catch(() => {
       connecting = undefined;
