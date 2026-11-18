@@ -169,6 +169,9 @@ importers:
       '@atproto-labs/fetch-node':
         specifier: 0.4.5
         version: 0.4.5
+      '@atproto-labs/identity-resolver':
+        specifier: 0.4.13
+        version: 0.4.13
       '@atproto/crypto':
         specifier: 0.5.7
         version: 0.5.7

@@ -70,7 +70,7 @@ export function WorkspaceOverview({
       <div className="overview">
         <div className="overview-main">
           <Suspense fallback={<SectionSkeleton title="Your records" rows={3} />}>
-            <RecordsSection did={account.did} />
+            <RecordsSection did={account.did} profile={actorHref(account)} />
           </Suspense>
           <Suspense fallback={<SectionSkeleton title="Endorsements and followers" rows={2} />}>
             <EndorsementsSection did={account.did} />
@@ -175,7 +175,7 @@ function ListLabel({ children }: { children: ReactNode }) {
 
 // Records --------------------------------------------------------------------
 
-async function RecordsSection({ did }: { did: string }) {
+async function RecordsSection({ did, profile }: { did: string; profile: string }) {
   const [counts, latest] = await Promise.all([
     getRecordCounts(did),
     listLatestRecords(did, LATEST_RECORDS),
@@ -219,12 +219,12 @@ async function RecordsSection({ did }: { did: string }) {
               {
                 label: byCount(counts.activities.value, "Activity", "Activities"),
                 value: counts.activities,
-                href: actorHref(did),
+                href: profile,
               },
               {
                 label: byCount(counts.projects.value, "Project", "Projects"),
                 value: counts.projects,
-                href: actorHref(did),
+                href: profile,
               },
               { label: byCount(counts.lists.value, "List", "Lists"), value: counts.lists },
             ]}
@@ -330,7 +330,7 @@ async function EndorsementsSection({ did }: { did: string }) {
                   size="sm"
                   name={endorsement.issuer.displayName}
                   avatarSrc={endorsement.issuer.avatarUrl}
-                  href={actorHref(endorsement.issuer.did)}
+                  href={actorHref(endorsement.issuer)}
                   secondary={
                     [endorsement.note, endorsement.createdAt].filter(Boolean).join(" · ") ||
                     undefined
@@ -371,7 +371,7 @@ function IdentityBox({ account }: { account: OverviewAccount }) {
         <Avatar name={name} src={actor?.avatarUrl} size="lg" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
-            <Link href={actorHref(did)} className="overview-identity-name" dir="auto">
+            <Link href={actorHref({ did, handle })} className="overview-identity-name" dir="auto">
               {name}
             </Link>
           </Heading>
@@ -454,7 +454,7 @@ function OrganizationsSection({ organizations }: { organizations: Organization[]
                 size="sm"
                 name={organization.name}
                 avatarSrc={organization.avatarUrl}
-                href={actorHref(organization.did)}
+                href={actorHref(organization)}
                 secondary={organization.roleLabel}
               />
             </li>

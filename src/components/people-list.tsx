@@ -13,7 +13,7 @@ export function PeopleList({ page, empty }: { page: PeoplePage; empty: string })
             <IdentityRow
               name={row.actor.displayName}
               avatarSrc={row.actor.avatarUrl}
-              href={actorHref(row.actor.did)}
+              href={actorHref(row.actor)}
               secondary={row.note ?? undefined}
             />
             {row.date && (

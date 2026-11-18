@@ -9,6 +9,7 @@ import "server-only";
 import { Client, type l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
+import { getHandle } from "@/lib/identity";
 import { tags } from "./cache";
 import {
   type ActivityCard,
@@ -68,6 +69,25 @@ function publicData(tag: string) {
   cacheTag(tag);
 }
 
+/**
+ * The cards with their verified handles (each cached for hours), so profile
+ * links go straight to the handle's address instead of through a redirect
+ * from the DID. The API's views don't carry handles yet (TECH-896).
+ */
+async function withHandles<T extends ActorCard>(cards: T[]): Promise<T[]> {
+  const dids = [...new Set(cards.map((card) => card.did))];
+  const handles = new Map(
+    await Promise.all(dids.map(async (did) => [did, await getHandle(did)] as const)),
+  );
+  return cards.map((card) => ({ ...card, handle: handles.get(card.did) ?? null }));
+}
+
+/** The same for the cards inside other views (an activity's author, an award's issuer). */
+async function withHandlesIn<T, K extends keyof T>(items: T[], key: K): Promise<T[]> {
+  const cards = await withHandles(items.map((item) => item[key] as ActorCard));
+  return items.map((item, i) => ({ ...item, [key]: cards[i] }));
+}
+
 // Callers validate identifiers before they reach these functions (see
 // src/lib/validate.ts); the casts only satisfy lex's branded string types.
 type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
@@ -78,34 +98,35 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache";
   publicData(tags.actor(actor));
 
+  // getProfile accepts a handle or DID; getOrganization needs the DID and
+  // fails for accounts without an organization record (people). An
+  // organization can exist without a profile, so a DID gets the organization
+  // lookup either way. Given a DID, all three lookups run at once; given a
+  // handle, the profile names the DID first.
+  const lookups = (did: Did) =>
+    Promise.all([
+      api.xrpcSafe(app.certified.actor.getOrganization, { params: { actor: did }, ...read() }),
+      getHandle(did),
+    ]);
+  const isDid = actor.startsWith("did:");
+  const byDid = isDid ? lookups(actor as Did) : null;
   const profile = await api.xrpcSafe(app.certified.actor.getProfile, {
     params: { actor: actor as l.AtIdentifierString },
     ...read(),
   });
   if (!profile.success && !notFound(profile)) throw profile;
-
-  // getProfile accepts a handle or DID; getOrganization needs the DID and
-  // fails for accounts without an organization record (people). An
-  // organization can exist without a profile, so a DID gets the organization
-  // lookup either way.
-  const did = profile.success
-    ? profile.body.profile.did
-    : actor.startsWith("did:")
-      ? (actor as Did)
-      : null;
+  const did = profile.success ? profile.body.profile.did : isDid ? (actor as Did) : null;
   if (!did) return null;
-  const organization = await api.xrpcSafe(app.certified.actor.getOrganization, {
-    params: { actor: did },
-    ...read(),
-  });
+  const [organization, handle] = await (byDid ?? lookups(did));
+
   if (organization.success) {
-    const detail = toActorDetail(organization.body.actor);
+    const detail = { ...toActorDetail(organization.body.actor), handle };
     const location = organization.body.actor.organization?.record.location?.uri;
     return location ? { ...detail, place: await placeName(location) } : detail;
   }
   if (!notFound(organization)) throw organization;
   return profile.success
-    ? toActorDetail({ did, profile: profile.body.profile, organization: null })
+    ? { ...toActorDetail({ did, profile: profile.body.profile, organization: null }), handle }
     : null;
 }
 
@@ -157,7 +178,10 @@ export async function listActivitiesPage(options: {
     { authors: [options.author as Did], cursor: options.cursor, limit: options.limit },
     read(),
   );
-  return { items: activities.map(toActivityCard), cursor: cursor ?? null };
+  return {
+    items: await withHandlesIn(activities.map(toActivityCard), "author"),
+    cursor: cursor ?? null,
+  };
 }
 
 export async function listProjectsPage(options: {
@@ -188,7 +212,10 @@ export async function getProject(uri: string): Promise<ProjectDetail | null> {
     params: { uri: uri as AtUri },
     ...read(),
   });
-  if (result.success) return toProjectDetail(result.body.collection);
+  if (result.success) {
+    const [project] = await withHandlesIn([toProjectDetail(result.body.collection)], "author");
+    return project;
+  }
   if (notFound(result)) return null;
   throw result;
 }
@@ -217,7 +244,10 @@ export async function listProjectActivitiesPage(options: {
       (record): record is l.$Typed<ActivityView> =>
         record?.$type === "org.hypercerts.claim.getActivity#activityView",
     );
-  return { items: activities.map(toActivityCard), cursor: cursor ?? null };
+  return {
+    items: await withHandlesIn(activities.map(toActivityCard), "author"),
+    cursor: cursor ?? null,
+  };
 }
 
 export async function listOrganizationsPage(options: {
@@ -235,7 +265,7 @@ export async function listOrganizationsPage(options: {
         read(),
       )
     : await api.call(app.certified.actor.listOrganizations, params, read());
-  return { items: actors.map(toActorCard), cursor: cursor ?? null };
+  return { items: await withHandles(actors.map(toActorCard)), cursor: cursor ?? null };
 }
 
 /** The badge type of endorsements, which pages show apart from other badges. */
@@ -327,7 +357,8 @@ async function actorCards(dids: string[]): Promise<Map<string, ActorCard>> {
         }),
       );
   }
-  return cards;
+  const named = await withHandles([...cards.values()]);
+  return new Map(named.map((card) => [card.did, card]));
 }
 
 async function projectCards(uris: string[]): Promise<Map<string, ProjectCard>> {
@@ -528,7 +559,7 @@ export async function getEndorsements(did: string, latest: number): Promise<Endo
   return {
     receivedCount: received.totalCount ?? received.badgeAwards.length,
     given: given.totalCount ?? given.badgeAwards.length,
-    latestReceived: received.badgeAwards.map(toEndorsementCard),
+    latestReceived: await withHandlesIn(received.badgeAwards.map(toEndorsementCard), "issuer"),
   };
 }
 
@@ -591,7 +622,7 @@ export async function listEndorsements(
     if (!actor) continue;
     rows.push({ uri: award.uri, actor, note: card.note, date: card.createdAt });
   }
-  return { rows, more: Boolean(cursor) };
+  return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor) };
 }
 
 /**
@@ -629,15 +660,13 @@ export async function listFollows(
       : await api
           .call(app.certified.graph.listActorFollowing, params, read())
           .then((out) => ({ views: out.following, cursor: out.cursor }));
-  return {
-    rows: views.map((view) => ({
-      uri: view.follow.uri,
-      actor: toActorCard({ did: view.did, profile: view.profile, organization: view.organization }),
-      note: null,
-      date: formatDate(view.follow.record.createdAt),
-    })),
-    more: Boolean(cursor),
-  };
+  const rows = views.map((view) => ({
+    uri: view.follow.uri,
+    actor: toActorCard({ did: view.did, profile: view.profile, organization: view.organization }),
+    note: null,
+    date: formatDate(view.follow.record.createdAt),
+  }));
+  return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor) };
 }
 
 const LIST_KIND: Record<string, string> = {

@@ -1738,3 +1738,49 @@ button.sidebar-item:hover,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Skeletons shaped like what they stand for (profile header, sections,
+   cards, the rail), so nothing jumps when the content arrives. */
+.profile-header-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.skeleton-avatar {
+  inline-size: 8rem;
+  block-size: 8rem;
+  border-radius: 50%;
+}
+
+.skeleton-name {
+  inline-size: min(22rem, 70%);
+  block-size: 2.5rem;
+}
+
+.skeleton-meta {
+  inline-size: min(14rem, 50%);
+  block-size: 1rem;
+}
+
+.skeleton-lead {
+  max-inline-size: 36rem;
+}
+
+.skeleton-tabs {
+  inline-size: min(24rem, 100%);
+  block-size: 2.5rem;
+}
+
+.skeleton-heading {
+  inline-size: 9rem;
+  block-size: 1.5rem;
+}
+
+.skeleton-card {
+  block-size: 12rem;
+}
+
+.skeleton-rail {
+  block-size: 12rem;
+}

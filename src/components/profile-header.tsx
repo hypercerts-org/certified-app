@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
+import { OwnerOnly } from "@/components/viewer-only";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
 import { getEndorsers, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
@@ -229,15 +230,26 @@ function endorserNames(endorsers: ActorCard[], more: boolean): ReactNode {
  * follows, each leading to its tab. Parts with nothing in them are left out.
  */
 async function TrustLine({ did, base }: { did: string; base: string }) {
-  const [{ endorsers, more }, counts, actingAs] = await Promise.all([
+  const [{ endorsers, more }, counts] = await Promise.all([
     getEndorsers(did),
     getFollowCounts(did),
-    getActingAs(),
   ]);
   const { followers, following } = counts;
   // Only the account itself is told about what isn't there.
-  const owner = actingAs === did;
-  if (!owner && endorsers.length === 0 && followers === 0 && following === 0) return null;
+  const none = (
+    <OwnerOnly did={did}>
+      <span className="trust-none">No endorsements yet</span>
+    </OwnerOnly>
+  );
+  if (endorsers.length === 0 && followers === 0 && following === 0) {
+    return (
+      <OwnerOnly did={did}>
+        <div className="trust-line">
+          <span className="trust-none">No endorsements yet</span>
+        </div>
+      </OwnerOnly>
+    );
+  }
 
   return (
     <div className="trust-line">
@@ -251,10 +263,8 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
       )}
-      {owner && endorsers.length === 0 && (
-        // On one line with the counts, as staging has it.
-        <span className="trust-none">No endorsements yet</span>
-      )}
+      {/* On one line with the counts, as staging has it. */}
+      {endorsers.length === 0 && none}
       {(followers > 0 || following > 0) && (
         <p className="trust-counts">
           {followers > 0 && (
@@ -275,13 +285,24 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
   );
 }
 
+/**
+ * Shaped like the header (the avatar beside the name, the meta line and two
+ * lines of lead) and the tabs under it, so the page doesn't jump when they
+ * arrive. Only a profile nobody has opened in the last hour shows it: others
+ * come from the cache with the page.
+ */
 export function ProfileHeaderSkeleton() {
   return (
-    <div className="profile-head" aria-hidden>
-      <Skeleton variant="circle" />
-      <div className="profile-identity">
-        <Skeleton variant="text" lines={3} />
+    <div className="profile-header-skeleton" aria-hidden>
+      <div className="profile-head">
+        <Skeleton variant="box" className="skeleton-avatar" />
+        <div className="profile-identity">
+          <Skeleton variant="line" className="skeleton-name" />
+          <Skeleton variant="line" className="skeleton-meta" />
+          <Skeleton variant="text" lines={2} className="skeleton-lead" />
+        </div>
       </div>
+      <Skeleton variant="line" className="skeleton-tabs" />
     </div>
   );
 }

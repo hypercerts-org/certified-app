@@ -9,8 +9,13 @@ import type {
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.
 
-export function actorHref(did: string) {
-  return `/${did}`;
+/**
+ * An account's profile: at its handle when known (the address people share),
+ * otherwise at its DID, which redirects to the handle.
+ */
+export function actorHref(actor: string | { did: string; handle: string | null }) {
+  if (typeof actor === "string") return `/${actor}`;
+  return `/${actor.handle ?? actor.did}`;
 }
 
 /** An account's workspace. */
@@ -31,7 +36,7 @@ export function ActorCardView({ actor }: { actor: ActorCard }) {
       <IdentityRow
         name={actor.displayName}
         avatarSrc={actor.avatarUrl}
-        href={actorHref(actor.did)}
+        href={actorHref(actor)}
         secondary={actor.isOrganization ? "Organization" : "Person"}
       />
       {actor.description && (
@@ -77,7 +82,7 @@ export function ActivityCardView({
           )}
           <div className="meta">
             {showAuthor && (
-              <Link href={actorHref(activity.author.did)} className="meta-author">
+              <Link href={actorHref(activity.author)} className="meta-author">
                 <Avatar
                   name={activity.author.displayName}
                   src={activity.author.avatarUrl}

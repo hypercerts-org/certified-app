@@ -48,7 +48,7 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
         <Heading level={1} size="display-3">
           {project.title}
         </Heading>
-        <Link href={actorHref(actor.did)} className="meta-author">
+        <Link href={actorHref(actor)} className="meta-author">
           <Avatar name={actor.displayName} src={actor.avatarUrl} size="sm" />
           <Text as="span" size="body-sm">
             {actor.displayName}

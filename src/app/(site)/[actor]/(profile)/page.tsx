@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { ActivityCardView, actorHref, ProjectCardView } from "@/components/cards";
-import { getActingAs } from "@/lib/acting-as";
+import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
   listActivitiesPage,
@@ -22,7 +22,6 @@ import {
   listProjectsPage,
 } from "@/lib/hypercerts/queries";
 import type { ActivityCard, ActorCard, PersonRow, ProjectCard } from "@/lib/hypercerts/views";
-import { getHandle } from "@/lib/identity";
 import { profileActor } from "@/lib/profile-route";
 
 // The profile's Overview, after the staging redesign: a reading column with
@@ -115,28 +114,22 @@ function uniqueActors(rows: PersonRow[]): { actor: ActorCard; row: PersonRow }[]
 const countLabel = (count: number, more: boolean) =>
   `${numberFormat.format(count)}${more ? "+" : ""}`;
 
-/**
- * An account without a Certified profile has only its DID for a name: its
- * handle reads better, where it has one.
- */
-async function withHandles(actors: ActorCard[]): Promise<ActorCard[]> {
-  return Promise.all(
-    actors.map(async (actor) => {
-      if (actor.displayName !== actor.did) return actor;
-      const handle = await getHandle(actor.did);
-      return handle ? { ...actor, displayName: `@${handle}` } : actor;
-    }),
-  );
-}
-
 /** A grid of accounts, each avatar and name to its profile. */
-async function AccountGrid({ actors }: { actors: ActorCard[] }) {
-  const shown = await withHandles(actors.slice(0, GRID_PREVIEW));
+function AccountGrid({ actors }: { actors: ActorCard[] }) {
+  // An account without a Certified profile has only its DID for a name: its
+  // handle reads better.
+  const shown = actors
+    .slice(0, GRID_PREVIEW)
+    .map((actor) =>
+      actor.displayName === actor.did && actor.handle
+        ? { ...actor, displayName: `@${actor.handle}` }
+        : actor,
+    );
   return (
     <ul className="account-grid">
       {shown.map((actor) => (
         <li key={actor.did}>
-          <Link href={actorHref(actor.did)} className="account-grid-link">
+          <Link href={actorHref(actor)} className="account-grid-link">
             <Avatar
               // A handle's initial, not "@".
               name={actor.displayName.replace(/^@/, "")}
@@ -154,7 +147,7 @@ async function AccountGrid({ actors }: { actors: ActorCard[] }) {
   );
 }
 
-async function Work({ did, base, owner }: { did: string; base: string; owner: boolean }) {
+async function Work({ did, base }: { did: string; base: string }) {
   const [activityPage, projectPage] = await Promise.all([
     listActivitiesPage({ author: did, limit: PREVIEW * 2 }),
     listProjectsPage({ author: did }),
@@ -162,57 +155,60 @@ async function Work({ did, base, owner }: { did: string; base: string; owner: bo
   const projects = projectPage.items;
   const activities = activityPage.items.filter((a) => !coveredByProject(a, projects));
   const moreActivities = activities.length > PREVIEW || Boolean(activityPage.cursor);
-  // A visitor doesn't get an Activities section that only repeats the projects.
-  const showActivities = owner || activities.length > 0;
-  const showProjects = owner || projects.length > 0;
 
+  // An empty section is shown only to the account itself, with what fills it;
+  // a visitor doesn't get an Activities section that only repeats the projects.
+  const activitiesSection = (
+    <Section
+      title="Activities"
+      seeAll={moreActivities ? { href: `${base}/activities`, label: "All activities" } : undefined}
+    >
+      {activities.length > 0 ? (
+        <ul className="work-grid">
+          {activities.slice(0, PREVIEW).map((activity) => (
+            <ActivityCardView key={activity.uri} activity={activity} showAuthor={false} />
+          ))}
+        </ul>
+      ) : (
+        <Empty
+          text={
+            activityPage.items.length > 0
+              ? "Each activity is in its project below."
+              : "No activities yet. Activities you publish or contribute to show here."
+          }
+          action={activityPage.items.length > 0 ? undefined : "New activity"}
+        />
+      )}
+    </Section>
+  );
+  const projectsSection = (
+    <Section
+      title="Projects"
+      seeAll={
+        projects.length > PREVIEW || projectPage.cursor
+          ? { href: `${base}/projects`, label: "All projects" }
+          : undefined
+      }
+    >
+      {projects.length > 0 ? (
+        <ul className="work-grid">
+          {projects.slice(0, PREVIEW).map((project) => (
+            <ProjectCardView key={project.uri} project={project} />
+          ))}
+        </ul>
+      ) : (
+        <Empty text="No projects yet. A project groups related activities." action="New project" />
+      )}
+    </Section>
+  );
   return (
     <>
-      {showActivities && (
-        <Section
-          title="Activities"
-          seeAll={
-            moreActivities ? { href: `${base}/activities`, label: "All activities" } : undefined
-          }
-        >
-          {activities.length > 0 ? (
-            <ul className="work-grid">
-              {activities.slice(0, PREVIEW).map((activity) => (
-                <ActivityCardView key={activity.uri} activity={activity} showAuthor={false} />
-              ))}
-            </ul>
-          ) : (
-            <Empty
-              text={
-                activityPage.items.length > 0
-                  ? "Each activity is in its project below."
-                  : "No activities yet. Activities you publish or contribute to show here."
-              }
-              action={activityPage.items.length > 0 ? undefined : "New activity"}
-            />
-          )}
-        </Section>
+      {activities.length > 0 ? (
+        activitiesSection
+      ) : (
+        <OwnerOnly did={did}>{activitiesSection}</OwnerOnly>
       )}
-      {showProjects && (
-        <Section
-          title="Projects"
-          seeAll={
-            projects.length > PREVIEW || projectPage.cursor
-              ? { href: `${base}/projects`, label: "All projects" }
-              : undefined
-          }
-        >
-          {projects.length > 0 ? (
-            <ul className="work-grid">
-              {projects.slice(0, PREVIEW).map((project) => (
-                <ProjectCardView key={project.uri} project={project} />
-              ))}
-            </ul>
-          ) : (
-            <Empty text="No projects yet. A project groups related activities." action="New project" />
-          )}
-        </Section>
-      )}
+      {projects.length > 0 ? projectsSection : <OwnerOnly did={did}>{projectsSection}</OwnerOnly>}
     </>
   );
 }
@@ -239,37 +235,37 @@ async function Endorses({ did, base }: { did: string; base: string }) {
 }
 
 /** The accounts that endorsed this one, each once with its latest endorsement. */
-async function EndorsedBy({ did, base, owner }: { did: string; base: string; owner: boolean }) {
+async function EndorsedBy({ did, base }: { did: string; base: string }) {
   const { rows, more } = await listEndorsements(did, "received");
   const endorsers = uniqueActors(rows);
-  if (endorsers.length === 0 && !owner) return null;
+  if (endorsers.length === 0) {
+    return (
+      <OwnerOnly did={did}>
+        <Section title="Endorsed by">
+          <Empty text="No endorsements yet. When another account endorses this one, it shows here." />
+        </Section>
+      </OwnerOnly>
+    );
+  }
   return (
     <Section
       title="Endorsed by"
-      count={endorsers.length > 0 ? countLabel(endorsers.length, more) : undefined}
-      seeAll={
-        endorsers.length > 0
-          ? { href: `${base}/endorsements`, label: "All endorsements" }
-          : undefined
-      }
+      count={countLabel(endorsers.length, more)}
+      seeAll={{ href: `${base}/endorsements`, label: "All endorsements" }}
     >
-      {endorsers.length > 0 ? (
-        <ul className="overview-rows">
-          {endorsers.slice(0, ENDORSEMENTS_PREVIEW).map(({ actor, row }) => (
-            <li key={row.uri}>
-              <IdentityRow
-                size="md"
-                name={actor.displayName}
-                avatarSrc={actor.avatarUrl}
-                href={actorHref(actor.did)}
-                secondary={[row.date, row.note].filter(Boolean).join(" · ") || undefined}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Empty text="No endorsements yet. When another account endorses this one, it shows here." />
-      )}
+      <ul className="overview-rows">
+        {endorsers.slice(0, ENDORSEMENTS_PREVIEW).map(({ actor, row }) => (
+          <li key={row.uri}>
+            <IdentityRow
+              size="md"
+              name={actor.displayName}
+              avatarSrc={actor.avatarUrl}
+              href={actorHref(actor)}
+              secondary={[row.date, row.note].filter(Boolean).join(" · ") || undefined}
+            />
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }
@@ -294,8 +290,9 @@ async function NothingPublic({ did, base, about }: { did: string; base: string; 
   if (!empty) return null;
   const following = await listFollows(did, "following");
   const followed = uniqueActors(following.rows).map(({ actor }) => actor);
+  // The account itself sees its empty sections instead.
   return (
-    <>
+    <VisitorOnly did={did}>
       <div className="profile-nothing">
         <Heading level={2} size="heading">
           No public records yet.
@@ -307,30 +304,46 @@ async function NothingPublic({ did, base, about }: { did: string; base: string; 
           title="Follows"
           count={countLabel(followed.length, following.more)}
           seeAll={
-            followed.length > GRID_PREVIEW
-              ? { href: `${base}/following`, label: "All" }
-              : undefined
+            followed.length > GRID_PREVIEW ? { href: `${base}/following`, label: "All" } : undefined
           }
         >
           <AccountGrid actors={followed} />
         </Section>
       )}
-    </>
+    </VisitorOnly>
   );
 }
 
+/** A section on its way: its heading and two cards' worth of room. */
 function SectionSkeleton() {
-  return <Skeleton variant="text" lines={4} />;
+  return (
+    <div className="profile-section" aria-hidden>
+      <Skeleton variant="line" className="skeleton-heading" />
+      <div className="work-grid">
+        <Skeleton variant="box" className="skeleton-card" />
+        <Skeleton variant="box" className="skeleton-card" />
+      </div>
+    </div>
+  );
+}
+
+/** The Overview on its way: shaped like its column of sections and the rail. */
+function OverviewSkeleton() {
+  return (
+    <div className="profile-overview" aria-hidden>
+      <div className="profile-main">
+        <SectionSkeleton />
+      </div>
+      <div className="profile-rail">
+        <Skeleton variant="box" className="skeleton-rail" />
+      </div>
+    </div>
+  );
 }
 
 async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
   const { actor, base } = await profileActor(params, "");
-  const { did } = actor;
-  // Whoever acts as the account sees its empty sections, with what fills them.
-  const owner = (await getActingAs()) === did;
-  // A DID URL with a handle has redirected, so the URL names the handle if
-  // there is one.
-  const handle = base.startsWith("/did:") ? null : base.slice(1);
+  const { did, handle } = actor;
   const about = actor.profile.description.trim() ? actor.longDescription : null;
 
   return (
@@ -346,19 +359,17 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
           </Section>
         )}
         <Suspense fallback={<SectionSkeleton />}>
-          <Work did={did} base={base} owner={owner} />
+          <Work did={did} base={base} />
         </Suspense>
         <Suspense fallback={null}>
           <Endorses did={did} base={base} />
         </Suspense>
         <Suspense fallback={null}>
-          <EndorsedBy did={did} base={base} owner={owner} />
+          <EndorsedBy did={did} base={base} />
         </Suspense>
-        {!owner && (
-          <Suspense fallback={null}>
-            <NothingPublic did={did} base={base} about={Boolean(about)} />
-          </Suspense>
-        )}
+        <Suspense fallback={null}>
+          <NothingPublic did={did} base={base} about={Boolean(about)} />
+        </Suspense>
       </div>
       <aside className="profile-rail" aria-label="Facts about this account">
         <Card variant="panel" className="overview-box">
@@ -400,7 +411,7 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
 
 export default function ProfileOverviewPage(props: PageProps<"/[actor]">) {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+    <Suspense fallback={<OverviewSkeleton />}>
       <Overview params={props.params} />
     </Suspense>
   );

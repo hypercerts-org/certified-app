@@ -40,6 +40,8 @@ export type Page<T> = {
 
 export type ActorCard = {
   did: string;
+  /** Its handle, verified both ways, for links (queries fill it in); null without one. */
+  handle: string | null;
   displayName: string;
   description: string | null;
   avatarUrl: string | null;
@@ -286,6 +288,7 @@ export function toActorCard(actor: AnyActorView): ActorCard {
   const profile = actor.profile?.record;
   return {
     did: actor.did,
+    handle: null,
     displayName: profile?.displayName || actor.did,
     description: profile?.description || null,
     avatarUrl: avatarUrl(actor.did, profile?.avatar),
