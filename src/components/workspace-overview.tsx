@@ -543,7 +543,7 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
             <dd>
               <CopyableId
                 value={did}
-                truncateTo={14}
+                truncateTo={10}
                 label="Permanent ID"
                 className="overview-id-field"
               />

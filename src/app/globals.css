@@ -2204,3 +2204,13 @@ details[open] > .work-folder-head .work-folder-chevron {
 .overview-id-field * {
   font-size: 0.9375rem;
 }
+
+.overview-id-field * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview .overview-rows > li {
+  padding-block: 0.5rem;
+}
