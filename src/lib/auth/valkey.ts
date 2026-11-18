@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "redis";
+import { oauthMode } from "@/lib/auth/config";
 import { logError } from "@/lib/log";
 
 // Valkey, shared by every server instance: OAuth state, OAuth sessions, the
@@ -57,4 +58,18 @@ export async function store<T>(call: (valkey: Client) => Promise<T>): Promise<T>
   } catch (err) {
     throw new StoreUnavailableError(err);
   }
+}
+
+/**
+ * A key in this deployment's namespace: its OAuth client's origin (the public
+ * URL's host, or "loopback" locally). Sessions belong to one client, so
+ * deployments that share a database (production and previews, say) must not
+ * read or revoke each other's: a sign-in on a preview would otherwise replace
+ * the production session of the same account. It does not make sharing a
+ * database safe: give production a database of its own.
+ */
+export function storeKey(key: string): string {
+  const mode = oauthMode();
+  const namespace = mode.kind === "web" ? new URL(mode.publicUrl).host : "loopback";
+  return `${namespace}:${key}`;
 }

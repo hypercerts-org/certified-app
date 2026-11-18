@@ -7,7 +7,7 @@ import { logError } from "@/lib/log";
 import { OAUTH_SCOPE } from "./config";
 import { getOAuthClient } from "./oauth-client";
 import { beginSignIn } from "./sign-in-state";
-import { store } from "./valkey";
+import { store, storeKey } from "./valkey";
 
 // Starting a sign-in: from the Sign in buttons (/oauth/sign-in, at Certified's
 // PDS, whose page offers an email code, Google, or a handle on any server) and
@@ -27,7 +27,7 @@ export function signInErrorHref(reason: SignInError, returnTo: string): string {
 // A plain fixed window; @upstash/ratelimit would need Upstash-hosted Redis.
 async function allowSignIn(): Promise<boolean> {
   const ip = ipAddress(await headers()) ?? "unknown";
-  const key = `ratelimit:sign-in:${ip}:${Math.floor(Date.now() / 60_000)}`;
+  const key = storeKey(`ratelimit:sign-in:${ip}:${Math.floor(Date.now() / 60_000)}`);
   const [count] = await store((r) => r.multi().incr(key).expire(key, 60).exec());
   return Number(count) <= 10;
 }

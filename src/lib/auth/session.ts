@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { logError } from "@/lib/log";
 import { cookieOptions } from "./config";
 import { getOAuthClient } from "./oauth-client";
-import { store } from "./valkey";
+import { store, storeKey } from "./valkey";
 
 // The app session: which account this browser is signed in as, and whom it
 // acts as.
@@ -30,8 +30,8 @@ const TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export type AppSession = { did: string; createdAt: string };
 
-const sessionKey = (id: string) => `session:${id}`;
-const accountKey = (did: string) => `account-sessions:${did}`;
+const sessionKey = (id: string) => storeKey(`session:${id}`);
+const accountKey = (did: string) => storeKey(`account-sessions:${did}`);
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 async function currentSessionId(): Promise<string | null> {

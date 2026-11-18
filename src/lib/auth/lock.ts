@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { type RuntimeLock, requestLocalLock } from "@atproto/oauth-client-node";
 import { logError } from "@/lib/log";
-import { store } from "./valkey";
+import { store, storeKey } from "./valkey";
 
 // The OAuth client's requestLock, shared across server instances.
 //
@@ -45,7 +45,7 @@ async function acquire(key: string, token: string, name: string) {
 
 export const requestLock: RuntimeLock = (name, fn) =>
   requestLocalLock(name, async () => {
-    const key = `oauth:lock:${name}`;
+    const key = storeKey(`oauth:lock:${name}`);
     const token = randomUUID();
     await acquire(key, token, name);
     try {

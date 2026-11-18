@@ -6,7 +6,7 @@ import type {
   NodeSavedState,
   NodeSavedStateStore,
 } from "@atproto/oauth-client-node";
-import { store } from "./valkey";
+import { store, storeKey } from "./valkey";
 
 // The OAuth client's stores, as JSON strings in Valkey.
 
@@ -14,18 +14,18 @@ import { store } from "./valkey";
 export function jsonStore<T>(prefix: string, ttlSeconds: number) {
   return {
     async get(key: string): Promise<T | undefined> {
-      const raw = await store((r) => r.get(prefix + key));
+      const raw = await store((r) => r.get(storeKey(prefix + key)));
       return raw ? (JSON.parse(raw) as T) : undefined;
     },
     async set(key: string, value: T): Promise<void> {
       await store((r) =>
-        r.set(prefix + key, JSON.stringify(value), {
+        r.set(storeKey(prefix + key), JSON.stringify(value), {
           expiration: { type: "EX", value: ttlSeconds },
         }),
       );
     },
     async del(key: string): Promise<void> {
-      await store((r) => r.del(prefix + key));
+      await store((r) => r.del(storeKey(prefix + key)));
     },
   };
 }
