@@ -1243,10 +1243,16 @@ button.menu-row:hover,
   white-space: nowrap;
 }
 
-/* A workspace: the side list of its sections beside the open one, from
-   68.75rem; above it as a row that scrolls sideways on narrower screens.
-   The content is a container, so the overview arranges itself by the room
-   it has, not by the window. */
+/* A workspace: a fixed sidebar of its sections (from 64rem) beside the open
+   one. On workspace pages the top bar stays at the top too, so the sidebar
+   always fills the height below it, with Help and Settings at its foot.
+   Narrower, the sections are a row above the page that scrolls sideways
+   (Help and Settings are in the account menu there). The content is a
+   container, so the overview arranges itself by the room it has. */
+:root {
+  --site-header-height: calc(3.5rem + 1px);
+}
+
 .workspace-layout {
   display: flex;
   flex-direction: column;
@@ -1262,7 +1268,12 @@ button.menu-row:hover,
   min-inline-size: 0;
 }
 
-.workspace-nav ul {
+.workspace-nav-label,
+.workspace-nav-foot {
+  display: none;
+}
+
+.workspace-nav-list {
   display: flex;
   gap: 0.25rem;
   margin: 0;
@@ -1275,15 +1286,22 @@ button.menu-row:hover,
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  inline-size: 100%;
   min-block-size: 2.75rem;
   padding-inline: 0.75rem;
+  border: 0;
   border-radius: var(--hc-radius-control);
+  background: none;
   color: var(--hc-text-ink);
+  font: inherit;
+  text-align: start;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 a.workspace-nav-item:hover,
+button.workspace-nav-item:hover,
 .workspace-nav-item[aria-current="page"] {
   background: var(--hc-surface-tint);
 }
@@ -1295,23 +1313,61 @@ a.workspace-nav-item:hover,
   cursor: default;
 }
 
-@media (min-width: 68.75rem) {
+@media (min-width: 64rem) {
+  body:has(.workspace-layout) .site-header {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 20;
+  }
+
+  /* The workspace takes the whole width under the top bar: the sidebar on
+     the window's edge, the content beside it. */
+  .site-main:has(> .workspace-layout) {
+    max-inline-size: none;
+    margin: 0;
+    padding: 0;
+  }
+
   .workspace-layout {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 2.5rem;
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+    gap: 0;
   }
 
   .workspace-nav {
     position: sticky;
-    inset-block-start: 1.5rem;
-    flex: none;
-    inline-size: 15rem;
+    inset-block-start: var(--site-header-height);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    block-size: calc(100dvh - var(--site-header-height));
+    padding: 1.5rem 1rem 1rem;
+    overflow-y: auto;
+    border-inline-end: 1px solid var(--hc-line-hairline);
+    background: var(--hc-surface-panel);
   }
 
-  .workspace-nav ul {
+  .workspace-nav-label {
+    display: block;
+    padding-inline: 0.75rem;
+  }
+
+  .workspace-nav-list {
     flex-direction: column;
     overflow: visible;
+  }
+
+  .workspace-nav-foot {
+    display: flex;
+    margin-block-start: auto;
+    padding-block-start: 0.75rem;
+    border-block-start: 1px solid var(--hc-line-hairline);
+  }
+
+  .workspace-content {
+    inline-size: 100%;
+    max-inline-size: 80rem;
+    padding: 2rem 2.5rem 4rem;
   }
 }
 
