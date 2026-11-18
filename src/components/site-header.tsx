@@ -5,6 +5,7 @@ import { type Account, SiteNav } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
+import { logError } from "@/lib/log";
 
 // The site's top bar, full width (and, on phones, its bottom tab bar), below
 // 64rem; wider, the sidebar (app-sidebar.tsx) takes its place. The navigation
@@ -40,6 +41,18 @@ async function HeaderNav() {
  * sidebar), or null when signed out. Once per request.
  */
 export const getAccount = cache(async (): Promise<Account | null> => {
+  try {
+    return await readAccount();
+  } catch (err) {
+    // The chrome of every page, public ones included, renders this: a Valkey
+    // or API outage shows the signed-out navigation (and is logged) rather
+    // than failing the page. It changes no session.
+    logError("[account] navigation account failed", err);
+    return null;
+  }
+});
+
+async function readAccount(): Promise<Account | null> {
   const user = await getUser();
   if (!user) return null;
 
@@ -61,4 +74,4 @@ export const getAccount = cache(async (): Promise<Account | null> => {
           }
         : null,
   };
-});
+}
