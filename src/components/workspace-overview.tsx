@@ -33,7 +33,7 @@ import { ArrowUpRight, FolderGit2, Plus, Search, SquareCheckBig } from "lucide-r
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
-import { actorHref, projectHref } from "@/components/cards";
+import { actorHref, projectHref, workspaceHref } from "@/components/cards";
 import { APPS } from "@/lib/apps";
 import {
   type Count,
@@ -240,12 +240,11 @@ function ListLabel({ children }: { children: ReactNode }) {
 // Records --------------------------------------------------------------------
 
 async function RecordsSection({ did }: { did: string }) {
-  const [counts, latest, actor] = await Promise.all([
+  const [counts, latest] = await Promise.all([
     getRecordCounts(did),
     listLatestRecords(did, LATEST_RECORDS),
-    getActor(did),
   ]);
-  const profile = actorHref({ did, handle: actor?.handle ?? null });
+  const work = `${workspaceHref(did)}/projects`;
   const empty =
     latest.length === 0 &&
     counts.activities.value === 0 &&
@@ -285,12 +284,12 @@ async function RecordsSection({ did }: { did: string }) {
               {
                 label: byCount(counts.activities.value, "Activity", "Activities"),
                 value: counts.activities,
-                href: profile,
+                href: work,
               },
               {
                 label: byCount(counts.projects.value, "Project", "Projects"),
                 value: counts.projects,
-                href: profile,
+                href: work,
               },
               { label: byCount(counts.lists.value, "List", "Lists"), value: counts.lists },
             ]}

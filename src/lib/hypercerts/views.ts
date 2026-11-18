@@ -74,6 +74,8 @@ export type ActivityCard = {
   createdAt: string | null;
   indexedAt: string | null;
   imageUrl: string | null;
+  /** When the work happened: "1 Jun 2026 – 3 Jun 2026", "1 Jun 2026 (ongoing)", "Until …". */
+  period: string | null;
 };
 
 export type ProjectCard = {
@@ -329,7 +331,18 @@ export function toActivityCard(activity: ActivityView): ActivityCard {
     createdAt: formatDate(record.createdAt),
     indexedAt: activity.indexedAt,
     imageUrl: imageUrl(activity.did, record.image, "card"),
+    period: formatPeriod(record.startDate, record.endDate),
   };
+}
+
+/** The work's dates, as the staging redesign words them. */
+function formatPeriod(start: unknown, end: unknown): string | null {
+  const from = formatDate(start);
+  const to = formatDate(end);
+  if (from && to) return from === to ? from : `${from} – ${to}`;
+  if (from) return `${from} (ongoing)`;
+  if (to) return `Until ${to}`;
+  return null;
 }
 
 export function toProjectCard(collection: CollectionView): ProjectCard {

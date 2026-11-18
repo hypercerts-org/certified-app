@@ -1372,17 +1372,20 @@ button.workspace-nav-item:hover,
     display: none;
   }
 
-  /* The workspace uses the width beside the sidebar, not the Container's. */
-  .site-main:has(> .workspace-layout) {
-    max-inline-size: none;
-    margin: 0;
-    padding: 0;
+  /* The workspace uses the width beside the sidebar, not the Container's:
+     it steps out of <main> to the app body's left edge (100cqi is the app
+     body's width). Set here, not on <main> with :has(): visited pages stay
+     mounted, hidden, so <main> would keep matching after you leave
+     (Next.js, "Preserving UI state"). */
+  .workspace-layout {
+    inline-size: 100cqi;
+    margin-inline-start: calc((100% - 100cqi) / 2);
   }
 
   .workspace-content {
     inline-size: 100%;
     max-inline-size: 80rem;
-    padding: 2rem 2.5rem 4rem;
+    padding-inline: 2.5rem;
   }
 }
 
@@ -1396,6 +1399,11 @@ button.workspace-nav-item:hover,
   .app-shell {
     display: grid;
     grid-template-columns: 16rem minmax(0, 1fr);
+  }
+
+  /* Its width is what the workspace measures (100cqi) to span it. */
+  .app-body {
+    container-type: inline-size;
   }
 
   .app-body > .site-header {
@@ -1433,6 +1441,12 @@ button.workspace-nav-item:hover,
 
 .sidebar-account-slot {
   min-block-size: 3rem;
+}
+
+/* The account menu's wrapper is inline-block, sized to the name: as a block
+   the control keeps to the sidebar's width and a long name ends in "…". */
+.sidebar-account-popover {
+  display: block;
 }
 
 .sidebar-account-slot form,
@@ -1793,4 +1807,183 @@ button.sidebar-item:hover,
   inline-size: 4rem;
   block-size: 4rem;
   border-radius: 50%;
+}
+
+/* Projects and activities (src/components/work-folders.tsx): the search and
+   New buttons, then each project as a folder of activity rows. */
+.work {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.work-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.work-search {
+  position: relative;
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  max-inline-size: 24rem;
+}
+
+.work-search input {
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding-inline: 2.25rem 0.75rem;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-page);
+  color: var(--hc-text-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.work-search input::placeholder {
+  color: var(--hc-text-muted);
+}
+
+.work-search-icon {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  color: var(--hc-text-muted);
+  pointer-events: none;
+}
+
+.skeleton-search {
+  flex: 1 1 16rem;
+  max-inline-size: 24rem;
+  block-size: 2.5rem;
+}
+
+.work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.work-folders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.work-folder {
+  position: relative;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.work-folder-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-block-size: 3.25rem;
+  padding: 0.5rem 3rem 0.5rem 0.5rem;
+  border-radius: var(--hc-radius-control);
+  cursor: pointer;
+  list-style: none;
+}
+
+.work-folder-head::-webkit-details-marker {
+  display: none;
+}
+
+.work-folder-head:hover {
+  background: var(--hc-surface-tint);
+}
+
+.work-folder-chevron {
+  flex: none;
+  color: var(--hc-text-muted);
+  transition: rotate 150ms ease;
+}
+
+details[open] > .work-folder-head .work-folder-chevron {
+  rotate: 90deg;
+}
+
+.work-folder-title {
+  overflow: hidden;
+  color: var(--hc-text-ink);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Open project: beside the folder head, outside the <summary>, so it is a
+   link of its own and not part of the toggle. */
+.work-folder-open {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-end: 0.5rem;
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-muted);
+}
+
+.work-folder-open:hover {
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-ink);
+}
+
+.work-rows {
+  margin: 0 0 0.5rem;
+  padding: 0 0 0 2.25rem;
+  list-style: none;
+}
+
+.work-row + .work-row {
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.work-row-by {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+.work-chips {
+  display: flex;
+  flex: none;
+  gap: 0.25rem;
+  max-inline-size: 40%;
+}
+
+.work-chip {
+  overflow: hidden;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--hc-radius-tag);
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-folder-empty {
+  margin: 0 0 0.75rem 2.75rem;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+.work-note {
+  margin: 0;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+/* Below 40rem the rows keep their title and dates; the chips go. */
+@media (width < 40rem) {
+  .work-chips {
+    display: none;
+  }
 }

@@ -20,7 +20,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { WORKSPACE_PATH, workspaceHref } from "@/components/cards";
+import { WORKSPACE_OVERVIEW_PATH, workspaceHref } from "@/components/cards";
 import { HelpMenu } from "@/components/help-menu";
 import { SignInButton } from "@/components/sign-in-button";
 import { type Account, SidebarAccountMenu } from "@/components/site-nav";
@@ -49,9 +49,14 @@ function workspaceItems(overview: string): Item[] {
       label: "Overview",
       icon: LayoutDashboard,
       href: overview,
-      isActive: (pathname) => WORKSPACE_PATH.test(pathname),
+      isActive: (pathname) => WORKSPACE_OVERVIEW_PATH.test(pathname),
     },
-    { label: "Projects and activities", icon: FolderGit2, href: null },
+    {
+      label: "Projects and activities",
+      icon: FolderGit2,
+      href: `${overview}/projects`,
+      isActive: under(`${overview}/projects`),
+    },
     { label: "Endorsements", icon: ThumbsUp, href: null },
     { label: "Lists", icon: ListChecks, href: null },
     { label: "Groups", icon: UsersRound, href: null },

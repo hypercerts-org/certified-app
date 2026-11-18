@@ -32,7 +32,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { actorHref, WORKSPACE_PATH, workspaceHref } from "@/components/cards";
+import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
@@ -192,7 +192,9 @@ function useSwitchActingAs(account: Account) {
   const pathname = useDecodedPathname();
   const [, startTransition] = useTransition();
 
-  const toWorkspace = (did: string) => router.push(workspaceHref(did));
+  // To the same section of the other workspace.
+  const toWorkspace = (did: string) =>
+    router.push(`${workspaceHref(did)}${workspaceSection(pathname)}`);
 
   const switchTo = (target: Identity, previous: Identity | null) =>
     startTransition(async () => {
@@ -565,7 +567,12 @@ export function SidebarAccountMenu({ account }: { account: Account }) {
   const identity = current(account);
   const subline = byline(account);
   return (
-    <Popover kind="navigation" open={open} onOpenChange={setOpen}>
+    <Popover
+      kind="navigation"
+      open={open}
+      onOpenChange={setOpen}
+      className="sidebar-account-popover"
+    >
       <PopoverTrigger className="sidebar-account" aria-label={`${identity.name}, account menu`}>
         <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
         <span className="sidebar-account-text">

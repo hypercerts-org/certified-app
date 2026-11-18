@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
-import { WorkspaceNav } from "@/components/workspace-nav";
+import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
 
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
   return <WorkspaceNav overview={workspaceHref(decodeURIComponent((await params).actor))} />;
@@ -10,7 +10,7 @@ async function Nav({ params }: { params: Promise<{ actor: string }> }) {
 export default function WorkspaceLayout({ children, params }: LayoutProps<"/[actor]/workspace">) {
   return (
     <div className="workspace-layout">
-      <Suspense fallback={<WorkspaceNav overview="/workspace" />}>
+      <Suspense fallback={<WorkspaceNavView overview="/workspace" />}>
         <Nav params={params} />
       </Suspense>
       <div className="workspace-content">{children}</div>

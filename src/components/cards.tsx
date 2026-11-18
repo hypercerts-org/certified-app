@@ -22,6 +22,14 @@ export function workspaceHref(did: string) {
 /** `/workspace`, and any account's workspace or profile editor; group 1 is the DID. */
 export const WORKSPACE_PATH = /^\/(?:workspace|(did:[^/]+)\/(?:workspace|edit))(?:\/|$)/;
 
+/** A workspace's Overview (or the profile editor, opened from it). */
+export const WORKSPACE_OVERVIEW_PATH = /^\/(?:workspace|did:[^/]+\/(?:workspace|edit))\/?$/;
+
+/** The section of a workspace a path is in ("/projects"), or "" for the Overview. */
+export function workspaceSection(pathname: string): string {
+  return pathname.match(/^\/did:[^/]+\/workspace(\/[^/]+)/)?.[1] ?? "";
+}
+
 export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
   return `/${project.authorDid}/project/${project.rkey}`;
 }

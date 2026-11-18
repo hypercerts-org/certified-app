@@ -532,6 +532,83 @@ export async function listLatestRecords(did: string, limit: number): Promise<Rec
     .slice(0, limit);
 }
 
+/** What a workspace's Projects and activities lists. */
+export type Work = {
+  projects: ProjectCard[];
+  /** The account's own activities, newest first. */
+  activities: ActivityCard[];
+  /** Other accounts' activities that sit in its projects. */
+  others: ActivityCard[];
+  /** Whether there were more activities or projects than were loaded. */
+  truncated: boolean;
+};
+
+const MAX_WORK = 500;
+
+/**
+ * An account's projects and activities, for its workspace: every activity
+ * it published, every project, and the activities other accounts published
+ * that its projects hold.
+ */
+export async function getWork(did: string): Promise<Work> {
+  "use cache";
+  publicData(tags.activities(did));
+  cacheTag(tags.projects(did));
+
+  async function all<T>(
+    load: (cursor?: string) => Promise<{ items: T[]; cursor?: string }>,
+  ): Promise<{ items: T[]; more: boolean }> {
+    const items: T[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await load(cursor);
+      items.push(...page.items);
+      cursor = page.cursor;
+    } while (cursor && items.length < MAX_WORK);
+    return { items, more: Boolean(cursor) };
+  }
+
+  const [activities, projects] = await Promise.all([
+    all(async (cursor) => {
+      const page = await api.call(
+        org.hypercerts.claim.listActivities,
+        { authors: [did as Did], limit: 100, cursor },
+        read(),
+      );
+      return { items: page.activities.map(toActivityCard), cursor: page.cursor };
+    }),
+    all(async (cursor) => {
+      const page = await api.call(
+        org.hypercerts.collection.listCollections,
+        { authors: [did as Did], types: ["project"], limit: 100, cursor },
+        read(),
+      );
+      return { items: page.collections.map(toProjectCard), cursor: page.cursor };
+    }),
+  ]);
+
+  const own = new Set(activities.items.map((activity) => activity.uri));
+  const foreign = [...new Set(projects.items.flatMap((project) => project.activityUris))].filter(
+    (uri) => !own.has(uri) && didOf(uri) !== did,
+  );
+  const others: ActivityCard[] = [];
+  for (const batch of chunks(foreign)) {
+    const page = await api.call(
+      org.hypercerts.claim.listActivities,
+      { uris: batch as AtUri[], limit: 100 },
+      read(),
+    );
+    others.push(...page.activities.map(toActivityCard));
+  }
+
+  return {
+    projects: projects.items,
+    activities: activities.items,
+    others: await withHandlesIn(others, "author"),
+    truncated: activities.more || projects.more,
+  };
+}
+
 export type Endorsements = {
   /** Received, leaving out those the account rejected. */
   receivedCount: number;
