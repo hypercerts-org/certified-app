@@ -9,6 +9,7 @@
 // a switch still writes as what it showed.
 import "server-only";
 
+import { cache } from "react";
 import { getUser } from "@/lib/auth/dal";
 import { readActingAs } from "@/lib/auth/session";
 import { logError } from "@/lib/log";
@@ -17,9 +18,11 @@ import { getMemberships } from "@/lib/memberships";
 /**
  * The DID the signed-in user acts as, or null when signed out: the stored
  * organization while they still belong to it (memberships up to five minutes
- * old), otherwise their own account. Render inside a Suspense boundary.
+ * old), otherwise their own account. Once per request (React cache): the
+ * header, the profile's owner controls and the gates all ask. Render inside a
+ * Suspense boundary.
  */
-export async function getActingAs(): Promise<string | null> {
+export const getActingAs = cache(async (): Promise<string | null> => {
   const user = await getUser();
   if (!user) return null;
   const stored = await readActingAs();
@@ -30,8 +33,9 @@ export async function getActingAs(): Promise<string | null> {
     if (!Array.isArray(memberships)) return user.did;
     return memberships.some((m) => m.groupDid === stored) ? stored : user.did;
   } catch (err) {
-    // CGS or the PDS is unreachable: keep the choice, checked when it was made.
+    // Memberships can't be read: show the user's own account rather than
+    // trust the cookie unchecked (it only decides what pages show).
     logError("[acting-as] membership check failed", err);
-    return stored;
+    return user.did;
   }
-}
+});

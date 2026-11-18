@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cacheLife } from "next/cache";
+import { cache } from "react";
 import { getUser, readOAuthSession } from "@/lib/auth/dal";
 import {
   listMembershipsForDisplay,
@@ -36,9 +37,10 @@ async function rememberedMemberships(did: string): Promise<Membership[]> {
  * The signed-in user's memberships (up to five minutes old), null when signed
  * out, or "expired" when they must sign in again to load them. Throws
  * SessionUnavailableError (from readOAuthSession) when the session can't be
- * read right now.
+ * read right now. Once per request (React cache): every gate on a page asks,
+ * and a Valkey miss must not become one OAuth restore and CGS call each.
  */
-export async function getMemberships(): Promise<Membership[] | "expired" | null> {
+export const getMemberships = cache(async (): Promise<Membership[] | "expired" | null> => {
   const user = await getUser();
   if (!user) return null;
   try {
@@ -51,7 +53,7 @@ export async function getMemberships(): Promise<Membership[] | "expired" | null>
   if (session === null) return null;
   if (session === "expired") return "expired";
   return listMembershipsForDisplay(session);
-}
+});
 
 /**
  * Whether the signed-in user may edit `did`'s profile, for showing "Edit
@@ -59,10 +61,10 @@ export async function getMemberships(): Promise<Membership[] | "expired" | null>
  * Acting as an organization doesn't by itself make a member an editor. The
  * edit itself is checked again on CGS (canEdit).
  */
-export async function mayEditProfile(did: string): Promise<boolean> {
+export const mayEditProfile = cache(async (did: string): Promise<boolean> => {
   const user = await getUser();
   if (!user) return false;
   if (user.did === did) return true;
   const memberships = await getMemberships().catch(() => null);
   return Array.isArray(memberships) && memberships.some((m) => m.groupDid === did && manages(m));
-}
+});
