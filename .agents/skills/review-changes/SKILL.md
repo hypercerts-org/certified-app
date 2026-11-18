@@ -21,7 +21,8 @@ file, they win: say so in the report.
 - Ask nothing you can find out. Default base: `v2`. Diff the branch against
   it: `git diff v2...HEAD` and `git log v2..HEAD`, plus `git status` and
   `git diff` for uncommitted work. For a GitHub pull request,
-  `gh pr diff <n>` and `gh pr view <n>`.
+  `gh pr diff <n>` and `gh pr view <n>`. For one commit, `git show <sha>`;
+  for a range, `git diff A..B`.
 - List the changed files and group them: pages and layouts
   (`src/app/**`), components (`src/components/**`), data and auth
   (`src/lib/**`), styles (`globals.css`, `landing.css`), config.
@@ -30,17 +31,27 @@ file, they win: say so in the report.
 
 ## 2. Run the gates
 
-From the repo root (prefix with `mise exec node@24 --` if `pnpm` isn't on
-the path):
+Run them on the code under review: the checked-out branch or PR. To review
+an older commit or a PR you haven't checked out, use a worktree
+(`git worktree add ../review <ref>`, then `pnpm install` there; a copied or
+symlinked `node_modules` breaks `next build`). The project uses Node 24
+(`.nvmrc`): if `node -v` says otherwise or `pnpm` is missing, prefix each
+command with `mise exec node@24 --`.
 
 ```bash
 pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 ```
 
 All five must pass (AGENTS.md). A failure is the first finding; quote the
-error. `pnpm build` must also log no prerender errors such as
-`"use cache: private" rejects when the prerender is complete`: those mean a
-catch block swallowed one of Next's signals (rule C7).
+error. `pnpm build` can exit 0 and still log errors, so search its output:
+`Error occurred prerendering` fails a page; `"use cache: private" rejects
+when the prerender is complete` means a catch block swallowed one of Next's
+signals (rule C7). (The first `pnpm` command may also run `postinstall`,
+which regenerates route types: expected, not a change to review.)
+
+On a branch of several commits, tell new problems from old: run the gates
+on the base (`v2`) too, and report a failure the base already has as
+"pre-existing", not against this change.
 
 If the change touches pages, look at them: `pnpm dev`, open
 `http://127.0.0.1:3000` (not localhost), signed out at least. Note in the
@@ -108,14 +119,21 @@ cite file and line for each finding.
   by DID or AT-URI, never by a handle or raw URL value (a save expires
   `tags.actor(did)`).
 - A3. Ask the smallest question: a batch endpoint for many accounts
-  (`getActorCards`), `getFollow` for "do I follow", `includeTotal` or a
-  `limit: 1` for counts and emptiness. No call per row; no 100-row page to
-  answer yes or no.
+  (`getActorCards`), `isFollowing` (the API's `getFollow`) for "do I
+  follow", `includeTotal` or a `limit: 1` for counts and emptiness. No call
+  per row; no 100-row page to answer yes or no.
+- A3b. Reuse an answer the page already asked for: a cached function
+  called with the same arguments shares one cache entry, different
+  arguments don't. Prefer the existing call (`getRecordCounts`,
+  `getEndorsements`) over a near-copy.
 - A4. A count shown to users comes from the API's total, not from
   `rows.length` of a capped page.
 - A5. Not found (return null), failure (throw) and a null projection
-  (render it) are different. Strong references stay `{ uri, cid }`; see
-  TECH-920 before resolving a project's items by URI.
+  (render it) are different. Strong references stay `{ uri, cid }`. A
+  project points at exact versions of its activities, and after an edit
+  the API returns that item as null; whether to show the current version
+  instead is open (Linear TECH-920), so don't change how project items
+  resolve without that decision.
 - A6. URLs from records reach `href` or `src` only through `safeUrl`
   (https only for images).
 
@@ -245,4 +263,6 @@ After the findings:
 
 End by offering to make the fixes. When the author says yes, fix them one
 at a time, each as its own commit with a message that says what changed
-and why, and run the gates again before handing back.
+and why. Run all five gates, the build included, before every commit, not
+only at the end: a change can pass lint and tests and still fail a
+prerender.
