@@ -26,7 +26,7 @@ export default function TermsPage() {
           Terms of Service
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 3, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 18, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -555,8 +555,7 @@ export default function TermsPage() {
             </h3>
             <p>
               Upon termination, your access to the services will cease. The Hypercerts Foundation
-              will delete your account data from its infrastructure within a reasonable period,
-              subject to any legal retention obligations.
+              deletes your account data as set out in Section 10 of the Privacy Policy.
             </p>
             <p className="mt-4">
               As described in Section 13, data previously published through the AT Protocol may

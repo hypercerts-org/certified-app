@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
 
-        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 10, 2026</p>
+        <p className="text-sm text-[var(--fg-muted)] mb-8">Last updated: November 18, 2026</p>
 
         <nav aria-label="Contents" className="legal-toc mb-8">
           <ol>
@@ -473,7 +473,7 @@ export default function PrivacyPage() {
                 </tr>
                 <tr>
                   <td>Logs, security data and backups</td>
-                  <td>90 days</td>
+                  <td>Up to 90 days</td>
                 </tr>
                 <tr>
                   <td>Sign-in history and audit logs</td>
