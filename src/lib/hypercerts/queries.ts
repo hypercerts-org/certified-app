@@ -10,6 +10,7 @@ import { Client, type l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDid, getHandle } from "@/lib/identity";
+import { logError } from "@/lib/log";
 import { tags } from "./cache";
 import {
   type ActivityCard,
@@ -530,6 +531,79 @@ export async function listLatestRecords(did: string, limit: number): Promise<Rec
   return [...activities.map(activityRecord), ...collections.map(projectRecord)]
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
     .slice(0, limit);
+}
+
+/** The network's size, for the landing page: each kind counted up to MAX_COUNTED. */
+export type NetworkCounts = {
+  people: Count | null;
+  organizations: Count | null;
+  projects: Count | null;
+  activities: Count | null;
+  endorsements: Count | null;
+};
+
+/** A count, or null when it can't be had: one bad record fails a page's validation. */
+const orNull = (count: Promise<Count>) =>
+  count.catch((err: unknown) => {
+    logError("[network counts] count failed", err);
+    return null;
+  });
+
+/**
+ * The network's size, by paging the API (it has no count endpoint yet),
+ * each kind capped at MAX_COUNTED. Cached for hours: the landing page shows
+ * it to everyone.
+ */
+export async function getNetworkCounts(): Promise<NetworkCounts> {
+  "use cache";
+  cacheLife("hours");
+
+  const page = { limit: 100 };
+  const [people, organizations, projects, activities, endorsements] = await Promise.all([
+    orNull(
+      countPages(async (cursor) => {
+        const r = await api.call(app.certified.actor.listProfiles, { ...page, cursor }, read());
+        return { count: r.profiles.length, cursor: r.cursor };
+      }),
+    ),
+    orNull(
+      countPages(async (cursor) => {
+        const r = await api.call(
+          app.certified.actor.listOrganizations,
+          { ...page, cursor },
+          read(),
+        );
+        return { count: r.actors.length, cursor: r.cursor };
+      }),
+    ),
+    orNull(
+      countPages(async (cursor) => {
+        const r = await api.call(
+          org.hypercerts.collection.listCollections,
+          { ...page, types: ["project"], cursor },
+          read(),
+        );
+        return { count: r.collections.length, cursor: r.cursor };
+      }),
+    ),
+    orNull(
+      countPages(async (cursor) => {
+        const r = await api.call(org.hypercerts.claim.listActivities, { ...page, cursor }, read());
+        return { count: r.activities.length, cursor: r.cursor };
+      }),
+    ),
+    orNull(
+      countPages(async (cursor) => {
+        const r = await api.call(
+          app.certified.badge.listBadgeAwards,
+          { ...page, badgeTypes: ["endorsement"], cursor },
+          read(),
+        );
+        return { count: r.badgeAwards.length, cursor: r.cursor };
+      }),
+    ),
+  ]);
+  return { people, organizations, projects, activities, endorsements };
 }
 
 /** What a workspace's Projects and activities lists. */
