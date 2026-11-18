@@ -30,7 +30,7 @@ async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [endorsements, { lists }] = await Promise.all([getEndorsements(did, 1), listLists(did)]);
+  const [endorsements, { lists }] = await Promise.all([getEndorsements(did), listLists(did)]);
   const { receivedCount, hiddenCount, given } = endorsements;
   const shown = numberFormat.format(receivedCount);
   return (

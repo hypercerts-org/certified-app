@@ -103,7 +103,7 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
   const [records, endorsements, follows] = await Promise.all([
     getRecordCounts(did),
-    getEndorsements(did, 3),
+    getEndorsements(did),
     getFollowCounts(did),
   ]);
   return (

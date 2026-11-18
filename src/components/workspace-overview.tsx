@@ -59,7 +59,6 @@ import { didOf, rkeyOf } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
 
 const LATEST_RECORDS = 4;
-const LATEST_ENDORSEMENTS = 3;
 
 export function WorkspaceOverview({
   did,
@@ -396,10 +395,7 @@ function RecordRow({ record }: { record: RecentRecord }) {
 // Endorsements and followers ---------------------------------------------------
 
 async function EndorsementsSection({ did }: { did: string }) {
-  const [endorsements, follows] = await Promise.all([
-    getEndorsements(did, LATEST_ENDORSEMENTS),
-    getFollowCounts(did),
-  ]);
+  const [endorsements, follows] = await Promise.all([getEndorsements(did), getFollowCounts(did)]);
   return (
     <Section
       title="Endorsements and followers"

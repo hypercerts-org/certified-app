@@ -18,6 +18,7 @@ import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
   getEndorsements,
+  getRecordCounts,
   listActivitiesPage,
   listEndorsements,
   listFollows,
@@ -275,15 +276,12 @@ async function EndorsedBy({ did, base }: { did: string; base: string }) {
  */
 async function NothingPublic({ did, base, about }: { did: string; base: string; about: boolean }) {
   if (about) return null;
-  // Counts, not lists: whether anything is there at all.
-  const [activities, projects, endorsements] = await Promise.all([
-    listActivitiesPage({ author: did, limit: 1 }),
-    listProjectsPage({ author: did }),
-    getEndorsements(did, 1),
-  ]);
+  // The counts the profile's tabs already asked for (same cached answers):
+  // whether anything is there at all, with no request of its own.
+  const [records, endorsements] = await Promise.all([getRecordCounts(did), getEndorsements(did)]);
   const empty =
-    activities.items.length === 0 &&
-    projects.items.length === 0 &&
+    records.activities.value === 0 &&
+    records.projects.value === 0 &&
     endorsements.given === 0 &&
     endorsements.receivedCount === 0;
   if (!empty) return null;

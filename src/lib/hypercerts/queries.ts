@@ -593,7 +593,13 @@ export type Endorsements = {
  * Badge awards whose definition has badgeType "endorsement": counted as award
  * records (two awards to one account count as two).
  */
-export async function getEndorsements(did: string, latest: number): Promise<Endorsements> {
+/**
+ * How many of the latest received endorsements every caller asks for: one
+ * value, so the profile, its tabs and the workspace share one cached answer.
+ */
+const LATEST_ENDORSEMENTS = 3;
+
+export async function getEndorsements(did: string): Promise<Endorsements> {
   "use cache";
   publicData(tags.endorsements(did));
 
@@ -606,7 +612,7 @@ export async function getEndorsements(did: string, latest: number): Promise<Endo
         badgeTypes,
         responses: ["accepted", "unanswered"],
         includeTotal: true,
-        limit: latest,
+        limit: LATEST_ENDORSEMENTS,
       },
       read(),
     ),
