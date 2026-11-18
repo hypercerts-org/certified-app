@@ -113,9 +113,9 @@ interface VideoEmbed {
 /** Map a contributor video URL to a playable embed. */
 function resolveVideoEmbed(url: string): VideoEmbed {
   const yt = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/.exec(url)
-  if (yt) return { kind: "iframe", src: `https://www.youtube.com/embed/${yt[1]}` }
+  if (yt) return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed/${yt[1]}` }
   const vimeo = /vimeo\.com\/(\d+)/.exec(url)
-  if (vimeo) return { kind: "iframe", src: `https://player.vimeo.com/video/${vimeo[1]}` }
+  if (vimeo) return { kind: "iframe", src: `https://player.vimeo.com/video/${vimeo[1]}?dnt=1` }
   const ig = /instagram\.com\/(reel|p)\/([\w-]+)/.exec(url)
   if (ig) return { kind: "iframe", src: `https://www.instagram.com/${ig[1]}/${ig[2]}/embed/` }
   if (/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url)) return { kind: "video", src: url }

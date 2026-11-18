@@ -96,7 +96,7 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
     const id = url.pathname.replace(/^\//, "").split("/")[0]
     if (id && VIMEO_ID.test(id)) {
       return {
-        embedUrl: `https://player.vimeo.com/video/${id}`,
+        embedUrl: `https://player.vimeo.com/video/${id}?dnt=1`,
         aspectRatio: { width: 16, height: 9 },
         provider: "vimeo",
       }
@@ -106,7 +106,7 @@ export function normaliseEmbedUrl(input: string): NormalisedEmbed | null {
     const id = url.pathname.split("/")[2]
     if (id && VIMEO_ID.test(id)) {
       return {
-        embedUrl: `https://player.vimeo.com/video/${id}`,
+        embedUrl: `https://player.vimeo.com/video/${id}?dnt=1`,
         aspectRatio: { width: 16, height: 9 },
         provider: "vimeo",
       }
