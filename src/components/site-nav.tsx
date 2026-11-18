@@ -19,8 +19,11 @@ import {
   FolderOpen,
   Globe,
   LayoutGrid,
+  LogIn,
   LogOut,
   type LucideIcon,
+  MessageSquare,
+  Plus,
   Settings,
   UserRound,
   X,
@@ -30,7 +33,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { actorHref, WORKSPACE_PATH, workspaceHref } from "@/components/cards";
-import { ProfileName } from "@/components/profile-text";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
@@ -274,13 +276,95 @@ function SwitchedToast({
   );
 }
 
+// The account menu, after the staging redesign: "Act as" (you, then every
+// organization you belong to, each with a gear to its settings, then New
+// group) and "Signed in as" (your profile, another sign-in, feedback, sign
+// out). New group and the organizations' settings are placeholders until
+// this app has them.
+
+const COMING_SOON = "Coming soon";
+const FEEDBACK_URL = "https://github.com/hypercerts-org/certified-app/issues/new";
+
+/** "You · @handle", "Owner · @handle": the note, then the handle if there is one. */
+function rowSecondary(note: string, handle: string | null): string {
+  return handle ? `${note} · @${handle}` : note;
+}
+
+function ActAsRow({
+  identity,
+  secondary,
+  square,
+  active,
+  onSwitch,
+  settings,
+}: {
+  identity: Identity;
+  secondary: string;
+  /** Organizations' avatars are square, people's round. */
+  square: boolean;
+  active: boolean;
+  onSwitch: (target: Identity) => void;
+  /** The account's settings, or null while it has none in this app. */
+  settings: { href: string; label: string; onNavigate: () => void } | null;
+}) {
+  return (
+    <li className="act-as-row">
+      <button
+        type="button"
+        className="menu-row"
+        aria-current={active ? "true" : undefined}
+        disabled={active}
+        onClick={() => onSwitch(identity)}
+      >
+        <Avatar
+          name={identity.name}
+          src={identity.avatarUrl}
+          size="md"
+          className={square ? "avatar-square" : undefined}
+        />
+        <span className="menu-row-text">
+          <Text as="span" tone="ink">
+            {identity.name}
+          </Text>
+          <Text as="span" size="body-sm" tone="muted" className="ellipsis">
+            {secondary}
+          </Text>
+        </span>
+        {active && <Check size={16} aria-label="Current" />}
+      </button>
+      {settings ? (
+        <Link
+          href={settings.href}
+          className="act-as-settings"
+          aria-label={settings.label}
+          onClick={settings.onNavigate}
+        >
+          <Settings size={16} aria-hidden />
+        </Link>
+      ) : (
+        <span
+          className="act-as-settings"
+          aria-disabled="true"
+          title={COMING_SOON}
+          role="img"
+          aria-label={`${identity.name} settings (coming soon)`}
+        >
+          <Settings size={16} aria-hidden />
+        </span>
+      )}
+    </li>
+  );
+}
+
 /** You, then every organization you belong to; the current one checked. */
 function ActAsList({
   account,
   onSwitch,
+  onNavigate,
 }: {
   account: Account;
   onSwitch: (target: Identity) => void;
+  onNavigate: () => void;
 }) {
   const labelId = useId();
   const organizations = useOrganizations();
@@ -294,9 +378,11 @@ function ActAsList({
       <ul className="menu-list" aria-labelledby={labelId}>
         <ActAsRow
           identity={you}
-          secondary="Personal"
+          secondary={rowSecondary("You", account.handle)}
+          square={false}
           active={activeDid === account.did}
           onSwitch={onSwitch}
+          settings={{ href: "/settings", label: "Your settings", onNavigate }}
         />
         {organizations.isPending ? (
           <li className="menu-row">
@@ -313,49 +399,23 @@ function ActAsList({
             <ActAsRow
               key={organization.did}
               identity={organization}
-              secondary={organization.roleLabel}
+              secondary={rowSecondary(organization.roleLabel, organization.handle)}
+              square
               active={activeDid === organization.did}
               onSwitch={onSwitch}
+              settings={null}
             />
           ))
         )}
+        <li>
+          <button type="button" className="menu-row" disabled title={COMING_SOON}>
+            <Plus size={16} aria-hidden />
+            New group
+            <span className="visually-hidden"> (coming soon)</span>
+          </button>
+        </li>
       </ul>
     </>
-  );
-}
-
-function ActAsRow({
-  identity,
-  secondary,
-  active,
-  onSwitch,
-}: {
-  identity: Identity;
-  secondary: string;
-  active: boolean;
-  onSwitch: (target: Identity) => void;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        className="menu-row"
-        aria-current={active ? "true" : undefined}
-        disabled={active}
-        onClick={() => onSwitch(identity)}
-      >
-        <Avatar name={identity.name} src={identity.avatarUrl} size="sm" />
-        <span className="menu-row-text">
-          <Text as="span" size="body-sm" tone="ink">
-            {identity.name}
-          </Text>
-          <Text as="span" size="micro" tone="muted">
-            {secondary}
-          </Text>
-        </span>
-        {active && <Check size={16} aria-label="Current" />}
-      </button>
-    </li>
   );
 }
 
@@ -368,47 +428,65 @@ function AccountMenuContent({
   onNavigate: () => void;
   onSwitch: (target: Identity) => void;
 }) {
-  const identity = current(account);
-  const subline = byline(account);
+  const youId = useId();
+  // Your profile: the "Signed in as" part is about you, whoever you act as.
+  const profileHref = account.handle ? `/${account.handle}` : actorHref(account.did);
   return (
     <div className="menu-list">
-      <div className="menu-row menu-row-static">
-        <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
-        <span className="menu-row-text">
-          <Text as="span" tone="ink" className="account-name">
-            {account.actingAs ? (
-              identity.name
-            ) : (
-              <ProfileName did={account.did} rendered={account.profile} />
-            )}
-          </Text>
-          {subline && (
-            <Text as="span" size="body-sm" tone="muted">
-              {subline}
-            </Text>
-          )}
-        </span>
-      </div>
       <ActAsList
         account={account}
+        onNavigate={onNavigate}
         onSwitch={(target) => {
           onNavigate();
           onSwitch(target);
         }}
       />
       <hr className="menu-separator" />
-      <Link href={actorHref(identity.did)} className="menu-row" onClick={onNavigate}>
-        <UserRound size={16} aria-hidden />
-        View profile
-      </Link>
-      <Link href="/settings" className="menu-row" onClick={onNavigate}>
-        <Settings size={16} aria-hidden />
-        Settings
-      </Link>
-      <SignOutForm buttonClassName="menu-row">
-        <LogOut size={16} aria-hidden />
-        Sign out
-      </SignOutForm>
+      <p id={youId} className="menu-label menu-label-signed-in">
+        Signed in as <span className="menu-label-name">{account.name}</span>
+      </p>
+      <ul className="menu-list" aria-labelledby={youId}>
+        <li>
+          <Link href={profileHref} className="menu-row" onClick={onNavigate}>
+            <UserRound size={16} aria-hidden />
+            View profile
+          </Link>
+        </li>
+        <li>
+          {/* A new sign-in replaces this browser's session (the callback
+              ends the old one), so the row says so. */}
+          <SignInButton anotherAccount returnTo="/" buttonClassName="menu-row">
+            <LogIn size={16} aria-hidden />
+            <span className="menu-row-text">
+              <span>Sign in with another account</span>
+              {account.handle && (
+                <Text as="span" size="body-sm" tone="muted">
+                  Signs you out of @{account.handle}
+                </Text>
+              )}
+            </span>
+          </SignInButton>
+        </li>
+        <li>
+          <a
+            href={FEEDBACK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="menu-row"
+            onClick={onNavigate}
+          >
+            <MessageSquare size={16} aria-hidden />
+            Send feedback
+            <span className="visually-hidden"> (opens in a new tab)</span>
+          </a>
+        </li>
+        <li>
+          <SignOutForm buttonClassName="menu-row">
+            <LogOut size={16} aria-hidden />
+            Sign out
+          </SignOutForm>
+        </li>
+      </ul>
     </div>
   );
 }

@@ -11,9 +11,15 @@ import type { ReactNode } from "react";
  */
 export function SignInButton({
   returnTo,
+  anotherAccount = false,
+  buttonClassName,
   children = "Sign in",
 }: {
   returnTo?: string;
+  /** Ask who is signing in, instead of returning the account signed in at Certified. */
+  anotherAccount?: boolean;
+  /** Replaces the design-system button with a plain one, for a menu row. */
+  buttonClassName?: string;
   children?: ReactNode;
 }) {
   const pathname = usePathname();
@@ -22,9 +28,16 @@ export function SignInButton({
   return (
     <form method="post" action="/oauth/sign-in">
       <input type="hidden" name="returnTo" value={here} />
-      <Button type="submit" variant="primary" size="sm">
-        {children}
-      </Button>
+      {anotherAccount && <input type="hidden" name="prompt" value="login" />}
+      {buttonClassName ? (
+        <button type="submit" className={buttonClassName}>
+          {children}
+        </button>
+      ) : (
+        <Button type="submit" variant="primary" size="sm">
+          {children}
+        </Button>
+      )}
     </form>
   );
 }

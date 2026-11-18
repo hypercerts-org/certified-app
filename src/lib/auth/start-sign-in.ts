@@ -40,13 +40,15 @@ async function allowSignIn(): Promise<boolean> {
 export async function signInUrl(
   target: { server: string } | { handle: string },
   returnTo: string,
+  /** "login": ask who is signing in, even when the server already knows. */
+  prompt?: "login",
 ): Promise<string> {
   try {
     if (!(await allowSignIn())) return signInErrorHref("busy", returnTo);
     const client = await getOAuthClient();
     const state = await beginSignIn(returnTo);
     const input = "server" in target ? target.server : target.handle;
-    return (await client.authorize(input, { scope: OAUTH_SCOPE, state })).href;
+    return (await client.authorize(input, { scope: OAUTH_SCOPE, state, prompt })).href;
   } catch (err) {
     // A handle that doesn't resolve to an account (or whose server has no
     // OAuth support) is the visitor's to fix; anything else is ours.

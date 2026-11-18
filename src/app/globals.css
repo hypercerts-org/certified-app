@@ -92,6 +92,7 @@
   .nav-link,
   .account-button,
   .menu-row,
+  .act-as-settings,
   .bottom-nav-item,
   .app-link,
   .switch-toast-close
@@ -151,9 +152,10 @@
 }
 
 .menu-panel {
-  inline-size: 18rem;
+  inline-size: min(22rem, calc(100vw - 2rem));
   padding: 0.25rem;
 }
+
 
 .menu-list {
   display: flex;
@@ -225,6 +227,62 @@ button.menu-row:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* An "Act as" row: the account, then the gear to its settings beside it. */
+.act-as-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.act-as-row > .menu-row {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.act-as-settings {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-muted);
+}
+
+a.act-as-settings:hover {
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-ink);
+}
+
+.act-as-settings[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Not built yet: shown dimmed, inert. */
+button.menu-row:disabled:not([aria-current]) {
+  color: var(--hc-text-muted);
+  opacity: 0.55;
+}
+
+.menu-label-signed-in {
+  overflow: hidden;
+  margin: 0;
+  color: var(--hc-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.menu-label-name {
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .visually-hidden {
@@ -849,7 +907,9 @@ button.menu-row:hover,
 
 /* Organizations get a square avatar, as on the staging redesign. */
 .profile-avatar-square,
-.profile-avatar-square img {
+.profile-avatar-square img,
+.avatar-square,
+.avatar-square img {
   border-radius: var(--hc-radius-control);
 }
 

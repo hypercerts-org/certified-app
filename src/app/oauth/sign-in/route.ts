@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
   await connection();
   const form = await request.formData().catch(() => null);
   const returnTo = returnPath(form?.get("returnTo"));
-  const url = await signInUrl({ server: CERTIFIED_PDS_URL }, returnTo);
+  // "Sign in with another account" asks for `prompt=login`, so the sign-in
+  // page asks who is signing in rather than returning the current account.
+  const prompt = form?.get("prompt") === "login" ? "login" : undefined;
+  const url = await signInUrl({ server: CERTIFIED_PDS_URL }, returnTo, prompt);
   // 303: the browser follows with a GET. A 307 would repeat the POST.
   return NextResponse.redirect(new URL(url, request.url), 303);
 }
