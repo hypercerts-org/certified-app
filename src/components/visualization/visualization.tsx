@@ -210,9 +210,11 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
           rankings. Below that the totals line and the find + Filters row
           sit above the graph and the rankings under it (visualization.css). */}
       <div className="viz__side">
-        {compact && ready ? (
-          <p className="viz__summary">{graphSummary(statsGraph ?? graph)}</p>
-        ) : compact && isLoading ? (
+        {/* The totals wait for the shown graph's own stats (onStats): the
+            raw network's larger numbers would flash first. */}
+        {compact && ready && statsGraph ? (
+          <p className="viz__summary">{graphSummary(statsGraph)}</p>
+        ) : compact && (isLoading || ready) ? (
           <div className="viz__summary viz__summary--loading" aria-hidden="true">
             <Skeleton variant="line" width={260} height={12} />
           </div>
@@ -224,14 +226,14 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
             one too. */}
         {isLoading || ready ? <ToolbarPlaceholder /> : null}
         {isLoading || ready ? <ControlsPlaceholder /> : null}
-        {isLoading ? <TotalsPlaceholder /> : null}
-        {ready && (
+        {isLoading || (ready && !statsGraph) ? <TotalsPlaceholder /> : null}
+        {ready && statsGraph ? (
           <EndorsementStats
-            graph={statsGraph ?? graph}
+            graph={statsGraph}
             onFocus={handleFocus}
             showTotals={!compact}
           />
-        )}
+        ) : null}
       </div>
     </div>
   )

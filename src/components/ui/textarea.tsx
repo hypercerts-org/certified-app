@@ -80,7 +80,7 @@ const compactClasses = "py-0.5 px-1.5 text-[0.8125rem]";
 // A field in error: as Input (DESIGN.md §9.2), the border in
 // --color-error at full strength, kept on focus with the error halo.
 const errorBorder =
-  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]";
+  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[shadow:var(--shadow-ring-error)]";
 
 /** The counter announces itself only this close to the limit (characters
  *  left), not on every keystroke. */

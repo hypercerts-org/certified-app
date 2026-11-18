@@ -117,7 +117,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
         {!isUploading ? (
           <span
             aria-hidden
-            className="absolute -bottom-0.5 -right-0.5 hidden h-6 w-6 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)] [@media_not_all_and_(hover:hover)_and_(pointer:fine)]:flex"
+            className="absolute -bottom-0.5 -right-0.5 hidden h-6 w-6 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[shadow:var(--shadow-sm)] [@media_not_all_and_(hover:hover)_and_(pointer:fine)]:flex"
           >
             <Camera className="h-3.5 w-3.5" />
           </span>

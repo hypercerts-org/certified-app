@@ -539,7 +539,7 @@ function ProfileHeaderFields({
         onChange={(e) => onDraftChange("displayName", e.target.value)}
       />
       <Textarea
-        label="Bio"
+        label="Bio (optional)"
         rows={3}
         value={drafts.description}
         maxLength={256}
@@ -552,7 +552,7 @@ function ProfileHeaderFields({
         onChange={(e) => onDraftChange("description", e.target.value)}
       />
       <Input
-        label="Website"
+        label="Website (optional)"
         type="url"
         inputMode="url"
         value={drafts.website}
@@ -568,7 +568,7 @@ function ProfileHeaderFields({
             onChange={(rows) => onDraftChange("additionalUrls", rows)}
           />
           <Input
-            label="Founded"
+            label="Founded (optional)"
             type="date"
             value={drafts.foundedDate}
             onChange={(e) => onDraftChange("foundedDate", e.target.value)}

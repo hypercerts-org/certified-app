@@ -689,7 +689,7 @@ export default function ProjectEditRoute({
                   value={title}
                   maxLength={TITLE_MAX * 4}
                   onChange={(e) => setTitle(e.target.value)}
-                  onBlur={() => setTitleLeft(true)}
+                  onBlur={(e) => { if (e.currentTarget.value.trim()) setTitleLeft(true) }}
                 />
                 <p
                   className={`create-cert__counter${
@@ -734,7 +734,7 @@ export default function ProjectEditRoute({
             </section>
 
             <section className="cert-detail__section">
-              <SectionHeader title="Description" />
+              <SectionHeader title="Description (optional)" />
               <LeafletEditor
                 value={description}
                 onChange={setDescription}
@@ -751,7 +751,7 @@ export default function ProjectEditRoute({
             </section>
 
             <section className="cert-detail__section">
-              <SectionHeader title="Location" />
+              <SectionHeader title="Location (optional)" />
               {location ? (
                 <ul className="create-project__cert-list">
                   <li className="create-project__cert-row">

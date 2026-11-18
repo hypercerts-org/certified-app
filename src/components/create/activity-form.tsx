@@ -265,9 +265,13 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
   // it has been left (blur) or after a save attempt, then follows the
   // typing live. Until then its count stays grey: no red from the first
   // keystroke, and an untouched saved record doesn't open with errors.
-  const [touched, setTouched] = useState({ title: false, shortDescription: false })
-  const markTouched = (field: keyof typeof touched) =>
+  const [touched, setTouched] = useState({ title: false, shortDescription: false, endDate: false })
+  // A field counts as left only once it holds something: tabbing through an
+  // empty field doesn't arm its error for the first keystroke.
+  const markTouched = (field: keyof typeof touched, value: string) => {
+    if (!value.trim()) return
     setTouched((t) => (t[field] ? t : { ...t, [field]: true }))
+  }
 
   const titleCount = countGraphemes(title)
   const titleTrimmed = countGraphemes(title.trim())
@@ -292,6 +296,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
     shortDescUnder && savedShortDescription !== undefined && savedShortDescription.trim() !== ""
 
   const datesValid = !startDate || !endDate || startDate <= endDate
+  const showDateError = !datesValid && (touched.endDate || showAllErrors)
 
   const counterClass = (over: boolean, under: boolean) =>
     `create-cert__counter${
@@ -323,7 +328,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             value={title}
             maxLength={ACTIVITY_TITLE_MAX}
             onChange={(e) => onTitleChange(e.target.value)}
-            onBlur={() => markTouched("title")}
+            onBlur={() => markTouched("title", title)}
             data-tour={titleTourId}
           />
           <p id={`${id}-title-count`} className={counterClass(titleOver, titleUnder)}>
@@ -349,7 +354,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             value={shortDescription}
             rows={3}
             onChange={(e) => onShortDescriptionChange(e.target.value)}
-            onBlur={() => markTouched("shortDescription")}
+            onBlur={() => markTouched("shortDescription", shortDescription)}
           />
           <p
             id={`${id}-summary-count`}
@@ -437,17 +442,17 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
                 flush
                 type="date"
                 aria-label="End date"
-                error={
-                  datesValid
-                    ? undefined
-                    : "End date must be on or after the start date."
-                }
+                // Checked once the end date is left (or on save), not while
+                // its year is still being typed.
+                aria-invalid={showDateError || undefined}
+                aria-describedby={showDateError ? `${id}-date-error` : undefined}
                 value={endDate}
                 onChange={(e) => onEndDateChange(e.target.value)}
+                onBlur={() => markTouched("endDate", endDate)}
               />
             </div>
-            {!datesValid ? (
-              <p className="create-cert__field-error" role="alert">
+            {showDateError ? (
+              <p id={`${id}-date-error`} className="create-cert__field-error">
                 End date must be on or after the start date.
               </p>
             ) : null}

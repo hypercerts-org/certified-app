@@ -150,7 +150,7 @@
   --shadow-ring-weak: 0 0 0 2px var(--overlay-weak);        /* hover / selected halo on rows + chips */
   --shadow-ring-medium: 0 0 0 3px var(--overlay-medium);    /* stronger halo (active swatch) */
   --shadow-ring-focus: 0 0 0 2px var(--focus-ring);         /* keyboard focus ring drawn as shadow */
-  --shadow-ring-error: 0 0 0 2px var(--color-error-ring);   /* invalid-input halo */
+  --shadow-ring-error: 0 0 0 1px var(--color-error), 0 0 0 4px var(--color-error-ring);   /* focused invalid field: a second red px on the border, then a soft halo (the only focus cue on an errored field) */
   --shadow-ring-elevated: 0 0 0 3px var(--bg-elevated);     /* surface-colored gap ring (stacked avatars) */
   --shadow-ring-canvas: 0 0 0 2px var(--bg-canvas);         /* canvas-colored gap ring (the acting-account mark's corner badge, on the chrome) */
   --shadow-outline-subtle: 0 0 0 1px var(--border-subtle);  /* 1px outline outside the box */

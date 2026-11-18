@@ -351,7 +351,7 @@ function ToastItem({
       // and click-through. Unlike aria-hidden, inert is allowed on a subtree
       // that still holds focus (the dismiss button that was just pressed).
       inert={leaving || undefined}
-      className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
+      className={`flex w-full items-start gap-3 rounded border px-4 py-3 shadow-[shadow:var(--shadow-md)] min-[800px]:w-auto min-[800px]:min-w-[20rem] min-[800px]:max-w-[26rem] ${
         leaving
           ? "pointer-events-none translate-y-2 opacity-0 transition-[opacity,transform] duration-fast ease-out motion-reduce:translate-y-0 motion-reduce-fade"
           : "pointer-events-auto animate-[toast-in_var(--duration-fast)_var(--ease-out)] motion-reduce:animate-[modalFadeIn_var(--duration-fast)_var(--ease-out)] motion-reduce-fade"

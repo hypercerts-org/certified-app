@@ -63,7 +63,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "rounded text-sm font-medium transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-fast ease-out focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale select-none [-webkit-touch-callout:none]";
+      "rounded text-sm font-medium transition-[color,background-color,border-color,opacity,box-shadow,transform] duration-fast ease-out focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 inline-flex items-center justify-center gap-2 press-scale select-none [-webkit-touch-callout:none] [&_svg]:shrink-0";
 
     const variantStyles = {
       primary:

@@ -149,7 +149,7 @@ function LookTile({
         !framed
           ? "!rounded-none border-0 focus-visible:!outline-offset-[-2px]"
           : selected
-            ? "border border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
+            ? "border border-[var(--fg-primary)] shadow-[shadow:var(--shadow-ring-medium)]"
             : "border border-[var(--border-default)] hover:border-[var(--border-hover)]",
         className,
       ].join(" ")}
@@ -188,7 +188,7 @@ function MadeLookTile({ look, selected }: { look: CustomLook; selected: boolean 
       className={[
         "flex flex-col overflow-hidden rounded border",
         selected
-          ? "border-[var(--fg-primary)] shadow-[var(--shadow-ring-medium)]"
+          ? "border-[var(--fg-primary)] shadow-[shadow:var(--shadow-ring-medium)]"
           : "border-[var(--border-default)] hover:border-[var(--border-hover)]",
       ].join(" ")}
     >

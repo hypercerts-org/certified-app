@@ -239,7 +239,8 @@ export default function EndorsePeopleModal({
       className="endorse-people-modal"
       maxWidth={560}
       onClose={onClose}
-      disableBackdropClose={isWriting}
+      // A typed reason or picked accounts survive a stray click outside.
+      disableBackdropClose={isWriting || note.trim() !== "" || selected.length > 0}
     >
       <AppDialogHeader title={title} onClose={onClose} disabled={isWriting} />
 

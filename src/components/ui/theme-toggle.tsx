@@ -117,7 +117,7 @@ export default function ThemeToggle({
           const cardClassName = [
             "flex-col justify-center gap-2 rounded border px-5 py-4 min-w-[96px] font-medium text-ui",
             selected
-              ? "border-[var(--fg-primary)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
+              ? "border-[var(--fg-primary)] bg-[var(--bg-elevated)] text-[var(--fg-primary)] shadow-[shadow:var(--shadow-sm)]"
               : "border-[var(--border-default)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)] hover:border-[var(--fg-muted)]",
           ].join(" ");
 
@@ -163,7 +163,7 @@ export default function ThemeToggle({
             ? "px-2.5 py-1.5 max-[799px]:min-h-control-md max-[799px]:min-w-11"
             : "px-3 py-2",
           selected
-            ? "bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] text-[var(--fg-primary)] shadow-[var(--shadow-sm)]"
+            ? "bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] text-[var(--fg-primary)] shadow-[shadow:var(--shadow-sm)]"
             : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)]",
         ].join(" ");
 

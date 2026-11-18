@@ -61,7 +61,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     // In error (DESIGN.md §9.2): the border in --color-error at full
     // strength, kept on focus with the error halo, as Input.
     const borderChrome = invalid
-      ? "border border-[var(--color-error)] rounded focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]"
+      ? "border border-[var(--color-error)] rounded focus:border-[var(--color-error)] focus:shadow-[shadow:var(--shadow-ring-error)]"
       : "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
 
     const disabledChrome = disabled

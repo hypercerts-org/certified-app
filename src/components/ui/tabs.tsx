@@ -301,7 +301,7 @@ export function Tab({
     disabled
       ? "text-[var(--fg-muted)] opacity-50 cursor-not-allowed"
       : isActive
-        ? "text-[var(--fg-primary)] bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] shadow-[var(--shadow-sm)] font-semibold cursor-pointer"
+        ? "text-[var(--fg-primary)] bg-[var(--bg-elevated)] dark:bg-[var(--bg-selected)] shadow-[shadow:var(--shadow-sm)] font-semibold cursor-pointer"
         : "text-[var(--fg-muted)] hover:text-[var(--fg-primary)] cursor-pointer"
   }`;
 

@@ -74,8 +74,8 @@ export default function IdentityRow({
       <div className={containerClass} aria-hidden="true">
         <Skeleton variant="circle" width={skelAvatarPx[size]} />
         <div className="flex-1 min-w-0 space-y-1.5">
-          <Skeleton variant="text" width="40%" />
-          <Skeleton variant="text" width="60%" />
+          <Skeleton variant="text" lines={1} width="40%" />
+          <Skeleton variant="text" lines={1} width="60%" />
         </div>
       </div>
     );

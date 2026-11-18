@@ -232,7 +232,9 @@ export default function BottomSheet({
     header ??
     (title ? (
       <div className="flex items-start gap-3 pb-3 pl-5 pr-3">
-        <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)]">
+        {/* At most two lines: a long record title as a menu's heading
+            shouldn't push the actions down. */}
+        <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)] line-clamp-2">
           {title}
         </h2>
         <Button

@@ -219,8 +219,16 @@
 @media (max-width: 799px) {
   .record-head__actions > button,
   .record-head__actions > a {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-width: 0;
+    gap: 6px;
+    padding-inline: 12px;
+  }
+
+  /* More (an icon-only menu trigger) keeps its 44px. */
+  .record-head__actions > button[aria-haspopup] {
+    flex: 0 0 auto;
+    padding-inline: 0;
   }
 
   /* The other tabs: no picture and no lead, so the tab's content is on

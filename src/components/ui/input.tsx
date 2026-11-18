@@ -110,7 +110,7 @@ const compactClasses = "py-0.5 px-1.5 text-[0.8125rem]";
 // 1.5:1), kept on focus with the --shadow-ring-error halo, so the red
 // doesn't disappear while the field is being fixed.
 const errorBorder =
-  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]";
+  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[shadow:var(--shadow-ring-error)]";
 
 // Horizontal padding the input picks up when an icon occupies that side, so
 // the caret/text clears the glyph. Mirrors sizeClasses' base px per size.

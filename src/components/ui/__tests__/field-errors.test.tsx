@@ -11,7 +11,9 @@ import Select from "../select"
 // A caller's aria-describedby is merged with the field's own ids.
 
 const ERROR_BORDER = "border-[var(--color-error)]"
-const ERROR_FOCUS = "focus:shadow-[var(--shadow-ring-error)]"
+// The `shadow:` hint makes Tailwind emit a box-shadow; a bare var() would
+// compile to a shadow colour and draw nothing.
+const ERROR_FOCUS = "focus:shadow-[shadow:var(--shadow-ring-error)]"
 const ERROR_FOCUS_BORDER = "focus:border-[var(--color-error)]"
 
 describe("field error chrome", () => {

@@ -590,7 +590,9 @@ export function useProfileInlineEdit(
     profileCid,
   ])
 
-  const handleCancelEdit = useCallback(() => {
+  // Leaves edit mode and drops every pending change; `handleCancelEdit`
+  // (below) asks first when there are changes.
+  const discardEdit = useCallback(() => {
     setIsEditing(false)
     setPendingAvatarBlob(null)
     setPendingBannerBlob(null)
@@ -943,9 +945,14 @@ export function useProfileInlineEdit(
   // back and forward. Links inside the edit banner and the image pickers
   // navigate without asking.
   const isDirty = isEditing && hasInteracted && canEditInline
-  useUnsavedChangesGuard(isDirty && !isSaving, {
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty && !isSaving, {
     ignoreLinksWithin: INLINE_EDIT_OWN_CONTROLS,
   })
+  // Cancel asks "Discard your changes?" like every other form's Cancel.
+  const handleCancelEdit = useCallback(
+    () => confirmDiscard(discardEdit),
+    [confirmDiscard, discardEdit],
+  )
 
   return {
     isEditing,

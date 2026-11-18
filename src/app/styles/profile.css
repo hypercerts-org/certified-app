@@ -316,6 +316,9 @@
 }
 
 .profile-header__website-link {
+  /* Holds its visually hidden "(opens in new tab)", so the clipped text
+     can't widen the page. */
+  position: relative;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -481,8 +484,19 @@
   /* The text buttons share the row; the More button keeps its size. */
   .profile-header__actions > button,
   .profile-header__actions > a {
-    flex: 1 1 0;
+    /* From their content (icon and word never squashed), then sharing
+       what's left of the row; a little less padding so Follow, Endorse,
+       Share and More fit one row down to 360px. */
+    flex: 1 1 auto;
     min-width: 0;
+    gap: 6px;
+    padding-inline: 12px;
+  }
+
+  /* More (an icon-only menu trigger) keeps its 44px. */
+  .profile-header__actions > button[aria-haspopup] {
+    flex: 0 0 auto;
+    padding-inline: 0;
   }
 
   .profile-header .profile-trust {
