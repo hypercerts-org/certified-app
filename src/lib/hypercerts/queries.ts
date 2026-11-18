@@ -6,11 +6,12 @@
 // ships its read layer, only the bodies of these functions should change.
 import "server-only";
 
-import { Client, type l } from "@atproto/lex";
+import { Client, l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDid, getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
+import { isDid as isDidParam } from "@/lib/validate";
 import { tags } from "./cache";
 import {
   type ActivityCard,
@@ -60,7 +61,12 @@ const read = () => ({ signal: AbortSignal.timeout(8_000) });
  * naming RecordNotFound in its message (TECH-858); the check covers both forms.
  */
 function notFound(failure: { error: string; message: string }): boolean {
-  return failure.error === "RecordNotFound" || failure.message.includes("RecordNotFound:");
+  return (
+    failure.error === "RecordNotFound" ||
+    failure.message.includes("RecordNotFound:") ||
+    // A handle that resolves to no account (same TECH-858 error shape).
+    failure.message.includes("HandleResolutionFailed:")
+  );
 }
 
 // Public, indexed data: shared by every visitor, refreshed within about a minute.
@@ -98,6 +104,9 @@ type AtUri = l.AtUriString;
 export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache";
   publicData(tags.actor(actor));
+  // Anything else in the URL (a stray /favicon.png, a probe) is no account:
+  // answered without an API call.
+  if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
 
   // getProfile accepts a handle or DID; getOrganization needs the DID and
   // fails for accounts without an organization record (people). An
