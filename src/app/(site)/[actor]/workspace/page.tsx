@@ -7,6 +7,8 @@ import {
   OverviewSkeleton,
   WorkspaceOverview,
 } from "@/components/workspace-overview";
+import { SessionUnavailableError } from "@/lib/auth/dal";
+import { logError } from "@/lib/log";
 import { getMemberships } from "@/lib/memberships";
 import { toOrganizations } from "@/lib/organizations";
 
@@ -18,18 +20,25 @@ export const metadata: Metadata = { title: "Workspace", robots: { index: false }
 //
 // Most of the overview is public data about the account, cached and shared
 // (its records, endorsements, followers, profile), so a link prefetches it and
-// the page shows at once. Your organizations and "Edit profile" come from
-// your memberships, remembered per session (memberships.ts). Who may open the
-// workspace is checked by its layout (workspace-access.tsx).
+// the page shows at once. Your organizations come from your memberships,
+// remembered per session (memberships.ts). Who may open the workspace is
+// checked by its layout (workspace-access.tsx).
 
-/** Your organizations, from your memberships, remembered per session (memberships.ts). */
+/**
+ * Your organizations, from your memberships, remembered per session
+ * (memberships.ts). Memberships that can't be read are said to be so, not
+ * shown as "none".
+ */
 async function YourOrganizations() {
-  const memberships = await getMemberships().catch(() => null);
-  return (
-    <OrganizationsSection
-      organizations={Array.isArray(memberships) ? await toOrganizations(memberships) : []}
-    />
-  );
+  let memberships: Awaited<ReturnType<typeof getMemberships>>;
+  try {
+    memberships = await getMemberships();
+  } catch (err) {
+    if (!(err instanceof SessionUnavailableError)) logError("[workspace] memberships failed", err);
+    return <OrganizationsSection organizations="unavailable" />;
+  }
+  if (memberships === "expired") return <OrganizationsSection organizations="expired" />;
+  return <OrganizationsSection organizations={await toOrganizations(memberships ?? [])} />;
 }
 
 async function Overview({ params }: { params: Promise<{ actor: string }> }) {

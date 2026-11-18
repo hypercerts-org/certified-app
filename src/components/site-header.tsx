@@ -5,7 +5,6 @@ import { type Account, SiteNav } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
-import { getHandle } from "@/lib/identity";
 
 // The site's top bar, full width (and, on phones, its bottom tab bar), below
 // 64rem; wider, the sidebar (app-sidebar.tsx) takes its place. The navigation
@@ -45,16 +44,12 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   if (!user) return null;
 
   // An account that has never written a Certified profile has no API view.
-  const [actor, handle, actingAs] = await Promise.all([
-    getActor(user.did),
-    getHandle(user.did),
-    getActingAs(),
-  ]);
+  const [actor, actingAs] = await Promise.all([getActor(user.did), getActingAs()]);
   const organization = actingAs && actingAs !== user.did ? await getActor(actingAs) : undefined;
   return {
     did: user.did,
     name: actor?.displayName ?? user.did,
-    handle,
+    handle: actor?.handle ?? null,
     avatarUrl: actor?.avatarUrl ?? null,
     profile: actor?.profile ?? { displayName: "", description: "" },
     actingAs:

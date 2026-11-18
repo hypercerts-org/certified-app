@@ -1,9 +1,7 @@
 import "server-only";
 
-import type { OAuthSession } from "@atproto/oauth-client-node";
-import { listMembershipsForDisplay, type Membership, manages } from "@/lib/cgs";
-import { getActor } from "@/lib/hypercerts/queries";
-import { getHandle } from "@/lib/identity";
+import { type Membership, manages } from "@/lib/cgs";
+import { getActorCards } from "@/lib/hypercerts/queries";
 
 /** An organization the signed-in user belongs to, as the app shows it. */
 export type Organization = {
@@ -20,33 +18,21 @@ export type Organization = {
 
 const ROLE_LABEL: Record<string, string> = { member: "Member", admin: "Admin", owner: "Owner" };
 
-/**
- * Every organization the session's user belongs to, for display: memberships
- * from the Certified Group Service (up to five minutes old, see
- * listMembershipsForDisplay), names and avatars from the index (an
- * organization without an indexed profile shows its DID), handles resolved. Not for deciding
- * what the user may do: use canEdit.
- */
-export async function listOrganizations(session: OAuthSession): Promise<Organization[]> {
-  return toOrganizations(await listMembershipsForDisplay(session));
-}
-
 /** The organizations of these memberships, as the app shows them. */
 export async function toOrganizations(memberships: Membership[]): Promise<Organization[]> {
-  return Promise.all(
-    memberships.map(async (membership) => {
-      const [actor, handle] = await Promise.all([
-        getActor(membership.groupDid),
-        getHandle(membership.groupDid),
-      ]);
-      return {
-        did: membership.groupDid,
-        name: actor?.displayName ?? membership.groupDid,
-        avatarUrl: actor?.avatarUrl ?? null,
-        handle,
-        roleLabel: ROLE_LABEL[membership.role] ?? membership.role,
-        manages: manages(membership),
-      };
-    }),
+  // Names, avatars and handles for all of them at once (getActorCards).
+  const cards = new Map(
+    (await getActorCards(memberships.map((m) => m.groupDid))).map((card) => [card.did, card]),
   );
+  return memberships.map((membership) => {
+    const card = cards.get(membership.groupDid);
+    return {
+      did: membership.groupDid,
+      name: card?.displayName ?? membership.groupDid,
+      avatarUrl: card?.avatarUrl ?? null,
+      handle: card?.handle ?? null,
+      roleLabel: ROLE_LABEL[membership.role] ?? membership.role,
+      manages: manages(membership),
+    };
+  });
 }

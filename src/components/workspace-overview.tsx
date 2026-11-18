@@ -558,10 +558,21 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
 // Organizations --------------------------------------------------------------
 
 /** Your groups (organizations on CGS), as staging names them, with New group. */
-export function OrganizationsSection({ organizations }: { organizations: Organization[] }) {
+export function OrganizationsSection({
+  organizations,
+}: {
+  /** Or why they can't be shown: memberships unreadable, or the sign-in expired. */
+  organizations: Organization[] | "unavailable" | "expired";
+}) {
   return (
     <Section title="Your groups" action={<NewGroup />}>
-      {organizations.length === 0 ? (
+      {organizations === "unavailable" || organizations === "expired" ? (
+        <Text size="body-sm" tone="muted">
+          {organizations === "expired"
+            ? "Sign in again to see your groups."
+            : "Your groups can't be loaded right now."}
+        </Text>
+      ) : organizations.length === 0 ? (
         <Text size="body-sm" tone="muted">
           You don't belong to any group yet.
         </Text>

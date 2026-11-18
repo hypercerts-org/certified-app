@@ -1,12 +1,12 @@
 import { connection } from "next/server";
-import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
+import { SessionUnavailableError } from "@/lib/auth/dal";
 import { logError } from "@/lib/log";
-import { listOrganizations } from "@/lib/organizations";
+import { getMemberships } from "@/lib/memberships";
+import { toOrganizations } from "@/lib/organizations";
 
-// The signed-in user's organizations, for the account menu's "Act as" list.
-// Memberships come from the five-minute cache (listMembershipsForDisplay);
-// on a miss the call asks the user's PDS for a service-auth token and then the
-// Certified Group Service.
+// The signed-in user's organizations, for the account menu's "Act as" list:
+// the memberships for display (memberships.ts: Valkey, no OAuth restore on a
+// hit), with names and avatars from the index.
 
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
@@ -14,12 +14,12 @@ export async function GET() {
   // Per user: never prerendered.
   await connection();
   try {
-    const session = await getOAuthSession();
-    if (!session) {
+    const memberships = await getMemberships();
+    if (memberships === null || memberships === "expired") {
       return Response.json({ error: "SignedOut" }, { status: 401, headers: privateHeaders });
     }
     return Response.json(
-      { organizations: await listOrganizations(session) },
+      { organizations: await toOrganizations(memberships) },
       { headers: privateHeaders },
     );
   } catch (err) {

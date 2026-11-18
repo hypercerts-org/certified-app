@@ -289,6 +289,18 @@ function chunks<T>(items: T[], size = 100): T[][] {
   return out;
 }
 
+/**
+ * Cards for these accounts, in their order (an account the API doesn't know
+ * is left out): batched, one call per hundred, never one per account.
+ */
+export async function getActorCards(dids: string[]): Promise<ActorCard[]> {
+  "use cache";
+  cacheLife("public");
+  for (const did of dids) cacheTag(tags.actor(did));
+  const cards = await actorCards(dids);
+  return dids.flatMap((did) => cards.get(did) ?? []);
+}
+
 // Organizations come with their profile; accounts without an organization
 // record (people) need a second lookup for theirs.
 async function actorCards(dids: string[]): Promise<Map<string, ActorCard>> {
