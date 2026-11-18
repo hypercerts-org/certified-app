@@ -240,16 +240,23 @@ export async function listOrganizationsPage(options: {
   return { items: actors.map(toActorCard), cursor: cursor ?? null };
 }
 
+/** The badge type of endorsements, which pages show apart from other badges. */
+const ENDORSEMENT = "endorsement";
+
 export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
   "use cache";
   publicData(tags.badges(did));
 
   const { badgeAwards } = await api.call(
     app.certified.badge.listBadgeAwards,
-    { subjects: [did], limit: 20 },
+    { subjects: [did], limit: 50 },
     read(),
   );
-  return badgeAwards.map(toBadgeCard);
+  // Endorsements have their own section (getEndorsements).
+  return badgeAwards
+    .map(toBadgeCard)
+    .filter((badge) => badge.badgeType !== ENDORSEMENT)
+    .slice(0, 20);
 }
 
 // Badge awards issued
@@ -288,7 +295,8 @@ async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
     for (const award of page.badgeAwards) {
       const subject = awardSubject(award.record.subject);
       const badge = award.record.badge.uri;
-      if (!subject) continue;
+      // Endorsements have their own section (getEndorsements).
+      if (!subject || award.badge?.record.badgeType === ENDORSEMENT) continue;
       source.awards.push({ uri: award.uri, badge, subject });
       source.definitions[badge] ??= {
         title: award.badge?.record.title || "Untitled badge",
@@ -306,12 +314,7 @@ export async function hasIssuedAwards(did: string): Promise<boolean> {
   "use cache";
   publicData(tags.awardsIssued(did));
 
-  const { badgeAwards } = await api.call(
-    app.certified.badge.listBadgeAwards,
-    { authors: [did as Did], limit: 1 },
-    read(),
-  );
-  return badgeAwards.length > 0;
+  return (await issuedAwardsSource(did)).awards.length > 0;
 }
 
 function chunks<T>(items: T[], size = 100): T[][] {

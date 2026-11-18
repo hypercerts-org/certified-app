@@ -14,11 +14,12 @@ const LINKS = [
   { label: "About Hypercerts", href: "https://hypercerts.org" },
 ];
 
-export function HelpMenu() {
+/** `className` styles the trigger as a row of the list it sits in. */
+export function HelpMenu({ className }: { className: string }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover kind="navigation" open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className="workspace-nav-item">
+      <PopoverTrigger className={className}>
         <CircleHelp size={20} strokeWidth={1.5} aria-hidden />
         Help
       </PopoverTrigger>

@@ -1243,16 +1243,11 @@ button.menu-row:hover,
   white-space: nowrap;
 }
 
-/* A workspace: a fixed sidebar of its sections (from 64rem) beside the open
-   one. On workspace pages the top bar stays at the top too, so the sidebar
-   always fills the height below it, with Help and Settings at its foot.
-   Narrower, the sections are a row above the page that scrolls sideways
-   (Help and Settings are in the account menu there). The content is a
-   container, so the overview arranges itself by the room it has. */
-:root {
-  --site-header-height: calc(3.5rem + 1px);
-}
-
+/* A workspace: the open section, with the workspace's sections in the app
+   sidebar from 64rem. Narrower, the sections are a row above the page that
+   scrolls sideways (Help and Settings are in the account menu there). The
+   content is a container, so the overview arranges itself by the room it
+   has. */
 .workspace-layout {
   display: flex;
   flex-direction: column;
@@ -1314,54 +1309,15 @@ button.workspace-nav-item:hover,
 }
 
 @media (min-width: 64rem) {
-  body:has(.workspace-layout) .site-header {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 20;
+  .workspace-nav {
+    display: none;
   }
 
-  /* The workspace takes the whole width under the top bar: the sidebar on
-     the window's edge, the content beside it. */
+  /* The workspace uses the width beside the sidebar, not the Container's. */
   .site-main:has(> .workspace-layout) {
     max-inline-size: none;
     margin: 0;
     padding: 0;
-  }
-
-  .workspace-layout {
-    display: grid;
-    grid-template-columns: 17rem minmax(0, 1fr);
-    gap: 0;
-  }
-
-  .workspace-nav {
-    position: sticky;
-    inset-block-start: var(--site-header-height);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    block-size: calc(100dvh - var(--site-header-height));
-    padding: 1.5rem 1rem 1rem;
-    overflow-y: auto;
-    border-inline-end: 1px solid var(--hc-line-hairline);
-    background: var(--hc-surface-panel);
-  }
-
-  .workspace-nav-label {
-    display: block;
-    padding-inline: 0.75rem;
-  }
-
-  .workspace-nav-list {
-    flex-direction: column;
-    overflow: visible;
-  }
-
-  .workspace-nav-foot {
-    display: flex;
-    margin-block-start: auto;
-    padding-block-start: 0.75rem;
-    border-block-start: 1px solid var(--hc-line-hairline);
   }
 
   .workspace-content {
@@ -1369,6 +1325,233 @@ button.workspace-nav-item:hover,
     max-inline-size: 80rem;
     padding: 2rem 2.5rem 4rem;
   }
+}
+
+/* The app sidebar (src/components/app-sidebar.tsx), from 64rem: on the left,
+   the window's full height, staying put while the page scrolls. */
+.app-sidebar {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 16rem minmax(0, 1fr);
+  }
+
+  .app-body > .site-header {
+    display: none;
+  }
+
+  .app-sidebar {
+    position: sticky;
+    inset-block-start: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    block-size: 100dvh;
+    padding: 1.5rem 1rem 1rem;
+    border-inline-end: 1px solid var(--hc-line-hairline);
+    background: var(--hc-surface-panel);
+  }
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: baseline;
+  padding-inline: 0.5rem;
+  padding-block-end: 0.5rem;
+  text-decoration: none;
+}
+
+/* ".app" after the wordmark, quieter, as on staging. */
+.sidebar-brand-suffix {
+  color: var(--hc-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-account-slot {
+  min-block-size: 3rem;
+}
+
+.sidebar-account-slot form,
+.sidebar-account-slot form button {
+  inline-size: 100%;
+}
+
+.sidebar-account {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  inline-size: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: var(--hc-radius-control);
+  background: none;
+  color: var(--hc-text-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.sidebar-account:hover {
+  background: var(--hc-surface-tint);
+}
+
+.sidebar-account-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.sidebar-account-name,
+.sidebar-account-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-account-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.sidebar-account-handle {
+  color: var(--hc-text-muted);
+  font-size: 0.8125rem;
+}
+
+.sidebar-account-chevron {
+  flex-shrink: 0;
+  color: var(--hc-text-muted);
+}
+
+.sidebar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-search input {
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding-inline: 2.25rem 4rem;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-page);
+  color: var(--hc-text-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.sidebar-search input::placeholder {
+  color: var(--hc-text-muted);
+}
+
+.sidebar-search-icon {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  color: var(--hc-text-muted);
+  pointer-events: none;
+}
+
+.sidebar-search-kbd {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: 0.25rem;
+  color: var(--hc-text-muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+/* Typing replaces the hint. */
+.sidebar-search input:not(:placeholder-shown) ~ .sidebar-search-kbd {
+  display: none;
+}
+
+/* Only the list scrolls, when the window is too short for it: scrolling the
+   whole sidebar would clip the account and Help menus at its edge. */
+.sidebar-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+  min-block-size: 0;
+  padding-block: 0.5rem;
+  overflow-y: auto;
+}
+
+.sidebar-group-label {
+  margin: 0 0 0.25rem;
+  padding-inline: 0.75rem;
+  color: var(--hc-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding-inline: 0.75rem;
+  border: 0;
+  border-radius: var(--hc-radius-control);
+  background: none;
+  color: var(--hc-text-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+a.sidebar-item:hover,
+button.sidebar-item:hover,
+.sidebar-item[aria-current="page"] {
+  background: var(--hc-surface-tint);
+}
+
+/* The current page: a tint and a heavier weight, not color alone. */
+.sidebar-item[aria-current="page"] {
+  font-weight: 600;
+}
+
+/* Not built yet: shown dimmed, inert. */
+.sidebar-item[aria-disabled="true"] {
+  color: var(--hc-text-muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sidebar-foot {
+  padding-block-start: 0.75rem;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+:where(.sidebar-item, .sidebar-account, .sidebar-brand):focus-visible,
+.sidebar-search input:focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+  outline-offset: 2px;
 }
 
 .workspace-title {
@@ -1381,7 +1564,16 @@ button.workspace-nav-item:hover,
 }
 
 @media (forced-colors: active) {
-  .workspace-nav-item[aria-current="page"] {
+  .workspace-nav-item[aria-current="page"],
+  .sidebar-item[aria-current="page"] {
     text-decoration: underline;
   }
+}
+
+/* An empty state's actions, side by side, wrapping on narrow screens. */
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
 }

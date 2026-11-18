@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Check,
   ChevronDown,
+  ChevronsUpDown,
   FolderOpen,
   Globe,
   LayoutGrid,
@@ -472,5 +473,36 @@ function PhoneAccountMenu({ account }: { account: Account }) {
         />
       </BottomSheet>
     </>
+  );
+}
+
+/**
+ * The sidebar's account control: whom you act as (avatar, name and handle),
+ * opening the same account menu as the top bar's avatar.
+ */
+export function SidebarAccountMenu({ account }: { account: Account }) {
+  const [open, setOpen] = useState(false);
+  useOrganizations();
+  const switchTo = useSwitchActingAs(account);
+  const identity = current(account);
+  const subline = byline(account);
+  return (
+    <Popover kind="navigation" open={open} onOpenChange={setOpen}>
+      <PopoverTrigger className="sidebar-account" aria-label={`${identity.name}, account menu`}>
+        <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
+        <span className="sidebar-account-text">
+          <span className="sidebar-account-name">{identity.name}</span>
+          {subline && <span className="sidebar-account-handle">{subline}</span>}
+        </span>
+        <ChevronsUpDown size={16} aria-hidden className="sidebar-account-chevron" />
+      </PopoverTrigger>
+      <PopoverContent label="Account" align="start" className="menu-panel">
+        <AccountMenuContent
+          account={account}
+          onNavigate={() => setOpen(false)}
+          onSwitch={switchTo}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

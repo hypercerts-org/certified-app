@@ -27,7 +27,7 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import { ArrowUpRight, FolderGit2, Search, SquareCheckBig } from "lucide-react";
+import { ArrowUpRight, FolderGit2, Plus, Search, SquareCheckBig } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
@@ -193,10 +193,22 @@ async function RecordsSection({ did }: { did: string }) {
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
           action={
-            <Button href="/explore" variant="secondary" size="sm">
-              <Search size={16} aria-hidden />
-              Find accounts
-            </Button>
+            // New activity and New project are placeholders until the
+            // Hypercerts SDK ships those writes.
+            <div className="empty-actions">
+              <Button variant="primary" size="sm" disabled title="Coming soon">
+                <Plus size={16} aria-hidden />
+                New activity
+              </Button>
+              <Button variant="secondary" size="sm" disabled title="Coming soon">
+                <Plus size={16} aria-hidden />
+                New project
+              </Button>
+              <Button href="/explore" variant="secondary" size="sm">
+                <Search size={16} aria-hidden />
+                Find accounts
+              </Button>
+            </div>
           }
         />
       ) : (

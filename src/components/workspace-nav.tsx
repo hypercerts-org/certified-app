@@ -54,7 +54,7 @@ export function WorkspaceNav({ overview }: { overview: string }) {
       </ul>
       <ul className="workspace-nav-list workspace-nav-foot">
         <li>
-          <HelpMenu />
+          <HelpMenu className="workspace-nav-item" />
         </li>
         <li>
           <Link href="/settings" className="workspace-nav-item">
