@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import type { FundingDataset } from "@/lib/funding/dataset-types"
+import { FUNDING_DATASET_VERSION, type FundingDataset } from "@/lib/funding/dataset-types"
 
 // One request per session: the dataset is large and the server caches it
 // for an hour, so navigating away and back reuses the copy in memory.
@@ -11,7 +11,9 @@ let pending: Promise<FundingDataset> | null = null
 function load(): Promise<FundingDataset> {
   if (cached) return Promise.resolve(cached)
   if (!pending) {
-    pending = fetch("/api/funding/dataset")
+    // The version is the cache key: a dataset cached (at the CDN or in the
+    // browser) for another shape or another list of sources is never used.
+    pending = fetch(`/api/funding/dataset?v=${encodeURIComponent(FUNDING_DATASET_VERSION)}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Funding data failed to load (${res.status})`)
         const ds = (await res.json()) as FundingDataset

@@ -27,6 +27,7 @@ import { useOrg } from "@/lib/groups/org-context"
 import { matchesConfirmedBy } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 import { confirmRoleLabel } from "@/lib/funding/labels"
+import { trustedSourceNames } from "@/lib/funding/trusted-sources"
 import { formatMoney, formatUsd } from "@/lib/funding/format"
 import {
   fundingByline,
@@ -60,7 +61,7 @@ export interface RecordFundingView {
 /**
  * The funding a record page shows: every receipt for `forUris` (an
  * activity, or a project and its activities), filtered by the same
- * "Confirmed by" selection as Explore and /funding (trusted sources and
+ * "Confirmed by" selection as Explore and /funding (each trusted source and
  * both sides by default, `?confirmedRoles=` in the URL), and summed.
  */
 export function useRecordFundingView(
@@ -370,7 +371,8 @@ export function RecordFundingSection({
                 there is when it isn't. */}
             {onlyUnconfirmed ? (
               <p className="record-funding__note">
-                Recorded, but not yet confirmed by both sides or by a trusted source.
+                Recorded, but neither confirmed by both sides nor recorded by{" "}
+                {trustedSourceNames("or")}.
               </p>
             ) : all.length > 0 ? (
               <p className="record-funding__note">

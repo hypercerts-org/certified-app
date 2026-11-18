@@ -5,11 +5,15 @@ import {
   confirmBuckets,
   matchesConfirmedBy,
   fundingConfirmEligibility,
+  CONFIRM_ROLES,
   DEFAULT_CONFIRM_ROLES,
+  isDefaultConfirmRoleSet,
+  isSourceRole,
+  parseConfirmRoles,
   type ConfirmRole,
 } from "../funding-provenance"
 import type { FundingAttestation, FundingParty } from "../indexer"
-import { MA_EARTH_DID } from "@/lib/funding/trusted-sources"
+import { GAINFOREST_DID, MA_EARTH_DID } from "@/lib/funding/trusted-sources"
 
 const recipient: FundingAttestation = { role: "recipient", did: "did:plc:rcpt" }
 const sender: FundingAttestation = { role: "sender", did: "did:plc:sndr" }
@@ -19,6 +23,7 @@ const roleSet = (...rs: ConfirmRole[]): ReadonlySet<ConfirmRole> => new Set(rs)
 const tpSet = (...dids: string[]): ReadonlySet<string> => new Set(dids)
 const DEFAULT_ROLES: ReadonlySet<ConfirmRole> = new Set(DEFAULT_CONFIRM_ROLES)
 const maEarth = third(MA_EARTH_DID)
+const gainForest = third(GAINFOREST_DID)
 const NO_TP: ReadonlySet<string> = new Set<string>()
 
 describe("thirdPartyDids", () => {
@@ -56,15 +61,45 @@ describe("confirmRoleBucket", () => {
   })
 })
 
+describe("the Confirmed by choices", () => {
+  it("lists each trusted source by itself, then the parties and other publishers", () => {
+    expect(CONFIRM_ROLES).toEqual(["ma-earth", "gainforest", "both", "sender", "recipient", "other"])
+  })
+  it("shows every trusted source and both sides by default", () => {
+    expect(DEFAULT_CONFIRM_ROLES).toEqual(["ma-earth", "gainforest", "both"])
+    expect(isDefaultConfirmRoleSet(roleSet("both", "gainforest", "ma-earth"))).toBe(true)
+    expect(isDefaultConfirmRoleSet(roleSet("ma-earth", "both"))).toBe(false)
+  })
+  it("tells a source's bucket from the others", () => {
+    expect(isSourceRole("gainforest")).toBe(true)
+    expect(isSourceRole("other")).toBe(false)
+    expect(isSourceRole("trusted")).toBe(false)
+  })
+})
+
+describe("parseConfirmRoles", () => {
+  it("keeps known buckets and drops the rest", () => {
+    expect(parseConfirmRoles(["gainforest", "sender", "nope"])).toEqual(new Set(["gainforest", "sender"]))
+  })
+  it("reads an old link's 'trusted' as every trusted source", () => {
+    expect(parseConfirmRoles(["trusted", "both"])).toEqual(new Set(["ma-earth", "gainforest", "both"]))
+    expect(isDefaultConfirmRoleSet(parseConfirmRoles(["trusted", "both"]))).toBe(true)
+  })
+})
+
 describe("confirmBuckets", () => {
-  it("a trusted source's receipt is 'trusted'", () => {
-    expect([...confirmBuckets([maEarth])]).toEqual(["trusted"])
+  it("a trusted source's receipt is in that source's bucket", () => {
+    expect([...confirmBuckets([maEarth])]).toEqual(["ma-earth"])
+    expect([...confirmBuckets([gainForest])]).toEqual(["gainforest"])
   })
   it("an unknown third party's receipt is 'other'", () => {
     expect([...confirmBuckets([third("did:plc:a")])]).toEqual(["other"])
   })
-  it("a trusted receipt the recipient confirmed is 'trusted' and 'recipient'", () => {
-    expect(confirmBuckets([maEarth, recipient])).toEqual(new Set(["trusted", "recipient"]))
+  it("a trusted receipt the recipient confirmed is the source's and 'recipient'", () => {
+    expect(confirmBuckets([maEarth, recipient])).toEqual(new Set(["ma-earth", "recipient"]))
+  })
+  it("a receipt both sources recorded is in both their buckets", () => {
+    expect(confirmBuckets([maEarth, gainForest])).toEqual(new Set(["ma-earth", "gainforest"]))
   })
   it("no attestations => no bucket", () => {
     expect(confirmBuckets([]).size).toBe(0)
@@ -80,6 +115,9 @@ describe("matchesConfirmedBy", () => {
   describe("default selection: trusted sources + both sides", () => {
     it("passes a trusted-source receipt", () => {
       expect(matchesConfirmedBy([maEarth], DEFAULT_ROLES, NO_TP)).toBe(true)
+    })
+    it("passes a GainForest receipt", () => {
+      expect(matchesConfirmedBy([gainForest], DEFAULT_ROLES, NO_TP)).toBe(true)
     })
     it("passes a both-confirmed receipt", () => {
       expect(matchesConfirmedBy([recipient, sender], DEFAULT_ROLES, NO_TP)).toBe(true)
@@ -113,6 +151,12 @@ describe("matchesConfirmedBy", () => {
     })
     it("role={other} does NOT match a trusted-source receipt", () => {
       expect(matchesConfirmedBy([maEarth], roleSet("other"), NO_TP)).toBe(false)
+      expect(matchesConfirmedBy([gainForest], roleSet("other"), NO_TP)).toBe(false)
+    })
+    it("each source is chosen on its own", () => {
+      expect(matchesConfirmedBy([gainForest], roleSet("gainforest"), NO_TP)).toBe(true)
+      expect(matchesConfirmedBy([maEarth], roleSet("gainforest"), NO_TP)).toBe(false)
+      expect(matchesConfirmedBy([gainForest], roleSet("ma-earth", "both"), NO_TP)).toBe(false)
     })
     it("role={recipient} matches a trusted receipt the recipient confirmed", () => {
       expect(matchesConfirmedBy([maEarth, recipient], roleSet("recipient"), NO_TP)).toBe(true)

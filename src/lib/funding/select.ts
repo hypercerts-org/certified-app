@@ -1,11 +1,18 @@
-import { CONFIRM_ROLES, type ConfirmRole } from "@/lib/atproto/funding-provenance"
-import { confirmRoleLabel } from "./labels"
+import {
+  CONFIRM_ROLES,
+  SOURCE_CONFIRM_ROLES,
+  isSourceRole,
+  type ConfirmRole,
+} from "@/lib/atproto/funding-provenance"
+import { orPhrases, recordedByPhrase } from "./labels"
+import { TRUSTED_FUNDING_SOURCES, type TrustedSourceKey } from "./trusted-sources"
 import {
   BUCKET_BOTH,
   BUCKET_OTHER,
   BUCKET_RECIPIENT,
   BUCKET_SENDER,
   BUCKET_TRUSTED,
+  sourceBucket,
   type FundingDataset,
 } from "./dataset-types"
 import { CONTINENTS, REGIONS, continentFor, regionFor } from "./geo"
@@ -21,8 +28,12 @@ import { CONTINENTS, REGIONS, continentFor, regionFor } from "./geo"
 
 export const PRIMARY_CURRENCY = "USD"
 
+/** The bit each "Confirmed by" choice selects: a trusted source's own bit
+ *  (not BUCKET_TRUSTED, which every source's receipts share). */
 export const ROLE_BIT: Record<ConfirmRole, number> = {
-  trusted: BUCKET_TRUSTED,
+  ...(Object.fromEntries(
+    TRUSTED_FUNDING_SOURCES.map((s) => [s.key, sourceBucket(s.did)]),
+  ) as Record<TrustedSourceKey, number>),
   both: BUCKET_BOTH,
   sender: BUCKET_SENDER,
   recipient: BUCKET_RECIPIENT,
@@ -35,6 +46,24 @@ export function roleMask(roles: ReadonlySet<ConfirmRole>): number {
   return mask
 }
 
+/** The bits for a receipt in these buckets (`confirmBuckets`): a trusted
+ *  source's bucket adds BUCKET_TRUSTED as well as its own bit. */
+export function bucketBitsFor(roles: Iterable<ConfirmRole>): number {
+  let bits = 0
+  for (const r of roles) bits |= ROLE_BIT[r] | (isSourceRole(r) ? BUCKET_TRUSTED : 0)
+  return bits
+}
+
+/** The bits a choice's mark (the seal) is drawn from. */
+export function roleSealBits(role: ConfirmRole): number {
+  return isSourceRole(role) ? BUCKET_TRUSTED : ROLE_BIT[role]
+}
+
+/** The trusted sources whose bits are set, in list order. */
+export function sourcesIn(bits: number): TrustedSourceKey[] {
+  return SOURCE_CONFIRM_ROLES.filter((k) => bits & ROLE_BIT[k])
+}
+
 /** Indices of the receipts in the selection, newest first. */
 export function selectReceipts(ds: FundingDataset, mask: number): number[] {
   const out: number[] = []
@@ -45,17 +74,20 @@ export function selectReceipts(ds: FundingDataset, mask: number): number[] {
 
 /** How many receipts fall in each bucket (a receipt can be in several). */
 export function bucketCounts(ds: FundingDataset): Record<ConfirmRole, number> {
-  const out = { trusted: 0, both: 0, sender: 0, recipient: 0, other: 0 }
+  const out = Object.fromEntries(CONFIRM_ROLES.map((r) => [r, 0])) as Record<ConfirmRole, number>
   for (const bits of ds.receipts.buckets) {
     for (const role of CONFIRM_ROLES) if (bits & ROLE_BIT[role]) out[role]++
   }
   return out
 }
 
-/** The strongest bucket a receipt is in, for its mark and label. */
+/** The strongest bucket a receipt is in, for its mark and label: both
+ *  sides, then the (first) trusted source that recorded it, then one side,
+ *  then another publisher. */
 export function primaryRole(bits: number): ConfirmRole {
   if (bits & BUCKET_BOTH) return "both"
-  if (bits & BUCKET_TRUSTED) return "trusted"
+  const [source] = sourcesIn(bits)
+  if (source) return source
   if (bits & BUCKET_RECIPIENT) return "recipient"
   if (bits & BUCKET_SENDER) return "sender"
   return "other"
@@ -355,18 +387,22 @@ export function destinationTotals(
     .sort((a, b) => b.total - a.total)
 }
 
-/** "Showing 14,887 receipts recorded by Ma Earth or confirmed by both sides." */
+/** "Showing 14,887 receipts recorded by Ma Earth and GainForest, or
+ *  confirmed by both sides." */
 export function selectionSentence(roles: ReadonlySet<ConfirmRole>, count: number): string {
   if (roles.size === 0) return "Nothing is switched on. Turn on a source above to see receipts."
-  const phrase: Record<ConfirmRole, string> = {
-    trusted: `recorded by ${confirmRoleLabel("trusted")}`,
+  type Rest = Exclude<ConfirmRole, TrustedSourceKey>
+  const phrase: Record<Rest, string> = {
     both: "confirmed by both sides",
     sender: "published only by the funder",
     recipient: "published only by the recipient",
     other: "published by other publishers",
   }
-  const parts = CONFIRM_ROLES.filter((r) => roles.has(r)).map((r) => phrase[r])
-  const joined =
-    parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`
-  return `Showing ${count.toLocaleString("en-US")} ${count === 1 ? "receipt" : "receipts"} ${joined}.`
+  const on = CONFIRM_ROLES.filter((r) => roles.has(r))
+  const sources = recordedByPhrase(on)
+  const parts = [
+    ...(sources ? [sources] : []),
+    ...on.filter((r): r is Rest => !isSourceRole(r)).map((r) => phrase[r]),
+  ]
+  return `Showing ${count.toLocaleString("en-US")} ${count === 1 ? "receipt" : "receipts"} ${orPhrases(parts)}.`
 }

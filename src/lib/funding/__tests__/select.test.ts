@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
+  bucketBitsFor,
   bucketCounts,
   dailyTotals,
   destinationTotals,
@@ -12,30 +13,43 @@ import {
   primaryRole,
   projectTotals,
   roleMask,
+  roleSealBits,
   selectReceipts,
   selectionSentence,
+  sourcesIn,
   summarize,
 } from "../select"
 import {
   BUCKET_BOTH,
   BUCKET_OTHER,
   BUCKET_RECIPIENT,
+  BUCKET_SENDER,
   BUCKET_TRUSTED,
+  FUNDING_DATASET_VERSION,
+  sourceBucket,
   type FundingDataset,
 } from "../dataset-types"
+import { GAINFOREST_DID, MA_EARTH_DID } from "../trusted-sources"
 import { continentFor, regionFor, shapeCenter } from "../geo"
 import type { ConfirmRole } from "@/lib/atproto/funding-provenance"
 
 const DAY = 86_400
 
-/** Four receipts: two trusted USD gifts to project 0 (one anonymous), one
- *  both-sides USD gift to project 1, one other-publisher USDC payment. */
+const MA_EARTH = BUCKET_TRUSTED | sourceBucket(MA_EARTH_DID)
+const GAINFOREST = BUCKET_TRUSTED | sourceBucket(GAINFOREST_DID)
+
+/** Five receipts: two Ma Earth USD gifts to project 0 (one anonymous), one
+ *  both-sides USD gift to project 1, one other-publisher USDC payment, and
+ *  one GainForest USD gift with no project. */
 function dataset(): FundingDataset {
   return {
     builtAt: "2026-11-14T00:00:00Z",
-    sources: [{ did: "did:plc:src", name: "Ma Earth", count: 2 }],
+    sources: [
+      { did: MA_EARTH_DID, name: "Ma Earth", count: 2 },
+      { did: GAINFOREST_DID, name: "GainForest", count: 1 },
+    ],
     currencies: ["USD", "USDC"],
-    authors: ["did:plc:src", "did:plc:org", "did:plc:bot"],
+    authors: [MA_EARTH_DID, "did:plc:org", "did:plc:bot", GAINFOREST_DID],
     accounts: [
       { did: "did:plc:org", name: "Trees", avatar: null },
       { did: "did:plc:org2", name: "Reefs", avatar: null },
@@ -46,15 +60,15 @@ function dataset(): FundingDataset {
       { uri: "at://did:plc:org2/org.hypercerts.collection/b", owner: 1, title: "Reef", banner: null, avatar: null, lat: null, lng: null, place: null },
     ],
     receipts: {
-      rkey: ["r4", "r3", "r2", "r1"],
-      author: [2, 1, 0, 0],
-      t: [10 * DAY + 5, 9 * DAY, 2 * DAY + 60, 2 * DAY],
-      amount: [5, 1500, 20, 30],
-      currency: [1, 0, 0, 0],
-      project: [-1, 1, 0, 0],
-      to: [-1, 1, 0, 0],
-      from: [-2, 0, -1, 0],
-      buckets: [BUCKET_OTHER, BUCKET_BOTH, BUCKET_TRUSTED, BUCKET_TRUSTED | BUCKET_RECIPIENT],
+      rkey: ["r4", "r3", "r2", "r1", "g1"],
+      author: [2, 1, 0, 0, 3],
+      t: [10 * DAY + 5, 9 * DAY, 2 * DAY + 60, 2 * DAY, 1 * DAY],
+      amount: [5, 1500, 20, 30, 10],
+      currency: [1, 0, 0, 0, 0],
+      project: [-1, 1, 0, 0, -1],
+      to: [-1, 1, 0, 0, -1],
+      from: [-2, 0, -1, 0, -1],
+      buckets: [BUCKET_OTHER, BUCKET_BOTH, MA_EARTH, MA_EARTH | BUCKET_RECIPIENT, GAINFOREST],
     },
     toText: { "0": "0xabc" },
     fromText: { "0": "0xdef" },
@@ -69,15 +83,32 @@ const roles = (...r: ConfirmRole[]) => new Set<ConfirmRole>(r)
 describe("selectReceipts", () => {
   it("keeps receipts in any selected bucket, newest first", () => {
     const ds = dataset()
-    expect(selectReceipts(ds, roleMask(roles("trusted", "both")))).toEqual([1, 2, 3])
+    expect(selectReceipts(ds, roleMask(roles("ma-earth", "gainforest", "both")))).toEqual([1, 2, 3, 4])
     expect(selectReceipts(ds, roleMask(roles("recipient")))).toEqual([3])
     expect(selectReceipts(ds, roleMask(roles()))).toEqual([])
+  })
+
+  it("selects each trusted source on its own", () => {
+    const ds = dataset()
+    expect(selectReceipts(ds, roleMask(roles("ma-earth")))).toEqual([2, 3])
+    expect(selectReceipts(ds, roleMask(roles("gainforest")))).toEqual([4])
+  })
+
+  it("keeps a trusted source's receipts out of Other publishers", () => {
+    expect(selectReceipts(dataset(), roleMask(roles("other")))).toEqual([0])
   })
 })
 
 describe("bucketCounts", () => {
   it("counts a receipt in every bucket it is in", () => {
-    expect(bucketCounts(dataset())).toEqual({ trusted: 2, both: 1, sender: 0, recipient: 1, other: 1 })
+    expect(bucketCounts(dataset())).toEqual({
+      "ma-earth": 2,
+      gainforest: 1,
+      both: 1,
+      sender: 0,
+      recipient: 1,
+      other: 1,
+    })
   })
 })
 
@@ -165,17 +196,52 @@ describe("gift sizes", () => {
 })
 
 describe("primaryRole", () => {
-  it("prefers both sides, then the trusted source", () => {
-    expect(primaryRole(BUCKET_BOTH | BUCKET_TRUSTED)).toBe("both")
-    expect(primaryRole(BUCKET_TRUSTED | BUCKET_RECIPIENT)).toBe("trusted")
+  it("prefers both sides, then the trusted source that recorded it", () => {
+    expect(primaryRole(BUCKET_BOTH | MA_EARTH)).toBe("both")
+    expect(primaryRole(MA_EARTH | BUCKET_RECIPIENT)).toBe("ma-earth")
+    expect(primaryRole(GAINFOREST | BUCKET_SENDER)).toBe("gainforest")
     expect(primaryRole(BUCKET_OTHER)).toBe("other")
   })
 })
 
+describe("source bits", () => {
+  it("gives each trusted source its own bit, apart from the shared one", () => {
+    const ma = sourceBucket(MA_EARTH_DID)
+    const gf = sourceBucket(GAINFOREST_DID)
+    expect(ma).not.toBe(gf)
+    for (const bit of [ma, gf]) {
+      expect(bit & (BUCKET_TRUSTED | BUCKET_BOTH | BUCKET_SENDER | BUCKET_RECIPIENT | BUCKET_OTHER)).toBe(0)
+    }
+    expect(sourceBucket("did:plc:someone")).toBe(0)
+  })
+
+  it("sets a source's bit and the shared one for its bucket", () => {
+    expect(bucketBitsFor(["gainforest", "recipient"])).toBe(GAINFOREST | BUCKET_RECIPIENT)
+    expect(bucketBitsFor(["other"])).toBe(BUCKET_OTHER)
+    expect(sourcesIn(MA_EARTH | GAINFOREST)).toEqual(["ma-earth", "gainforest"])
+    expect(sourcesIn(BUCKET_TRUSTED)).toEqual([])
+  })
+
+  it("draws a source's chip with the trusted ring", () => {
+    expect(roleSealBits("gainforest")).toBe(BUCKET_TRUSTED)
+    expect(roleSealBits("both")).toBe(BUCKET_BOTH)
+  })
+
+  it("keys the dataset by its sources", () => {
+    expect(FUNDING_DATASET_VERSION).toBe("2.ma-earth.gainforest")
+  })
+})
+
 describe("selectionSentence", () => {
-  it("says what the default shows", () => {
-    expect(selectionSentence(roles("trusted", "both"), 14886)).toBe(
-      "Showing 14,886 receipts recorded by Ma Earth or confirmed by both sides.",
+  it("says what the default shows, naming each source", () => {
+    expect(selectionSentence(roles("ma-earth", "gainforest", "both"), 14886)).toBe(
+      "Showing 14,886 receipts recorded by Ma Earth and GainForest, or confirmed by both sides.",
+    )
+  })
+  it("names the one source that is on", () => {
+    expect(selectionSentence(roles("gainforest"), 231)).toBe("Showing 231 receipts recorded by GainForest.")
+    expect(selectionSentence(roles("ma-earth", "both"), 2)).toBe(
+      "Showing 2 receipts recorded by Ma Earth or confirmed by both sides.",
     )
   })
   it("says when nothing is on", () => {

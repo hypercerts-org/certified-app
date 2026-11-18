@@ -6,6 +6,7 @@ import {
   CONFIRM_ROLES,
   DEFAULT_CONFIRM_ROLES,
   isDefaultConfirmRoleSet,
+  parseConfirmRoles,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
 
@@ -15,12 +16,12 @@ import {
 const EMPTY_SELECTION_SENTINEL = "-"
 
 export interface FundingConfirmedByState {
-  /** Selected buckets (default: {@link DEFAULT_CONFIRM_ROLES} — trusted
-   *  sources + both sides). */
+  /** Selected buckets (default: {@link DEFAULT_CONFIRM_ROLES} — each
+   *  trusted source + both sides). */
   roles: Set<ConfirmRole>
   /** Selected third-party attestor DIDs (default: none). */
   thirdParties: Set<string>
-  /** True when the selection equals the default (trusted sources + both
+  /** True when the selection equals the default (each trusted source + both
    *  sides, no third parties). */
   isDefault: boolean
   toggleRole: (role: ConfirmRole) => void
@@ -31,9 +32,11 @@ export interface FundingConfirmedByState {
 /**
  * URL-backed state for the Funding "Confirmed by" filter, shared by /explore
  * the activity detail page and /funding so every surface behaves identically.
- * Two axes whose UNION is shown: the buckets (`?confirmedRoles=`, default
- * trusted sources + both sides) and a set of specific third-party
- * attestor DIDs (`?confirmedTp=`, default none). Filtering itself is
+ * Two axes whose UNION is shown: the buckets (`?confirmedRoles=ma-earth,sender`;
+ * absent means the default, each trusted source + both sides) and a set of
+ * specific third-party attestor DIDs (`?confirmedTp=`, default none). Each
+ * trusted source is a bucket of its own, so it is never also listed as a
+ * third party. Filtering itself is
  * client-side via {@link matchesConfirmedBy} — the role buckets aren't a
  * single indexer arg. Only the params this filter owns are touched; every
  * other query param (tab, sort, …) is preserved.
@@ -41,8 +44,9 @@ export interface FundingConfirmedByState {
 function parseRoles(param: string | null): Set<ConfirmRole> {
   if (param == null) return new Set(DEFAULT_CONFIRM_ROLES)
   if (param === EMPTY_SELECTION_SENTINEL) return new Set()
-  const valid = new Set<string>(CONFIRM_ROLES)
-  return new Set(param.split(",").filter((v): v is ConfirmRole => valid.has(v)))
+  // An old link's `trusted` (one bucket for every source) turns on each
+  // trusted source; the next toggle writes their own keys.
+  return parseConfirmRoles(param.split(","))
 }
 
 function parseThirdParties(param: string | null): Set<string> {

@@ -1,5 +1,10 @@
 import type { FundingAttestation, FundingReceipt } from "./indexer"
-import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
+import {
+  TRUSTED_FUNDING_SOURCES,
+  trustedFundingSource,
+  trustedSourceByKey,
+  type TrustedSourceKey,
+} from "@/lib/funding/trusted-sources"
 
 /**
  * Display + filter derivation for funding-receipt provenance. The indexer
@@ -7,9 +12,10 @@ import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
  * receipt in the `matchingReceipt`-linked cluster). This module maps that
  * set into the two things the UI needs:
  *
- *   1. buckets — which of Trusted source / Both / Sender / Recipient /
- *      Other confirmed the payment ({@link confirmBuckets}), driving the
- *      "Confirmed by" filter together with {@link matchesConfirmedBy}.
+ *   1. buckets — which of the trusted sources (Ma Earth, GainForest, ...) /
+ *      Both / Sender / Recipient / Other confirmed the payment
+ *      ({@link confirmBuckets}), driving the "Confirmed by" filter together
+ *      with {@link matchesConfirmedBy}.
  *   2. "by whom"   — the third-party attestor identities
  *      ({@link thirdPartyDids}).
  *
@@ -41,27 +47,43 @@ export function thirdPartyDids(
 /**
  * The "Confirmed by" buckets a payment can fall into, in display order:
  *
- *   - `trusted`   a trusted funding source (e.g. Ma Earth) published a
- *                 receipt for it — see `@/lib/funding/trusted-sources`
+ *   - one per trusted funding source, by its key (`ma-earth`, `gainforest`,
+ *                 ...): that source published a receipt for it — see
+ *                 `@/lib/funding/trusted-sources`
  *   - `both`      the funder and the recipient each published one
  *   - `sender`    only the funder did
  *   - `recipient` only the recipient did
  *   - `other`     a third party that is not a trusted source did
  *
  * The buckets are not exclusive: a Ma Earth receipt the recipient has
- * confirmed is both `trusted` and `recipient`. A payment is shown when ANY of
- * its buckets is selected (see {@link matchesConfirmedBy}).
+ * confirmed is both `ma-earth` and `recipient`. A payment is shown when ANY
+ * of its buckets is selected (see {@link matchesConfirmedBy}).
  */
-export const CONFIRM_ROLES = ["trusted", "both", "sender", "recipient", "other"] as const
-export type ConfirmRole = (typeof CONFIRM_ROLES)[number]
+export type ConfirmRole = TrustedSourceKey | "both" | "sender" | "recipient" | "other"
+
+/** The trusted sources' buckets, in the order the filter lists them. */
+export const SOURCE_CONFIRM_ROLES: readonly TrustedSourceKey[] = TRUSTED_FUNDING_SOURCES.map((s) => s.key)
+
+export const CONFIRM_ROLES: readonly ConfirmRole[] = [
+  ...SOURCE_CONFIRM_ROLES,
+  "both",
+  "sender",
+  "recipient",
+  "other",
+]
 
 /** The sender/recipient part of the buckets. */
 export type PartyConfirmRole = "both" | "sender" | "recipient"
 
-/** The buckets shown by *default*: what a trusted source recorded, and what
- *  the funder and the recipient both confirmed. One-sided and unknown-source
- *  receipts are hidden until the viewer turns them on. */
-export const DEFAULT_CONFIRM_ROLES: readonly ConfirmRole[] = ["trusted", "both"]
+/** Whether a bucket is a trusted source's. */
+export function isSourceRole(role: string): role is TrustedSourceKey {
+  return trustedSourceByKey(role) !== undefined
+}
+
+/** The buckets shown by *default*: what each trusted source recorded, and
+ *  what the funder and the recipient both confirmed. One-sided and
+ *  unknown-source receipts are hidden until the viewer turns them on. */
+export const DEFAULT_CONFIRM_ROLES: readonly ConfirmRole[] = [...SOURCE_CONFIRM_ROLES, "both"]
 
 /** Whether a role set equals the default selection (order-independent). */
 export function isDefaultConfirmRoleSet(roles: ReadonlySet<ConfirmRole>): boolean {
@@ -69,6 +91,26 @@ export function isDefaultConfirmRoleSet(roles: ReadonlySet<ConfirmRole>): boolea
     roles.size === DEFAULT_CONFIRM_ROLES.length &&
     DEFAULT_CONFIRM_ROLES.every((r) => roles.has(r))
   )
+}
+
+/** The one bucket every trusted source shared before each had its own. A
+ *  stored selection (an old `?confirmedRoles=trusted,...` link) means every
+ *  trusted source. */
+const LEGACY_TRUSTED_ROLE = "trusted"
+
+/**
+ * Buckets from stored values (the `?confirmedRoles=` list): known buckets
+ * are kept, the old `trusted` becomes every trusted source, anything else is
+ * dropped.
+ */
+export function parseConfirmRoles(values: readonly string[]): Set<ConfirmRole> {
+  const valid = new Set<string>(CONFIRM_ROLES)
+  const out = new Set<ConfirmRole>()
+  for (const v of values) {
+    if (v === LEGACY_TRUSTED_ROLE) for (const r of SOURCE_CONFIRM_ROLES) out.add(r)
+    else if (valid.has(v)) out.add(v as ConfirmRole)
+  }
+  return out
 }
 
 /**
@@ -95,7 +137,7 @@ export function confirmBuckets(
   const party = confirmRoleBucket(attestations)
   if (party) out.add(party)
   for (const did of thirdPartyDids(attestations)) {
-    out.add(isTrustedFundingSource(did) ? "trusted" : "other")
+    out.add(trustedFundingSource(did)?.key ?? "other")
   }
   return out
 }
@@ -104,8 +146,8 @@ export function confirmBuckets(
  * Whether a payment passes the Funding "Confirmed by" filter: the UNION of
  * the selected buckets and the selected third-party attestors.
  *
- * The default selection (trusted sources + both sides) therefore shows what
- * a trusted source recorded and what both parties confirmed; a one-sided or
+ * The default selection (every trusted source + both sides) therefore shows
+ * what a trusted source recorded and what both parties confirmed; a one-sided or
  * unknown-source receipt is hidden until its bucket (or its attestor) is
  * selected. An as-yet-unattested receipt (pre-#214) has no bucket and only
  * shows when its third-party attestor is picked. With nothing selected,

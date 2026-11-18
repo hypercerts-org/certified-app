@@ -13,18 +13,20 @@ import {
   type FundingDataset,
 } from "@/lib/funding/dataset-types"
 import { confirmRoleLabel } from "@/lib/funding/labels"
-import { primaryRole } from "@/lib/funding/select"
+import { primaryRole, sourcesIn } from "@/lib/funding/select"
+import { joinNames } from "@/lib/funding/trusted-sources"
 import { formatMoney, formatShortDay, formatTime } from "@/lib/funding/format"
 import FundingSeal from "./funding-seal"
 
-/** Who vouches for a receipt, in words: "Ma Earth", "Ma Earth + recipient",
- *  "Both sides", "Funder only", … */
+/** Who vouches for a receipt, in words: "Ma Earth", "GainForest + recipient",
+ *  "Both sides", "Funder only", … A trusted source is named by the source
+ *  that recorded the receipt (its bit), never a generic word. */
 export function confirmedByText(ds: FundingDataset, i: number): string {
   const bits = ds.receipts.buckets[i]
   if (bits & BUCKET_BOTH) return confirmRoleLabel("both")
-  if (bits & BUCKET_TRUSTED) {
-    const author = ds.authors[ds.receipts.author[i]]
-    const name = ds.sources.find((s) => s.did === author)?.name ?? confirmRoleLabel("trusted")
+  const sources = sourcesIn(bits)
+  if (sources.length > 0) {
+    const name = joinNames(sources.map((k) => confirmRoleLabel(k)))
     if (bits & BUCKET_RECIPIENT) return `${name} + recipient`
     if (bits & BUCKET_SENDER) return `${name} + funder`
     return name

@@ -103,6 +103,10 @@ function changedRoles(roles: ReadonlySet<ConfirmRole>): number {
 /** The totals labels, shared by the loaded row and its skeleton. */
 const STAT_LABELS = ["Received", "Gifts", "Projects", "Named donors", "Anonymous gifts"] as const
 
+/** The "Confirmed by" chips' widths while the receipts load: Ma Earth,
+ *  GainForest, Both sides, Funder only, Recipient only, Other publishers. */
+const CHIP_SKELETON_WIDTHS = [160, 152, 132, 140, 164, 172]
+
 /** The main box's height while the receipts load: the projects mosaic's. */
 const LOADING_HEIGHT = 480
 
@@ -127,8 +131,9 @@ function FundingLoading() {
           <div className="funding-confirmed__row">
             <span className="funding-confirmed__label">Confirmed by</span>
             <div className="funding-confirmed__skeleton">
-              {[112, 104, 120, 132, 140].map((w, i) => (
-                <Skeleton key={i} width={w} height={36} radius="999px" />
+              {/* One per chip: each trusted source, then the four others. */}
+              {CONFIRM_ROLES.map((role, i) => (
+                <Skeleton key={role} width={CHIP_SKELETON_WIDTHS[i] ?? 112} height={36} radius="999px" />
               ))}
             </div>
           </div>
@@ -158,8 +163,8 @@ function FundingLoading() {
  * Network → Funding (`/funding`): who funded which work. Five views of the
  * same selection (`?view=`), as tabs under the title: projects, flow,
  * timeline, map and the receipts themselves. The "Confirmed by" chips decide
- * which receipts count (by default what a trusted source such as Ma Earth
- * recorded, and what both sides confirmed): in the page from 800px, in the
+ * which receipts count (by default what each trusted source, Ma Earth and
+ * GainForest, recorded, and what both sides confirmed): in the page from 800px, in the
  * Filters sheet on phones, where the totals shrink to one line so the view
  * comes first.
  */

@@ -23,12 +23,10 @@ import { confirmBuckets } from "@/lib/atproto/funding-provenance"
 import type { FundingAttestation } from "@/lib/atproto/indexer"
 import { TRUSTED_FUNDING_SOURCES, isTrustedFundingSource } from "./trusted-sources"
 import { shapeCenter } from "./geo"
+import { bucketBitsFor } from "./select"
 import {
-  BUCKET_BOTH,
-  BUCKET_OTHER,
-  BUCKET_RECIPIENT,
-  BUCKET_SENDER,
   BUCKET_TRUSTED,
+  sourceBucket,
   type FundingAccount,
   type FundingDataset,
   type FundingProject,
@@ -37,9 +35,11 @@ import {
 /**
  * Builds the /funding dataset (see `dataset-types.ts`).
  *
- *  1. Every trusted source's receipts, read from its own repository. The
- *     indexer holds them too, but paging it is slow and has stopped early
- *     before; the repository is the record of truth and pages quickly.
+ *  1. Every trusted source's receipts (Ma Earth's, GainForest's, ...), each
+ *     read from the source's own repository, in parallel. The indexer holds
+ *     them too, but paging it is slow and has stopped early before; the
+ *     repository is the record of truth and pages quickly. Each source's
+ *     receipts carry its own bucket bit (`sourceBucket`).
  *  2. Every other receipt, from the indexer. It cannot filter out an author,
  *     so the scan is split into createdAt ranges that run in parallel. A
  *     receipt that confirms a trusted source's receipt (its
@@ -507,20 +507,7 @@ interface Row {
 }
 
 function bucketBits(attestations: readonly FundingAttestation[]): number {
-  let bits = 0
-  for (const b of confirmBuckets(attestations)) {
-    bits |=
-      b === "trusted"
-        ? BUCKET_TRUSTED
-        : b === "both"
-          ? BUCKET_BOTH
-          : b === "sender"
-            ? BUCKET_SENDER
-            : b === "recipient"
-              ? BUCKET_RECIPIENT
-              : BUCKET_OTHER
-  }
-  return bits
+  return bucketBitsFor(confirmBuckets(attestations))
 }
 
 function roleOf(author: string, from: Row["from"], to: Row["to"]): FundingAttestation["role"] {
@@ -532,19 +519,20 @@ function roleOf(author: string, from: Row["from"], to: Row["to"]): FundingAttest
 export async function buildFundingDataset(): Promise<FundingDataset> {
   let partial = false
 
-  // 1. Trusted sources.
+  // 1. Trusted sources, each from its own repository, side by side.
   const trustedRows: Row[] = []
   const sources: FundingDataset["sources"] = []
   const createdAts: string[] = []
-  for (const source of TRUSTED_FUNDING_SOURCES) {
-    const pds = await pdsFor(source.did)
-    if (!pds) {
-      partial = true
-      sources.push({ did: source.did, name: source.name, count: 0 })
-      continue
-    }
-    const { records, complete } = await listAllRecords(pds, source.did, RECEIPT_NSID)
+  const read = await Promise.all(
+    TRUSTED_FUNDING_SOURCES.map(async (source) => {
+      const pds = await pdsFor(source.did)
+      if (!pds) return { source, records: [] as RepoRecord[], complete: false }
+      return { source, ...(await listAllRecords(pds, source.did, RECEIPT_NSID)) }
+    }),
+  )
+  for (const { source, records, complete } of read) {
     if (!complete) partial = true
+    const bits = BUCKET_TRUSTED | sourceBucket(source.did)
     for (const r of records) {
       const v = r.value
       const forUri = asString(asRecord(v.for)?.uri)
@@ -559,7 +547,7 @@ export async function buildFundingDataset(): Promise<FundingDataset> {
         forUri,
         to: partyOf(v.to),
         from: partyOf(v.from),
-        buckets: BUCKET_TRUSTED,
+        buckets: bits,
         attestations: [],
       })
     }

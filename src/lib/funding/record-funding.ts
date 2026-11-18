@@ -2,10 +2,12 @@ import type { FundingReceipt } from "@/lib/atproto/indexer"
 import {
   CONFIRM_ROLES,
   confirmBuckets,
+  isSourceRole,
   type ConfirmRole,
 } from "@/lib/atproto/funding-provenance"
-import { confirmRoleLabel } from "./labels"
+import { orPhrases, recordedByPhrase } from "./labels"
 import { PRIMARY_CURRENCY } from "./select"
+import type { TrustedSourceKey } from "./trusted-sources"
 
 /**
  * Funding for one record page (an activity, or a project with its
@@ -114,25 +116,28 @@ export function fundingByline(s: RecordFundingSummary): string {
 
 /**
  * What the "Confirmed by" selection shows, as a sentence: "Showing gifts
- * recorded by Ma Earth or confirmed by both sides." Mirrors /funding's
- * wording (`selectionSentence`), without the count.
+ * recorded by Ma Earth and GainForest, or confirmed by both sides." Mirrors
+ * /funding's wording (`selectionSentence`), without the count.
  */
 export function shownSentence(roles: ReadonlySet<ConfirmRole>, thirdParties = 0): string {
-  const phrase: Record<ConfirmRole, string> = {
-    trusted: `recorded by ${confirmRoleLabel("trusted")}`,
+  type Rest = Exclude<ConfirmRole, TrustedSourceKey>
+  const phrase: Record<Rest, string> = {
     both: "confirmed by both sides",
     sender: "published only by the funder",
     recipient: "published only by the recipient",
     other: "published by others",
   }
-  const parts = CONFIRM_ROLES.filter((r) => roles.has(r)).map((r) => phrase[r])
+  const on = CONFIRM_ROLES.filter((r) => roles.has(r))
+  const sources = recordedByPhrase(on)
+  const parts = [
+    ...(sources ? [sources] : []),
+    ...on.filter((r): r is Rest => !isSourceRole(r)).map((r) => phrase[r]),
+  ]
   if (thirdParties > 0) {
     parts.push(
       thirdParties === 1 ? "confirmed by the account you picked" : "confirmed by the accounts you picked",
     )
   }
   if (parts.length === 0) return "The filter shows nothing. Turn on a source to see gifts."
-  const joined =
-    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} or ${parts[parts.length - 1]}`
-  return `Showing gifts ${joined}.`
+  return `Showing gifts ${orPhrases(parts)}.`
 }

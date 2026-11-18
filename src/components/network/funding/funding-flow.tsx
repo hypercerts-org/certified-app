@@ -10,7 +10,7 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { confirmRoleLabel } from "@/lib/funding/labels"
-import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
+import { trustedFundingSource, trustedSourceByKey } from "@/lib/funding/trusted-sources"
 import { regionPhrase } from "@/lib/funding/geo"
 import {
   DEFAULT_GIFT_BOUNDS,
@@ -139,16 +139,19 @@ export default function FundingFlow({
       if (!isPrimary(ds, i)) continue
       const a = r.amount[i]
       if (a <= 0) continue
-      const author = ds.authors[r.author[i]]
-      const key = isTrustedFundingSource(author) ? `src:${author}` : `role:${primaryRole(r.buckets[i])}`
+      // A trusted source's gate holds what it recorded, named after it
+      // (Ma Earth, GainForest); a receipt another account wrote and a source
+      // confirmed joins that source's gate.
+      const role = primaryRole(r.buckets[i])
+      const source = trustedFundingSource(ds.authors[r.author[i]]) ?? trustedSourceByKey(role)
+      const key = source ? `src:${source.did}` : `role:${role}`
       let g = gateIndex.get(key)
       if (g === undefined) {
         g = gates.length
         gateIndex.set(key, g)
-        const source = ds.sources.find((s) => `src:${s.did}` === key)
         gates.push({
           key,
-          label: source ? source.name : confirmRoleLabel(primaryRole(r.buckets[i])),
+          label: source ? source.name : confirmRoleLabel(role),
           total: 0,
           count: 0,
         })

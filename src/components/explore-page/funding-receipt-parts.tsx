@@ -32,12 +32,16 @@ const PROJECT_COLLECTION = "org.hypercerts.collection"
  *  a link (the Confirmed-by checkbox label). */
 export function HydratedIdentityRow({
   did,
+  displayName,
   size = "sm",
   className = "",
   noLink = false,
   showHandle = false,
 }: {
   did: string
+  /** A name to show instead of the profile's: a trusted funding source's
+   *  own name (GainForest publishes as "heisenberg"). */
+  displayName?: string
   size?: "sm" | "md"
   className?: string
   noLink?: boolean
@@ -53,7 +57,7 @@ export function HydratedIdentityRow({
       // raw DID; a DID that never resolves still falls back to it.
       loading={isLoading && !info}
       handle={handle}
-      displayName={info?.displayName ?? undefined}
+      displayName={displayName ?? info?.displayName ?? undefined}
       avatarUrl={info?.avatarUrl ?? undefined}
       href={noLink ? undefined : profileUrl(handle || did)}
       showHandle={showHandle}

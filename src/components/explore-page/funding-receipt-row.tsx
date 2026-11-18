@@ -13,6 +13,7 @@ import Badge from "@/components/ui/badge"
 import { thirdPartyDids } from "@/lib/atproto/funding-provenance"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 import { formatGift } from "@/lib/funding/format"
+import { trustedFundingSource } from "@/lib/funding/trusted-sources"
 
 /**
  * Dense single-row representation of an `org.hypercerts.funding.receipt`
@@ -261,10 +262,15 @@ function FundingConfirmedBy({
 
 /** A third-party attestor, rendered like any AT Protocol account — avatar +
  *  display name + @handle. Hydrated per-row via the shared
- *  {@link HydratedIdentityRow}. */
+ *  {@link HydratedIdentityRow}; a trusted funding source goes by its own
+ *  name ("GainForest"). */
 function ThirdPartyIdentity({ did }: { did: string }) {
   return (
-    <HydratedIdentityRow did={did} className="funding-receipt-row__party" />
+    <HydratedIdentityRow
+      did={did}
+      displayName={trustedFundingSource(did)?.name}
+      className="funding-receipt-row__party"
+    />
   )
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
-import { MA_EARTH_DID } from "@/lib/funding/trusted-sources"
+import { GAINFOREST_DID, MA_EARTH_DID } from "@/lib/funding/trusted-sources"
 
 // A record page's Funding card and tab, as a visitor sees them.
 
@@ -112,5 +112,29 @@ describe("RecordFundingSection", () => {
     expect(screen.queryByText(/No confirmed gifts yet/)).toBeNull()
     expect(screen.getByText("Unconfirmed")).toBeTruthy()
     expect(screen.getByTestId("count").textContent).toBe("1")
+    expect(
+      screen.getByText(
+        "Recorded, but neither confirmed by both sides nor recorded by Ma Earth or GainForest.",
+      ),
+    ).toBeTruthy()
+  })
+
+  it("shows GainForest's gifts by default, by name, and not as another publisher's", () => {
+    receipts = [
+      receipt(1),
+      receipt(2, { did: GAINFOREST_DID, attestations: [{ role: "third-party", did: GAINFOREST_DID }] }),
+      receipt(3, { did: "did:plc:bot", attestations: [{ role: "third-party", did: "did:plc:bot" }] }),
+    ]
+    render(<Page />)
+    expect(
+      screen.getByText(
+        "Showing gifts recorded by Ma Earth and GainForest, or confirmed by both sides. 1 more is hidden by the filter.",
+      ),
+    ).toBeTruthy()
+    // The card names each source; the rows name GainForest, not its
+    // profile's name.
+    expect(screen.getByText("Ma Earth, GainForest")).toBeTruthy()
+    expect(screen.getAllByText("GainForest").length).toBeGreaterThan(0)
+    expect(screen.getByTestId("count").textContent).toBe("2")
   })
 })

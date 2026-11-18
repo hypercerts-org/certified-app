@@ -6,14 +6,15 @@ import TabStripFades from "@/components/ui/tab-strip-fades"
 import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import { CONFIRM_ROLES, type ConfirmRole } from "@/lib/atproto/funding-provenance"
 import { confirmRoleHint, confirmRoleLabel } from "@/lib/funding/labels"
-import { ROLE_BIT, selectionSentence } from "@/lib/funding/select"
+import { roleSealBits, selectionSentence } from "@/lib/funding/select"
 import { formatCount } from "@/lib/funding/format"
 import FundingSeal from "./funding-seal"
 
 /**
- * The "Confirmed by" switch: one chip per bucket, each with its mark and how
- * many receipts it holds, so a visitor sees at rest that there is more to
- * turn on. Under it, a sentence that says what is showing. In the page from
+ * The "Confirmed by" switch: one chip per bucket (each trusted source by
+ * name, then both sides, one side, other publishers), each with its mark and
+ * how many receipts it holds, so a visitor sees at rest that there is more
+ * to turn on. Under it, a sentence that says what is showing. In the page from
  * 800px; in the Filters sheet on phones (funding-page.tsx).
  */
 export default function FundingConfirmedBy({
@@ -58,7 +59,7 @@ export default function FundingConfirmedBy({
             options={CONFIRM_ROLES.map((role) => ({
               value: role,
               tooltip: confirmRoleHint(role),
-              icon: <FundingSeal bits={ROLE_BIT[role]} size={14} />,
+              icon: <FundingSeal bits={roleSealBits(role)} size={14} />,
               label: (
                 <>
                   {confirmRoleLabel(role)}

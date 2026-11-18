@@ -9,12 +9,37 @@
  * the payload small: there are ~15,000 of them.
  */
 
-/** Bucket bits per receipt — see `CONFIRM_ROLES` in funding-provenance. */
+import { TRUSTED_FUNDING_SOURCES } from "./trusted-sources"
+
+/**
+ * Bucket bits per receipt — see `CONFIRM_ROLES` in funding-provenance.
+ * BUCKET_TRUSTED says a trusted source recorded it (any of them: the seal's
+ * outer ring); which one is in that source's own bit, {@link sourceBucket}.
+ */
 export const BUCKET_TRUSTED = 1
 export const BUCKET_BOTH = 2
 export const BUCKET_SENDER = 4
 export const BUCKET_RECIPIENT = 8
 export const BUCKET_OTHER = 16
+/** The first trusted source's bit; the next source has the next bit up. */
+const BUCKET_SOURCE_FIRST = 32
+
+/** A trusted source's own bucket bit, by its place in
+ *  `TRUSTED_FUNDING_SOURCES`; 0 for an account that is not one. A receipt
+ *  in it also carries BUCKET_TRUSTED. */
+export function sourceBucket(did: string): number {
+  const i = TRUSTED_FUNDING_SOURCES.findIndex((s) => s.did === did)
+  return i < 0 ? 0 : BUCKET_SOURCE_FIRST << i
+}
+
+/**
+ * The dataset's shape and its sources, as the cache key the page asks for
+ * (`/api/funding/dataset?v=2.ma-earth.gainforest`). The source part changes
+ * whenever a source is added, removed or moved (their bits are by
+ * position), so neither the CDN nor a browser serves a dataset built for
+ * another list. Bump the leading number when the shape changes.
+ */
+export const FUNDING_DATASET_VERSION = `2.${TRUSTED_FUNDING_SOURCES.map((s) => s.key).join(".")}`
 
 export interface FundingProject {
   /** at:// URI of the `org.hypercerts.collection` record. */
@@ -55,14 +80,15 @@ export interface FundingReceiptColumns {
   to: number[]
   /** Index into {@link FundingDataset.donors}; -1 anonymous; -2 text (see `fromText`). */
   from: number[]
-  /** Bucket bits (BUCKET_*). */
+  /** Bucket bits (BUCKET_* and each trusted source's `sourceBucket`). */
   buckets: number[]
 }
 
 export interface FundingDataset {
   /** ISO time the dataset was built. */
   builtAt: string
-  /** Trusted sources and how many receipts each published. */
+  /** Trusted sources, in `TRUSTED_FUNDING_SOURCES` order, and how many
+   *  receipts each published. */
   sources: { did: string; name: string; count: number }[]
   currencies: string[]
   authors: string[]

@@ -21,18 +21,20 @@ import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
 /**
- * /explore Funding "Confirmed by" filter — two checkbox sections:
+ * The record pages' Funding "Confirmed by" filter — two checkbox sections:
  *
- *   Confirmed by               (buckets: Trusted sources / Both sides /
- *                               Funder only / Recipient only / Others)
+ *   Confirmed by               (buckets: each trusted source by name — Ma
+ *                               Earth, GainForest — then Both sides /
+ *                               Funder only / Recipient only / Other
+ *                               publishers)
  *   Confirmed by third parties (one checkbox per distinct third-party
  *                               attestor in the loaded receipts that is
  *                               not a trusted source)
  *
  * The shown list is the UNION of everything checked; with nothing checked
- * nothing shows. Default has trusted sources + both sides checked and no
- * third parties — applied client-side (see `matchesConfirmedBy`), since the
- * buckets aren't a single indexer arg.
+ * nothing shows. Default has every trusted source + both sides checked and
+ * no third parties — applied client-side (see `matchesConfirmedBy`), since
+ * the buckets aren't a single indexer arg.
  */
 export default function FundingConfirmedByPopover({
   receipts,
@@ -52,7 +54,7 @@ export default function FundingConfirmedByPopover({
   onToggleRole: (role: ConfirmRole) => void
   thirdParties: ReadonlySet<string>
   onToggleThirdParty: (did: string) => void
-  /** Whether the selection equals the default (trusted sources + both
+  /** Whether the selection equals the default (every trusted source + both
    *  sides, no third parties). */
   isDefault: boolean
   /** Restore the default selection. */

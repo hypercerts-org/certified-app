@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, within } from "@testing-library/react"
-import type { FundingDataset } from "@/lib/funding/dataset-types"
+import {
+  BUCKET_OTHER,
+  BUCKET_TRUSTED,
+  sourceBucket,
+  type FundingDataset,
+} from "@/lib/funding/dataset-types"
+import { GAINFOREST_DID, MA_EARTH_DID } from "@/lib/funding/trusted-sources"
 
 // Funding's "Latest receipts" (under every view but Receipts): its link to
 // every receipt reads as the other "All ..." links do (P2-14), and the
@@ -37,9 +43,12 @@ const T = Date.UTC(2026, 10, 12, 14, 5) / 1000
 function dataset(): FundingDataset {
   return {
     builtAt: "2026-11-15T00:00:00.000Z",
-    sources: [{ did: "did:plc:src", name: "Ma Earth" }],
+    sources: [
+      { did: MA_EARTH_DID, name: "Ma Earth", count: 1 },
+      { did: GAINFOREST_DID, name: "GainForest", count: 1 },
+    ],
     currencies: ["USD"],
-    authors: ["did:plc:src"],
+    authors: [GAINFOREST_DID, MA_EARTH_DID, "did:plc:bot"],
     accounts: [{ did: "did:plc:org", name: "River Trust", avatar: null }],
     donors: [],
     projects: [
@@ -54,16 +63,21 @@ function dataset(): FundingDataset {
         place: null,
       },
     ],
+    // Newest first: GainForest's, Ma Earth's, then another publisher's.
     receipts: {
-      rkey: ["r1"],
-      author: [0],
-      t: [T],
-      amount: [25],
-      currency: [0],
-      project: [0],
-      to: [0],
-      from: [-1],
-      buckets: [1],
+      rkey: ["r1", "r2", "r3"],
+      author: [0, 1, 2],
+      t: [T, T - 3600, T - 7200],
+      amount: [25, 40, 5],
+      currency: [0, 0, 0],
+      project: [0, 0, 0],
+      to: [0, 0, 0],
+      from: [-1, -1, -1],
+      buckets: [
+        BUCKET_TRUSTED | sourceBucket(GAINFOREST_DID),
+        BUCKET_TRUSTED | sourceBucket(MA_EARTH_DID),
+        BUCKET_OTHER,
+      ],
     },
     toText: {},
     fromText: {},
@@ -103,6 +117,42 @@ describe("Funding: Latest receipts", () => {
     const time = screen.getByRole("list", { name: "Latest funding receipts" }).querySelector("time")!
     expect(time.querySelector(".funding-ledger__date")).toHaveTextContent("Nov 12")
     expect(time.textContent).toBe("Nov 12 · 14:05")
+  })
+
+  it("names the source that recorded each receipt, and hides other publishers by default", async () => {
+    const { default: FundingPage } = await import("../funding-page")
+    render(<FundingPage />)
+    const rows = within(screen.getByRole("list", { name: "Latest funding receipts" })).getAllByRole("listitem")
+    expect(rows).toHaveLength(2)
+    expect(rows[0].querySelector(".funding-ledger__by")).toHaveTextContent("GainForest")
+    expect(rows[1].querySelector(".funding-ledger__by")).toHaveTextContent("Ma Earth")
+  })
+
+  it("lists each trusted source as its own Confirmed by chip, both on by default", async () => {
+    const { default: FundingPage } = await import("../funding-page")
+    render(<FundingPage />)
+    const [chips] = screen.getAllByRole("group", { name: "Confirmed by" })
+    const buttons = within(chips).getAllByRole("button")
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      "Ma Earth1",
+      "GainForest1",
+      "Both sides0",
+      "Funder only0",
+      "Recipient only0",
+      "Other publishers1",
+    ])
+    expect(buttons.map((b) => b.getAttribute("aria-pressed"))).toEqual([
+      "true",
+      "true",
+      "true",
+      "false",
+      "false",
+      "false",
+    ])
+    expect(
+      screen.getAllByText(/^Showing 2 receipts recorded by Ma Earth and GainForest, or confirmed by both sides\.$/)
+        .length,
+    ).toBeGreaterThan(0)
   })
 
 })

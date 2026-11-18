@@ -22,6 +22,7 @@ import {
 import { receiptAuthorRole, sameClusterKeys } from "@/lib/atproto/funding-merge"
 import { deleteFundingReceipt, listFundingReceiptsInRepo } from "@/lib/atproto/funding-receipt-record"
 import type { FundingAttestation } from "@/lib/atproto/indexer"
+import { trustedFundingSource } from "@/lib/funding/trusted-sources"
 import {
   useFundingConfirmedLocally,
   markFundingDeleted,
@@ -560,14 +561,14 @@ export function DateValue({ iso }: { iso: string | null }) {
 
 /** The account that published the receipt record (its repo DID), shown as
  *  an avatar + name row linking to the profile — hydrated like every other
- *  account byline. */
+ *  account byline. A trusted funding source goes by its own name. */
 function CreatorIdentity({ did }: { did: string }) {
-  return <HydratedIdentityRow did={did} />
+  return <HydratedIdentityRow did={did} displayName={trustedFundingSource(did)?.name} />
 }
 
 /** The "Record (…)" section title: the author's role in parentheses —
- *  "Sender" / "Recipient", or a third party's display name (e.g. "Ma Earth"),
- *  hydrated from their DID. */
+ *  "Sender" / "Recipient", or a third party's name: a trusted funding
+ *  source's own ("Ma Earth", "GainForest"), else hydrated from their DID. */
 function RecordSectionTitle({
   role,
   did,
@@ -579,7 +580,9 @@ function RecordSectionTitle({
   if (role === "sender") return <>Record (Funder)</>
   if (role === "recipient") return <>Record (Recipient)</>
   const name =
-    info?.displayName || (info?.handle ? `@${info.handle}` : "third party")
+    trustedFundingSource(did)?.name ||
+    info?.displayName ||
+    (info?.handle ? `@${info.handle}` : "third party")
   return <>Record ({name})</>
 }
 

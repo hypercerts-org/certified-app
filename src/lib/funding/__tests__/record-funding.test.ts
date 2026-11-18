@@ -6,7 +6,7 @@ import {
   summarizeRecordFunding,
 } from "../record-funding"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
-import { MA_EARTH_DID } from "../trusted-sources"
+import { GAINFOREST_DID, MA_EARTH_DID } from "../trusted-sources"
 
 function receipt(over: Partial<FundingReceipt> & { uri: string }): FundingReceipt {
   return {
@@ -68,7 +68,16 @@ describe("summarizeRecordFunding", () => {
       }),
       receipt({ uri: "2", attestations: [{ role: "third-party", did: MA_EARTH_DID }] }),
     ])
-    expect(s.confirmedBy).toEqual(["trusted", "both"])
+    expect(s.confirmedBy).toEqual(["ma-earth", "both"])
+  })
+
+  it("names GainForest as its own source, not another publisher", () => {
+    const s = summarizeRecordFunding([
+      receipt({ uri: "1", did: GAINFOREST_DID, attestations: [{ role: "third-party", did: GAINFOREST_DID }] }),
+      receipt({ uri: "2", attestations: [{ role: "third-party", did: "did:plc:someone" }] }),
+      receipt({ uri: "3", attestations: [{ role: "third-party", did: MA_EARTH_DID }] }),
+    ])
+    expect(s.confirmedBy).toEqual(["ma-earth", "gainforest", "other"])
   })
 
   it("ignores amounts that aren't numbers", () => {
@@ -97,8 +106,15 @@ describe("fundingByline", () => {
 })
 
 describe("shownSentence", () => {
-  it("says what the default filter shows", () => {
-    expect(shownSentence(new Set(["trusted", "both"]))).toBe(
+  it("says what the default filter shows, naming each source", () => {
+    expect(shownSentence(new Set(["ma-earth", "gainforest", "both"]))).toBe(
+      "Showing gifts recorded by Ma Earth and GainForest, or confirmed by both sides.",
+    )
+  })
+
+  it("names the source that is on", () => {
+    expect(shownSentence(new Set(["gainforest"]))).toBe("Showing gifts recorded by GainForest.")
+    expect(shownSentence(new Set(["ma-earth", "both"]))).toBe(
       "Showing gifts recorded by Ma Earth or confirmed by both sides.",
     )
   })
