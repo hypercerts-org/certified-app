@@ -541,7 +541,12 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
           <div className="overview-id-item">
             <dt>Permanent ID</dt>
             <dd>
-              <CopyableId value={did} label="Permanent ID" className="overview-id-field" />
+              <CopyableId
+                value={did}
+                truncateTo={14}
+                label="Permanent ID"
+                className="overview-id-field"
+              />
             </dd>
           </div>
         </dl>
@@ -565,7 +570,7 @@ export function OrganizationsSection({ organizations }: { organizations: Organiz
           {organizations.map((organization) => (
             <li key={organization.did}>
               <IdentityRow
-                size="sm"
+                size="md"
                 className="identity-org"
                 name={organization.name}
                 avatarSrc={organization.avatarUrl}

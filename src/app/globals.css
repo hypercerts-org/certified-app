@@ -2157,3 +2157,50 @@ details[open] > .work-folder-head .work-folder-chevron {
 .identity-org .rounded-full img {
   border-radius: var(--hc-radius-tag);
 }
+
+/* Rows and text at staging's sizes. */
+.overview-list-label {
+  font-family: var(--hc-font-body);
+  font-size: var(--hc-type-body);
+  font-weight: var(--hc-weight-medium);
+}
+
+.overview .overview-row {
+  min-block-size: 3.5rem;
+}
+
+.overview .overview-thumb {
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+}
+
+.overview .overview-row-title {
+  font-size: var(--hc-type-body);
+}
+
+.overview .overview-row-meta {
+  font-size: var(--hc-type-body-sm);
+}
+
+/* IdentityRow's name and line under it, one step larger than its own. */
+.overview-rows .text-hc-body-sm {
+  font-size: var(--hc-type-body);
+}
+
+.overview-rows .text-hc-micro {
+  font-size: var(--hc-type-body-sm);
+}
+
+.overview-bio {
+  color: var(--hc-text-body);
+  font-size: var(--hc-type-body);
+}
+
+.overview-website {
+  font-size: var(--hc-type-body);
+}
+
+.overview-id-field,
+.overview-id-field * {
+  font-size: 0.9375rem;
+}
