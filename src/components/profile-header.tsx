@@ -10,8 +10,8 @@ import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
-import { OwnerOnly } from "@/components/viewer-only";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
+import { OwnerOnly } from "@/components/viewer-only";
 import { getActingAs } from "@/lib/acting-as";
 import { getEndorsers, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
@@ -66,7 +66,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
       )}
       <div className="profile-head">
         <Avatar
-          name={actor.displayName}
+          name={actor.displayName.replace(/^@/, "")}
           src={actor.avatarUrl}
           size="lg"
           className={
@@ -75,7 +75,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
         />
         <div className="profile-identity">
           <h1 className="profile-name" dir="auto">
-            <ProfileName did={actor.did} rendered={actor.profile} />
+            <ProfileName did={actor.did} rendered={actor.profile} fallback={actor.displayName} />
           </h1>
           {facts.length > 0 && (
             <p className="profile-meta">

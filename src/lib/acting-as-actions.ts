@@ -1,8 +1,8 @@
 "use server";
 
+import { getActingAs } from "@/lib/acting-as";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { setActingAs } from "@/lib/auth/session";
-import { getActingAs } from "@/lib/acting-as";
 import { listMembershipsForDisplay } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 

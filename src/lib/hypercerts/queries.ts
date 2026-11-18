@@ -9,7 +9,7 @@ import "server-only";
 import { Client, type l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
-import { getHandle } from "@/lib/identity";
+import { getDid, getHandle } from "@/lib/identity";
 import { tags } from "./cache";
 import {
   type ActivityCard,
@@ -17,17 +17,17 @@ import {
   type ActorDetail,
   type AwardSubject,
   type AwardsIssued,
-  awardSubject,
   activityRecord,
+  awardSubject,
   collectionOf,
+  didOf,
   type EndorsementCard,
   formatDate,
   type ListCard,
-  type PersonRow,
-  didOf,
   type Page,
-  type ProjectCard,
+  type PersonRow,
   type ProfileVersion,
+  type ProjectCard,
   type ProjectDetail,
   projectRecord,
   type RecentRecord,
@@ -115,7 +115,13 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     ...read(),
   });
   if (!profile.success && !notFound(profile)) throw profile;
-  const did = profile.success ? profile.body.profile.did : isDid ? (actor as Did) : null;
+  // An account without a profile still has a page (others follow and endorse
+  // it), so a handle the API doesn't know is resolved on its own.
+  const did = profile.success
+    ? profile.body.profile.did
+    : isDid
+      ? (actor as Did)
+      : ((await getDid(actor)) as Did | null);
   if (!did) return null;
   const [organization, handle] = await (byDid ?? lookups(did));
 
@@ -125,9 +131,13 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     return location ? { ...detail, place: await placeName(location) } : detail;
   }
   if (!notFound(organization)) throw organization;
-  return profile.success
-    ? { ...toActorDetail({ did, profile: profile.body.profile, organization: null }), handle }
-    : null;
+  if (profile.success) {
+    return { ...toActorDetail({ did, profile: profile.body.profile, organization: null }), handle };
+  }
+  // No Certified records at all: the account by its handle (or DID), so
+  // links from followers and endorsements don't lead to "not found".
+  const bare = toActorDetail({ did, profile: null, organization: null });
+  return { ...bare, handle, displayName: handle ? `@${handle}` : did };
 }
 
 /**

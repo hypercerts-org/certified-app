@@ -7,18 +7,18 @@ import { extractPdsUrl } from "@atproto/did";
 import {
   Client,
   currentDatetimeString,
-  type l,
   type LexMap,
+  type l,
   XrpcError,
   XrpcResponseError,
 } from "@atproto/lex";
 import { cidForLex } from "@atproto/lex-cbor";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@hypercerts-org/lexicon";
+import { app as cgsLexicons } from "@/lexicons";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
-import { app as cgsLexicons } from "@/lexicons";
 import { logError } from "@/lib/log";
 import { type ProfileFields, type ProfileVersion, profileUri } from "./views";
 

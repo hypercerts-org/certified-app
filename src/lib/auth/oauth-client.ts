@@ -1,12 +1,12 @@
 import "server-only";
 
-import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import {
   buildAtprotoLoopbackClientMetadata,
   JoseKey,
   NodeOAuthClient,
   type OAuthClientMetadataInput,
 } from "@atproto/oauth-client-node";
+import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import { CALLBACK_PATH, OAUTH_SCOPE, oauthMode } from "./config";
 import { requestLock } from "./lock";
 import { sessionStore, stateStore } from "./stores";

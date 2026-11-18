@@ -14,7 +14,9 @@
 //
 // The DOM is the one-column order at every width, so the keyboard follows the
 // page; from 1100px a grid moves the boxes to the right (globals.css). Each
-// section reads its own data behind its own Suspense boundary.
+// section reads its own data behind its own Suspense boundary, with a
+// skeleton shaped like it. All but the organizations are cached public data
+// about the account, so a prefetching link brings them along.
 
 import {
   Avatar,
@@ -35,6 +37,7 @@ import { actorHref, projectHref } from "@/components/cards";
 import { APPS } from "@/lib/apps";
 import {
   type Count,
+  getActor,
   getEndorsements,
   getFollowCounts,
   getRecordCounts,
@@ -47,42 +50,40 @@ import type { Organization } from "@/lib/organizations";
 const LATEST_RECORDS = 4;
 const LATEST_ENDORSEMENTS = 3;
 
-/** The account the overview describes. */
-export type OverviewAccount = {
-  did: string;
-  actor: ActorDetail | null;
-  handle: string | null;
-  /** Whether the viewer may edit its profile. */
-  canEdit: boolean;
-};
-
 export function WorkspaceOverview({
-  account,
+  did,
+  canEdit,
   organizations,
 }: {
-  account: OverviewAccount;
+  did: string;
+  /** Whether the viewer may edit the account's profile. */
+  canEdit: boolean;
   /** Your organizations, on your own workspace; null on an organization's. */
-  organizations: Organization[] | null;
+  organizations: ReactNode | null;
 }) {
   return (
     <>
       <h1 className="workspace-title">Overview</h1>
       <div className="overview">
         <div className="overview-main">
-          <Suspense fallback={<SectionSkeleton title="Your records" rows={3} />}>
-            <RecordsSection did={account.did} profile={actorHref(account)} />
+          <Suspense fallback={<StatsSkeleton title="Your records" stats={3} rows={3} />}>
+            <RecordsSection did={did} />
           </Suspense>
-          <Suspense fallback={<SectionSkeleton title="Endorsements and followers" rows={2} />}>
-            <EndorsementsSection did={account.did} />
+          <Suspense
+            fallback={<StatsSkeleton title="Endorsements and followers" stats={4} rows={2} />}
+          >
+            <EndorsementsSection did={did} />
           </Suspense>
         </div>
         <div className="overview-side">
           <Card variant="panel" className="overview-box">
-            <IdentityBox account={account} />
+            <Suspense fallback={<IdentitySkeleton />}>
+              <IdentityBox did={did} canEdit={canEdit} />
+            </Suspense>
           </Card>
           {organizations && (
             <Card variant="panel" className="overview-box">
-              <OrganizationsSection organizations={organizations} />
+              {organizations}
             </Card>
           )}
         </div>
@@ -123,11 +124,74 @@ function Section({
   );
 }
 
-function SectionSkeleton({ title, rows }: { title: string; rows: number }) {
+// Skeletons, shaped like the sections, so nothing moves when they arrive.
+
+function RowsSkeleton({ rows }: { rows: number }) {
+  return (
+    <div className="overview-rows" aria-hidden>
+      {Array.from({ length: rows }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholders
+        <div key={i} className="overview-row">
+          <Skeleton variant="box" className="overview-thumb" />
+          <Skeleton variant="text" lines={2} className="overview-row-text" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A section of counts and latest rows. Its title is known, so it shows. */
+function StatsSkeleton({ title, stats, rows }: { title: string; stats: number; rows: number }) {
   return (
     <Section title={title}>
-      <Skeleton variant="text" lines={rows + 1} />
+      <div className="stat-row" aria-hidden>
+        {Array.from({ length: stats }, (_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholders
+          <Skeleton key={i} variant="box" className="skeleton-stat" />
+        ))}
+      </div>
+      <RowsSkeleton rows={rows} />
     </Section>
+  );
+}
+
+function IdentitySkeleton() {
+  return (
+    <div className="overview-identity" aria-hidden>
+      <Skeleton variant="box" className="skeleton-identity-avatar" />
+      <div className="overview-identity-text">
+        <Skeleton variant="line" className="skeleton-meta" />
+        <Skeleton variant="text" lines={2} />
+      </div>
+    </div>
+  );
+}
+
+export function OrganizationsSkeleton() {
+  return (
+    <Section title="Your organizations">
+      <RowsSkeleton rows={2} />
+    </Section>
+  );
+}
+
+/** The whole overview, while the page works out whose workspace it is. */
+export function OverviewSkeleton() {
+  return (
+    <>
+      <h1 className="workspace-title">Overview</h1>
+      <div className="overview">
+        <div className="overview-main">
+          <StatsSkeleton title="Your records" stats={3} rows={3} />
+          <StatsSkeleton title="Endorsements and followers" stats={4} rows={2} />
+        </div>
+        <div className="overview-side">
+          <Card variant="panel" className="overview-box">
+            <IdentitySkeleton />
+          </Card>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -156,7 +220,7 @@ function StatRow({ label, stats }: { label: string; stats: Stat[] }) {
         return (
           <li key={stat.label}>
             {stat.href ? (
-              <Link href={stat.href} className="stat stat-link">
+              <Link prefetch href={stat.href} className="stat stat-link">
                 {content}
               </Link>
             ) : (
@@ -175,11 +239,13 @@ function ListLabel({ children }: { children: ReactNode }) {
 
 // Records --------------------------------------------------------------------
 
-async function RecordsSection({ did, profile }: { did: string; profile: string }) {
-  const [counts, latest] = await Promise.all([
+async function RecordsSection({ did }: { did: string }) {
+  const [counts, latest, actor] = await Promise.all([
     getRecordCounts(did),
     listLatestRecords(did, LATEST_RECORDS),
+    getActor(did),
   ]);
+  const profile = actorHref({ did, handle: actor?.handle ?? null });
   const empty =
     latest.length === 0 &&
     counts.activities.value === 0 &&
@@ -276,6 +342,7 @@ function RecordRow({ record }: { record: RecentRecord }) {
   // Activities have no page of their own yet.
   return record.kind === "Project" ? (
     <Link
+      prefetch
       href={projectHref({ authorDid: didOf(record.uri), rkey: rkeyOf(record.uri) })}
       className="overview-row overview-row-link"
     >
@@ -357,8 +424,20 @@ function firstLine(text: string | null): string | null {
   );
 }
 
-function IdentityBox({ account }: { account: OverviewAccount }) {
-  const { did, actor, handle } = account;
+async function IdentityBox({ did, canEdit }: { did: string; canEdit: boolean }) {
+  return <IdentityView did={did} canEdit={canEdit} actor={await getActor(did)} />;
+}
+
+function IdentityView({
+  did,
+  canEdit,
+  actor,
+}: {
+  did: string;
+  canEdit: boolean;
+  actor: ActorDetail | null;
+}) {
+  const handle = actor?.handle ?? null;
   const name = actor?.displayName ?? (handle ? `@${handle}` : did);
   const bio = firstLine(actor?.description ?? null);
   const website = actor?.website ?? null;
@@ -368,7 +447,7 @@ function IdentityBox({ account }: { account: OverviewAccount }) {
   return (
     <>
       <div className="overview-identity">
-        <Avatar name={name} src={actor?.avatarUrl} size="lg" />
+        <Avatar name={name.replace(/^@/, "")} src={actor?.avatarUrl} size="lg" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
             <Link
@@ -403,7 +482,7 @@ function IdentityBox({ account }: { account: OverviewAccount }) {
               <span className="visually-hidden"> (opens in a new tab)</span>
             </a>
           )}
-          {account.canEdit && (
+          {canEdit && (
             <Link href={`${actorHref(did)}/edit`} className="overview-edit">
               Edit profile
             </Link>
@@ -444,7 +523,7 @@ function IdentityBox({ account }: { account: OverviewAccount }) {
 
 // Organizations --------------------------------------------------------------
 
-function OrganizationsSection({ organizations }: { organizations: Organization[] }) {
+export function OrganizationsSection({ organizations }: { organizations: Organization[] }) {
   return (
     <Section title="Your organizations">
       {organizations.length === 0 ? (

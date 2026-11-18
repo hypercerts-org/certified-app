@@ -1783,3 +1783,14 @@ button.sidebar-item:hover,
 .skeleton-rail {
   block-size: 12rem;
 }
+
+.skeleton-stat {
+  block-size: 3.75rem;
+}
+
+.skeleton-identity-avatar {
+  flex: none;
+  inline-size: 4rem;
+  block-size: 4rem;
+  border-radius: 50%;
+}

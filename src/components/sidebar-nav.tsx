@@ -84,7 +84,7 @@ function Row({ item, pathname }: { item: Item; pathname: string }) {
   }
   const active = item.isActive?.(pathname) ?? false;
   return (
-    <Link href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
+    <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
       <Icon size={20} strokeWidth={active ? 2 : 1.5} aria-hidden />
       {label}
     </Link>
