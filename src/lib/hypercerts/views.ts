@@ -139,38 +139,6 @@ export type ListCard = {
   summary: string | null;
 };
 
-// Badge awards an account has issued, grouped by badge definition. These are
-// plain counts of award records: the app does not interpret what a badge
-// means, and three awards to one recipient count as three.
-export type AwardSubject =
-  | { kind: "actor"; actor: ActorCard }
-  | { kind: "project"; project: ProjectCard }
-  | { kind: "record"; uri: string };
-
-export type IssuedAward = {
-  uri: string;
-  subject: AwardSubject;
-};
-
-export type IssuedBadge = {
-  uri: string;
-  title: string;
-  badgeType: string | null;
-  // Set when another account owns the badge definition.
-  definedBy: ActorCard | null;
-  awardCount: number;
-  recentAwards: IssuedAward[];
-};
-
-export type AwardsIssued = {
-  did: string;
-  awardCount: number;
-  // True when the account has issued more awards than the app reads (see
-  // queries).
-  truncated: boolean;
-  badges: IssuedBadge[];
-};
-
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {

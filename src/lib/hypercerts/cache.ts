@@ -7,8 +7,6 @@ export const tags = {
   projects: (author: string) => `projects:${author}`,
   project: (uri: string) => `project:${uri}`,
   organizations: () => "organizations",
-  badges: (did: string) => `badges:${did}`,
-  awardsIssued: (did: string) => `awards-issued:${did}`,
   endorsements: (did: string) => `endorsements:${did}`,
   follows: (did: string) => `follows:${did}`,
 };

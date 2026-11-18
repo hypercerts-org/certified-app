@@ -66,21 +66,18 @@
 }
 
 .nav-link:hover,
-.nav-link[aria-current="page"],
-.nav-link[data-current] {
+.nav-link[aria-current="page"] {
   color: var(--hc-text-ink);
 }
 
-.nav-link[aria-current="page"],
-.nav-link[data-current] {
+.nav-link[aria-current="page"] {
   background: var(--hc-surface-tint);
 }
 
 /* Forced colors (Windows high contrast) drop the background above, so mark the
    current destination with an underline there. */
 @media (forced-colors: active) {
-  .nav-link[aria-current="page"],
-  .nav-link[data-current] {
+  .nav-link[aria-current="page"] {
     text-decoration: underline;
     text-underline-offset: 0.25em;
   }
@@ -147,10 +144,6 @@
   color: var(--hc-text-ink);
 }
 
-.account-name {
-  font-weight: 600;
-}
-
 .menu-panel {
   inline-size: min(22rem, calc(100vw - 2rem));
   padding: 0.25rem;
@@ -204,12 +197,6 @@ button.menu-row:hover,
   margin-block: 0.25rem;
   border: 0;
   border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.menu-row-static {
-  border-block-end: 1px solid var(--hc-line-hairline);
-  border-radius: 0;
-  margin-block-end: 0.25rem;
 }
 
 /* Names in menus wrap rather than end in "…": there is no other way to read
@@ -469,48 +456,6 @@ button.menu-row:disabled:not([aria-current]) {
 
 .embed-footer {
   margin-block-start: 1rem;
-}
-
-.issued-badge {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding-block-start: 0.75rem;
-  border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.issued-badge-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.award-subjects {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 0.5rem 1rem;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.find-form {
-  display: flex;
-  gap: 0.5rem;
-  max-inline-size: 32rem;
-}
-
-.find-form > :first-child {
-  flex: 1;
-}
-
-.issuer-card-name {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: inherit;
-  text-decoration: none;
 }
 
 .profile-form {
@@ -819,8 +764,7 @@ button.menu-row:disabled:not([aria-current]) {
   overflow: hidden;
 }
 
-.overview-website,
-.overview-edit {
+.overview-website {
   color: var(--hc-text-body);
   font-size: var(--hc-type-body-sm);
   text-underline-offset: 0.2em;

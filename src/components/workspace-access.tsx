@@ -5,7 +5,7 @@ import { workspaceHref } from "@/components/cards";
 import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
 import { logError } from "@/lib/log";
-import { getMemberships, mayEditProfile } from "@/lib/memberships";
+import { getMemberships } from "@/lib/memberships";
 import { isDid, signInHref } from "@/lib/validate";
 
 // Who may open a workspace. The check sits in the workspace's layout, which
@@ -67,15 +67,6 @@ export async function WorkspaceAccess({
     );
   }
   return children;
-}
-
-/** Shown when you may edit the workspace's account: yours, or an organization you manage. */
-export function EditorOnly({ did, children }: { did: string; children: ReactNode }) {
-  return <EditorGate did={did}>{children}</EditorGate>;
-}
-
-async function EditorGate({ did, children }: { did: string; children: ReactNode }) {
-  return (await mayEditProfile(did)) ? children : null;
 }
 
 function Unavailable({ did, err }: { did: string; err: unknown }) {

@@ -3,7 +3,7 @@
  *
  * Editorial system: off-white canvas, hairline rules, light serif
  * headlines, mono registry numerals, hairline "certification seal"
- * artwork (see src/components/landing/seal-art.tsx). Sections sit
+ * artwork (src/components/landing/guilloche-art.tsx). Sections sit
  * directly on the page canvas, separated by full-width 1px rules;
  * the organizations band is the page's single polarity-inversion
  * moment.
@@ -11,10 +11,6 @@
  * All colors are theme-aware tokens (raw hex is permitted in this
  * file, but tokens make dark mode free). Artwork strokes use
  * currentColor inside wrappers that set `color: var(--color-navy)`.
- *
- * Everything below the "SHARED, NON-LANDING" banner at the end of
- * this file backs app-wide surfaces (the app pages, the legal pages and
- * their footer) — do NOT remove it with landing iterations.
  * ========================================================================== */
 
 /* ---------- Foundations ---------- */
@@ -1514,194 +1510,6 @@
   .lp-section__header {
     margin-bottom: 40px;
   }
-}
-
-/* ============================================================================
- * SHARED, NON-LANDING — used by app-wide surfaces. Do not remove with
- * landing iterations.
- *
- *  - .app-page backs /about, /terms, /privacy, /dsa,
- *    /imprint, /help.
- *  - .welcome-footer wraps SiteFooter on /welcome, .editorial-footer on
- *    the legal pages (both rendered by AppShell).
- *
- * The feedback modal's classes (feedback-modal.tsx) live in components.css
- * only; the copy that was here duplicated them.
- * ========================================================================== */
-
-/* ========== App Pages (authenticated) ========== */
-.app-page {
-  background: var(--color-off-white);
-}
-
-/* Shell-less pages (/terms, /privacy, /imprint, /dsa) supply their own
-   offset for the fixed mobile navbar (--navbar-height is 0 on desktop).
-   Inside AppShell (/help) .app-shell__content already pads for the navbar
-   and the shell's footer follows the page, so neither rule applies there. */
-.app-page:not(.app-shell .app-page) {
-  padding-top: var(--navbar-height);
-  /* Clear the phone bottom tab bar (0 on desktop and wherever the bar is
-     not in the DOM). */
-  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-  min-height: 100vh;
-}
-
-.app-shell .app-page {
-  min-height: 0;
-}
-
-.app-page__inner {
-  max-width: 1024px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-/* On mobile the app-shell already supplies the 16px lateral gutter, so the
-   inner wrapper drops its 24px horizontal padding — otherwise legal/app pages
-   carried ~40px of combined inset and a cramped reading column. */
-@media (max-width: 799px) {
-  .app-page__inner {
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-
-/* /welcome footer wrapper — AppShell renders SiteFooter inside it on this
-   route (after <main>, without the app column). Full-bleed (no
-   horizontal padding or max-width cap) so the off-white band and the
-   footer's border-top span the full viewport width; SiteFooter applies
-   its own 32px content inset. */
-.welcome-footer {
-  padding: 0;
-  background: var(--color-off-white);
-}
-
-/* Footer carries margin-top: 48px elsewhere; collapse it so the
-   closing section's guilloche clips flush at the footer border. */
-.welcome-footer .site-footer {
-  margin-top: 0;
-}
-
-/* Under the landing top bar (/welcome, and the legal pages wrapped in
-   .editorial-footer by AppShell) the footer's content keeps the bar's
-   edges: 32px in, or the centred 1280px column on wider screens (x=80 at
-   1440), where the wordmark and the Sign in button sit. */
-@media (min-width: 800px) {
-  :is(.welcome-footer, .editorial-footer) .site-footer {
-    padding-left: max(32px, calc((100% - 1280px) / 2));
-    padding-right: max(32px, calc((100% - 1280px) / 2));
-  }
-}
-
-/* ========== Legal/editorial pages (/about, /terms, /privacy, /imprint, /dsa) ========== */
-/* Aligns text pages to the welcome page's editorial tone:
-   navy headings, mid-gray body, hairline section dividers, 600px reading column. */
-.legal-page .app-page__inner {
-  max-width: 600px;
-}
-
-/* Legal pages bypass AppShell, so there is no shell gutter on mobile.
-   Restore the 16px lateral inset that the home feed uses. */
-@media (max-width: 799px) {
-  .legal-page .app-page__inner {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-}
-
-.legal-page .legal-prose section + section {
-  border-top: 1px solid var(--color-light-gray);
-  padding-top: 2rem;
-}
-
-/* The FAQ accordion carries its own bottom hairline; on legal/help pages the
-   `section + section` divider above already separates it from what follows,
-   so drop the accordion's closing line to avoid a stacked double rule. */
-.legal-page .legal-prose .lp-faq {
-  border-bottom: 0;
-}
-
-/* `.legal-page__title` is the page title on routes where the app chrome
-   owns the h1 (Help): an h2 that keeps the h1 treatment. */
-.legal-page h1,
-.legal-page .legal-page__title {
-  color: var(--color-navy);
-}
-
-.legal-page h2:not(.legal-page__title),
-.legal-page h3 {
-  color: var(--color-navy);
-  font-weight: 300;
-  letter-spacing: -0.025em;
-}
-
-.legal-page .legal-prose p,
-.legal-page .legal-prose li {
-  color: var(--color-mid-gray);
-}
-
-/* Inline links in legal/help copy (replaces a per-link Tailwind string). */
-.legal-link {
-  color: var(--color-accent);
-  text-decoration: underline;
-}
-
-.legal-link:hover {
-  color: var(--color-accent-hover);
-}
-
-/* Compact in-page contents list under "Last updated" on Terms, Privacy
-   and the DSA page. Two columns from 800px so a 26-clause list stays
-   short. */
-.legal-toc ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.legal-toc li {
-  break-inside: avoid;
-}
-
-.legal-toc .legal-link {
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .legal-toc .legal-link:hover {
-    text-decoration: underline;
-  }
-}
-
-@media (min-width: 800px) {
-  .legal-toc ol {
-    columns: 2;
-    column-gap: 32px;
-  }
-  /* Each link at least 24px tall (WCAG 2.5.8 target size); as an inline
-     run it was only its 17px glyph box. */
-  .legal-toc .legal-link {
-    display: inline-block;
-    min-height: 24px;
-    vertical-align: top;
-  }
-}
-
-/* Phones: each entry is a 44px touch row (the line-height alone left
-   17px-tall links). A long title wraps inside its row. */
-@media (max-width: 799px) {
-  .legal-toc .legal-link {
-    display: flex;
-    align-items: center;
-    min-height: var(--control-h-md);
-    padding: 4px 0;
-  }
-}
-
-.legal-page .legal-prose strong {
-  color: var(--color-navy);
 }
 
 /* v2: staging's tokens, mapped onto the design system's, so the rules

@@ -17,11 +17,8 @@ import {
   type ActivityCard,
   type ActorCard,
   type ActorDetail,
-  type AwardSubject,
-  type AwardsIssued,
   activityRecord,
   awardSubject,
-  collectionOf,
   didOf,
   type EndorsementCard,
   formatDate,
@@ -286,59 +283,6 @@ export async function listOrganizationsPage(options: {
 }
 
 /** The badge type of endorsements, which pages show apart from other badges. */
-const ENDORSEMENT = "endorsement";
-
-// Badge awards issued
-//
-// The API has no count for badge awards (proposed in TECH-810), so
-// issuedAwardsSource pages through every award the account has issued, once
-// per cache lifetime, and keeps a plain summary. Accounts with more than
-// MAX_ISSUED_AWARDS awards are cut off there. Counts are award records, with
-// no interpretation of what a badge means.
-const MAX_ISSUED_AWARDS = 2_000;
-const RECENT_AWARDS_SHOWN = 8;
-
-type IssuedAwardsSource = {
-  // Most recent first, as the API returns them.
-  awards: { uri: string; badge: string; subject: string }[];
-  definitions: Record<string, { title: string; badgeType: string | null; owner: string }>;
-  truncated: boolean;
-};
-
-async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
-  "use cache";
-  publicData(tags.awardsIssued(did));
-
-  const source: IssuedAwardsSource = {
-    awards: [],
-    definitions: {},
-    truncated: false,
-  };
-  let cursor: string | undefined;
-  do {
-    const page = await api.call(
-      app.certified.badge.listBadgeAwards,
-      { authors: [did as Did], limit: 100, cursor },
-      read(),
-    );
-    for (const award of page.badgeAwards) {
-      const subject = awardSubject(award.record.subject);
-      const badge = award.record.badge.uri;
-      // Endorsements have their own section (getEndorsements).
-      if (!subject || award.badge?.record.badgeType === ENDORSEMENT) continue;
-      source.awards.push({ uri: award.uri, badge, subject });
-      source.definitions[badge] ??= {
-        title: award.badge?.record.title || "Untitled badge",
-        badgeType: award.badge?.record.badgeType ?? null,
-        owner: award.badge?.did ?? didOf(badge),
-      };
-    }
-    cursor = page.cursor;
-  } while (cursor && source.awards.length < MAX_ISSUED_AWARDS);
-  source.truncated = Boolean(cursor);
-  return source;
-}
-
 function chunks<T>(items: T[], size = 100): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -376,85 +320,6 @@ async function actorCards(dids: string[]): Promise<Map<string, ActorCard>> {
   }
   const named = await withHandles([...cards.values()]);
   return new Map(named.map((card) => [card.did, card]));
-}
-
-async function projectCards(uris: string[]): Promise<Map<string, ProjectCard>> {
-  const cards = new Map<string, ProjectCard>();
-  for (const batch of chunks(uris)) {
-    const { collections } = await api.call(
-      org.hypercerts.collection.listCollections,
-      { uris: batch as AtUri[], limit: 100 },
-      read(),
-    );
-    for (const collection of collections) cards.set(collection.uri, toProjectCard(collection));
-  }
-  return cards;
-}
-
-export async function getAwardsIssued(did: string): Promise<AwardsIssued | null> {
-  "use cache";
-  publicData(tags.awardsIssued(did));
-
-  const source = await issuedAwardsSource(did);
-  if (source.awards.length === 0) return null;
-
-  const awardsByBadge = new Map<string, IssuedAwardsSource["awards"]>();
-  for (const award of source.awards) {
-    const awards = awardsByBadge.get(award.badge) ?? [];
-    awards.push(award);
-    awardsByBadge.set(award.badge, awards);
-  }
-  const grouped = [...awardsByBadge].sort((a, b) => b[1].length - a[1].length);
-  const shown = grouped.flatMap(([, awards]) =>
-    awards.slice(0, RECENT_AWARDS_SHOWN).map((award) => award.subject),
-  );
-
-  const definers = Object.values(source.definitions)
-    .map((definition) => definition.owner)
-    .filter((owner) => owner !== did);
-  const actors = await actorCards([
-    ...new Set([...shown.filter((s) => s.startsWith("did:")), ...definers]),
-  ]);
-  const projects = await projectCards([
-    ...new Set(shown.filter((s) => collectionOf(s) === "org.hypercerts.collection")),
-  ]);
-
-  const subjectView = (subject: string): AwardSubject => {
-    const actor = actors.get(subject);
-    if (actor) return { kind: "actor", actor };
-    const project = projects.get(subject);
-    if (project) return { kind: "project", project };
-    return subject.startsWith("did:")
-      ? {
-          kind: "actor",
-          actor: toActorCard({
-            did: subject as Did,
-            profile: null,
-            organization: null,
-          }),
-        }
-      : { kind: "record", uri: subject };
-  };
-
-  return {
-    did,
-    awardCount: source.awards.length,
-    truncated: source.truncated,
-    badges: grouped.map(([uri, awards]) => {
-      const definition = source.definitions[uri];
-      return {
-        uri,
-        title: definition.title,
-        badgeType: definition.badgeType,
-        definedBy: definition.owner === did ? null : (actors.get(definition.owner) ?? null),
-        awardCount: awards.length,
-        recentAwards: awards.slice(0, RECENT_AWARDS_SHOWN).map((award) => ({
-          uri: award.uri,
-          subject: subjectView(award.subject),
-        })),
-      };
-    }),
-  };
 }
 
 // Workspace overview
