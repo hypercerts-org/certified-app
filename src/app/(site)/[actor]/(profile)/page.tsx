@@ -13,6 +13,7 @@ import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { ActivityCardView, actorHref, ProjectCardView } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { IntentLink } from "@/components/intent-link";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
@@ -126,7 +127,7 @@ function AccountGrid({ actors }: { actors: ActorCard[] }) {
     <ul className="account-grid">
       {shown.map((actor) => (
         <li key={actor.did}>
-          <Link prefetch href={actorHref(actor)} className="account-grid-link">
+          <IntentLink href={actorHref(actor)} className="account-grid-link">
             <Avatar
               // A handle's initial, not "@".
               name={actor.displayName.replace(/^@/, "")}
@@ -137,7 +138,7 @@ function AccountGrid({ actors }: { actors: ActorCard[] }) {
             <span className="account-grid-name" dir="auto">
               {actor.displayName}
             </span>
-          </Link>
+          </IntentLink>
         </li>
       ))}
     </ul>

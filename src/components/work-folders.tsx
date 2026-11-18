@@ -13,9 +13,9 @@
 
 import { Button, EmptyState, Skeleton } from "@hypercerts-org/ui-react";
 import { ArrowRight, ChevronRight, Folder, Plus, Search, SquareCheckBig } from "lucide-react";
-import Link from "next/link";
 import { useId, useState } from "react";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { IntentLink } from "@/components/intent-link";
 
 export type WorkRow = {
   uri: string;
@@ -114,9 +114,9 @@ function Row({ row }: { row: WorkRow }) {
           {row.by && (
             <>
               {" · by "}
-              <Link prefetch href={row.by.href} className="work-row-by">
+              <IntentLink href={row.by.href} className="work-row-by">
                 {row.by.name}
-              </Link>
+              </IntentLink>
             </>
           )}
         </span>
@@ -178,15 +178,14 @@ function FolderView({
         )}
       </details>
       {folder.href && (
-        <Link
-          prefetch
+        <IntentLink
           href={folder.href}
           className="work-folder-open"
           aria-label={`Open ${folder.title}`}
           title="Open project"
         >
           <ArrowRight size={16} aria-hidden />
-        </Link>
+        </IntentLink>
       )}
     </li>
   );

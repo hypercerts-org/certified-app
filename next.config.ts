@@ -3,10 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  // Public, indexed data (src/lib/hypercerts/queries.ts): fresh for a minute,
-  // revalidated in the background, dropped after an hour.
+  // Public, indexed data (src/lib/hypercerts/queries.ts): revalidated on the
+  // server every minute, dropped after an hour. The browser reuses it for five
+  // minutes (stale): five minutes or more puts it in the shell every link
+  // prefetches, so pages open complete. Your own saves clear the browser's
+  // copy at once (updateTag); others' changes show within five minutes on
+  // in-app navigation, at once on a reload.
   cacheLife: {
-    public: { stale: 60, revalidate: 60, expire: 3600 },
+    public: { stale: 300, revalidate: 60, expire: 3600 },
   },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.bsky.app" }],

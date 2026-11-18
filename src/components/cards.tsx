@@ -1,5 +1,5 @@
 import { Avatar, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
-import Link from "next/link";
+import { IntentLink } from "@/components/intent-link";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
 // Presentational cards. They render the same on the server (first page) and on
@@ -86,7 +86,7 @@ export function ActivityCardView({
           )}
           <div className="meta">
             {showAuthor && (
-              <Link prefetch href={actorHref(activity.author)} className="meta-author">
+              <IntentLink href={actorHref(activity.author)} className="meta-author">
                 <Avatar
                   name={activity.author.displayName}
                   src={activity.author.avatarUrl}
@@ -95,7 +95,7 @@ export function ActivityCardView({
                 <Text as="span" size="micro">
                   {activity.author.displayName}
                 </Text>
-              </Link>
+              </IntentLink>
             )}
             {activity.createdAt && (
               <Text as="span" size="micro" tone="muted">
@@ -116,9 +116,9 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
         <CardImage src={project.imageUrl} />
         <div className="work-card-body">
           <Heading level={3} size="heading">
-            <Link prefetch href={projectHref(project)} className="work-card-link">
+            <IntentLink href={projectHref(project)} className="work-card-link">
               {project.title}
-            </Link>
+            </IntentLink>
           </Heading>
           <Text size="body-sm" tone="muted">
             {project.activityCount === 1 ? "1 activity" : `${project.activityCount} activities`}
