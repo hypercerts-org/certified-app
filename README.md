@@ -103,7 +103,7 @@ Observed in the badge data, no action: definitions with the same title from diff
 
 ## Not verified yet
 
-- Deployment on Vercel and measured latency from the deployment region.
+- Latency measured from the deployment region. The `v2` branch deploys as a Vercel preview (`certified-app-git-v2-hypercerts-foundation.vercel.app`), with `REDIS_URL` from a Marketplace Redis database; sign-in there was verified on November 18. Writes are not possible on a preview, which never signs records.
 - An organization save against a live CGS deployment (the request shapes are unit-tested against CGS's documented contract; an own-profile save was verified on certified.one on November 9).
 - On a reload while a save is syncing, the server-rendered page shows the indexed name for a moment before the overlay restores the saved one.
 - The Hypercerts API answers HTTP 500 (`script_error`, with `RecordNotFound` in the message) for a record it hasn't indexed, instead of a `RecordNotFound` error. The app recognizes the message for now: [TECH-858](https://linear.app/hypercerts/issue/TECH-858).
