@@ -4,9 +4,8 @@ import type { ReactNode } from "react";
 import { workspaceHref } from "@/components/cards";
 import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
-import { manages } from "@/lib/cgs";
 import { logError } from "@/lib/log";
-import { getMemberships } from "@/lib/memberships";
+import { getMemberships, mayEditProfile } from "@/lib/memberships";
 import { isDid, signInHref } from "@/lib/validate";
 
 // Who may open a workspace. The check sits in the workspace's layout, which
@@ -76,10 +75,7 @@ export function EditorOnly({ did, children }: { did: string; children: ReactNode
 }
 
 async function EditorGate({ did, children }: { did: string; children: ReactNode }) {
-  if (await isOwnWorkspace(did)) return children;
-  const memberships = await getMemberships().catch(() => null);
-  if (!Array.isArray(memberships)) return null;
-  return memberships.some((m) => m.groupDid === did && manages(m)) ? children : null;
+  return (await mayEditProfile(did)) ? children : null;
 }
 
 function Unavailable({ did, err }: { did: string; err: unknown }) {

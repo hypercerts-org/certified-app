@@ -101,22 +101,27 @@ export function VisitorActions({
   );
 }
 
-/** The account's own actions, for whoever acts as it: Edit profile and Share. */
+/**
+ * The account's own actions, for whoever acts as it: Edit profile (when they
+ * may edit it: `editHref`, else null) and Share.
+ */
 export function OwnerActions({
   editHref,
   path,
   title,
 }: {
-  editHref: string;
+  editHref: string | null;
   path: string;
   title: string;
 }) {
   return (
     <>
-      <Button href={editHref} variant="secondary" size="sm">
-        <Pencil size={16} aria-hidden />
-        Edit profile
-      </Button>
+      {editHref && (
+        <Button href={editHref} variant="secondary" size="sm">
+          <Pencil size={16} aria-hidden />
+          Edit profile
+        </Button>
+      )}
       <ShareButton path={path} title={title} />
     </>
   );

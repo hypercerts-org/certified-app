@@ -2,7 +2,12 @@ import "server-only";
 
 import { cacheLife } from "next/cache";
 import { getUser, readOAuthSession } from "@/lib/auth/dal";
-import { listMembershipsForDisplay, type Membership, readCachedMemberships } from "@/lib/cgs";
+import {
+  listMembershipsForDisplay,
+  type Membership,
+  manages,
+  readCachedMemberships,
+} from "@/lib/cgs";
 import { logError } from "@/lib/log";
 
 // The organizations the signed-in user belongs to, for deciding what pages
@@ -46,4 +51,18 @@ export async function getMemberships(): Promise<Membership[] | "expired" | null>
   if (session === null) return null;
   if (session === "expired") return "expired";
   return listMembershipsForDisplay(session);
+}
+
+/**
+ * Whether the signed-in user may edit `did`'s profile, for showing "Edit
+ * profile": their own, or an organization where they're an admin or owner.
+ * Acting as an organization doesn't by itself make a member an editor. The
+ * edit itself is checked again on CGS (canEdit).
+ */
+export async function mayEditProfile(did: string): Promise<boolean> {
+  const user = await getUser();
+  if (!user) return false;
+  if (user.did === did) return true;
+  const memberships = await getMemberships().catch(() => null);
+  return Array.isArray(memberships) && memberships.some((m) => m.groupDid === did && manages(m));
 }

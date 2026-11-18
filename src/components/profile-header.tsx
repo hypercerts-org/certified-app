@@ -15,6 +15,7 @@ import { OwnerOnly } from "@/components/viewer-only";
 import { getActingAs } from "@/lib/acting-as";
 import { getEndorsers, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
+import { mayEditProfile } from "@/lib/memberships";
 
 type AccountLink = { href: string; label: string; bluesky: boolean };
 
@@ -147,9 +148,10 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
 async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string }) {
   const actingAs = await getActingAs();
   if (actingAs === actor.did) {
+    // Acting as an organization, only its admins and owners may edit it.
     return (
       <OwnerActions
-        editHref={`${actorHref(actor.did)}/edit`}
+        editHref={(await mayEditProfile(actor.did)) ? `${actorHref(actor.did)}/edit` : null}
         path={base}
         title={actor.displayName}
       />
