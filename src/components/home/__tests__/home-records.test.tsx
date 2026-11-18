@@ -98,19 +98,19 @@ describe("Endorsements and followers: Following", () => {
     const stats = screen.getByRole("list", { name: "Endorsements and followers" })
     const link = within(stats).getByRole("link", { name: /Following/ })
     expect(link).toHaveTextContent("7")
-    expect(link).toHaveAttribute("href", "/records?kind=followers&tab=following")
+    expect(link).toHaveAttribute("href", "/me.test?tab=followers&sub=following")
   })
 
-  it("leads to the Workspace's Followers while acting as a group too (it shows the group's)", () => {
+  it("leads to the profile's Followers tab while acting as a group too", () => {
     renderEndorsements(true)
     const stats = screen.getByRole("list", { name: "Endorsements and followers" })
     expect(within(stats).getByRole("link", { name: /Following/ })).toHaveAttribute(
       "href",
-      "/records?kind=followers&tab=following",
+      "/me.test?tab=followers&sub=following",
     )
     expect(within(stats).getByRole("link", { name: /Followers/ })).toHaveAttribute(
       "href",
-      "/records?kind=followers",
+      "/me.test?tab=followers",
     )
     expect(within(stats).getByRole("link", { name: /Received/ })).toHaveAttribute(
       "href",

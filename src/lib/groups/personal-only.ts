@@ -14,10 +14,10 @@
  *
  * Not listed:
  *   - Records stays reachable while acting as a group, so switching
- *     accounts on /records doesn't redirect: Endorsements and Followers
- *     show the group's own (its endorsements, followers and follows, read
- *     for its DID, written as the group); the other sections say where
- *     the group's records are.
+ *     accounts on /records doesn't redirect: Endorsements shows the
+ *     group's own (read for its DID, written as the group); the other
+ *     sections say where the group's records are. Followers are on the
+ *     profile.
  *   - `/endorsements` (retired; it redirects to Records → Endorsements),
  *     which a group has too.
  *   - Create (`/create`): a group can create activities; the create flow

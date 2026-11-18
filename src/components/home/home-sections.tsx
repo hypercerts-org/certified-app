@@ -122,19 +122,22 @@ type LatestRecord = {
   imageUrl: string | null
 }
 
-/** The Workspace's Endorsements and Followers: the account's own, for a
- *  group too (Records shows the group's while acting as it). */
-const SOCIAL_HREFS = {
-  endorsements: "/records?kind=endorsements",
-  endorsementsReceived: "/records?kind=endorsements&tab=received",
-  endorsementsGiven: "/records?kind=endorsements&tab=given",
-  followers: "/records?kind=followers",
-  following: "/records?kind=followers&tab=following",
-} as const
+/** The Workspace's Endorsements (the account's own, for a group too:
+ *  Records shows the group's while acting as it), and the profile's
+ *  Followers tab. */
+function socialHrefs(profileBase: string) {
+  return {
+    endorsements: "/records?kind=endorsements",
+    endorsementsReceived: "/records?kind=endorsements&tab=received",
+    endorsementsGiven: "/records?kind=endorsements&tab=given",
+    followers: `${profileBase}?tab=followers`,
+    following: `${profileBase}?tab=followers&sub=following`,
+  }
+}
 
 /** Where the counts lead (the side list is the way to each whole list).
  *  The personal account manages its records on /records. A group's
- *  endorsements and followers are on /records too; its projects,
+ *  endorsements are on /records too; followers are on the profile; its projects,
  *  activities and lists live on its profile (Records explains that while
  *  acting as a group). */
 function recordsHrefs(isGroup: boolean, profileBase: string) {
@@ -144,7 +147,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: `${profileBase}?tab=activities`,
         projects: `${profileBase}?tab=projects`,
         lists: `${profileBase}?tab=lists`,
-        ...SOCIAL_HREFS,
+        ...socialHrefs(profileBase),
       }
     : {
         all: "/records",
@@ -152,7 +155,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         activities: "/records?kind=activities",
         projects: "/records?kind=activities",
         lists: "/records?kind=lists",
-        ...SOCIAL_HREFS,
+        ...socialHrefs(profileBase),
       }
 }
 

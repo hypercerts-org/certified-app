@@ -8,7 +8,6 @@ import {
   Network,
   Newspaper,
   ThumbsUp,
-  Users,
   UsersRound,
   type LucideIcon,
 } from "lucide-react"
@@ -32,7 +31,6 @@ export type WorkspaceSection =
   | "overview"
   | "activities"
   | "endorsements"
-  | "followers"
   | "lists"
   | "groups"
 
@@ -50,7 +48,6 @@ export const WORKSPACE_SECTIONS: readonly {
     icon: FolderGit2,
   },
   { key: "endorsements", label: "Endorsements", href: "/records?kind=endorsements", icon: ThumbsUp },
-  { key: "followers", label: "Followers", href: "/records?kind=followers", icon: Users },
   { key: "lists", label: "Lists", href: "/records?kind=lists", icon: ListChecks },
   { key: "groups", label: "Groups", href: "/records?kind=groups", icon: UsersRound },
 ]
@@ -67,13 +64,19 @@ const RECORD_KINDS: readonly RecordKind[] = WORKSPACE_SECTIONS.map((s) => s.key)
   (k): k is RecordKind => k !== "overview",
 )
 
-/** The Records section a `?kind=` value opens. The old Following section
- *  is now a tab of Followers; anything unknown opens the first section. */
+/** The Records section a `?kind=` value opens; anything unknown opens the
+ *  first section. (Followers and Following are on the profile now: see
+ *  {@link isFollowersKind}.) */
 export function parseRecordKind(value: string | null): RecordKind {
-  if (value === "following") return "followers"
   return (RECORD_KINDS as readonly string[]).includes(value ?? "")
     ? (value as RecordKind)
     : "activities"
+}
+
+/** Whether a `?kind=` value is the old Followers (or older Following)
+ *  section, which now lives on the profile's Followers tab. */
+export function isFollowersKind(value: string | null): boolean {
+  return value === "followers" || value === "following"
 }
 
 /** The Workspace section a page is, or null outside the Workspace. */

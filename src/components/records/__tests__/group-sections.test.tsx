@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest"
 import { render, screen, within, fireEvent, waitFor } from "@testing-library/react"
 
-// Workspace → Endorsements and Followers while acting as a group: the
-// group's own records, read for its DID; writes as the group through the
-// group routes (the lib's `targetDid` path); a member reads.
+// Workspace → Endorsements while acting as a group: the group's own
+// records, read for its DID; writes as the group through the group routes
+// (the lib's `targetDid` path); a member reads. (Followers are on the
+// profile, not a Workspace section.)
 
 const SESSION = "did:plc:me"
 const GROUP = "did:plc:group"
@@ -217,7 +218,6 @@ import {
   deleteAllResponsesForAward,
   deleteEndorsementAward,
 } from "@/lib/atproto/badges"
-import { createFollow, deleteFollow, listFollowing } from "@/lib/atproto/follow"
 
 function actAs(role: "owner" | "admin" | "member") {
   org.activeOrg = {
@@ -324,77 +324,5 @@ describe("Endorsements acting as a group", () => {
     const { main } = renderPage()
     expect(within(main).getByText("Cy Lund")).toBeInTheDocument()
     expect(within(main).queryByRole("button", { name: /Revoke/ })).toBeNull()
-  })
-})
-
-describe("Followers acting as a group", () => {
-  it("reads who follows the group and whom it follows, by its DID", () => {
-    actAs("owner")
-    nav.kind = "followers"
-    nav.tab = "followers"
-    const { main } = renderPage()
-    expect(reads.followers).toContain(GROUP)
-    expect(reads.following.at(-1)).toBe(GROUP)
-    expect(within(main).queryByText(/show on its profile/)).toBeNull()
-    const tabs = within(main).getByRole("tablist", { name: "Followers" })
-    expect(within(tabs).getByRole("tab", { name: /Followers/ })).toHaveTextContent("2")
-    expect(within(tabs).getByRole("tab", { name: /Following/ })).toHaveTextContent("1")
-    // The group follows Cy; Ana it can follow back.
-    expect(within(main).getByRole("button", { name: "Following Cy Lund" })).toBeInTheDocument()
-    expect(within(main).getByRole("button", { name: "Follow Ana Reyes" })).toBeInTheDocument()
-  })
-
-  it("follows back as the group", async () => {
-    actAs("admin")
-    nav.kind = "followers"
-    nav.tab = "followers"
-    const { main } = renderPage()
-    fireEvent.click(within(main).getByRole("button", { name: "Follow Ana Reyes" }))
-    await waitFor(() => expect(createFollow).toHaveBeenCalled())
-    expect(createFollow).toHaveBeenCalledWith(SESSION, "did:plc:ana", { targetDid: GROUP })
-    expect(following.addFollow).toHaveBeenCalledWith(
-      "did:plc:ana",
-      `at://${GROUP}/app.certified.graph.follow/new`,
-      "cn",
-    )
-  })
-
-  it("unfollows with the group's own follow record", async () => {
-    actAs("owner")
-    nav.kind = "followers"
-    nav.tab = "following"
-    const { main } = renderPage()
-    fireEvent.click(within(main).getByRole("button", { name: "Following Cy Lund" }))
-    await waitFor(() => expect(deleteFollow).toHaveBeenCalled())
-    // The record is looked up in the group's repo, not yours.
-    expect(listFollowing).toHaveBeenCalledWith(GROUP, undefined, { noCache: true })
-    expect(deleteFollow).toHaveBeenCalledWith(SESSION, "f1", { targetDid: GROUP })
-    expect(following.removeFollow).toHaveBeenCalledWith("did:plc:cy")
-  })
-
-  it("a member reads: no Follow buttons, and a line why", () => {
-    actAs("member")
-    nav.kind = "followers"
-    nav.tab = "following"
-    const { main } = renderPage()
-    expect(within(main).getByRole("note")).toHaveTextContent(
-      "Only Estuary Alliance's owners and admins can change whom it follows.",
-    )
-    expect(within(main).getByText("Cy Lund")).toBeInTheDocument()
-    expect(within(main).queryByRole("button", { name: /Follow/ })).toBeNull()
-  })
-})
-
-describe("Personal account: unchanged", () => {
-  it("reads and writes your own", async () => {
-    nav.kind = "followers"
-    nav.tab = "followers"
-    const { main } = renderPage()
-    expect(reads.followers).toContain(SESSION)
-    expect(reads.following.at(-1)).toBe(SESSION)
-    expect(within(main).queryByRole("note")).toBeNull()
-    fireEvent.click(within(main).getByRole("button", { name: "Follow Ana Reyes" }))
-    await waitFor(() => expect(createFollow).toHaveBeenCalled())
-    expect(createFollow).toHaveBeenCalledWith(SESSION, "did:plc:ana", { targetDid: undefined })
   })
 })

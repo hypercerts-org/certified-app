@@ -2,10 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Compass, Plus, Users, UsersRound } from "lucide-react"
+import { Plus, UsersRound } from "lucide-react"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
-import IdentityRow from "@/components/ui/identity-row"
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
 import ProfileLists, { LIST_SECTIONS } from "@/components/profile/profile-lists"
@@ -14,15 +13,10 @@ import EndorsementLists, {
   hasEndorsementListsToolbar,
   useEndorsementListsState,
 } from "@/components/profile/endorsement-lists"
-import { FollowButton } from "@/components/profile/profile-follow-endorse"
-import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useFollowers } from "@/hooks/use-followers"
-import type { useFollowing } from "@/hooks/use-following"
 import type { useGivenEndorsements } from "@/hooks/use-endorsements"
 import { useOwnResponseStates } from "@/hooks/use-own-response-states"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import { useUrlParam } from "@/hooks/use-url-param"
-import type { FollowRecord } from "@/lib/atproto/follow"
 import {
   LIST_ACCOUNTS_TYPE,
   LIST_CERTS_TYPE,
@@ -31,7 +25,6 @@ import {
 } from "@/lib/atproto/typed-lists"
 import { useTypedLists } from "@/hooks/use-typed-lists"
 import { profileUrl } from "@/lib/urls"
-import { formatShortDate } from "@/lib/utils/format-date"
 import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/received-endorsements"
 import GivenEndorsements from "@/components/records/given-endorsements"
 import { GroupRows } from "@/components/home/home-sections"
@@ -39,7 +32,6 @@ import { useOrg } from "@/lib/groups/org-context"
 import { PaneTabBar, RowsSkeleton } from "@/components/records/records-shared"
 import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
-type FollowingState = ReturnType<typeof useFollowing>
 type GivenState = ReturnType<typeof useGivenEndorsements>
 
 /**
@@ -66,9 +58,6 @@ function RoleNote({ children }: { children: React.ReactNode }) {
     </p>
   )
 }
-
-/** People lists render in steps of this many rows. */
-const PEOPLE_PAGE = 50
 
 // ------------------------------ Endorsements --------------------------------
 
@@ -267,329 +256,6 @@ export function EndorsementsPane({
         </Tabs>
       </section>
     </WorkspaceFrame>
-  )
-}
-
-// ------------------------------ People --------------------------------------
-
-function PersonRow({
-  did,
-  since,
-  action,
-}: {
-  did: string
-  since: string
-  /** Built with the person's name, for per-person button names. */
-  action: (name: string) => React.ReactNode
-}) {
-  const { info, isLoading } = useAuthorInfo(did)
-  const name = info?.displayName || (info?.handle ? `@${info.handle}` : did)
-  const loading = isLoading && !info
-  return (
-    <li className="records-person">
-      <div className="records-person__identity">
-        {/* The row's link (avatar and name) takes the one hover tint,
-            bleeding 8px past its text. */}
-        <IdentityRow
-          did={did}
-          handle={info?.handle ?? undefined}
-          displayName={info?.displayName ?? undefined}
-          avatarUrl={info?.avatarUrl ?? undefined}
-          href={profileUrl(info?.handle || did)}
-          loading={loading}
-          className={loading ? undefined : "hover-tint hover-tint--bleed"}
-        />
-      </div>
-      {since ? (
-        <span className="records-person__since">Since {formatShortDate(since)}</span>
-      ) : null}
-      <div className="records-person__action">{action(name)}</div>
-    </li>
-  )
-}
-
-function ShowMore({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="records-pane__more">
-      <Button variant="secondary" size="sm" onClick={onClick}>
-        Show more
-      </Button>
-    </div>
-  )
-}
-
-const PEOPLE_TABS = ["followers", "following"] as const
-type PeopleTab = (typeof PEOPLE_TABS)[number]
-
-function parsePeopleTab(value: string | null): PeopleTab {
-  return (PEOPLE_TABS as readonly string[]).includes(value ?? "")
-    ? (value as PeopleTab)
-    : "followers"
-}
-
-/**
- * Followers: the accounts that follow you and the accounts you follow, as
- * two tabs (like Endorsements: what others gave you first). Opens on
- * Followers; the other tab lives in the URL (`?kind=followers&tab=following`).
- *
- * Acting as a group (`group`), the group's: who follows it and whom it
- * follows, read for its DID; Follow and Unfollow write as the group (the
- * unfollow deletes the group's own follow record, found in its repo). A
- * member reads (`group.canWrite`).
- */
-export function FollowersPane({
-  did,
-  actor,
-  following,
-  group,
-}: {
-  /** The account the pane shows: yours, or the group's. */
-  did: string
-  /** Its handle (or DID), for its profile link. */
-  actor: string
-  /** Whom it follows (held by the page, shared with Overview and Feed). */
-  following: FollowingState
-  /** Set while acting as a group. */
-  group?: PaneGroup
-}) {
-  const titleId = useId()
-  const [tabParam, setTabParam] = useUrlParam("tab", { defaultValue: "followers" })
-  const tab = parsePeopleTab(tabParam)
-  const followers = useFollowers(did)
-  const writer: PeopleWriter = {
-    sessionDid: group?.sessionDid ?? did,
-    targetDid: group ? did : undefined,
-    canWrite: group?.canWrite ?? true,
-    groupName: group?.name,
-  }
-
-  return (
-    <WorkspaceFrame titleId={titleId}>
-      <section className="records-pane" aria-labelledby={titleId}>
-        {group && !group.canWrite ? (
-          <RoleNote>Only {group.name}&apos;s owners and admins can change whom it follows.</RoleNote>
-        ) : null}
-        <Tabs value={tab} onChange={(v) => setTabParam(v)}>
-          <PaneTabBar
-            actions={
-              <Button href="/explore" variant="secondary" size="sm">
-                <Compass size={16} strokeWidth={1.75} aria-hidden />
-                Find accounts
-              </Button>
-            }
-          >
-          <TabList aria-label="Followers" className="records-pane__tablist">
-            {/* Counts are left out while their list loads. */}
-            <Tab
-              value="followers"
-              count={followers.isLoading && followers.entries.length === 0 ? undefined : followers.entries.length}
-            >
-              Followers
-            </Tab>
-            <Tab
-              value="following"
-              count={following.isLoading && following.count === 0 ? undefined : following.count}
-            >
-              Following
-            </Tab>
-          </TabList>
-          </PaneTabBar>
-
-          <TabPanel value="followers">
-            <div className="records-pane__tab-body">
-              <FollowersList actor={actor} followers={followers} following={following} writer={writer} />
-            </div>
-          </TabPanel>
-
-          <TabPanel value="following">
-            <div className="records-pane__tab-body">
-              <FollowingList following={following} writer={writer} />
-            </div>
-          </TabPanel>
-        </Tabs>
-      </section>
-    </WorkspaceFrame>
-  )
-}
-
-/** How the people lists write: through `sessionDid`, into the group's
- *  repo with `targetDid` (`createFollow` / `deleteFollow`'s group path). */
-interface PeopleWriter {
-  sessionDid: string
-  targetDid?: string
-  /** False: no Follow buttons (a member acting as the group). */
-  canWrite: boolean
-  /** Acting as a group: its name, for the copy. */
-  groupName?: string
-}
-
-function FollowingList({ following, writer }: { following: FollowingState; writer: PeopleWriter }) {
-  const { groupName } = writer
-  const [shown, setShown] = useState(PEOPLE_PAGE)
-  // Accounts unfollowed on this page keep their row (with a Follow button)
-  // until the tab closes, so an accidental unfollow can be undone.
-  const [unfollowed, setUnfollowed] = useState<ReadonlyMap<string, FollowRecord>>(new Map())
-  const rows = useMemo(() => {
-    const bySubject = new Map<string, FollowRecord>()
-    for (const r of following.records) {
-      if (following.subjects.has(r.value.subject)) bySubject.set(r.value.subject, r)
-    }
-    for (const [subject, r] of unfollowed) {
-      if (!bySubject.has(subject)) bySubject.set(subject, r)
-    }
-    return [...bySubject.values()].sort((a, b) =>
-      a.value.createdAt < b.value.createdAt ? 1 : -1,
-    )
-  }, [following.records, following.subjects, unfollowed])
-
-  if (following.isLoading && rows.length === 0) return <RowsSkeleton shape="circle" />
-  if (following.error && rows.length === 0) {
-    return (
-      <EmptyState
-        variant="inline"
-        title={groupName ? `Couldn't load whom ${groupName} follows.` : "Couldn't load who you follow."}
-      >
-        <Button variant="ghost" size="sm" onClick={() => void following.refetch()}>
-          Try again
-        </Button>
-      </EmptyState>
-    )
-  }
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        icon={Compass}
-        headingLevel={2}
-        title={groupName ? `${groupName} isn't following anyone yet` : "You're not following anyone yet"}
-        description={
-          groupName
-            ? "Accounts it follows show here, and what they publish shows in its feed."
-            : "Follow accounts to see what they publish in your feed. Find them with Find accounts."
-        }
-      />
-    )
-  }
-  return (
-    <>
-      <ul className="records-list">
-        {rows.slice(0, shown).map((r) => {
-          const subject = r.value.subject
-          return (
-            <PersonRow
-              key={subject}
-              did={subject}
-              since={r.value.createdAt}
-              action={(name) =>
-                writer.canWrite ? (
-                  // Unfollow finds the follow record in the acting repo
-                  // (the group's, with `targetDid`) and deletes that one.
-                  <FollowButton
-                    viewerDid={writer.sessionDid}
-                    targetDid={writer.targetDid}
-                    subjectDid={subject}
-                    subjectName={name}
-                    isFollowing={following.subjects.has(subject)}
-                    isLoading={false}
-                    onFollowed={(uri, cid) => {
-                      following.addFollow(subject, uri, cid)
-                      setUnfollowed((prev) => {
-                        const next = new Map(prev)
-                        next.delete(subject)
-                        return next
-                      })
-                    }}
-                    onUnfollowed={() => {
-                      following.removeFollow(subject)
-                      setUnfollowed((prev) => new Map(prev).set(subject, r))
-                    }}
-                  />
-                ) : null
-              }
-            />
-          )
-        })}
-      </ul>
-      {rows.length > shown ? <ShowMore onClick={() => setShown((n) => n + PEOPLE_PAGE)} /> : null}
-    </>
-  )
-}
-
-/** A follow is the follower's record, so it can't be removed here; you
- *  can follow them back. */
-function FollowersList({
-  actor,
-  followers,
-  following,
-  writer,
-}: {
-  actor: string
-  followers: ReturnType<typeof useFollowers>
-  following: FollowingState
-  writer: PeopleWriter
-}) {
-  const [shown, setShown] = useState(PEOPLE_PAGE)
-  const { groupName } = writer
-
-  if (followers.isLoading && followers.entries.length === 0) return <RowsSkeleton shape="circle" />
-  if (followers.error && followers.entries.length === 0) {
-    return (
-      <EmptyState
-        variant="inline"
-        title={groupName ? `Couldn't load ${groupName}'s followers.` : "Couldn't load your followers."}
-      >
-        <Button variant="ghost" size="sm" onClick={() => void followers.refetch()}>
-          Try again
-        </Button>
-      </EmptyState>
-    )
-  }
-  if (followers.entries.length === 0) {
-    return (
-      <EmptyState
-        icon={Users}
-        headingLevel={2}
-        title="No followers yet"
-        description={
-          groupName
-            ? `When another account follows ${groupName}, it shows here.`
-            : "When another account follows yours, it shows here."
-        }
-      >
-        <Button href={profileUrl(actor)} variant="secondary" size="sm">
-          {groupName ? "View its profile" : "View your profile"}
-        </Button>
-      </EmptyState>
-    )
-  }
-  return (
-    <>
-      <ul className="records-list">
-        {followers.entries.slice(0, shown).map((f) => (
-          <PersonRow
-            key={f.uri}
-            did={f.followerDid}
-            since={f.createdAt}
-            action={(name) =>
-              writer.canWrite ? (
-                <FollowButton
-                  viewerDid={writer.sessionDid}
-                  targetDid={writer.targetDid}
-                  subjectDid={f.followerDid}
-                  subjectName={name}
-                  isFollowing={following.subjects.has(f.followerDid)}
-                  isLoading={following.isLoading}
-                  onFollowed={(uri, cid) => following.addFollow(f.followerDid, uri, cid)}
-                  onUnfollowed={() => following.removeFollow(f.followerDid)}
-                />
-              ) : null
-            }
-          />
-        ))}
-      </ul>
-      {followers.entries.length > shown ? (
-        <ShowMore onClick={() => setShown((n) => n + PEOPLE_PAGE)} />
-      ) : null}
-    </>
   )
 }
 

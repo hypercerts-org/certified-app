@@ -78,12 +78,6 @@
   color: var(--fg-muted);
 }
 
-.records-pane__more {
-  display: flex;
-  justify-content: center;
-  padding: 8px 0 16px;
-}
-
 .records-pane__tab-body {
   display: flex;
   flex-direction: column;
@@ -673,11 +667,6 @@
 .records-person {
   gap: 12px;
   padding: 8px 4px;
-}
-
-.records-person__identity {
-  flex: 1;
-  min-width: 0;
 }
 
 .records-person__since {

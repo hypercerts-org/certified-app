@@ -89,7 +89,6 @@ describe("AppSidebar", () => {
       "Overview",
       "Projects and activities",
       "Endorsements",
-      "Followers",
       "Lists",
       "Groups",
       "Feed",
@@ -133,7 +132,6 @@ describe("AppSidebar", () => {
       "Overview",
       "Projects and activities",
       "Endorsements",
-      "Followers",
       "Lists",
       "Groups",
     ])

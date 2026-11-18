@@ -8,8 +8,9 @@ import WorkspaceShell, { WorkspaceFrame } from "../workspace-shell"
 // ---------------------------------------------------------------------------
 
 const nav = { kind: "groups" }
+const router = { replace: vi.fn(), push: vi.fn(), back: vi.fn() }
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), back: vi.fn() }),
+  useRouter: () => router,
   useSearchParams: () => new URLSearchParams(`kind=${nav.kind}`),
   usePathname: () => "/records",
 }))
@@ -68,6 +69,7 @@ function expectFrame(container: HTMLElement, opts: { h1?: string } = {}) {
 }
 
 beforeEach(() => {
+  router.replace.mockClear()
   nav.kind = "groups"
   auth.isLoading = false
   auth.isAuthenticated = true
@@ -80,14 +82,14 @@ beforeEach(() => {
 describe("WorkspaceFrame", () => {
   it("renders the section's title, then the content, and no list of sections", () => {
     const { container } = render(
-      <WorkspaceShell current="followers">
-        <WorkspaceFrame titleId="followers-title">
+      <WorkspaceShell current="lists">
+        <WorkspaceFrame titleId="lists-title">
           <p>Rows</p>
         </WorkspaceFrame>
       </WorkspaceShell>,
     )
-    const { main } = expectFrame(container, { h1: "Followers" })
-    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute("id", "followers-title")
+    const { main } = expectFrame(container, { h1: "Lists" })
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute("id", "lists-title")
     expect(within(main).getByText("Rows")).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Overview" })).toBeNull()
   })
@@ -113,9 +115,9 @@ describe("Records sections render the frame in every state", () => {
   it("signed out (while the redirect runs)", () => {
     auth.isAuthenticated = false
     auth.did = null
-    nav.kind = "followers"
+    nav.kind = "endorsements"
     const { container } = render(<RecordsPage />)
-    expectFrame(container, { h1: "Followers" })
+    expectFrame(container, { h1: "Endorsements" })
   })
 
   it("acting as a group", () => {
@@ -133,7 +135,7 @@ describe("Records sections render the frame in every state", () => {
     ).toBeInTheDocument()
   })
 
-  // Endorsements and Followers show the group's own while acting as it
+  // Endorsements shows the group's own while acting as it
   // (records/__tests__/group-sections.test.tsx); the other sections
   // explain where the group's records are.
   it("acting as a group, Lists and Projects and activities name their place on the group's profile", () => {
@@ -236,5 +238,35 @@ describe("Overview renders the frame", () => {
     auth.did = null
     const { container } = render(<Home />)
     expectFrame(container, { h1: "Overview" })
+  })
+})
+
+describe("Followers are on the profile", () => {
+  it("old Followers links open the Followers tab of your profile", () => {
+    nav.kind = "followers"
+    render(<RecordsPage />)
+    expect(router.replace).toHaveBeenCalledWith("/me.certified.app?tab=followers")
+  })
+
+  it("old Following links open its Following view", () => {
+    nav.kind = "following"
+    render(<RecordsPage />)
+    expect(router.replace).toHaveBeenCalledWith("/me.certified.app?tab=followers&sub=following")
+    router.replace.mockClear()
+    nav.kind = "followers&tab=following"
+    render(<RecordsPage />)
+    expect(router.replace).toHaveBeenCalledWith("/me.certified.app?tab=followers&sub=following")
+  })
+
+  it("acting as a group, they open the group's profile", () => {
+    org.activeOrg = {
+      groupDid: "did:plc:group",
+      handle: "group.certified.app",
+      displayName: "Estuary",
+      role: "admin",
+    }
+    nav.kind = "followers"
+    render(<RecordsPage />)
+    expect(router.replace).toHaveBeenCalledWith("/group.certified.app?tab=followers")
   })
 })

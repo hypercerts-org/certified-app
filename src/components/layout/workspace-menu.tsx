@@ -51,8 +51,8 @@ export function useWorkspaceState() {
  * its account), unless the page only works for your personal account: the
  * group pages are personal-only, so picking a group there goes to its
  * Overview (`targetAfterActorSwitch`). The Records sections stay: acting
- * as a group, Endorsements and Followers show the group's own, the others
- * say where that group's records are. Switching
+ * as a group, Endorsements shows the group's own, the others say where
+ * that group's records are. Switching
  * changes what you create, follow, endorse, like and comment as, and what
  * the Feed and Explore show.
  */
@@ -211,8 +211,8 @@ export function WorkspaceMenuItems({ touch = false, onSelect }: { touch?: boolea
 
 /**
  * The phone pill's Workspace item (signed in): opens the Workspace's
- * sections (Overview, Projects and activities, Endorsements, Followers,
- * Lists, Groups) as a small menu just above the pill, like Network's.
+ * sections (Overview, Projects and activities, Endorsements, Lists,
+ * Groups) as a small menu just above the pill, like Network's.
  * Always the folder icon: who you act as is the top bar's account
  * control. Current on the Overview and the Records sections; the tour's
  * `nav-workspace` anchor on phones.

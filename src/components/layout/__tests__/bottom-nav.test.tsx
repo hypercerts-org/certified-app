@@ -65,7 +65,7 @@ describe("BottomNav (the phone pill)", () => {
 
   it("opens the Workspace's sections as a menu above the pill, the current one checked", () => {
     state.pathname = "/records"
-    state.search = "kind=followers"
+    state.search = "kind=lists"
     render(<BottomNav />)
     fireEvent.click(screen.getByRole("button", { name: "Workspace" }))
     const menu = screen.getByRole("menu", { name: "Workspace" })
@@ -74,11 +74,12 @@ describe("BottomNav (the phone pill)", () => {
       "Overview",
       "Projects and activities",
       "Endorsements",
-      "Followers",
       "Lists",
       "Groups",
     ])
-    expect(screen.getByRole("menuitem", { name: "Followers" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getByRole("menuitem", { name: "Lists" })).toHaveAttribute("aria-current", "page")
+    // Followers are on the profile, not a Workspace section.
+    expect(screen.queryByRole("menuitem", { name: "Followers" })).toBeNull()
   })
 
   it("dims the page behind an open menu, and lifts it when the menu closes", () => {
