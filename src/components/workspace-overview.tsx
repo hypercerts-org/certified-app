@@ -64,32 +64,33 @@ export function WorkspaceOverview({
   /** Your organizations, on your own workspace; null on an organization's. */
   organizations: Organization[] | null;
 }) {
-  const name = account.actor?.displayName ?? account.did;
   return (
-    <div className="overview">
-      <h1 className="visually-hidden">{name}: workspace overview</h1>
-      <div className="overview-main">
-        <Suspense fallback={<SectionSkeleton title="Your records" rows={3} />}>
-          <RecordsSection did={account.did} />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton title="Endorsements and followers" rows={2} />}>
-          <EndorsementsSection did={account.did} />
-        </Suspense>
-      </div>
-      <div className="overview-side">
-        <Card variant="panel" className="overview-box">
-          <IdentityBox account={account} />
-        </Card>
-        {organizations && (
+    <>
+      <h1 className="workspace-title">Overview</h1>
+      <div className="overview">
+        <div className="overview-main">
+          <Suspense fallback={<SectionSkeleton title="Your records" rows={3} />}>
+            <RecordsSection did={account.did} />
+          </Suspense>
+          <Suspense fallback={<SectionSkeleton title="Endorsements and followers" rows={2} />}>
+            <EndorsementsSection did={account.did} />
+          </Suspense>
+        </div>
+        <div className="overview-side">
           <Card variant="panel" className="overview-box">
-            <OrganizationsSection organizations={organizations} />
+            <IdentityBox account={account} />
           </Card>
-        )}
+          {organizations && (
+            <Card variant="panel" className="overview-box">
+              <OrganizationsSection organizations={organizations} />
+            </Card>
+          )}
+        </div>
+        <div className="overview-apps">
+          <AppsSection />
+        </div>
       </div>
-      <div className="overview-apps">
-        <AppsSection />
-      </div>
-    </div>
+    </>
   );
 }
 

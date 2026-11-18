@@ -545,7 +545,7 @@ button.menu-row:hover,
   }
 }
 
-@media (min-width: 68.75rem) {
+@container workspace (inline-size > 52rem) {
   .overview {
     grid-template-columns: minmax(0, 1fr) 18rem;
     grid-template-rows: auto 1fr;
@@ -1241,4 +1241,91 @@ button.menu-row:hover,
 .people-date {
   flex: none;
   white-space: nowrap;
+}
+
+/* A workspace: the side list of its sections beside the open one, from
+   68.75rem; above it as a row that scrolls sideways on narrower screens.
+   The content is a container, so the overview arranges itself by the room
+   it has, not by the window. */
+.workspace-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.workspace-content {
+  container: workspace / inline-size;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
+.workspace-nav ul {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.workspace-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-block-size: 2.75rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.workspace-nav-item:hover,
+.workspace-nav-item[aria-current="page"] {
+  background: var(--hc-surface-tint);
+}
+
+/* Not built yet: shown dimmed, inert. */
+.workspace-nav-item[aria-disabled="true"] {
+  color: var(--hc-text-muted);
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (min-width: 68.75rem) {
+  .workspace-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 2.5rem;
+  }
+
+  .workspace-nav {
+    position: sticky;
+    inset-block-start: 1.5rem;
+    flex: none;
+    inline-size: 15rem;
+  }
+
+  .workspace-nav ul {
+    flex-direction: column;
+    overflow: visible;
+  }
+}
+
+.workspace-title {
+  margin: 0;
+  color: var(--hc-text-ink);
+  font-family: var(--hc-font-display);
+  font-size: 1.75rem;
+  font-weight: var(--hc-weight-display);
+  line-height: 1.2;
+}
+
+@media (forced-colors: active) {
+  .workspace-nav-item[aria-current="page"] {
+    text-decoration: underline;
+  }
 }
