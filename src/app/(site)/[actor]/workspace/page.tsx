@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { isOwnWorkspace, workspaceDid } from "@/components/workspace-access";
 import {
@@ -34,6 +35,7 @@ async function YourOrganizations() {
   try {
     memberships = await getMemberships();
   } catch (err) {
+    unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     if (!(err instanceof SessionUnavailableError)) logError("[workspace] memberships failed", err);
     return <OrganizationsSection organizations="unavailable" />;
   }

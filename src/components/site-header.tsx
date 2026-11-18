@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { cache, Suspense } from "react";
 import { type Account, SiteNav } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
@@ -44,6 +45,7 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   try {
     return await readAccount();
   } catch (err) {
+    unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     // The chrome of every page, public ones included, renders this: a Valkey
     // or API outage shows the signed-out navigation (and is logged) rather
     // than failing the page. It changes no session.

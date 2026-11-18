@@ -7,6 +7,7 @@
 // It decides only what pages show. Every form carries the DID it writes to,
 // and writes ask CGS (canEdit) whatever is stored here, so a tab opened before
 // a switch still writes as what it showed.
+import { unstable_rethrow } from "next/navigation";
 import "server-only";
 
 import { cache } from "react";
@@ -33,6 +34,7 @@ export const getActingAs = cache(async (): Promise<string | null> => {
     if (!Array.isArray(memberships)) return user.did;
     return memberships.some((m) => m.groupDid === stored) ? stored : user.did;
   } catch (err) {
+    unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     // Memberships can't be read: show the user's own account rather than
     // trust the cookie unchecked (it only decides what pages show).
     logError("[acting-as] membership check failed", err);

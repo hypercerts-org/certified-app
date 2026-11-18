@@ -1,5 +1,5 @@
 import { Text } from "@hypercerts-org/ui-react";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { cache, type ReactNode } from "react";
 import { workspaceHref } from "@/components/cards";
 import { SignInAgain } from "@/components/sign-out-form";
@@ -33,6 +33,7 @@ const workspaceAccess = cache(async (did: string): Promise<Access> => {
     if (memberships === "expired") return "expired";
     return memberships.some((m) => m.groupDid === did) ? "granted" : "not-member";
   } catch (err) {
+    unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     if (!(err instanceof SessionUnavailableError))
       logError("[workspace] access failed", err, { did });
     return "unavailable";

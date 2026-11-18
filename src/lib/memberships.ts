@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import "server-only";
 
 import { cacheLife } from "next/cache";
@@ -46,6 +47,7 @@ export const getMemberships = cache(async (): Promise<Membership[] | "expired" |
   try {
     return await rememberedMemberships(user.did);
   } catch (err) {
+    unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     if (!(err instanceof Error && err.message === NOT_CACHED))
       logError("[memberships] cache read failed", err);
   }
@@ -65,6 +67,9 @@ export const mayEditProfile = cache(async (did: string): Promise<boolean> => {
   const user = await getUser();
   if (!user) return false;
   if (user.did === did) return true;
-  const memberships = await getMemberships().catch(() => null);
+  const memberships = await getMemberships().catch((err) => {
+    unstable_rethrow(err);
+    return null;
+  });
   return Array.isArray(memberships) && memberships.some((m) => m.groupDid === did && manages(m));
 });
