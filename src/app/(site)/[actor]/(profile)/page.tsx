@@ -129,7 +129,7 @@ function AccountGrid({ actors }: { actors: ActorCard[] }) {
     <ul className="account-grid">
       {shown.map((actor) => (
         <li key={actor.did}>
-          <Link href={actorHref(actor)} className="account-grid-link">
+          <Link prefetch href={actorHref(actor)} className="account-grid-link">
             <Avatar
               // A handle's initial, not "@".
               name={actor.displayName.replace(/^@/, "")}

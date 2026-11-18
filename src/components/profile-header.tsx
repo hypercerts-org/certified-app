@@ -254,7 +254,7 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
   return (
     <div className="trust-line">
       {endorsers.length > 0 && (
-        <Link href={`${base}/endorsements`} className="trust-endorsed">
+        <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
           <span className="trust-faces" aria-hidden>
             {endorsers.slice(0, FACES).map((actor) => (
               <Avatar key={actor.did} name={actor.displayName} src={actor.avatarUrl} size="sm" />
@@ -268,14 +268,14 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
       {(followers > 0 || following > 0) && (
         <p className="trust-counts">
           {followers > 0 && (
-            <Link href={`${base}/followers`} className="trust-count">
+            <Link prefetch href={`${base}/followers`} className="trust-count">
               <strong>{numberFormat.format(followers)}</strong>
               {followers === 1 ? " follower" : " followers"}
             </Link>
           )}
           {followers > 0 && following > 0 && <span aria-hidden> · </span>}
           {following > 0 && (
-            <Link href={`${base}/following`} className="trust-count">
+            <Link prefetch href={`${base}/following`} className="trust-count">
               <strong>{numberFormat.format(following)}</strong> following
             </Link>
           )}

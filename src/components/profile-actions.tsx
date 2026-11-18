@@ -154,6 +154,7 @@ export function ProfileTabs({
         .filter((tab) => !tab.empty || current(tab))
         .map((tab) => (
           <Link
+            prefetch
             key={tab.href}
             href={tab.href}
             className={variant === "tabs" ? "profile-tab" : "segmented-link"}

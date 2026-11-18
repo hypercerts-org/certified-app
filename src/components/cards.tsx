@@ -1,10 +1,6 @@
 import { Avatar, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
 import Link from "next/link";
-import type {
-  ActivityCard,
-  ActorCard,
-  ProjectCard,
-} from "@/lib/hypercerts/views";
+import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.
@@ -82,7 +78,7 @@ export function ActivityCardView({
           )}
           <div className="meta">
             {showAuthor && (
-              <Link href={actorHref(activity.author)} className="meta-author">
+              <Link prefetch href={actorHref(activity.author)} className="meta-author">
                 <Avatar
                   name={activity.author.displayName}
                   src={activity.author.avatarUrl}
@@ -112,7 +108,7 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
         <CardImage src={project.imageUrl} />
         <div className="work-card-body">
           <Heading level={3} size="heading">
-            <Link href={projectHref(project)} className="work-card-link">
+            <Link prefetch href={projectHref(project)} className="work-card-link">
               {project.title}
             </Link>
           </Heading>
@@ -129,4 +125,3 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
     </Card>
   );
 }
-

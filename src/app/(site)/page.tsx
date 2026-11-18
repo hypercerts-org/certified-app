@@ -29,7 +29,7 @@ async function IssuerCard({ did }: { did: string }) {
   if (!actor || !issued) return null;
   return (
     <Card as="li" variant="panel" className="card">
-      <Link href={actorHref(did)} className="issuer-card-name">
+      <Link prefetch href={actorHref(did)} className="issuer-card-name">
         <Avatar name={actor.displayName} src={actor.avatarUrl} size="md" />
         <Heading level={3} size="heading">
           {actor.displayName}

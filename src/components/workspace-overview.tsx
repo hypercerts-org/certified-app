@@ -371,7 +371,12 @@ function IdentityBox({ account }: { account: OverviewAccount }) {
         <Avatar name={name} src={actor?.avatarUrl} size="lg" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
-            <Link href={actorHref({ did, handle })} className="overview-identity-name" dir="auto">
+            <Link
+              prefetch
+              href={actorHref({ did, handle })}
+              className="overview-identity-name"
+              dir="auto"
+            >
               {name}
             </Link>
           </Heading>
