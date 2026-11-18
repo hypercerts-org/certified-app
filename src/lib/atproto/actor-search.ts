@@ -1,6 +1,6 @@
 /**
  * Account typeahead that finds BOTH Certified accounts and Bluesky-native
- * accounts, merged by DID. Shared by the list account-picker and the
+ * accounts, merged by DID. Shared by the list pickers and the
  * "Endorse people" modal so both surfaces behave the same.
  *
  * Why two sources:

@@ -10,7 +10,8 @@ import ConfirmDialog from "@/components/ui/confirm-dialog"
 import LinkedText from "@/components/ui/linked-text"
 import SectionHeader from "@/components/ui/section-header"
 import { SectionTitleCount } from "@/components/create/form-action-bar"
-import AccountPicker from "@/components/layout/account-picker"
+import { IdentityAvatar } from "@/components/layout/account-menu"
+import { groupIdentity } from "@/components/layout/workspace-menu"
 import LikeButton, { useLikeActor } from "@/components/comments/like-button"
 import { useLike } from "@/hooks/use-likes"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -60,10 +61,10 @@ const COUNT_FROM = MAX_COMMENT_LENGTH - 100
  *
  * Signed out, Comment (or "Sign in to comment") opens sign-in.
  *
- * Who a comment is posted as: the avatar beside the field switches between
- * you and your groups. It starts on the account you act as (the account
- * control), on every page, the feed included. Authors (and the members of
- * a group that wrote one) can delete comments.
+ * Who a comment is posted as: the account you act as (the account
+ * control), shown by the avatar beside the field; there is no separate
+ * picker, as for every other action. Authors (and the members of a group
+ * that wrote one) can delete comments.
  */
 export default function CommentThread({
   subject,
@@ -86,8 +87,6 @@ export default function CommentThread({
   const [shown, setShown] = useState(isSection ? SECTION_PREVIEW_COUNT : COMMENT_PREVIEW_COUNT)
   const [composing, setComposing] = useState(false)
   const [draft, setDraft] = useState("")
-  // undefined: not picked yet, so the default applies (and follows it).
-  const [picked, setPicked] = useState<Group | null | undefined>(undefined)
   const [toDelete, setToDelete] = useState<FeedComment | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -99,7 +98,9 @@ export default function CommentThread({
   // The latest `shown`, read top-down from the oldest of them.
   const visible = thread.comments.slice(0, shown).reverse()
   const earlier = Math.max(0, thread.total - visible.length)
-  const author: Group | null = picked !== undefined ? picked : activeOrg
+  // Comments come from the account you act as (the account control), like
+  // every other action; there is no picker of its own here.
+  const author: Group | null = activeOrg
   const authorDid = author?.groupDid ?? ownDid ?? null
   const fieldOpen = !!ownDid && (isSection || composing)
 
@@ -206,7 +207,6 @@ export default function CommentThread({
           ownDid={ownDid}
           author={author}
           authorDid={authorDid}
-          onAuthorChange={setPicked}
           draft={draft}
           onDraftChange={setDraft}
           autoFocus={!isSection}
@@ -340,7 +340,6 @@ function CommentComposer({
   ownDid,
   author,
   authorDid,
-  onAuthorChange,
   draft,
   onDraftChange,
   autoFocus,
@@ -354,7 +353,6 @@ function CommentComposer({
   ownDid: string
   author: Group | null
   authorDid: string
-  onAuthorChange: (next: Group | null) => void
   draft: string
   onDraftChange: (text: string) => void
   autoFocus: boolean
@@ -365,14 +363,11 @@ function CommentComposer({
    *  field is empty. */
   onClose?: () => void
 }) {
-  const { groups, selfGroup } = useOrg()
   const { info } = useAuthorInfo(ownDid)
   const [posting, setPosting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const problem = commentDraftProblem(draft)
   const length = countGraphemes(draft.trim())
-  // With groups to choose from, the avatar picks who the comment is from.
-  const canSwitch = !selfGroup && groups.length > 0
 
   useEffect(() => {
     if (autoFocus) fieldRef.current?.focus()
@@ -416,15 +411,10 @@ function CommentComposer({
   return (
     <form id={id} className="comment-composer" onSubmit={submit}>
       <span className="comment-item__avatar">
-        {canSwitch ? (
-          <AccountPicker
-            trigger="avatar"
-            prefix="Comment as"
-            label="Comment as"
-            current={author}
-            onSelect={onAuthorChange}
-            note="Who this comment is posted as."
-          />
+        {/* Who the comment is from: the account you act as (switch it in
+            the account control). */}
+        {author ? (
+          <IdentityAvatar identity={groupIdentity(author)} size="sm" />
         ) : (
           <Avatar
             size="sm"

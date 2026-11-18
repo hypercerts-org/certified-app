@@ -22,23 +22,6 @@ vi.mock("@/lib/auth/auth-context", () => ({
 vi.mock("@/lib/groups/org-context", () => ({
   useOrg: () => ({ activeOrg, groups, selfGroup: null }),
 }))
-// The real picker opens a popover or sheet; a select stands in for it.
-vi.mock("@/components/layout/account-picker", () => ({
-  default: ({ label, current, onSelect }: { label: string; current: Group | null; onSelect: (g: Group | null) => void }) => (
-    <select
-      aria-label={label}
-      value={current?.groupDid ?? "me"}
-      onChange={(e) => onSelect(groups.find((g) => g.groupDid === e.target.value) ?? null)}
-    >
-      <option value="me">Me</option>
-      {groups.map((g) => (
-        <option key={g.groupDid} value={g.groupDid}>
-          {g.displayName}
-        </option>
-      ))}
-    </select>
-  ),
-}))
 vi.mock("@/hooks/use-author-info", () => ({
   useAuthorInfo: (d: string | null) => ({
     info: d ? { did: d, handle: `${d.split(":").pop()}.test`, displayName: NAMES[d] ?? null, avatarUrl: null } : null,
@@ -176,32 +159,36 @@ describe("CommentThread on a card", () => {
     expect((field as HTMLTextAreaElement).value).toBe("")
   })
 
-  it("starts from the account you act as, and the avatar switches it", async () => {
+  // One account decides everything: comments come from the account you
+  // act as, with no picker of their own (switch in the account control).
+  it("posts as the account you act as, with no picker of its own", async () => {
     groups = [GROUP, OTHER]
     activeOrg = GROUP
     serve([])
     post.mockResolvedValue(comment(9, "did:plc:grp"))
     card()
     fireEvent.click(screen.getByRole("button", { name: "Comment" }))
-    const picker = screen.getByRole("combobox", { name: "Comment as" }) as HTMLSelectElement
-    expect(picker.value).toBe("did:plc:grp")
+    expect(screen.queryByRole("combobox", { name: "Comment as" })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Comment as/ })).toBeNull()
     expect(screen.getByText("Commenting as Coastal Group")).toBeTruthy()
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "From the group" } })
+    fireEvent.click(screen.getByRole("button", { name: "Post" }))
+    await waitFor(() => expect(post).toHaveBeenCalled())
+    expect(post.mock.calls[0].slice(0, 2)).toEqual(["did:plc:me", "did:plc:grp"])
+  })
 
-    fireEvent.change(picker, { target: { value: "me" } })
+  it("posts as you when you act as yourself, even with groups", async () => {
+    groups = [GROUP]
+    activeOrg = null
+    serve([])
+    post.mockResolvedValue(comment(9, "did:plc:me"))
+    card()
+    fireEvent.click(screen.getByRole("button", { name: "Comment" }))
     expect(screen.queryByText(/Commenting as/)).toBeNull()
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "From me" } })
     fireEvent.click(screen.getByRole("button", { name: "Post" }))
     await waitFor(() => expect(post).toHaveBeenCalled())
     expect(post.mock.calls[0].slice(0, 2)).toEqual(["did:plc:me", "did:plc:me"])
-  })
-
-  it("starts from the open workspace on a record page too", () => {
-    groups = [GROUP]
-    activeOrg = GROUP
-    serve([])
-    card()
-    fireEvent.click(screen.getByRole("button", { name: "Comment" }))
-    expect((screen.getByRole("combobox", { name: "Comment as" }) as HTMLSelectElement).value).toBe("did:plc:grp")
   })
 
   it("makes web addresses in comments links", async () => {

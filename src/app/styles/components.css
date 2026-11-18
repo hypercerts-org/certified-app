@@ -2068,37 +2068,3 @@
     bottom: auto;
   }
 }
-
-/* ---- AccountPicker's avatar trigger (account-picker.tsx, trigger="avatar"):
-   the account's avatar with a small chevron on its lower-right corner, so
-   it reads as something to switch. Used by the comment field. ---- */
-
-.account-picker-avatar {
-  cursor: pointer;
-}
-
-.account-picker-avatar__badge {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--bg-elevated);
-  color: var(--fg-primary);
-  box-shadow: var(--shadow-outline-subtle), var(--shadow-sm);
-}
-
-.account-picker-avatar:hover .account-picker-avatar__badge {
-  background: var(--bg-selected);
-}
-
-/* A 44px hit area around the 32px avatar for touch. */
-.account-picker-avatar::after {
-  content: "";
-  position: absolute;
-  inset: -6px;
-}
