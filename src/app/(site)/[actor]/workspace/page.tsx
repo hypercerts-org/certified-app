@@ -43,6 +43,7 @@ async function YourOrganizations() {
 
 async function Overview({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
+  if (!did) return null; // no access: the workspace layout says why
   const own = await isOwnWorkspace(did);
   return (
     <WorkspaceOverview

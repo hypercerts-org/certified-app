@@ -77,6 +77,7 @@ function toFolders(did: string, work: Work): WorkFolder[] {
 
 async function WorkSection({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
+  if (!did) return null; // no access: the workspace layout says why
   const work = await getWork(did);
   return (
     <WorkFolders

@@ -7,6 +7,7 @@ export const metadata: Metadata = { title: "Endorsement lists", robots: { index:
 
 async function Lists({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
+  if (!did) return null; // no access: the workspace layout says why
   const { lists, more } = await listLists(did);
   return (
     <EndorsementLists lists={lists.filter((list) => list.kind === "Endorsements")} more={more} />
