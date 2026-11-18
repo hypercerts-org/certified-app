@@ -323,8 +323,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   const profileHref = handle ? profileUrl(handle) : "/profile";
 
   const handleCancel = () => {
-    if (!confirmDiscard()) return;
-    router.push(profileHref);
+    confirmDiscard(() => router.push(profileHref));
   };
 
   return (

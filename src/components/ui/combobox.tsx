@@ -259,13 +259,23 @@ function Combobox<T>({
 
   const count = items.length;
 
-  // Reset the highlight whenever the item set changes: first row when
-  // the list is non-empty (and auto-highlight is on), -1 otherwise.
-  // Keying off `count` (not the array identity) keeps this stable when a
-  // parent passes a fresh array each render with the same contents.
+  // Reset the highlight whenever the item set or the query changes: first
+  // row when the list is non-empty (and auto-highlight is on), -1
+  // otherwise. Keying off `count` (not the array identity) keeps this
+  // stable when a parent passes a fresh array each render with the same
+  // contents; `value` covers a new query whose results come back in the
+  // same number (capped lists nearly always do), so a row picked for the
+  // old query never carries over to a different record.
   useEffect(() => {
     setHighlight(count > 0 && autoHighlight ? 0 : -1);
-  }, [count, autoHighlight]);
+  }, [count, autoHighlight, value]);
+
+  // And when the list closes (Escape, an outside click, a selection), so
+  // it reopens without the row picked before. Not on open: an arrow key
+  // that opens the list has just set the highlight it wants.
+  useEffect(() => {
+    if (!open) setHighlight(count > 0 && autoHighlight ? 0 : -1);
+  }, [open, count, autoHighlight]);
 
   // Close on outside click.
   useEffect(() => {

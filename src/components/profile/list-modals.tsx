@@ -22,6 +22,7 @@ import { resolveHandleToDid } from "@/lib/atproto/did"
 import { collectionForType, isRecordType } from "@/lib/urls"
 import { parseSubjectInput } from "@/lib/utils/parse-subject-input"
 import { getInitials } from "@/lib/utils/initials"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 // The three modals ProfileLists opens: create/edit a list, bulk-add by
 // pasted links / at-URIs, and search-driven add. Each keeps its own form state;
@@ -69,25 +70,28 @@ export function CreateListModal({
       await onSubmit(title.trim(), description.trim() || undefined)
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : mode === "edit"
-            ? "Failed to save list"
-            : "Failed to create list",
+        caughtErrorMessage(
+          err,
+          mode === "edit" ? "Couldn't save the list. Try again" : "Couldn't create the list. Try again",
+        ),
       )
       setIsWriting(false)
     }
   }
 
   const titleCopy = mode === "edit" ? `Edit ${LABELS[type]} list` : `Create ${LABELS[type]} list`
-  const submitCopy = mode === "edit" ? "Save" : "Create list"
+  const submitCopy = mode === "edit" ? "Save changes" : "Create list"
+  // Typed text isn't lost to a stray click outside: the backdrop closes
+  // only while nothing has been changed (Cancel, Close and Esc still
+  // close).
+  const edited = title !== initialTitle || description !== initialDescription
 
   return (
     <AppDialog
       ariaLabel={titleCopy}
       maxWidth={460}
       onClose={() => !isWriting && onCancel()}
-      disableBackdropClose={isWriting}
+      disableBackdropClose={isWriting || edited}
     >
       <AppDialogHeader
         title={titleCopy}
@@ -329,7 +333,7 @@ export function PasteUrisModal({
                 ? {
                     ...r,
                     status: "error",
-                    message: err instanceof Error ? err.message : "Lookup failed",
+                    message: caughtErrorMessage(err, "Couldn't look this up. Try again"),
                   }
                 : r,
             ),
@@ -359,7 +363,7 @@ export function PasteUrisModal({
           ),
         )
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Add failed"
+        const message = caughtErrorMessage(err, "Couldn't add it to the list. Try again")
         const validUris = new Set(validItems.map((it) => it.uri))
         setRows((prev) =>
           prev.map((r) =>
@@ -555,7 +559,7 @@ export function AddItemsModal({
         setError(null)
       } catch (err) {
         if (controller.signal.aborted) return
-        setError(err instanceof Error ? err.message : "Search failed")
+        setError(caughtErrorMessage(err, "Search didn't work. Try again"))
         setResults([])
       } finally {
         if (!controller.signal.aborted) setSearching(false)
@@ -580,7 +584,7 @@ export function AddItemsModal({
       await onAdd({ uri: result.uri, cid })
     } catch (err) {
       console.error("Failed to add item:", err)
-      setError(err instanceof Error ? err.message : "Failed to add item")
+      setError(caughtErrorMessage(err, "Couldn't add it to the list. Try again"))
     } finally {
       setAddingUri(null)
     }

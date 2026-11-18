@@ -329,7 +329,7 @@ function ListSection({
  *  once (Paste many), and what Paste many takes. */
 export function pasteTip(type: TypedListType): string {
   if (type === LIST_ACCOUNTS_TYPE) {
-    return "Add accounts one at a time, or paste many handles, DIDs or links at once with Paste many."
+    return "Add accounts one at a time, or paste many handles, Permanent IDs or links at once with Paste many."
   }
   const plural = LIST_SECTIONS.find((s) => s.type === type)?.plural ?? "items"
   return `Add ${plural} one at a time, or paste many links at once with Paste many.`

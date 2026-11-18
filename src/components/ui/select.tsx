@@ -1,5 +1,6 @@
 import React, { useId } from "react";
 import { AlertCircle, ChevronDown } from "lucide-react";
+import { joinIds } from "./input";
 
 export type SelectSize = "sm" | "md" | "lg";
 
@@ -39,6 +40,8 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       id,
       disabled,
       children,
+      "aria-describedby": callerDescribedBy,
+      "aria-invalid": callerInvalid,
       ...props
     },
     ref
@@ -47,17 +50,19 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id || autoId;
     const errorId = error ? `${selectId}-error` : undefined;
     const helperId = !error && helperText ? `${selectId}-helper` : undefined;
-    const describedBy =
-      [errorId, helperId].filter(Boolean).join(" ") || undefined;
+    // Own ids first, then the caller's: merged, never replaced.
+    const describedBy = joinIds(errorId, helperId, callerDescribedBy);
+    const invalid =
+      !!error || callerInvalid === true || callerInvalid === "true";
 
     const baseChrome =
       "w-full appearance-none bg-[var(--bg-elevated)] text-[var(--fg-primary)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none";
 
-    const borderChrome = `border ${
-      error
-        ? "border-[var(--color-error-border)]"
-        : "border-[var(--border-default)]"
-    } rounded focus:border-[var(--focus-ring)] focus:ring-1`;
+    // In error (DESIGN.md §9.2): the border in --color-error at full
+    // strength, kept on focus with the error halo, as Input.
+    const borderChrome = invalid
+      ? "border border-[var(--color-error)] rounded focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]"
+      : "border border-[var(--border-default)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
 
     const disabledChrome = disabled
       ? "disabled:cursor-not-allowed disabled:opacity-[var(--opacity-disabled)] disabled:bg-[var(--bg-sunken)]"
@@ -78,7 +83,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             disabled={disabled}
-            aria-invalid={error ? true : undefined}
+            aria-invalid={invalid || undefined}
             aria-describedby={describedBy}
             // The native option list is painted by the OS/UA; styling it is not
             // portable. We set the surface tokens so platforms that DO honour

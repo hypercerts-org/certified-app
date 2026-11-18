@@ -93,6 +93,9 @@ export interface SeeAllLinkProps {
   /** Defaults to "See all". Name the destination when it isn't obvious. */
   label?: string;
   className?: string;
+  /** Runs before the navigation, e.g. to clear in-page state the
+   *  destination shouldn't keep. */
+  onClick?: () => void;
 }
 
 /**
@@ -100,10 +103,11 @@ export interface SeeAllLinkProps {
  * the secondary colour with a 14px chevron. 32px tall, with the hit area
  * stretched to 44px for touch.
  */
-export function SeeAllLink({ href, label = "See all", className = "" }: SeeAllLinkProps) {
+export function SeeAllLink({ href, label = "See all", className = "", onClick }: SeeAllLinkProps) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={`relative inline-flex min-h-control-compact items-center gap-1 rounded text-ui font-medium text-[var(--fg-secondary)] no-underline transition-colors duration-fast motion-reduce:transition-none select-none [-webkit-touch-callout:none] hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2 after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] ${className}`.trim()}
     >
       {label}

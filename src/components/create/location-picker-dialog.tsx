@@ -10,6 +10,7 @@ import Tooltip from "@/components/ui/tooltip"
 import Map from "@/components/map/map-dynamic"
 import { authFetch } from "@/lib/auth/fetch"
 import { rkeyFromUri } from "@/lib/urls"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import {
   parseLocationShape,
   putLocationRecord,
@@ -167,9 +168,7 @@ export default function LocationPickerDialog({
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === "AbortError") return
         setMyLocationsError(
-          err instanceof Error
-            ? err.message
-            : "Couldn't load your saved locations.",
+          caughtErrorMessage(err, "Couldn't load your saved locations"),
         )
       })
       .finally(() => {
@@ -299,9 +298,7 @@ export default function LocationPickerDialog({
       )
       onPick({ ref, name: name.trim() || `${coords.lat}, ${coords.lng}` })
     } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to save location",
-      )
+      setSaveError(caughtErrorMessage(err, "Couldn't save the location. Try again"))
       setIsSaving(false)
     }
   }

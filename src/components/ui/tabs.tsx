@@ -14,7 +14,8 @@ import React, {
  * Canonical Tabs/Tab/TabPanel components with proper ARIA semantics:
  *   role="tablist" on the strip, role="tab" on each trigger,
  *   role="tabpanel" on each panel, aria-controls / aria-labelledby
- *   wired up automatically. Arrow keys navigate between tabs.
+ *   wired up automatically (a link tab, `href`, has no aria-controls: its
+ *   panel is the page it opens). Arrow keys navigate between tabs.
  *
  * Replaces the .profile-tabs__tab / .feed-tabs__tab CSS-driven
  * pattern. Visually identical (underline-on-active) but a11y is
@@ -185,8 +186,9 @@ export interface TabProps
   count?: number | string;
   /** When set, the tab renders as a Next `<Link href>` (an anchor) instead of
    *  a `<button>` — for URL-router tab strips where each tab is a route. The
-   *  same role="tab" / aria-selected / aria-controls, roving tabIndex, and
-   *  arrow / Home / End keyboard navigation apply. `onChange` still fires on
+   *  same role="tab" / aria-selected, roving tabIndex, and arrow / Home /
+   *  End keyboard navigation apply; there is no aria-controls (the panel is
+   *  the page the link opens, not a `<TabPanel>`). `onChange` still fires on
    *  activation so controlled `value` stays in sync; navigation is left to the
    *  router. Ignored when `disabled`. */
   href?: string;
@@ -279,9 +281,12 @@ export function Tab({
     }
   };
 
-  // Underline classes are byte-for-byte identical to the pre-segmented Tab so
-  // every existing call site renders unchanged.
-  const underlineClassName = `inline-flex items-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-fast motion-reduce:transition-none ${
+  // Underline: at least 44px wide, so a short label ("All", "Map") is
+  // still a full touch target (its text centred over the wider underline).
+  // The focus ring sits inside the tab (-2px), as on the profile's and the
+  // record pages' strips: a strip that scrolls sideways clips anything
+  // drawn outside it.
+  const underlineClassName = `inline-flex min-w-11 items-center justify-center gap-2 px-1 py-3 text-sm border-b-2 transition-colors duration-fast motion-reduce:transition-none focus-visible:outline-offset-[-2px] ${
     disabled
       ? "text-[var(--fg-muted)] border-transparent opacity-50 cursor-not-allowed"
       : isActive
@@ -307,10 +312,14 @@ export function Tab({
   // Shared ARIA + roving-tabindex contract for both element types. Disabled
   // tabs stay out of the roving tab order entirely; the active (and only the
   // active) enabled tab is the single Tab-key stop.
+  //
+  // A link tab names no panel: its content is the page the link opens, not
+  // a <TabPanel> with this strip's id, and an aria-controls pointing at an
+  // element that isn't there is invalid (axe: aria-valid-attr-value).
   const sharedProps = {
     role: "tab" as const,
     id: tabId,
-    "aria-controls": panelId,
+    "aria-controls": isLink ? undefined : panelId,
     "aria-selected": isActive,
     "aria-disabled": disabled || undefined,
     tabIndex: disabled ? -1 : isActive ? 0 : -1,

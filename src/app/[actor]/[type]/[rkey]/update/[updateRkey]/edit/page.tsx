@@ -17,6 +17,7 @@ import {
   type ContextAttachmentRecord,
 } from "@/lib/atproto/context-attachment"
 import { usePageTitle } from "@/lib/navbar-context"
+import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import PageContainer from "@/components/ui/page-container"
 import Skeleton from "@/components/ui/skeleton"
@@ -54,16 +55,20 @@ export default function EditUpdatePage() {
 
   const [record, setRecord] = useState<ContextAttachmentRecord | null>(null)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  // "not-found": the update doesn't exist; "failed": it couldn't be read
+  // (offered again with Try again).
+  const [loadError, setLoadError] = useState<"not-found" | "failed" | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
-  // Adjust state during render when the load target changes, so the
-  // effect holds only the getContextAttachment lifecycle.
-  const loadKey = `${did}|${updateRkey}`
+  // Adjust state during render when the load target changes (or Try
+  // again is pressed), so the effect holds only the getContextAttachment
+  // lifecycle.
+  const loadKey = `${did}|${updateRkey}|${attempt}`
   const [prevLoadKey, setPrevLoadKey] = useState(loadKey)
   if (prevLoadKey !== loadKey) {
     setPrevLoadKey(loadKey)
     setLoading(true)
-    setLoadError(false)
+    setLoadError(null)
   }
 
   useEffect(() => {
@@ -72,11 +77,11 @@ export default function EditUpdatePage() {
     getContextAttachment(did, updateRkey)
       .then((r) => {
         if (cancelled) return
-        if (!r) setLoadError(true)
+        if (!r) setLoadError("not-found")
         else setRecord(r)
       })
       .catch(() => {
-        if (!cancelled) setLoadError(true)
+        if (!cancelled) setLoadError("failed")
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -84,7 +89,7 @@ export default function EditUpdatePage() {
     return () => {
       cancelled = true
     }
-  }, [did, updateRkey])
+  }, [did, updateRkey, attempt])
 
   if (!type || actor.kind === "invalid") {
     return (
@@ -111,13 +116,29 @@ export default function EditUpdatePage() {
     )
   }
 
+  if (loadError === "failed") {
+    return (
+      <PageContainer width="narrow">
+        <EmptyState
+          icon={FileQuestion}
+          title="Couldn't load this update"
+          description="Check your connection and try again."
+        >
+          <Button variant="secondary" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </Button>
+        </EmptyState>
+      </PageContainer>
+    )
+  }
+
   if (loadError || !record || !subjectUri) {
     return (
       <PageContainer width="narrow">
         <EmptyState
           icon={FileQuestion}
           title="Update not found"
-          description="We couldn't load this update for editing."
+          description="It may have been deleted, or the link is wrong."
         />
       </PageContainer>
     )

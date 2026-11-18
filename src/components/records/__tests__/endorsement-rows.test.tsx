@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from "vitest"
-import { render, screen, fireEvent, within } from "@testing-library/react"
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react"
 
 import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import type { GivenEndorsement } from "@/hooks/use-endorsements"
@@ -37,6 +37,8 @@ beforeAll(() => {
 })
 
 import ReceivedEndorsements from "../received-endorsements"
+import { ToastProvider } from "@/components/ui/toast"
+import { createResponse } from "@/lib/atproto/badges"
 import GivenEndorsements from "../given-endorsements"
 
 const ownStates = (hidden: string[]) =>
@@ -77,15 +79,17 @@ const GIVEN: GivenEndorsement[] = [
 
 function renderReceived() {
   return render(
-    <ReceivedEndorsements
-      did="did:plc:me"
-      profileHref="/me.certified.app"
-      endorsements={RECEIVED}
-      isLoading={false}
-      error={null}
-      onRetry={vi.fn()}
-      ownStates={ownStates([RECEIVED[1].uri])}
-    />,
+    <ToastProvider>
+      <ReceivedEndorsements
+        did="did:plc:me"
+        profileHref="/me.certified.app"
+        endorsements={RECEIVED}
+        isLoading={false}
+        error={null}
+        onRetry={vi.fn()}
+        ownStates={ownStates([RECEIVED[1].uri])}
+      />
+    </ToastProvider>,
   )
 }
 
@@ -120,6 +124,26 @@ describe("Received rows (EN1, X3)", () => {
     expect(row.querySelector(".h-10.w-10")).not.toBeNull()
     expect(within(row).getByText("Ana Reyes")).toHaveClass("records-person__name")
     expect(within(row).getByText("@ana.certified.app")).toHaveClass("records-person__handle")
+  })
+})
+
+// C3: a failed Hide / Show reports in a toast, as the Workspace's other row
+// actions do, in words a person can act on (not the raw error).
+describe("Received rows: a failed Hide", () => {
+  it("shows an error toast with a readable message, not a line in the row", async () => {
+    vi.mocked(createResponse).mockRejectedValueOnce(new Error("XRPCError: InvalidRequest 400"))
+    renderReceived()
+    const row = screen.getAllByRole("listitem")[0]
+    fireEvent.click(within(row).getByRole("button", { name: /^Hide from profile/ }))
+    const alert = await screen.findByRole("alert")
+    expect(alert).toHaveTextContent("Couldn't hide the endorsement from Ana Reyes")
+    expect(alert).toHaveTextContent("Try again in a moment.")
+    expect(alert).not.toHaveTextContent("XRPCError")
+    expect(within(row).queryByRole("alert")).toBeNull()
+    // The optimistic state rolls back: the row offers Hide again.
+    await waitFor(() =>
+      expect(within(row).getByRole("button", { name: /^Hide from profile/ })).not.toBeDisabled(),
+    )
   })
 })
 

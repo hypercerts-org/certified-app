@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { Camera } from "lucide-react";
 import Avatar from "@/components/ui/avatar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { caughtErrorMessage } from "@/lib/utils/user-error";
 
 export interface AvatarUploadProps {
   currentAvatarUrl: string | null;
@@ -56,7 +57,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
       await onUpload(file);
     } catch (err) {
       console.error("Upload failed:", err);
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(caughtErrorMessage(err, "Couldn't upload the picture. Try again in a moment"));
       // Clear preview on error
       URL.revokeObjectURL(objectUrl);
       setPreviewUrl(null);

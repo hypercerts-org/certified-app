@@ -26,7 +26,7 @@ describe("PasswordSection send step", () => {
     expect(authFetch).not.toHaveBeenCalled()
     expect(edit).toHaveAttribute("aria-expanded", "true")
     expect(screen.getByText(/We.ll email a code to/)).toHaveTextContent(
-      "We\u2019ll email a code to ada@example.com so you can set a new password.",
+      "We'll email a code to ada@example.com so you can set a new password.",
     )
   })
 

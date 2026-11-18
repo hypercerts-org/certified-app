@@ -128,7 +128,7 @@ export default function FundingRegister({
       </div>
       {rows.length === 0 ? (
         <div className="funding-empty">
-          <p>No receipts match.</p>
+          <p>{query.trim() ? `Nothing matches "${query.trim()}".` : "No receipts match."}</p>
         </div>
       ) : (
         <div className="funding-ledger" role="list" aria-label="Funding receipts">

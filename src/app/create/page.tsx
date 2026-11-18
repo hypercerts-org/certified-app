@@ -34,8 +34,9 @@ import LocationPickerDialog, {
 import type { HypercertsSmallImage } from "@/lib/atproto/types"
 import type { StrongRef } from "@/lib/atproto/location"
 import { usePageTitle } from "@/lib/navbar-context"
-import { useTour } from "@/lib/tour/tour-context"
 import { toUserErrorMessage } from "@/lib/utils/api"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
+import { focusFirstInvalid, problemsMessage } from "@/components/create/form-errors"
 import { isEmptyLongDescription } from "@/lib/leaflet/guards"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 
@@ -80,10 +81,6 @@ export default function CreatePage() {
   const { isAuthenticated, isLoading, did } = useAuth()
   const { activeOrg } = useOrg()
   const router = useRouter()
-  // During the product tour, don't auto-focus the title — the tour's
-  // arrow-key navigation needs focus on its own card, not trapped in this
-  // field (the "Give it a title" step highlights it without typing in it).
-  const { isActive: tourActive } = useTour()
   // "Effective identity" — the DID the cert is published as on
   // this page. When the user has switched into a group, that's the
   // group's DID; otherwise their own session DID. Used anywhere
@@ -165,6 +162,7 @@ export default function CreatePage() {
   const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const shortDescRef = useRef<HTMLTextAreaElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Revoke any staged preview URL on unmount so the blob URL doesn't
   // linger in memory after the user navigates away mid-flow.
@@ -215,9 +213,7 @@ export default function CreatePage() {
     } catch (err) {
       // Surface the failure and clear the dangling optimistic preview so
       // the form can't be published with an image that never uploaded.
-      setError(
-        err instanceof Error ? err.message : "Image upload failed",
-      )
+      setError(caughtErrorMessage(err, "Couldn't upload the image. Try again"))
       setPendingImageBlob(null)
       setPendingImagePreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
@@ -299,9 +295,10 @@ export default function CreatePage() {
     // offending field. (This also covers an Enter-key submit.)
     if (problems.unmet.length > 0) {
       setSubmitAttempted(true)
-      setError(`Before publishing: ${problems.unmet.join("; ")}.`)
+      setError(problemsMessage("Before publishing", problems.unmet))
       if (problems.focus === "title") titleInputRef.current?.focus()
       else if (problems.focus === "shortDescription") shortDescRef.current?.focus()
+      else focusFirstInvalid(formRef.current)
       return
     }
 
@@ -452,7 +449,12 @@ export default function CreatePage() {
         router.push("/")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      setError(
+        caughtErrorMessage(
+          err,
+          "Couldn't publish your activity. Your draft is still here; try again",
+        ),
+      )
       setIsSubmitting(false)
     }
   }
@@ -460,14 +462,13 @@ export default function CreatePage() {
   return (
     <PageContainer>
       {pageHeader}
-      <form onSubmit={handleSubmit}>
+      {/* No autofocus: the page opens at its top, so the skip link and
+          the navigation come first for keyboard and screen-reader users. */}
+      <form ref={formRef} onSubmit={handleSubmit} noValidate>
         <ActivityFormFields
           title={title}
           onTitleChange={setTitle}
           titleRef={titleInputRef}
-          // During the product tour, don't auto-focus the title: the
-          // tour's arrow-key navigation needs focus on its own card.
-          autoFocusTitle={!tourActive}
           titleTourId="create-title"
           shortDescription={shortDescription}
           onShortDescriptionChange={setShortDescription}
@@ -512,11 +513,12 @@ export default function CreatePage() {
           submittingLabel="Publishing…"
           isSubmitting={isSubmitting}
           error={error}
-          onCancel={() => {
-            if (!confirmDiscard()) return
-            if (arrivedFromInApp) router.back()
-            else router.push("/")
-          }}
+          onCancel={() =>
+            confirmDiscard(() => {
+              if (arrivedFromInApp) router.back()
+              else router.push("/")
+            })
+          }
           submitTourId="create-submit"
         />
 

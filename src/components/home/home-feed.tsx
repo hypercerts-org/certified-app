@@ -108,7 +108,7 @@ const FEED_DESCRIPTION =
 
 /** The same line while you act as a group: the follows are the group's. */
 const FEED_DESCRIPTION_GROUP =
-  "New activities, projects and endorsements from accounts this group follows, and from accounts the trusted endorsers have endorsed."
+  "New activities, projects and endorsements from accounts this group follows, and from accounts this group's trusted endorsers have endorsed."
 
 /** Number of entries in `a` or `b` but not both. */
 function differenceCount<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): number {

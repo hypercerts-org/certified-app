@@ -137,7 +137,10 @@ export default function ImageEditOverlay({
         ref={inputRef}
         type="file"
         accept="image/*"
+        // Opened by the buttons above, never reached on its own: hidden
+        // from assistive tech as well as from the tab order.
         tabIndex={-1}
+        aria-hidden="true"
         onChange={handleChange}
         className="image-edit-overlay__input"
       />

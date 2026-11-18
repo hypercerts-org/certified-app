@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Camera, Trash2 } from "lucide-react";
 import LoadingSpinner from "@/components/ui/loading-spinner";
+import { caughtErrorMessage } from "@/lib/utils/user-error";
 
 export interface BannerUploadProps {
   currentBannerUrl: string | null;
@@ -72,7 +73,7 @@ const BannerUpload: React.FC<BannerUploadProps> = ({
       await onUpload(file);
     } catch (err) {
       console.error("Upload failed:", err);
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(caughtErrorMessage(err, "Couldn't upload the banner. Try again in a moment"));
       // Clear preview on error so the stale/saved banner shows again.
       URL.revokeObjectURL(objectUrl);
       setPreviewUrl(null);

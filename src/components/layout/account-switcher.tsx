@@ -121,6 +121,9 @@ function useSignOutConfirm(returnFocusRef: RefObject<HTMLElement | null>) {
 // Menu content (shared by the desktop popover and the phone sheet)
 // ---------------------------------------------------------------------------
 
+/** The id of the "Now acting as" toast, so a switch replaces the last one. */
+export const ACTING_AS_TOAST_ID = "acting-as"
+
 export interface AccountMenuContentProps {
   mode: MenuMode
   /** Close the popover / sheet (called before every action). */
@@ -169,13 +172,20 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
     <hr className={MENU_SEPARATOR_CLASS} />
   )
 
+  // One "Now acting as" toast at a time: a later switch replaces the
+  // earlier one (a fixed id) rather than stacking under it.
+  const sayActingAs = (next: Group | null) => {
+    toast({
+      id: ACTING_AS_TOAST_ID,
+      title: `Now acting as ${next ? groupIdentity(next).name : personal.name}`,
+    })
+  }
+
   const select = (next: Group | null) => {
     onClose()
     const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
     openWorkspace(next)
-    if (!isCurrent) {
-      toast({ title: `Now acting as ${next ? groupIdentity(next).name : personal.name}` })
-    }
+    if (!isCurrent) sayActingAs(next)
   }
 
   // A gear opens that account's settings as that account (its link does
@@ -186,7 +196,7 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
     const isCurrent = next ? activeOrg?.groupDid === next.groupDid : !activeOrg
     if (!isCurrent) {
       switchOrg(next)
-      toast({ title: `Now acting as ${next ? groupIdentity(next).name : personal.name}` })
+      sayActingAs(next)
     }
   }
 
@@ -369,7 +379,8 @@ export function AccountMenuContent({ mode, onClose, onRequestSignOut }: AccountM
                 key={href}
                 href={href}
                 onClick={onClose}
-                className="inline-flex min-h-control-md items-center text-[var(--fg-muted)] no-underline hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+                // 44px both ways: the words are short ("Terms").
+                className="inline-flex min-h-control-md min-w-11 items-center text-[var(--fg-muted)] no-underline hover:text-[var(--fg-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
               >
                 {label}
               </Link>
@@ -487,11 +498,14 @@ export function PhoneAccountSwitcher() {
       >
         <ActingAvatar size="sm" />
       </Button>
+      {/* Tall: the whole menu (Act as, Signed in as, Help, the legal
+          links) shows when it fits, rather than a 70vh peek of it. */}
       <BottomSheet
         open={open}
         onClose={() => setOpen(false)}
         title="Account"
         returnFocusRef={triggerRef}
+        tall
       >
         <div className="px-2 pb-4">
           <AccountMenuContent

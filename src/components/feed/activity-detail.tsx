@@ -9,6 +9,7 @@ import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { Pencil } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -333,11 +334,7 @@ export default function ActivityDetail({
         router.push(profileUrl(did))
       }
     } catch (err) {
-      setDeleteError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't delete this activity. Try again.",
-      )
+      setDeleteError(caughtErrorMessage(err, "Couldn't delete this activity. Try again"))
       setIsDeleting(false)
     }
   }, [rkey, did, canEditAsActiveOrg, router])
@@ -383,6 +380,7 @@ export default function ActivityDetail({
           targetType={LIST_CERTS_TYPE}
           showShare={false}
           trigger="header"
+          title={title}
           editActions={
             isCreator
               ? {
@@ -522,6 +520,8 @@ export default function ActivityDetail({
       ) : null}
     </>
   )
+  // The rail follows the content in the DOM, so the keyboard reaches the
+  // tabs and the content first; the grid places it beside them.
   const rail = wide ? (
     <aside
       ref={railRef}
@@ -532,9 +532,11 @@ export default function ActivityDetail({
       {leadCards}
       {moreCards}
     </aside>
-  ) : activeTab === "overview" ? (
-    <div className="record-layout__lead">{leadCards}</div>
   ) : null
+  const leadAfter =
+    !wide && activeTab === "overview" ? (
+      <div className="record-layout__lead">{leadCards}</div>
+    ) : null
   const moreAfter =
     !wide && activeTab === "overview" ? (
       <aside className="record-layout__more" aria-label="About this activity">
@@ -571,7 +573,7 @@ export default function ActivityDetail({
           compact={activeTab !== "overview"}
         />
 
-        {rail}
+        {leadAfter}
 
         {/* A strip of one tab says nothing: Overview alone has none. */}
         {tabs.length > 1 ? (
@@ -653,6 +655,7 @@ export default function ActivityDetail({
           ) : null}
         </TabPanelTransition>
 
+        {rail}
         {moreAfter}
         {commentsAfter}
       </article>

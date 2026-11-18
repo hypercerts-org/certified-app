@@ -33,10 +33,9 @@ export function PublishingAs({ label = "Publishing as" }: { label?: string }) {
   const loading = !activeOrg && isLoading && !info
 
   // A div, not a <p>: the Skeleton and Avatar render block elements.
-  // Phones stack the label over the name (both fit beside the buttons on
-  // one row); from 800px they share a line.
+  // One line: the label, then the avatar and the name (which truncates).
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 text-caption text-[var(--fg-secondary)] md:flex-row md:items-center md:gap-2 md:text-ui">
+    <div className="flex min-w-0 items-center gap-2 text-ui text-[var(--fg-secondary)]">
       <span className="shrink-0">{label}</span>
       {loading ? (
         <Skeleton variant="line" width="8rem" height="1rem" />
@@ -106,8 +105,8 @@ export interface FormActionBarProps {
 /**
  * The one action bar for create and edit forms: "Publishing as …" on the
  * left, Cancel (secondary) and the primary action on the right, on one row
- * at every width (phones stack the identity's label over the name, which
- * truncates). It sticks to the bottom of the viewport (above the phone tab
+ * from 800px; below it the identity line sits above the two buttons, which
+ * share the width. It sticks to the bottom of the viewport (above the phone tab
  * bar) while the form scrolls, and settles at the end of the form once you
  * reach it. Pages that mount it pad their scroll target area by its height
  * (`scroll-padding-bottom`), so a focused field never hides behind it.
@@ -138,10 +137,10 @@ export default function FormActionBar({
       ) : null}
       <div className="form-action-bar__row">
         {identityLabel !== null ? (
-          <PublishingAs label={identityLabel} />
-        ) : (
-          <span aria-hidden />
-        )}
+          <div className="form-action-bar__identity">
+            <PublishingAs label={identityLabel} />
+          </div>
+        ) : null}
         <div className="form-action-bar__buttons">
           <Button
             type="button"

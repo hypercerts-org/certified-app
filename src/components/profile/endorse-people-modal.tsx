@@ -382,7 +382,7 @@ function ResultsList({
   if (results.length === 0) {
     return (
       <p className="endorse-people-modal__hint">
-        No people found for &ldquo;{query.trim()}&rdquo;.
+        No accounts found for &quot;{query.trim()}&quot;.
       </p>
     )
   }

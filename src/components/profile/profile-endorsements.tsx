@@ -35,6 +35,7 @@ import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 interface ProfileEndorsementsProps {
   /** DID of the profile being viewed. */
@@ -254,7 +255,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       setBulkConfirmOpen(false)
       await given.refetch()
     } catch (err) {
-      setBulkError(err instanceof Error ? err.message : "Failed to delete endorsements")
+      setBulkError(caughtErrorMessage(err, "Couldn't delete the endorsements. Try again in a moment"))
     } finally {
       setBulkBusy(false)
     }
@@ -281,7 +282,7 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       ownStates.invalidate()
       await ownStates.refetch()
     } catch (err) {
-      setBulkError(err instanceof Error ? err.message : "Failed to reject endorsements")
+      setBulkError(caughtErrorMessage(err, "Couldn't remove the endorsements. Try again in a moment"))
     } finally {
       setBulkBusy(false)
     }

@@ -250,8 +250,8 @@ function EmptyResults({
     return (
       <EmptyState
         icon={icon}
-        title={`No ${label} match “${context.search}”`}
-        description="Try another word, or clear the search to see everything."
+        title={`Nothing matches "${context.search}".`}
+        description={`No ${label} match this search. Try another word, or clear the search to see everything.`}
       >
         <Button variant="secondary" size="sm" onClick={context.onClearSearch}>
           Clear search

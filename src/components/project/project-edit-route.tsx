@@ -11,6 +11,8 @@ import { useOrg } from "@/lib/groups/org-context"
 import { authFetch } from "@/lib/auth/fetch"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
+import Textarea from "@/components/ui/textarea"
 import Skeleton from "@/components/ui/skeleton"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
@@ -28,7 +30,7 @@ import { usePageTitle } from "@/lib/navbar-context"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
-import { useProject } from "@/hooks/use-project"
+import { useProject, PROJECT_NOT_FOUND } from "@/hooks/use-project"
 import { useProjectItems } from "@/hooks/use-project-items"
 import { putProjectRecord } from "@/lib/atproto/project"
 import { InvalidSwapError } from "@/lib/atproto/repo-write"
@@ -50,13 +52,21 @@ import {
   type ProjectItemRow,
 } from "@/components/project/project-edit-items"
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
+import {
+  PROJECT_SHORT_DESC_MAX,
+  PROJECT_TITLE_MAX,
+  PROJECT_TITLE_MIN,
+  problemsMessage,
+  projectFormProblems,
+  saveConflictMessage,
+} from "@/components/create/form-errors"
 
 /**
  * `/project/[did]/[rkey]/edit` — full-page project editor. Mirrors
  * `/project/new`'s layout (banner hero + headline + sections), pre-
  * filled from the existing `org.hypercerts.collection` record. The
- * sticky `<EditBanner>` carries Save / Cancel; the in-form Cancel /
- * Publish action row is gone.
+ * shared `<FormActionBar>` carries Cancel / Save changes.
  *
  * Save routes through `putProjectRecord` with a `saveWithSwap` CID
  * precondition so a concurrent edit elsewhere surfaces as a conflict
@@ -96,10 +106,12 @@ export default function ProjectEditRoute({
     : !!sessionDid && sessionDid === did
   const editTargetDid = canEditAsActiveOrg ? did : undefined
 
-  const { project, isLoading: projectLoading, error: projectError } = useProject(
-    did,
-    rkey,
-  )
+  const {
+    project,
+    isLoading: projectLoading,
+    error: projectError,
+    refetch: refetchProject,
+  } = useProject(did, rkey)
 
   // -------------------------------------------------------------------
   // Form state — mirrors /project/new.
@@ -275,9 +287,16 @@ export default function ProjectEditRoute({
 
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
-  const TITLE_MIN = 5
-  const TITLE_MAX = 80
-  const SHORT_DESC_MAX = 300
+  const TITLE_MIN = PROJECT_TITLE_MIN
+  const TITLE_MAX = PROJECT_TITLE_MAX
+  const SHORT_DESC_MAX = PROJECT_SHORT_DESC_MAX
+  // The one validation rule (DESIGN.md §9.2): the title's minimum shows
+  // once the field has been left, or after a Save click; then it follows
+  // the typing live. Save stays enabled.
+  const [titleLeft, setTitleLeft] = useState(false)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const shortDescRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     // Intentional setState in effect (TECH-814): deliberate cross-field watcher clearing the save error on any edit; setError(null) bails out (no render) whenever error is already null
@@ -310,9 +329,7 @@ export default function ProjectEditRoute({
       } catch (err) {
         // Surface the failure and clear the dangling optimistic preview
         // so the form can't be saved with a banner that never uploaded.
-        setError(
-          err instanceof Error ? err.message : "Image upload failed",
-        )
+        setError(caughtErrorMessage(err, "Couldn't upload the image. Try again"))
         setPendingBannerBlob(null)
         setPendingBannerPreviewUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev)
@@ -354,7 +371,7 @@ export default function ProjectEditRoute({
       back={
         recordHref
           ? { href: recordHref, label: "Project" }
-          : { href: "/records", label: "Workspace" }
+          : { href: "/records", label: "Projects and activities" }
       }
       title="Edit project"
       description="Your changes update the published project."
@@ -387,16 +404,33 @@ export default function ProjectEditRoute({
     )
   }
 
-  if (projectError || !project) {
+  // Not found only when the record is gone; any other failure to load
+  // says so and offers to try again.
+  if (projectError === PROJECT_NOT_FOUND) {
     return gate(
       <EmptyState
         icon={FolderGit2}
         title="Project not found"
-        description={projectError || "Couldn't load this project to edit."}
+        description="It may have been deleted, or the link is wrong."
         headingLevel={2}
       >
         <Button href="/records" variant="secondary" size="sm">
-          Go to Records
+          Go to projects and activities
+        </Button>
+      </EmptyState>,
+    )
+  }
+
+  if (projectError || !project) {
+    return gate(
+      <EmptyState
+        icon={FolderGit2}
+        title="Couldn't load this project"
+        description="Check your connection and try again."
+        headingLevel={2}
+      >
+        <Button variant="secondary" size="sm" onClick={refetchProject}>
+          Try again
         </Button>
       </EmptyState>,
     )
@@ -407,7 +441,7 @@ export default function ProjectEditRoute({
       <EmptyState
         icon={FolderGit2}
         title="You can't edit this project"
-        description="Only the project's creator (or the active group it's published under) can make changes."
+        description="Only the account that published it can edit it. If a group published it, act as that group (as an owner or admin)."
         headingLevel={2}
       >
         {recordHref ? (
@@ -420,22 +454,29 @@ export default function ProjectEditRoute({
   }
 
   const trimmedTitleCount = countGraphemes(title.trim())
-  const titleUnder = trimmedTitleCount > 0 && trimmedTitleCount < TITLE_MIN
+  const titleUnder =
+    ((titleLeft && trimmedTitleCount > 0) || submitAttempted) &&
+    trimmedTitleCount < TITLE_MIN
   const titleOver = titleCount > TITLE_MAX
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
-  const canSubmit =
-    !!sessionDid &&
-    !!did &&
-    !!rkey &&
-    !!mountSnapshot &&
-    trimmedTitleCount >= TITLE_MIN &&
-    titleCount <= TITLE_MAX &&
-    shortDescCount <= SHORT_DESC_MAX &&
-    !isSubmitting
 
   const doSave = async () => {
-    if (!canSubmit) return
+    if (isSubmitting) return
     if (!sessionDid || !did || !rkey || !mountSnapshot) return
+    // Save stays enabled so a click always explains itself: list what's
+    // missing and focus the first field that needs attention.
+    const problems = projectFormProblems({
+      titleTrimmed: trimmedTitleCount,
+      title: titleCount,
+      shortDescription: shortDescCount,
+    })
+    if (problems.unmet.length > 0) {
+      setSubmitAttempted(true)
+      setError(problemsMessage("Before saving", problems.unmet))
+      if (problems.focus === "title") titleInputRef.current?.focus()
+      else if (problems.focus === "shortDescription") shortDescRef.current?.focus()
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -546,15 +587,12 @@ export default function ProjectEditRoute({
       })
 
       if (!result.ok) {
-        if (result.reason === "conflict") {
-          setError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to load the latest version.`,
-          )
-        } else {
-          setError(
-            "Couldn't auto-merge after several retries — refresh to load the latest version.",
-          )
-        }
+        setError(
+          saveConflictMessage(
+            "project",
+            result.reason === "conflict" ? result.conflictingFields : [],
+          ),
+        )
         setIsSubmitting(false)
         return
       }
@@ -564,31 +602,32 @@ export default function ProjectEditRoute({
       )
     } catch (err) {
       if (err instanceof InvalidSwapError) {
-        setError(
-          "Someone else saved while you were editing — please refresh and try again.",
-        )
+        setError(saveConflictMessage("project"))
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save project")
+        setError(
+          caughtErrorMessage(
+            err,
+            "Couldn't save your changes. They're still here; try again",
+          ),
+        )
       }
       setIsSubmitting(false)
     }
   }
 
-  const handleCancel = () => {
-    if (!confirmDiscard()) return
-    if (did && rkey) {
-      router.push(
-        recordUrl(did, "project", rkey),
-      )
-    } else {
-      router.back()
-    }
-  }
+  const handleCancel = () =>
+    confirmDiscard(() => {
+      if (did && rkey) router.push(recordUrl(did, "project", rkey))
+      else router.back()
+    })
 
   return (
     <PageContainer width="narrow">
       {pageHeader}
+      {/* No autofocus: the page opens at its top, so the skip link and
+          the navigation come first. */}
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault()
           void doSave()
@@ -633,16 +672,24 @@ export default function ProjectEditRoute({
 
             <header className="cert-detail__headline">
               <div className="create-cert__input-with-counter">
-                <input
+                {/* Labelled on screen and the Input primitive in the record
+                    title's serif role, as on New project. */}
+                <label htmlFor="edit-project-title" className="cert-detail__meta-label">
+                  Title
+                </label>
+                <Input
+                  flush
                   type="text"
-                  className="cert-detail__title-input"
-                  aria-label="Title"
+                  id="edit-project-title"
+                  ref={titleInputRef}
+                  className="font-headline !text-h3"
                   aria-describedby="edit-project-title-counter"
+                  aria-invalid={titleUnder || titleOver || undefined}
                   placeholder="Title for your project"
                   value={title}
                   maxLength={TITLE_MAX * 4}
                   onChange={(e) => setTitle(e.target.value)}
-                  autoFocus
+                  onBlur={() => setTitleLeft(true)}
                 />
                 <p
                   className={`create-cert__counter${
@@ -661,12 +708,17 @@ export default function ProjectEditRoute({
 
             <section className="cert-detail__section">
               <div className="create-cert__input-with-counter">
-                <textarea
-                  className="cert-detail__short-desc-input"
+                <label htmlFor="edit-project-short-desc" className="cert-detail__meta-label">
+                  Short description (optional)
+                </label>
+                <Textarea
+                  flush
+                  id="edit-project-short-desc"
+                  ref={shortDescRef}
                   value={shortDescription}
-                  placeholder="A short description (one or two lines)…"
-                  aria-label="Short description"
+                  placeholder="One or two lines about the project."
                   aria-describedby="edit-project-short-desc-counter"
+                  aria-invalid={shortDescOver || undefined}
                   onChange={(e) => setShortDescription(e.target.value)}
                   rows={3}
                 />
@@ -799,7 +851,7 @@ export default function ProjectEditRoute({
           submitLabel="Save changes"
           submittingLabel="Saving…"
           isSubmitting={isSubmitting}
-          submitDisabled={!canSubmit}
+          submitDisabled={!mountSnapshot}
           error={error}
           onCancel={handleCancel}
           identityLabel="Saving as"

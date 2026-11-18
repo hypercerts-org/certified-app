@@ -7,6 +7,7 @@ import { formatRelativeTime } from "@/lib/atproto/activity"
 import type { EndorsementClosureAccount } from "@/lib/atproto/indexer"
 import EndorsementRowBadge from "./endorsement-row-badge"
 import { formatAbsoluteDateTime } from "./format-display"
+import { OWNER_BYLINE_PENDING } from "./use-owner-byline"
 
 /**
  * Presentational shell for the dense explore-page row used by
@@ -49,7 +50,10 @@ export interface ExploreListRowProps {
   titleMuted?: boolean
   /** Optional second line under the title (e.g. "by Display Name").
    *  Hidden on desktop — there the author shows in its own column;
-   *  surfaced on phones where the column is dropped. */
+   *  surfaced on phones where the column is dropped. An empty string
+   *  (`OWNER_BYLINE_PENDING`, while the owner is looked up) keeps a blank
+   *  line in its place, so the row doesn't grow when the name arrives;
+   *  null or omitted renders no line. */
   subtitle?: ReactNode
   /** Meta segments rendered as a `·`-separated line under the title.
    *  Empty array hides the meta line. */
@@ -152,7 +156,12 @@ export default function ExploreListRow({
         >
           {title}
         </h3>
-        {subtitle ? (
+        {subtitle === OWNER_BYLINE_PENDING ? (
+          // The owner is still being looked up: a blank line holds its place.
+          <p className="cert-list-row__subtitle" aria-hidden="true">
+            {"\u00a0"}
+          </p>
+        ) : subtitle ? (
           <p className="cert-list-row__subtitle">{subtitle}</p>
         ) : null}
         {metaItems.length > 0 ? (

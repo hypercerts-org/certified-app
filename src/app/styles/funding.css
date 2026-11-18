@@ -54,8 +54,9 @@
   min-width: 100%;
 }
 
+/* 24px from the tab strip to the panel, as on Explore and Map. */
 .funding-page__panel {
-  padding-top: 16px;
+  padding-top: 24px;
 }
 
 /* Phones: the figures' line, then the Filters row. */
@@ -124,10 +125,6 @@
   gap: 8px;
   min-width: 0;
   overflow: hidden;
-}
-
-.funding-page__stats {
-  margin-top: 4px;
 }
 
 .funding-page__currencies,
@@ -230,10 +227,12 @@
 }
 
 /* The totals with a short note at the row's right end. */
+/* Top-aligned, so the totals start 24px under the tabs, level with the
+   note's box. */
 .funding-page__overview {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px 32px;
 }
@@ -1301,6 +1300,18 @@ a.funding-ledger__project:hover {
 @media (max-width: 1099px) {
   .funding-ledger__row {
     grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) 88px minmax(0, 120px);
+  }
+}
+
+/* "Nov 12 · 14:05" is wider than the 92px column: the day over the time
+   instead, so it never runs into From. (Phones' cards keep one line.) */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .funding-ledger__date {
+    display: block;
+  }
+
+  .funding-ledger__date-sep {
+    display: none;
   }
 }
 

@@ -1,5 +1,6 @@
 import React, { useId, useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { joinIds } from "./input";
 
 export type TextareaSize = "sm" | "md" | "lg" | "bare";
 export type TextareaVariant = "default" | "underline";
@@ -76,6 +77,23 @@ const sizeClasses: Record<TextareaSize, string> = {
 // no-op (length already inherits); the padding still applies.
 const compactClasses = "py-0.5 px-1.5 text-[0.8125rem]";
 
+// A field in error: as Input (DESIGN.md §9.2), the border in
+// --color-error at full strength, kept on focus with the error halo.
+const errorBorder =
+  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]";
+
+/** The counter announces itself only this close to the limit (characters
+ *  left), not on every keystroke. */
+export function counterAnnounceThreshold(maxLength: number): number {
+  return Math.max(10, Math.ceil(maxLength * 0.1));
+}
+
+/** "12 characters left" / "1 character left" / "0 characters left". */
+export function charactersLeft(remaining: number): string {
+  const n = Math.max(0, remaining);
+  return `${n} character${n === 1 ? "" : "s"} left`;
+}
+
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
@@ -97,6 +115,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       value,
       defaultValue,
       onChange,
+      "aria-describedby": callerDescribedBy,
+      "aria-invalid": callerInvalid,
       ...props
     },
     ref
@@ -104,6 +124,9 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     const autoId = useId();
     const textareaId = id || autoId;
     const isFlush = flush || unwrapped;
+    // In error with an `error`, or when the caller marks it invalid.
+    const invalid =
+      !!error || callerInvalid === true || callerInvalid === "true";
     // Counter only exists in the wrapped layout — flush mode drops the
     // whole footer block, so don't even compute the affordance there.
     const showCounter = showCount && !isFlush;
@@ -111,8 +134,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     const helperId =
       !isFlush && !error && helperText ? `${textareaId}-helper` : undefined;
     const counterId = showCounter ? `${textareaId}-count` : undefined;
-    const describedBy =
-      [errorId, helperId, counterId].filter(Boolean).join(" ") || undefined;
+    // Own ids first, then the caller's: merged, never replaced.
+    const describedBy = joinIds(errorId, helperId, counterId, callerDescribedBy);
 
     // Track length for the live counter. When the field is controlled we read
     // straight from `value`; otherwise we keep our own count seeded from
@@ -139,21 +162,18 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     const variantChrome = (() => {
       if (variant === "underline") {
-        return `border-0 border-b ${
-          error
-            ? "border-[var(--color-error-border)]"
-            : "border-[var(--border-default)]"
-        } rounded-none bg-transparent focus:border-[var(--fg-primary)]`;
+        return invalid
+          ? `border-0 border-b ${errorBorder} rounded-none bg-transparent`
+          : "border-0 border-b border-[var(--border-default)] rounded-none bg-transparent focus:border-[var(--fg-primary)]";
       }
       // default variant — two border families, chosen by `borderWeight`.
       // `hover` reproduces the short-desc holdout chrome (1.5px
       // --border-hover → --fg-primary + 2px --overlay-weak on focus).
-      if (error) {
-        // `border` (1px) for default weight is byte-identical to the
-        // pre-enhancement string; `border-[1.5px]` for hover weight.
+      if (invalid) {
+        // `border` (1px) for default weight; `border-[1.5px]` for hover.
         return borderWeight === "hover"
-          ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1"
-          : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
+          ? `border-[1.5px] ${errorBorder} rounded`
+          : `border ${errorBorder} rounded`;
       }
       if (borderWeight === "hover") {
         return "border-[1.5px] border-[var(--border-hover)] rounded focus:border-[var(--fg-primary)] focus:ring-2 focus:ring-[var(--overlay-weak)]";
@@ -173,7 +193,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         value={value}
         defaultValue={defaultValue}
         onChange={handleChange}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         className={`${sizeClasses[size]} ${densityClasses} ${baseChrome} ${variantChrome} ${disabledChrome} ${className}`}
         {...props}
@@ -218,14 +238,23 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             )}
           </div>
           {showCounter && (
+            // Read with the field (aria-describedby), not announced on
+            // every keystroke: only near the limit does the live line
+            // below say how many characters are left.
             <p
               id={counterId}
-              aria-live="polite"
               className="mt-1.5 shrink-0 text-caption tabular-nums text-[var(--fg-muted)]"
             >
               {maxLength != null ? `${currentLen} / ${maxLength}` : currentLen}
             </p>
           )}
+          {showCounter && maxLength != null ? (
+            <span className="sr-only" aria-live="polite">
+              {maxLength - currentLen <= counterAnnounceThreshold(maxLength)
+                ? charactersLeft(maxLength - currentLen)
+                : ""}
+            </span>
+          ) : null}
         </div>
       </div>
     );

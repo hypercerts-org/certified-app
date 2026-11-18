@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import Button from "@/components/ui/button"
+import { DIALOG_CLOSE_PHONE_CLASS } from "@/components/ui/app-dialog"
 import { useBottomSheetDrag } from "@/hooks/use-bottom-sheet-drag"
 import { getTabbable, useFocusTrap } from "@/hooks/use-focus-trap"
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
@@ -25,6 +26,10 @@ export interface BottomSheetProps {
   header?: React.ReactNode
   /** Extra class(es) appended to the sheet container. */
   className?: string
+  /** Open at the expanded cap (92vh) rather than 70vh: for a sheet whose
+   *  content is a menu to see whole (the account sheet), not a peek. It
+   *  still fits its content when that is shorter. */
+  tall?: boolean
   /** Element to focus when the sheet opens. Without it the sheet focuses
    *  its first control (skipping text fields, so the phone keyboard
    *  doesn't jump up), or the sheet itself when it has none. */
@@ -79,6 +84,7 @@ export default function BottomSheet({
   title,
   header,
   className = "",
+  tall = false,
   initialFocusRef,
   autoFocusFirst = false,
   returnFocusRef,
@@ -210,10 +216,13 @@ export default function BottomSheet({
   const sheetBase =
     // `bottom-sheet` is kept as a JS hook (navbar.tsx click-outside guard uses
     // closest('.bottom-sheet, .bottom-sheet__backdrop')); styling is the Tailwind below.
-    "bottom-sheet outline-none hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:max-h-[70vh] max-[799px]:bg-[var(--bg-floating)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
-  // `.bottom-sheet--expanded` raises the cap to 92vh.
-  const sheetExpandedClass = sheetExpanded ? " max-[799px]:max-h-[92vh]" : ""
-  const sheetClassName = `${sheetBase}${sheetExpandedClass}${
+    "bottom-sheet outline-none hidden max-[799px]:flex max-[799px]:flex-col max-[799px]:fixed max-[799px]:bottom-0 max-[799px]:left-0 max-[799px]:right-0 max-[799px]:bg-[var(--bg-floating)] max-[799px]:rounded-t-[var(--radius)] max-[799px]:z-[var(--z-portal-sheet)] max-[799px]:overflow-hidden max-[799px]:animate-[bottomSheetSlideUp_var(--duration-slow)_var(--ease-emphasized)] max-[799px]:transition-[max-height] max-[799px]:duration-slow max-[799px]:ease-emphasized"
+  // The height cap: 70vh, raised to 92vh once dragged up (or from the
+  // start for a `tall` sheet). One class at a time, so the two never
+  // compete in the cascade.
+  const sheetCapClass =
+    sheetExpanded || tall ? " max-[799px]:max-h-[92vh]" : " max-[799px]:max-h-[70vh]"
+  const sheetClassName = `${sheetBase}${sheetCapClass}${
     className ? ` ${className}` : ""
   }`
 
@@ -229,7 +238,7 @@ export default function BottomSheet({
         <Button
           variant="ghost"
           size="icon-sm"
-          className="-mt-0.5 shrink-0"
+          className={`-mt-0.5 shrink-0 ${DIALOG_CLOSE_PHONE_CLASS}`}
           onClick={onClose}
           aria-label="Close"
         >

@@ -58,6 +58,25 @@ describe("/groups/import", () => {
     expect(push).toHaveBeenCalledWith("/records?kind=groups")
   })
 
+  // C5: the button stays enabled; a click without a password says what's
+  // missing on the field and focuses it.
+  it("keeps the button enabled and explains a click without a password", () => {
+    render(<ImportGroupPage />)
+    const button = screen.getByRole("button", { name: "Turn into a group" })
+    expect(button).not.toBeDisabled()
+    fireEvent.click(button)
+    const field = screen.getByLabelText("App password")
+    expect(screen.getByText("Enter the account's app password.")).toBeInTheDocument()
+    expect(field).toHaveAttribute("aria-invalid", "true")
+    expect(document.activeElement).toBe(field)
+  })
+
+  it("describes the password field with its hint", () => {
+    render(<ImportGroupPage />)
+    const field = screen.getByLabelText("App password")
+    expect(field.getAttribute("aria-describedby")).toContain("import-app-password-hint")
+  })
+
   it("links the app-password hint to Settings → App passwords", () => {
     render(<ImportGroupPage />)
     expect(screen.getByRole("link", { name: "Settings → App passwords" })).toHaveAttribute(

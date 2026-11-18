@@ -89,8 +89,8 @@ export default function RightsDetailModal({
                 {did ? <HydratedIdentityRow did={did} /> : <EmptyValue />}
               </DetailRow>
 
-              <DetailRow label="Record">
-                <CopyableValue value={uri} label="Copy record URI" />
+              <DetailRow label="Permanent ID">
+                <CopyableValue value={uri} label="Copy Permanent ID" />
               </DetailRow>
 
               <DetailRow label="CID">

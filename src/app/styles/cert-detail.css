@@ -162,66 +162,13 @@
    overlay.tsx`); styles are at `.image-edit-overlay__*` in
    components.css. The cert callsite uses the `single` variant. */
 
-/* Title and short-description inputs replace the static h1 / p
-   while editing. Border treatment matches the profile-page inline
-   edit inputs so the two surfaces feel like one editor family. */
-.cert-detail__title-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  /* The serif title role at the ramp's h3 step (record title), the same
-     size the /create title input uses. */
-  font-family: var(--font-headline), "Noto Serif", serif;
-  font-size: var(--text-h3);
-  font-weight: 600;
-  color: var(--fg-primary);
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  border: 1.5px solid var(--border-hover);
-  border-radius: var(--radius);
-  padding: 4px 10px;
-  background: var(--bg-elevated);
-}
-
-.cert-detail__title-input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: var(--shadow-ring-weak);
-}
-
-/* Unified placeholder color for the cert-detail form inputs. The
-   browser default ("a less-saturated gray, ~rgba(0,0,0,0.42)")
-   sat noticeably cooler than the Leaflet editor placeholder
-   (rendered via a CSS `::before` pseudo at `var(--fg-muted)`),
-   so the description placeholder looked like a different
-   typography family than every other field. Setting all native
-   placeholders to `--fg-muted` brings them into one rhythm.
-   `opacity: 1` neutralises Firefox's default 0.54 multiplier on
-   placeholder text. */
-.cert-detail__title-input::placeholder,
-.cert-detail__short-desc-input::placeholder,
+/* Unified placeholder color for the legacy meta inputs (`opacity: 1`
+   neutralises Firefox's 0.54 multiplier). The create and edit forms'
+   title and short description are the Input / Textarea primitives,
+   which set their own placeholder colour. */
 .cert-detail__meta-input::placeholder {
   color: var(--fg-muted);
   opacity: 1;
-}
-
-.cert-detail__short-desc-input {
-  width: 100%;
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--fg-secondary);
-  border: 1.5px solid var(--border-hover);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  background: var(--bg-elevated);
-  resize: vertical;
-  min-height: 72px;
-}
-
-.cert-detail__short-desc-input:focus {
-  outline: none;
-  border-color: var(--fg-primary);
-  box-shadow: var(--shadow-ring-weak);
 }
 
 /* ---------- Main pane ---------- */
@@ -633,6 +580,27 @@
   }
 }
 
+/* 800-1099px: one column, the details after the main column (beside a
+   296px details column the main one was only ~436px wide at 900px). The
+   details sit as a row of their own: the image on the left, the fields
+   beside it. Keyboard order is unchanged (main first). From 1100px the
+   two columns of the record page's grid above. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .create-cert.cert-detail--wide.page-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .create-cert.cert-detail--wide.page-layout > .cert-detail__main,
+  .create-cert.cert-detail--wide.page-layout > .cert-detail__aside {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .create-cert.cert-detail--wide.page-layout > .cert-detail__aside {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
 /* Full-width modifier for a legacy meta input (the location picker's
    fields). */
 .cert-detail__meta-input.create-cert__field--full {
@@ -753,14 +721,6 @@
 .create-cert__contrib-id {
   position: relative;
   min-width: 0;
-}
-
-/* A contributor field in error (not a handle, a duplicate, a share that
-   isn't a number): the border in the error colour at full strength, so
-   it meets 3:1 against the page (the Input's own error border is a 22%
-   tint, about 1.3:1). Focus keeps the focus colour. */
-.create-cert__contrib-row input[aria-invalid="true"]:not(:focus) {
-  border-color: var(--color-error);
 }
 
 /* The picked contributor: avatar, name and handle, as tall as the inputs
@@ -1274,16 +1234,15 @@
   backdrop-filter: saturate(180%) blur(8px);
 }
 
-/* One row at every width: the identity takes what the buttons leave and
-   truncates. */
+/* From 800px one row: the identity takes what the buttons leave and
+   truncates; the buttons sit on the right. */
 .form-action-bar__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
-.form-action-bar__row > :first-child {
+.form-action-bar__identity {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1292,25 +1251,49 @@
   display: flex;
   flex: none;
   gap: 8px;
+  margin-left: auto;
 }
 
-/* Phones: tighter button padding so "Publishing as" keeps room beside
-   them. Two classes, to beat the Button's own padding utility. */
+/* Phones: the identity line above the buttons, so the name has the
+   bar's whole width ("Publishing as Estuary Alliance" no longer cut to
+   "Estuary Allia..." beside two buttons); the two buttons share the row
+   below. Two classes, to beat the Button's own sizing utilities. */
 @media (max-width: 799px) {
+  .form-action-bar__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .form-action-bar__buttons {
+    margin-left: 0;
+  }
+
   .form-action-bar .form-action-bar__buttons > * {
+    flex: 1 1 0;
+    min-width: 0;
     padding-inline: 16px;
   }
 }
 
 /* A form page pads its scroll area by the fixed chrome plus the bar, so
    a field focused by keyboard (or a scrolled-to error) never sits under
-   them: the top chrome above, the bar (68px with one row, plus the
-   phone tab bar and safe area) below. */
+   them: the top chrome above, the bar (68px with one row from 800px;
+   about 100px on phones with the identity line above the buttons, plus
+   the phone tab bar and safe area) below. */
 html:has(.form-action-bar) {
   scroll-padding-top: calc(var(--chrome-top, var(--navbar-height)) + 16px);
   scroll-padding-bottom: calc(
     var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 84px
   );
+}
+
+@media (max-width: 799px) {
+  html:has(.form-action-bar .form-action-bar__identity) {
+    scroll-padding-bottom: calc(
+      var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 116px
+    );
+  }
 }
 
 .form-action-bar__error {

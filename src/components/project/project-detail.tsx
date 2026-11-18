@@ -8,6 +8,7 @@ import DeleteRecordDialog from "@/components/ui/delete-record-dialog"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { authFetch } from "@/lib/auth/fetch"
 import { toUserErrorMessage } from "@/lib/utils/api"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { Inbox, Pencil } from "lucide-react"
 import RecordLocationCard from "@/components/feed/cert-locations-map"
 import EmptyState from "@/components/ui/empty-state"
@@ -338,11 +339,7 @@ export default function ProjectDetail({
         router.push(profileUrl(did))
       }
     } catch (err) {
-      setDeleteError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't delete this project. Try again.",
-      )
+      setDeleteError(caughtErrorMessage(err, "Couldn't delete this project. Try again"))
       setIsDeleting(false)
     }
   }
@@ -384,6 +381,7 @@ export default function ProjectDetail({
         targetType={LIST_PROJECTS_TYPE}
         showShare={false}
         trigger="header"
+        title={title}
         editActions={
           isOwner
             ? {
@@ -435,6 +433,8 @@ export default function ProjectDetail({
       ) : null}
     </>
   )
+  // The rail follows the content in the DOM, so the keyboard reaches the
+  // tabs and the content first; the grid places it beside them.
   const rail = wide ? (
     <aside
       ref={railRef}
@@ -445,9 +445,11 @@ export default function ProjectDetail({
       {leadCards}
       {moreCards}
     </aside>
-  ) : activeTab === "overview" ? (
-    <div className="record-layout__lead">{leadCards}</div>
   ) : null
+  const leadAfter =
+    !wide && activeTab === "overview" ? (
+      <div className="record-layout__lead">{leadCards}</div>
+    ) : null
   const moreAfter =
     !wide && activeTab === "overview" ? (
       <aside className="record-layout__more" aria-label="About this project">
@@ -522,7 +524,7 @@ export default function ProjectDetail({
           compact={compactHeader}
         />
 
-        {rail}
+        {leadAfter}
 
         {/* A strip of one tab says nothing: Overview alone has none. */}
         {tabs.length > 1 ? (
@@ -622,6 +624,7 @@ export default function ProjectDetail({
           ) : null}
         </TabPanelTransition>
 
+        {rail}
         {moreAfter}
         {commentsAfter}
       </article>

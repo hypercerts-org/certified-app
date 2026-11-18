@@ -18,6 +18,9 @@ import {
   MAX_ATTACHMENT_BYTES,
 } from "@/lib/atproto/blob-types"
 import { invalidateContextUpdates } from "@/hooks/use-context-updates"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
+import { problemsMessage } from "@/components/create/form-errors"
 import {
   writeContextUpdate,
   resolveAttachment,
@@ -104,6 +107,17 @@ export default function UpdateForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLInputElement>(null)
+  // The one validation rule (DESIGN.md §9.2): the title's error shows once
+  // the field has been left, or after a save attempt, then follows the
+  // typing live. The button stays enabled except while saving.
+  const [titleLeft, setTitleLeft] = useState(false)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+
+  // Unsaved-changes guard, as on the other create and edit forms: typing
+  // in any field (the description editor too) or an attachment change.
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const { confirmDiscard } = useUnsavedChangesGuard(hasInteracted && !saving)
   // Blob CID → local object URL for attachments uploaded in this form
   // session. A PDS keeps an uploaded blob in temp storage until a record
   // references it, so `com.atproto.sync.getBlob` 404s for anything the
@@ -141,11 +155,9 @@ export default function UpdateForm({
   const identityMatchesTarget = isGroupWrite
     ? activeOrg?.groupDid === targetDid
     : !activeOrg
-  const canSave =
-    title.trim().length > 0 &&
-    (mode === "edit" || !!subjectCid) &&
-    !saving &&
-    !uploading
+  const titleMissing = title.trim().length === 0
+  const titleError =
+    titleMissing && (titleLeft || submitAttempted) ? "Add a title." : undefined
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -153,10 +165,11 @@ export default function UpdateForm({
     if (!file) return
     if (file.size > MAX_ATTACHMENT_SIZE) {
       setError(
-        `Attachment is too large (max ${MAX_ATTACHMENT_SIZE / 1024 / 1024}MB).`,
+        `That file is too large. Attachments can be up to ${MAX_ATTACHMENT_SIZE / 1024 / 1024} MB.`,
       )
       return
     }
+    setHasInteracted(true)
     setUploading(true)
     setError(null)
     try {
@@ -181,20 +194,35 @@ export default function UpdateForm({
       }
       setContent((prev) => [...prev, entry])
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to upload attachment",
-      )
+      setError(caughtErrorMessage(err, "Couldn't upload the attachment. Try again"))
     } finally {
       setUploading(false)
     }
   }
 
-  const removeAttachment = (idx: number) =>
+  const removeAttachment = (idx: number) => {
+    setHasInteracted(true)
     setContent((prev) => prev.filter((_, i) => i !== idx))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!canSave) return
+    if (saving) return
+    // The button stays enabled so a click always explains itself: list
+    // what's missing and focus the first field that needs attention.
+    const unmet = [
+      titleMissing && "add a title",
+      uploading && "wait for the attachment to finish uploading",
+      mode === "create" &&
+        !subjectCid &&
+        "reload the page (the record this update is about didn't load)",
+    ].filter((m): m is string => !!m)
+    if (unmet.length > 0) {
+      setSubmitAttempted(true)
+      setError(problemsMessage(mode === "edit" ? "Before saving" : "Before posting", unmet))
+      if (titleMissing) titleRef.current?.focus()
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -230,7 +258,14 @@ export default function UpdateForm({
       }
       router.push(backHref)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save update")
+      setError(
+        caughtErrorMessage(
+          err,
+          mode === "edit"
+            ? "Couldn't save your changes. They're still here; try again"
+            : "Couldn't post the update. Your draft is still here; try again",
+        ),
+      )
       setSaving(false)
     }
   }
@@ -244,34 +279,45 @@ export default function UpdateForm({
         title={heading}
         description="What happened since this record was published. You can attach files."
       />
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+      <form
+        className="flex flex-col gap-5"
+        noValidate
+        onSubmit={handleSubmit}
+        onInput={() => setHasInteracted(true)}
+      >
         <Input
+          ref={titleRef}
           label="Title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            if (error) setError(null)
+          }}
+          onBlur={() => setTitleLeft(true)}
+          error={titleError}
           maxLength={300}
           placeholder="What's the update?"
         />
 
         <Textarea
-          label="Short description"
+          label="Short description (optional)"
           value={shortDescription}
           onChange={(e) => setShortDescription(e.target.value)}
           rows={2}
           maxLength={SHORT_DESCRIPTION_MAX}
           showCount
-          placeholder="A one- or two-line summary (optional)."
+          placeholder="A one- or two-line summary."
         />
 
         <div className="flex flex-col gap-1.5">
-          <p className="m-0 text-ui font-medium text-[var(--fg-secondary)]">
-            Description
+          <p className="m-0 text-ui font-medium text-[var(--fg-secondary)]" aria-hidden>
+            Description (optional)
           </p>
           <LeafletEditor
             value={description}
             onChange={setDescription}
             placeholder="Add details. Headings, lists, links, images, and video embeds are supported via the toolbar."
-            ariaLabel="Update description"
+            ariaLabel="Description (optional)"
             did={targetDid}
             onImageUpload={(file) =>
               uploadBlob(file, isGroupWrite ? { targetDid } : undefined)
@@ -281,7 +327,7 @@ export default function UpdateForm({
 
         <div className="flex flex-col gap-2">
           <p className="m-0 text-ui font-medium text-[var(--fg-secondary)]">
-            Attachments
+            Attachments (optional)
           </p>
           {content.length > 0 ? (
             <ul className="flex flex-wrap gap-2">
@@ -362,9 +408,8 @@ export default function UpdateForm({
           submitLabel={mode === "edit" ? "Save changes" : "Post update"}
           submittingLabel={mode === "edit" ? "Saving…" : "Posting…"}
           isSubmitting={saving}
-          submitDisabled={!canSave}
           error={error}
-          onCancel={() => router.push(backHref)}
+          onCancel={() => confirmDiscard(() => router.push(backHref))}
           identityLabel={
             identityMatchesTarget
               ? mode === "edit"

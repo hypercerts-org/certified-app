@@ -27,6 +27,7 @@ import {
   markFundingDeleted,
 } from "@/lib/atproto/funding-confirmed-store"
 import { formatShortDate } from "@/lib/utils/format-date"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { formatAbsoluteDateTime, formatAmount } from "./format-display"
 import type { FundingReceipt } from "@/lib/atproto/indexer"
 
@@ -203,9 +204,7 @@ export default function FundingReceiptDetailModal({
       markFundingDeleted(deleteTarget.uri)
       onClose()
     } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Could not delete the receipt.",
-      )
+      setDeleteError(caughtErrorMessage(err, "Couldn't delete the receipt. Try again in a moment"))
       setDeleting(false)
     }
   }
@@ -347,9 +346,9 @@ export default function FundingReceiptDetailModal({
                 <CreatorIdentity did={att.did} />
               </DetailRow>
 
-              <DetailRow label="Record">
+              <DetailRow label="Permanent ID">
                 {member ? (
-                  <CopyableValue value={member.uri} label="Copy record URI" />
+                  <CopyableValue value={member.uri} label="Copy Permanent ID" />
                 ) : (
                   <EmptyValue />
                 )}
@@ -456,7 +455,7 @@ export default function FundingReceiptDetailModal({
               <div className="funding-receipt-detail__confirmed">
                 {perspectives[0].attested ? (
                   <p className="funding-receipt-detail__confirmed-note">
-                    You&rsquo;ve confirmed this payment.
+                    You&apos;ve confirmed this payment.
                   </p>
                 ) : null}
                 {perspectives[0].deleteUri ? (

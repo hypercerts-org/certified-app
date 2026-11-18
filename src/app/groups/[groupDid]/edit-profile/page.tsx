@@ -317,7 +317,7 @@ export default function EditOrgProfilePage() {
             error={saveError}
             identityLabel={null}
             onCancel={() => {
-              if (confirmDiscard()) router.push(`/groups/${encodeURIComponent(groupDid)}`)
+              confirmDiscard(() => router.push(`/groups/${encodeURIComponent(groupDid)}`))
             }}
           />
         </form>

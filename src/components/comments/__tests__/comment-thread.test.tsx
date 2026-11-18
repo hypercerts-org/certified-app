@@ -230,6 +230,25 @@ describe("CommentThread on a card", () => {
     expect(screen.getByText("1 comment")).toBeTruthy()
   })
 
+  it("says a failed post or delete in a sentence, not the upstream error", async () => {
+    serve([comment(2, "did:plc:me")])
+    post.mockRejectedValue(new Error("XRPC 502 upstream"))
+    del.mockRejectedValue(new Error("InvalidToken"))
+    card()
+    await screen.findByText("Comment 2")
+    fireEvent.click(screen.getByRole("button", { name: "Comment" }))
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Hello" } })
+    fireEvent.click(screen.getByRole("button", { name: "Post" }))
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Couldn't post the comment. Try again in a moment.",
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+    const dialog = document.querySelector("dialog") as HTMLElement
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete", hidden: true }))
+    await screen.findByText("Couldn't delete the comment. Try again in a moment.")
+    expect(screen.queryByText(/InvalidToken|upstream/)).toBeNull()
+  })
+
   it("signed out, Comment opens sign-in", () => {
     did = null
     serve([])

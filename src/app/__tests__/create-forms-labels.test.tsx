@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup, within } from "@testing-library/react"
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react"
 
 // WS-14: /project/new and /groups/create label every field, as /create
 // does, and an empty image slot shows one affordance (the "Add image"
@@ -86,9 +86,35 @@ describe("/project/new", () => {
     const title = screen.getByLabelText("Title")
     expect(title).not.toHaveAttribute("aria-label")
     expect(document.querySelector(`label[for="${title.id}"]`)).not.toBeNull()
-    const summary = screen.getByLabelText("Short description")
+    const summary = screen.getByLabelText("Short description (optional)")
     expect(summary).not.toHaveAttribute("aria-label")
     expect(document.querySelector(`label[for="${summary.id}"]`)).not.toBeNull()
+  })
+
+  // C5 / C11: no autofocus; the title's minimum shows once the field is
+  // left with text in it (not from the first keystroke), and Publish stays
+  // enabled, listing what's missing.
+  it("flags the title's minimum on blur, not while typing, and never autofocuses", () => {
+    const { container } = render(<NewProjectPage />)
+    const title = screen.getByLabelText("Title")
+    expect(document.activeElement).not.toBe(title)
+    fireEvent.change(title, { target: { value: "Abc" } })
+    expect(container.querySelector(".create-cert__counter--under")).toBeNull()
+    expect(title).not.toHaveAttribute("aria-invalid")
+    fireEvent.blur(title)
+    expect(container.querySelector(".create-cert__counter--under")).not.toBeNull()
+    expect(title).toHaveAttribute("aria-invalid", "true")
+  })
+
+  it("keeps Publish enabled and lists what's missing on a click", async () => {
+    render(<NewProjectPage />)
+    const publish = screen.getByRole("button", { name: "Publish project" })
+    expect(publish).not.toBeDisabled()
+    fireEvent.click(publish)
+    expect(
+      await screen.findByText("Before publishing: the title needs at least 5 characters."),
+    ).toBeInTheDocument()
+    expect(document.activeElement).toBe(screen.getByLabelText("Title"))
   })
 
   it("shows one Add image affordance in the empty banner", () => {

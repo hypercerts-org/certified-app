@@ -13,7 +13,9 @@ import SignedOutPrompt from "@/components/layout/signed-out-prompt"
 import Button from "@/components/ui/button"
 import Skeleton from "@/components/ui/skeleton"
 import EmptyState from "@/components/ui/empty-state"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
+import Textarea from "@/components/ui/textarea"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import SectionHeader from "@/components/ui/section-header"
@@ -34,6 +36,14 @@ import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
 import { useOwnCerts } from "@/hooks/use-own-certs"
 import ActivityQuickPick from "@/components/project/activity-quick-pick"
 import { toUserErrorMessage } from "@/lib/utils/api"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
+import {
+  PROJECT_SHORT_DESC_MAX,
+  PROJECT_TITLE_MAX,
+  PROJECT_TITLE_MIN,
+  problemsMessage,
+  projectFormProblems,
+} from "@/components/create/form-errors"
 import LocationPickerDialog, {
   type AddedLocation,
 } from "@/components/create/location-picker-dialog"
@@ -133,15 +143,17 @@ export default function CreateProjectPage() {
 
   const titleCount = countGraphemes(title)
   const shortDescCount = countGraphemes(shortDescription)
-  // Lexicon caps from `org.hypercerts.collection`:
-  //   title.maxGraphemes = 80 (maxLength 800)
-  //   shortDescription.maxGraphemes = 300
-  // shortDescription is optional in the lexicon; the create form
-  // surfaces a min as a soft product floor so brand-new projects
-  // ship with at least a sentence of context.
-  const TITLE_MIN = 5
-  const TITLE_MAX = 80
-  const SHORT_DESC_MAX = 300
+  // Lexicon caps from `org.hypercerts.collection` (title 80 graphemes,
+  // optional short description 300); the title minimum is a product
+  // floor. See projectFormProblems.
+  const TITLE_MIN = PROJECT_TITLE_MIN
+  const TITLE_MAX = PROJECT_TITLE_MAX
+  const SHORT_DESC_MAX = PROJECT_SHORT_DESC_MAX
+  // The one validation rule (DESIGN.md §9.2): the title's minimum shows
+  // once the field has been left with text in it, or after a Publish
+  // click; then it follows the typing live.
+  const [titleLeft, setTitleLeft] = useState(false)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
 
   useEffect(() => {
     setError(null)
@@ -172,9 +184,7 @@ export default function CreateProjectPage() {
         // Surface the failure and clear the dangling optimistic preview
         // so the form can't be published with a banner that never
         // uploaded.
-        setError(
-          err instanceof Error ? err.message : "Image upload failed",
-        )
+        setError(caughtErrorMessage(err, "Couldn't upload the image. Try again"))
         setPendingBannerBlob(null)
         setPendingBannerPreviewUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev)
@@ -231,23 +241,18 @@ export default function CreateProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!did) return
-    // Publish stays enabled so a click always explains itself: name the
-    // unmet rule and focus its field.
-    const trimT = countGraphemes(title.trim())
-    if (trimT < TITLE_MIN || titleCount > TITLE_MAX) {
-      setError(
-        trimT < TITLE_MIN
-          ? `The title needs at least ${TITLE_MIN} characters.`
-          : `The title must be ${TITLE_MAX} characters or fewer.`,
-      )
-      titleInputRef.current?.focus()
-      return
-    }
-    if (shortDescCount > SHORT_DESC_MAX) {
-      setError(
-        `The short description must be ${SHORT_DESC_MAX} characters or fewer.`,
-      )
-      shortDescRef.current?.focus()
+    // Publish stays enabled so a click always explains itself: list
+    // what's missing and focus the first field that needs attention.
+    const problems = projectFormProblems({
+      titleTrimmed: countGraphemes(title.trim()),
+      title: titleCount,
+      shortDescription: shortDescCount,
+    })
+    if (problems.unmet.length > 0) {
+      setSubmitAttempted(true)
+      setError(problemsMessage("Before publishing", problems.unmet))
+      if (problems.focus === "title") titleInputRef.current?.focus()
+      else if (problems.focus === "shortDescription") shortDescRef.current?.focus()
       return
     }
 
@@ -337,20 +342,29 @@ export default function CreateProjectPage() {
         router.push("/")
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      setError(
+        caughtErrorMessage(
+          err,
+          "Couldn't publish your project. Your draft is still here; try again",
+        ),
+      )
       setIsSubmitting(false)
     }
   }
 
   const trimmedTitleCount = countGraphemes(title.trim())
-  const titleUnder = trimmedTitleCount > 0 && trimmedTitleCount < TITLE_MIN
+  const titleUnder =
+    ((titleLeft && trimmedTitleCount > 0) || submitAttempted) &&
+    trimmedTitleCount < TITLE_MIN
   const titleOver = titleCount > TITLE_MAX
   const shortDescOver = shortDescCount > SHORT_DESC_MAX
 
   return (
     <PageContainer width="narrow">
       {pageHeader}
-      <form onSubmit={handleSubmit}>
+      {/* No autofocus: the page opens at its top, so the skip link and
+          the navigation come first. */}
+      <form onSubmit={handleSubmit} noValidate>
         <article className="project-detail-page project-detail--wide create-project">
           <div className="project-detail">
             <div
@@ -387,17 +401,21 @@ export default function CreateProjectPage() {
                 <label htmlFor="new-project-title" className="cert-detail__meta-label">
                   Title
                 </label>
-                <input
+                {/* The Input primitive in the record title's serif role, as
+                    New activity's title. */}
+                <Input
+                  flush
                   type="text"
                   id="new-project-title"
                   ref={titleInputRef}
-                  className="cert-detail__title-input"
+                  className="font-headline !text-h3"
                   aria-describedby="new-project-title-counter"
+                  aria-invalid={titleUnder || titleOver || undefined}
                   placeholder="Title for your project"
                   value={title}
                   maxLength={TITLE_MAX * 4}
                   onChange={(e) => setTitle(e.target.value)}
-                  autoFocus
+                  onBlur={() => setTitleLeft(true)}
                 />
                 <p
                   className={`create-cert__counter${
@@ -417,15 +435,16 @@ export default function CreateProjectPage() {
             <section className="cert-detail__section">
               <div className="create-cert__input-with-counter">
                 <label htmlFor="new-project-short-desc" className="cert-detail__meta-label">
-                  Short description
+                  Short description (optional)
                 </label>
-                <textarea
+                <Textarea
+                  flush
                   id="new-project-short-desc"
                   ref={shortDescRef}
-                  className="cert-detail__short-desc-input"
                   aria-describedby="new-project-short-desc-counter"
+                  aria-invalid={shortDescOver || undefined}
                   value={shortDescription}
-                  placeholder="A short description (one or two lines)…"
+                  placeholder="One or two lines about the project."
                   onChange={(e) => setShortDescription(e.target.value)}
                   rows={3}
                 />
@@ -566,11 +585,12 @@ export default function CreateProjectPage() {
           submittingLabel="Publishing…"
           isSubmitting={isSubmitting}
           error={error}
-          onCancel={() => {
-            if (!confirmDiscard()) return
-            if (arrivedFromInApp) router.back()
-            else router.push("/")
-          }}
+          onCancel={() =>
+            confirmDiscard(() => {
+              if (arrivedFromInApp) router.back()
+              else router.push("/")
+            })
+          }
         />
 
         {isLocationDialogOpen && did ? (

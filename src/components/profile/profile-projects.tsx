@@ -138,8 +138,8 @@ function ProfileProjectsBody({
   ) : visible.length === 0 ? (
     <EmptyState
       icon={SearchX}
-      title="Nothing matches"
-      description={`No projects match "${query.trim()}".`}
+      title={`Nothing matches "${query.trim()}".`}
+      description="No projects match this search. Try another word."
     >
       <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
         Clear search

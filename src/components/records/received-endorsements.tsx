@@ -5,6 +5,7 @@ import { ThumbsUp } from "lucide-react"
 import Badge from "@/components/ui/badge"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
+import { useToast } from "@/components/ui/toast"
 import EndorsementSubjectRow, {
   type EndorsementSubjectRowClasses,
 } from "@/components/endorsements/endorsement-subject-row"
@@ -14,6 +15,7 @@ import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import { createResponse, deleteAllResponsesForAward } from "@/lib/atproto/badges"
 import { buildAvatarUrlFromCid } from "@/lib/atproto/profile"
 import { deriveIdentity } from "@/lib/utils/identity"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { RowsSkeleton } from "@/components/records/records-shared"
 
 type OwnStates = ReturnType<typeof useOwnResponseStates>
@@ -81,7 +83,7 @@ function ReceivedRow({
   const [optimistic, setOptimistic] = useState<boolean | null>(null)
   const hidden = optimistic ?? storedHidden
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   useEffect(() => {
     // Intentional setState in effect (TECH-814): the reconciler clears the
     // optimistic value only once the stored state confirms it.
@@ -91,7 +93,6 @@ function ReceivedRow({
   const toggle = async () => {
     const next = !hidden
     setBusy(true)
-    setError(null)
     setOptimistic(next)
     try {
       if (next) {
@@ -103,7 +104,16 @@ function ReceivedRow({
       await ownStates.refetch()
     } catch (err) {
       setOptimistic(null)
-      setError(err instanceof Error ? err.message : "Couldn't save that. Try again.")
+      // A row action reports in a toast, as the Workspace's other row
+      // actions do (work-pane.tsx), in words a person can act on.
+      toast({
+        title: next
+          ? `Couldn't hide the endorsement from ${displayName}`
+          : `Couldn't show the endorsement from ${displayName}`,
+        description: caughtErrorMessage(err, "Try again in a moment"),
+        variant: "error",
+        duration: 0,
+      })
     } finally {
       setBusy(false)
     }
@@ -140,9 +150,6 @@ function ReceivedRow({
           </div>
         }
       />
-      {error ? (
-        <p className="records-person__error" role="alert">{error}</p>
-      ) : null}
     </li>
   )
 }

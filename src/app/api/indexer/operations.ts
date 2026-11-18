@@ -544,6 +544,9 @@ ${ACTIVITY_NODE_SELECTION}
   // Per-actor counts of the major lexicons. One round-trip via
   // aliased connections — each branch shares the where: { did: $did }
   // filter so we get five small headers back in one fetch.
+  // `lists` counts every list kind the Lists view shows: endorsement
+  // lists (ENDORSEMENT_LIST_TYPE) and the three typed lists
+  // (TYPED_LIST_TYPES: activities, projects, accounts).
   ActorWorkspaceCounts: `
     query ActorWorkspaceCounts($did: String!) {
       certs: orgHypercertsClaimActivity(first: 1, where: { did: { eq: $did } }) {
@@ -557,7 +560,10 @@ ${ACTIVITY_NODE_SELECTION}
       }
       lists: orgHypercertsCollection(
         first: 1
-        where: { did: { eq: $did }, type: { eqi: "list:endorsements" } }
+        where: {
+          did: { eq: $did }
+          type: { in: ["list:endorsements", "list:certs", "list:projects", "list:accounts"] }
+        }
       ) {
         totalCount
       }

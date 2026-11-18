@@ -167,13 +167,19 @@ describe("CreateGroupPage email validation", () => {
 describe("CreateGroupPage fields", () => {
   it("uses the Input primitive at its default size for every field", () => {
     render(<CreateGroupPage />)
-    for (const name of ["Handle", "Email", "Website", "Founded", "Organization type"]) {
+    for (const name of [
+      "Handle",
+      "Email",
+      "Website (optional)",
+      "Founded (optional)",
+      "Organization type (optional)",
+    ]) {
       const field = screen.getByLabelText(name) as HTMLInputElement
       expect(field.className).toContain("h-control-md")
       expect(field.className).toContain("md:text-sm")
       expect(field.className).not.toContain("cert-detail__meta-input")
     }
-    expect((screen.getByLabelText("Founded") as HTMLInputElement).type).toBe("date")
+    expect((screen.getByLabelText("Founded (optional)") as HTMLInputElement).type).toBe("date")
   })
 
   it("keeps the display name as the serif title field, like New activity's title", () => {
@@ -220,6 +226,32 @@ describe("CreateGroupPage frame and labels", () => {
     expect(screen.getByText("Avatar")).toBeTruthy()
     expect(screen.getByText("Banner")).toBeTruthy()
     // About now labels its field.
-    expect(screen.getByLabelText("About").tagName).toBe("TEXTAREA")
+    expect(screen.getByLabelText("About (optional)").tagName).toBe("TEXTAREA")
+  })
+
+  // C8: optional fields say so in their labels; required ones carry no
+  // marker (the counter no longer says "required").
+  it("marks the optional fields in their labels, not the required ones", () => {
+    render(<CreateGroupPage />)
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument()
+    expect(screen.queryByText(/· required/)).toBeNull()
+    expect(screen.getByLabelText("About (optional)")).not.toHaveAttribute("placeholder", expect.stringContaining("optional"))
+  })
+
+  // C5 / C11: the name is checked when left, then live; no autofocus.
+  it("checks the display name on blur, then as it's typed, and doesn't autofocus", async () => {
+    render(<CreateGroupPage />)
+    const name = screen.getByLabelText("Display name") as HTMLInputElement
+    expect(document.activeElement).not.toBe(name)
+    fireEvent.change(name, { target: { value: "Abc" } })
+    expect(screen.queryByText("Name must be at least 5 characters")).toBeNull()
+    fireEvent.blur(name)
+    expect(await screen.findByText("Name must be at least 5 characters")).toBeInTheDocument()
+    fireEvent.change(name, { target: { value: "Abcde" } })
+    await waitFor(() =>
+      expect(screen.queryByText("Name must be at least 5 characters")).toBeNull(),
+    )
+    fireEvent.change(name, { target: { value: "Ab" } })
+    expect(await screen.findByText("Name must be at least 5 characters")).toBeInTheDocument()
   })
 })

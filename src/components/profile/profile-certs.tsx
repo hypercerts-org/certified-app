@@ -154,8 +154,8 @@ export default function ProfileCerts({
       return (
         <EmptyState
           icon={SearchX}
-          title="Nothing matches"
-          description={`No activities match "${query.trim()}".`}
+          title={`Nothing matches "${query.trim()}".`}
+          description="No activities match this search. Try another word."
         >
           <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
             Clear search

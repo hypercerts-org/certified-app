@@ -2,28 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Copy,
-  ListPlus,
-  MoreHorizontal,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Share2,
-  Trash2,
-} from "lucide-react"
+import { Copy, ListPlus, Pencil, Plus, Share2, Trash2 } from "lucide-react"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "@/components/ui/app-dialog"
 import type { PageRecordEditActions } from "@/lib/navbar-context"
 import Button from "@/components/ui/button"
 import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverItem,
-} from "@/components/ui/popover"
+import MoreActionsMenu, { type MoreActionsEntry } from "@/components/lists/more-actions-menu"
 import { useAuth } from "@/lib/auth/auth-context"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { recordUrlFromAtUri, rkeyFromUri } from "@/lib/urls"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 import { useTypedLists } from "@/hooks/use-typed-lists"
@@ -68,20 +55,18 @@ interface AddToListMenuProps {
    *  horizontal dots, like the profile's More); the quiet vertical dots
    *  elsewhere (the navbar). */
   trigger?: "header" | "quiet"
+  /** The record's name: the menu's sheet title on phones. */
+  title?: string
 }
 
 /**
- * "⋮ → Add to list" affordance shown right below the primary image
- * on cert / project / profile overview pages. Renders nothing when:
- *
- *   - the viewer isn't signed in (can't write to their own PDS), or
- *   - the target URI doesn't match the lexicon the list type expects
- *     (defensive — surfaces a programming error rather than silently
- *     writing a malformed strongRef).
- *
- * Otherwise: a 3-dot button → popover → "Add to list" → modal with
- * the viewer's existing lists of the matching type + an inline
- * "Create a new list" affordance.
+ * A record's "More actions" menu (`<MoreActionsMenu>`: a popover menu
+ * from 800px, a sheet titled with the record's name below): Edit, Share,
+ * "Add to list" (a modal with the viewer's lists of the matching type and
+ * an inline "Create a new list"), "Copy Permanent ID", then Delete.
+ * Renders nothing when the target URI doesn't match the lexicon the list
+ * type expects (defensive: surfaces a programming error rather than
+ * silently writing a malformed strongRef).
  */
 export default function AddToListMenu({
   targetUri,
@@ -91,6 +76,7 @@ export default function AddToListMenu({
   showShare = true,
   editActions = null,
   trigger = "quiet",
+  title = "More actions",
 }: AddToListMenuProps) {
   const router = useRouter()
   const { did: viewerDid, openSignIn } = useAuth()
@@ -133,86 +119,75 @@ export default function AddToListMenu({
   // can hide the menu (defensive against a malformed strongRef).
   if (!itemUriMatchesType(targetUri, targetType)) return null
 
+  const entries: MoreActionsEntry[] = []
+  if (editActions?.isCreator) {
+    entries.push({
+      key: "edit",
+      label: "Edit",
+      icon: Pencil,
+      onSelect: () => router.push(editActions.editHref),
+    })
+  } else if (editActions?.editAsGroupLabel) {
+    entries.push({
+      key: "edit-as-group",
+      label: `Edit as ${editActions.editAsGroupLabel}`,
+      icon: Pencil,
+      onSelect: () => editActions.onEditAsGroup(),
+    })
+  }
+  if (sharePath && showShare) {
+    entries.push({
+      key: "share",
+      label: shareCopied ? "Link copied" : "Share",
+      icon: Share2,
+      keepOpen: true,
+      onSelect: () => void copyShare(`${window.location.origin}${sharePath}`),
+    })
+  }
+  entries.push(
+    {
+      key: "add-to-list",
+      label: "Add to list",
+      icon: ListPlus,
+      // Logged-out viewers can't write to a PDS: send them to sign-in
+      // instead of opening an unusable modal.
+      onSelect: () => (viewerDid ? setModalOpen(true) : openSignIn()),
+    },
+    {
+      key: "copy-id",
+      // The record's at:// address, named as on the profile's menu.
+      label: uriCopied ? "Permanent ID copied" : "Copy Permanent ID",
+      icon: Copy,
+      keepOpen: true,
+      onSelect: () => void copyUri(targetUri),
+    },
+  )
+  // Delete last, after a separator and in red, as in the Records rows.
+  if (editActions?.isCreator) {
+    entries.push(
+      { kind: "separator", key: "sep" },
+      {
+        key: "delete",
+        label: "Delete",
+        icon: Trash2,
+        destructive: true,
+        onSelect: () => editActions.onDelete(),
+      },
+    )
+  }
+
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger>
-          <Button
-            size="icon"
-            variant={trigger === "header" ? "secondary" : "ghost"}
-            aria-label="More actions"
-          >
-            {trigger === "header" ? (
-              <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden />
-            ) : (
-              <MoreVertical size={16} strokeWidth={1.75} aria-hidden />
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end">
-          {editActions ? (
-            <>
-              {editActions.isCreator ? (
-                <PopoverItem
-                  onClick={() => {
-                    setOpen(false)
-                    router.push(editActions.editHref)
-                  }}
-                >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit
-                </PopoverItem>
-              ) : editActions.editAsGroupLabel ? (
-                <PopoverItem
-                  onClick={() => {
-                    setOpen(false)
-                    editActions.onEditAsGroup()
-                  }}
-                >
-                  <Pencil size={14} strokeWidth={1.75} aria-hidden /> Edit as{" "}
-                  {editActions.editAsGroupLabel}
-                </PopoverItem>
-              ) : null}
-              {editActions.isCreator ? (
-                <PopoverItem
-                  onClick={() => {
-                    setOpen(false)
-                    editActions.onDelete()
-                  }}
-                >
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden /> Delete
-                </PopoverItem>
-              ) : null}
-            </>
-          ) : null}
-          {sharePath && showShare ? (
-            <PopoverItem
-              onClick={() =>
-                void copyShare(`${window.location.origin}${sharePath}`)
-              }
-            >
-              <Share2 size={14} strokeWidth={1.75} aria-hidden />
-              {shareCopied ? "Link copied" : "Share"}
-            </PopoverItem>
-          ) : null}
-          <PopoverItem
-            onClick={() => {
-              setOpen(false)
-              // Logged-out viewers can't write to a PDS — send them to
-              // sign-in instead of opening an unusable modal.
-              if (viewerDid) setModalOpen(true)
-              else openSignIn()
-            }}
-          >
-            <ListPlus size={14} strokeWidth={1.75} aria-hidden />
-            Add to list
-          </PopoverItem>
-          <PopoverItem onClick={() => void copyUri(targetUri)}>
-            <Copy size={14} strokeWidth={1.75} aria-hidden />
-            {/* The record's at:// address, named as on the profile's menu. */}
-            {uriCopied ? "Permanent ID copied" : "Copy Permanent ID"}
-          </PopoverItem>
-        </PopoverContent>
-      </Popover>
+      <MoreActionsMenu
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+        entries={entries}
+        trigger={trigger}
+      />
+      <span className="sr-only" aria-live="polite">
+        {shareCopied ? "Link copied" : uriCopied ? "Permanent ID copied" : ""}
+      </span>
       {modalOpen && viewerDid ? (
         <AddToListModal
           viewerDid={viewerDid}
@@ -320,7 +295,7 @@ export function AddToListModal({
           return next
         })
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to add")
+        setError(caughtErrorMessage(err, "Couldn't add it to the list. Try again in a moment"))
       } finally {
         setBusyRkey(null)
       }
@@ -359,7 +334,7 @@ export function AddToListModal({
         setCreating(false)
         setNewTitle("")
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create list")
+        setError(caughtErrorMessage(err, "Couldn't create the list. Try again in a moment"))
       } finally {
         setBusyRkey(null)
       }
@@ -387,7 +362,7 @@ export function AddToListModal({
         ) : null}
         {!isLoading && renderedLists.length === 0 && !creating ? (
           <p className="add-to-list__empty">
-            You don&rsquo;t have a {TYPE_LABEL[targetType]} list yet.
+            You don&apos;t have a {TYPE_LABEL[targetType]} list yet.
           </p>
         ) : null}
         {!isLoading && renderedLists.length > 0 ? (

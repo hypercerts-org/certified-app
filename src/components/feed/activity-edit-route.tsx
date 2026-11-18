@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
 import { useRouter } from "next/navigation"
 import { PenLine } from "lucide-react"
@@ -23,7 +23,14 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import type { LinearDocument } from "@/lib/leaflet/types"
 import type { BlobRef } from "@atproto/api"
 import { uploadBlob, type UploadedBlob } from "@/lib/atproto/profile"
-import { useActivity, invalidateActivity } from "@/hooks/use-activity"
+import { useActivity, invalidateActivity, ACTIVITY_NOT_FOUND } from "@/hooks/use-activity"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
+import {
+  focusFirstInvalid,
+  problemsMessage,
+  saveConflictMessage,
+} from "@/components/create/form-errors"
 import { normalizeIdentity } from "@/components/create/contributor-identity-field"
 import LocationPickerDialog, {
   type AddedLocation,
@@ -150,8 +157,12 @@ export default function ActivityEditRoute({
     : !!sessionDid && sessionDid === did
   const editTargetDid = canEditAsActiveOrg ? did : undefined
 
-  const { activity, isLoading: activityLoading, error: activityError } =
-    useActivity(did, rkey)
+  const {
+    activity,
+    isLoading: activityLoading,
+    error: activityError,
+    refetch: refetchActivity,
+  } = useActivity(did, rkey)
 
   // -------------------------------------------------------------------
   // Form state — same shape as /create. All fields are seeded from the
@@ -184,6 +195,16 @@ export default function ActivityEditRoute({
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const shortDescRef = useRef<HTMLTextAreaElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Unsaved-changes guard (as on /create and the project editor). "Dirty"
+  // = the author has changed something: typing in any field (the form's
+  // `input` events, the description editor's too) or a list / image
+  // change. Seeding from the loaded record doesn't count.
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const markInteracted = () => setHasInteracted(true)
+  const isDirty = !isSubmitting && hasInteracted
+  const { confirmDiscard } = useUnsavedChangesGuard(isDirty)
 
   /** Snapshot captured at seed time — the swap-record baseline. The
    *  save handler diffs against this to detect concurrent edits. */
@@ -366,6 +387,7 @@ export default function ActivityEditRoute({
 
   const handleImageFile = useCallback(
     async (file: File) => {
+      setHasInteracted(true)
       const previewUrl = URL.createObjectURL(file)
       setPendingImagePreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev)
@@ -373,16 +395,28 @@ export default function ActivityEditRoute({
       })
       setImageRemoved(false)
       const targetDid = activeOrg ? activeOrg.groupDid : null
-      const blob = await uploadBlob(
-        file,
-        targetDid ? { targetDid } : undefined,
-      )
-      setPendingImageBlob(blob)
+      try {
+        const blob = await uploadBlob(
+          file,
+          targetDid ? { targetDid } : undefined,
+        )
+        setPendingImageBlob(blob)
+      } catch (err) {
+        // Say so and drop the preview, so the form can't be saved with an
+        // image that never uploaded (as on /create).
+        setError(caughtErrorMessage(err, "Couldn't upload the image. Try again"))
+        setPendingImageBlob(null)
+        setPendingImagePreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+      }
     },
     [activeOrg],
   )
 
   const handleImageRemove = useCallback(() => {
+    setHasInteracted(true)
     setPendingImageBlob(null)
     setPendingImagePreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
@@ -441,16 +475,33 @@ export default function ActivityEditRoute({
     )
   }
 
-  if (activityError || !activity) {
+  // Not found only when the record is gone; any other failure to load
+  // says so and offers to try again.
+  if (activityError === ACTIVITY_NOT_FOUND) {
     return gate(
       <EmptyState
         icon={PenLine}
         title="Activity not found"
-        description={activityError || "Couldn't load this activity to edit."}
+        description="It may have been deleted, or the link is wrong."
         headingLevel={2}
       >
         <Button href="/records" variant="secondary" size="sm">
-          Go to Records
+          Go to projects and activities
+        </Button>
+      </EmptyState>,
+    )
+  }
+
+  if (activityError || !activity) {
+    return gate(
+      <EmptyState
+        icon={PenLine}
+        title="Couldn't load this activity"
+        description="Check your connection and try again."
+        headingLevel={2}
+      >
+        <Button variant="secondary" size="sm" onClick={refetchActivity}>
+          Try again
         </Button>
       </EmptyState>,
     )
@@ -477,7 +528,7 @@ export default function ActivityEditRoute({
       <EmptyState
         icon={PenLine}
         title="You can't edit this activity"
-        description="Only the activity's creator (or the active group it's published under) can make changes."
+        description="Only the account that published it can edit it. If a group published it, act as that group (as an owner or admin)."
         headingLevel={2}
       >
         {recordHref ? (
@@ -511,9 +562,10 @@ export default function ActivityEditRoute({
     // offending field.
     if (problems.unmet.length > 0) {
       setSubmitAttempted(true)
-      setError(`Before saving: ${problems.unmet.join("; ")}.`)
+      setError(problemsMessage("Before saving", problems.unmet))
       if (problems.focus === "title") titleInputRef.current?.focus()
       else if (problems.focus === "shortDescription") shortDescRef.current?.focus()
+      else focusFirstInvalid(formRef.current)
       return
     }
 
@@ -705,15 +757,12 @@ export default function ActivityEditRoute({
       })
 
       if (!result.ok) {
-        if (result.reason === "conflict") {
-          setError(
-            `Someone else saved while you were editing — conflicts on ${result.conflictingFields.join(", ")}. Refresh to load the latest version.`,
-          )
-        } else {
-          setError(
-            "Couldn't auto-merge after several retries — refresh to load the latest version.",
-          )
-        }
+        setError(
+          saveConflictMessage(
+            "activity",
+            result.reason === "conflict" ? result.conflictingFields : [],
+          ),
+        )
         setIsSubmitting(false)
         return
       }
@@ -726,30 +775,43 @@ export default function ActivityEditRoute({
       )
     } catch (err) {
       if (err instanceof InvalidSwapError) {
-        setError(
-          "Someone else saved while you were editing — please refresh and try again.",
-        )
+        setError(saveConflictMessage("activity"))
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save activity")
+        setError(
+          caughtErrorMessage(
+            err,
+            "Couldn't save your changes. They're still here; try again",
+          ),
+        )
       }
       setIsSubmitting(false)
     }
   }
 
-  const handleCancel = () => {
-    if (did && rkey) {
-      router.push(
-        recordUrl(did, "activity", rkey),
-      )
-    } else {
-      router.back()
-    }
+  const handleCancel = () =>
+    confirmDiscard(() => {
+      if (did && rkey) router.push(recordUrl(did, "activity", rkey))
+      else router.back()
+    })
+
+  // Click-driven changes (contributor and location rows) count as edits
+  // too; typing is caught by the form's `input` events.
+  const setContributorsDirty: Dispatch<SetStateAction<ContributorRow[]>> = (
+    next,
+  ) => {
+    markInteracted()
+    setContributors(next)
   }
 
   return (
     <PageContainer>
       {pageHeader}
+      {/* No autofocus: the page opens at its top (or at `#contributors`),
+          so the skip link and the navigation come first. */}
       <form
+        ref={formRef}
+        noValidate
+        onInput={markInteracted}
         onSubmit={(e) => {
           e.preventDefault()
           void doSave()
@@ -759,9 +821,6 @@ export default function ActivityEditRoute({
           title={title}
           onTitleChange={setTitle}
           titleRef={titleInputRef}
-          // Not when arriving at a section (`#contributors`): focusing the
-          // title would pull the page back up (and open the phone keyboard).
-          autoFocusTitle={!hashTarget}
           shortDescription={shortDescription}
           onShortDescriptionChange={setShortDescription}
           shortDescriptionRef={shortDescRef}
@@ -789,15 +848,16 @@ export default function ActivityEditRoute({
           onImageFile={handleImageFile}
           onImageRemove={handleImageRemove}
           locations={locations}
-          onRemoveLocation={(uri) =>
+          onRemoveLocation={(uri) => {
+            markInteracted()
             setLocations((rows) => rows.filter((r) => r.ref.uri !== uri))
-          }
+          }}
           onAddLocation={() => setIsLocationDialogOpen(true)}
           rights={rights}
           rightsUri={rightsUri}
           onRightsChange={setRightsUri}
           contributors={contributors}
-          setContributors={setContributors}
+          setContributors={setContributorsDirty}
           selfDid={effectivePublisherDid || null}
         />
 
@@ -817,6 +877,7 @@ export default function ActivityEditRoute({
             targetDid={effectivePublisherDid}
             onClose={() => setIsLocationDialogOpen(false)}
             onPick={(added: AddedLocation) => {
+              markInteracted()
               setLocations((rows) => {
                 if (rows.some((r) => r.ref.uri === added.ref.uri)) return rows
                 return [...rows, { ref: added.ref, name: added.name }]

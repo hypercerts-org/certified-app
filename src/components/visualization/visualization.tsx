@@ -8,6 +8,7 @@ import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Skeleton from "@/components/ui/skeleton"
+import StatRow from "@/components/ui/stat-row"
 import EndorsementStats from "@/components/visualization/endorsement-stats"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import {
@@ -25,9 +26,13 @@ const EndorsementGraph = dynamic(
   },
 )
 
-// The network fetch can take several seconds, so pair the brandmark with a
-// visible status line. The spinner's own live region is hidden so the
+// The network fetch can take up to a minute, so pair the brandmark with a
+// visible status line, in the words and the quiet mark Map and Funding use
+// for their first load. The spinner's own live region is hidden so the
 // message is announced once.
+export const GRAPH_LOADING_TEXT =
+  "Gathering every endorsement and badge on the network. The first load can take up to a minute."
+
 function GraphLoading() {
   return (
     <div className="viz__state viz__state--loading">
@@ -35,7 +40,7 @@ function GraphLoading() {
         <LoadingSpinner size="md" />
       </div>
       <p className="viz__state-text" role="status" aria-live="polite">
-        Loading endorsement network…
+        {GRAPH_LOADING_TEXT}
       </p>
     </div>
   )
@@ -59,6 +64,56 @@ function ToolbarPlaceholder() {
         <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
         Filters
       </Button>
+    </div>
+  )
+}
+
+/** The labels of the network totals (EndorsementStats), for their
+ *  skeleton while the network loads. */
+const TOTAL_LABELS = ["Endorsements", "Other badges", "Accounts", "Mutual pairs", "Reciprocity"]
+
+/** The side column's controls while the network loads (from 1100px): the
+ *  panel's shape (the find field, then Layout, Show and Lines waiting in
+ *  place), so the column doesn't pop in beside the graph when the network
+ *  arrives. Hidden once the graph has put its own controls in the slot
+ *  before it (visualization.css). Not interactive: nothing to find or
+ *  filter yet. */
+function ControlsPlaceholder() {
+  return (
+    <div className="viz__controls viz__controls--placeholder" aria-hidden="true">
+      <div className="viz__search-wrap">
+        <Input disabled tabIndex={-1} placeholder="Find account" className="viz__search" />
+      </div>
+      <div className="viz__control-row">
+        <span className="viz__control-label">Layout</span>
+        <Skeleton variant="box" width={168} height={32} />
+      </div>
+      <div className="viz__control-row">
+        <span className="viz__control-label">Show</span>
+        <Skeleton variant="box" width={216} height={32} />
+      </div>
+      <div className="viz__control-row viz__control-row--top">
+        <span className="viz__control-label">Lines</span>
+        <div className="viz__kind-row">
+          {[120, 128, 124, 96, 112, 100].map((w, i) => (
+            <span key={i} className="viz__kind-placeholder">
+              <Skeleton variant="line" width={w} height={14} />
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="viz__legend">
+        <Skeleton variant="line" width="70%" height={12} />
+      </div>
+    </div>
+  )
+}
+
+/** The network totals under the controls, waiting in place (from 1100px). */
+function TotalsPlaceholder() {
+  return (
+    <div className="viz__totals-placeholder" aria-hidden="true">
+      <StatRow items={TOTAL_LABELS.map((label) => ({ label, value: null, loading: true }))} />
     </div>
   )
 }
@@ -163,7 +218,13 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
           </div>
         ) : null}
         <div ref={setControlsHost} className="viz__nav" />
-        {compact && (isLoading || ready) ? <ToolbarPlaceholder /> : null}
+        {/* Both shapes while the controls are on their way: the CSS shows
+            the row below 1100px and the panel and totals from 1100px, so
+            the server render (before the width is known) holds the right
+            one too. */}
+        {isLoading || ready ? <ToolbarPlaceholder /> : null}
+        {isLoading || ready ? <ControlsPlaceholder /> : null}
+        {isLoading ? <TotalsPlaceholder /> : null}
         {ready && (
           <EndorsementStats
             graph={statsGraph ?? graph}

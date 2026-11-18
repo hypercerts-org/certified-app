@@ -30,4 +30,13 @@ describe("HelpFaq", () => {
       "/explore",
     )
   })
+
+  // F3: switching lives in the account control's "Act as", not in Workspace.
+  it("says where to switch to a group: the account menu's Act as", () => {
+    render(<HelpFaq />)
+
+    const answer = screen.getByText(/To act as a group, open the account menu/)
+    expect(answer.textContent).toContain("under Act as")
+    expect(screen.queryByText(/from Workspace in the navigation/)).toBeNull()
+  })
 })

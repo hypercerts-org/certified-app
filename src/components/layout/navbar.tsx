@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useHasPageHeader, useHasPageHeaderBack, useNavbarValues } from "@/lib/navbar-context";
@@ -21,6 +21,7 @@ import AddToListMenu from "@/components/lists/add-to-list-menu";
 import type { TypedListType } from "@/lib/atproto/typed-lists";
 import { PhoneAccountSwitcher } from "./account-switcher";
 import PhoneSearch from "./phone-search";
+import { topLevelBarTitle } from "./bar-title";
 
 /**
  * True when `pathname` is the profile of the account the viewer acts as
@@ -56,8 +57,13 @@ function isOwnProfilePath(
  * - **Center:** the page's title. On a top-level page with a
  *   `<PageHeader>` (Feed, Map, a Workspace section...), the header's title
  *   moves up here and the header's h1 is visually hidden on phones (this
- *   copy is plain text, hidden from assistive tech). On a page without a
- *   PageHeader, the compact title is the page's h1. Otherwise none.
+ *   copy is plain text, hidden from assistive tech). Until that header
+ *   mounts (on the server, and while the page loads) a top-level page's
+ *   title comes from its route (`topLevelBarTitle`, the navigation's
+ *   labels), so the bar is already as it will stand: no wordmark that
+ *   turns into the brandmark and a title after hydration. On a page
+ *   without a PageHeader, the compact title is the page's h1. Otherwise
+ *   none.
  * - **Right:** on the top-level pages, Search (phone-search.tsx: the
  *   global search in a panel at the top of the screen), signed in or
  *   out, except on Explore (its own field is the search there). Then the
@@ -121,8 +127,11 @@ const Navbar: React.FC = () => {
   // On a top-level page the PageHeader's title moves up here (its h1 is
   // visually hidden on phones), as plain text: the h1 stays the header's.
   const headerTitle = hasPageHeader && isTopLevelPath(pathname) ? barTitle : null;
+  // Until a top-level page's own title arrives (the server's render, the
+  // first paint, a page still loading), its route names it.
+  const routeTitle = isTopLevelPath(pathname) && !hasPageHeader && !showChromeH1;
   // With a title on the row, the brandmark replaces the wordmark.
-  const showTitle = showChromeH1 || !!headerTitle;
+  const showTitle = showChromeH1 || !!headerTitle || routeTitle;
 
   const navClasses = [
     "navbar",
@@ -202,6 +211,11 @@ const Navbar: React.FC = () => {
               pageTitle
             )}
           </h1>
+        ) : routeTitle && pathname ? (
+          // Records reads its section from `?kind=`, in its own boundary.
+          <Suspense fallback={<span />}>
+            <RouteBarTitle pathname={pathname} />
+          </Suspense>
         ) : (
           <span />
         )}
@@ -238,5 +252,19 @@ const Navbar: React.FC = () => {
     </header>
   );
 };
+
+/** A top-level page's title from its route, shown before the page's own
+ *  header mounts. Plain text hidden from assistive tech, like the header
+ *  title it stands in for (the page's h1 is the header's). */
+function RouteBarTitle({ pathname }: { pathname: string }) {
+  const kind = useSearchParams()?.get("kind") ?? null;
+  const title = topLevelBarTitle(pathname, kind);
+  if (!title) return <span />;
+  return (
+    <p className="navbar__title" aria-hidden="true">
+      {title}
+    </p>
+  );
+}
 
 export default Navbar;

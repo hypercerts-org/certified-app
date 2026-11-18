@@ -42,7 +42,7 @@ const FEATURED_FILTERS: FilterOption[] = [
 const ACCOUNT_FILTERS: FilterOption[] = [
   ...FEATURED_FILTERS,
   { key: "recent", label: "Recently viewed" },
-  { key: "my-groups", label: "My organizations", requiresAuth: true },
+  { key: "my-groups", label: "My groups", requiresAuth: true },
   { key: "follows", label: "Accounts I follow", requiresAuth: true },
   { key: "endorsed", label: "Endorsed accounts", requiresAuth: true },
   { key: "all", label: "All accounts" },
@@ -69,7 +69,7 @@ const CERT_FILTERS: FilterOption[] = [
 /** Filters for the combined "All" view. Same building blocks as the
  *  per-kind lists, with two deliberate edits per the All-tab spec:
  *    - the "mine" filters (My activities / My projects / My
- *      organizations) are dropped — the All view is a cross-section
+ *      groups) are dropped — the All view is a cross-section
  *      browse/search surface, not a personal-records one;
  *    - the per-kind "All activities" / "All projects" / "All accounts"
  *      collapse to a single "All".

@@ -1388,6 +1388,20 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   font-variant-numeric: tabular-nums;
 }
 
+/* Following / Follow on your own Following rows. On a phone the button
+   takes the date's place, so the name isn't cut short (as in the
+   Workspace's Following). */
+.profile-person__follow {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 799px) {
+  .profile-person:has(.profile-person__follow) .profile-person__date {
+    display: none;
+  }
+}
+
 /* A rejected endorsement, listed for its owner: struck through. */
 .profile-person[data-state="rejected"] .profile-person__name {
   color: var(--fg-muted);

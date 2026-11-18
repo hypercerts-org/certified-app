@@ -2,21 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Copy,
-  ExternalLink,
-  ListPlus,
-  MoreHorizontal,
-  Settings as SettingsIcon,
-} from "lucide-react"
-import Button from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverItem,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Copy, ExternalLink, ListPlus, Settings as SettingsIcon } from "lucide-react"
 import { AddToListModal } from "@/components/lists/add-to-list-menu"
+import MoreActionsMenu, { type MoreActionsEntry } from "@/components/lists/more-actions-menu"
 import { LIST_ACCOUNTS_TYPE } from "@/lib/atproto/typed-lists"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
@@ -24,6 +12,8 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
 
 interface ProfileMoreMenuProps {
   did: string
+  /** The account's name: the menu's sheet title on phones. */
+  name: string
   /** The account's handle, for "Open on Bluesky". */
   handle: string | null
   /** The account has a Bluesky profile: adds "Open on Bluesky". */
@@ -35,10 +25,12 @@ interface ProfileMoreMenuProps {
 /**
  * The visitor's "More" menu on a profile, after Follow and Share: add the
  * account to one of your lists, copy its Permanent ID, open it on Bluesky,
- * and (for the group's admins) its settings.
+ * and (for the group's admins) its settings. A popover menu from 800px, a
+ * sheet titled with the account's name below (`<MoreActionsMenu>`).
  */
 export default function ProfileMoreMenu({
   did,
+  name,
   handle,
   onBluesky,
   settingsHref,
@@ -66,55 +58,42 @@ export default function ProfileMoreMenu({
       ? `https://bsky.app/profile/${encodeURIComponent(handle)}`
       : null
 
+  const entries: MoreActionsEntry[] = []
+  if (canList) {
+    entries.push({
+      key: "add-to-list",
+      label: "Add to list",
+      icon: ListPlus,
+      onSelect: () => (viewerDid ? setListOpen(true) : openSignIn()),
+    })
+  }
+  entries.push({
+    key: "copy-id",
+    label: copied ? "Permanent ID copied" : "Copy Permanent ID",
+    icon: Copy,
+    keepOpen: true,
+    onSelect: () => void copy(did),
+  })
+  if (blueskyUrl) {
+    entries.push({
+      key: "bluesky",
+      label: "Open on Bluesky",
+      icon: ExternalLink,
+      onSelect: () => window.open(blueskyUrl, "_blank", "noopener,noreferrer"),
+    })
+  }
+  if (settingsHref) {
+    entries.push({
+      key: "settings",
+      label: "Group settings",
+      icon: SettingsIcon,
+      onSelect: () => router.push(settingsHref),
+    })
+  }
+
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger>
-          <Button size="icon" variant="secondary" aria-label="More actions">
-            <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end">
-          {canList ? (
-            <PopoverItem
-              onClick={() => {
-                setOpen(false)
-                if (viewerDid) setListOpen(true)
-                else openSignIn()
-              }}
-            >
-              <ListPlus size={14} strokeWidth={1.75} aria-hidden />
-              Add to list
-            </PopoverItem>
-          ) : null}
-          <PopoverItem onClick={() => void copy(did)}>
-            <Copy size={14} strokeWidth={1.75} aria-hidden />
-            {copied ? "Permanent ID copied" : "Copy Permanent ID"}
-          </PopoverItem>
-          {blueskyUrl ? (
-            <PopoverItem
-              onClick={() => {
-                setOpen(false)
-                window.open(blueskyUrl, "_blank", "noopener,noreferrer")
-              }}
-            >
-              <ExternalLink size={14} strokeWidth={1.75} aria-hidden />
-              Open on Bluesky
-            </PopoverItem>
-          ) : null}
-          {settingsHref ? (
-            <PopoverItem
-              onClick={() => {
-                setOpen(false)
-                router.push(settingsHref)
-              }}
-            >
-              <SettingsIcon size={14} strokeWidth={1.75} aria-hidden />
-              Group settings
-            </PopoverItem>
-          ) : null}
-        </PopoverContent>
-      </Popover>
+      <MoreActionsMenu open={open} onOpenChange={setOpen} title={name} entries={entries} />
       <span className="sr-only" aria-live="polite">
         {copied ? "Permanent ID copied" : ""}
       </span>

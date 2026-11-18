@@ -6,6 +6,7 @@ import Button from "@/components/ui/button"
 import Select from "@/components/ui/select"
 import Textarea from "@/components/ui/textarea"
 import AppDialog, { AppDialogHeader } from "@/components/ui/app-dialog"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 /** Shape of one selectable list — kept structurally compatible with
  *  `useEndorsementLists`'s `EndorsementList` so the caller can pass
@@ -104,7 +105,7 @@ export default function EndorseReasonModal({
           selectedListRkey === "" ? null : selectedListRkey,
         )
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to endorse")
+        setError(caughtErrorMessage(err, "Couldn't endorse. Try again"))
         setIsWriting(false)
       }
     },
@@ -124,7 +125,10 @@ export default function EndorseReasonModal({
       className="endorse-reason-modal"
       maxWidth={460}
       onClose={onClose}
-      disableBackdropClose={isWriting}
+      // A typed note isn't lost to a stray click outside: the backdrop
+      // closes only while the note is empty (Cancel, Close and Esc still
+      // close).
+      disableBackdropClose={isWriting || note.trim() !== ""}
     >
       <AppDialogHeader
         title={`Endorse ${subjectLabel}`}

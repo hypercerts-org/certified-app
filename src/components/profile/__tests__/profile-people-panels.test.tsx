@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, cleanup, fireEvent } from "@testing-library/react"
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
 
 /**
  * The Endorsements and Followers tabs as a visitor sees them: a list known
@@ -9,7 +9,10 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react"
  * shows each account once, however many awards it gave.
  */
 
-vi.mock("@/lib/auth/auth-context", () => ({ useAuth: () => ({ did: null }) }))
+let viewerDid: string | null = null
+vi.mock("@/lib/auth/auth-context", () => ({
+  useAuth: () => ({ did: viewerDid, isAuthenticated: !!viewerDid, isLoading: false }),
+}))
 vi.mock("@/lib/groups/org-context", () => ({ useOrg: () => ({ activeOrg: null }) }))
 let search = new URLSearchParams()
 vi.mock("next/navigation", () => ({
@@ -50,7 +53,13 @@ vi.mock("@/lib/atproto/badges", () => ({
   deleteEndorsementAward: vi.fn(),
   createResponse: vi.fn(),
 }))
-vi.mock("@/lib/atproto/follow", () => ({ deleteFollow: vi.fn() }))
+const deleteFollow = vi.fn()
+const listFollowing = vi.fn()
+vi.mock("@/lib/atproto/follow", () => ({
+  deleteFollow: (...a: unknown[]) => deleteFollow(...a),
+  listFollowing: (...a: unknown[]) => listFollowing(...a),
+  createFollow: vi.fn(),
+}))
 
 interface Received {
   uri: string
@@ -69,7 +78,22 @@ vi.mock("@/hooks/use-endorsements", () => ({
 }))
 
 let followers: { entries: unknown[]; count: number | null; isLoading: boolean; error: string | null; refetch: () => void }
-let following: { records: unknown[]; count: number; isLoading: boolean; error: string | null; refetch: () => void }
+interface FollowRow {
+  uri: string
+  cid: string
+  rkey: string
+  value: { subject: string; createdAt: string }
+}
+let following: {
+  records: FollowRow[]
+  subjects: Set<string>
+  count: number
+  isLoading: boolean
+  error: string | null
+  refetch: () => void
+  addFollow: (subject: string, uri: string, cid: string) => void
+  removeFollow: (subject: string) => void
+}
 vi.mock("@/hooks/use-followers", () => ({ useFollowers: () => followers }))
 vi.mock("@/hooks/use-following", () => ({ useFollowing: () => following }))
 
@@ -90,10 +114,22 @@ function award(issuer: string, day: number, note?: string): Received {
 
 beforeEach(() => {
   search = new URLSearchParams()
+  viewerDid = null
+  deleteFollow.mockReset()
+  listFollowing.mockReset()
   received = { endorsements: [], isLoading: false, error: null, refetch: vi.fn() }
   given = { endorsements: [], isLoading: false, error: null, refetch: vi.fn() }
   followers = { entries: [], count: 0, isLoading: false, error: null, refetch: vi.fn() }
-  following = { records: [], count: 0, isLoading: false, error: null, refetch: vi.fn() }
+  following = {
+    records: [],
+    subjects: new Set(),
+    count: 0,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    addFollow: vi.fn(),
+    removeFollow: vi.fn(),
+  }
 })
 
 afterEach(() => {
@@ -163,5 +199,55 @@ describe("ProfileFollowers for a visitor", () => {
     expect(screen.getByText("Couldn't load followers")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     expect(followers.refetch).toHaveBeenCalled()
+  })
+})
+
+describe("ProfileFollowers on your own profile", () => {
+  it("unfollows with one tap, no confirm, and keeps the row so Follow undoes it", async () => {
+    viewerDid = DID
+    const row: FollowRow = {
+      uri: "at://did:plc:ada/follow/f1",
+      cid: "f1",
+      rkey: "f1",
+      value: { subject: "did:plc:bo", createdAt: "2026-05-01T00:00:00.000Z" },
+    }
+    following = {
+      ...following,
+      count: 1,
+      records: [row],
+      subjects: new Set(["did:plc:bo"]),
+      removeFollow: vi.fn(() => {
+        following = { ...following, records: [], subjects: new Set(), count: 0 }
+      }),
+    }
+    listFollowing.mockResolvedValue({ records: [row] })
+    deleteFollow.mockResolvedValue(undefined)
+    search = new URLSearchParams("sub=following")
+    const { rerender } = render(<ProfileFollowers did={DID} />)
+    const toggle = screen.getByRole("button", { name: "Following Name bo" })
+    expect(toggle.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(toggle)
+    await waitFor(() => expect(following.removeFollow).toHaveBeenCalledWith("did:plc:bo"))
+    expect(deleteFollow).toHaveBeenCalledWith(DID, "f1", { targetDid: undefined })
+    // No dialog, red or otherwise.
+    expect(document.querySelector("dialog")).toBeNull()
+    rerender(<ProfileFollowers did={DID} />)
+    expect(screen.getByRole("button", { name: "Follow Name bo" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    )
+  })
+
+  it("has no Following toggles on someone else's list", () => {
+    viewerDid = "did:plc:visitor"
+    following = {
+      ...following,
+      count: 1,
+      records: [
+        { uri: "at://did:plc:ada/follow/f1", cid: "f1", rkey: "f1", value: { subject: "did:plc:bo", createdAt: "2026-05-01T00:00:00.000Z" } },
+      ],
+      subjects: new Set(["did:plc:bo"]),
+    }
+    render(<ProfileFollowers did={DID} />)
+    expect(screen.queryByRole("button", { name: /Following Name bo|Follow Name bo/ })).toBeNull()
   })
 })

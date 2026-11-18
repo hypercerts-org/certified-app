@@ -39,6 +39,8 @@ import {
   isEmptyLongDescription,
   longDescriptionToLinearDocument,
 } from "@/lib/leaflet/guards"
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 // =====================================================================
 // Pure helpers — re-coerce stored marker shapes into the editor /
@@ -290,10 +292,15 @@ export interface UseProfileInlineEditOutput {
  * groups-available) — those depend on hook outputs plus other
  * page-level facts, so the page composes them.
  *
- * The hook also installs a document-level unsaved-changes guard
- * while `isDirty` is true. Save / Cancel inside the edit banner are
- * exempted by the guard's anchor-closest-class checks.
+ * The hook also installs the shared unsaved-changes guard
+ * (`useUnsavedChangesGuard`) while `isDirty` is true; links inside the
+ * edit banner and the image pickers navigate without asking.
  */
+/** The inline editor's own controls: links inside them don't leave the
+ *  page, so the unsaved-changes guard doesn't ask. */
+const INLINE_EDIT_OWN_CONTROLS =
+  ".edit-banner, .profile-sidebar__avatar-edit-btn, .profile-banner-upload__btn"
+
 export function useProfileInlineEdit(
   input: UseProfileInlineEditInput,
 ): UseProfileInlineEditOutput {
@@ -678,7 +685,7 @@ export function useProfileInlineEdit(
 
   const handleSave = useCallback(async () => {
     if (!did || !isAuthenticated || !sessionDid) {
-      setSaveError("Not authenticated")
+      setSaveError("Your session has expired. Sign in again to continue.")
       return
     }
     const base = effectiveProfile ?? null
@@ -704,9 +711,7 @@ export function useProfileInlineEdit(
       }
     } catch (err) {
       console.error("Failed to upload image:", err)
-      setSaveError(
-        err instanceof Error ? err.message : "Failed to upload image",
-      )
+      setSaveError(caughtErrorMessage(err, "Couldn't upload the image. Try again"))
       setIsSaving(false)
       return
     }
@@ -903,7 +908,7 @@ export function useProfileInlineEdit(
     } catch (err) {
       console.error("Failed to save profile:", err)
       setSaveError(
-        err instanceof Error ? err.message : "Failed to save profile",
+        caughtErrorMessage(err, "Couldn't save your profile. Your changes are still here; try again"),
       )
     } finally {
       setIsSaving(false)
@@ -932,60 +937,15 @@ export function useProfileInlineEdit(
   // -------------------------------------------------------------------
   // Unsaved-changes guard
   // -------------------------------------------------------------------
-  // Warn before the viewer leaves the page mid-edit. Covers:
-  //   1. Browser refresh / tab close — native `beforeunload`.
-  //   2. In-app navigation (top-bar tabs, sidebar links, brand logo)
-  //      — anchor-capture handler that pops `window.confirm()`.
-  //      Save / Cancel inside the edit banner is exempted.
-  // We don't guard the App Router navigation API directly because it
-  // doesn't expose a stable guard hook; anchor capture covers every
-  // realistic in-app navigation path.
+  // The one guard every form uses (`useUnsavedChangesGuard`): the
+  // browser's own prompt on refresh / tab close, and the in-app
+  // "Discard your changes?" dialog for links, Go back and the browser's
+  // back and forward. Links inside the edit banner and the image pickers
+  // navigate without asking.
   const isDirty = isEditing && hasInteracted && canEditInline
-  useEffect(() => {
-    if (!isDirty) return
-
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ""
-    }
-
-    const onClickCapture = (e: MouseEvent) => {
-      if (
-        e.button !== 0 ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey ||
-        e.defaultPrevented
-      ) {
-        return
-      }
-      const target =
-        e.target instanceof Element
-          ? (e.target.closest("a[href]") as HTMLAnchorElement | null)
-          : null
-      if (!target) return
-      if (target.closest(".edit-banner")) return
-      if (target.closest(".profile-sidebar__avatar-edit-btn")) return
-      if (target.closest(".profile-banner-upload__btn")) return
-      if (target.target && target.target !== "_self") return
-
-      const proceed = window.confirm(
-        "You have unsaved changes. Leave and discard them?",
-      )
-      if (!proceed) {
-        e.preventDefault()
-        e.stopImmediatePropagation()
-      }
-    }
-
-    window.addEventListener("beforeunload", onBeforeUnload)
-    document.addEventListener("click", onClickCapture, true)
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload)
-      document.removeEventListener("click", onClickCapture, true)
-    }
-  }, [isDirty])
+  useUnsavedChangesGuard(isDirty && !isSaving, {
+    ignoreLinksWithin: INLINE_EDIT_OWN_CONTROLS,
+  })
 
   return {
     isEditing,

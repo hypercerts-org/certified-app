@@ -3,7 +3,7 @@ import { Suspense } from "react"
 
 export const metadata: Metadata = {
   title: "Groups",
-  description: "Organizations you're a member of on Certified.",
+  description: "Groups you're a member of on Certified.",
 }
 
 // No AuthGuard here: anonymous visitors render a public sign-in prompt

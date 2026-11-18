@@ -54,6 +54,10 @@ export function invalidateActivity(did: string, rkey: string): void {
   inFlight.delete(key)
 }
 
+/** The error a missing activity reads as, so a page can say "not found"
+ *  rather than "couldn't load" (mirrors `PROJECT_NOT_FOUND`). */
+export const ACTIVITY_NOT_FOUND = "Activity not found"
+
 /**
  * Resolve a single activity by did+rkey, sharing one request across
  * concurrent callers and caching the result for the session. Throws on
@@ -116,7 +120,7 @@ function loadActivity(did: string, rkey: string): Promise<SingleActivity> {
           // 400 (RecordNotFound), which the proxy passes through; 404 is
           // an account with no PDS. Anything else is a failure to load.
           res.status === 404 || res.status === 400
-            ? "Activity not found"
+            ? ACTIVITY_NOT_FOUND
             : "Couldn't load this activity. Try again."
         )
       }

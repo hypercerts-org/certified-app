@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 
-// The phone top bar: wordmark + Beta on top-level pages, a back chevron on every
-// other page (PageHeader or not), and the compact title only when no
-// PageHeader owns the h1.
+// The phone top bar: the brand on top-level pages, a back chevron on every
+// other page (PageHeader or not), the compact title only when no PageHeader
+// owns the h1, and a top-level page's title from its route until its own
+// header mounts.
 
 const state = vi.hoisted(() => ({
   pathname: "/home",
+  search: "",
   hasPageHeader: false,
   hasPageHeaderBack: false,
   pageTitle: null as string | null,
@@ -20,6 +22,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => state.pathname,
+  useSearchParams: () => new URLSearchParams(state.search),
 }))
 
 vi.mock("@/lib/auth/auth-context", () => ({
@@ -80,6 +83,7 @@ import Navbar from "../navbar"
 
 beforeEach(() => {
   state.pathname = "/home"
+  state.search = ""
   state.hasPageHeader = false
   state.hasPageHeaderBack = false
   state.pageTitle = null
@@ -251,6 +255,45 @@ describe("Navbar (phone)", () => {
     // the wrong way.
     expect(container.querySelector(".navbar__right")?.children).toHaveLength(0)
     expect(screen.queryByRole("link", { name: "Certified home" })).toBeNull()
+  })
+
+  it("names a top-level page from its route before its header mounts: no wordmark to swap", () => {
+    // The server's render and the first paint: no PageHeader yet, sign-in
+    // still resolving.
+    state.isLoading = true
+    state.pathname = "/home"
+    const { container } = render(<Navbar />)
+    expect(container.querySelector(".navbar__logo--wordmark")).toBeNull()
+    expect(container.querySelector(".navbar__logo svg")).not.toBeNull()
+    const title = container.querySelector(".navbar__title")
+    expect(title).toHaveTextContent("Overview")
+    // Plain text, like the header title it stands in for.
+    expect(title).toHaveAttribute("aria-hidden", "true")
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
+  })
+
+  it("names each top-level page with the navigation's label", () => {
+    for (const [pathname, search, label] of [
+      ["/records", "kind=lists", "Lists"],
+      ["/records", "", "Projects and activities"],
+      ["/explore", "", "Explore"],
+      ["/funding", "", "Funding"],
+      ["/apps", "", "Apps"],
+      ["/settings", "", "Settings"],
+      ["/help", "", "Help"],
+    ] as const) {
+      state.pathname = pathname
+      state.search = search
+      const { container, unmount } = render(<Navbar />)
+      expect(container.querySelector(".navbar__title")).toHaveTextContent(label)
+      unmount()
+    }
+  })
+
+  it("gives no route title to a page that isn't top-level", () => {
+    state.pathname = "/rosa.example/project/3k2"
+    const { container } = render(<Navbar />)
+    expect(container.querySelector(".navbar__title")).toBeNull()
   })
 
   it("keeps the back chevron while sign-in resolves on a detail page", () => {

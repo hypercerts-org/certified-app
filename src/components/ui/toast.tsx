@@ -42,6 +42,9 @@ import Button from "@/components/ui/button";
  *
  *   dismiss(id);  // imperative dismiss (e.g. after the action resolves)
  *
+ *   toast({ id: "acting-as", title: "Now acting as …" });
+ *                 // a fixed id: replaces the toast with that id, if one shows
+ *
  * Announcement: the region is an aria-live stack. "error" toasts announce
  * assertively (role="alert"); everything else announces politely
  * (role="status"). Auto-dismiss pauses on hover/focus and resumes on leave.
@@ -65,10 +68,19 @@ export interface ToastOptions {
    */
   duration?: number;
   action?: ToastAction;
+  /**
+   * A fixed id for a toast that says the latest of something (who you act
+   * as, say): a toast with the id of one still showing replaces it, at the
+   * end of the stack with a fresh timer, instead of stacking under it.
+   */
+  id?: string;
 }
 
-interface ToastRecord extends ToastOptions {
+interface ToastRecord extends Omit<ToastOptions, "id"> {
   id: string;
+  /** Unique per toast shown (the React key), so a replacement with the
+   *  same `id` mounts afresh: it enters, announces and times out anew. */
+  instance: number;
   /** Set on dismiss; the item plays its exit transition, then is removed. */
   leaving?: boolean;
 }
@@ -121,8 +133,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   const toast = useCallback((options: ToastOptions) => {
-    const id = `toast-${counter.current++}`;
-    setToasts((prev) => [...prev, { ...options, id }]);
+    const { id: fixedId, ...rest } = options;
+    const instance = counter.current++;
+    const id = fixedId ?? `toast-${instance}`;
+    // A fixed id replaces the toast showing under it (if any).
+    setToasts((prev) => [...prev.filter((t) => t.id !== id), { ...rest, id, instance }]);
     return id;
   }, []);
 
@@ -180,7 +195,7 @@ function Toaster({
       <style>{TOAST_KEYFRAMES}</style>
       {toasts.map((t) => (
         <ToastItem
-          key={t.id}
+          key={t.instance}
           toast={t}
           onDismiss={onDismiss}
           onRemove={onRemove}

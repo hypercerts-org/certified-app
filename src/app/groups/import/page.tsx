@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { KeyRound, Users } from "lucide-react"
@@ -17,6 +17,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
 import FormActionBar from "@/components/create/form-action-bar"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 /**
  * `/groups/import` — promote an EXISTING atproto account into a group
@@ -45,6 +46,17 @@ export default function ImportGroupPage() {
   const [appPassword, setAppPassword] = useState("")
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  // The one validation rule (DESIGN.md §9.2): the field's error shows
+  // once it has been left, or after a click on the button (which stays
+  // enabled except while working); then it follows the typing.
+  const [passwordLeft, setPasswordLeft] = useState(false)
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const passwordMissing = !appPassword.trim()
+  const passwordError =
+    passwordMissing && (passwordLeft || submitAttempted)
+      ? "Enter the account's app password."
+      : undefined
 
   // Resolve the signed-in account's handle so the "which account gets
   // converted" warning names it explicitly.
@@ -65,7 +77,12 @@ export default function ImportGroupPage() {
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault()
-      if (!did || !appPassword.trim() || isImporting) return
+      if (!did || isImporting) return
+      if (!appPassword.trim()) {
+        setSubmitAttempted(true)
+        passwordRef.current?.focus()
+        return
+      }
       setIsImporting(true)
       setError(null)
       try {
@@ -83,7 +100,9 @@ export default function ImportGroupPage() {
         ) {
           setError("That app password was not accepted. Check it and try again.")
         } else {
-          setError(err instanceof Error ? err.message : "Import failed")
+          setError(
+            caughtErrorMessage(err, "Couldn't turn the account into a group. Try again"),
+          )
         }
       } finally {
         setIsImporting(false)
@@ -135,7 +154,7 @@ export default function ImportGroupPage() {
   return (
     <PageContainer width="narrow">
       {pageHeader}
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <p className="m-0 max-w-measure text-body text-[var(--fg-secondary)] text-pretty">
           This converts the account you&apos;re signed in as,{" "}
           <strong className="font-semibold text-[var(--fg-primary)]">{accountLabel}</strong>,
@@ -152,6 +171,7 @@ export default function ImportGroupPage() {
 
         <div className="flex flex-col gap-1.5">
           <Input
+            ref={passwordRef}
             type="password"
             label="App password"
             size="md"
@@ -159,9 +179,12 @@ export default function ImportGroupPage() {
             leadingIcon={<KeyRound size={16} aria-hidden="true" />}
             placeholder="xxxx-xxxx-xxxx-xxxx"
             value={appPassword}
+            error={passwordError}
+            aria-describedby="import-app-password-hint"
             onChange={(e) => setAppPassword(e.target.value)}
+            onBlur={() => setPasswordLeft(true)}
           />
-          <p className="m-0 text-caption text-[var(--fg-muted)]">
+          <p id="import-app-password-hint" className="m-0 text-caption text-[var(--fg-muted)]">
             Create one in{" "}
             <Link
               href="/settings#app-passwords"
@@ -182,7 +205,6 @@ export default function ImportGroupPage() {
           submitLabel="Turn into a group"
           submittingLabel="Turning into a group…"
           isSubmitting={isImporting}
-          submitDisabled={!appPassword.trim()}
           error={error}
           identityLabel={null}
           onCancel={() => router.push("/records?kind=groups")}

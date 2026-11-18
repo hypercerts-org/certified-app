@@ -132,6 +132,16 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
  * `AppDialog`'s `onClose` prop — and `disabled` to gate the X
  * during in-flight operations.
  */
+/** Below 800px a dialog's or sheet's Close button is a full 44px square
+ *  (not the 32px icon-sm with a 44px ::after), so the target is the
+ *  button itself. */
+export const DIALOG_CLOSE_PHONE_SIZE = "max-[799px]:h-control-md max-[799px]:w-11"
+
+/** The 44px phone Close in a title row: the negative margins take the
+ *  extra 12px back (6px a side), so the X stays where it was and the row
+ *  keeps its height. */
+export const DIALOG_CLOSE_PHONE_CLASS = `${DIALOG_CLOSE_PHONE_SIZE} max-[799px]:-mt-2 max-[799px]:-mb-1.5 max-[799px]:-mr-1.5`
+
 export function AppDialogHeader({
   title,
   onClose,
@@ -149,8 +159,9 @@ export function AppDialogHeader({
   bare?: boolean
 }) {
   // Compact icon button: 32px visual, 44px hit area (Button size="icon-sm").
-  // tooltip="" because a body-portaled tooltip would render beneath the
-  // top-layer <dialog>.
+  // Below 800px the button itself is 44px (DIALOG_CLOSE_PHONE_CLASS), its
+  // X where it was. tooltip="" because a body-portaled tooltip would
+  // render beneath the top-layer <dialog>.
   const closeButton = (className = "") =>
     onClose ? (
       <Button
@@ -170,7 +181,9 @@ export function AppDialogHeader({
       <div className="relative h-12 shrink-0">
         {/* Positioned wrapper: icon-sm sets its own `relative` (for the
             44px ::after hit area), which would override `absolute` here. */}
-        <div className="absolute right-2 top-2">{closeButton()}</div>
+        <div className="absolute right-2 top-2 max-[799px]:right-0.5 max-[799px]:top-0.5">
+          {closeButton(DIALOG_CLOSE_PHONE_SIZE)}
+        </div>
       </div>
     )
   }
@@ -179,7 +192,7 @@ export function AppDialogHeader({
       <h2 className="min-w-0 flex-1 pt-1 font-headline text-h4 text-balance text-[var(--fg-primary)]">
         {title}
       </h2>
-      {closeButton("-mt-0.5 shrink-0")}
+      {closeButton(`-mt-0.5 shrink-0 ${DIALOG_CLOSE_PHONE_CLASS}`)}
     </div>
   )
 }

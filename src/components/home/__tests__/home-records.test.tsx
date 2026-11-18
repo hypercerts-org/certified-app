@@ -14,6 +14,10 @@ vi.mock("@/hooks/use-received-endorsements", () => ({
 vi.mock("@/hooks/use-endorsements", () => ({
   useGivenEndorsements: () => ({ endorsements: [], isLoading: false, error: null }),
 }))
+const following = { count: 7, isLoading: false, error: null as string | null, truncated: false }
+vi.mock("@/hooks/use-following", () => ({
+  useFollowing: () => following,
+}))
 
 import { HomeEndorsements, HomeRecords } from "../home-sections"
 import type { WorkspaceCounts } from "@/lib/atproto/workspace"
@@ -30,6 +34,10 @@ function renderRecords(counts: WorkspaceCounts, isGroup = false) {
 beforeEach(() => {
   records.projects = []
   records.created = []
+  following.count = 7
+  following.isLoading = false
+  following.error = null
+  following.truncated = false
 })
 
 // WS-04: once there were records the Overview offered no way to create.
@@ -57,6 +65,61 @@ describe("Your records: New activity", () => {
     expect(activity[0]).toHaveAttribute("href", "/create")
     expect(activity[0].className).toContain("bg-[var(--btn-primary-bg)]")
     expect(screen.getByRole("link", { name: "New project" })).toHaveAttribute("href", "/project/new")
+  })
+
+  // F4: a donor's first screen offered only making records.
+  it("empty: offers Find accounts beside them, a secondary action to Explore's accounts", () => {
+    renderRecords(NONE)
+    const find = screen.getByRole("link", { name: "Find accounts" })
+    expect(find).toHaveAttribute("href", "/explore?show=accounts")
+    expect(find.className).not.toContain("bg-[var(--btn-primary-bg)]")
+    // Beside New activity and New project, in the empty state's actions.
+    const actions = find.parentElement as HTMLElement
+    expect(within(actions).getByRole("link", { name: "New activity" })).toBeInTheDocument()
+    expect(within(actions).getByRole("link", { name: "New project" })).toBeInTheDocument()
+  })
+
+  it("with records: no Find accounts (the header carries New activity)", () => {
+    renderRecords(SOME)
+    expect(screen.queryByRole("link", { name: "Find accounts" })).toBeNull()
+  })
+})
+
+// F4: the Overview counts who the account follows, too.
+describe("Endorsements and followers: Following", () => {
+  function renderEndorsements(isGroup = false) {
+    return render(
+      <HomeEndorsements did="did:plc:me" isGroup={isGroup} profileBase="/me.test" counts={NONE} countsLoading={false} />,
+    )
+  }
+
+  it("shows how many accounts it follows, linking to Following", () => {
+    renderEndorsements()
+    const stats = screen.getByRole("list", { name: "Endorsements and followers" })
+    const link = within(stats).getByRole("link", { name: /Following/ })
+    expect(link).toHaveTextContent("7")
+    expect(link).toHaveAttribute("href", "/records?kind=followers&tab=following")
+  })
+
+  it("leads to the group's profile while acting as a group", () => {
+    renderEndorsements(true)
+    expect(screen.getByRole("link", { name: /Following/ })).toHaveAttribute(
+      "href",
+      "/me.test?tab=followers&sub=following",
+    )
+  })
+
+  it("shows a skeleton while loading and an en dash when it failed, never a wrong 0", () => {
+    following.count = 0
+    following.isLoading = true
+    const { unmount } = renderEndorsements()
+    const item = screen.getByRole("link", { name: /Following/ }).closest("li") as HTMLElement
+    expect(item).toHaveAttribute("aria-busy", "true")
+    unmount()
+    following.isLoading = false
+    following.error = "Failed to load follows"
+    renderEndorsements()
+    expect(screen.getByRole("link", { name: /Following/ })).toHaveTextContent("–")
   })
 })
 

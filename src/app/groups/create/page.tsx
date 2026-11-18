@@ -37,6 +37,7 @@ import type {
 } from "@/lib/atproto/types"
 import type { BlobRef } from "@atproto/api"
 import type { OrgProfile, GroupMetadata } from "@/lib/groups/types"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 /**
  * `/groups/create` — new group. Visual shell + form-field rhythm
@@ -100,6 +101,11 @@ export default function CreateGroupPage() {
   const [nameError, setNameError] = useState("")
   const [handleError, setHandleError] = useState("")
   const [emailError, setEmailError] = useState("")
+  // The one validation rule (DESIGN.md §9.2): a field is checked when it
+  // is left (blur) or on Create, and from then on as it's typed in.
+  const [left, setLeft] = useState({ name: false, handle: false, email: false })
+  const markLeft = (field: keyof typeof left) =>
+    setLeft((prev) => (prev[field] ? prev : { ...prev, [field]: true }))
 
   const isDirty =
     !isCreating &&
@@ -222,6 +228,7 @@ export default function CreateGroupPage() {
     const nameValid = validateName(displayName)
     const handleValid = validateHandle(handle)
     const emailValid = validateEmail(email)
+    setLeft({ name: true, handle: true, email: true })
     if (!nameValid || !handleValid || !emailValid) {
       // Submit stays enabled; the validators above paint the inline
       // errors, so move focus to the first field that needs attention.
@@ -335,8 +342,7 @@ export default function CreateGroupPage() {
       actAsNewGroup({ groupDid, name: displayName.trim() })
     } catch (err) {
       console.error("[groups/create] failed", err)
-      const message =
-        err instanceof Error ? err.message : "Failed to create group"
+      const message = err instanceof Error ? err.message : ""
       if (
         err instanceof RegisterGroupError &&
         err.code === "HandleNotAvailable"
@@ -352,7 +358,7 @@ export default function CreateGroupPage() {
         // the field rather than as a generic error.
         setEmailError("That email is already in use. Try another.")
       } else {
-        setError(message)
+        setError(caughtErrorMessage(err, "Couldn't create the group. Try again"))
       }
     } finally {
       setIsCreating(false)
@@ -425,7 +431,9 @@ export default function CreateGroupPage() {
   return (
     <PageContainer>
       {pageHeader}
-      <form onSubmit={handleSubmit}>
+      {/* No autofocus: the page opens at its top, so the skip link and
+          the navigation come first. */}
+      <form onSubmit={handleSubmit} noValidate>
         <article className="project-detail-page project-detail--wide create-project create-group">
           <div className="project-detail">
             {/* Avatar (circular) on the left, banner image on the
@@ -511,7 +519,9 @@ export default function CreateGroupPage() {
                   id="create-group-name"
                   className="font-headline !text-h3"
                   aria-describedby={
-                    nameError ? "create-group-name-error" : "create-group-name-counter"
+                    nameError
+                      ? "create-group-name-error create-group-name-counter"
+                      : "create-group-name-counter"
                   }
                   aria-invalid={!!nameError || undefined}
                   placeholder="Display name for your group"
@@ -519,12 +529,15 @@ export default function CreateGroupPage() {
                   maxLength={64}
                   onChange={(e) => {
                     setDisplayName(e.target.value)
-                    if (nameError) validateName(e.target.value)
+                    if (left.name || nameError) validateName(e.target.value)
                   }}
-                  autoFocus
+                  onBlur={(e) => {
+                    markLeft("name")
+                    validateName(e.target.value)
+                  }}
                 />
                 <p className="create-cert__counter" id="create-group-name-counter">
-                  {displayName.length}/64 · required
+                  {displayName.length}/64
                 </p>
                 {nameError ? (
                   <p
@@ -540,14 +553,14 @@ export default function CreateGroupPage() {
 
             <section className="cert-detail__section create-group__about">
               <label htmlFor="create-group-about" className="project-detail__meta-label">
-                About
+                About (optional)
               </label>
               <div className="create-cert__input-with-counter">
                 <Textarea
                   flush
                   id="create-group-about"
                   value={shortDescription}
-                  placeholder="A short description of your group (optional)"
+                  placeholder="A short description of your group"
                   aria-describedby="create-group-desc-counter"
                   onChange={(e) => setShortDescription(e.target.value)}
                   rows={3}
@@ -579,7 +592,11 @@ export default function CreateGroupPage() {
                     .toLowerCase()
                     .replace(/\s+/g, "")
                   setHandle(cleaned)
-                  if (handleError) validateHandle(cleaned)
+                  if (left.handle || handleError) validateHandle(cleaned)
+                }}
+                onBlur={(e) => {
+                  markLeft("handle")
+                  validateHandle(e.target.value)
                 }}
               />
 
@@ -597,16 +614,19 @@ export default function CreateGroupPage() {
                 autoComplete="off"
                 onChange={(e) => {
                   setEmail(e.target.value)
-                  if (emailError) validateEmail(e.target.value)
+                  if (left.email || emailError) validateEmail(e.target.value)
                 }}
-                onBlur={(e) => validateEmail(e.target.value)}
+                onBlur={(e) => {
+                  markLeft("email")
+                  validateEmail(e.target.value)
+                }}
               />
             </section>
 
             <section className="project-detail__meta create-project__meta">
               <Input
                 type="url"
-                label="Website"
+                label="Website (optional)"
                 placeholder="https://your-group.org"
                 value={website}
                 maxLength={2048}
@@ -616,14 +636,14 @@ export default function CreateGroupPage() {
 
               <Input
                 type="date"
-                label="Founded"
+                label="Founded (optional)"
                 value={foundedDate}
                 onChange={(e) => setFoundedDate(e.target.value)}
               />
 
               <Input
                 type="text"
-                label="Organization type"
+                label="Organization type (optional)"
                 placeholder="e.g. non-profit, cooperative, DAO (comma-separated)"
                 value={organizationType}
                 onChange={(e) => setOrganizationType(e.target.value)}
@@ -653,7 +673,7 @@ export default function CreateGroupPage() {
           error={error}
           identityLabel={null}
           onCancel={() => {
-            if (confirmDiscard()) router.push("/home")
+            confirmDiscard(() => router.push("/home"))
           }}
         />
 

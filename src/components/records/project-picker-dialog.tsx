@@ -213,7 +213,7 @@ export default function ProjectPickerDialog({
               })}
               {shown.length === 0 ? (
                 <li className="records-picker__empty">
-                  No project matches &ldquo;{query.trim()}&rdquo;.{" "}
+                  Nothing matches &quot;{query.trim()}&quot;.{" "}
                   <button type="button" className="records-link" onClick={() => setQuery("")}>
                     Clear search
                   </button>

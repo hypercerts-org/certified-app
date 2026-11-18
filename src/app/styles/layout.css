@@ -558,6 +558,18 @@ dialog.phone-search {
   padding: 16px 0;
 }
 
+/* The page's <main> (app-shell.tsx) is at least one screen tall, so the
+   footer never shows in the first screen while a page is still loading:
+   it used to fill a phone's first screen (it is ~600px tall there) and
+   then jump away when the content arrived. The phone top bar is fixed,
+   out of the flow (the content pads for it), so main starts at the top of
+   the viewport and the full small-viewport height is the right floor; on
+   desktop there is no top bar. Short pages put the footer just past the
+   fold. */
+.app-main {
+  min-height: 100svh;
+}
+
 /* ========== App Shell (editorial layout) ==========
    Mobile (<800px): single column, content max-width 720px.
    Desktop (≥800px): foundation for the 3-column rail layout in PR2.
@@ -1136,6 +1148,18 @@ dialog.phone-search {
   color: var(--fg-primary);
 }
 
+/* A 44px hit area around the 36px circle (as Button size="icon-sm" does),
+   so the field doesn't grow. */
+.people-search__clear {
+  position: relative;
+}
+
+.people-search__clear::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
 .people-search__dropdown {
   position: absolute;
   top: calc(100% + 6px);
@@ -1170,6 +1194,20 @@ dialog.phone-search {
   .app-sidebar__search-pop .people-search__dropdown {
     max-height: calc(100svh - 200px);
   }
+}
+
+/* The rail's search opens in a popover (app-sidebar.tsx): its results
+   continue that one surface under the field, past a hairline, instead of
+   a second floating box hanging below the first. The negative margins
+   take the popover's 8px padding back, so the hairline runs edge to edge. */
+.app-sidebar__search-pop .people-search__dropdown {
+  position: static;
+  margin: 8px -8px -8px;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: transparent;
+  box-shadow: none;
 }
 
 .people-search__empty {
@@ -1526,6 +1564,13 @@ dialog.phone-search {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* While the menu is open the control sits on --bg-selected, where the muted
+   grey falls short of 4.5:1 in dark mode (4.04:1); the second line steps
+   up to the secondary text colour there. */
+.app-sidebar__account[aria-expanded="true"] .app-sidebar__account-sub {
+  color: var(--fg-secondary);
 }
 
 .app-sidebar__account-chevron {
@@ -2581,6 +2626,9 @@ dialog.phone-search {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+    /* Short words ("Help", "Terms") get a 44px-wide target too; the text
+       stays on the column's left edge. */
+    min-width: 44px;
   }
 }
 

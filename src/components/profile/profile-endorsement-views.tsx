@@ -52,7 +52,7 @@ function LoadError({ onRetry }: { onRetry?: () => void }) {
   )
 }
 
-/** "Nothing matches" for a search, naming it and offering to clear it. */
+/** "Nothing matches "x"." for a search, naming it and offering to clear it. */
 function NoMatches({
   query,
   onClearSearch,
@@ -64,10 +64,8 @@ function NoMatches({
   return (
     <EmptyState
       icon={SearchX}
-      title="Nothing matches"
-      description={
-        q ? `No endorsements match "${q}".` : "No endorsements match your search."
-      }
+      title={q ? `Nothing matches "${q}".` : "Nothing matches your search."}
+      description="No endorsements match this search. Try another word."
     >
       {onClearSearch ? (
         <Button variant="secondary" size="sm" onClick={onClearSearch}>

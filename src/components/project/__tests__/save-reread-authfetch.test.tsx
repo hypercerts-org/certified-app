@@ -43,6 +43,7 @@ const SEEDED_VALUE = {
 } as unknown as CollectionValue
 
 vi.mock("@/hooks/use-project", () => ({
+  PROJECT_NOT_FOUND: "Project not found",
   useProject: () => ({
     project: {
       uri: `at://${DID}/org.hypercerts.collection/${RKEY}`,

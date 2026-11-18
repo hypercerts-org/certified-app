@@ -42,6 +42,7 @@ import {
   deleteEndorsementAward,
   extractAwardSubjectDid,
 } from "@/lib/atproto/badges"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 type SortKey = "created-desc" | "created-asc" | "alpha-asc" | "alpha-desc"
 
@@ -312,7 +313,7 @@ export default function EndorsementLists({
                 setIsConfirmingDelete(false)
               } catch (err) {
                 setDeleteError(
-                  err instanceof Error ? err.message : "Failed to delete list",
+                  caughtErrorMessage(err, "Couldn't delete the list. Try again in a moment"),
                 )
               } finally {
                 setIsDeleting(false)
@@ -545,7 +546,7 @@ function ListDetail({
         {/* Where adding happens, so the tip lives here (not on the page). */}
         {canEdit ? (
           <p className="endorsement-lists__detail-tip">
-            Add people one at a time, or paste many handles, DIDs or links at once with Paste many.
+            Add people one at a time, or paste many handles, Permanent IDs or links at once with Paste many.
           </p>
         ) : null}
         <span className="endorsement-lists__detail-date">
@@ -705,15 +706,24 @@ function CreateListModal({
       try {
         await onSubmit(trimmed, description.trim() || undefined)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save list")
+        setError(
+          caughtErrorMessage(
+            err,
+            mode === "edit" ? "Couldn't save the list. Try again" : "Couldn't create the list. Try again",
+          ),
+        )
         setIsSaving(false)
       }
     },
-    [title, description, isSaving, onSubmit],
+    [title, description, isSaving, onSubmit, mode],
   )
 
   const headerLabel = mode === "edit" ? "Edit list" : "Create list"
-  const submitLabel = mode === "edit" ? "Save" : "Create"
+  const submitLabel = mode === "edit" ? "Save changes" : "Create"
+  // Typed text isn't lost to a stray click outside: the backdrop closes
+  // only while nothing has been changed (Cancel, Close and Esc still
+  // close).
+  const edited = title !== initialTitle || description !== initialDescription
 
   return (
     <AppDialog
@@ -721,7 +731,7 @@ function CreateListModal({
       className="endorsement-lists__create-modal"
       maxWidth={480}
       onClose={onClose}
-      disableBackdropClose={isSaving}
+      disableBackdropClose={isSaving || edited}
     >
       <AppDialogHeader title={headerLabel} onClose={onClose} disabled={isSaving} />
 
@@ -819,11 +829,12 @@ function RevokeListItemButton({
     } catch (err) {
       console.error(`Failed to ${action} endorsement:`, err)
       setError(
-        err instanceof Error
-          ? err.message
-          : action === "remove"
-            ? "Couldn't remove them from this list. Try again."
-            : "Couldn't revoke the endorsement. Try again.",
+        caughtErrorMessage(
+          err,
+          action === "remove"
+            ? "Couldn't remove them from this list. Try again"
+            : "Couldn't revoke the endorsement. Try again",
+        ),
       )
     } finally {
       setBusy(null)
@@ -880,7 +891,7 @@ function RevokeListItemButton({
             <p className="endorsement-lists__revoke-copy">
               You can drop them from this list and keep your
               endorsement, or revoke the endorsement entirely (which
-              also removes them from every list they&rsquo;re in).
+              also removes them from every list they&apos;re in).
             </p>
             {error ? (
               <p className="endorsement-lists__revoke-error" role="alert">
@@ -1147,7 +1158,7 @@ function PasteSubjectsModal({
         }),
       )
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Bulk add failed"
+      const message = caughtErrorMessage(err, "Couldn't add them. Try again in a moment")
       setRows((prev) =>
         prev.map((r) =>
           r.status === "endorsing" ? { ...r, status: "error", message } : r,
@@ -1198,7 +1209,7 @@ function PasteSubjectsModal({
         <p className="profile-lists__paste-help" id={pasteHelpId}>
           Paste handles or profile links separated by commas, newlines, or
           spaces. Each person gets an endorsement from you
-          (if they don&rsquo;t have one already) and is added to this
+          (if they don&apos;t have one already) and is added to this
           list.
         </p>
         <textarea

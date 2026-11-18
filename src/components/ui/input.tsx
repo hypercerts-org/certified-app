@@ -105,6 +105,13 @@ const sizeClasses: Record<InputSize, string> = {
 // typography).
 const compactClasses = "py-0.5 px-1.5 text-[0.8125rem]";
 
+// A field in error (DESIGN.md §9.2): the border in --color-error at full
+// strength (it meets 3:1 against the page; the old 22% tint was about
+// 1.5:1), kept on focus with the --shadow-ring-error halo, so the red
+// doesn't disappear while the field is being fixed.
+const errorBorder =
+  "border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[var(--shadow-ring-error)]";
+
 // Horizontal padding the input picks up when an icon occupies that side, so
 // the caret/text clears the glyph. Mirrors sizeClasses' base px per size.
 const leadingPadClasses: Record<InputSize, string> = {
@@ -134,6 +141,17 @@ const trailingIconPos: Record<InputSize, string> = {
   bare: "right-3",
 };
 
+/** Space-separated id list from the given parts, each id once; undefined
+ *  when empty. Shared by the field primitives' aria-describedby merge. */
+export function joinIds(...parts: (string | undefined | null | false)[]): string | undefined {
+  const ids = new Set<string>();
+  for (const part of parts) {
+    if (!part) continue;
+    for (const id of part.split(/\s+/)) if (id) ids.add(id);
+  }
+  return ids.size > 0 ? [...ids].join(" ") : undefined;
+}
+
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
     {
@@ -152,6 +170,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       trailingButton,
       id,
       disabled,
+      "aria-describedby": callerDescribedBy,
+      "aria-invalid": callerInvalid,
       ...props
     },
     ref
@@ -159,6 +179,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const autoId = useId();
     const inputId = id || autoId;
     const isFlush = flush || unwrapped;
+    // In error when it has an `error`, or when the caller marks it invalid
+    // (a flush field whose message lives in its row): either way it reads
+    // as invalid and draws the error chrome.
+    const invalid =
+      !!error || callerInvalid === true || callerInvalid === "true";
     // Label / error / helper only render in the wrapped layout. In flush
     // mode the parent row owns the labelling, so we skip generating the
     // describedby ids entirely (nothing renders them) — but keep
@@ -166,7 +191,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const errorId = !isFlush && error ? `${inputId}-error` : undefined;
     const helperId =
       !isFlush && !error && helperText ? `${inputId}-helper` : undefined;
-    const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
+    // The field's own error / helper ids, then whatever the caller points
+    // at (a counter, a hint elsewhere): merged, so passing one never
+    // drops the other.
+    const describedBy = joinIds(errorId, helperId, callerDescribedBy);
 
     const baseChrome =
       "w-full bg-[var(--bg-elevated)] text-[var(--fg-primary)] placeholder:text-[var(--fg-muted)] focus:outline-none transition-[color,background-color,border-color,box-shadow] duration-fast motion-reduce:transition-none";
@@ -182,18 +210,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         case "underline":
           // No box, no radius — just a bottom-border that intensifies on focus.
           // Used by typeahead inputs that should disappear into their container.
-          return `border-0 border-b ${
-            error
-              ? "border-[var(--color-error-border)]"
-              : "border-[var(--border-default)]"
-          } rounded-none bg-transparent focus:border-[var(--fg-primary)]`;
+          return invalid
+            ? `border-0 border-b ${errorBorder} rounded-none bg-transparent`
+            : "border-0 border-b border-[var(--border-default)] rounded-none bg-transparent focus:border-[var(--fg-primary)]";
         case "inline-edit":
           // Slightly thicker border (1.5 px) signals "currently editable" —
           // used by profile inline-edit name/website fields. Otherwise
           // identical to the default chrome.
           return `border-[1.5px] ${
-            error
-              ? "border-[var(--color-error-border)]"
+            invalid
+              ? errorBorder
               : "border-[var(--border-hover)] focus:border-[var(--focus-ring)]"
           } rounded`;
         case "default":
@@ -204,12 +230,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // 2px --overlay-weak ring on focus (NOT the accent focus-ring
           // the standard field uses). The `default` family is today's
           // 1px standard field, unchanged.
-          if (error) {
-            // `border` (1px) for default weight — byte-identical to the
-            // pre-enhancement string; `border-[1.5px]` for hover weight.
+          if (invalid) {
+            // `border` (1px) for default weight; `border-[1.5px]` for
+            // hover weight.
             return borderWeight === "hover"
-              ? "border-[1.5px] border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1"
-              : "border border-[var(--color-error-border)] rounded focus:border-[var(--focus-ring)] focus:ring-1";
+              ? `border-[1.5px] ${errorBorder} rounded`
+              : `border ${errorBorder} rounded`;
           }
           if (borderWeight === "hover") {
             return "border-[1.5px] border-[var(--border-hover)] rounded focus:border-[var(--fg-primary)] focus:ring-2 focus:ring-[var(--overlay-weak)]";
@@ -255,7 +281,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         id={inputId}
         disabled={disabled}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
         className={`${sizeClasses[size]} ${densityClasses} ${iconPad} ${baseChrome} ${variantChrome} ${disabledChrome} ${dateIcon ? "input-date" : ""} ${className}`}
         {...dateAttrs}

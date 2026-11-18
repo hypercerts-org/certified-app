@@ -41,7 +41,7 @@ const HELP_FAQ_ITEMS = [
   {
     question: "What are groups, and how do roles work?",
     answer:
-      "A group represents an organization or team. It has its own profile, activities, and endorsements, just like an individual account. Groups have an owner, admins, and members: owners and admins manage the group and its membership, while members contribute under the group's identity.\n\nWhen you switch to a group's workspace (from Workspace in the navigation), you act as the group: the activities you create and the endorsements you give are attributed to that group rather than to you personally. You can also import an existing organization account into a group.",
+      "A group represents an organization or team. It has its own profile, activities, and endorsements, just like an individual account. Groups have an owner, admins, and members: owners and admins manage the group and its membership, while members contribute under the group's identity.\n\nTo act as a group, open the account menu (your avatar, at the top of the sidebar or at the top right on a phone) and pick the group under Act as. While you act as the group, the activities you create and the endorsements you give are attributed to that group rather than to you personally. You can also import an existing organization account into a group.",
   },
   {
     question: "Do my Bluesky followers carry over?",

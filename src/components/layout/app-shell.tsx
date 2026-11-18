@@ -19,6 +19,10 @@ import { routeChrome } from "@/lib/layout/chrome";
  *                                     contentinfo landmark; full viewport
  *                                     width, like the top bar.
  *
+ * `<main>` is at least one screen tall (`.app-main`, layout.css), so the
+ * footer never shows in the first screen while a page is still loading
+ * and then jumps away when its content arrives.
+ *
  * The top bars are mounted in the root layout (siblings before this).
  * Pages in a `<PageContainer>` lift the reading-column cap and set their
  * own width (layout.css, "Page-frame layout").
@@ -31,14 +35,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { profileOverlay } = useNavbarContext();
 
-  const main = (content: React.ReactNode) => (
-    <main id="main-content" className="flex-1 flex flex-col">
+  const main = (content: React.ReactNode, fill = true) => (
+    <main id="main-content" className={`flex-1 flex flex-col${fill ? " app-main" : ""}`}>
       {content}
     </main>
   );
 
   const chrome = routeChrome(pathname);
-  if (chrome === "embed") return main(children);
+  // Embeds have no footer to hold back, and fill their iframe as they are.
+  if (chrome === "embed") return main(children, false);
 
   if (chrome === "landing") {
     return (
@@ -52,12 +57,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // Editorial pages: full-width content with no app column, still with
-  // the site footer.
+  // the site footer, whose edges follow the landing top bar's (landing.css).
   if (chrome === "editorial") {
     return (
       <>
         {main(children)}
-        <SiteFooter />
+        <div className="editorial-footer">
+          <SiteFooter />
+        </div>
       </>
     );
   }

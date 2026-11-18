@@ -35,6 +35,7 @@ import {
   type ItemRef,
 } from "@/lib/atproto/project-items"
 import { parseAtUri, recordUrl, rkeyFromUri } from "@/lib/urls"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import ActivityRow from "@/components/records/activity-row"
 import ActivityPickerDialog from "@/components/records/activity-picker-dialog"
 import ProjectPickerDialog, {
@@ -96,7 +97,7 @@ function useDeleteFlow<T extends { uri: string }>(
       onDeleted(target.uri)
       setTarget(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't delete this record. Try again.")
+      setError(caughtErrorMessage(err, "Couldn't delete this record. Try again"))
     } finally {
       setIsDeleting(false)
     }
@@ -278,7 +279,7 @@ export default function WorkPane({
           removed: result.removed,
         })
       } catch (err) {
-        const reason = err instanceof Error ? err.message : "Try again."
+        const reason = caughtErrorMessage(err, "Try again")
         return {
           done,
           error: `Couldn't update ${projectTitle(change.project.value)}. ${reason}`,
@@ -394,7 +395,7 @@ export default function WorkPane({
       clearSelection()
       return null
     } catch (err) {
-      return err instanceof Error ? err.message : "Couldn't create the project. Try again."
+      return caughtErrorMessage(err, "Couldn't create the project. Try again")
     }
   }
 

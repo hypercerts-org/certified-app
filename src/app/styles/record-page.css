@@ -3,17 +3,21 @@
    are in cert-detail-parts.tsx), in source order:
 
      header   the picture, eyebrow + actions, title, byline, lead
-     rail     the facts cards (funding, who, where, details)
+     lead     below 1100px: the funding card (`__lead`)
      tabs     the section tabs, sticky
      main     the tab's content
+     rail     from 1100px: the facts cards (funding, who, where, details)
+     more     below 1100px: the other facts cards (`__more`), then the
+              comments (`__comments`)
 
    From 1100px the page is two columns: the header, tabs and content on
    the left at reading width, the rail (320px) on the right from the top,
-   sticky when it fits in the window. Below 1100px it is one column in
-   reading order, and the page places the cards itself (useMediaQuery):
-   on Overview the funding card under the header (`__lead`), the others
-   after the content (`__more`), then the comments (`__comments`); other
-   tabs show none of them. */
+   sticky when it fits in the window. The rail comes after the content in
+   the DOM, so the keyboard reaches the tabs and the content first; the
+   grid places it. Below 1100px it is one column in reading order, and the
+   page places the cards itself (useMediaQuery): on Overview the funding
+   card under the header, the others after the content (two to a row from
+   800px), then the comments; other tabs show none of them. */
 
 .record-layout {
   display: flex;
@@ -70,6 +74,23 @@
 
   .record-layout__main {
     margin-top: 32px;
+  }
+}
+
+/* 800-1099px: the column is too wide for one card per line (a map 650px
+   wide and 180px tall), so the facts cards pair up, two to a row; an odd
+   last card takes the whole row. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  .record-layout__lead,
+  .record-layout__more {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .record-layout__lead > :last-child:nth-child(odd),
+  .record-layout__more > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 

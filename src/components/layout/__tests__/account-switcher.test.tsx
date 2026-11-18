@@ -218,7 +218,8 @@ describe("AccountMenuContent", () => {
     expect(onClose).toHaveBeenCalled()
     expect(state.switchOrg).toHaveBeenCalledWith(EARTH)
     expect(state.push).not.toHaveBeenCalled()
-    expect(state.toast).toHaveBeenCalledWith({ title: "Now acting as Ma Earth" })
+    // One such toast at a time: a fixed id, so the next switch replaces it.
+    expect(state.toast).toHaveBeenCalledWith({ id: "acting-as", title: "Now acting as Ma Earth" })
   })
 
   it("picking the account you already act as just closes the menu", () => {
@@ -250,7 +251,7 @@ describe("AccountMenuContent", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: /Maya Lin/ }))
     expect(state.switchOrg).toHaveBeenCalledWith(null)
     expect(state.push).not.toHaveBeenCalled()
-    expect(state.toast).toHaveBeenCalledWith({ title: "Now acting as Maya Lin" })
+    expect(state.toast).toHaveBeenCalledWith({ id: "acting-as", title: "Now acting as Maya Lin" })
   })
 
   it("picking a group on a Records section stays on it (the section explains itself)", () => {

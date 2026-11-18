@@ -111,14 +111,61 @@ describe("ActivityFormFields", () => {
     expect(screen.getByLabelText("Short description")).toBeTruthy()
   })
 
-  it("doesn't flag a saved short description until it is edited", () => {
+  // C5: one rule for every form: no red while typing; the error shows
+  // once the field is left (or after a save attempt), then follows the
+  // typing live.
+  it("doesn't flag a short description until it is edited and left", () => {
     const { container } = renderForm()
     expect(container.querySelector(".create-cert__counter--under")).toBeNull()
 
-    fireEvent.change(screen.getByLabelText("Short description"), {
-      target: { value: "Still too short." },
-    })
+    const summary = screen.getByLabelText("Short description")
+    fireEvent.change(summary, { target: { value: "Still too short." } })
+    expect(container.querySelector(".create-cert__counter--under")).toBeNull()
+    expect(summary).not.toHaveAttribute("aria-invalid")
+
+    fireEvent.blur(summary)
     expect(container.querySelector(".create-cert__counter--under")).not.toBeNull()
+    expect(summary).toHaveAttribute("aria-invalid", "true")
+  })
+
+  it("keeps the title's count grey while typing, red once left short, live after", () => {
+    function StatefulTitle() {
+      const [title, setTitle] = useState("")
+      return renderFormElement({ title, onTitleChange: setTitle })
+    }
+    const { container } = render(<StatefulTitle />)
+    const title = screen.getByLabelText("Title")
+    const under = () => container.querySelector(".create-cert__field--title .create-cert__counter--under")
+    fireEvent.change(title, { target: { value: "Ab" } })
+    expect(under()).toBeNull()
+    fireEvent.blur(title)
+    expect(under()).not.toBeNull()
+    fireEvent.change(title, { target: { value: "Abcdef" } })
+    expect(under()).toBeNull()
+    fireEvent.change(title, { target: { value: "Abc" } })
+    expect(under()).not.toBeNull()
+  })
+
+  // C11: a page form doesn't take focus on load (the skip link and the
+  // navigation come first).
+  it("doesn't autofocus the title", () => {
+    renderForm()
+    expect(document.activeElement).not.toBe(screen.getByLabelText("Title"))
+  })
+
+  // C8: optional fields say so in their labels, not in placeholders.
+  it("marks the optional fields in their labels", () => {
+    renderForm({
+      contributors: [{ key: "a", identity: "ada.test", weight: "", role: "", picked: true }],
+    })
+    expect(screen.getByLabelText("Work scope (optional)")).toBeInTheDocument()
+    expect(screen.getByText("Time period (optional)")).toBeInTheDocument()
+    expect(screen.getByText("Locations (optional)")).toBeInTheDocument()
+    const role = screen.getByLabelText("Role of contributor 1 (optional)")
+    expect(role).not.toHaveAttribute("placeholder")
+    expect(screen.getByLabelText("Share of contributor 1 in percent (optional)")).not.toHaveAttribute(
+      "placeholder",
+    )
   })
 
   it("flags every under-minimum count after a save attempt", () => {
@@ -215,7 +262,7 @@ describe("ActivityFormFields", () => {
     const { container } = renderForm({ contributors })
     expect(screen.getAllByRole("button", { name: /remove/i })).toHaveLength(1)
     expect(
-      screen.getByLabelText("Share of contributor 1, in percent"),
+      screen.getByLabelText("Share of contributor 1 in percent (optional)"),
     ).toHaveProperty("value", "50")
     expect(container.querySelector("#contributors")).not.toBeNull()
   })
@@ -289,13 +336,27 @@ describe("ActivityFormFields", () => {
     expect(error.previousElementSibling).toHaveAccessibleName("Remove contributor 1")
   })
 
-  it("links a share that isn't a number to its message", () => {
+  it("links a share that isn't a number to its message, once the field is left", () => {
     renderForm({
       contributors: [{ key: "a", identity: "ada.test", weight: "ten", role: "", picked: true }],
     })
-    const share = screen.getByLabelText("Share of contributor 1, in percent")
-    const message = screen.getByText("Share must be a number (decimals are fine, e.g. 12.5).")
+    const share = screen.getByLabelText("Share of contributor 1 in percent (optional)")
+    const text = "Share must be a number (decimals are fine, e.g. 12.5)."
+    expect(screen.queryByText(text)).toBeNull()
+    fireEvent.blur(share)
+    const message = screen.getByText(text)
     expect(share.getAttribute("aria-describedby")).toBe(message.id)
+    expect(share).toHaveAttribute("aria-invalid", "true")
+  })
+
+  it("shows a share's error after a save attempt without a blur", () => {
+    renderForm({
+      showAllErrors: true,
+      contributors: [{ key: "a", identity: "ada.test", weight: "ten", role: "", picked: true }],
+    })
+    expect(
+      screen.getByText("Share must be a number (decimals are fine, e.g. 12.5)."),
+    ).toBeInTheDocument()
   })
 
   it("flags an unrecognisable contributor after a save attempt", () => {

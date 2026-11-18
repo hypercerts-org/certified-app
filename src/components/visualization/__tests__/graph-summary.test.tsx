@@ -56,3 +56,36 @@ describe("Visualization while loading", () => {
     expect(row!.querySelector("input")).toBeDisabled()
   })
 })
+
+// P1-5: the first load reads as Map's and Funding's do, and from 1100px the
+// column beside the graph is there from the start instead of popping in.
+describe("Visualization's first load", () => {
+  it("says what it gathers and that it can take up to a minute", async () => {
+    const { render, screen } = await import("@testing-library/react")
+    const { default: Visualization } = await import("../visualization")
+    render(<Visualization embedded />)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Gathering every endorsement and badge on the network. The first load can take up to a minute.",
+    )
+  })
+
+  // Rendered at every width (the CSS shows it from 1100px), so the server
+  // render, before the width is known, already holds the column.
+  it("holds the side column for 1100px and up: the controls panel's shape and the totals", async () => {
+    const { render } = await import("@testing-library/react")
+    const { default: Visualization } = await import("../visualization")
+    const { container } = render(<Visualization embedded />)
+    const panel = container.querySelector(".viz__controls--placeholder")!
+    expect(panel).not.toBeNull()
+    expect(panel).toHaveAttribute("aria-hidden", "true")
+    expect(panel.querySelector("input")).toBeDisabled()
+    // In the side column, after the slot the real controls fill (the CSS
+    // hides it once that slot has content).
+    const side = container.querySelector(".viz__side")!
+    expect(side.contains(panel)).toBe(true)
+    expect(
+      side.querySelector(".viz__nav")!.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(container.querySelector(".viz__totals-placeholder")).toHaveAttribute("aria-hidden", "true")
+  })
+})

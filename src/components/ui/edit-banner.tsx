@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Button from "@/components/ui/button"
 
 /**
  * Shared "Editing ..." banner that sits above an inline-edit
@@ -20,21 +21,22 @@ import React from "react"
 export interface EditBannerProps {
   /** Lead label, e.g. "Editing profile" / "Editing cert". */
   label: string
-  /** Inline error message (right of label). Pass null to hide. */
+  /** Error message, under the label (it wraps). Pass null to hide. */
   error?: string | null
   /** True while a save is in flight — disables both buttons and
    *  swaps the Save label to "Saving…". */
   isSaving?: boolean
   /** When false, disables only the Save button (Cancel stays
-   *  active). Use for form-level validation gates — e.g. a
-   *  duplicate contributor on the cert editor — so the affordance
-   *  reads as "can't save yet" rather than silently no-op'ing. */
+   *  active). Forms keep Save enabled and explain what's missing on
+   *  click (DESIGN.md §9.2 validation timing); this is for a save that
+   *  can't run at all. */
   canSave?: boolean
   /** Cancel handler. Should revert in-flight drafts. */
   onCancel: () => void
   /** Save handler. */
   onSave: () => void
-  /** Override the Save / Cancel button labels. */
+  /** Override the Save / Cancel button labels ("Save changes" /
+   *  "Cancel" by default). */
   saveLabel?: string
   cancelLabel?: string
   /** Extra class on the banner root — lets a surface constrain the
@@ -51,60 +53,53 @@ export default function EditBanner({
   canSave = true,
   onCancel,
   onSave,
-  saveLabel = "Save",
+  saveLabel = "Save changes",
   cancelLabel = "Cancel",
   className = "",
 }: EditBannerProps) {
-  // Shared button chrome (mirrors `.edit-banner__btn` in profile-inline-edit.css).
-  const btnBase =
-    "inline-flex h-8 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3.5 font-[inherit] text-[0.8125rem] font-medium leading-none text-[var(--fg-primary)] cursor-pointer transition-[background-color,border-color] duration-fast ease-out enabled:hover:bg-[var(--overlay-weak)] disabled:cursor-not-allowed disabled:opacity-60"
-  // Primary modifier (`.edit-banner__btn--primary`): dark fill that stays dark on
-  // hover (opacity affordance), re-pinning bg + border so the ghost-hover rule
-  // above can't repaint it near-white. The text color is forced (`!`) because
-  // `btnBase` already sets `text-[var(--fg-primary)]`; two equal-specificity
-  // arbitrary text utilities resolve by stylesheet order, which left the Save
-  // label rendering dark-on-dark (black-on-black in light mode).
-  const btnPrimary =
-    "bg-[var(--btn-primary-bg)] !text-[var(--btn-primary-fg)] border-[var(--btn-primary-bg)] enabled:hover:bg-[var(--btn-primary-bg)] enabled:hover:border-[var(--btn-primary-bg)] enabled:hover:opacity-[0.92]"
-
-  // `edit-banner` class retained on the root only as the hook for the profile
-  // inline-edit click guard (`target.closest(".edit-banner")` in
-  // use-profile-inline-edit.ts). The look below is self-contained Tailwind
-  // mirroring the `.edit-banner*` rules in profile-inline-edit.css.
+  // `edit-banner` class retained on the root as the hook for the profile
+  // inline edit's unsaved-changes guard (links inside it navigate without
+  // asking; use-profile-inline-edit.ts). The look is self-contained
+  // Tailwind; the buttons are the Button primitive at `sm` (32px from
+  // 800px, 44px on phones). The error wraps under the label rather than
+  // being cut to one line.
   return (
     <div
-      className={`edit-banner mx-6 mt-4 flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2.5${className ? ` ${className}` : ""}`}
+      className={`edit-banner mx-6 mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--radius)] border border-[var(--border-default)] bg-[var(--bg-elevated)] px-4 py-2.5${className ? ` ${className}` : ""}`}
       role="region"
       aria-label={label}
     >
-      <span className="font-[var(--font-inter),system-ui,sans-serif] text-[0.8125rem] font-semibold text-[var(--fg-primary)]">
-        {label}
-      </span>
-      {error ? (
-        <span
-          className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[0.8125rem] text-[var(--color-error)]"
-          role="alert"
-        >
-          {error}
+      <div className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
+        <span className="text-ui font-semibold text-[var(--fg-primary)]">
+          {label}
         </span>
-      ) : null}
+        {error ? (
+          <p
+            className="m-0 text-ui text-pretty text-[var(--color-error)]"
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
+      </div>
       <div className="ml-auto inline-flex items-center gap-2">
-        <button
-          type="button"
-          className={btnBase}
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={onCancel}
           disabled={isSaving}
         >
           {cancelLabel}
-        </button>
-        <button
-          type="button"
-          className={`${btnBase} ${btnPrimary}`}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onSave}
+          loading={isSaving}
           disabled={isSaving || !canSave}
         >
           {isSaving ? "Saving…" : saveLabel}
-        </button>
+        </Button>
       </div>
     </div>
   )

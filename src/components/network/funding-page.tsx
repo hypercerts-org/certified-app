@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Filter as FilterIcon } from "lucide-react"
 import Button from "@/components/ui/button"
 import PageContainer from "@/components/ui/page-container"
 import PageHeader from "@/components/ui/page-header"
-import SectionHeader from "@/components/ui/section-header"
+import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import StatRow from "@/components/ui/stat-row"
 import ErrorMessage from "@/components/ui/error-message"
@@ -181,6 +182,16 @@ export default function FundingPage() {
   const summary = useMemo(() => (ds ? summarize(ds, idx) : null), [ds, idx])
   const totals = useMemo(() => (ds ? projectTotals(ds, idx) : []), [ds, idx])
 
+  // "All receipts" leads to the Receipts view with the page's other
+  // choices (gift sizes, ...) kept, as Explore's "All ..." links do.
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const receiptsHref = useMemo(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
+    params.set("view", "receipts")
+    return `${pathname || "/funding"}?${params.toString()}`
+  }, [pathname, searchParams])
+
   const showReceiptsFor = (project: number) => {
     setRegisterProject(project)
     setViewParam("receipts")
@@ -317,16 +328,12 @@ export default function FundingPage() {
                     id="funding-latest-heading"
                     title="Latest receipts"
                     action={
-                      <button
-                        type="button"
-                        className="funding-page__see-all"
-                        onClick={() => {
-                          setRegisterProject(-1)
-                          setViewParam("receipts")
-                        }}
-                      >
-                        See all receipts
-                      </button>
+                      // Every receipt: no project picked earlier stays applied.
+                      <SeeAllLink
+                        href={receiptsHref}
+                        label="All receipts"
+                        onClick={() => setRegisterProject(-1)}
+                      />
                     }
                   />
                   <div className="funding-ledger" role="list" aria-label="Latest funding receipts">

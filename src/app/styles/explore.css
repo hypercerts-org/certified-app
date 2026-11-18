@@ -16,8 +16,9 @@
   min-width: 0;
 }
 
+/* 24px from the tab strip to the panel, as on Map and Funding. */
 .explore__panel {
-  padding-top: 16px;
+  padding-top: 24px;
 }
 
 /* The underline tabs, with the hairline across the whole column like the

@@ -13,8 +13,8 @@
  * currentColor inside wrappers that set `color: var(--color-navy)`.
  *
  * Everything below the "SHARED, NON-LANDING" banner at the end of
- * this file backs app-wide surfaces (AppDialog keyframes, feedback
- * modal, legal pages) — do NOT remove it with landing iterations.
+ * this file backs app-wide surfaces (the app pages, the legal pages and
+ * their footer) — do NOT remove it with landing iterations.
  * ========================================================================== */
 
 /* ---------- Foundations ---------- */
@@ -303,6 +303,9 @@
 .lp-topbar__home {
   display: inline-flex;
   align-items: center;
+  /* A 44px-tall target around the 18px wordmark; the 64px bar centres it,
+     so nothing moves. */
+  min-height: 44px;
   color: var(--color-navy);
 }
 
@@ -1517,208 +1520,14 @@
  * SHARED, NON-LANDING — used by app-wide surfaces. Do not remove with
  * landing iterations.
  *
- *  - .feedback-* is the app-wide feedback modal (feedback-modal.tsx).
  *  - .app-page backs /about, /terms, /privacy, /dsa,
  *    /imprint, /help.
- *  - .welcome-footer wraps SiteFooter on /welcome (rendered by AppShell).
+ *  - .welcome-footer wraps SiteFooter on /welcome, .editorial-footer on
+ *    the legal pages (both rendered by AppShell).
+ *
+ * The feedback modal's classes (feedback-modal.tsx) live in components.css
+ * only; the copy that was here duplicated them.
  * ========================================================================== */
-
-/* modalFadeIn / modalSlideUp (used below and by AppDialog) live in
-   components.css — the single app-wide definition. */
-
-/* ========== Feedback Modal ==========
-   Opened from the site footer's Feedback link, the account menu's "Send
-   feedback" and Help. */
-.feedback-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-feedback);
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 20px;
-  background: var(--scrim);
-  animation: modalFadeIn var(--duration-base) var(--ease-out);
-}
-
-.feedback-modal {
-  width: 420px;
-  max-width: 90vw;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-  background: var(--color-off-white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-modal);
-  border: 1px solid var(--border-default);
-  animation: modalSlideUp var(--duration-slow) var(--ease-emphasized);
-}
-
-.feedback-modal--expanded {
-  width: 640px;
-}
-
-.feedback-modal--expanded .feedback-modal__textarea {
-  min-height: 400px;
-}
-
-.feedback-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--color-gray-100);
-}
-
-.feedback-modal__expand {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  color: var(--color-mid-gray);
-  cursor: pointer;
-  margin-right: 8px;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.feedback-modal__expand:hover {
-  background: var(--color-gray-100);
-  color: var(--color-navy);
-}
-
-.feedback-modal__title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-navy);
-}
-
-.feedback-modal__close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  border-radius: var(--radius);
-  color: var(--color-mid-gray);
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.feedback-modal__close:hover {
-  background: var(--color-gray-100);
-  color: var(--color-navy);
-}
-
-.feedback-modal__label {
-  display: block;
-  font-size: 0.8125rem;
-  color: var(--color-dark-gray);
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.feedback-modal__label--email {
-  margin-top: 16px;
-}
-
-/* `.feedback-modal__textarea` / `.feedback-modal__input` are styled
-   in components.css with semantic tokens (--border-default,
-   --fg-primary, --bg-elevated) so they adapt to dark mode. */
-
-.feedback-modal__error {
-  font-size: 0.75rem;
-  color: var(--color-error);
-  margin-top: 4px;
-}
-
-.feedback-modal__submit {
-  width: 100%;
-  height: 44px;
-  margin-top: 20px;
-  background: var(--color-navy);
-  color: var(--color-off-white);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.feedback-modal__submit:hover:not(:disabled) {
-  background: var(--color-accent);
-}
-
-.feedback-modal__submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.feedback-modal__success {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.feedback-modal__success p {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--color-navy);
-  margin-bottom: 16px;
-}
-
-.feedback-modal__done {
-  padding: 8px 24px;
-  background: var(--color-navy);
-  color: var(--color-off-white);
-  border: none;
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.feedback-modal__done:hover {
-  background: var(--color-accent);
-}
-
-.feedback-modal__success-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
-
-.feedback-modal__more {
-  padding: 8px 24px;
-  background: none;
-  color: var(--color-navy);
-  border: 1px solid var(--color-light-gray);
-  border-radius: var(--radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.feedback-modal__more:hover {
-  background: var(--color-off-white);
-  border-color: var(--color-mid-gray);
-}
-
-@media (max-width: 799px) {
-  .feedback-modal__backdrop--desktop {
-    display: none;
-  }
-
-  .feedback-modal__expand {
-    display: none;
-  }
-}
 
 /* ========== App Pages (authenticated) ========== */
 .app-page {
@@ -1771,6 +1580,17 @@
    closing section's guilloche clips flush at the footer border. */
 .welcome-footer .site-footer {
   margin-top: 0;
+}
+
+/* Under the landing top bar (/welcome, and the legal pages wrapped in
+   .editorial-footer by AppShell) the footer's content keeps the bar's
+   edges: 32px in, or the centred 1280px column on wider screens (x=80 at
+   1440), where the wordmark and the Sign in button sit. */
+@media (min-width: 800px) {
+  :is(.welcome-footer, .editorial-footer) .site-footer {
+    padding-left: max(32px, calc((100% - 1280px) / 2));
+    padding-right: max(32px, calc((100% - 1280px) / 2));
+  }
 }
 
 /* ========== Legal/editorial pages (/about, /terms, /privacy, /imprint, /dsa) ========== */

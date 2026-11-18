@@ -3,7 +3,7 @@
 import { useId, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowUpRight, FolderGit2, Plus } from "lucide-react"
+import { ArrowUpRight, FolderGit2, Plus, Search } from "lucide-react"
 import SsoAppLink from "@/components/apps/sso-app-link"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
@@ -19,6 +19,7 @@ import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
 import { useGivenEndorsements } from "@/hooks/use-endorsements"
+import { useFollowing } from "@/hooks/use-following"
 import { useOrg } from "@/lib/groups/org-context"
 import type { Group } from "@/lib/groups/types"
 import { CONNECTED_APPS } from "@/lib/constants/apps"
@@ -136,6 +137,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         endorsementsReceived: `${profileBase}?tab=endorsements&sub=received`,
         endorsementsGiven: `${profileBase}?tab=endorsements&sub=given`,
         followers: `${profileBase}?tab=followers`,
+        following: `${profileBase}?tab=followers&sub=following`,
       }
     : {
         all: "/records",
@@ -147,6 +149,7 @@ function recordsHrefs(isGroup: boolean, profileBase: string) {
         endorsementsReceived: "/records?kind=endorsements&tab=received",
         endorsementsGiven: "/records?kind=endorsements&tab=given",
         followers: "/records?kind=followers",
+        following: "/records?kind=followers&tab=following",
       }
 }
 
@@ -237,7 +240,10 @@ export function HomeRecords({
           description="Activities and projects you publish, here or in other apps, show up here."
         >
           {/* As Projects and activities offers them: the first step is
-              the primary action; a project can come first too. */}
+              the primary action; a project can come first too. Someone who
+              came to find and back work (a donor) rather than publish gets
+              a way in too: finding accounts to follow, as the empty Feed
+              offers. */}
           <div className="flex flex-wrap justify-center gap-2">
             <Button href="/create" variant="primary" size="md">
               <Plus size={16} strokeWidth={1.75} aria-hidden />
@@ -246,6 +252,10 @@ export function HomeRecords({
             <Button href="/project/new" variant="secondary" size="md">
               <Plus size={16} strokeWidth={1.75} aria-hidden />
               New project
+            </Button>
+            <Button href="/explore?show=accounts" variant="secondary" size="md">
+              <Search size={16} strokeWidth={1.75} aria-hidden />
+              Find accounts
             </Button>
           </div>
         </EmptyState>
@@ -326,7 +336,7 @@ export function HomeRecords({
 /**
  * Endorsements in one place: received and given side by side (given used
  * to sit under Your records, received under "From others"), then
- * followers, and the latest endorsements received.
+ * followers and following, and the latest endorsements received.
  */
 export function HomeEndorsements({
   did,
@@ -348,6 +358,15 @@ export function HomeEndorsements({
   // agree: one per account endorsed.
   const given = useGivenEndorsements(did)
   const givenCount = given.error && given.endorsements.length === 0 ? null : given.endorsements.length
+  // The accounts this one follows (its own follow records): shared with
+  // Feed and Followers through the hook's cache.
+  const following = useFollowing(did)
+  const followingCount =
+    following.error && following.count === 0
+      ? null
+      : following.truncated
+        ? `${following.count.toLocaleString()}+`
+        : following.count
   const preview = endorsements.slice(0, LATEST_ENDORSEMENTS)
   const hrefs = recordsHrefs(isGroup, profileBase)
   const endorsementsLoading = isLoading && endorsements.length === 0
@@ -355,7 +374,7 @@ export function HomeEndorsements({
   return (
     <HomeSection
       title="Endorsements and followers"
-      description="Received, given, and who follows you."
+      description="Received, given, who follows you and who you follow."
       tour="home-received"
     >
       <div className="flex flex-col gap-6">
@@ -363,7 +382,7 @@ export function HomeEndorsements({
           aria-label="Endorsements and followers"
           items={[
             // Phones get the short labels (the section heading says what
-            // they count), so the three stay on one row at 390px.
+            // they count), so the four stay on one row at 390px.
             {
               label: byCount(
                 endorsementsLoading ? null : endorsements.length,
@@ -387,6 +406,12 @@ export function HomeEndorsements({
               value: counts.followers,
               loading: countsLoading && counts.followers === null,
               href: hrefs.followers,
+            },
+            {
+              label: "Following",
+              value: followingCount,
+              loading: following.isLoading && following.count === 0,
+              href: hrefs.following,
             },
           ]}
         />

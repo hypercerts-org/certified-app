@@ -148,6 +148,43 @@ describe("ActivityDetail as a visitor", () => {
     )
   })
 
+  it("from 1100px puts the rail after the content in the DOM, so Tab reaches the content first", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(min-width: 1100px)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    renderActivity({
+      contributors: [
+        { contributorIdentity: { identity: DID } },
+        { contributorIdentity: { identity: "Ana Lima" } },
+      ],
+    })
+    const rail = document.querySelector(".record-layout__rail")!
+    const main = document.querySelector(".record-layout__main")!
+    const tabs = screen.getByRole("tablist")
+    expect(rail).toBeTruthy()
+    expect(main.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(tabs.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(document.querySelector(".record-layout__lead")).toBeNull()
+  })
+
+  it("below 1100px leads with the funding card under the header, before the tabs", () => {
+    renderActivity({
+      contributors: [
+        { contributorIdentity: { identity: DID } },
+        { contributorIdentity: { identity: "Ana Lima" } },
+      ],
+    })
+    const lead = document.querySelector(".record-layout__lead")!
+    expect(lead).toBeTruthy()
+    expect(
+      lead.compareDocumentPosition(screen.getByRole("tablist")) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(document.querySelector(".record-layout__rail")).toBeNull()
+  })
+
   it("puts the details in the main column when there is no description", () => {
     renderActivity()
     const main = document.querySelector(".record-layout__main")!

@@ -273,8 +273,40 @@
 
 /* The loading stand-in sits right after the controls' slot: gone as soon
    as the graph has put its own row there. */
-.viz__nav:not(:empty) + .viz__toolbar--placeholder {
+.viz__nav:not(:empty) ~ .viz__toolbar--placeholder {
   display: none;
+}
+
+/* From 1100px, while the network loads: the controls panel's shape and the
+   totals, waiting in the column beside the graph (visualization.tsx), so
+   it doesn't pop in when the network arrives. The panel is part of the
+   column, as the real one is (.viz__nav .viz__controls); it goes once the
+   graph has put its controls in the slot before it (and below 1100px,
+   where the find + Filters row stands in). Each Lines skeleton
+   takes a checkbox line's height. */
+.viz__controls.viz__controls--placeholder {
+  position: static;
+  width: auto;
+  max-width: none;
+  background: var(--bg-elevated);
+  box-shadow: none;
+}
+
+.viz__nav:not(:empty) ~ .viz__controls.viz__controls--placeholder {
+  display: none;
+}
+
+.viz__kind-placeholder {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+@media (max-width: 1099px) {
+  .viz__controls.viz__controls--placeholder,
+  .viz__totals-placeholder {
+    display: none;
+  }
 }
 
 @media (max-width: 1099px) {
@@ -339,11 +371,13 @@
 }
 
 /* The Lines row's label sits level with the first checkbox line. */
-.viz__control-row[role="group"] {
+.viz__control-row[role="group"],
+.viz__control-row--top {
   align-items: start;
 }
 
-.viz__control-row[role="group"] .viz__control-label {
+.viz__control-row[role="group"] .viz__control-label,
+.viz__control-row--top .viz__control-label {
   padding-top: 2px;
 }
 
@@ -770,6 +804,14 @@
 .viz__state--loading {
   flex-direction: column;
   gap: var(--space-3, 12px);
+  padding: 24px;
+  text-align: center;
+}
+
+/* The first load's brandmark in a quiet mid-tone, as on Map and Funding
+   (LoadingSpinner paints it in --fg-primary). */
+.viz__state--loading svg {
+  color: var(--border-control);
 }
 
 .viz__state-text {

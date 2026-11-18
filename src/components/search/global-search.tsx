@@ -31,7 +31,10 @@ import {
 } from "@/lib/atproto/collection"
 import { recordUrl } from "@/lib/urls"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useOwnerByline } from "@/components/explore-page/use-owner-byline"
+import {
+  OWNER_BYLINE_PENDING,
+  useOwnerByline,
+} from "@/components/explore-page/use-owner-byline"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { mergePeopleByDid, rankBy } from "@/lib/search/rank"
 import { parseSearchIntent, type SearchIntent } from "@/lib/search/parse-search-intent"
@@ -349,8 +352,10 @@ export default function GlobalSearch({
       if (row.kind === "intent") {
         router.push(row.intent.href)
       } else if (row.kind === "explore") {
-        // Keep the query in the field: it is what Explore searches.
+        // Explore's own field takes the query over: empty this one, so
+        // there aren't two fields holding the same search.
         const q = query.trim()
+        setQuery("")
         router.push(q ? `/explore?q=${encodeURIComponent(q)}` : "/explore")
       } else if (row.kind === "account") {
         setQuery(row.account.displayName || row.account.handle || "")
@@ -401,8 +406,10 @@ export default function GlobalSearch({
         return
       }
       // A pasted identifier jumps straight to its target (bypassing the
-      // indexer); anything else runs a full Explore search.
+      // indexer); anything else runs a full Explore search, whose own
+      // field then holds the query, so this one empties.
       const jump = parseSearchIntent(q)
+      if (!jump) setQuery("")
       router.push(jump ? jump.href : `/explore?q=${encodeURIComponent(q)}`)
       onNavigate?.()
     },
@@ -692,6 +699,21 @@ function AccountRowItem({
   )
 }
 
+/**
+ * A record row's "by <owner>" line. While the owner is looked up, a blank
+ * line holds its place, so the row doesn't grow when the name arrives.
+ */
+function OwnerLine({ owner }: { owner: string | null }) {
+  if (owner === OWNER_BYLINE_PENDING) {
+    return (
+      <span className="cert-search__item-handle" aria-hidden="true">
+        {"\u00a0"}
+      </span>
+    )
+  }
+  return owner ? <span className="cert-search__item-handle">{owner}</span> : null
+}
+
 function ProjectRowItem({
   project,
   did,
@@ -730,7 +752,7 @@ function ProjectRowItem({
         <span className="cert-search__item-title">
           {projectTitle(project.value)}
         </span>
-        {owner ? <span className="cert-search__item-handle">{owner}</span> : null}
+        <OwnerLine owner={owner} />
       </div>
     </li>
   )
@@ -823,7 +845,7 @@ function CertRowItem({
       )}
       <div className="cert-search__item-info">
         <span className="cert-search__item-title">{title}</span>
-        {owner ? <span className="cert-search__item-handle">{owner}</span> : null}
+        <OwnerLine owner={owner} />
       </div>
     </li>
   )

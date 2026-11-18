@@ -83,7 +83,14 @@ export function FundingLedgerRow({
       <span className="funding-ledger__when">
         {r.t[i] ? (
           <time dateTime={new Date(r.t[i] * 1000).toISOString()}>
-            {showDate ? `${formatShortDay(r.t[i])} · ` : ""}
+            {/* The day over the time where the column is narrow (800-1099px,
+                funding.css), so "Nov 12 · 14:05" never runs into From. */}
+            {showDate ? (
+              <span className="funding-ledger__date">
+                {formatShortDay(r.t[i])}
+                <span className="funding-ledger__date-sep"> · </span>
+              </span>
+            ) : null}
             {formatTime(r.t[i])}
           </time>
         ) : null}

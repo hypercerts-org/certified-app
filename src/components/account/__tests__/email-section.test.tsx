@@ -29,7 +29,7 @@ describe("EmailSection send step", () => {
 
     expect(requestUpdate).not.toHaveBeenCalled()
     expect(screen.getByText(/We.ll email a code to/)).toHaveTextContent(
-      "We\u2019ll email a code to ada@example.com to confirm the change.",
+      "We'll email a code to ada@example.com to confirm the change.",
     )
   })
 

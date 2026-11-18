@@ -8,11 +8,24 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { confirmLeaveUnsavedChanges, guardPopState } from "@/hooks/use-unsaved-changes-guard"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
+import {
+  answerLeavePrompt,
+  confirmLeave,
+  DISCARD_CANCEL,
+  DISCARD_CONFIRM,
+  DISCARD_MESSAGE,
+  DISCARD_TITLE,
+  guardPopState,
+  isLeavePromptOpen,
+  registerLeavePromptHost,
+  subscribeLeavePrompt,
+} from "@/hooks/use-unsaved-changes-guard"
 
 /**
  * Directional page-slide transitions for in-app tab navigation (e.g. a
@@ -50,6 +63,31 @@ function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+}
+
+/** The "discard your changes?" question a dirty form asks before an
+ *  in-app navigation (a link, Go back, the browser's back and forward,
+ *  a form's Cancel): one `<ConfirmDialog>`, mounted once with the
+ *  provider. See `useUnsavedChangesGuard`. */
+function UnsavedChangesPrompt() {
+  useEffect(() => registerLeavePromptHost(), [])
+  const open = useSyncExternalStore(
+    subscribeLeavePrompt,
+    isLeavePromptOpen,
+    () => false,
+  )
+  if (!open) return null
+  return (
+    <ConfirmDialog
+      title={DISCARD_TITLE}
+      message={DISCARD_MESSAGE}
+      confirmLabel={DISCARD_CONFIRM}
+      cancelLabel={DISCARD_CANCEL}
+      confirmVariant="destructive"
+      onCancel={() => answerLeavePrompt(false)}
+      onConfirm={() => answerLeavePrompt(true)}
+    />
   )
 }
 
@@ -159,23 +197,24 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
 
   const transitionBack = useCallback(
     (navigate?: () => void) => {
-      // A dirty create / edit form asks first, with the same prompt its
+      // A dirty create / edit form asks first, with the same dialog its
       // in-page links use (see useUnsavedChangesGuard). Asked before the
       // view transition starts so the page isn't frozen behind the dialog.
-      if (!confirmLeaveUnsavedChanges()) return
-      run(
-        "back",
-        navigate ??
-          (() => {
-            if (inAppDepthRef.current > 0) {
-              // Real in-app history — safe to pop (popstate decrements).
-              router.back()
-            } else {
-              // Entered the app on this page; router.back() would exit to
-              // an external page. Go home instead.
-              router.push("/")
-            }
-          }),
+      confirmLeave(() =>
+        run(
+          "back",
+          navigate ??
+            (() => {
+              if (inAppDepthRef.current > 0) {
+                // Real in-app history — safe to pop (popstate decrements).
+                router.back()
+              } else {
+                // Entered the app on this page; router.back() would exit to
+                // an external page. Go home instead.
+                router.push("/")
+              }
+            }),
+        ),
       )
     },
     [run, router],
@@ -194,6 +233,7 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
         <RouteWatcher onChange={handleRouteChange} />
       </Suspense>
       {children}
+      <UnsavedChangesPrompt />
     </ViewTransitionContext.Provider>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Inbox, SearchX, UserPlus, Users, X } from "lucide-react"
+import { Inbox, SearchX, UserPlus, Users } from "lucide-react"
 import { useFollowers, type FollowerEntry } from "@/hooks/use-followers"
 import { useFollowing } from "@/hooks/use-following"
 import { useAuthorInfo } from "@/hooks/use-author-info"
@@ -10,14 +10,13 @@ import { useAuthorNamesMap } from "@/hooks/use-author-names-map"
 import { deriveIdentity } from "@/lib/utils/identity"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
-import { deleteFollow, type FollowRecord } from "@/lib/atproto/follow"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import type { FollowRecord } from "@/lib/atproto/follow"
 import EmptyState from "@/components/ui/empty-state"
 import SectionHeader from "@/components/ui/section-header"
 import Button from "@/components/ui/button"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import ProfilePersonRow from "@/components/profile/profile-person-row"
-import { useOptionalToast } from "@/components/profile/use-optional-toast"
+import { FollowButton } from "@/components/profile/profile-follow-endorse"
 import {
   PANEL_SEARCH_MIN,
   PanelTools,
@@ -61,11 +60,12 @@ const SORT_OPTIONS: SortOption<SortKey>[] = [
 export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   const followers = useFollowers(did)
   const following = useFollowing(did)
-  // Only the profile's own account can unfollow from its Following list.
   const { did: viewerDid } = useAuth()
-  // Acting as a group: unfollows route to the group's repo via the BFF.
   const { activeOrg } = useOrg()
   const isOwnProfile = !!viewerDid && viewerDid === did
+  // Only the account you act as can unfollow from its own Following list;
+  // acting as a group, the writes go to the group's repo.
+  const canManageFollows = !!viewerDid && (activeOrg?.groupDid ?? viewerDid) === did
   const isThisAccount = isOwnProfile || (!!activeOrg && activeOrg.groupDid === did)
 
   const pathname = usePathname()
@@ -200,10 +200,17 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
           onClearSearch={clearSearch}
           sort={sort}
           names={names}
-          canUnfollow={isOwnProfile}
-          viewerDid={viewerDid}
-          targetDid={activeOrg?.groupDid}
-          onAfterUnfollow={() => following.refetch()}
+          manage={
+            canManageFollows && viewerDid
+              ? {
+                  viewerDid,
+                  targetDid: activeOrg?.groupDid,
+                  subjects: following.subjects,
+                  onFollowed: following.addFollow,
+                  onUnfollowed: following.removeFollow,
+                }
+              : null
+          }
         />
       </TabPanel>
     </Tabs>
@@ -228,8 +235,8 @@ function NoMatches({ query, onClearSearch }: { query: string; onClearSearch: () 
   return (
     <EmptyState
       icon={SearchX}
-      title="Nothing matches"
-      description={`No accounts match "${query.trim()}".`}
+      title={`Nothing matches "${query.trim()}".`}
+      description="No accounts match this search. Try another word."
     >
       <Button variant="secondary" size="sm" onClick={onClearSearch}>
         Clear search
@@ -295,6 +302,18 @@ function FollowersList({
 
 // ----------------------------- Following -----------------------------
 
+/** What the account you act as needs to follow and unfollow from its own
+ *  Following list. */
+interface ManageFollows {
+  viewerDid: string
+  /** Acting as a group: the writes go to the group's repo. */
+  targetDid?: string
+  /** The accounts followed now. */
+  subjects: ReadonlySet<string>
+  onFollowed: (subjectDid: string, uri: string, cid: string) => void
+  onUnfollowed: (subjectDid: string) => void
+}
+
 function FollowingList({
   records,
   isLoading,
@@ -304,10 +323,7 @@ function FollowingList({
   onClearSearch,
   sort,
   names,
-  canUnfollow,
-  viewerDid,
-  targetDid,
-  onAfterUnfollow,
+  manage,
 }: {
   records: FollowRecord[]
   isLoading: boolean
@@ -317,34 +333,40 @@ function FollowingList({
   onClearSearch: () => void
   sort: SortKey
   names: Map<string, string>
-  /** The profile's own account is viewing: each row can be unfollowed. */
-  canUnfollow: boolean
-  viewerDid: string | null
-  /** When set (acting as a group), unfollows write to the group's repo. */
-  targetDid?: string
-  onAfterUnfollow: () => void | Promise<void>
+  /** The account you act as is viewing its own list: each row has
+   *  Following / Follow. */
+  manage: ManageFollows | null
 }) {
+  // Accounts unfollowed here keep their row (with Follow) until you leave
+  // the page, so an accidental unfollow is undone with one tap, as in the
+  // Workspace's Following.
+  const [unfollowed, setUnfollowed] = useState<ReadonlyMap<string, FollowRecord>>(new Map())
+  const rows = useMemo(() => {
+    if (unfollowed.size === 0) return records
+    const kept = new Set(records.map((r) => r.value.subject))
+    return [...records, ...[...unfollowed.values()].filter((r) => !kept.has(r.value.subject))]
+  }, [records, unfollowed])
   const visible = useMemo(
-    () => filterAndSortFollowing(records, query, sort, names),
-    [records, query, sort, names],
+    () => filterAndSortFollowing(rows, query, sort, names),
+    [rows, query, sort, names],
   )
 
-  if (isLoading && records.length === 0) {
+  if (isLoading && rows.length === 0) {
     return <ProfileRowsSkeleton rows={4} shape="circle" />
   }
   if (error) return <LoadError what="follows" onRetry={onRetry} />
-  if (records.length === 0) {
+  if (rows.length === 0) {
     return (
       <EmptyState
         icon={UserPlus}
         title="Not following anyone yet"
         description={
-          canUnfollow
+          manage
             ? "Accounts you follow show here."
             : "Accounts this one follows show here."
         }
       >
-        {canUnfollow ? (
+        {manage ? (
           <Button href="/explore" variant="secondary" size="sm">
             Find accounts
           </Button>
@@ -355,119 +377,71 @@ function FollowingList({
   if (visible.length === 0) return <NoMatches query={query} onClearSearch={onClearSearch} />
   return (
     <ul className="profile-people">
-      {visible.map((r) => (
-        <FollowingRow
-          key={r.uri}
-          record={r}
-          canUnfollow={canUnfollow && !!viewerDid}
-          viewerDid={viewerDid}
-          targetDid={targetDid}
-          onAfterUnfollow={onAfterUnfollow}
-        />
-      ))}
+      {visible.map((r) => {
+        const subject = r.value.subject
+        return (
+          <ProfilePersonRow
+            key={subject}
+            did={subject}
+            since={r.value.createdAt}
+            trailing={
+              manage ? (
+                <FollowingToggle
+                  manage={manage}
+                  subjectDid={subject}
+                  onFollowed={(uri, cid) => {
+                    manage.onFollowed(subject, uri, cid)
+                    setUnfollowed((prev) => {
+                      const next = new Map(prev)
+                      next.delete(subject)
+                      return next
+                    })
+                  }}
+                  onUnfollowed={() => {
+                    manage.onUnfollowed(subject)
+                    setUnfollowed((prev) => new Map(prev).set(subject, r))
+                  }}
+                />
+              ) : null
+            }
+          />
+        )
+      })}
     </ul>
   )
 }
 
-function FollowingRow({
-  record,
-  canUnfollow,
-  viewerDid,
-  targetDid,
-  onAfterUnfollow,
-}: {
-  record: FollowRecord
-  canUnfollow: boolean
-  viewerDid: string | null
-  targetDid?: string
-  onAfterUnfollow: () => void | Promise<void>
-}) {
-  const subject = record.value.subject
-  return (
-    <ProfilePersonRow
-      did={subject}
-      since={record.value.createdAt}
-      trailing={
-        canUnfollow && viewerDid ? (
-          <UnfollowButton
-            viewerDid={viewerDid}
-            rkey={record.rkey}
-            targetDid={targetDid}
-            subjectDid={subject}
-            onAfterUnfollow={onAfterUnfollow}
-          />
-        ) : null
-      }
-    />
-  )
-}
-
 /**
- * The unfollow control on the account's own Following rows: an icon
- * button, a confirm dialog, then `deleteFollow` and a refetch so the row
- * drops.
+ * Following / Follow on the account's own Following rows: one tap
+ * unfollows (no confirm) and the row stays with Follow, which undoes it.
+ * The same toggle as on a profile's header and in the Workspace.
  */
-function UnfollowButton({
-  viewerDid,
-  rkey,
-  targetDid,
+function FollowingToggle({
+  manage,
   subjectDid,
-  onAfterUnfollow,
+  onFollowed,
+  onUnfollowed,
 }: {
-  viewerDid: string
-  rkey: string
-  targetDid?: string
+  manage: ManageFollows
   subjectDid: string
-  onAfterUnfollow: () => void | Promise<void>
+  onFollowed: (uri: string, cid: string) => void
+  onUnfollowed: () => void
 }) {
   const { info } = useAuthorInfo(subjectDid)
-  const { displayName: subjectDisplay } = deriveIdentity(info, subjectDid)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [isRevoking, setIsRevoking] = useState(false)
-  // A failed unfollow is an error toast, as a failed Like is.
-  const toasts = useOptionalToast()
-
-  const handleConfirm = async () => {
-    if (isRevoking) return
-    setIsRevoking(true)
-    try {
-      await deleteFollow(viewerDid, rkey, { targetDid })
-      await onAfterUnfollow()
-      setConfirmOpen(false)
-    } catch (err) {
-      console.error("Unfollow failed:", err)
-      // The dialog closes; the row stays, and the toast says why.
-      setConfirmOpen(false)
-      toasts?.toast({ title: "Couldn't unfollow. Try again.", variant: "error" })
-    } finally {
-      setIsRevoking(false)
-    }
-  }
-
+  const { displayName } = deriveIdentity(info, subjectDid)
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="profile-person__action"
-        onClick={() => setConfirmOpen(true)}
-        aria-label={`Unfollow ${subjectDisplay}`}
-      >
-        <X size={16} strokeWidth={1.75} aria-hidden />
-      </Button>
-      {confirmOpen ? (
-        <ConfirmDialog
-          title={`Unfollow ${subjectDisplay}?`}
-          message="You can follow them again any time."
-          confirmLabel="Unfollow"
-          cancelLabel="Cancel"
-          confirmVariant="destructive"
-          isConfirming={isRevoking}
-          onConfirm={handleConfirm}
-          onCancel={() => !isRevoking && setConfirmOpen(false)}
-        />
-      ) : null}
-    </>
+    <span className="profile-person__follow">
+      <FollowButton
+        viewerDid={manage.viewerDid}
+        targetDid={manage.targetDid}
+        subjectDid={subjectDid}
+        subjectName={displayName}
+        isFollowing={manage.subjects.has(subjectDid)}
+        isLoading={false}
+        onFollowed={onFollowed}
+        onUnfollowed={onUnfollowed}
+      />
+    </span>
   )
 }
 

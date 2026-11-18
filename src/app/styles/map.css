@@ -31,8 +31,9 @@
   min-width: 100%;
 }
 
+/* 24px from the tab strip to the panel, as on Explore and Funding. */
 .map-page__panel {
-  padding-top: 16px;
+  padding-top: 24px;
 }
 
 /* The totals: a row from 800px, one muted line on phones. */

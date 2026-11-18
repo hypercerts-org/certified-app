@@ -66,7 +66,8 @@ afterEach(() => {
 
 describe("CreatePage image upload failure", () => {
   it("surfaces an error and clears the preview when uploadBlob rejects", async () => {
-    uploadBlob.mockRejectedValue(new Error("blob write failed"))
+    // The browser's own words for a request that never got through.
+    uploadBlob.mockRejectedValue(new Error("Failed to fetch"))
 
     const { container } = render(<CreatePage />)
 
@@ -78,8 +79,10 @@ describe("CreatePage image upload failure", () => {
     const file = new File(["x"], "hero.png", { type: "image/png" })
     fireEvent.change(input, { target: { files: [file] } })
 
-    // The error message surfaces in the page's role="alert" region.
-    expect(await screen.findByText("blob write failed")).toBeTruthy()
+    // The error surfaces in the page's role="alert" region, in words a
+    // person can act on (not the browser's "Failed to fetch").
+    expect(await screen.findByText("Couldn't upload the image. Try again.")).toBeTruthy()
+    expect(screen.queryByText("Failed to fetch")).toBeNull()
 
     // The optimistic preview must be cleared — no <img> left behind that
     // would let the user publish a cert without the previewed image.

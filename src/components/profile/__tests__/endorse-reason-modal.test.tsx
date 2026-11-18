@@ -91,4 +91,20 @@ describe("EndorseReasonModal", () => {
     )
     expect(screen.queryByRole("combobox")).toBeNull()
   })
+
+  // C2: a click outside doesn't throw a typed note away (Cancel, Close and
+  // Esc still close); with nothing typed it closes as before.
+  it("keeps the dialog open on a backdrop click once a note is typed", () => {
+    const onClose = vi.fn()
+    render(<EndorseReasonModal subjectLabel="Alice" onConfirm={async () => {}} onClose={onClose} />)
+    const dialog = screen.getByRole("dialog", { hidden: true })
+    fireEvent.click(dialog)
+    expect(onClose).toHaveBeenCalledTimes(1)
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Why do you endorse them? (optional)" }), {
+      target: { value: "They planted 4,000 trees." },
+    })
+    fireEvent.click(dialog)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

@@ -320,7 +320,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
           }}
         >
           <p className="password-section__hint">
-            Your email is now <strong>{currentEmail}</strong>, but it isn&rsquo;t
+            Your email is now <strong>{currentEmail}</strong>, but it isn&apos;t
             confirmed yet. Enter the code we sent there to confirm it. Until you
             do, you can change it again with no code.
           </p>
@@ -393,7 +393,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       {stepOpen && (
         <div id={stepId}>
           <p className="password-section__hint">
-            We&rsquo;ll email a code to{" "}
+            We&apos;ll email a code to{" "}
             <strong className="font-medium text-[var(--fg-primary)] [overflow-wrap:anywhere]">
               {currentEmail || "your email address"}
             </strong>{" "}
@@ -421,7 +421,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       )}
       {state !== "success" && currentEmail && !confirmed && (
         <Banner variant="warning" className="mt-3">
-          This email isn&rsquo;t confirmed yet — confirm it so sign-in and
+          This email isn&apos;t confirmed yet — confirm it so sign-in and
           recovery messages reach you.
           <div className="password-section__actions mt-2">
             <Button size="sm" onClick={() => void startConfirmation()}>

@@ -259,7 +259,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
       {stepOpen && (
         <div id={stepId}>
           <p className="password-section__hint">
-            We&rsquo;ll email a code to{" "}
+            We&apos;ll email a code to{" "}
             <strong className="font-medium text-[var(--fg-primary)] [overflow-wrap:anywhere]">
               {email || "your email address"}
             </strong>{" "}

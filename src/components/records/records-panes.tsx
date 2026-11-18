@@ -652,7 +652,7 @@ export function GroupsPane() {
             icon={UsersRound}
             headingLevel={2}
             title="You're not in any groups yet"
-            description="A group is an account that several people manage together, like an organisation or a team. Create one, or ask a group's admin to add you."
+            description="A group is an account that several people manage together, like an organization or a team. Create one, or ask a group's admin to add you."
           >
             {newGroup}
           </EmptyState>

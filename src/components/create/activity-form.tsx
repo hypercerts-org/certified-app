@@ -173,7 +173,6 @@ export interface ActivityFormFieldsProps {
   title: string
   onTitleChange: (value: string) => void
   titleRef?: RefObject<HTMLInputElement | null>
-  autoFocusTitle?: boolean
   /** Product-tour anchor on the title field. */
   titleTourId?: string
   shortDescription: string
@@ -183,8 +182,9 @@ export interface ActivityFormFieldsProps {
    *  the summary has been changed (`shortDescriptionMinApplies`). */
   savedShortDescription?: string
   /** Flag every under-minimum count, edited or not (after a save attempt).
-   *  Otherwise a count only turns red once its field has been edited, so
-   *  a saved record doesn't open with errors. */
+   *  Otherwise a count only turns red once its field has been left with
+   *  text in it (blur), then follows the typing live; a saved record
+   *  doesn't open with errors. */
   showAllErrors?: boolean
 
   description: LinearDocument | null
@@ -227,7 +227,6 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
     title,
     onTitleChange,
     titleRef,
-    autoFocusTitle = false,
     titleTourId,
     shortDescription,
     onShortDescriptionChange,
@@ -262,9 +261,13 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
   } = props
 
   const id = useId()
-  // A count turns red only once its field has been edited (or after a
-  // save attempt): an untouched saved record shouldn't open with errors.
+  // One rule for every form (DESIGN.md §9.2): a field's error shows once
+  // it has been left (blur) or after a save attempt, then follows the
+  // typing live. Until then its count stays grey: no red from the first
+  // keystroke, and an untouched saved record doesn't open with errors.
   const [touched, setTouched] = useState({ title: false, shortDescription: false })
+  const markTouched = (field: keyof typeof touched) =>
+    setTouched((t) => (t[field] ? t : { ...t, [field]: true }))
 
   const titleCount = countGraphemes(title)
   const titleTrimmed = countGraphemes(title.trim())
@@ -319,11 +322,8 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             className="font-headline !text-h3"
             value={title}
             maxLength={ACTIVITY_TITLE_MAX}
-            onChange={(e) => {
-              setTouched((t) => (t.title ? t : { ...t, title: true }))
-              onTitleChange(e.target.value)
-            }}
-            autoFocus={autoFocusTitle}
+            onChange={(e) => onTitleChange(e.target.value)}
+            onBlur={() => markTouched("title")}
             data-tour={titleTourId}
           />
           <p id={`${id}-title-count`} className={counterClass(titleOver, titleUnder)}>
@@ -348,12 +348,8 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             placeholder="What was done, in two or three sentences."
             value={shortDescription}
             rows={3}
-            onChange={(e) => {
-              setTouched((t) =>
-                t.shortDescription ? t : { ...t, shortDescription: true },
-              )
-              onShortDescriptionChange(e.target.value)
-            }}
+            onChange={(e) => onShortDescriptionChange(e.target.value)}
+            onBlur={() => markTouched("shortDescription")}
           />
           <p
             id={`${id}-summary-count`}
@@ -373,13 +369,13 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
         <div className="create-cert__field create-cert__field--description">
           {/* The editor carries the same name as its aria-label. */}
           <span className="cert-detail__meta-label" aria-hidden>
-            Description
+            Description (optional)
           </span>
           <LeafletEditor
             value={description}
             onChange={onDescriptionChange}
             placeholder={descriptionPlaceholder}
-            ariaLabel="Description"
+            ariaLabel="Description (optional)"
             did={editorDid}
             onImageUpload={onEditorImageUpload}
           />
@@ -424,7 +420,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             aria-labelledby={`${id}-period`}
           >
             <span id={`${id}-period`} className="cert-detail__meta-label">
-              Time period
+              Time period (optional)
             </span>
             {/* Native date inputs keep the picker; their value is always
                 ISO YYYY-MM-DD whatever the displayed locale format. */}
@@ -459,7 +455,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
 
           <div className="cert-detail__meta-row">
             <label htmlFor={`${id}-scope`} className="cert-detail__meta-label">
-              Work scope
+              Work scope (optional)
             </label>
             <Input
               flush
@@ -478,7 +474,7 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
             aria-labelledby={`${id}-locations`}
           >
             <span id={`${id}-locations`} className="cert-detail__meta-label">
-              Locations
+              Locations (optional)
               {locations.length > 0 ? (
                 <span className="cert-detail__meta-count">{locations.length}</span>
               ) : null}
@@ -566,6 +562,12 @@ function ContributorsEditor({
   // pick) and isn't a handle: they show the error until the next edit.
   // Never while typing with suggestions open.
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set())
+  // Rows whose share field has been left once: from then on its "not a
+  // number" error follows the typing live (before that, only a save
+  // attempt shows it).
+  const [shareLeft, setShareLeft] = useState<ReadonlySet<string>>(new Set())
+  const markShareLeft = (key: string) =>
+    setShareLeft((prev) => (prev.has(key) ? prev : new Set(prev).add(key)))
   const setRowChecked = (key: string, on: boolean) =>
     setChecked((prev) => {
       if (prev.has(key) === on) return prev
@@ -647,6 +649,8 @@ function ContributorsEditor({
             const identityError =
               !identityValid && (showAllErrors || checked.has(c.key))
             const weightValid = isContributorWeightAcceptable(c.weight)
+            const weightError =
+              !weightValid && (showAllErrors || shareLeft.has(c.key))
             const normalized = normalizeIdentity(c.identity)
             const identityDuplicate =
               normalized.length > 0 && duplicates.has(normalized.toLowerCase())
@@ -721,13 +725,14 @@ function ContributorsEditor({
                 <div className="create-cert__contrib-fields">
                   <div className="create-cert__contrib-field">
                     <label htmlFor={roleId} className="cert-detail__meta-label">
-                      Role{" "}<span className="sr-only">of contributor {n}</span>
+                      <span>
+                        Role <span className="sr-only">of contributor {n} </span>(optional)
+                      </span>
                     </label>
                     <Input
                       flush
                       id={roleId}
                       type="text"
-                      placeholder="Optional"
                       value={c.role}
                       maxLength={1000}
                       onChange={(e) => update(c.key, { role: e.target.value })}
@@ -735,24 +740,26 @@ function ContributorsEditor({
                   </div>
                   <div className="create-cert__contrib-field create-cert__contrib-field--share">
                     <label htmlFor={shareId} className="cert-detail__meta-label">
-                      Share{" "}<span className="sr-only">of contributor {n}, in percent</span>
+                      <span>
+                        Share <span className="sr-only">of contributor {n} in percent </span>(optional)
+                      </span>
                     </label>
                     <Input
                       flush
                       id={shareId}
                       type="text"
                       inputMode="decimal"
-                      placeholder="Optional"
                       trailingIcon={<span className="text-ui">%</span>}
-                      error={weightValid ? undefined : "Share must be a number."}
-                      aria-describedby={weightValid ? undefined : shareErrorId}
+                      error={weightError ? "Share must be a number." : undefined}
+                      aria-describedby={weightError ? shareErrorId : undefined}
                       value={c.weight}
                       maxLength={100}
                       onChange={(e) => update(c.key, { weight: e.target.value })}
+                      onBlur={() => markShareLeft(c.key)}
                     />
                   </div>
                 </div>
-                {!weightValid ? (
+                {weightError ? (
                   <p id={shareErrorId} className="create-cert__field-error" role="alert">
                     Share must be a number (decimals are fine, e.g. 12.5).
                   </p>

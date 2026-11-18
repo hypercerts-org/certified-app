@@ -30,6 +30,7 @@ import { formatAbsoluteDateTime } from "@/components/explore-page/format-display
 import { profileUrl } from "@/lib/urls"
 import { getInitials } from "@/lib/utils/initials"
 import { countGraphemes } from "@/lib/utils/graphemes"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 export type CommentSubjectKind = "activity" | "project" | "update"
 
@@ -135,11 +136,7 @@ export default function CommentThread({
       setNotice(null)
     } catch (err) {
       setToDelete(null)
-      setNotice(
-        err instanceof Error
-          ? `Couldn't delete the comment: ${err.message}`
-          : "Couldn't delete the comment.",
-      )
+      setNotice(caughtErrorMessage(err, "Couldn't delete the comment. Try again in a moment"))
     } finally {
       setDeleting(false)
     }
@@ -400,7 +397,7 @@ function CommentComposer({
       onDraftChange("")
       fieldRef.current?.focus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't post the comment.")
+      setError(caughtErrorMessage(err, "Couldn't post the comment. Try again in a moment"))
     } finally {
       setPosting(false)
     }

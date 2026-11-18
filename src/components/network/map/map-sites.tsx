@@ -721,7 +721,7 @@ function SiteDetail({
       {n > 1 ? (
         <p className="map-sites__note">
           Saved {n} times with this exact outline
-          {otherNames.length > 0 ? `, also as ${listText(otherNames.slice(0, 4).map((x) => `“${x}”`), otherNames.length - 4)}` : ""}.
+          {otherNames.length > 0 ? `, also as ${listText(otherNames.slice(0, 4).map((x) => `"${x}"`), otherNames.length - 4)}` : ""}.
         </p>
       ) : null}
     </div>

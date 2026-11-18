@@ -392,6 +392,7 @@ export default function ProfileHeader({
               />
               <ProfileMoreMenu
                 did={did}
+                name={displayName}
                 handle={handle}
                 onBluesky={hasBlueskyProfile}
                 settingsHref={settingsHref}

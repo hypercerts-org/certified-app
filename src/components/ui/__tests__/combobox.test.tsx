@@ -320,6 +320,56 @@ describe("Combobox — autoHighlight={false} (opt-out, #134)", () => {
   });
 });
 
+describe("Combobox — the picked row doesn't outlive its query", () => {
+  it("a new query drops the row picked for the old one (same number of results)", () => {
+    const onSelect = vi.fn();
+    const onSubmit = vi.fn();
+    render(<Harness onSelect={onSelect} onSubmit={onSubmit} autoHighlight={false} />);
+    const input = getInput();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(highlightedLabel()).toBe("Bravo");
+    // The capped list comes back just as long for the next query.
+    fireEvent.change(input, { target: { value: "ab" } });
+    expect(highlightedLabel()).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith("ab");
+  });
+
+  it("with auto-highlight, a new query starts again from the first row", () => {
+    render(<Harness />);
+    const input = getInput();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(highlightedLabel()).toBe("Bravo");
+    fireEvent.change(input, { target: { value: "ab" } });
+    expect(highlightedLabel()).toBe("Alpha");
+  });
+
+  it("closing the list drops the picked row; it reopens without it", () => {
+    render(<Harness autoHighlight={false} />);
+    const input = getInput();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(highlightedLabel()).toBe("Bravo");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.focus(input);
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(highlightedLabel()).toBeNull();
+    expect(input.getAttribute("aria-activedescendant")).toBeNull();
+  });
+
+  it("an arrow key that reopens the list keeps the row it moves to", () => {
+    render(<Harness autoHighlight={false} />);
+    const input = getInput();
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(highlightedLabel()).toBe("Alpha");
+  });
+});
+
 describe("Combobox — Escape", () => {
   it("two-stage: first Escape closes the listbox, second clears the value", () => {
     render(<Harness escapeStage="two-stage" />);

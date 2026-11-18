@@ -381,8 +381,8 @@ export default function MapBrowse({
                   ? isDesktop
                     ? "Turn on a layer above to see it here."
                     : "Turn on a layer in Filters to see it here."
-                  : query
-                    ? "Nothing matches that search here. Try another word, or turn off Only what's on the map."
+                  : query.trim()
+                    ? `Nothing matches "${query.trim()}". Try another word, or turn off Only what's on the map.`
                     : "Nothing here. Zoom out or move the map."}
               </p>
             ) : (

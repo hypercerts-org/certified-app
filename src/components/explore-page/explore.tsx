@@ -967,7 +967,7 @@ function ExploreAllBlocks({ view }: { view: AllView }) {
 /** The one-line empty text of an All-type section, naming the search or
  *  list that left it empty. */
 function sectionEmptyText(noun: string, filter: string, search: string): string {
-  if (search) return `No ${noun} match “${search}”.`
+  if (search) return `Nothing matches "${search}".`
   if (filter === "follows") return `No ${noun} from accounts you follow.`
   if (filter === "endorsed") return `No ${noun} from endorsed accounts.`
   if (filter === "recent") return `No recently viewed ${noun}.`
@@ -990,7 +990,7 @@ function AllEmpty({
       <EmptyState
         icon={SearchX}
         headingLevel={2}
-        title={`Nothing matches “${search}”`}
+        title={`Nothing matches "${search}".`}
         description="No activities, projects or accounts match this search. Try another word."
       >
         <Button variant="secondary" size="sm" onClick={onClearSearch}>
