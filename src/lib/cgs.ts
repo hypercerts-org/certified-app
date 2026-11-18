@@ -101,6 +101,15 @@ export async function listMemberships(session: OAuthSession): Promise<Membership
 // change made elsewhere shows within five minutes; signing out clears it.
 const membershipCache = jsonStore<Membership[]>("cgs:memberships:", 5 * 60);
 
+/**
+ * The memberships cached for `did`, without asking CGS (no OAuth session
+ * needed), or undefined when none are cached. memberships.ts reads them so
+ * pages can remember them per session.
+ */
+export async function readCachedMemberships(did: string): Promise<Membership[] | undefined> {
+  return membershipCache.get(did);
+}
+
 /** The user's memberships for display: up to five minutes old. */
 export async function listMembershipsForDisplay(session: OAuthSession): Promise<Membership[]> {
   // The cache is an optimization: if Valkey fails, ask CGS.

@@ -1,12 +1,12 @@
-import type { OAuthSession } from "@atproto/oauth-client-node";
 import { Text } from "@hypercerts-org/ui-react";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { workspaceHref } from "@/components/cards";
 import { SignInAgain } from "@/components/sign-out-form";
-import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
+import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
+import { manages } from "@/lib/cgs";
 import { logError } from "@/lib/log";
-import { listOrganizations } from "@/lib/organizations";
+import { getMemberships } from "@/lib/memberships";
 import { isDid, signInHref } from "@/lib/validate";
 
 // Who may open a workspace. The check sits in the workspace's layout, which
@@ -16,8 +16,8 @@ import { isDid, signInHref } from "@/lib/validate";
 // them.
 //
 // Your own workspace opens at once: the signed-in account is part of the
-// cached page per session. An organization's waits for your OAuth session,
-// to check that you belong to it.
+// cached page per session. So are your memberships (memberships.ts), which
+// say whether an organization's workspace is one of yours.
 
 /** The workspace's account, from the URL. */
 export async function workspaceDid(params: Promise<{ actor: string }>): Promise<string> {
@@ -43,18 +43,31 @@ export async function WorkspaceAccess({
   if (!user) redirect(signInHref(workspaceHref(did)));
   if (did === user.did) return children;
 
-  return withSession(workspaceHref(did), did, async (session) => {
-    const organizations = await listOrganizations(session);
-    if (!organizations.some((o) => o.did === did)) {
-      return (
-        <Text>
-          This isn't one of your workspaces. You can open your own and those of the organizations
-          you belong to.
-        </Text>
-      );
-    }
-    return children;
-  });
+  // Your memberships, remembered per session (memberships.ts): entering an
+  // organization's workspace costs no OAuth restore or CGS call.
+  let memberships: Awaited<ReturnType<typeof getMemberships>>;
+  try {
+    memberships = await getMemberships();
+  } catch (err) {
+    return <Unavailable did={did} err={err} />;
+  }
+  if (memberships === null) redirect(signInHref(workspaceHref(did)));
+  if (memberships === "expired") {
+    return (
+      <SignInAgain path={workspaceHref(did)}>
+        Your sign-in has expired. Sign in again to open this workspace.
+      </SignInAgain>
+    );
+  }
+  if (!memberships.some((m) => m.groupDid === did)) {
+    return (
+      <Text>
+        This isn't one of your workspaces. You can open your own and those of the organizations you
+        belong to.
+      </Text>
+    );
+  }
+  return children;
 }
 
 /** Shown when you may edit the workspace's account: yours, or an organization you manage. */
@@ -64,43 +77,9 @@ export function EditorOnly({ did, children }: { did: string; children: ReactNode
 
 async function EditorGate({ did, children }: { did: string; children: ReactNode }) {
   if (await isOwnWorkspace(did)) return children;
-  let session: Awaited<ReturnType<typeof readOAuthSession>>;
-  try {
-    session = await readOAuthSession();
-  } catch {
-    return null;
-  }
-  if (!session || session === "expired") return null;
-  const organization = (await listOrganizations(session)).find((o) => o.did === did);
-  return organization?.manages ? children : null;
-}
-
-/** Runs `load` with your OAuth session, or explains why it can't. */
-export async function withSession(
-  here: string,
-  did: string,
-  load: (session: OAuthSession) => Promise<ReactNode>,
-) {
-  let session: Awaited<ReturnType<typeof readOAuthSession>>;
-  try {
-    session = await readOAuthSession();
-  } catch (err) {
-    return <Unavailable did={did} err={err} />;
-  }
-  // Outside the try: redirect() throws.
-  if (session === null) redirect(signInHref(here));
-  if (session === "expired") {
-    return (
-      <SignInAgain path={here}>
-        Your sign-in has expired. Sign in again to open this workspace.
-      </SignInAgain>
-    );
-  }
-  try {
-    return await load(session);
-  } catch (err) {
-    return <Unavailable did={did} err={err} />;
-  }
+  const memberships = await getMemberships().catch(() => null);
+  if (!Array.isArray(memberships)) return null;
+  return memberships.some((m) => m.groupDid === did && manages(m)) ? children : null;
 }
 
 function Unavailable({ did, err }: { did: string; err: unknown }) {

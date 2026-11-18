@@ -9,10 +9,10 @@
 // a switch still writes as what it showed.
 import "server-only";
 
-import { getUser, readOAuthSession } from "@/lib/auth/dal";
+import { getUser } from "@/lib/auth/dal";
 import { readActingAs } from "@/lib/auth/session";
-import { listMembershipsForDisplay } from "@/lib/cgs";
 import { logError } from "@/lib/log";
+import { getMemberships } from "@/lib/memberships";
 
 /**
  * The DID the signed-in user acts as, or null when signed out: the stored
@@ -25,9 +25,9 @@ export async function getActingAs(): Promise<string | null> {
   const stored = await readActingAs();
   if (!stored || stored === user.did) return user.did;
   try {
-    const session = await readOAuthSession();
-    if (session === null || session === "expired") return user.did;
-    const memberships = await listMembershipsForDisplay(session);
+    // Remembered per session (memberships.ts), so this costs no OAuth restore.
+    const memberships = await getMemberships();
+    if (!Array.isArray(memberships)) return user.did;
     return memberships.some((m) => m.groupDid === stored) ? stored : user.did;
   } catch (err) {
     // CGS or the PDS is unreachable: keep the choice, checked when it was made.

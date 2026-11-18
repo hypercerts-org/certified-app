@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { OAuthSession } from "@atproto/oauth-client-node";
-import { listMembershipsForDisplay, manages } from "@/lib/cgs";
+import { listMembershipsForDisplay, type Membership, manages } from "@/lib/cgs";
 import { getActor } from "@/lib/hypercerts/queries";
 import { getHandle } from "@/lib/identity";
 
@@ -28,7 +28,11 @@ const ROLE_LABEL: Record<string, string> = { member: "Member", admin: "Admin", o
  * what the user may do: use canEdit.
  */
 export async function listOrganizations(session: OAuthSession): Promise<Organization[]> {
-  const memberships = await listMembershipsForDisplay(session);
+  return toOrganizations(await listMembershipsForDisplay(session));
+}
+
+/** The organizations of these memberships, as the app shows them. */
+export async function toOrganizations(memberships: Membership[]): Promise<Organization[]> {
   return Promise.all(
     memberships.map(async (membership) => {
       const [actor, handle] = await Promise.all([

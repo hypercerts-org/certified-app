@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { workspaceHref } from "@/components/cards";
-import { isOwnWorkspace, withSession, workspaceDid } from "@/components/workspace-access";
+import { isOwnWorkspace, workspaceDid } from "@/components/workspace-access";
 import {
   OrganizationsSection,
   OrganizationsSkeleton,
   OverviewSkeleton,
   WorkspaceOverview,
 } from "@/components/workspace-overview";
-import { listOrganizations } from "@/lib/organizations";
+import { getMemberships } from "@/lib/memberships";
+import { toOrganizations } from "@/lib/organizations";
 
 export const metadata: Metadata = { title: "Workspace", robots: { index: false } };
 
@@ -18,14 +18,18 @@ export const metadata: Metadata = { title: "Workspace", robots: { index: false }
 //
 // Most of the overview is public data about the account, cached and shared
 // (its records, endorsements, followers, profile), so a link prefetches it and
-// the page shows at once. Your organizations and "Edit profile" on an
-// organization's workspace wait for your OAuth session. Who may open the
+// the page shows at once. Your organizations and "Edit profile" come from
+// your memberships, remembered per session (memberships.ts). Who may open the
 // workspace is checked by its layout (workspace-access.tsx).
 
-async function YourOrganizations({ did }: { did: string }) {
-  return withSession(workspaceHref(did), did, async (session) => (
-    <OrganizationsSection organizations={await listOrganizations(session)} />
-  ));
+/** Your organizations, from your memberships, remembered per session (memberships.ts). */
+async function YourOrganizations() {
+  const memberships = await getMemberships().catch(() => null);
+  return (
+    <OrganizationsSection
+      organizations={Array.isArray(memberships) ? await toOrganizations(memberships) : []}
+    />
+  );
 }
 
 async function Overview({ params }: { params: Promise<{ actor: string }> }) {
@@ -37,7 +41,7 @@ async function Overview({ params }: { params: Promise<{ actor: string }> }) {
       organizations={
         own ? (
           <Suspense fallback={<OrganizationsSkeleton />}>
-            <YourOrganizations did={did} />
+            <YourOrganizations />
           </Suspense>
         ) : null
       }
