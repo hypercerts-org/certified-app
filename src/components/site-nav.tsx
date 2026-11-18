@@ -33,6 +33,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
+import { COMING_SOON } from "@/components/coming-soon";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
@@ -284,7 +285,6 @@ function SwitchedToast({
 // out). New group and the organizations' settings are placeholders until
 // this app has them.
 
-const COMING_SOON = "Coming soon";
 const FEEDBACK_URL = "https://github.com/hypercerts-org/certified-app/issues/new";
 
 /** "You · @handle", "Owner · @handle": the note, then the handle if there is one. */

@@ -15,6 +15,7 @@ import { Button, EmptyState, Skeleton } from "@hypercerts-org/ui-react";
 import { ArrowRight, ChevronRight, Folder, Plus, Search, SquareCheckBig } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
+import { ComingSoonButton } from "@/components/coming-soon";
 
 export type WorkRow = {
   uri: string;
@@ -70,14 +71,14 @@ function Toolbar({ query, onQuery }: { query: string; onQuery: (query: string) =
 function NewButtons() {
   return (
     <div className="work-actions">
-      <Button variant="primary" size="sm" disabled title="Coming soon">
+      <ComingSoonButton variant="primary">
         <Plus size={16} aria-hidden />
         New activity
-      </Button>
-      <Button variant="secondary" size="sm" disabled title="Coming soon">
+      </ComingSoonButton>
+      <ComingSoonButton>
         <Plus size={16} aria-hidden />
         New project
-      </Button>
+      </ComingSoonButton>
     </div>
   );
 }

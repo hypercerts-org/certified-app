@@ -43,6 +43,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { actorHref, projectHref, workspaceHref } from "@/components/cards";
+import { ComingSoonButton } from "@/components/coming-soon";
 import { PageTitle } from "@/components/page-title";
 import { APPS } from "@/lib/apps";
 import {
@@ -139,10 +140,10 @@ function Section({
 /** A write that isn't available yet: shown, disabled, until the SDK ships it. */
 function Placeholder({ children }: { children: ReactNode }) {
   return (
-    <Button variant="secondary" size="sm" disabled title="Coming soon">
+    <ComingSoonButton>
       <Plus size={16} aria-hidden />
       {children}
-    </Button>
+    </ComingSoonButton>
   );
 }
 
@@ -297,14 +298,14 @@ async function RecordsSection({ did }: { did: string }) {
             // New activity and New project are placeholders until the
             // Hypercerts SDK ships those writes.
             <div className="empty-actions">
-              <Button variant="primary" disabled title="Coming soon">
+              <ComingSoonButton variant="primary">
                 <Plus size={16} aria-hidden />
                 New activity
-              </Button>
-              <Button variant="secondary" disabled title="Coming soon">
+              </ComingSoonButton>
+              <ComingSoonButton>
                 <Plus size={16} aria-hidden />
                 New project
-              </Button>
+              </ComingSoonButton>
               <Button href="/explore" variant="secondary">
                 <Search size={16} aria-hidden />
                 Find accounts
@@ -615,10 +616,10 @@ export function OrganizationsSection({
 /** New group: a quiet placeholder until groups can be created here. */
 function NewGroup() {
   return (
-    <Button variant="ghost" size="sm" disabled title="Coming soon">
+    <ComingSoonButton variant="ghost">
       <Plus size={16} aria-hidden />
       New group
-    </Button>
+    </ComingSoonButton>
   );
 }
 

@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, IdentityRow, Skeleton, Text } from "@hyperce
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { actorHref } from "@/components/cards";
+import { ComingSoonButton } from "@/components/coming-soon";
 import { LIST_KINDS, ListCards, type ListKind } from "@/components/workspace-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
 import type { ListCard, PersonRow } from "@/lib/hypercerts/views";
@@ -36,12 +37,10 @@ function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   );
 }
 
-/** A write that isn't available yet. */
+/** A write that isn't available yet; the exception (a hidden one) gets the filled button. */
 function Placeholder({ children, primary = false }: { children: ReactNode; primary?: boolean }) {
   return (
-    <Button variant={primary ? "primary" : "secondary"} size="sm" disabled title="Coming soon">
-      {children}
-    </Button>
+    <ComingSoonButton variant={primary ? "primary" : "secondary"}>{children}</ComingSoonButton>
   );
 }
 

@@ -3,8 +3,9 @@
 // the account's lists of that kind as cards. Creating and editing lists come
 // with the Hypercerts SDK's writes: until then "New … list" is a placeholder.
 
-import { Button, Card, EmptyState, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Card, EmptyState, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
+import { ComingSoonButton } from "@/components/coming-soon";
 import type { ListCard } from "@/lib/hypercerts/views";
 
 export type ListKind = {
@@ -54,10 +55,10 @@ export const LIST_KINDS: readonly ListKind[] = [
 /** "New activity list": a placeholder until the SDK can write lists. */
 export function NewListButton({ kind }: { kind: ListKind }) {
   return (
-    <Button variant="secondary" size="sm" disabled title="Coming soon">
+    <ComingSoonButton>
       <Plus size={16} aria-hidden />
       New {kind.noun} list
-    </Button>
+    </ComingSoonButton>
   );
 }
 

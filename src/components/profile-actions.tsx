@@ -17,9 +17,8 @@ import { Check, Copy, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { COMING_SOON, ComingSoonButton } from "@/components/coming-soon";
 import { LinkPending } from "@/components/link-pending";
-
-const COMING_SOON = "Coming soon";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
 async function copy(text: string, what: string) {
@@ -74,20 +73,20 @@ export function VisitorActions({
   return (
     <>
       {following ? (
-        <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
+        <ComingSoonButton>
           <Check size={16} aria-hidden />
           Following
-        </Button>
+        </ComingSoonButton>
       ) : (
-        <Button variant="primary" size="sm" disabled title={COMING_SOON}>
+        <ComingSoonButton variant="primary">
           <UserPlus size={16} aria-hidden />
           Follow
-        </Button>
+        </ComingSoonButton>
       )}
-      <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
+      <ComingSoonButton>
         <ThumbsUp size={16} aria-hidden />
         Endorse
-      </Button>
+      </ComingSoonButton>
       <ShareButton path={path} title={title} />
       <Menu>
         <MenuTrigger asChild>

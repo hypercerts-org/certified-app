@@ -1,6 +1,5 @@
 import {
   Avatar,
-  Button,
   Card,
   CopyableId,
   Heading,
@@ -13,6 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { ActivityCardView, actorHref, ProjectCardView } from "@/components/cards";
+import { ComingSoonButton } from "@/components/coming-soon";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
@@ -38,7 +38,6 @@ const PREVIEW = 4;
 const ENDORSEMENTS_PREVIEW = 3;
 /** Accounts in the "Endorses" and "Follows" grids. */
 const GRID_PREVIEW = 12;
-const COMING_SOON = "Coming soon";
 
 const numberFormat = new Intl.NumberFormat("en");
 
@@ -85,9 +84,7 @@ function Empty({ text, action }: { text: string; action?: string }) {
       <Text tone="muted">{text}</Text>
       {action && (
         // A placeholder until the Hypercerts SDK ships the write.
-        <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
-          {action}
-        </Button>
+        <ComingSoonButton>{action}</ComingSoonButton>
       )}
     </div>
   );
