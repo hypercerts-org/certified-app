@@ -66,7 +66,8 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
     ({
       label,
       href: `${base}${path}`,
-      count: count === undefined ? undefined : format(count),
+      // No count on a tab with none ("Endorsements" with only some given).
+      count: count === undefined || value(count) === 0 ? undefined : format(count),
       also: also?.map((sub) => `${base}${sub}`),
       empty,
     }) satisfies ProfileTab;

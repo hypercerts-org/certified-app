@@ -1,10 +1,8 @@
-import { Avatar, Badge, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
+import { Avatar, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
 import Link from "next/link";
 import type {
   ActivityCard,
   ActorCard,
-  AwardSubject,
-  BadgeCard,
   ProjectCard,
 } from "@/lib/hypercerts/views";
 
@@ -127,62 +125,3 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
   );
 }
 
-const responseVariant = { accepted: "success", rejected: "danger" } as const;
-
-export function BadgeCardView({ badge }: { badge: BadgeCard }) {
-  return (
-    <Card as="li" variant="inset" className="card">
-      <div className="meta">
-        <Text as="span" size="body-sm" tone="ink">
-          {badge.title}
-        </Text>
-        {badge.response && (
-          <Badge
-            variant={responseVariant[badge.response as keyof typeof responseVariant] ?? "neutral"}
-          >
-            {badge.response}
-          </Badge>
-        )}
-      </div>
-      <IdentityRow
-        size="sm"
-        name={badge.issuer.displayName}
-        avatarSrc={badge.issuer.avatarUrl}
-        href={actorHref(badge.issuer.did)}
-        secondary={badge.createdAt ?? undefined}
-      />
-    </Card>
-  );
-}
-
-// The subject of one badge award: an account, a project or another record.
-export function AwardSubjectRow({ subject }: { subject: AwardSubject }) {
-  if (subject.kind === "actor")
-    return (
-      <li>
-        <IdentityRow
-          size="sm"
-          name={subject.actor.displayName}
-          avatarSrc={subject.actor.avatarUrl}
-          href={actorHref(subject.actor.did)}
-          secondary={subject.actor.isOrganization ? "Organization" : "Person"}
-        />
-      </li>
-    );
-  if (subject.kind === "project")
-    return (
-      <li>
-        <IdentityRow
-          size="sm"
-          name={subject.project.title}
-          href={projectHref(subject.project)}
-          secondary="Project"
-        />
-      </li>
-    );
-  return (
-    <li>
-      <IdentityRow size="sm" name={subject.uri} secondary="Other record" />
-    </li>
-  );
-}

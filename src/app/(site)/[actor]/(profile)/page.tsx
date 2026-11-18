@@ -1,25 +1,47 @@
-import { Card, CopyableId, Heading, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import {
+  Avatar,
+  Button,
+  Card,
+  CopyableId,
+  Heading,
+  IdentityRow,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react";
+import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { ActivityCardView, actorHref, ProjectCardView } from "@/components/cards";
-import { TileSlot } from "@/components/tile-slot";
-import { BadgesAwardedTile, BadgesTile } from "@/components/tiles";
+import { getActingAs } from "@/lib/acting-as";
 import {
   getActor,
-  getEndorsements,
-  hasIssuedAwards,
   listActivitiesPage,
+  listEndorsements,
+  listFollows,
   listProjectsPage,
 } from "@/lib/hypercerts/queries";
+import type { ActivityCard, ActorCard, PersonRow, ProjectCard } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 import { profileActor } from "@/lib/profile-route";
 
-// The profile's Overview: a reading column with the account's latest work
-// (projects, activities), who endorsed it and its badges, beside a rail with
-// the Account facts. Sections with nothing in them are left out.
+// The profile's Overview, after the staging redesign: a reading column with
+// About, the latest activities and projects, the accounts it endorses
+// ("Endorses N") and those that endorsed it ("Endorsed by N"), beside a rail
+// with the Account facts. A visitor sees only sections with something in
+// them; the account itself (whoever acts as it) sees every section, with the
+// action that fills an empty one. An account with nothing public says so,
+// and shows whom it follows.
 
+/** Work cards per section. */
 const PREVIEW = 4;
+/** Rows in "Endorsed by". */
 const ENDORSEMENTS_PREVIEW = 3;
+/** Accounts in the "Endorses" and "Follows" grids. */
+const GRID_PREVIEW = 12;
+const COMING_SOON = "Coming soon";
+
+const numberFormat = new Intl.NumberFormat("en");
 
 export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
@@ -28,11 +50,14 @@ export async function generateMetadata({ params }: PageProps<"/[actor]">): Promi
 
 function Section({
   title,
+  count,
   seeAll,
   children,
 }: {
   title: string;
-  seeAll?: string;
+  /** Shown after the title, quieter ("Endorses 11"). */
+  count?: string;
+  seeAll?: { href: string; label: string };
   children: ReactNode;
 }) {
   return (
@@ -40,10 +65,12 @@ function Section({
       <div className="profile-section-header">
         <Heading level={2} size="heading">
           {title}
+          {count && <span className="profile-section-count"> {count}</span>}
         </Heading>
         {seeAll && (
-          <Link href={seeAll} className="see-all">
-            See all
+          <Link href={seeAll.href} className="see-all">
+            {seeAll.label}
+            <ChevronRight size={16} aria-hidden />
           </Link>
         )}
       </div>
@@ -52,76 +79,259 @@ function Section({
   );
 }
 
-async function ProjectsPreview({ did, base }: { did: string; base: string }) {
-  const page = await listProjectsPage({ author: did });
-  if (page.items.length === 0) return null;
-  const more = page.items.length > PREVIEW || page.cursor;
+/** An empty section on the account's own profile: what goes here, and how. */
+function Empty({ text, action }: { text: string; action?: string }) {
   return (
-    <Section title="Projects" seeAll={more ? `${base}/projects` : undefined}>
-      <ul className="work-grid">
-        {page.items.slice(0, PREVIEW).map((project) => (
-          <ProjectCardView key={project.uri} project={project} />
-        ))}
-      </ul>
-    </Section>
+    <div className="profile-empty">
+      <Text tone="muted">{text}</Text>
+      {action && (
+        // A placeholder until the Hypercerts SDK ships the write.
+        <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
+          {action}
+        </Button>
+      )}
+    </div>
   );
 }
 
-async function ActivitiesPreview({ did, base }: { did: string; base: string }) {
-  const page = await listActivitiesPage({ author: did, limit: PREVIEW });
-  if (page.items.length === 0) return null;
-  return (
-    <Section title="Activities" seeAll={page.cursor ? `${base}/activities` : undefined}>
-      <ul className="work-grid">
-        {page.items.map((activity) => (
-          <ActivityCardView key={activity.uri} activity={activity} showAuthor={false} />
-        ))}
-      </ul>
-    </Section>
+const sameTitle = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** An activity its own same-titled project already shows: the project card stands for both. */
+function coveredByProject(activity: ActivityCard, projects: ProjectCard[]): boolean {
+  return projects.some(
+    (project) =>
+      sameTitle(project.title, activity.title) && project.activityUris.includes(activity.uri),
   );
 }
 
-/** The latest endorsements received: badge awards of type "endorsement". */
-async function EndorsedBy({ did, base }: { did: string; base: string }) {
-  const { latestReceived, receivedCount } = await getEndorsements(did, ENDORSEMENTS_PREVIEW);
-  if (latestReceived.length === 0) return null;
+/** Each account once, newest first. */
+function uniqueActors(rows: PersonRow[]): { actor: ActorCard; row: PersonRow }[] {
+  const seen = new Set<string>();
+  return rows
+    .filter((row) => !seen.has(row.actor.did) && seen.add(row.actor.did))
+    .map((row) => ({ actor: row.actor, row }));
+}
+
+const countLabel = (count: number, more: boolean) =>
+  `${numberFormat.format(count)}${more ? "+" : ""}`;
+
+/**
+ * An account without a Certified profile has only its DID for a name: its
+ * handle reads better, where it has one.
+ */
+async function withHandles(actors: ActorCard[]): Promise<ActorCard[]> {
+  return Promise.all(
+    actors.map(async (actor) => {
+      if (actor.displayName !== actor.did) return actor;
+      const handle = await getHandle(actor.did);
+      return handle ? { ...actor, displayName: `@${handle}` } : actor;
+    }),
+  );
+}
+
+/** A grid of accounts, each avatar and name to its profile. */
+async function AccountGrid({ actors }: { actors: ActorCard[] }) {
+  const shown = await withHandles(actors.slice(0, GRID_PREVIEW));
   return (
-    <Section title={`Endorsed by ${receivedCount}`} seeAll={`${base}/endorsements`}>
-      <ul className="overview-rows">
-        {latestReceived.map((endorsement) => (
-          <li key={endorsement.uri}>
-            <IdentityRow
-              size="sm"
-              name={endorsement.issuer.displayName}
-              avatarSrc={endorsement.issuer.avatarUrl}
-              href={actorHref(endorsement.issuer.did)}
-              secondary={
-                [endorsement.note, endorsement.createdAt].filter(Boolean).join(" · ") || undefined
-              }
+    <ul className="account-grid">
+      {shown.map((actor) => (
+        <li key={actor.did}>
+          <Link href={actorHref(actor.did)} className="account-grid-link">
+            <Avatar
+              // A handle's initial, not "@".
+              name={actor.displayName.replace(/^@/, "")}
+              src={actor.avatarUrl}
+              size="md"
+              className={actor.isOrganization ? "avatar-square" : undefined}
             />
-          </li>
-        ))}
-      </ul>
+            <span className="account-grid-name" dir="auto">
+              {actor.displayName}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+async function Work({ did, base, owner }: { did: string; base: string; owner: boolean }) {
+  const [activityPage, projectPage] = await Promise.all([
+    listActivitiesPage({ author: did, limit: PREVIEW * 2 }),
+    listProjectsPage({ author: did }),
+  ]);
+  const projects = projectPage.items;
+  const activities = activityPage.items.filter((a) => !coveredByProject(a, projects));
+  const moreActivities = activities.length > PREVIEW || Boolean(activityPage.cursor);
+  // A visitor doesn't get an Activities section that only repeats the projects.
+  const showActivities = owner || activities.length > 0;
+  const showProjects = owner || projects.length > 0;
+
+  return (
+    <>
+      {showActivities && (
+        <Section
+          title="Activities"
+          seeAll={
+            moreActivities ? { href: `${base}/activities`, label: "All activities" } : undefined
+          }
+        >
+          {activities.length > 0 ? (
+            <ul className="work-grid">
+              {activities.slice(0, PREVIEW).map((activity) => (
+                <ActivityCardView key={activity.uri} activity={activity} showAuthor={false} />
+              ))}
+            </ul>
+          ) : (
+            <Empty
+              text={
+                activityPage.items.length > 0
+                  ? "Each activity is in its project below."
+                  : "No activities yet. Activities you publish or contribute to show here."
+              }
+              action={activityPage.items.length > 0 ? undefined : "New activity"}
+            />
+          )}
+        </Section>
+      )}
+      {showProjects && (
+        <Section
+          title="Projects"
+          seeAll={
+            projects.length > PREVIEW || projectPage.cursor
+              ? { href: `${base}/projects`, label: "All projects" }
+              : undefined
+          }
+        >
+          {projects.length > 0 ? (
+            <ul className="work-grid">
+              {projects.slice(0, PREVIEW).map((project) => (
+                <ProjectCardView key={project.uri} project={project} />
+              ))}
+            </ul>
+          ) : (
+            <Empty text="No projects yet. A project groups related activities." action="New project" />
+          )}
+        </Section>
+      )}
+    </>
+  );
+}
+
+/** The accounts this one endorses, newest first. */
+async function Endorses({ did, base }: { did: string; base: string }) {
+  const { rows, more } = await listEndorsements(did, "given");
+  const actors = uniqueActors(rows).map(({ actor }) => actor);
+  if (actors.length === 0) return null;
+  const label = countLabel(actors.length, more);
+  return (
+    <Section
+      title="Endorses"
+      count={label}
+      seeAll={
+        actors.length > GRID_PREVIEW
+          ? { href: `${base}/endorsements/given`, label: `All ${label}` }
+          : undefined
+      }
+    >
+      <AccountGrid actors={actors} />
     </Section>
   );
 }
 
-async function AwardsIssued({ did }: { did: string }) {
-  if (!(await hasIssuedAwards(did))) return null;
+/** The accounts that endorsed this one, each once with its latest endorsement. */
+async function EndorsedBy({ did, base, owner }: { did: string; base: string; owner: boolean }) {
+  const { rows, more } = await listEndorsements(did, "received");
+  const endorsers = uniqueActors(rows);
+  if (endorsers.length === 0 && !owner) return null;
   return (
-    <TileSlot title="Badges awarded">
-      <BadgesAwardedTile did={did} />
-    </TileSlot>
+    <Section
+      title="Endorsed by"
+      count={endorsers.length > 0 ? countLabel(endorsers.length, more) : undefined}
+      seeAll={
+        endorsers.length > 0
+          ? { href: `${base}/endorsements`, label: "All endorsements" }
+          : undefined
+      }
+    >
+      {endorsers.length > 0 ? (
+        <ul className="overview-rows">
+          {endorsers.slice(0, ENDORSEMENTS_PREVIEW).map(({ actor, row }) => (
+            <li key={row.uri}>
+              <IdentityRow
+                size="md"
+                name={actor.displayName}
+                avatarSrc={actor.avatarUrl}
+                href={actorHref(actor.did)}
+                secondary={[row.date, row.note].filter(Boolean).join(" · ") || undefined}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Empty text="No endorsements yet. When another account endorses this one, it shows here." />
+      )}
+    </Section>
   );
+}
+
+/**
+ * For a visitor, when the account has published nothing: says so, then
+ * whom it follows, which is what there is to see.
+ */
+async function NothingPublic({ did, base, about }: { did: string; base: string; about: boolean }) {
+  if (about) return null;
+  const [activities, projects, given, received] = await Promise.all([
+    listActivitiesPage({ author: did, limit: 1 }),
+    listProjectsPage({ author: did }),
+    listEndorsements(did, "given"),
+    listEndorsements(did, "received"),
+  ]);
+  const empty =
+    activities.items.length === 0 &&
+    projects.items.length === 0 &&
+    given.rows.length === 0 &&
+    received.rows.length === 0;
+  if (!empty) return null;
+  const following = await listFollows(did, "following");
+  const followed = uniqueActors(following.rows).map(({ actor }) => actor);
+  return (
+    <>
+      <div className="profile-nothing">
+        <Heading level={2} size="heading">
+          No public records yet.
+        </Heading>
+        <Text tone="muted">When this account publishes something, it shows here.</Text>
+      </div>
+      {followed.length > 0 && (
+        <Section
+          title="Follows"
+          count={countLabel(followed.length, following.more)}
+          seeAll={
+            followed.length > GRID_PREVIEW
+              ? { href: `${base}/following`, label: "All" }
+              : undefined
+          }
+        >
+          <AccountGrid actors={followed} />
+        </Section>
+      )}
+    </>
+  );
+}
+
+function SectionSkeleton() {
+  return <Skeleton variant="text" lines={4} />;
 }
 
 async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
   const { actor, base } = await profileActor(params, "");
   const { did } = actor;
+  // Whoever acts as the account sees its empty sections, with what fills them.
+  const owner = (await getActingAs()) === did;
   // A DID URL with a handle has redirected, so the URL names the handle if
   // there is one.
   const handle = base.startsWith("/did:") ? null : base.slice(1);
-  const about = actor.profile.description.trim() && actor.longDescription;
+  const about = actor.profile.description.trim() ? actor.longDescription : null;
 
   return (
     <div className="profile-overview">
@@ -135,29 +345,35 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
             </Text>
           </Section>
         )}
-        <Suspense fallback={<Skeleton variant="text" lines={4} />}>
-          <ProjectsPreview did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={<Skeleton variant="text" lines={4} />}>
-          <ActivitiesPreview did={did} base={base} />
+        <Suspense fallback={<SectionSkeleton />}>
+          <Work did={did} base={base} owner={owner} />
         </Suspense>
         <Suspense fallback={null}>
-          <EndorsedBy did={did} base={base} />
+          <Endorses did={did} base={base} />
         </Suspense>
-        <TileSlot title="Badges received">
-          <BadgesTile did={did} />
-        </TileSlot>
         <Suspense fallback={null}>
-          <AwardsIssued did={did} />
+          <EndorsedBy did={did} base={base} owner={owner} />
         </Suspense>
+        {!owner && (
+          <Suspense fallback={null}>
+            <NothingPublic did={did} base={base} about={Boolean(about)} />
+          </Suspense>
+        )}
       </div>
-      <aside className="profile-rail" aria-label="Account">
+      <aside className="profile-rail" aria-label="Facts about this account">
         <Card variant="panel" className="overview-box">
           <Heading level={2} size="heading">
             Account
           </Heading>
           <dl className="facts">
-            {actor.joined && (
+            {actor.place && (
+              <div className="fact">
+                <dt>Location</dt>
+                <dd>{actor.place}</dd>
+              </div>
+            )}
+            {/* A person's joining is on the header's meta line. */}
+            {actor.isOrganization && actor.joined && (
               <div className="fact">
                 <dt>Joined</dt>
                 <dd>{actor.joined}</dd>

@@ -82,6 +82,8 @@ export type ProjectCard = {
   summary: string | null;
   /** Items that are activities (a project can also hold features and other collections). */
   activityCount: number;
+  /** Those activities' addresses. */
+  activityUris: string[];
   imageUrl: string | null;
 };
 
@@ -160,15 +162,6 @@ export type AwardsIssued = {
   // queries).
   truncated: boolean;
   badges: IssuedBadge[];
-};
-
-export type BadgeCard = {
-  uri: string;
-  title: string;
-  badgeType: string | null;
-  issuer: ActorCard;
-  response: string | null;
-  createdAt: string | null;
 };
 
 type UnknownRecord = Record<string, unknown>;
@@ -338,15 +331,17 @@ export function toActivityCard(activity: ActivityView): ActivityCard {
 
 export function toProjectCard(collection: CollectionView): ProjectCard {
   const { record } = collection;
+  const activityUris = (record.items ?? [])
+    .map((item) => item.itemIdentifier.uri)
+    .filter((uri) => collectionOf(uri) === "org.hypercerts.claim.activity");
   return {
     uri: collection.uri,
     rkey: rkeyOf(collection.uri),
     authorDid: collection.did,
     title: record.title || "Untitled project",
     summary: record.shortDescription || null,
-    activityCount: (record.items ?? []).filter(
-      (item) => collectionOf(item.itemIdentifier.uri) === "org.hypercerts.claim.activity",
-    ).length,
+    activityCount: activityUris.length,
+    activityUris,
     imageUrl: imageUrl(collection.did, record.avatar ?? record.banner, "card"),
   };
 }
@@ -357,18 +352,6 @@ export function toProjectDetail(collection: CollectionView): ProjectDetail {
     description: plainText(collection.record.description),
     author: toActorCard(collection.author),
     createdAt: formatDate(collection.record.createdAt),
-  };
-}
-
-export function toBadgeCard(award: BadgeAwardView): BadgeCard {
-  const definition = award.badge?.record;
-  return {
-    uri: award.uri,
-    title: definition?.title || "Badge",
-    badgeType: definition?.badgeType ?? null,
-    issuer: toActorCard(award.author),
-    response: award.responseStatus,
-    createdAt: formatDate(award.record.createdAt),
   };
 }
 

@@ -5,20 +5,25 @@
 // actions. The tabs follow it (see the profile layout).
 
 import { Avatar, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { Link2 } from "lucide-react";
+import { Eye, Link2 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
-import { getEndorsers, getFollowCounts } from "@/lib/hypercerts/queries";
+import { getEndorsers, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
 
-/** Every link once: the website first, then an organization's other links. */
-function links(actor: ActorDetail): { href: string; label: string }[] {
+type AccountLink = { href: string; label: string; bluesky: boolean };
+
+/**
+ * Every link once: the website first, then an organization's other links. A
+ * Bluesky profile shows as its butterfly, as on staging.
+ */
+function links(actor: ActorDetail): AccountLink[] {
   const seen = new Set<string>();
-  const out: { href: string; label: string }[] = [];
+  const out: AccountLink[] = [];
   for (const raw of [actor.website, ...actor.urls]) {
     if (!raw || !/^https?:\/\//i.test(raw)) continue;
     const label = raw
@@ -27,7 +32,7 @@ function links(actor: ActorDetail): { href: string; label: string }[] {
       .toLowerCase();
     if (seen.has(label)) continue;
     seen.add(label);
-    out.push({ href: raw, label });
+    out.push({ href: raw, label, bluesky: /^(bsky\.app|bsky\.social)(\/|$)/.test(label) });
   }
   return out;
 }
@@ -49,6 +54,9 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
 
   return (
     <header className="profile-header">
+      <Suspense fallback={null}>
+        <OwnerNote did={actor.did} />
+      </Suspense>
       {actor.bannerUrl && (
         <div className="profile-banner">
           {/* biome-ignore lint/performance/noImgElement: Bluesky's CDN, already sized */}
@@ -92,15 +100,30 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
           )}
           {accountLinks.length > 0 && (
             <ul className="profile-links" aria-label="Links">
-              {accountLinks.map((link) => (
-                <li key={link.href}>
-                  <Link2 size={16} aria-hidden />
-                  <a href={link.href} target="_blank" rel="noopener noreferrer">
-                    {link.label}
-                    <span className="visually-hidden"> (opens in a new tab)</span>
-                  </a>
-                </li>
-              ))}
+              {accountLinks.map((link) =>
+                link.bluesky ? (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="profile-link-icon"
+                      title={link.label}
+                    >
+                      <BlueskyIcon />
+                      <span className="visually-hidden">Bluesky (opens in a new tab)</span>
+                    </a>
+                  </li>
+                ) : (
+                  <li key={link.href}>
+                    <Link2 size={16} aria-hidden />
+                    <a href={link.href} target="_blank" rel="noopener noreferrer">
+                      {link.label}
+                      <span className="visually-hidden"> (opens in a new tab)</span>
+                    </a>
+                  </li>
+                ),
+              )}
             </ul>
           )}
           <Suspense fallback={null}>
@@ -122,10 +145,52 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
 /** Share uses the profile's own address: its handle, where it has one. */
 async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string }) {
   const actingAs = await getActingAs();
-  return actingAs === actor.did ? (
-    <OwnerActions editHref={`${actorHref(actor.did)}/edit`} path={base} title={actor.displayName} />
-  ) : (
-    <VisitorActions did={actor.did} path={base} title={actor.displayName} />
+  if (actingAs === actor.did) {
+    return (
+      <OwnerActions
+        editHref={`${actorHref(actor.did)}/edit`}
+        path={base}
+        title={actor.displayName}
+      />
+    );
+  }
+  return (
+    <VisitorActions
+      did={actor.did}
+      path={base}
+      title={actor.displayName}
+      following={actingAs ? await follows(actingAs, actor.did) : false}
+    />
+  );
+}
+
+/**
+ * Whether `viewer` follows `did`, from the latest page of whom it follows
+ * (an account following more than a page of others may show Follow for an
+ * older one).
+ */
+async function follows(viewer: string, did: string): Promise<boolean> {
+  const { rows } = await listFollows(viewer, "following");
+  return rows.some((row) => row.actor.did === did);
+}
+
+/** The account's own profile, seen by whoever acts as it, says it's the public view. */
+async function OwnerNote({ did }: { did: string }) {
+  if ((await getActingAs()) !== did) return null;
+  return (
+    <p className="profile-owner-note">
+      <Eye size={16} aria-hidden />
+      This is how others see your profile.
+    </p>
+  );
+}
+
+/** Bluesky's butterfly (Simple Icons). */
+function BlueskyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} fill="currentColor" aria-hidden>
+      <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.296 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z" />
+    </svg>
   );
 }
 
@@ -164,12 +229,15 @@ function endorserNames(endorsers: ActorCard[], more: boolean): ReactNode {
  * follows, each leading to its tab. Parts with nothing in them are left out.
  */
 async function TrustLine({ did, base }: { did: string; base: string }) {
-  const [{ endorsers, more }, follows] = await Promise.all([
+  const [{ endorsers, more }, counts, actingAs] = await Promise.all([
     getEndorsers(did),
     getFollowCounts(did),
+    getActingAs(),
   ]);
-  const { followers, following } = follows;
-  if (endorsers.length === 0 && followers === 0 && following === 0) return null;
+  const { followers, following } = counts;
+  // Only the account itself is told about what isn't there.
+  const owner = actingAs === did;
+  if (!owner && endorsers.length === 0 && followers === 0 && following === 0) return null;
 
   return (
     <div className="trust-line">
@@ -182,6 +250,10 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
           </span>
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
+      )}
+      {owner && endorsers.length === 0 && (
+        // On one line with the counts, as staging has it.
+        <span className="trust-none">No endorsements yet</span>
       )}
       {(followers > 0 || following > 0) && (
         <p className="trust-counts">

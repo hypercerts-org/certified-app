@@ -18,7 +18,6 @@ import {
   type AwardsIssued,
   awardSubject,
   activityRecord,
-  type BadgeCard,
   collectionOf,
   type EndorsementCard,
   formatDate,
@@ -34,7 +33,6 @@ import {
   toActivityCard,
   toActorCard,
   toActorDetail,
-  toBadgeCard,
   toEndorsementCard,
   toProfileVersion,
   toProjectCard,
@@ -243,22 +241,6 @@ export async function listOrganizationsPage(options: {
 /** The badge type of endorsements, which pages show apart from other badges. */
 const ENDORSEMENT = "endorsement";
 
-export async function listBadgesReceived(did: string): Promise<BadgeCard[]> {
-  "use cache";
-  publicData(tags.badges(did));
-
-  const { badgeAwards } = await api.call(
-    app.certified.badge.listBadgeAwards,
-    { subjects: [did], limit: 50 },
-    read(),
-  );
-  // Endorsements have their own section (getEndorsements).
-  return badgeAwards
-    .map(toBadgeCard)
-    .filter((badge) => badge.badgeType !== ENDORSEMENT)
-    .slice(0, 20);
-}
-
 // Badge awards issued
 //
 // The API has no count for badge awards (proposed in TECH-810), so
@@ -308,13 +290,6 @@ async function issuedAwardsSource(did: string): Promise<IssuedAwardsSource> {
   } while (cursor && source.awards.length < MAX_ISSUED_AWARDS);
   source.truncated = Boolean(cursor);
   return source;
-}
-
-export async function hasIssuedAwards(did: string): Promise<boolean> {
-  "use cache";
-  publicData(tags.awardsIssued(did));
-
-  return (await issuedAwardsSource(did)).awards.length > 0;
 }
 
 function chunks<T>(items: T[], size = 100): T[][] {

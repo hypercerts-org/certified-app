@@ -6,7 +6,7 @@
 // ships those writes: shown, so the page has its final shape, but disabled.
 
 import { Button, Menu, MenuContent, MenuItem, MenuTrigger } from "@hypercerts-org/ui-react";
-import { Copy, Ellipsis, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
+import { Check, Copy, Ellipsis, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -48,14 +48,34 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
   );
 }
 
-/** A visitor's actions: Follow, Endorse, Share and More. */
-export function VisitorActions({ did, path, title }: { did: string; path: string; title: string }) {
+/**
+ * A visitor's actions: Follow (Following, when the account you act as
+ * already does), Endorse, Share and More.
+ */
+export function VisitorActions({
+  did,
+  path,
+  title,
+  following,
+}: {
+  did: string;
+  path: string;
+  title: string;
+  following: boolean;
+}) {
   return (
     <>
-      <Button variant="primary" size="sm" disabled title={COMING_SOON}>
-        <UserPlus size={16} aria-hidden />
-        Follow
-      </Button>
+      {following ? (
+        <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
+          <Check size={16} aria-hidden />
+          Following
+        </Button>
+      ) : (
+        <Button variant="primary" size="sm" disabled title={COMING_SOON}>
+          <UserPlus size={16} aria-hidden />
+          Follow
+        </Button>
+      )}
       <Button variant="secondary" size="sm" disabled title={COMING_SOON}>
         <ThumbsUp size={16} aria-hidden />
         Endorse
