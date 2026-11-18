@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HelpMenu } from "@/components/help-menu";
+import { LinkPending } from "@/components/link-pending";
 
 // The Workspace's sidebar, after the staging redesign: its sections, then
 // Help and Settings at the foot. The network's pages (Explore, Apps) stay in
@@ -25,7 +26,7 @@ type Section = { label: string; icon: LucideIcon; path: string | null };
 const SECTIONS: readonly Section[] = [
   { label: "Overview", icon: LayoutDashboard, path: "" },
   { label: "Projects and activities", icon: FolderGit2, path: "/projects" },
-  { label: "Endorsements", icon: ThumbsUp, path: null },
+  { label: "Endorsements", icon: ThumbsUp, path: "/endorsements" },
   { label: "Lists", icon: ListChecks, path: null },
   { label: "Groups", icon: UsersRound, path: null },
 ];
@@ -50,10 +51,16 @@ export function WorkspaceNavView({ overview, pathname }: { overview: string; pat
                 prefetch
                 href={`${overview}${path}`}
                 className="workspace-nav-item"
-                aria-current={pathname === `${overview}${path}` ? "page" : undefined}
+                aria-current={
+                  pathname === `${overview}${path}` ||
+                  (path !== "" && pathname?.startsWith(`${overview}${path}/`))
+                    ? "page"
+                    : undefined
+                }
               >
                 <Icon size={20} strokeWidth={1.5} aria-hidden />
                 {label}
+                <LinkPending />
               </Link>
             ) : (
               <span className="workspace-nav-item" aria-disabled="true" title="Coming soon">

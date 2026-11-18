@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { WORKSPACE_OVERVIEW_PATH, workspaceHref } from "@/components/cards";
 import { HelpMenu } from "@/components/help-menu";
+import { LinkPending } from "@/components/link-pending";
 import { SignInButton } from "@/components/sign-in-button";
 import { type Account, SidebarAccountMenu } from "@/components/site-nav";
 
@@ -57,7 +58,12 @@ function workspaceItems(overview: string): Item[] {
       href: `${overview}/projects`,
       isActive: under(`${overview}/projects`),
     },
-    { label: "Endorsements", icon: ThumbsUp, href: null },
+    {
+      label: "Endorsements",
+      icon: ThumbsUp,
+      href: `${overview}/endorsements`,
+      isActive: under(`${overview}/endorsements`),
+    },
     { label: "Lists", icon: ListChecks, href: null },
     { label: "Groups", icon: UsersRound, href: null },
   ];
@@ -92,6 +98,7 @@ function Row({ item, pathname }: { item: Item; pathname: string }) {
     <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
       <Icon size={20} strokeWidth={active ? 2 : 1.5} aria-hidden />
       {label}
+      <LinkPending />
     </Link>
   );
 }

@@ -10,6 +10,7 @@ import { Check, Copy, Ellipsis, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } fr
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { LinkPending } from "@/components/link-pending";
 
 const COMING_SOON = "Coming soon";
 
@@ -162,6 +163,7 @@ export function ProfileTabs({
           >
             {tab.label}
             {tab.count !== undefined && <span className="profile-tab-count">{tab.count}</span>}
+            <LinkPending />
           </Link>
         ))}
     </nav>

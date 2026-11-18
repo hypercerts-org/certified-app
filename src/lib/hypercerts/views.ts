@@ -124,6 +124,8 @@ export type PersonRow = {
   actor: ActorCard;
   note: string | null;
   date: string | null;
+  /** A received endorsement its subject hid from its profile (a "rejected" response). */
+  hidden?: boolean;
 };
 
 /** A list an account keeps: a collection with a staging-app list type. */

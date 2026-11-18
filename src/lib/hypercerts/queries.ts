@@ -672,9 +672,15 @@ const PEOPLE_PAGE = 100;
 export type PeoplePage = { rows: PersonRow[]; more: boolean };
 
 /** Endorsements received (leaving out rejected ones) or given, newest first. */
+/**
+ * Endorsements `did` received or gave, newest first. Received ones its
+ * subject hid from its profile are left out, unless `withHidden` (the
+ * workspace, where they can be shown again), which marks them `hidden`.
+ */
 export async function listEndorsements(
   did: string,
   direction: "received" | "given",
+  withHidden = false,
 ): Promise<PeoplePage> {
   "use cache";
   publicData(tags.endorsements(did));
@@ -685,7 +691,9 @@ export async function listEndorsements(
       ? {
           subjects: [did],
           badgeTypes: ["endorsement"],
-          responses: ["accepted", "unanswered"],
+          responses: withHidden
+            ? ["accepted", "unanswered", "rejected"]
+            : ["accepted", "unanswered"],
           limit: PEOPLE_PAGE,
         }
       : { authors: [did as Did], badgeTypes: ["endorsement"], limit: PEOPLE_PAGE },
@@ -707,7 +715,13 @@ export async function listEndorsements(
     const subject = awardSubject(award.record.subject);
     const actor = subjects ? (subject ? subjects.get(subject) : undefined) : card.issuer;
     if (!actor) continue;
-    rows.push({ uri: award.uri, actor, note: card.note, date: card.createdAt });
+    rows.push({
+      uri: award.uri,
+      actor,
+      note: card.note,
+      date: card.createdAt,
+      hidden: award.responseStatus === "rejected",
+    });
   }
   return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor) };
 }

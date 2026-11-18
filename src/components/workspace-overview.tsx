@@ -374,10 +374,12 @@ async function EndorsementsSection({ did }: { did: string }) {
               "Endorsements received",
             ),
             value: endorsements.receivedCount,
+            href: `${workspaceHref(did)}/endorsements`,
           },
           {
             label: byCount(endorsements.given, "Endorsement given", "Endorsements given"),
             value: endorsements.given,
+            href: `${workspaceHref(did)}/endorsements/given`,
           },
           {
             label: byCount(follows.followers, "Follower", "Followers"),

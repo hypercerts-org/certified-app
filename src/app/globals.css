@@ -1987,3 +1987,94 @@ details[open] > .work-folder-head .work-folder-chevron {
     display: none;
   }
 }
+
+/* Workspace → Endorsements (src/components/workspace-endorsements.tsx): the
+   tabs with "Endorse someone" on their line, then rows of accounts. */
+.workspace-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.workspace-tabbar > .profile-tabs {
+  flex: 1;
+  border-block-end: none;
+}
+
+.workspace-tabbar > :last-child {
+  margin-block-end: 0.5rem;
+}
+
+.endorsement-row-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.endorsement-skeleton-identity {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+  max-inline-size: 20rem;
+}
+
+.skeleton-person-avatar {
+  flex: none;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: 50%;
+}
+
+/* Narrow rows keep the account and the button; the date goes. */
+@media (width < 40rem) {
+  .endorsement-row .people-date {
+    display: none;
+  }
+}
+
+/* Instant feedback (src/components/link-pending.tsx): a clicked tab or
+   navigation item looks current at once, while its page loads, and the one
+   it leaves stops looking current. */
+.link-pending {
+  display: none;
+}
+
+.profile-tab:has(> .link-pending[data-pending]) {
+  border-block-end-color: var(--hc-text-ink);
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+}
+
+.profile-tabs:has(.link-pending[data-pending]) .profile-tab[aria-current="page"] {
+  border-block-end-color: transparent;
+  color: var(--hc-text-muted);
+  font-weight: inherit;
+}
+
+.segmented-link:has(> .link-pending[data-pending]) {
+  background: var(--hc-surface-panel);
+  box-shadow: var(--hc-shadow-sm);
+  color: var(--hc-text-ink);
+}
+
+.segmented-links:has(.link-pending[data-pending]) .segmented-link[aria-current="page"] {
+  background: none;
+  box-shadow: none;
+  color: var(--hc-text-muted);
+}
+
+:is(.sidebar-item, .workspace-nav-item):has(> .link-pending[data-pending]) {
+  background: var(--hc-surface-tint);
+  font-weight: 600;
+}
+
+:is(.app-sidebar, .workspace-nav):has(.link-pending[data-pending])
+  :is(.sidebar-item, .workspace-nav-item)[aria-current="page"] {
+  background: none;
+  font-weight: inherit;
+}
