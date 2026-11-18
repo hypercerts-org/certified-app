@@ -444,9 +444,9 @@ function AccountMenuContent({
         }}
       />
       <hr className="menu-separator" />
-      <p id={youId} className="menu-label menu-label-signed-in">
+      <Eyebrow as="p" id={youId} className="menu-label menu-label-signed-in">
         Signed in as <span className="menu-label-name">{account.name}</span>
-      </p>
+      </Eyebrow>
       <ul className="menu-list" aria-labelledby={youId}>
         <li>
           <Link href={profileHref} className="menu-row" onClick={onNavigate}>

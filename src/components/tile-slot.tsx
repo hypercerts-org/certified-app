@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Banner, Button } from "@hypercerts-org/ui-react";
 import { catchError, type ErrorInfo } from "next/error";
 import { type ReactNode, Suspense } from "react";
 import { Tile, TileSkeleton } from "./tile";
@@ -8,10 +8,18 @@ import { Tile, TileSkeleton } from "./tile";
 function TileError({ title }: { title: string }, { retry }: ErrorInfo) {
   return (
     <Tile title={title}>
-      <ErrorMessage>This couldn't be loaded right now.</ErrorMessage>
-      <Button variant="secondary" size="sm" onClick={() => retry()}>
-        Try again
-      </Button>
+      {/* A section's failure is a Banner: ErrorMessage is a field's, and
+          its alert would interrupt a screen reader as the tile streams in. */}
+      <Banner
+        tone="danger"
+        action={
+          <Button variant="secondary" size="sm" onClick={() => retry()}>
+            Try again
+          </Button>
+        }
+      >
+        This couldn't be loaded right now.
+      </Banner>
     </Tile>
   );
 }

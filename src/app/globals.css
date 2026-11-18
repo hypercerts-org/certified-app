@@ -254,15 +254,11 @@ button.menu-row:disabled:not([aria-current]) {
   opacity: 0.55;
 }
 
+/* An Eyebrow; only how a long name is cut. */
 .menu-label-signed-in {
   overflow: hidden;
   margin: 0;
-  color: var(--hc-text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -479,7 +475,7 @@ button.menu-row:disabled:not([aria-current]) {
   border: 1px solid var(--hc-line-hairline);
   border-radius: var(--hc-radius-control);
   background: var(--hc-surface-panel);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  box-shadow: var(--hc-shadow-lg);
 }
 
 .switch-toast-header {
@@ -927,23 +923,6 @@ button.menu-row:disabled:not([aria-current]) {
   flex-wrap: wrap;
   gap: 0.5rem;
   min-block-size: 2.25rem;
-}
-
-/* A square icon-only button, the size of the small buttons beside it. */
-.icon-button {
-  display: inline-grid;
-  place-items: center;
-  min-inline-size: 2.25rem;
-  min-block-size: 2.25rem;
-  border: 1px solid var(--hc-line-hairline);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-panel);
-  color: var(--hc-text-ink);
-  cursor: pointer;
-}
-
-.icon-button:hover {
-  background: var(--hc-surface-tint);
 }
 
 /* The profile's pages: links styled as tabs, scrolling sideways if they
@@ -1506,14 +1485,10 @@ button.workspace-nav-item:hover,
   overflow-y: auto;
 }
 
+/* An Eyebrow; only its place. */
 .sidebar-group-label {
   margin: 0 0 0.25rem;
   padding-inline: 0.75rem;
-  color: var(--hc-text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .sidebar-list {
@@ -1695,10 +1670,18 @@ button.sidebar-item:hover,
   gap: 1.5rem;
 }
 
+/* The profile avatar's size: 4rem, 8rem from 48rem. */
 .skeleton-avatar {
-  inline-size: 8rem;
-  block-size: 8rem;
+  inline-size: 4rem;
+  block-size: 4rem;
   border-radius: 50%;
+}
+
+@media (min-width: 48rem) {
+  .skeleton-avatar {
+    inline-size: 8rem;
+    block-size: 8rem;
+  }
 }
 
 .skeleton-name {
@@ -1739,8 +1722,8 @@ button.sidebar-item:hover,
 
 .skeleton-identity-avatar {
   flex: none;
-  inline-size: 4rem;
-  block-size: 4rem;
+  inline-size: 4.5rem;
+  block-size: 4.5rem;
   border-radius: 50%;
 }
 
@@ -2082,4 +2065,13 @@ details[open] > .work-folder-head .work-folder-chevron {
 
 .overview-rows .text-hc-micro {
   font-size: var(--hc-type-body-sm);
+}
+
+/* Sonner's toasts in the Certified theme (its own variables). */
+[data-sonner-toaster] {
+  --normal-bg: var(--hc-surface-panel);
+  --normal-border: var(--hc-line-hairline);
+  --normal-text: var(--hc-text-ink);
+  --border-radius: var(--hc-radius-control);
+  font-family: var(--hc-font-body);
 }

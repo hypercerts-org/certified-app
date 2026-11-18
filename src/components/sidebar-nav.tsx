@@ -1,5 +1,6 @@
 "use client";
 
+import { Eyebrow } from "@hypercerts-org/ui-react";
 import {
   Compass,
   FolderGit2,
@@ -110,9 +111,9 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   return (
     <div className="sidebar-group">
-      <p id={id} className="sidebar-group-label">
+      <Eyebrow as="p" id={id} className="sidebar-group-label">
         {label}
-      </p>
+      </Eyebrow>
       <ul className="sidebar-list" aria-labelledby={id}>
         {children}
       </ul>

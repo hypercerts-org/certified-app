@@ -5,8 +5,15 @@
 // Follow, Endorse and Add to list are placeholders until the Hypercerts SDK
 // ships those writes: shown, so the page has its final shape, but disabled.
 
-import { Button, Menu, MenuContent, MenuItem, MenuTrigger } from "@hypercerts-org/ui-react";
-import { Check, Copy, Ellipsis, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
+import {
+  Button,
+  Menu,
+  MenuButton,
+  MenuContent,
+  MenuItem,
+  MenuTrigger,
+} from "@hypercerts-org/ui-react";
+import { Check, Copy, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
@@ -83,8 +90,8 @@ export function VisitorActions({
       </Button>
       <ShareButton path={path} title={title} />
       <Menu>
-        <MenuTrigger className="icon-button" aria-label={`More actions for ${title}`}>
-          <Ellipsis size={16} aria-hidden />
+        <MenuTrigger asChild>
+          <MenuButton label={`More actions for ${title}`} />
         </MenuTrigger>
         <MenuContent label="More actions" align="end">
           <MenuItem disabled title={COMING_SOON}>
