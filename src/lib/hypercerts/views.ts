@@ -52,8 +52,9 @@ export interface ActorDetail extends ActorCard {
   /** The profile record's own fields, without display fallbacks. */
   profile: ProfileFields;
   organizationTypes: string[];
+  /** An organization's links, http(s) only (safeUrl). */
   urls: string[];
-  /** The profile's website, if it has one. */
+  /** The profile's website, if it has one: http(s) only (safeUrl). */
   website: string | null;
   longDescription: string | null;
   foundedDate: string | null;
@@ -252,10 +253,28 @@ const IMAGE_PRESET = {
 
 export type ImageSize = keyof typeof IMAGE_PRESET;
 
+/**
+ * A URL from a record, if it is http(s): anything else (javascript:, data:,
+ * ftp:) never reaches an href. `httpsOnly` for what browsers load on their
+ * own, such as images: no mixed content.
+ */
+export function safeUrl(value: unknown, httpsOnly = false): string | null {
+  const text = asString(value);
+  if (!text) return null;
+  try {
+    const { protocol } = new URL(text);
+    return protocol === "https:" || (!httpsOnly && protocol === "http:") ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 export function imageUrl(did: string, image: unknown, size: ImageSize): string | null {
   const record = asRecord(image);
   if (!record) return null;
-  if (record.$type === "org.hypercerts.defs#uri") return asString(record.uri);
+  // An image given as a URL loads from wherever the author says, so only
+  // over https. (Blobs go through the CDN below.)
+  if (record.$type === "org.hypercerts.defs#uri") return safeUrl(record.uri, true);
   const cid = blobCid(record.image);
   return cid ? `https://cdn.bsky.app/img/${IMAGE_PRESET[size]}/plain/${did}/${cid}@jpeg` : null;
 }
@@ -310,8 +329,8 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
       description: profile?.description ?? "",
     },
     organizationTypes: organization?.organizationType ?? [],
-    urls: (organization?.urls ?? []).map((entry) => entry.url),
-    website: asString(profile?.website),
+    urls: (organization?.urls ?? []).flatMap((entry) => safeUrl(entry.url) ?? []),
+    website: safeUrl(profile?.website),
     bannerUrl: imageUrl(actor.did, profile?.banner, "banner"),
     pronouns: asString(profile?.pronouns),
     joined: formatMonth(profile?.createdAt),

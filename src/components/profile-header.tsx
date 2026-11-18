@@ -27,7 +27,7 @@ function links(actor: ActorDetail): AccountLink[] {
   const seen = new Set<string>();
   const out: AccountLink[] = [];
   for (const raw of [actor.website, ...actor.urls]) {
-    if (!raw || !/^https?:\/\//i.test(raw)) continue;
+    if (!raw) continue; // http(s) only, checked when mapped (safeUrl)
     const label = raw
       .replace(/^https?:\/\/(www\.)?/i, "")
       .replace(/\/+$/, "")
