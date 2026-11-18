@@ -13,6 +13,11 @@ export interface EndorserIdentity {
   initials: string
   /** The endorser's profile. */
   href: string
+  /** Looking the endorser up failed and the indexer named nobody: what is
+   *  shown would be a DID, so say it couldn't load instead. */
+  failed: boolean
+  /** Look the endorser up again (after `failed`). */
+  retry: () => void
 }
 
 /**
@@ -39,7 +44,9 @@ export function useEndorserIdentity(
     idxIssuer.displayName &&
     indexerAvatar
   )
-  const { info } = useAuthorInfo(indexerComplete ? null : endorsement.issuerDid)
+  const { info, failed: lookupFailed, retry } = useAuthorInfo(
+    indexerComplete ? null : endorsement.issuerDid,
+  )
 
   const displayName =
     idxIssuer?.displayName ||
@@ -55,5 +62,7 @@ export function useEndorserIdentity(
   const avatarSrc = indexerAvatar || info?.avatarUrl || undefined
   const href = profileUrl(handle || endorsement.issuerDid)
 
-  return { displayName, handle, avatarSrc, initials, href }
+  const failed = lookupFailed && !idxIssuer?.displayName && !idxIssuer?.handle
+
+  return { displayName, handle, avatarSrc, initials, href, failed, retry }
 }

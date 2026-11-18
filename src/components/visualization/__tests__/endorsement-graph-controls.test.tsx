@@ -11,11 +11,11 @@ vi.mock("@/hooks/use-trusted-evaluators", () => ({
 
 // Desktop (>=800px) unless a test says otherwise; also drives the
 // Filters sheet's sheet-or-dialog choice.
-const bp = vi.hoisted(() => ({ isDesktop: true }))
+const bp = vi.hoisted(() => ({ isDesktop: true, hasRightRail: null as boolean | null }))
 vi.mock("@/hooks/use-layout-breakpoints", () => ({
   useLayoutBreakpoints: () => ({
     isDesktop: bp.isDesktop,
-    hasRightRail: bp.isDesktop,
+    hasRightRail: bp.hasRightRail ?? bp.isDesktop,
     isFullDesktop: bp.isDesktop,
     isStandalone: false,
   }),
@@ -23,6 +23,7 @@ vi.mock("@/hooks/use-layout-breakpoints", () => ({
 
 beforeEach(() => {
   bp.isDesktop = true
+  bp.hasRightRail = null
 })
 
 import EndorsementGraph from "../endorsement-graph"
@@ -205,5 +206,42 @@ describe("EndorsementGraph on phones", () => {
     expect(within(sheet).getByRole("checkbox", { name: "Mutual only" })).not.toBeChecked()
     expect(screen.getByRole("button", { name: "Filters" })).toBeTruthy()
     expect(last().nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "d"])
+  })
+})
+
+// 800-1099px (the rail layout) takes the phone pattern: the find field and
+// a Filters button above the graph, the rest in the sheet, so the graph
+// starts near the top instead of under a tall panel.
+describe("EndorsementGraph controls, 800-1099px", () => {
+  it("is a find + Filters row, not the panel of rows", () => {
+    bp.isDesktop = true
+    bp.hasRightRail = false
+    renderGraph()
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument()
+    expect(screen.queryByRole("radiogroup", { name: "Graph layout" })).toBeNull()
+    expect(screen.queryByRole("checkbox", { name: "Mutual only" })).toBeNull()
+  })
+})
+
+// Phones: the selected account's card sits under the graph (its slot),
+// part of the page, never over the graph.
+describe("EndorsementGraph account card, phones", () => {
+  it("goes in the slot under the graph when there is one, not over it", () => {
+    bp.isDesktop = false
+    const slot = document.createElement("div")
+    document.body.appendChild(slot)
+    render(
+      <EndorsementGraph
+        nodes={nodes}
+        links={links}
+        focusReq={{ did: "a", nonce: 1 }}
+        panelHost={slot}
+      />,
+    )
+    const card = slot.querySelector(".viz__panel")
+    expect(card).not.toBeNull()
+    expect(card).toHaveClass("viz__panel--docked")
+    expect(document.querySelector(".viz__canvas-host .viz__panel")).toBeNull()
+    slot.remove()
   })
 })

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
 import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
@@ -14,13 +14,15 @@ import {
 } from "@/lib/atproto/account-email";
 import UnlockAppPasswordsDialog from "@/components/settings/unlock-app-passwords-dialog";
 import { updateCachedSessionEmail } from "@/hooks/use-session";
-import { accountErrorMessage } from "./account-error";
+import { userErrorMessage } from "@/lib/utils/user-error";
 
 interface EmailSectionProps {
   email: string;
 }
 
-type State = "idle" | "requesting" | "form" | "confirm" | "success";
+// "asking": Edit opened the step that says where the code goes; nothing
+// is sent until Send code. "requesting": the change is starting.
+type State = "idle" | "asking" | "requesting" | "form" | "confirm" | "success";
 
 // Authoritative validation happens on the PDS; this is just a friendly
 // pre-check so an obvious typo doesn't cost a round-trip.
@@ -45,6 +47,8 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
   }, [email]);
 
   const [state, setState] = useState<State>("idle");
+  const editRef = useRef<HTMLButtonElement>(null);
+  const stepId = useId();
   const [tokenRequired, setTokenRequired] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
 
@@ -91,12 +95,13 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         return;
       }
       setIdleError(
-        accountErrorMessage(
+        userErrorMessage(
           err instanceof Error ? err.message : undefined,
           "Couldn't start the email change. Try again in a moment",
         ),
       );
-      setState("idle");
+      // The step stays open, so Send code tries again.
+      setState("asking");
     }
   };
 
@@ -116,7 +121,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
         return;
       }
       setFormError(
-        accountErrorMessage(
+        userErrorMessage(
           err instanceof Error ? err.message : undefined,
           "Couldn't send the confirmation code. Try again in a moment",
         ),
@@ -179,7 +184,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       setFormError(
         /token|code/i.test(msg)
           ? "That code looks wrong or expired. Request a new one."
-          : accountErrorMessage(msg, "Couldn't update your email"),
+          : userErrorMessage(msg, "Couldn't update your email"),
       );
       setSaving(false);
     }
@@ -210,7 +215,7 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
       setFormError(
         /token|code/i.test(msg)
           ? "That code looks wrong or expired. Resend a new one."
-          : accountErrorMessage(msg, "Couldn't confirm your email"),
+          : userErrorMessage(msg, "Couldn't confirm your email"),
       );
     } finally {
       setSaving(false);
@@ -221,6 +226,15 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
     clearFormState();
     setState("idle");
   };
+
+  // Close the send step without sending; focus goes back to Edit (the
+  // step's buttons are about to unmount).
+  const closeStep = () => {
+    setState("idle");
+    editRef.current?.focus();
+  };
+
+  const stepOpen = state === "asking" || state === "requesting";
 
   if (state === "form") {
     return (
@@ -357,22 +371,54 @@ const EmailSection: React.FC<EmailSectionProps> = ({ email }) => {
     <div className="dash-card">
       <div className="settings-field">
         <span className="settings-field__value">{currentEmail || "—"}</span>
+        {/* Edit only opens the step below: a code is emailed on Send
+            code, never on this click. */}
         <Button
+          ref={editRef}
           variant="ghost"
           size="sm"
-          onClick={beginChange}
+          aria-expanded={stepOpen}
+          aria-controls={stepOpen ? stepId : undefined}
+          onClick={() => {
+            setIdleError(null);
+            if (stepOpen) closeStep();
+            else setState("asking");
+          }}
           disabled={state === "requesting"}
         >
-          {state === "requesting" ? (
-            "Starting…"
-          ) : (
-            <>
-              <Pencil size={16} strokeWidth={1.75} aria-hidden />
-              Edit{" "}<span className="sr-only">email</span>
-            </>
-          )}
+          <Pencil size={16} strokeWidth={1.75} aria-hidden />
+          Edit{" "}<span className="sr-only">email</span>
         </Button>
       </div>
+      {stepOpen && (
+        <div id={stepId}>
+          <p className="password-section__hint">
+            We&rsquo;ll email a code to{" "}
+            <strong className="font-medium text-[var(--fg-primary)] [overflow-wrap:anywhere]">
+              {currentEmail || "your email address"}
+            </strong>{" "}
+            to confirm the change.
+          </p>
+          <div className="password-section__actions">
+            <Button
+              size="sm"
+              onClick={() => void beginChange()}
+              loading={state === "requesting"}
+              disabled={state === "requesting"}
+            >
+              {state === "requesting" ? "Sending…" : "Send code"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeStep}
+              disabled={state === "requesting"}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {state !== "success" && currentEmail && !confirmed && (
         <Banner variant="warning" className="mt-3">
           This email isn&rsquo;t confirmed yet — confirm it so sign-in and

@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   pageTitle: null as string | null,
   barTitle: null as string | null,
   isAuthenticated: true,
+  isLoading: false,
   groups: [] as { groupDid: string }[],
   navHidden: false,
   transitionBack: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/auth/auth-context", () => ({
   useAuth: () => ({
-    isLoading: false,
+    isLoading: state.isLoading,
     isAuthenticated: state.isAuthenticated,
     did: "did:plc:me",
     openSignIn: vi.fn(),
@@ -84,6 +85,7 @@ beforeEach(() => {
   state.pageTitle = null
   state.barTitle = null
   state.isAuthenticated = true
+  state.isLoading = false
   state.groups = []
   state.navHidden = false
   state.transitionBack.mockReset()
@@ -216,7 +218,7 @@ describe("Navbar (phone)", () => {
   })
 
   it("offers Search signed out too, before Sign in", () => {
-    state.pathname = "/explore"
+    state.pathname = "/map"
     state.hasPageHeader = true
     state.isAuthenticated = false
     const { container } = render(<Navbar />)
@@ -225,6 +227,37 @@ describe("Navbar (phone)", () => {
       "Search",
       "Sign in",
     ])
+  })
+
+  it("has no Search on Explore, whose own field is right under the bar", () => {
+    state.pathname = "/explore"
+    state.hasPageHeader = true
+    state.barTitle = "Explore"
+    render(<Navbar />)
+    expect(screen.queryByRole("button", { name: "Search" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument()
+  })
+
+  it("stands while sign-in resolves: the mark and the title, the right side empty", () => {
+    state.isLoading = true
+    state.pathname = "/feed"
+    state.hasPageHeader = true
+    state.barTitle = "Feed"
+    const { container } = render(<Navbar />)
+    expect(container.querySelector("header.navbar")).not.toBeNull()
+    expect(container.querySelector(".navbar__logo svg")).not.toBeNull()
+    expect(container.querySelector(".navbar__title")?.textContent).toBe("Feed")
+    // No Sign in, avatar or Search yet, and no home link that might point
+    // the wrong way.
+    expect(container.querySelector(".navbar__right")?.children).toHaveLength(0)
+    expect(screen.queryByRole("link", { name: "Certified home" })).toBeNull()
+  })
+
+  it("keeps the back chevron while sign-in resolves on a detail page", () => {
+    state.isLoading = true
+    state.pathname = "/rosa.example/project/3k2"
+    render(<Navbar />)
+    expect(screen.getByRole("button", { name: "Go back" })).toBeInTheDocument()
   })
 
   it("has no Search on a detail page or a form", () => {

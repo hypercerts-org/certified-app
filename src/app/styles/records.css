@@ -34,6 +34,14 @@
   gap: 8px;
 }
 
+/* The profile tabs it links to (Projects and activities has two). */
+.records-group__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 24px;
+}
+
 /* ---------- Pane ---------- */
 
 .records-pane {
@@ -92,9 +100,24 @@
   min-width: 0;
 }
 
+/* Tabs with counts (Lists has four) can be wider than a phone: the strip
+   scrolls sideways instead of widening the page, as the profile's does. */
 .records-pane__tablist {
   flex: 1 1 auto;
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.records-pane__tablist::-webkit-scrollbar {
+  display: none;
+}
+
+.records-pane__tablist > [role="tab"] {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .records-pane__tab-actions {

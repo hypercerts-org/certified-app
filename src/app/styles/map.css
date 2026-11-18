@@ -63,6 +63,11 @@
   color: var(--fg-muted);
 }
 
+/* Its phone copy, after the view (map-page.tsx). */
+.map-page__blurb--after {
+  display: none;
+}
+
 .map-page__controls {
   display: flex;
   flex: none;
@@ -143,8 +148,9 @@
     display: block;
   }
 
-  /* Phones: the controls first (Filters, flat / globe), the short
-     description under them, then the map. */
+  /* Phones: the figures, the controls (Filters, flat / globe), the map,
+     then the short description after the view (Graph and Funding have the
+     same order). */
   .map-page__bar {
     flex-direction: column;
     align-items: stretch;
@@ -152,7 +158,6 @@
   }
 
   .map-page__controls {
-    order: -1;
     justify-content: space-between;
   }
 
@@ -160,8 +165,13 @@
     display: inline-flex;
   }
 
-  .map-page__blurb {
-    flex-basis: auto;
+  .map-page__bar .map-page__blurb {
+    display: none;
+  }
+
+  .map-page__blurb--after {
+    display: block;
+    margin-top: 16px;
   }
 
   .map-page__view {
@@ -353,6 +363,14 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--fg-muted);
+}
+
+/* The chips' scroller and, over its cut edges, the fades (tab-strip-fades,
+   profile.css) that say more chips are past them. */
+.map-browse__chips-frame {
+  position: relative;
+  display: flex;
+  min-width: 0;
 }
 
 .map-browse__chips-scroll {

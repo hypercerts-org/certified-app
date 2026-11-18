@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import {
+  ArrowLeftRight,
   CircleUser,
   Crown,
   ScrollText,
   Share2,
-  ShieldAlert,
   Trash2,
   UserPlus,
   Users,
@@ -74,6 +74,7 @@ import GroupResultModal from "@/components/groups/group-result-modal"
 import HandleSearch from "@/components/groups/handle-search"
 import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import Pagination from "@/components/ui/pagination"
 import Skeleton from "@/components/ui/skeleton"
 
@@ -83,7 +84,7 @@ type CategoryKey =
   | "members"
   | "ownership"
   | "activity"
-  | "danger"
+  | "status"
 
 type CategoryDef = SettingsSectionDef<CategoryKey> & {
   /** The section heading; defaults to the SideNav label. */
@@ -95,8 +96,8 @@ type CategoryDef = SettingsSectionDef<CategoryKey> & {
  * Group settings share the personal settings frame (`SettingsLayout`): a
  * SideNav of sections and one section at a time, picked by the URL hash.
  * Which sections show depends on the viewer's role (`visibleCategories` in
- * the component): Transfer ownership only for the two parties, the Danger
- * zone only for the owner, and always last.
+ * the component): Transfer ownership only for the two parties, Group
+ * status only for the owner, and always last.
  */
 const CATEGORIES: CategoryDef[] = [
   {
@@ -130,21 +131,25 @@ const CATEGORIES: CategoryDef[] = [
     icon: ScrollText,
     description: "Recent actions taken in this group.",
   },
+  // Turning back is reversible and deletes nothing, so this isn't a
+  // "danger zone": named for what it holds, with no warning sign.
   {
-    key: "danger",
-    label: "Danger zone",
-    icon: ShieldAlert,
-    description: "Owner-only changes to the group itself.",
+    key: "status",
+    label: "Group status",
+    icon: ArrowLeftRight,
+    description: "Whether this account is a group. Only the owner can change it.",
   },
 ]
 
 const CATEGORY_KEYS: readonly CategoryKey[] = CATEGORIES.map((c) => c.key)
 
-/** Old deep links: the group's Handle page is now part of Account. */
+/** Old deep links: the group's Handle page is now part of Account, and
+ *  the Danger zone is Group status. */
 const CATEGORY_ALIASES: Readonly<Record<string, CategoryKey>> = {
   handle: "account",
   email: "account",
   password: "account",
+  danger: "status",
 }
 
 const ROLE_PHRASE: Record<OrgRole, string> = {
@@ -284,9 +289,10 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       setRemoved(true)
     } catch (err) {
       setDestroyError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't turn the group back into a regular account.",
+        caughtErrorMessage(
+          err,
+          "Couldn't turn the group back into a regular account. Try again in a moment",
+        ),
       )
       setConfirmDestroy(false)
     } finally {
@@ -339,11 +345,11 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
     callerDid: did,
     isOwner,
   })
-  // Owners also get the Danger zone (remove group), always last.
+  // Owners also get Group status (turn back into an account), always last.
   const visibleCategories = CATEGORIES.filter(
     (c) =>
       (c.key !== "ownership" || viewerTransferRole !== "none") &&
-      (c.key !== "danger" || isOwner),
+      (c.key !== "status" || isOwner),
   )
 
   // Audit log
@@ -454,7 +460,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           // only the failing member onward so a retry doesn't double-add them.
           setPendingMembers(remainingAfterAddIndex(pendingMembers, i))
           setAddError(
-            err instanceof Error ? err.message : "Failed to add member"
+            caughtErrorMessage(err, "Couldn't add the member. Try again in a moment")
           )
           return
         }
@@ -480,7 +486,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await Promise.all([fetchMembers(), fetchAudit(), fetchTransfer()])
     } catch (err) {
       setMemberError(
-        err instanceof Error ? err.message : "Failed to remove member"
+        caughtErrorMessage(err, "Couldn't remove the member. Try again in a moment")
       )
       setConfirmRemove(null)
     }
@@ -493,7 +499,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await Promise.all([fetchMembers(), fetchAudit(), fetchTransfer()])
     } catch (err) {
       setMemberError(
-        err instanceof Error ? err.message : "Failed to change role"
+        caughtErrorMessage(err, "Couldn't change the role. Try again in a moment")
       )
     }
   }
@@ -509,7 +515,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await Promise.all([fetchTransfer(), fetchAudit()])
     } catch (err) {
       setTransferError(
-        err instanceof Error ? err.message : "Failed to propose transfer"
+        caughtErrorMessage(err, "Couldn't propose the transfer. Try again in a moment")
       )
       setConfirmPropose(false)
     } finally {
@@ -530,7 +536,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await refetchOrgs()
     } catch (err) {
       setTransferError(
-        err instanceof Error ? err.message : "Failed to accept transfer"
+        caughtErrorMessage(err, "Couldn't accept the transfer. Try again in a moment")
       )
       setConfirmAccept(false)
     } finally {
@@ -546,7 +552,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
       await Promise.all([fetchTransfer(), fetchAudit()])
     } catch (err) {
       setTransferError(
-        err instanceof Error ? err.message : "Failed to cancel transfer"
+        caughtErrorMessage(err, "Couldn't cancel the transfer. Try again in a moment")
       )
     } finally {
       setTransferBusy(false)
@@ -559,7 +565,7 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
   const [active, select] = useHashSection(CATEGORY_KEYS, CATEGORY_ALIASES)
 
   // The section that renders. A deep link to a section this viewer doesn't
-  // get (a non-owner's #danger) falls back to the first one, Account.
+  // get (a non-owner's #status) falls back to the first one, Account.
   const selected =
     visibleCategories.find((c) => c.key === active) ?? visibleCategories[0]
 
@@ -1067,8 +1073,8 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           </SettingsBlock>
         )
 
-      // Danger zone — owner-only (gated by `visibleCategories` above).
-      case "danger":
+      // Group status — owner-only (gated by `visibleCategories` above).
+      case "status":
         return (
           // Nothing is deleted, so no trash icon or delete wording: named
           // for what it does, and not styled as destructive.
@@ -1160,7 +1166,6 @@ export default function OrgSettings({ groupDid, org }: OrgSettingsProps) {
           message="Members can no longer act for it and the group features go away. The account, its handle and everything it published stay, and you can make it a group again later."
           confirmLabel="Turn back"
           confirmVariant="primary"
-          confirmPhrase={org.handle}
           isConfirming={destroying}
           onCancel={() => setConfirmDestroy(false)}
           onConfirm={handleDestroy}

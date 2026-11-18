@@ -28,6 +28,7 @@ import {
   deleteEndorsementAward,
 } from "@/lib/atproto/badges"
 import { appendItemToList } from "@/lib/atproto/collection"
+import { useOptionalToast } from "@/components/profile/use-optional-toast"
 
 /**
  * The Follow + Endorse action pair for someone else's profile, shown in
@@ -161,7 +162,9 @@ export function FollowButton({
 }: FollowButtonProps) {
   const [isWriting, setIsWriting] = useState(false)
   // A failed write: the button keeps its state (it only flips once the
-  // write lands) and says so beside it, like Like does.
+  // write lands) and an error toast says so, as for Like. Inline only
+  // without a toast region.
+  const toasts = useOptionalToast()
   const [error, setError] = useState<string | null>(null)
   const disabled = isLoading || isWriting
   // The repo the follow record lives in — the group when delegating, the
@@ -194,7 +197,9 @@ export function FollowButton({
       }
     } catch (err) {
       console.error("Follow toggle failed:", err)
-      setError(next ? "Couldn't follow. Try again." : "Couldn't unfollow. Try again.")
+      const message = next ? "Couldn't follow. Try again." : "Couldn't unfollow. Try again."
+      if (toasts) toasts.toast({ title: message, variant: "error" })
+      else setError(message)
     } finally {
       setIsWriting(false)
     }
@@ -224,8 +229,9 @@ export function FollowButton({
   )
 }
 
-/** A short line saying a Follow or Endorse write didn't go through. In the
- *  profile header's actions it takes a line of its own under the buttons. */
+/** A short line saying a Follow or Endorse write didn't go through, where
+ *  there is no toast region to say it. In the profile header's actions it
+ *  takes a line of its own under the buttons. */
 function ActionError({ message }: { message: string }) {
   return (
     <span className="profile-action-error" role="alert">
@@ -274,7 +280,9 @@ export function EndorseButton({
   const [isWriting, setIsWriting] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const [reasonOpen, setReasonOpen] = useState(false)
-  // A failed revoke: the button goes back to "Endorsed" and says so.
+  // A failed revoke: the button goes back to "Endorsed" and an error toast
+  // says so (inline only without a toast region).
+  const toasts = useOptionalToast()
   const [revokeError, setRevokeError] = useState<string | null>(null)
   // Optimistic flip — the hook's `endorsements` refetch may lag the PDS
   // write by a beat, so we override locally until it catches up.
@@ -344,10 +352,12 @@ export function EndorseButton({
       setConfirmRevoke(false)
     } catch (err) {
       console.error("Revoke endorsement failed:", err)
-      // Back to "Endorsed", the dialog closed, and the reason beside it.
+      // Back to "Endorsed", the dialog closed, and the reason in a toast.
       setOptimistic(null)
       setConfirmRevoke(false)
-      setRevokeError("Couldn't revoke the endorsement. Try again.")
+      const message = "Couldn't revoke the endorsement. Try again."
+      if (toasts) toasts.toast({ title: message, variant: "error" })
+      else setRevokeError(message)
     } finally {
       setIsWriting(false)
     }

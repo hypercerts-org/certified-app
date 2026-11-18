@@ -47,6 +47,9 @@ export interface EndorsementSubjectRowProps {
   trailing?: React.ReactNode
   /** `@handle` under the name. Off by default: lists show names. */
   showHandle?: boolean
+  /** Draws the avatar in place of the default round one (e.g. one in the
+   *  shape of the account's kind). */
+  avatar?: React.ReactNode
 }
 
 const skeletonPx = { sm: 32, row: 40, md: 48 } as const
@@ -73,6 +76,7 @@ export default function EndorsementSubjectRow({
   nameAside,
   trailing,
   showHandle = false,
+  avatar,
 }: EndorsementSubjectRowProps) {
   const identity = deriveIdentity(
     info,
@@ -93,7 +97,9 @@ export default function EndorsementSubjectRow({
 
   const body = (
     <>
-      {isLoading && !info ? (
+      {avatar ? (
+        avatar
+      ) : isLoading && !info ? (
         <Skeleton
           circle
           animate={false}

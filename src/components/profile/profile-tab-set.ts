@@ -72,10 +72,14 @@ export function visibleProfileTabs({
     followers: counts.followers,
     lists: counts.lists,
   }
+  // Endorsements holds what the account received and what it gave, and
+  // Followers its followers and its follows: a tab is empty only when
+  // both of its lists are known to be (a failed list isn't).
   const knownEmpty = (key: ProfileTabKey): boolean => {
     if (key === "endorsements")
-      return isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
-    if (key === "followers") return isKnownEmpty(counts.followers) && counts.following === 0
+      return isKnownEmpty(counts.endorsements) && isKnownEmpty(counts.endorsementsGiven)
+    if (key === "followers")
+      return isKnownEmpty(counts.followers) && isKnownEmpty(counts.following)
     const c = sectionCount[key]
     return c ? isKnownEmpty(c) : false
   }
@@ -97,9 +101,10 @@ export function visibleProfileTabs({
   })
 }
 
-/** A tab's count label: nothing while unknown or failed, "40+" when more
- *  exist than were counted. */
+/** A tab's count label: nothing while unknown or failed, nor for zero (a
+ *  Followers tab open for the accounts it follows isn't "Followers 0"),
+ *  "40+" when more exist than were counted. */
 function tabCountLabel(c: SectionCount): string | undefined {
-  if (c.isLoading || c.failed || c.value === null) return undefined
+  if (c.isLoading || c.failed || c.value === null || c.value === 0) return undefined
   return `${c.value.toLocaleString()}${c.more && c.value > 0 ? "+" : ""}`
 }

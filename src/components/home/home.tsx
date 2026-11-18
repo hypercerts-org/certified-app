@@ -39,8 +39,11 @@ import {
  *                                 │ groups    │
  *                                 └───────────┘
  *
- * Below 1100px what the account holds comes first, so New activity and
- * the counts are in view on a phone; the boxes follow, then Apps.
+ * Below 1100px what the account holds comes first (Your records, whose
+ * header carries New activity, then the counts); the boxes follow, then
+ * Apps. The DOM is that order at every width (the ID box before Your
+ * groups, as the side column shows them), so the keyboard follows the
+ * page.
  *
  * Everything describes the account the viewer is acting as: the personal
  * account, or the group picked in the Workspace menu. "Your groups" is
@@ -125,10 +128,10 @@ function HomeAccount({
     // takes the frame's offset and sits level with the first side-list
     // label.
     <WorkspaceFrame>
-      {/* DOM order is the phone order: the sections (records, from
-          others), Your groups and the ID boxes, Apps. From 1100px a grid
-          puts the two boxes in a column on the right, its top level with
-          the sections, the ID first (home.css). */}
+      {/* DOM order is the reading order at every width: the sections
+          (records, from others), the ID and Your groups boxes, Apps. From
+          1100px a grid puts the two boxes in a column on the right, its
+          top level with the sections (home.css). */}
       <div className="home__layout">
         <div className="home__main">
           <HomeRecords
@@ -147,14 +150,9 @@ function HomeAccount({
           />
         </div>
 
-        {/* White boxes, so the groups and the ID stand out from the open
+        {/* White boxes, so the ID and the groups stand out from the open
             sections. */}
         <div className="home__side">
-          {isGroup ? null : (
-            <Card unpadded className="home__box">
-              <HomeGroups />
-            </Card>
-          )}
           {/* The ID card, the account's identity: a centerpiece every
               style can redraw (looks.css); data-did feeds Banknote's
               microtext. On top of the side column from 1100px. */}
@@ -174,6 +172,11 @@ function HomeAccount({
               }
             />
           </Card>
+          {isGroup ? null : (
+            <Card unpadded className="home__box">
+              <HomeGroups />
+            </Card>
+          )}
         </div>
 
         <div className="home__apps">

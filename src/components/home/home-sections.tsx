@@ -217,6 +217,18 @@ export function HomeRecords({
       title="Your records"
       description="What you have published, here or in other apps."
       tour="home-records"
+      // Creating lives in the Workspace (there is no global New), so the
+      // section offers it, as Your groups offers New group. A group
+      // creates too: /create writes as the account being acted as. Left
+      // out while the empty state below carries it.
+      action={
+        isEmpty ? undefined : (
+          <Button href="/create" variant="secondary" size="sm">
+            <Plus size={16} strokeWidth={1.75} aria-hidden />
+            New activity
+          </Button>
+        )
+      }
     >
       {isEmpty ? (
         <EmptyState
@@ -224,12 +236,18 @@ export function HomeRecords({
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
         >
-          {/* Groups can create too, as in the New menu: /create writes as
-              the account being acted as. */}
-          <Button href="/create" variant="primary" size="md">
-            <Plus size={16} aria-hidden />
-            New activity
-          </Button>
+          {/* As Projects and activities offers them: the first step is
+              the primary action; a project can come first too. */}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button href="/create" variant="primary" size="md">
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New activity
+            </Button>
+            <Button href="/project/new" variant="secondary" size="md">
+              <Plus size={16} strokeWidth={1.75} aria-hidden />
+              New project
+            </Button>
+          </div>
         </EmptyState>
       ) : (
         <div className="flex flex-col gap-6">
@@ -344,18 +362,22 @@ export function HomeEndorsements({
         <StatRow
           aria-label="Endorsements and followers"
           items={[
+            // Phones get the short labels (the section heading says what
+            // they count), so the three stay on one row at 390px.
             {
               label: byCount(
                 endorsementsLoading ? null : endorsements.length,
                 "Endorsement received",
                 "Endorsements received",
               ),
+              shortLabel: "Received",
               value: endorsementsLoading ? null : endorsements.length,
               loading: endorsementsLoading,
               href: hrefs.endorsementsReceived,
             },
             {
               label: byCount(givenCount, "Endorsement given", "Endorsements given"),
+              shortLabel: "Given",
               value: givenCount,
               loading: given.isLoading && given.endorsements.length === 0,
               href: hrefs.endorsementsGiven,
@@ -484,10 +506,11 @@ export function groupProfileHref(group: Pick<Group, "groupDid" | "handle">): str
  *
  * - `size="md"` (Workspace → Groups, a full-page list of accounts): the
  *   people row Followers and Endorsements use (40px avatar, the name in
- *   `body`, the meta in `ui`, `records-person` in records.css), with a
- *   Switch button to act as the group (`showSwitch`).
+ *   `body`, the meta in `ui`, `records-person` in records.css), with an
+ *   "Act as" button to act as the group (`showSwitch`), the words the
+ *   Workspace menu uses.
  * - `size="sm"` (Home's "Your groups", a list inside a section): the
- *   compact row (32px, `body-sm` / `caption`), without Switch, so the
+ *   compact row (32px, `body-sm` / `caption`), without "Act as", so the
  *   names get the row's width (switching lives in the Workspace menu).
  */
 export function GroupRows({
@@ -498,7 +521,7 @@ export function GroupRows({
   groups: readonly Group[]
   /** @default "md" */
   size?: "sm" | "md"
-  /** Add a Switch button to each row. @default true */
+  /** Add an "Act as" button to each row. @default true */
   showSwitch?: boolean
 }) {
   const switchActor = useSwitchActor()
@@ -508,9 +531,9 @@ export function GroupRows({
         variant="secondary"
         size="sm"
         onClick={() => switchActor(g)}
-        aria-label={`Switch to ${name}`}
+        aria-label={`Act as ${name}`}
       >
-        Switch
+        Act as
       </Button>
     ) : null
 

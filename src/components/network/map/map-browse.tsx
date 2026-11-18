@@ -37,6 +37,8 @@ import { font, hatch, haloText } from "./marks"
 import { NO_HITS, drawApproxDiscs, drawAreaOutlines, drawSpotMarks, hitSpots, spotsBounds, sumCounts, type SpotHits } from "./draw-spots"
 import type { MapLayers } from "./use-map-layers"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
+import TabStripFades from "@/components/ui/tab-strip-fades"
 
 /**
  * The Map view: what the chosen layers hold, drawn as recorded, with a list
@@ -124,6 +126,7 @@ export default function MapBrowse({
   height,
   resize,
   layerState,
+  startBand,
 }: MapViewProps & {
   /** The layer chips' state, held by the page so the phone Filters sheet
    *  and the chips in the page are one control. */
@@ -329,6 +332,11 @@ export default function MapBrowse({
   const empty = rows.length === 0
   const nowhere = groups.nowhere.length
 
+  // The layer chips scroll sideways when wider than the page; a fade over
+  // the cut edge says there are more.
+  const chipsRef = useRef<HTMLDivElement>(null)
+  const chipEdges = useOverflowEdges(chipsRef)
+
   return (
     <div className="map-browse">
       {/* From 800px; phones have them in the Filters sheet (map-page.tsx). */}
@@ -336,8 +344,11 @@ export default function MapBrowse({
         <span className="map-browse__label" aria-hidden="true">
           Show
         </span>
-        <div className="map-browse__chips-scroll">
-          <MapLayerChips layers={layers} toggle={toggle} counts={layerCounts} />
+        <div className="map-browse__chips-frame">
+          <div className="map-browse__chips-scroll" ref={chipsRef}>
+            <MapLayerChips layers={layers} toggle={toggle} counts={layerCounts} />
+          </div>
+          <TabStripFades start={chipEdges.start} end={chipEdges.end} />
         </div>
       </div>
 
@@ -351,7 +362,7 @@ export default function MapBrowse({
                 setQuery(e.target.value)
                 setPages(1)
               }}
-              placeholder="Search titles, places, organizations"
+              placeholder="Search titles, places, accounts"
               aria-label="Search the map"
               leadingIcon={<Search size={15} aria-hidden />}
             />
@@ -413,6 +424,7 @@ export default function MapBrowse({
             ref={mapRef}
             kind={kind}
             height={height}
+            startBand={startBand}
             label="Map of activities, projects and places"
             draw={draw}
             drawKey={draw}
@@ -440,7 +452,7 @@ export function countsText(n: LayerCounts): string {
   const parts: string[] = []
   if (n.activity) parts.push(`${n.activity} ${n.activity === 1 ? "activity" : "activities"}`)
   if (n.project) parts.push(`${n.project} ${n.project === 1 ? "project" : "projects"}`)
-  if (n.org) parts.push(`${n.org} ${n.org === 1 ? "organization based here" : "organizations based here"}`)
+  if (n.org) parts.push(`${n.org} ${n.org === 1 ? "account based here" : "accounts based here"}`)
   if (n.unused) parts.push(`${n.unused} ${n.unused === 1 ? "place not used yet" : "places not used yet"}`)
   return parts.join(", ")
 }
@@ -532,7 +544,7 @@ function PlaceChain({ items, here, bases }: { items: Spot["items"]; here: Spot |
         />
       ))}
       {chain.orgs.map((o) => (
-        <ChainItem key={`o${o.i}`} kind="org" href={o.href} title={o.account.name ?? "Unnamed organization"} who={o.account} note="Based here" />
+        <ChainItem key={`o${o.i}`} kind="org" href={o.href} title={o.account.name ?? "Unnamed account"} who={o.account} note="Based here" />
       ))}
       {chain.unused.map((u) => (
         <ChainItem key={`u${u.i}`} kind="unused" href={u.account.href} title={u.account.name ?? "Unnamed account"} who={u.account} note="Saved this place, not used yet" />
@@ -561,7 +573,7 @@ function BaseNote({ org, here }: { org: Org; here: Spot }) {
   if (km < 1) return null
   return (
     <p className="map-chain__base">
-      {org.account.name ?? "The organization"} is based in {(org.place.name ? formatPlace(org.place.name) : "") || org.place.country || "another place"}, {km < 100 ? `${Math.round(km)} km` : `${(Math.round(km / 10) * 10).toLocaleString("en-US")} km`} away.
+      {org.account.name ?? "The account"} is based in {(org.place.name ? formatPlace(org.place.name) : "") || org.place.country || "another place"}, {km < 100 ? `${Math.round(km)} km` : `${(Math.round(km / 10) * 10).toLocaleString("en-US")} km`} away.
     </p>
   )
 }

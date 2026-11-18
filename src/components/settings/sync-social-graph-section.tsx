@@ -23,6 +23,7 @@ import {
   type SocialGraphSyncResult,
 } from "@/hooks/use-social-graph-sync"
 import { deriveIdentity } from "@/lib/utils/identity"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 interface SyncSocialGraphSectionProps {
   /**
@@ -113,13 +114,21 @@ export default function SyncSocialGraphSection({
   // a failed load, a too-large list and "already in sync" each have their
   // own line).
   const settled = !sync.isLoading && !failed && !inSync
+  // No follows at all on a side: "you already follow everyone" would be
+  // true but misleading, so say there's nobody to bring over.
+  const followsOnBluesky = sync.stats.inBoth.length + onlyBluesky
+  const followsOnCertified = sync.stats.inBoth.length + onlyCertified
   const importOffReason =
     settled && !sync.truncated && onlyBluesky === 0
-      ? "Nothing to sync from Bluesky: you already follow here everyone you follow there."
+      ? followsOnBluesky === 0
+        ? "You don't follow anyone on Bluesky yet."
+        : "Nothing to sync from Bluesky: you already follow here everyone you follow there."
       : null
   const exportOffReason =
     settled && !sync.blueskyTruncated && onlyCertified === 0
-      ? "Nothing to sync to Bluesky: you already follow there everyone you follow here."
+      ? followsOnCertified === 0
+        ? "You don't follow anyone on Certified yet."
+        : "Nothing to sync to Bluesky: you already follow there everyone you follow here."
       : null
   const reasonId = useId()
 
@@ -231,7 +240,9 @@ export default function SyncSocialGraphSection({
 
       {inSync ? (
         <span className="social-graph-sync__hint">
-          Your Certified and Bluesky follows are already in sync.
+          {sync.stats.inBoth.length === 0
+            ? "You don't follow anyone on Certified or Bluesky yet."
+            : "Your Certified and Bluesky follows are already in sync."}
         </span>
       ) : null}
     </div>
@@ -292,13 +303,18 @@ function SyncFlow({ copy, candidateDids, onClose, onImport }: SyncModalProps) {
         const out = await onImport(dids, { signal: controller.signal })
         setResult(out)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't import your follows. Try again.")
+        setError(
+          caughtErrorMessage(
+            err,
+            `Couldn't ${copy.verbLower} the follows. Try again in a moment`,
+          ),
+        )
       } finally {
         setIsImporting(false)
         abortControllerRef.current = null
       }
     },
-    [isImporting, onImport],
+    [isImporting, onImport, copy.verbLower],
   )
 
   return (

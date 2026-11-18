@@ -12,6 +12,7 @@ import {
 } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { confirmLeaveUnsavedChanges, guardPopState } from "@/hooks/use-unsaved-changes-guard"
 
 /**
  * Directional page-slide transitions for in-app tab navigation (e.g. a
@@ -81,6 +82,11 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
   // the same guard without double-patching history.
   const inAppDepthRef = useRef(0)
   useEffect(() => {
+    // A dirty form's back / forward guard goes first: added here, before
+    // the depth counter below and before the App Router adds its own
+    // listener (this effect runs first, the router being a parent), so it
+    // can hold both back while the viewer answers. See guardPopState.
+    window.addEventListener("popstate", guardPopState, true)
     const origPushState = history.pushState.bind(history)
     history.pushState = (...args: Parameters<typeof origPushState>) => {
       inAppDepthRef.current += 1
@@ -93,6 +99,7 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
     return () => {
       history.pushState = origPushState
       window.removeEventListener("popstate", onPop)
+      window.removeEventListener("popstate", guardPopState, true)
     }
   }, [])
 
@@ -151,7 +158,11 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
   )
 
   const transitionBack = useCallback(
-    (navigate?: () => void) =>
+    (navigate?: () => void) => {
+      // A dirty create / edit form asks first, with the same prompt its
+      // in-page links use (see useUnsavedChangesGuard). Asked before the
+      // view transition starts so the page isn't frozen behind the dialog.
+      if (!confirmLeaveUnsavedChanges()) return
       run(
         "back",
         navigate ??
@@ -165,7 +176,8 @@ export function ViewTransitionProvider({ children }: { children: ReactNode }) {
               router.push("/")
             }
           }),
-      ),
+      )
+    },
     [run, router],
   )
 

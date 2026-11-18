@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Button from "@/components/ui/button";
-import LpArrow from "@/components/landing/lp-arrow";
 import { useAuth } from "@/lib/auth/auth-context";
 
 /**
@@ -14,7 +13,9 @@ import { useAuth } from "@/lib/auth/auth-context";
  *
  * `explore` adds a quieter third way in, a link to the network for
  * visitors who want to look around before they sign up (donors,
- * mostly); the hero passes it, the closing section doesn't.
+ * mostly); the hero passes it, the closing section doesn't. It has no
+ * outward arrow: that glyph marks links that leave Certified, and this
+ * one stays in the app.
  */
 export default function HeroCta({ explore = false }: { explore?: boolean }) {
   const { openSignInModal, openSignIn } = useAuth();
@@ -34,7 +35,7 @@ export default function HeroCta({ explore = false }: { explore?: boolean }) {
       </Button>
       {explore ? (
         <Link href="/explore" className="lp-link lp-hero__explore">
-          Explore the network <LpArrow />
+          Explore the network
         </Link>
       ) : null}
     </div>

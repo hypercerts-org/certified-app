@@ -1028,6 +1028,8 @@ certified-app/
 21. **Hiding rejected endorsements from non-owners** — `useReceivedEndorsements` default keeps the privacy contract (foreign viewers never see rejected). Only pass `{ includeRejected: true }` on owner-side surfaces, and filter client-side from there.
 22. **Static segments under dynamic routes** — `/project/new` lives at `src/app/project/new/page.tsx` alongside `[did]/[rkey]`. Static wins (and `[did]/[rkey]` is two segments so `/project/new` wouldn't match it anyway), but if you change the dynamic pattern to single-segment make sure `new` still wins.
 23. **`backdrop-filter` order** — write `-webkit-backdrop-filter` first and `backdrop-filter` last. The production CSS minifier keeps only the last of the pair, and Chrome ignores the prefixed one, so unprefixed-first silently loses the blur in production (it did on `.form-action-bar`).
+24. **Server components must not import plain values from `"use client"` modules.** A string or object exported from a client module reaches the server component as a client reference and is filled in only when that chunk loads; in `<head>` (the inline init scripts) this broke hydration on slow chunk loads (2026-11-18). Keep such values in server-safe modules (`src/lib/look/look-data.ts`, `src/lib/layout/sidebar-init-script.ts`) and import those.
+25. **Unsaved changes:** `useUnsavedChangesGuard` also covers the phone bar's back (`transitionBack`) and browser back/forward (`guardPopState`, installed by `ViewTransitionProvider` before the router's own listener).
 
 ## 23. Adding a New Feature — Checklist
 
@@ -1098,6 +1100,7 @@ Use this for any new `src/app/api/**` route handler:
 
 ### Error handling
 
+- **Errors shown to people** go through `src/lib/utils/user-error.ts` (`userErrorMessage`, `caughtErrorMessage`), never a raw `err.message`.
 - **Server side** — return `NextResponse.json({ error: "..." }, { status })`. Use `extractError(res, fallback)` from `src/lib/utils/api.ts` to pull error messages out of nested upstream responses on the client.
 - **Client side** — store error in local component state, render via `<ErrorMessage>` component (`src/components/ui/error-message.tsx`). Don't `alert()`.
 - **Auth errors** — surfaced through `AuthProvider.error` and the sign-in modal. Don't write a parallel auth-error system.

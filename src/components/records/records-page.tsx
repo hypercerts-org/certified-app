@@ -32,35 +32,44 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
 
 /**
  * Acting as a group, each section says in one sentence where the group's
- * own records of that kind are, and links to that tab of its profile
- * (`?tab=` keys of the profile page). Groups is a personal list and has
- * its own state.
+ * own records of that kind are (naming the group), and links to those
+ * tabs of its profile (`?tab=` keys of the profile page). Groups is a
+ * personal list and has its own state.
  */
 const GROUP_SECTIONS: Record<
   Exclude<RecordKind, "groups">,
-  { title: string; description?: string; tab: string; link: string }
+  {
+    /** What shows on the profile, after the group's name. */
+    what: string
+    description?: string
+    links: { tab: string; label: string }[]
+  }
 > = {
   activities: {
-    title: "A group's projects and activities show on its profile",
+    what: "projects and activities",
     description: "What you create here is published as the group.",
-    tab: "activities",
-    link: "Open activities",
+    links: [
+      { tab: "activities", label: "Open activities" },
+      { tab: "projects", label: "Open projects" },
+    ],
   },
   endorsements: {
-    title: "A group's endorsements show on its profile",
-    tab: "endorsements",
-    link: "Open endorsements",
+    what: "endorsements",
+    links: [{ tab: "endorsements", label: "Open endorsements" }],
   },
   followers: {
-    title: "A group's followers show on its profile",
-    tab: "followers",
-    link: "Open followers",
+    what: "followers",
+    links: [{ tab: "followers", label: "Open followers" }],
   },
   lists: {
-    title: "A group's lists show on its profile",
-    tab: "lists",
-    link: "Open lists",
+    what: "lists",
+    links: [{ tab: "lists", label: "Open lists" }],
   },
+}
+
+/** "Estuary Alliance's endorsements show on its profile". */
+export function groupSectionTitle(groupName: string, what: string): string {
+  return `${groupName}'s ${what} show on its profile`
 }
 
 /**
@@ -161,21 +170,24 @@ export default function RecordsPage() {
       }
       const section = GROUP_SECTIONS[kind]
       const icon = WORKSPACE_SECTIONS.find((s) => s.key === kind)?.icon
+      const groupName = activeOrg.displayName?.trim() || `@${activeOrg.handle}`
       return (
         <WorkspaceFrame>
           <EmptyState
             icon={icon}
             headingLevel={2}
-            title={section.title}
+            title={groupSectionTitle(groupName, section.what)}
             description={section.description}
           >
             <div className="records-group">
               {/* Creating lives in the Workspace (there is no global New),
                   so a group creates from here; /create and /project/new
-                  publish as the account you act as. */}
+                  publish as the account you act as. New activity is the
+                  walk-through's "Create from your Workspace" step here
+                  (WorkPane's button carries it otherwise). */}
               {kind === "activities" ? (
                 <div className="records-group__actions">
-                  <Button variant="primary" href="/create">
+                  <Button variant="primary" href="/create" data-tour="records-new">
                     <Plus size={16} strokeWidth={1.75} aria-hidden />
                     New activity
                   </Button>
@@ -185,7 +197,11 @@ export default function RecordsPage() {
                   </Button>
                 </div>
               ) : null}
-              <SeeAllLink href={`${groupProfile}?tab=${section.tab}`} label={section.link} />
+              <div className="records-group__links">
+                {section.links.map((l) => (
+                  <SeeAllLink key={l.tab} href={`${groupProfile}?tab=${l.tab}`} label={l.label} />
+                ))}
+              </div>
               <Button variant="ghost" size="sm" onClick={() => switchActor(null)}>
                 Switch to personal account
               </Button>

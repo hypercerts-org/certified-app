@@ -58,11 +58,18 @@
   padding-top: 16px;
 }
 
+/* Phones: the figures' line, then the Filters row. */
 .funding-page__bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
+}
+
+.funding-page__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .funding-page__stats-line {
@@ -153,6 +160,14 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--fg-muted);
+}
+
+/* The chips' scroller and, over its cut edges, the fades (tab-strip-fades,
+   profile.css) that say more chips are past them. */
+.funding-confirmed__frame {
+  position: relative;
+  display: flex;
+  min-width: 0;
 }
 
 .funding-confirmed__scroll {
@@ -560,7 +575,65 @@
   outline-offset: 1px;
 }
 
+/* Narrow: the other projects behind a button, then as rows of name and
+   amount (funding-mosaic.tsx). */
+.funding-mosaic__tail-more {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.funding-mosaic__tail-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.funding-mosaic__tail-list > li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.funding-mosaic__tail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  font-size: var(--text-body-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.funding-mosaic__tail-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.funding-mosaic__tail-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.funding-mosaic__tail-amount {
+  flex: none;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Project panel ------------------------------------------------------ */
+
+/* In the narrow sheet the panel is the sheet's content: no card of its own. */
+.funding-sheet .funding-panel {
+  border: 0;
+  background: none;
+}
 
 .funding-panel {
   overflow: hidden;
@@ -747,8 +820,93 @@
   gap: 8px 16px;
 }
 
+/* From 800px the chart can be wider than its box: the box scrolls
+   sideways, with a fade over the cut edge (tab-strip-fades, profile.css)
+   and a line under it that says so. */
+.funding-flow__frame {
+  position: relative;
+}
+
 .funding-flow__scroll {
   overflow-x: auto;
+}
+
+.funding-flow__hint {
+  margin: 6px 0 0;
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+}
+
+/* Phones: the three stages one under another, each row a bar of its share
+   of the money (funding-flow.tsx FlowColumn). */
+.funding-flow__stack {
+  display: grid;
+  gap: 24px;
+}
+
+.funding-flow__col-title {
+  margin: 0 0 8px;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.funding-flow__rows {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.funding-flow__row {
+  display: grid;
+  gap: 2px;
+}
+
+.funding-flow__row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--fg-primary);
+}
+
+.funding-flow__row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.funding-flow__row-share {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-flow__row-sub {
+  font-size: var(--text-caption);
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-flow__meter {
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+}
+
+.funding-flow__meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--fg-primary);
 }
 
 .funding-flow__svg {

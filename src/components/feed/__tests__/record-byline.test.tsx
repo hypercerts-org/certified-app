@@ -31,12 +31,42 @@ vi.mock("@/hooks/use-org-marker", () => ({
   useOrgMarker: () => marker,
 }))
 
+// The owner card's trust line reads what the profile's does.
+interface Endorsement {
+  uri: string
+  cid: string
+  issuerDid: string
+  createdAt: string
+  issuer: { did: string; handle: string; displayName: string; description: null; avatarCid: string; pds: null }
+}
+let received: Endorsement[] = []
+let followerCount: number | null = 0
+vi.mock("@/hooks/use-received-endorsements", () => ({
+  useReceivedEndorsements: () => ({ endorsements: received, isLoading: false, error: null, refetch: vi.fn() }),
+}))
+vi.mock("@/hooks/use-followers", () => ({
+  useFollowers: () => ({ entries: [], count: followerCount, isLoading: false, error: null, refetch: vi.fn() }),
+}))
+
+function endorsement(issuerDid: string, name: string, day: string): Endorsement {
+  return {
+    uri: `at://${issuerDid}/app.certified.badge.award/${day}`,
+    cid: "c",
+    issuerDid,
+    createdAt: `${day}T00:00:00.000Z`,
+    // A complete indexer block, so the name needs no lookup.
+    issuer: { did: issuerDid, handle: `${name.toLowerCase().replace(" ", "")}.test`, displayName: name, description: null, avatarCid: "bafy", pds: null },
+  }
+}
+
 import { RecordByline, RecordOwnerCard } from "../cert-detail-parts"
 
 const DID = "did:plc:owner"
 const ada = { did: DID, handle: "ada.test", displayName: "Ada", avatarUrl: null, description: "Plants trees." }
 
 beforeEach(() => {
+  received = []
+  followerCount = 0
   author = { info: ada, isLoading: false, failed: false, retry: vi.fn() }
   marker = { isOrg: false, marker: null, isLoading: false, answeredFor: DID, failed: false, refresh: vi.fn() }
 })
@@ -106,20 +136,66 @@ describe("RecordOwnerCard", () => {
     expect(author.retry).toHaveBeenCalled()
   })
 
-  it("doesn't vanish when, without a bio, the organization record couldn't be read", () => {
+  it("shows the account without a bio: its name, kind and handle, and View profile", () => {
+    author = { ...author, info: { ...ada, description: null } }
+    marker = { ...marker, isOrg: true }
+    const { container } = render(<RecordOwnerCard did={DID} />)
+    expect(screen.getByRole("heading", { name: "Who's behind it" })).toBeTruthy()
+    expect(screen.getByText("Ada")).toBeTruthy()
+    expect(screen.getByText("Organization · @ada.test")).toBeTruthy()
+    expect(container.querySelector('[data-shape="square"]')).toBeTruthy()
+    expect(container.querySelector(".record-owner__bio")).toBeNull()
+    expect(screen.getByRole("link", { name: "View profile" }).getAttribute("href")).toBe(
+      "/ada.test",
+    )
+  })
+
+  it("names neither kind while it isn't known, and keeps the neutral block", () => {
+    author = { ...author, info: { ...ada, description: null } }
+    marker = { ...marker, isLoading: true, answeredFor: null }
+    const { container } = render(<RecordOwnerCard did={DID} />)
+    expect(screen.getByText("@ada.test")).toBeTruthy()
+    expect(screen.queryByText(/Person|Organization/)).toBeNull()
+    expect(container.querySelector("[data-shape]")).toBeNull()
+  })
+
+  it("leaves out a handle the server made up", () => {
+    author = { ...author, info: { ...ada, handle: "a1b2c3.certified.one" } }
+    render(<RecordOwnerCard did={DID} />)
+    expect(screen.getByText("Person")).toBeTruthy()
+    expect(screen.queryByText(/certified\.one/)).toBeNull()
+  })
+
+  it("says briefly who vouches for the account", () => {
+    received = [endorsement("did:plc:e1", "Ma Earth", "2026-05-03"), endorsement("did:plc:e2", "Rosa", "2026-05-02"), endorsement("did:plc:e1", "Ma Earth", "2026-05-01")]
+    followerCount = 12
+    const { container } = render(<RecordOwnerCard did={DID} />)
+    const line = container.querySelector(".record-owner__trust")!
+    // One account counts once, however many awards it gave.
+    expect(line.textContent).toBe("Endorsed by Ma Earth+1 and 1 other·12 followers")
+  })
+
+  it("has no trust line when nobody vouches for the account", () => {
+    const { container } = render(<RecordOwnerCard did={DID} />)
+    expect(container.querySelector(".record-owner__trust")).toBeNull()
+  })
+
+  it("doesn't vanish when the organization record couldn't be read", () => {
     vi.useFakeTimers()
     author = { ...author, info: { ...ada, description: null } }
     marker = { ...marker, failed: true }
-    render(<RecordOwnerCard did={DID} />)
-    // While its retries run, a placeholder holds the card.
+    const { container } = render(<RecordOwnerCard did={DID} />)
     expect(screen.getByRole("heading", { name: "Who's behind it" })).toBeTruthy()
-    expect(screen.queryByText("Couldn't load this account.")).toBeNull()
     for (const ms of [1_500, 4_000, 10_000]) {
       act(() => {
         vi.advanceTimersByTime(ms)
       })
     }
     expect(marker.refresh).toHaveBeenCalledTimes(3)
-    expect(screen.getByText("Couldn't load this account.")).toBeTruthy()
+    // The account is known; only its kind isn't: no kind word, no circle.
+    expect(screen.getByText("Ada")).toBeTruthy()
+    expect(screen.queryByText("Couldn't load this account.")).toBeNull()
+    expect(screen.queryByText(/Person|Organization/)).toBeNull()
+    expect(container.querySelector("[data-shape]")).toBeNull()
   })
 })

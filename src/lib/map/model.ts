@@ -374,6 +374,6 @@ export const PRECISION_LABEL: Record<Precision, string> = {
 export const LAYER_LABEL: Record<Layer, string> = {
   activity: "Activities",
   project: "Projects",
-  org: "Organizations' bases",
+  org: "Accounts' bases",
   unused: "Places not used yet",
 }

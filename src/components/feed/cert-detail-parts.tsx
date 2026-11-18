@@ -21,7 +21,7 @@ import {
 } from "@/hooks/use-contributor-info"
 import { useContributorInformationRecord } from "@/hooks/use-contributor-information-record"
 import { useAuthorInfo } from "@/hooks/use-author-info"
-import { useOrgMarker } from "@/hooks/use-org-marker"
+import { KindPendingAvatar, useAccountKind } from "./account-kind"
 import { getInitials } from "@/lib/utils/initials"
 import { deriveIdentity, isMachineHandle, UNNAMED_ACCOUNT } from "@/lib/utils/identity"
 import { longDescriptionPlainText } from "@/lib/leaflet/guards"
@@ -34,7 +34,12 @@ import TabStripFades from "@/components/ui/tab-strip-fades"
 import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import Tooltip from "@/components/ui/tooltip"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
+import { CompactTrustLine } from "@/components/profile/profile-trust-line"
 import type { ActivityContributor as ActivityContributorType } from "@/lib/atproto/activity-types"
+
+// The account-kind helpers live in their own module (profile pieces use
+// them too); re-exported here for the record pages' existing imports.
+export { KindAvatar, KindPendingAvatar, useAccountKind } from "./account-kind"
 
 /* ---------- Contributors ---------- */
 
@@ -332,12 +337,11 @@ export function RecordImage({ src }: { src: string | null }) {
  * The head of a record page (activity and project), the same on both and
  * laid out like the profile's: the picture on top, then the eyebrow
  * ("Project", "Activity · Part of …") over the title (the page's one h1),
- * with the actions at the top right of that block from 1300px (the
- * owner's Edit, Like, Share, More: the profile's order and buttons), the
- * byline (who, when, where) and the lead at reading width. Below 1300px
- * (and for the owner's four buttons, `actionsRow`, at every width) the
- * actions are a row under the lead, so they don't squeeze the title; on
- * phones that row is full width, as on the profile.
+ * the byline (who, when, where), the lead at reading width, and the
+ * actions (the owner's Edit, Like, Share, More: the profile's order and
+ * buttons) in a row of their own under the lead at every width, so the
+ * title always has the whole column. On phones that row is full width,
+ * as on the profile.
  *
  * `compact` (the other tabs, on phones): no picture and no lead, so the
  * tab's content starts on the first screen.
@@ -353,7 +357,6 @@ export function RecordHeader({
   byline,
   lead,
   compact = false,
-  actionsRow = false,
 }: {
   image?: ReactNode
   /** The record type, and for an activity its project. */
@@ -361,10 +364,6 @@ export function RecordHeader({
   title: string
   /** The owner's Edit, Like, Share, the More menu. */
   actions?: ReactNode
-  /** The actions are a row of their own under the lead at every width:
-   *  the owner's four buttons would leave the title under half of the
-   *  1300px column beside them. */
-  actionsRow?: boolean
   /** `<RecordByline>`. */
   byline?: ReactNode
   /** The short description. */
@@ -372,111 +371,36 @@ export function RecordHeader({
   compact?: boolean
 }) {
   return (
-    <header
-      className={`record-head${compact ? " record-head--compact" : ""}${
-        actionsRow ? " record-head--actions-row" : ""
-      }`}
-    >
+    <header className={`record-head${compact ? " record-head--compact" : ""}`}>
       {image}
-      <div className="record-head__top">
-        <div className="record-head__titles">
-          <p className="record-head__kind">{eyebrow}</p>
-          <h1 className="record-head__title" dir="auto">
-            {title}
-          </h1>
-        </div>
-        {actions ? <div className="record-head__actions">{actions}</div> : null}
-      </div>
+      <p className="record-head__kind">{eyebrow}</p>
+      <h1 className="record-head__title" dir="auto">
+        {title}
+      </h1>
       {byline}
       {lead ? (
         <p className="record-head__lead" dir="auto">
           {lead}
         </p>
       ) : null}
+      {actions ? <div className="record-head__actions">{actions}</div> : null}
     </header>
   )
 }
 
-/** Automatic retries of a failed organization-marker read, before the
- *  account's kind is left unknown. */
-const KIND_RETRY_DELAYS_MS = [1_500, 4_000, 10_000] as const
-
-/**
- * Whether an account is a person or an organization, for its avatar's
- * shape: `unknown` while its marker loads, and when the read failed (a
- * 429), so a failed lookup never draws an organization as a person. A
- * failed read is retried a few times with backoff (`autoRetry: false`
- * for a grid of many accounts, so a rate limit isn't met with more
- * requests).
- */
-export function useAccountKind(
-  did: string,
-  { autoRetry = true }: { autoRetry?: boolean } = {},
-) {
-  const marker = useOrgMarker(did)
-  const known = marker.answeredFor === did && !marker.failed
-  const kind: "person" | "org" | "unknown" = !known
-    ? "unknown"
-    : marker.isOrg
-      ? "org"
-      : "person"
-
-  // The marker hook's refresh is a new function each render.
-  const refreshRef = useRef(marker.refresh)
-  useEffect(() => {
-    refreshRef.current = marker.refresh
-  })
-  const [tries, setTries] = useState({ did, n: 0 })
-  const n = !autoRetry ? KIND_RETRY_DELAYS_MS.length : tries.did === did ? tries.n : 0
-  const failedNow = marker.failed && !marker.isLoading
-  useEffect(() => {
-    if (!failedNow) return
-    const delay = KIND_RETRY_DELAYS_MS[n]
-    if (delay === undefined) return
-    const timer = setTimeout(() => {
-      setTries({ did, n: n + 1 })
-      refreshRef.current()
-    }, delay)
-    return () => clearTimeout(timer)
-  }, [failedNow, n, did])
-
-  // Out of retries: the kind stays unknown until `retry()`.
-  const failed = failedNow && n >= KIND_RETRY_DELAYS_MS.length
-  return {
-    kind,
-    marker: marker.marker,
-    /** Still reading the marker, or about to retry it. */
-    pending: !known && !failed,
-    failed,
-    retry: () => {
-      setTries({ did, n: KIND_RETRY_DELAYS_MS.length })
-      refreshRef.current()
-    },
-  }
-}
-
-/** The avatar's place while the account's kind isn't known: the
- *  placeholder block the profile header holds for it (never a person's
- *  circle), pulsing while the read goes on, still once it has failed. */
-export function KindPendingAvatar({ size, animate }: { size: number; animate: boolean }) {
-  return (
-    <Skeleton
-      variant="box"
-      width={size}
-      height={size}
-      animate={animate}
-      className="flex-none"
-      aria-hidden
-    />
-  )
-}
-
 /** In place of an account's name when looking it up failed: say so, with
- *  a way to try again. A failed lookup is not an account without a name. */
-function AccountLoadError({ onRetry }: { onRetry: () => void }) {
+ *  a way to try again. A failed lookup is not an account without a name.
+ *  `message` for a section of accounts ("Couldn't load these accounts."). */
+export function AccountLoadError({
+  onRetry,
+  message = "Couldn't load this account.",
+}: {
+  onRetry: () => void
+  message?: string
+}) {
   return (
     <span className="record-account-error" role="status">
-      <span>Couldn&apos;t load this account.</span>{" "}
+      <span>{message}</span>{" "}
       <button
         type="button"
         className="record-link record-link--button"
@@ -548,25 +472,36 @@ export function RecordByline({
     )
   }
 
+  const placeItem =
+    place === undefined ? (
+      <span className="record-byline__item" aria-hidden="true">
+        <Skeleton variant="line" width="7rem" height="0.875rem" />
+      </span>
+    ) : place ? (
+      <span className="record-byline__item record-byline__item--place">
+        <MapPin size={14} strokeWidth={1.75} aria-hidden />
+        <span className="sr-only">Place: </span>
+        <span className="record-byline__place" dir="auto">
+          {place}
+        </span>
+      </span>
+    ) : null
+
   return (
     <div className="record-byline">
       {who}
-      {period ? (
-        <span className="record-byline__item">
-          <CalendarDays size={14} strokeWidth={1.75} aria-hidden />
-          <span className="sr-only">Time period: </span>
-          {period}
-        </span>
-      ) : null}
-      {place === undefined ? (
-        <span className="record-byline__item" aria-hidden="true">
-          <Skeleton variant="line" width="7rem" height="0.875rem" />
-        </span>
-      ) : place ? (
-        <span className="record-byline__item">
-          <MapPin size={14} strokeWidth={1.75} aria-hidden />
-          <span className="sr-only">Place: </span>
-          <span dir="auto">{place}</span>
+      {/* When and where travel together: on a phone they share the line
+          under the account instead of taking one each. */}
+      {period || placeItem ? (
+        <span className="record-byline__when-where">
+          {period ? (
+            <span className="record-byline__item">
+              <CalendarDays size={14} strokeWidth={1.75} aria-hidden />
+              <span className="sr-only">Time period: </span>
+              {period}
+            </span>
+          ) : null}
+          {placeItem}
         </span>
       ) : null}
     </div>
@@ -723,10 +658,12 @@ export function RecordDescription({
 }
 
 /**
- * "Who's behind it": the account that published the record, told in its
- * own words: the avatar and name, the start of its bio (else of its long
- * description), three lines, and a link to its profile. The byline already
- * names the account, so without any words about it the card isn't drawn.
+ * "Who's behind it": the account that published the record. Its avatar
+ * (in the shape of its kind) and name, what kind of account it is and its
+ * handle, the start of its bio (else of its long description) in three
+ * lines when it has one, a short trust line ("Endorsed by Ma Earth +2 ·
+ * 12 followers") when anyone vouches for it, and a link to its profile.
+ * Shown on both record pages, with or without a bio.
  */
 export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: string; title?: string }) {
   const { info, isLoading, failed, retry } = useAuthorInfo(did)
@@ -737,35 +674,38 @@ export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: strin
     longDescriptionPlainText(account.marker?.longDescription)?.split(/\n\s*\n/)[0]?.trim() ||
     null
 
-  // The account couldn't be looked up, or (with no bio of its own) its
-  // organization record couldn't be read: whether there are words about
-  // it is unknown, so the card says so rather than vanishing.
-  if (failed || (!isLoading && !bio && account.failed)) {
+  // The account couldn't be looked up: say so rather than vanish.
+  if (failed) {
     return (
       <FactCard title={title}>
         <AccountLoadError
           onRetry={() => {
-            if (failed) retry()
+            retry()
             if (account.failed) account.retry()
           }}
         />
       </FactCard>
     )
   }
-  if (isLoading || !info || (!bio && account.pending)) {
+  if (isLoading || !info) {
     return (
       <FactCard title={title}>
         <div className="flex items-center gap-3" aria-hidden="true">
           <KindPendingAvatar size={40} animate />
           <Skeleton variant="line" width="9rem" height="0.875rem" />
         </div>
-        <Skeleton variant="text" lines={2} width="100%" height={12} aria-hidden />
       </FactCard>
     )
   }
-  if (!bio) return null
 
-  const { displayName, unnamed, initials, profileHref } = deriveIdentity(info, did)
+  const { displayName, unnamed, initials, profileHref, handle } = deriveIdentity(info, did)
+  // The handle under the name, unless it is the name already or one the
+  // server made up (it names nobody).
+  const shownHandle =
+    handle && !isMachineHandle(handle) && handle !== displayName ? `@${handle}` : null
+  const kindLabel =
+    account.kind === "org" ? "Organization" : account.kind === "person" ? "Person" : null
+  const secondary = [kindLabel, shownHandle].filter(Boolean).join(" · ")
 
   return (
     <FactCard title={title}>
@@ -781,13 +721,19 @@ export function RecordOwnerCard({ did, title = "Who's behind it" }: { did: strin
             fallbackInitials={initials}
           />
         )}
-        <span className="record-owner__name" data-unnamed={unnamed || undefined} dir="auto">
-          {displayName}
+        <span className="record-owner__text">
+          <span className="record-owner__name" data-unnamed={unnamed || undefined} dir="auto">
+            {displayName}
+          </span>
+          {secondary ? <span className="record-owner__meta">{secondary}</span> : null}
         </span>
       </Link>
-      <p className="record-owner__bio" dir="auto">
-        {bio}
-      </p>
+      {bio ? (
+        <p className="record-owner__bio" dir="auto">
+          {bio}
+        </p>
+      ) : null}
+      <CompactTrustLine did={did} className="record-owner__trust" />
       <Link href={profileHref} className="record-link">
         View profile
       </Link>

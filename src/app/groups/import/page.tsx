@@ -35,7 +35,7 @@ import FormActionBar from "@/components/create/form-action-bar"
  * mirroring the create flow's final step.
  */
 export default function ImportGroupPage() {
-  usePageTitle("Import account as group")
+  usePageTitle("Turn into a group")
   const router = useRouter()
   const { did, isLoading: authLoading, openSignIn } = useAuth()
   const { refetchOrgs } = useOrg()
@@ -162,22 +162,30 @@ export default function ImportGroupPage() {
             onChange={(e) => setAppPassword(e.target.value)}
           />
           <p className="m-0 text-caption text-[var(--fg-muted)]">
-            Create an app password in your account&apos;s settings. It&apos;s
-            stored encrypted so the service can act for the group; you can
-            revoke it anytime.
+            Create one in{" "}
+            <Link
+              href="/settings#app-passwords"
+              className="text-[var(--fg-secondary)] underline underline-offset-2"
+            >
+              Settings → App passwords
+            </Link>
+            . It&apos;s stored encrypted so the service can act for the
+            group; you can revoke it anytime.
           </p>
         </div>
 
         {/* No "Publishing as" line: the account being converted is named
             above. */}
+        {/* The button says what the page title says; Cancel goes where
+            the back link does. */}
         <FormActionBar
-          submitLabel="Import as group"
-          submittingLabel="Importing…"
+          submitLabel="Turn into a group"
+          submittingLabel="Turning into a group…"
           isSubmitting={isImporting}
           submitDisabled={!appPassword.trim()}
           error={error}
           identityLabel={null}
-          onCancel={() => router.push("/home")}
+          onCancel={() => router.push("/records?kind=groups")}
         />
       </form>
     </PageContainer>

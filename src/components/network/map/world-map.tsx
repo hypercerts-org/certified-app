@@ -93,6 +93,34 @@ function minZoom(kind: MapKind, w: number, h: number): number {
   return Math.max(1, h / ((mercY(NORTH) - mercY(SOUTH)) * flatScale(w, 1)))
 }
 
+/**
+ * The latitudes most of the map's places fall in (2nd to 98th percentile,
+ * plus a margin), or null with too few to tell. The flat map on a tall,
+ * narrow frame (a phone) starts on this band instead of the whole height of
+ * the world, most of which is Arctic in Mercator.
+ */
+export function latitudeBand(lats: readonly number[]): readonly [number, number] | null {
+  const sorted = lats.filter((l) => Number.isFinite(l)).sort((a, b) => a - b)
+  if (sorted.length < 5) return null
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))]
+  const south = Math.max(SOUTH, at(0.02) - 6)
+  const north = Math.min(NORTH, at(0.98) + 6)
+  return north - south >= 10 ? [south, north] : null
+}
+
+/** Where the map starts (and Reset returns): the whole world, or on a
+ *  portrait flat frame (a phone), the band where the places are
+ *  (`latitudeBand`), filling the frame's height. A landscape frame keeps
+ *  the whole world's width rather than cropping it to the band. */
+function startView(kind: MapKind, w: number, h: number, band: readonly [number, number] | null | undefined): View {
+  if (kind !== "flat" || !band || w <= 0 || h <= 0 || h < w) return { ...START }
+  const floor = minZoom(kind, w, h)
+  if (floor <= 1) return { ...START }
+  const [south, north] = band
+  const k = Math.min(MAX_ZOOM, Math.max(floor, h / ((mercY(north) - mercY(south)) * flatScale(w, 1))))
+  return { lng: START.lng, lat: mercLat((mercY(north) + mercY(south)) / 2), k }
+}
+
 function clampView(v: View, kind: MapKind, w: number, h: number): View {
   const k = Math.min(MAX_ZOOM, Math.max(minZoom(kind, w, h), v.k))
   if (kind === "globe") return { lng: wrap(v.lng), lat: Math.max(-80, Math.min(80, v.lat)), k }
@@ -206,10 +234,13 @@ interface Props {
   resize?: { min: number; max: number; onResize: (height: number) => void }
   /** Overlays inside the map box (hover cards). */
   children?: ReactNode
+  /** The latitudes the data is in (`latitudeBand`): a phone's flat map
+   *  starts there rather than on the whole world's height. */
+  startBand?: readonly [number, number] | null
 }
 
 const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
-  { kind, height, label, draw, drawKey, onHover, onLeave, onTap, onView, resize, children },
+  { kind, height, label, draw, drawKey, onHover, onLeave, onTap, onView, resize, children, startBand = null },
   ref,
 ) {
   const [measure, width] = useElementWidth<HTMLDivElement>()
@@ -225,6 +256,9 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
   const colors = useMapColors()
 
   const view = useRef<View>({ ...START })
+  // The start view is placed on the first paint with a size (it depends on
+  // the frame's shape).
+  const placed = useRef(false)
   const anim = useRef<number>(0)
   const frame = useRef<number>(0)
   const api = useRef<MapApi | null>(null)
@@ -232,9 +266,9 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
   const [pointing, setPointing] = useState(false)
 
   // The latest props, for the drawing loop and gesture handlers.
-  const props = useRef({ kind, width, height, draw, onHover, onLeave, onTap, onView, colors })
+  const props = useRef({ kind, width, height, draw, onHover, onLeave, onTap, onView, colors, startBand })
   useEffect(() => {
-    props.current = { kind, width, height, draw, onHover, onLeave, onTap, onView, colors }
+    props.current = { kind, width, height, draw, onHover, onLeave, onTap, onView, colors, startBand }
   })
 
   const paint = useCallback(() => {
@@ -254,6 +288,10 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
 
+    if (!placed.current) {
+      placed.current = true
+      view.current = startView(kd, w, h, props.current.startBand)
+    }
     const v = clampView(view.current, kd, w, h)
     view.current = v
     const projection = makeProjection(kd, v, w, h)
@@ -332,7 +370,8 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
     drawLayers(a)
     ctx.restore()
 
-    const moved = v.k > minZoom(kd, w, h) + 0.001 || Math.abs(wrap(v.lng - START.lng)) > 0.01 || Math.abs(v.lat - START.lat) > 0.5
+    const sv = clampView(startView(kd, w, h, props.current.startBand), kd, w, h)
+    const moved = v.k > sv.k + 0.001 || Math.abs(wrap(v.lng - sv.lng)) > 0.01 || Math.abs(v.lat - sv.lat) > 0.5
     const kMin = minZoom(kd, w, h)
     setUi((prev) =>
       Math.abs(prev.k - v.k) < 0.001 && prev.moved === moved && prev.imagery === imagery && prev.kMin === kMin
@@ -424,7 +463,10 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
         const k = Math.max(1, Math.min(MAX_ZOOM, Math.min((w - 2 * padding) / dx, (h - 2 * padding) / dy) / flatScale(w, 1)))
         animateTo({ lng, lat: mercLat((mercY(n) + mercY(s)) / 2), k })
       },
-      reset: () => animateTo({ ...START }),
+      reset: () => {
+        const { kind: kd, width: w, height: h, startBand: band } = props.current
+        animateTo(startView(kd, w, h, band))
+      },
       redraw,
     }),
     [animateTo, redraw],
@@ -542,7 +584,7 @@ const WorldMap = forwardRef<WorldMapHandle, Props>(function WorldMap(
         label={label3}
         onZoomIn={() => zoomAt(2, width / 2, height / 2, true)}
         onZoomOut={() => zoomAt(0.5, width / 2, height / 2, true)}
-        onReset={() => animateTo({ ...START })}
+        onReset={() => animateTo(startView(kind, width, height, startBand))}
         canZoomIn={ui.k < MAX_ZOOM - 1}
         canZoomOut={ui.k > ui.kMin + 0.001}
         canReset={ui.moved}

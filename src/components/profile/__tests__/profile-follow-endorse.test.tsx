@@ -4,7 +4,8 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 /**
  * Follow and Endorse on someone else's profile: signed out, both open
  * sign-in; a failed Follow, Unfollow or revoke keeps (or restores) the
- * button's state and says so beside it, like Like does.
+ * button's state and says so in an error toast, as Like does (beside the
+ * button only where there is no toast region).
  */
 
 const openSignIn = vi.fn()
@@ -64,6 +65,7 @@ vi.mock("@/lib/atproto/badges", () => ({
 }))
 vi.mock("@/lib/atproto/collection", () => ({ appendItemToList: vi.fn() }))
 
+import { ToastProvider } from "@/components/ui/toast"
 import { FollowEndorseActions } from "../profile-follow-endorse"
 
 const SUBJECT = "did:plc:subject"
@@ -140,5 +142,38 @@ describe("FollowEndorseActions failures", () => {
     expect(screen.getByRole("button", { name: "Endorsed" }).getAttribute("aria-pressed")).toBe(
       "true",
     )
+  })
+})
+
+describe("FollowEndorseActions failures, in the app (a toast region)", () => {
+  it("says a failed Follow in an error toast, not beside the button", async () => {
+    createFollow.mockRejectedValue(new Error("PDS down"))
+    const { container } = render(
+      <ToastProvider>
+        <FollowEndorseActions did={SUBJECT} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Follow" }))
+    expect(await screen.findByText("Couldn't follow. Try again.")).toBeTruthy()
+    expect(container.querySelector(".profile-action-error")).toBeNull()
+    expect(screen.getByRole("button", { name: "Follow" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    )
+  })
+
+  it("says a failed revoke in an error toast", async () => {
+    given = [{ subjectDid: SUBJECT, rkey: "r1", uri: "at://did:plc:me/x/r1" }]
+    deleteEndorsementAward.mockRejectedValue(new Error("PDS down"))
+    const { container } = render(
+      <ToastProvider>
+        <FollowEndorseActions did={SUBJECT} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Endorsed" }))
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Revoke endorsement", hidden: true }),
+    )
+    expect(await screen.findByText("Couldn't revoke the endorsement. Try again.")).toBeTruthy()
+    expect(container.querySelector(".profile-action-error")).toBeNull()
   })
 })

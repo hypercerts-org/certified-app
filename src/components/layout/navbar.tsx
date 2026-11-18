@@ -60,7 +60,8 @@ function isOwnProfilePath(
  *   PageHeader, the compact title is the page's h1. Otherwise none.
  * - **Right:** on the top-level pages, Search (phone-search.tsx: the
  *   global search in a panel at the top of the screen), signed in or
- *   out. Then the account control (account-switcher.tsx): the avatar of
+ *   out, except on Explore (its own field is the search there). Then the
+ *   account control (account-switcher.tsx): the avatar of
  *   the account you act as (a group's with yours on its corner), opening
  *   "Act as", "Signed in as", Help, feedback and the legal links in a
  *   sheet. "Sign in" when signed out. A page that still publishes a
@@ -89,21 +90,26 @@ const Navbar: React.FC = () => {
   const { scrolled, navHidden } = useScrollHideNavbar();
   const { isDesktop } = useLayoutBreakpoints();
 
-  // Don't render while auth is loading (prevents a signed-out flash), on
-  // desktop (the desktop top bar owns that range), in embeds (bare board in
-  // a third-party iframe) or on /welcome (the landing has its own minimal
+  // Not on desktop (the sidebar owns that range; CSS hides the bar there
+  // too, so the server's render never shows), in embeds (bare board in a
+  // third-party iframe) or on /welcome (the landing has its own minimal
   // chrome at every width). All early returns sit after every hook.
-  if (isLoading) return null;
   if (isDesktop) return null;
   if (!hasPhoneChrome(pathname)) return null;
+
+  // While sign-in resolves (and on the server) the bar already stands: the
+  // brand or back chevron and the title, as they will be, with the right
+  // side empty, so neither Sign in nor an avatar flashes in the wrong
+  // state and nothing below moves when they arrive.
+  const signedIn = !isLoading && isAuthenticated;
 
   // The bar carries who you act as (the account control), so for anyone
   // who can switch between themselves and a group it stays put instead of
   // hiding on scroll. An account with nothing to switch keeps the room.
-  const canSwitch = isAuthenticated && !selfGroup && groups.length > 0;
+  const canSwitch = signedIn && !selfGroup && groups.length > 0;
 
   const isOwnProfile =
-    isAuthenticated &&
+    signedIn &&
     isOwnProfilePath(pathname, [
       { handle, did },
       ...(activeOrg ? [{ handle: activeOrg.handle, did: activeOrg.groupDid }] : []),
@@ -132,7 +138,19 @@ const Navbar: React.FC = () => {
       <div className="navbar__inner">
         <div className="navbar__left">
           {isTopLevel || headerHasBack ? (
-            showTitle ? (
+            isLoading ? (
+              // Where home is depends on sign-in: the mark alone until then.
+              <span
+                className={`navbar__logo${showTitle ? "" : " navbar__logo--wordmark"}`}
+                aria-hidden="true"
+              >
+                {showTitle ? (
+                  <Brandmark size={28} decorative />
+                ) : (
+                  <Wordmark variant="certified-app" faded height={18} decorative />
+                )}
+              </span>
+            ) : showTitle ? (
               <Link
                 href={isAuthenticated ? "/home" : "/welcome"}
                 className="navbar__logo"
@@ -188,7 +206,7 @@ const Navbar: React.FC = () => {
           <span />
         )}
         <div className="navbar__right">
-          {recordMenu ? (
+          {isLoading ? null : recordMenu ? (
             <span className="navbar__action">
               <AddToListMenu
                 targetUri={recordMenu.targetUri}
@@ -200,9 +218,10 @@ const Navbar: React.FC = () => {
             </span>
           ) : null}
           {/* Not on forms (a back-link header) or detail pages: there it
-              would lead away from the draft or record. */}
-          {isTopLevel ? <PhoneSearch /> : null}
-          {isAuthenticated ? (
+              would lead away from the draft or record. Not on Explore
+              either, whose own search field is right under the bar. */}
+          {isLoading ? null : isTopLevel && pathname !== "/explore" ? <PhoneSearch /> : null}
+          {isLoading ? null : isAuthenticated ? (
             <PhoneAccountSwitcher />
           ) : (
             <Button

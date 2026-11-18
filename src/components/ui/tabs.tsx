@@ -322,9 +322,24 @@ export function Tab({
   // numbers; red is only for notifications). The leading space keeps the
   // accessible name "Funding 3", not "Funding3"; it collapses visually at
   // the start of the span.
+  //
+  // The selected tab's label is bolder. A string label reserves its bold
+  // width up front (a hidden, zero-height bold copy under it, from
+  // `data-label`), so selecting a tab doesn't widen it and the strip
+  // doesn't shift. The copy is `visibility: hidden`, so it isn't read.
+  const boldCopy = typeof children === "string" ? children : undefined;
   const label = (
     <>
-      {children}
+      {boldCopy !== undefined ? (
+        <span
+          data-label={boldCopy}
+          className="inline-flex flex-col items-center after:invisible after:h-0 after:overflow-hidden after:select-none after:font-semibold after:content-[attr(data-label)]"
+        >
+          {children}
+        </span>
+      ) : (
+        children
+      )}
       {hasCount && (
         <span className="font-normal tabular-nums text-[var(--fg-muted)]">
           {" "}

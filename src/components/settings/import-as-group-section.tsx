@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { useOrg } from "@/lib/groups/org-context"
 import { importGroup, RegisterGroupError } from "@/lib/groups/api"
 import { createAppPassword, revokeAppPassword } from "@/lib/atproto/app-passwords"
@@ -10,6 +11,7 @@ import Button from "@/components/ui/button"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import { SettingsRow } from "@/components/settings/settings-layout"
 import ErrorMessage from "@/components/ui/error-message"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import {
   useUnlockAppPasswords,
   UnlockAppPasswordFields,
@@ -32,6 +34,10 @@ import {
  * redirect): on success it shows a confirmation and the new group appears in
  * the Workspace menu via `refetchOrgs`.
  */
+/** An inline link in the row's description and the confirm dialog. */
+const LINK_CLS =
+  "text-[var(--fg-primary)] underline decoration-[var(--border-hover)] underline-offset-2 transition-[text-decoration-color] duration-fast motion-reduce:transition-none hover:decoration-[var(--fg-primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] focus-visible:outline-offset-2"
+
 export default function ImportAsGroupSection({ did }: { did: string }) {
   const { refetchOrgs } = useOrg()
   const [handle, setHandle] = useState<string | null>(null)
@@ -77,7 +83,9 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       ) {
         setError("This account is already registered as a group.")
       } else {
-        setError(err instanceof Error ? err.message : "Import failed")
+        setError(
+          caughtErrorMessage(err, "Couldn't turn this account into a group. Try again in a moment"),
+        )
       }
     } finally {
       // Revoke the throwaway app password — on success and on failure.
@@ -129,15 +137,27 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
         className="import-group"
       >
         {/* The same row as every other setting: what it does on the left,
-            the password and the button on the right. */}
+            the password and the button on the right. It opens with the
+            choice, since most people who want a group want a new one
+            beside their own account, not this account turned into one. */}
         <SettingsRow
           label="Turn into a group"
           description={
             <>
-              Makes <strong className="font-medium text-[var(--fg-primary)]">{accountLabel}</strong> a
-              group, with you as its owner. The account, its handle and its records stay; nothing is
-              deleted, and you can turn it back later. To confirm, enter your account password: a one-time app password is made in the
-              background and revoked as soon as the group exists, never shown or stored.
+              <span className="block">
+                Is this account your organization&apos;s own? Turn it into a group. Want a group
+                alongside your personal account?{" "}
+                <Link href="/groups/create" className={LINK_CLS}>
+                  Create a new group
+                </Link>
+                .
+              </span>
+              <span className="mt-2 block">
+                <strong className="font-medium text-[var(--fg-primary)]">{accountLabel}</strong>{" "}
+                becomes a group with you as its owner. Its handle and records stay, nothing is
+                deleted, and you can turn it back later. Enter your account password to confirm;
+                it&apos;s used once and never stored.
+              </span>
             </>
           }
         >
@@ -160,7 +180,20 @@ export default function ImportAsGroupSection({ did }: { did: string }) {
       {asking ? (
         <ConfirmDialog
           title={handle ? `Turn @${handle} into a group?` : "Turn this account into a group?"}
-          message="It becomes a group with you as its owner, and you can add people to act for it. Its handle, profile and records stay as they are. You can turn it back into a regular account any time from the group's settings."
+          message={
+            <>
+              It becomes a group with you as its owner, and you can add people to act for it. Its
+              handle, profile and records stay as they are. You can turn it back into a regular
+              account any time from the group&apos;s settings.
+              <span className="mt-3 block">
+                Want to keep this as your personal account?{" "}
+                <Link href="/groups/create" className={LINK_CLS}>
+                  Create a new group
+                </Link>{" "}
+                instead.
+              </span>
+            </>
+          }
           confirmLabel="Turn into a group"
           confirmVariant="primary"
           onCancel={() => setAsking(false)}

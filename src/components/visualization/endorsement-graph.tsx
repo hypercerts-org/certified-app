@@ -70,6 +70,14 @@ interface EndorsementGraphProps {
   /** Where the controls go: a slot beside the graph (Visualization), so
    *  they never cover it. Without one they float over the graph. */
   controlsHost?: HTMLElement | null
+  /** Below 1100px: the controls as one row (find + a Filters button that
+   *  opens the rest in a sheet) instead of the panel of labelled rows.
+   *  Defaults to the breakpoint. */
+  compact?: boolean
+  /** Phones: a slot under the graph for the selected account's card, so
+   *  it never covers the graph. Without one the card floats over it (and
+   *  can be dragged). */
+  panelHost?: HTMLElement | null
 }
 
 /**
@@ -318,6 +326,8 @@ export default function EndorsementGraph({
   truncated = false,
   onStats,
   controlsHost,
+  compact: compactProp,
+  panelHost = null,
 }: EndorsementGraphProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const fgRef = useRef<ForceGraphMethods<FGNode, FGLink> | undefined>(undefined)
@@ -372,11 +382,13 @@ export default function EndorsementGraph({
       !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
   )
   const camMs = useCallback((ms: number) => (reduceMotion ? 0 : ms), [reduceMotion])
-  // Phones (<800px): the graph comes first. The find field and a Filters
-  // button sit above it, and Layout, Show and Lines open in a bottom sheet.
-  // From 800px the controls are one panel (above the graph, beside it from
-  // 1100px).
-  const { isDesktop } = useLayoutBreakpoints()
+  // Below 1100px the graph comes first: the find field and a Filters
+  // button sit above it, and Layout, Show and Lines open in a sheet. From
+  // 1100px the controls are one panel in the column beside the graph.
+  const { hasRightRail } = useLayoutBreakpoints()
+  const compact = compactProp ?? !hasRightRail
+  // The card under the graph (phones) rather than over it.
+  const docked = !!panelHost
 
   // How many filter settings differ from the defaults (the Filters
   // button's count), and the way back to them (the sheet's Reset).
@@ -1020,10 +1032,10 @@ export default function EndorsementGraph({
     </>
   )
 
-  // From 800px: one panel of labelled rows (find, layout, which accounts,
-  // which lines), the legend a one-line key at its foot. Phones: the find
-  // field and a Filters button in one row, the rest in the Filters sheet.
-  const controls = isDesktop ? (
+  // From 1100px: one panel of labelled rows (find, layout, which accounts,
+  // which lines), the legend a one-line key at its foot. Below that: the
+  // find field and a Filters button in one row, the rest in the sheet.
+  const controls = !compact ? (
     <div className="viz__controls" role="group" aria-label="Graph controls">
       {searchField}
       {filterRows}
@@ -1038,6 +1050,25 @@ export default function EndorsementGraph({
       </NetworkFiltersSheet>
     </div>
   )
+
+  // The card in its slot under the graph on phones, else in place.
+  const dockPanel = (card: React.ReactNode) =>
+    panelHost ? createPortal(card, panelHost) : card
+
+  // A tap on the canvas (phones): bring the card's head into view under
+  // the graph, past the tab bar (the root's scroll-padding), moving the
+  // page only as far as that takes.
+  const revealDockedPanel = () => {
+    // Two frames: the selection's render has committed and laid out.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        panelRef.current?.scrollIntoView({
+          block: "nearest",
+          behavior: reduceMotion ? "auto" : "smooth",
+        })
+      }),
+    )
+  }
 
   return (
     <div ref={hostRef} className="viz__canvas-host">
@@ -1070,7 +1101,10 @@ export default function EndorsementGraph({
           linkDirectionalArrowLength={3.2}
           linkDirectionalArrowRelPos={1}
           onNodeHover={(n: FGNode | null) => setHoverId(n ? (n.id as string) : null)}
-          onNodeClick={(n: FGNode) => focusNode(n.id as string)}
+          onNodeClick={(n: FGNode) => {
+            focusNode(n.id as string)
+            if (docked) revealDockedPanel()
+          }}
           onBackgroundClick={() => setSelectedId(null)}
         />
       )}
@@ -1124,19 +1158,20 @@ export default function EndorsementGraph({
         </Button>
       </div>
 
-      {/* hover / selected info panel — draggable + collapsible */}
-      {panelNode && (
+      {/* hover / selected info panel — draggable + collapsible; on
+          phones docked under the graph instead (panelHost). */}
+      {panelNode && dockPanel(
         <div
           ref={panelRef}
-          className="viz__panel"
+          className={docked ? "viz__panel viz__panel--docked" : "viz__panel"}
           data-collapsed={panelCollapsed || undefined}
-          style={panelPos ? { left: panelPos.x, top: panelPos.y, right: "auto" } : undefined}
+          style={!docked && panelPos ? { left: panelPos.x, top: panelPos.y, right: "auto" } : undefined}
         >
           <div
             className="viz__panel-head"
-            onPointerDown={onPanelPointerDown}
-            onPointerMove={onPanelPointerMove}
-            onPointerUp={onPanelPointerUp}
+            onPointerDown={docked ? undefined : onPanelPointerDown}
+            onPointerMove={docked ? undefined : onPanelPointerMove}
+            onPointerUp={docked ? undefined : onPanelPointerUp}
           >
             <Avatar
               src={panelNode.avatarUrl || undefined}
@@ -1225,7 +1260,7 @@ export default function EndorsementGraph({
           </Link>
           </>
           )}
-        </div>
+        </div>,
       )}
     </div>
   )

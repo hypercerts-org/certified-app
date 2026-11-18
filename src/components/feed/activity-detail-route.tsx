@@ -20,8 +20,13 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
  *
  * `resolving` is true while the parent is still turning the actor segment
  * into a DID; we stay in the loading state instead of flashing "not found".
- * An activity that doesn't exist says so (no retry: it can't succeed); one
- * that couldn't be read is an inline block with "Try again".
+ * When that lookup failed (`lookupFailed`: a 429, a network error), the
+ * account may well exist, so the page says it couldn't load the activity,
+ * with "Try again" (`onRetryLookup`), never "not found". An activity that
+ * doesn't exist says so (no retry: it can't succeed); one that couldn't be
+ * read is an inline block with "Try again". One served in part (its
+ * account's server didn't answer; `partial`) says some details couldn't
+ * load, with "Try again".
  *
  * Every state renders inside `<PageContainer>` (the page frame: width,
  * gutters, top and bottom space), so the page doesn't jump between them.
@@ -31,11 +36,17 @@ export default function ActivityDetailRoute({
   handle,
   rkey,
   resolving,
+  lookupFailed = false,
+  onRetryLookup,
 }: {
   did: string | null
   handle: string | null
   rkey: string | null
   resolving: boolean
+  /** Looking the account up failed (not "no such account"). */
+  lookupFailed?: boolean
+  /** Look the account up again. */
+  onRetryLookup?: () => void
 }) {
   const { activity, isLoading, error, refetch } = useActivity(did, rkey)
 
@@ -49,6 +60,18 @@ export default function ActivityDetailRoute({
     return (
       <PageContainer>
         <RecordDetailSkeleton label="Loading activity" />
+      </PageContainer>
+    )
+  }
+
+  if (lookupFailed) {
+    return (
+      <PageContainer>
+        <ErrorMessage
+          title="Couldn't load this activity"
+          message="Something went wrong while loading it. Try again in a moment."
+          onRetry={onRetryLookup}
+        />
       </PageContainer>
     )
   }
@@ -88,10 +111,14 @@ export default function ActivityDetailRoute({
   return (
     <PageContainer>
       {activity.partial && (
-        <Banner variant="warning" title="Showing limited details" className="mb-6">
-          We couldn&apos;t reach this record&apos;s home server, so some fields
-          (contributors, locations, the full description and rights) may be
-          missing. Try again later to see everything.
+        <Banner variant="warning" title="Some details couldn't load." className="mb-6">
+          <p className="m-0">
+            Contributors, places, the full description or the rights may be
+            missing.
+          </p>
+          <Button variant="secondary" size="sm" className="mt-3" onClick={refetch}>
+            Try again
+          </Button>
         </Banner>
       )}
       <ActivityDetail

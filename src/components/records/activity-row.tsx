@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import {
-  ExternalLink,
+  ArrowRight,
   FolderMinus,
   FolderPlus,
   Pencil,
@@ -238,7 +238,7 @@ export default function ActivityRow({
     : []
   const entries: RowMenuEntry[] = isOwn
     ? [
-        { kind: "link", key: "open", label: "Open", href, icon: ExternalLink },
+        { kind: "link", key: "open", label: "Open", href, icon: ArrowRight },
         { kind: "link", key: "edit", label: "Edit", href: `${href}/edit`, icon: Pencil },
         {
           kind: "link",
@@ -259,7 +259,7 @@ export default function ActivityRow({
           onSelect: (trigger) => onDelete(record, trigger),
         },
       ]
-    : [{ kind: "link", key: "open", label: "Open", href, icon: ExternalLink }, ...removeEntry]
+    : [{ kind: "link", key: "open", label: "Open", href, icon: ArrowRight }, ...removeEntry]
 
   return (
     <li

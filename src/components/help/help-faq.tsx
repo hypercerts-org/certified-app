@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, Network } from "lucide-react";
+import { ChevronDown, Compass, Network } from "lucide-react";
 import Button from "@/components/ui/button";
 import { helpLinkCls } from "./help-styles";
 
@@ -11,6 +11,18 @@ import { helpLinkCls } from "./help-styles";
  * feedback action for anything they don't cover.
  */
 const HELP_FAQ_ITEMS = [
+  // First: for people who come to find and back work (donors, funders),
+  // not to publish their own.
+  {
+    question: "I want to find and support work. Where do I start?",
+    answer:
+      "Start with Explore, under Network: it lists the activities, projects and accounts on Certified, and you can search them. Follow the accounts whose work you care about, and their new work shows in your Feed.\n\nWhen you can vouch for an account's work, endorse it, so others can see who stands behind it. Funding shows who funds which work.",
+  },
+  {
+    question: "What do Graph, Map and Funding show?",
+    answer:
+      "Three views of the whole network, under Network. Graph shows who vouches for whom: accounts and the endorsements between them. Map shows where the work happens. Funding shows who funds which work, and how much.",
+  },
   {
     question: "What is an activity?",
     answer:
@@ -37,9 +49,9 @@ const HELP_FAQ_ITEMS = [
       "Following on Certified runs on its own follow graph, kept separately from your Bluesky follows, so the two sets may not match exactly. Because both apps share the same AT Protocol identities, they aren't locked apart: you can sync your Bluesky follows into Certified so you don't have to rebuild your network from scratch.",
   },
   {
-    question: "What are my handle and my DID?",
+    question: "What are my handle and my Permanent ID?",
     answer:
-      "Your handle (your username, like @you.certified.one) is the human-readable name people use to find and mention you. It can change, and you can even bring your own domain.\n\nYour DID is the permanent identifier underneath. It never changes and it's what actually owns your data, so your activities, endorsements, and follows stay attached to you even if you rename your handle or move servers. The handle is a friendly label pointing at the DID.",
+      "Your handle (your username, like @you.certified.one) is the human-readable name people use to find and mention you. It can change, and you can even bring your own domain.\n\nYour Permanent ID is the identifier underneath. It never changes and it's what actually owns your data, so your activities, endorsements, and follows stay attached to you even if you rename your handle or move servers. The handle is a friendly label pointing at it. (Its technical name is DID, a decentralized identifier.)",
   },
   {
     question: "Why is Certified built on AT Protocol?",
@@ -156,6 +168,17 @@ function FaqEntry({ item, index }: { item: FaqItem; index: number }) {
 export default function HelpFaq() {
 
   const items: FaqItem[] = HELP_FAQ_ITEMS.map((item) => {
+    if (item.question === "I want to find and support work. Where do I start?") {
+      return {
+        ...item,
+        cta: (
+          <Button variant="secondary" size="sm" href="/explore">
+            <Compass size={14} strokeWidth={1.75} aria-hidden />
+            Open Explore
+          </Button>
+        ),
+      };
+    }
     if (item.question === "What does it mean to endorse someone?") {
       return {
         ...item,

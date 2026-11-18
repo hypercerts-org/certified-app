@@ -77,4 +77,24 @@ describe("Turn into a group", () => {
     expect(submit).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole("alertdialog")).toBeNull()
   })
+
+  it("opens with the choice: turn this account into a group, or create a new one", async () => {
+    render(<ImportAsGroupSection did="did:plc:me" />)
+    await screen.findByText("@ada.certified.app")
+
+    expect(screen.getByText(/Is this account your organization.s own\?/)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Create a new group" })).toHaveAttribute(
+      "href",
+      "/groups/create",
+    )
+  })
+
+  it("offers creating a new group in the confirm dialog too", () => {
+    render(<ImportAsGroupSection did="did:plc:me" />)
+    fireEvent.click(screen.getByRole("button", { name: "Turn into a group" }))
+
+    const dialog = screen.getByRole("alertdialog")
+    const link = [...dialog.querySelectorAll("a")].find((a) => a.textContent === "Create a new group")
+    expect(link).toHaveAttribute("href", "/groups/create")
+  })
 })

@@ -53,14 +53,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // Steps that apply to the current layout. Most anchors exist at every
   // width (the destinations are in the desktop top bar and the phone tab
   // bar); a step whose anchor exists at one width only is tagged with
-  // `platform` in tour-steps.
+  // `platform` in tour-steps. A `personalOnly` step (your own Settings)
+  // drops out while acting as a group.
+  const actingAsGroup = !!activeOrg
   const steps = useMemo(
     () =>
       TOUR_STEPS.filter(
         (s) =>
-          !s.platform || (s.platform === "desktop" ? isDesktop : !isDesktop),
+          (!s.platform || (s.platform === "desktop" ? isDesktop : !isDesktop)) &&
+          (!s.personalOnly || !actingAsGroup),
       ),
-    [isDesktop],
+    [isDesktop, actingAsGroup],
   )
 
   const [isActive, setIsActive] = useState(false)

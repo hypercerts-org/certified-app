@@ -16,12 +16,53 @@ beforeEach(() => {
   authFetch.mockReset()
 })
 
+describe("PasswordSection send step", () => {
+  it("sends nothing on Edit: it says where the code goes first", () => {
+    render(<PasswordSection email="ada@example.com" />)
+
+    const edit = screen.getByRole("button", { name: /Edit/ })
+    fireEvent.click(edit)
+
+    expect(authFetch).not.toHaveBeenCalled()
+    expect(edit).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByText(/We.ll email a code to/)).toHaveTextContent(
+      "We\u2019ll email a code to ada@example.com so you can set a new password.",
+    )
+  })
+
+  it("sends the reset code on Send code", async () => {
+    authFetch.mockResolvedValue(json(200, {}))
+    render(<PasswordSection email="ada@example.com" />)
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }))
+
+    expect(authFetch).toHaveBeenCalledTimes(1)
+    expect(authFetch.mock.calls[0][0]).toMatch(/requestPasswordReset$/)
+    expect(await screen.findByLabelText("Reset code")).toBeInTheDocument()
+  })
+
+  it("closes on Cancel without sending, and hands focus back to Edit", () => {
+    render(<PasswordSection email="ada@example.com" />)
+    const edit = screen.getByRole("button", { name: /Edit/ })
+    fireEvent.click(edit)
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+
+    expect(screen.queryByRole("button", { name: "Send code" })).toBeNull()
+    expect(edit).toHaveAttribute("aria-expanded", "false")
+    expect(edit).toHaveFocus()
+    expect(authFetch).not.toHaveBeenCalled()
+  })
+})
+
 describe("PasswordSection errors", () => {
   it("never shows a raw upstream error name", async () => {
     authFetch.mockResolvedValue(json(400, { error: "NotFound" }))
     render(<PasswordSection email="ada@example.com" />)
 
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }))
 
     expect(
       await screen.findByText("Couldn't send the reset code. Try again in a moment."),
@@ -34,6 +75,7 @@ describe("PasswordSection errors", () => {
     render(<PasswordSection email="ada@example.com" />)
 
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }))
 
     expect(
       await screen.findByText("Your session has expired. Sign in again to continue."),
@@ -46,6 +88,7 @@ describe("PasswordSection errors", () => {
       .mockResolvedValueOnce(json(400, { error: "InvalidToken", message: "Token is invalid" }))
     render(<PasswordSection email="ada@example.com" />)
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }))
     await screen.findByLabelText("Reset code")
 
     fireEvent.change(screen.getByLabelText("Reset code"), { target: { value: "abc" } })
@@ -62,6 +105,7 @@ describe("PasswordSection errors", () => {
     authFetch.mockResolvedValue(json(200, {}))
     render(<PasswordSection email="ada@example.com" />)
     fireEvent.click(screen.getByRole("button", { name: /Edit/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }))
 
     await waitFor(() => expect(screen.getByLabelText("Reset code")).toBeInTheDocument())
     expect(screen.queryByRole("heading", { name: "Password" })).toBeNull()

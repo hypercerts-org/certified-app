@@ -68,13 +68,19 @@ export default function BottomNav() {
     </Link>
   );
 
-  // While auth resolves the pill keeps its place but shows no items, so
-  // the signed-out set never flashes. The fade behind it keeps text that
+  // While auth resolves (and on the server) the pill isn't shown: its items
+  // depend on sign-in (Workspace is yours only), so an empty pill would be
+  // a sliver and a guessed set could flash the wrong one. It fades in
+  // complete, at its final width. The fade behind it keeps text that
   // scrolls under it from fighting its labels.
   return (
     <>
     <div className="bottom-nav-fade" aria-hidden />
-    <nav className="bottom-nav" aria-label="Main navigation">
+    <nav
+      className="bottom-nav"
+      aria-label="Main navigation"
+      data-pending={isLoading ? "" : undefined}
+    >
       <div className="bottom-nav__inner">
         {isLoading ? null : (
           <>

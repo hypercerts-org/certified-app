@@ -31,7 +31,8 @@
  *     groups from 1300px, its rail items below that, the pill on phones)
  *   feed — the Feed column (home-feed.tsx)
  *   records-new — "New activity" in Workspace › Projects and activities
- *   settings-handle — the handle row in Settings › Account
+ *   settings-handle — the handle row in Settings › Account (personal
+ *     settings only, so that step is skipped while acting as a group)
  * Other `data-tour` anchors (home-account, navbar-search, explore-category,
  * graph, apps-grid, create-title/-submit, profile-tabs/-edit,
  * settings-bsky-sync) stay in the components for a longer tour.
@@ -64,6 +65,10 @@ export interface TourStep {
   /** Restrict this step to one layout, for anchors that only exist at one
    *  width (the desktop search field). Undefined = shown on both. */
   readonly platform?: "desktop" | "mobile"
+  /** Only while acting as yourself: the step's page belongs to your
+   *  personal account (/settings is always yours), so while acting as a
+   *  group it would show the wrong account, and it's skipped. */
+  readonly personalOnly?: boolean
 }
 
 export const TOUR_STEPS: readonly TourStep[] = [
@@ -91,7 +96,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/home",
     anchor: "nav-workspace",
     title: "Workspace",
-    body: "Your Workspace is everything your account holds: your records, endorsements and groups. Network is everyone else's work.",
+    body: "Your Workspace is everything your account holds: your records, endorsements and groups.",
     placement: "right",
   },
 
@@ -109,7 +114,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     navigateTo: "/feed",
     anchor: "feed",
     title: "Feed",
-    body: "Feed is what's happening: new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the evaluators you pick in the filters.",
+    body: "Feed is what's happening: new activities, projects and endorsements from accounts you follow, and from accounts endorsed by the trusted endorsers you pick in the filters.",
     placement: "right",
   },
 
@@ -142,6 +147,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Your ID",
     body: "Settings is where you manage your account. This is your handle, the readable part of your ID. Behind it sits a Permanent ID that never changes, so your work stays yours even if you change your handle.",
     placement: "bottom",
+    personalOnly: true,
   },
 
   // ---- Help ----------------------------------------------------------

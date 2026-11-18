@@ -18,6 +18,7 @@ import ErrorMessage from "@/components/ui/error-message"
 import Skeleton from "@/components/ui/skeleton"
 import ConfirmDialog from "@/components/ui/confirm-dialog"
 import UnlockAppPasswordsDialog from "./unlock-app-passwords-dialog"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import { SettingsRow } from "./settings-layout"
 
 /**
@@ -115,7 +116,7 @@ export default function AppPasswordsSection() {
           return
         }
         setCreateError(
-          err instanceof Error ? err.message : "Failed to create app password",
+          caughtErrorMessage(err, "Couldn't create the app password. Try again in a moment"),
         )
       } finally {
         setIsCreating(false)

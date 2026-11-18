@@ -57,11 +57,11 @@ const KIND: Record<CountKind, { label: string; column: string; one: string; many
   activity: { label: "Activities", column: "Activities", one: "activity", many: "activities", by: "activities" },
   project: { label: "Projects", column: "Projects", one: "project", many: "projects", by: "projects" },
   org: {
-    label: "Organizations based here",
-    column: "Organizations",
-    one: "organization",
-    many: "organizations",
-    by: "organizations based there",
+    label: "Accounts based here",
+    column: "Accounts",
+    one: "account",
+    many: "accounts",
+    by: "accounts based there",
   },
 }
 
@@ -86,7 +86,7 @@ interface Tip {
 }
 
 
-export default function MapCountries({ model, kind, height, resize }: MapViewProps) {
+export default function MapCountries({ model, kind, height, resize, startBand }: MapViewProps) {
   const [measure, setMeasure] = useState<CountKind>("activity")
   const [sort, setSort] = useState<Sort>("count")
   const [region, setRegion] = useState<Region | null>(null)
@@ -373,6 +373,7 @@ export default function MapCountries({ model, kind, height, resize }: MapViewPro
             ref={mapRef}
             kind={kind}
             height={height}
+            startBand={startBand}
             label={sel ? `Map of ${sel.label}` : `Map of countries, shaded by ${KIND[measure].many}`}
             draw={draw}
             drawKey={draw}
@@ -482,7 +483,7 @@ function MarksLegend() {
         <span className="map-swatch map-swatch--ringdot" aria-hidden /> A project and its activities
       </span>
       <span>
-        <span className="map-swatch map-swatch--org" aria-hidden /> Organization based here
+        <span className="map-swatch map-swatch--org" aria-hidden /> Account based here
       </span>
     </div>
   )
@@ -908,7 +909,7 @@ function Item({
     who = nested ? null : it.account
     note = [it.date ? formatDate(it.date) : "Activity", where, it.via === "project" ? "placed by its project" : ""].filter(Boolean).join(" · ")
   } else {
-    title = it.account.name ?? "Unnamed organization"
+    title = it.account.name ?? "Unnamed account"
     note = ["Based here", where].filter(Boolean).join(" · ")
   }
   return (

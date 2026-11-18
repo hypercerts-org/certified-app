@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Compass, Plus, Users, UsersRound } from "lucide-react"
 import Button from "@/components/ui/button"
@@ -95,15 +95,33 @@ export function EndorsementsPane({
   // holds that view's state.
   const lists = useEndorsementListsState(did)
   // The panel opens on the Given tab, so from another tab the button
-  // switches there first.
+  // switches there first. It only opens: the panel's own Cancel is the
+  // one way to close it, and pressing the button again while it is open
+  // goes back to the panel's search field.
   const endorseOpen = panelOpen && tab === "given"
+  const endorseButtonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [focusRequest, setFocusRequest] = useState(0)
+  const focusedRequestRef = useRef(0)
   const onEndorse = () => {
-    if (tab !== "given") {
-      setTabParam("given")
-      setPanelOpen(true)
-    } else {
-      setPanelOpen((v) => !v)
-    }
+    if (tab !== "given") setTabParam("given")
+    setPanelOpen(true)
+    setFocusRequest((n) => n + 1)
+  }
+  // Once the panel is on screen (after the switch to Given, which goes
+  // through the URL), its search field takes the focus.
+  useEffect(() => {
+    if (!endorseOpen || focusRequest === focusedRequestRef.current) return
+    const field = panelRef.current?.querySelector<HTMLInputElement>("input")
+    if (!field) return
+    focusedRequestRef.current = focusRequest
+    field.focus()
+  }, [endorseOpen, focusRequest])
+  // Closing removes the focused Cancel, so the focus goes back to the
+  // button that opened the panel.
+  const onPanelClose = () => {
+    setPanelOpen(false)
+    endorseButtonRef.current?.focus()
   }
 
   return (
@@ -116,7 +134,7 @@ export function EndorsementsPane({
                 {tab === "lists" && hasEndorsementListsToolbar(lists) ? (
                   <EndorsementListsToolbar state={lists} viewerIsOwner />
                 ) : null}
-                <Button variant="secondary" size="sm" aria-expanded={endorseOpen} onClick={onEndorse}>
+                <Button ref={endorseButtonRef} variant="secondary" size="sm" onClick={onEndorse}>
                   <Plus size={16} strokeWidth={1.75} aria-hidden />
                   Endorse someone
                 </Button>
@@ -142,12 +160,14 @@ export function EndorsementsPane({
           <TabPanel value="given">
             <div className="records-pane__tab-body">
               {endorseOpen ? (
-                <NewEndorsementPanel
-                  ownDid={did}
-                  existingSubjectDids={existing}
-                  onClose={() => setPanelOpen(false)}
-                  onCreated={given.refetch}
-                />
+                <div ref={panelRef}>
+                  <NewEndorsementPanel
+                    ownDid={did}
+                    existingSubjectDids={existing}
+                    onClose={onPanelClose}
+                    onCreated={given.refetch}
+                  />
+                </div>
               ) : null}
               {/* The same rows as Received, with Revoke per row. With the
                   panel open, "No endorsements given yet" would only repeat
@@ -459,12 +479,24 @@ function FollowersList({
 // --------------------------------- Lists ------------------------------------
 
 const LIST_TABS = ["activities", "projects", "accounts", "endorsements"] as const
-type ListTab = (typeof LIST_TABS)[number]
+export type ListTab = (typeof LIST_TABS)[number]
 
-function parseListTab(value: string | null): ListTab {
-  return (LIST_TABS as readonly string[]).includes(value ?? "")
-    ? (value as ListTab)
-    : "activities"
+function parseListTab(value: string | null): ListTab | null {
+  return (LIST_TABS as readonly string[]).includes(value ?? "") ? (value as ListTab) : null
+}
+
+/**
+ * The tab Lists opens on when the URL names none (the Overview's "N
+ * Lists" lands here): the first one, in tab order, that has lists. A tab
+ * still loading stops the walk (its own loading state shows); with no
+ * lists anywhere, Activities.
+ */
+export function defaultListTab(counts: Record<ListTab, number | undefined>): ListTab {
+  for (const t of LIST_TABS) {
+    const n = counts[t]
+    if (n === undefined || n > 0) return t
+  }
+  return "activities"
 }
 
 /** The typed-list tabs: the kind each one shows. */
@@ -476,9 +508,10 @@ const TYPED_LIST_TABS: Partial<Record<ListTab, TypedListType>> = {
 
 /**
  * Lists, one tab per kind: activities, projects, accounts and endorsement
- * lists (which also stay under Endorsements). The tab lives in the URL
- * (`?kind=lists&tab=projects`); switching tabs closes an open list
- * (`?list=`).
+ * lists (which also stay under Endorsements), each with its count. The
+ * tab lives in the URL (`?kind=lists&tab=projects`); with none there the
+ * pane opens on the first tab that has lists (`defaultListTab`).
+ * Switching tabs closes an open list (`?list=`).
  *
  * Each tab's "New … list" (and the endorsement lists' sort) sits on the
  * tab line, over the list of lists once there is one; with none, the
@@ -502,14 +535,27 @@ function ListsTabs({ did, onRetry }: { did: string; onRetry: () => void }) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
-  const tab = parseListTab(params.get("tab"))
   const typed = useTypedLists(did)
   const [creating, setCreating] = useState<TypedListType | null>(null)
   const endorsementLists = useEndorsementListsState(did)
+  // Left out while their lists load, as the other panes' counts are.
+  const typedLoading = typed.isLoading && typed.lists.length === 0
+  const endorsementData = endorsementLists.data
+  const counts: Record<ListTab, number | undefined> = {
+    activities: typedLoading ? undefined : typed.byType[LIST_CERTS_TYPE].length,
+    projects: typedLoading ? undefined : typed.byType[LIST_PROJECTS_TYPE].length,
+    accounts: typedLoading ? undefined : typed.byType[LIST_ACCOUNTS_TYPE].length,
+    endorsements:
+      endorsementData.isLoading && endorsementData.lists.length === 0
+        ? undefined
+        : endorsementData.lists.length,
+  }
+  const tab = parseListTab(params.get("tab")) ?? defaultListTab(counts)
+  // Always written to the URL, so a picked tab stays picked whatever the
+  // default would be.
   const selectTab = (next: string) => {
     const qs = new URLSearchParams(params.toString())
-    if (next === "activities") qs.delete("tab")
-    else qs.set("tab", next)
+    qs.set("tab", next)
     qs.delete("list")
     endorsementLists.setOpenUri(null)
     router.replace(`${pathname}?${qs.toString()}`, { scroll: false })
@@ -547,10 +593,18 @@ function ListsTabs({ did, onRetry }: { did: string; onRetry: () => void }) {
     <Tabs value={tab} onChange={selectTab}>
       <PaneTabBar actions={actions}>
         <TabList aria-label="Lists" className="records-pane__tablist">
-          <Tab value="activities">Activities</Tab>
-          <Tab value="projects">Projects</Tab>
-          <Tab value="accounts">Accounts</Tab>
-          <Tab value="endorsements">Endorsements</Tab>
+          <Tab value="activities" count={counts.activities}>
+            Activities
+          </Tab>
+          <Tab value="projects" count={counts.projects}>
+            Projects
+          </Tab>
+          <Tab value="accounts" count={counts.accounts}>
+            Accounts
+          </Tab>
+          <Tab value="endorsements" count={counts.endorsements}>
+            Endorsements
+          </Tab>
         </TabList>
       </PaneTabBar>
 

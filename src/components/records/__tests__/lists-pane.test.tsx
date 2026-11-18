@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest"
-import { render, screen, within, fireEvent } from "@testing-library/react"
+import { render, screen, within, fireEvent, cleanup } from "@testing-library/react"
 
 import type { TypedListRecord } from "@/lib/atproto/typed-lists"
 
@@ -42,9 +42,12 @@ vi.mock("@/hooks/use-typed-lists", () => ({
   },
 }))
 
+type EndorsementListStub = { uri: string; rkey: string; title: string; items: unknown[]; createdAt: string }
+const endorsementLists = { lists: [] as EndorsementListStub[] }
+const MENTORS: EndorsementListStub = { uri: "at://e/1", rkey: "1", title: "Mentors", items: [], createdAt: "2026-11-12T10:00:00Z" }
 vi.mock("@/hooks/use-endorsement-lists", () => ({
   useEndorsementLists: () => ({
-    lists: [],
+    lists: endorsementLists.lists,
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -71,7 +74,7 @@ beforeAll(() => {
 })
 
 import WorkspaceShell from "@/components/layout/workspace-shell"
-import { ListsPane } from "../records-panes"
+import { ListsPane, defaultListTab } from "../records-panes"
 
 const LIST: TypedListRecord = {
   uri: "at://did:plc:me/org.hypercerts.collection/l1",
@@ -94,6 +97,7 @@ function renderPane() {
 beforeEach(() => {
   nav.search = "kind=lists"
   typed.lists = []
+  endorsementLists.lists = []
 })
 
 describe("Lists (X11, LI1, LI2)", () => {
@@ -133,5 +137,51 @@ describe("Lists (X11, LI1, LI2)", () => {
     expect(
       screen.getByText("Add activities one at a time, or paste many links at once with Paste many."),
     ).toBeInTheDocument()
+  })
+})
+
+// WS-05: the Overview's "1 List" opened Lists on an empty Activities tab.
+describe("Lists: counts and the tab it opens on", () => {
+  const PROJECT_LIST = { ...LIST, uri: "at://did:plc:me/org.hypercerts.collection/l2", rkey: "l2", type: "list:projects", title: "Funded" } as unknown as TypedListRecord
+
+  it("gives each tab its count", () => {
+    typed.lists = [LIST, PROJECT_LIST, { ...PROJECT_LIST, uri: "at://x/l3", rkey: "l3" } as unknown as TypedListRecord]
+    endorsementLists.lists = [MENTORS]
+    renderPane()
+    const tab = (name: string) => screen.getByRole("tab", { name: new RegExp(`^${name}`) })
+    expect(tab("Activities").textContent).toContain("1")
+    expect(tab("Projects").textContent).toContain("2")
+    expect(tab("Accounts").textContent).toContain("0")
+    expect(tab("Endorsements").textContent).toContain("1")
+  })
+
+  it("with no tab in the URL, opens on the first tab that has lists", () => {
+    typed.lists = [PROJECT_LIST]
+    renderPane()
+    expect(screen.getByRole("tab", { name: /^Projects/ })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("opens on Endorsements when only endorsement lists exist", () => {
+    endorsementLists.lists = [MENTORS]
+    renderPane()
+    expect(screen.getByRole("tab", { name: /^Endorsements/ })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("keeps Activities with no lists at all, and a tab named in the URL", () => {
+    renderPane()
+    expect(screen.getByRole("tab", { name: /^Activities/ })).toHaveAttribute("aria-selected", "true")
+    cleanup()
+    typed.lists = [PROJECT_LIST]
+    nav.search = "kind=lists&tab=activities"
+    renderPane()
+    expect(screen.getByRole("tab", { name: /^Activities/ })).toHaveAttribute("aria-selected", "true")
+  })
+})
+
+describe("defaultListTab", () => {
+  it("walks the tabs in order, stopping at one still loading", () => {
+    expect(defaultListTab({ activities: 0, projects: 2, accounts: 1, endorsements: 0 })).toBe("projects")
+    expect(defaultListTab({ activities: 0, projects: undefined, accounts: 1, endorsements: 0 })).toBe("projects")
+    expect(defaultListTab({ activities: 0, projects: 0, accounts: 0, endorsements: 0 })).toBe("activities")
   })
 })

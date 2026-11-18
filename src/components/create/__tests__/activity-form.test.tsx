@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
-import { render, screen, cleanup, fireEvent } from "@testing-library/react"
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react"
 import { useState, type ComponentProps } from "react"
 
 // The description editor is a dynamic TipTap import; a stub keeps the
@@ -29,7 +29,21 @@ import {
   type ContributorRow,
 } from "../activity-form"
 
-afterEach(() => cleanup())
+// The contributor typeahead's search (/api/search-actors): what each test
+// sets in `actors` comes back for any query.
+let actors: { did: string; handle: string; displayName: string; avatar: null }[] = []
+beforeEach(() => {
+  actors = []
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, json: async () => ({ actors }) })),
+  )
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 const noop = () => {}
 
@@ -77,6 +91,19 @@ function renderForm(
   return render(renderFormElement(overrides))
 }
 
+/** One contributor row, with state, so typing, picking and checks work. */
+function StatefulContributors() {
+  const [contributors, setContributors] = useState<ContributorRow[]>([
+    { key: "a", identity: "", weight: "", role: "", picked: false },
+  ])
+  return renderFormElement({ contributors, setContributors })
+}
+
+const identityError = () =>
+  screen.queryByText(
+    "Pick someone from the list, or type a full handle (like name.certified.app).",
+  )
+
 describe("ActivityFormFields", () => {
   it("labels the title and short description", () => {
     renderForm()
@@ -122,6 +149,51 @@ describe("ActivityFormFields", () => {
     expect(changed.container.querySelectorAll(".create-cert__counter--under")).toHaveLength(1)
   })
 
+  // WS-10: the red counter on a changed summary comes with its reason
+  // and the way back.
+  it("on edit, says why a changed short summary is flagged", () => {
+    const saved = "A published summary, under the minimum."
+    const line = () =>
+      screen.queryByText(
+        "A changed summary needs at least 100 characters. Undo your change to keep the current one.",
+      )
+    renderForm({ shortDescription: saved, savedShortDescription: saved, showAllErrors: true })
+    expect(line()).toBeNull()
+    cleanup()
+
+    renderForm({
+      shortDescription: "Changed, still short.",
+      savedShortDescription: saved,
+      showAllErrors: true,
+    })
+    const summary = screen.getByLabelText("Short description")
+    expect(summary.getAttribute("aria-describedby")).toContain(line()!.id)
+    cleanup()
+
+    // /create (nothing published) and an empty published summary: the
+    // counter alone, there is nothing to undo to.
+    renderForm({ shortDescription: "Short.", showAllErrors: true })
+    expect(line()).toBeNull()
+    cleanup()
+    renderForm({ shortDescription: "Short.", savedShortDescription: "", showAllErrors: true })
+    expect(line()).toBeNull()
+  })
+
+  // WS-03: the main column comes first in the DOM, so the keyboard goes
+  // title, summary, description, contributors, then the details.
+  it("puts the main column before the details in the DOM", () => {
+    const { container } = renderForm()
+    const article = container.querySelector(".create-cert") as HTMLElement
+    const [first, second] = Array.from(article.children)
+    expect(first).toHaveClass("cert-detail__main")
+    expect(second).toHaveClass("cert-detail__aside")
+    const title = screen.getByLabelText("Title")
+    const addImage = screen.getByRole("button", { name: "Add image" })
+    const addContributor = screen.getByRole("button", { name: "Add contributor" })
+    expect(title.compareDocumentPosition(addContributor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(addContributor.compareDocumentPosition(addImage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it("hides Rights when there is nothing to pick", () => {
     renderForm()
     expect(screen.queryByText("Rights")).toBeNull()
@@ -150,35 +222,80 @@ describe("ActivityFormFields", () => {
 
   // W6: no "not a handle" error while typing (suggestions may be open);
   // it shows on blur or Enter without a pick, and goes on the next edit.
-  it("checks a typed contributor on blur or Enter, not while typing", () => {
-    function Stateful() {
-      const [contributors, setContributors] = useState<ContributorRow[]>([
-        { key: "a", identity: "", weight: "", role: "", picked: false },
-      ])
-      return renderFormElement({ contributors, setContributors })
-    }
-    render(<Stateful />)
+  // WS-02: Enter waits for the name's search; with no suggestion, the
+  // error shows.
+  it("checks a typed contributor on blur or Enter, not while typing", async () => {
+    render(<StatefulContributors />)
     const field = screen.getByLabelText("Contributor 1: name or handle")
     expect(field).toHaveAttribute("placeholder", "Search by name, or type a handle")
-    const error = () =>
-      screen.queryByText(
-        "Pick someone from the list, or type a full handle (like name.certified.app).",
-      )
 
     fireEvent.change(field, { target: { value: "Ada Lovel" } })
-    expect(error()).toBeNull()
+    expect(identityError()).toBeNull()
     expect(field).not.toHaveAttribute("aria-invalid")
 
     fireEvent.blur(field)
-    expect(error()).not.toBeNull()
+    expect(identityError()).not.toBeNull()
     expect(field).toHaveAttribute("aria-invalid", "true")
 
     // Editing again hides it until the next check.
     fireEvent.change(field, { target: { value: "Ada Lovela" } })
-    expect(error()).toBeNull()
+    expect(identityError()).toBeNull()
 
     fireEvent.keyDown(field, { key: "Enter" })
-    expect(error()).not.toBeNull()
+    await waitFor(() => expect(identityError()).not.toBeNull())
+  })
+
+  // WS-02: "Rosa" + Enter with Rosa among the suggestions takes her, as
+  // the list on screen suggests, instead of the "not a handle" error.
+  it("on Enter, a name with suggestions takes the first one", async () => {
+    actors = [
+      { did: "did:plc:rosa", handle: "rosa.test", displayName: "Rosa Parks", avatar: null },
+      { did: "did:plc:rosa2", handle: "rosalind.test", displayName: "Rosalind", avatar: null },
+    ]
+    render(<StatefulContributors />)
+    const field = screen.getByLabelText("Contributor 1: name or handle")
+    fireEvent.change(field, { target: { value: "Rosa" } })
+    // Pressed before the search has answered: it waits for it.
+    fireEvent.keyDown(field, { key: "Enter" })
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Contributor 1: name or handle")).toBeNull(),
+    )
+    expect(identityError()).toBeNull()
+    expect(screen.getByLabelText("Contributor 1")).toBeInTheDocument()
+  })
+
+  it("on Enter after the suggestions show, takes the first one", async () => {
+    actors = [{ did: "did:plc:rosa", handle: "rosa.test", displayName: "Rosa Parks", avatar: null }]
+    render(<StatefulContributors />)
+    const field = screen.getByLabelText("Contributor 1: name or handle")
+    fireEvent.change(field, { target: { value: "Rosa" } })
+    await screen.findByRole("option", { name: /Rosa Parks/ })
+    fireEvent.keyDown(field, { key: "Enter" })
+    expect(screen.queryByLabelText("Contributor 1: name or handle")).toBeNull()
+    expect(identityError()).toBeNull()
+  })
+
+  // WS-02: the message sits right under the field (before Role and
+  // Share), describes it, and the border is the full error colour (CSS).
+  it("puts the contributor's error right under the field and links it", () => {
+    render(<StatefulContributors />)
+    const field = screen.getByLabelText("Contributor 1: name or handle")
+    fireEvent.change(field, { target: { value: "Ada Lovel" } })
+    fireEvent.blur(field)
+    const error = identityError()!
+    expect(error.id).toBeTruthy()
+    expect(field.getAttribute("aria-describedby")).toBe(error.id)
+    expect(error.nextElementSibling).toHaveClass("create-cert__contrib-fields")
+    expect(error.previousElementSibling).toHaveAccessibleName("Remove contributor 1")
+  })
+
+  it("links a share that isn't a number to its message", () => {
+    renderForm({
+      contributors: [{ key: "a", identity: "ada.test", weight: "ten", role: "", picked: true }],
+    })
+    const share = screen.getByLabelText("Share of contributor 1, in percent")
+    const message = screen.getByText("Share must be a number (decimals are fine, e.g. 12.5).")
+    expect(share.getAttribute("aria-describedby")).toBe(message.id)
   })
 
   it("flags an unrecognisable contributor after a save attempt", () => {

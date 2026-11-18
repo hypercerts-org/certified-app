@@ -81,7 +81,8 @@
 /* Network → Graph (/graph): the graph inside the page container, under
    the page header. The graph fits the window instead of running past it:
    it takes the height left below the header (from 1100px with its side
-   column beside it, below that with the controls above it). A taller
+   column beside it, below that with the totals line and the find + Filters
+   row above it). A taller
    window gives it more room; 400px / 320px is the floor on a short one.
    The offsets are the chrome and header above it (the top bar, the
    container's padding, the page header) plus a little air below. The side
@@ -116,10 +117,12 @@
   }
 }
 
+/* 800-1099px: the header, the totals line and the find + Filters row
+   above it (as on phones). */
 @media (max-width: 1099px) {
   .graph-page .viz__graph {
     flex: none;
-    height: max(320px, calc(100dvh - 216px));
+    height: max(320px, calc(100dvh - 240px));
   }
 }
 
@@ -229,18 +232,27 @@
   }
 }
 
-/* ---- Phones: totals line, find + Filters row ----
-   Below 800px the graph comes first: one muted line of totals and a row
-   with the find field and the Filters button (Layout, Show and Lines open
-   in a bottom sheet, network-filters-sheet.tsx) sit above it, the
-   rankings below. Rendered on phones only; hidden from 800px in case the
-   breakpoint hook hasn't caught up yet. */
+/* ---- Below 1100px: totals line, find + Filters row ----
+   Phones and the 800-1099px rail layout: the graph comes first. One muted
+   line of totals and a row with the find field and the Filters button
+   (Layout, Show and Lines open in a sheet, network-filters-sheet.tsx) sit
+   above it, the rankings below. While the network loads both hold their
+   place (a skeleton line, a disabled find + Filters row), so the graph
+   doesn't move down when they arrive. Rendered below 1100px only; hidden
+   from 1100px in case the breakpoint hook hasn't caught up yet. */
 .viz__summary {
   margin: 0;
   font-size: var(--text-ui);
   line-height: 1.4;
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Its skeleton, one text line tall. */
+.viz__summary--loading {
+  display: flex;
+  align-items: center;
+  min-height: 1.4em;
 }
 
 .viz__toolbar {
@@ -259,8 +271,21 @@
   flex: 0 0 auto;
 }
 
-@media (min-width: 800px) {
-  .viz__summary {
+/* The loading stand-in sits right after the controls' slot: gone as soon
+   as the graph has put its own row there. */
+.viz__nav:not(:empty) + .viz__toolbar--placeholder {
+  display: none;
+}
+
+@media (max-width: 1099px) {
+  .viz__toolbar--placeholder {
+    order: -1;
+  }
+}
+
+@media (min-width: 1100px) {
+  .viz__summary,
+  .viz__toolbar--placeholder {
     display: none;
   }
 }
@@ -333,9 +358,12 @@
   gap: 6px;
 }
 
+/* Each segment as wide as its word: the strip hugs them rather than
+   stretching its last segment across the row. */
 .viz__layout-toggle,
 .viz__scope-toggle {
-  width: 100%;
+  justify-self: start;
+  max-width: 100%;
 }
 
 .viz__search-wrap {
@@ -779,4 +807,28 @@
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+}
+
+/* Phones: the selected account's card under the graph (its slot in
+   visualization.tsx), part of the page rather than a card over the graph:
+   in the flow, full width, not draggable. */
+.viz__panel-slot:empty {
+  display: none;
+}
+
+.viz__panel.viz__panel--docked {
+  position: static;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  background: var(--bg-elevated);
+  box-shadow: none;
+  /* Clear of the tab bar when brought into view. */
+  scroll-margin-bottom: 8px;
+}
+
+.viz__panel--docked .viz__panel-head {
+  cursor: default;
+  touch-action: auto;
 }

@@ -13,8 +13,8 @@ function counts(over: Partial<ProfileSummary["counts"]> = {}): ProfileSummary["c
     endorsementsReceived: n(2),
     followers: n(5),
     lists: n(0),
-    endorsementsGiven: 0,
-    following: 0,
+    endorsementsGiven: n(0),
+    following: n(0),
     ...over,
   }
 }
@@ -75,8 +75,40 @@ describe("visibleProfileTabs", () => {
   })
 
   it("keeps Endorsements and Followers for what was given or followed", () => {
-    const c = counts({ endorsements: n(0), followers: n(0), endorsementsGiven: 2, following: 1 })
+    const c = counts({
+      endorsements: n(0),
+      followers: n(0),
+      endorsementsGiven: n(2),
+      following: n(1),
+    })
     expect(keys({ counts: c })).toEqual(expect.arrayContaining(["endorsements", "followers"]))
+  })
+
+  it("doesn't take a list that failed to load for an empty one", () => {
+    const failed: SectionCount = { value: null, isLoading: false, failed: true }
+    const c = counts({
+      endorsements: n(0),
+      followers: n(0),
+      endorsementsGiven: failed,
+      following: failed,
+    })
+    expect(keys({ counts: c })).toEqual(expect.arrayContaining(["endorsements", "followers"]))
+    const empty = counts({ endorsements: n(0), followers: n(0) })
+    expect(keys({ counts: empty })).not.toContain("endorsements")
+    expect(keys({ counts: empty })).not.toContain("followers")
+  })
+
+  it("shows no count of zero (a Followers tab open for the accounts it follows)", () => {
+    const tabs = visibleProfileTabs({
+      counts: counts({ followers: n(0), following: n(3), endorsements: n(0), endorsementsGiven: n(4) }),
+      tabFromUrl: "overview",
+      isViewerThisEntity: false,
+      isActiveIdentityThisProfile: false,
+      isOrg: false,
+      editing: false,
+    })
+    expect(tabs.find((t) => t.key === "followers")?.count).toBeUndefined()
+    expect(tabs.find((t) => t.key === "endorsements")?.count).toBeUndefined()
   })
 
   it("labels the counts", () => {

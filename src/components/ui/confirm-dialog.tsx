@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type RefObject } from "react"
+import { useRef, useState, type ReactNode, type RefObject } from "react"
 import Button from "./button"
 import Input from "./input"
 import AppDialog, { AppDialogHeader, AppDialogBody } from "./app-dialog"
@@ -8,7 +8,9 @@ import { DIALOG_FOOTER_ACTIONS_CLASS } from "./form-dialog"
 
 interface ConfirmDialogProps {
   readonly title: string
-  readonly message: string
+  /** The outcome, in a sentence or two. May hold inline content (a link
+   *  to an alternative); it renders inside a paragraph. */
+  readonly message: ReactNode
   readonly confirmLabel?: string
   readonly cancelLabel?: string
   readonly isConfirming?: boolean

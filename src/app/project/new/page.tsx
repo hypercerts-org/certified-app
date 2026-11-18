@@ -360,6 +360,9 @@ export default function CreateProjectPage() {
                   : "project-detail__hero project-detail__hero--placeholder create-project__hero"
               }
             >
+              {/* Empty, the slot shows one affordance: the overlay's "Add
+                  image" pill (no placeholder glyph as well), as on New
+                  activity. */}
               {pendingBannerPreviewUrl ? (
                 <Image
                   src={pendingBannerPreviewUrl}
@@ -368,14 +371,7 @@ export default function CreateProjectPage() {
                   className="project-detail__hero-img"
                   unoptimized
                 />
-              ) : (
-                <FolderGit2
-                  size={56}
-                  strokeWidth={1.25}
-                  aria-hidden
-                  className="project-detail__hero-placeholder-icon"
-                />
-              )}
+              ) : null}
               <ImageEditOverlay
                 onFile={handleBannerFile}
                 hasPending={!!pendingBannerBlob}
@@ -387,11 +383,15 @@ export default function CreateProjectPage() {
 
             <header className="cert-detail__headline">
               <div className="create-cert__input-with-counter">
+                {/* Every field has a visible label, as on New activity. */}
+                <label htmlFor="new-project-title" className="cert-detail__meta-label">
+                  Title
+                </label>
                 <input
                   type="text"
+                  id="new-project-title"
                   ref={titleInputRef}
                   className="cert-detail__title-input"
-                  aria-label="Title"
                   aria-describedby="new-project-title-counter"
                   placeholder="Title for your project"
                   value={title}
@@ -416,13 +416,16 @@ export default function CreateProjectPage() {
 
             <section className="cert-detail__section">
               <div className="create-cert__input-with-counter">
+                <label htmlFor="new-project-short-desc" className="cert-detail__meta-label">
+                  Short description
+                </label>
                 <textarea
+                  id="new-project-short-desc"
                   ref={shortDescRef}
                   className="cert-detail__short-desc-input"
                   aria-describedby="new-project-short-desc-counter"
                   value={shortDescription}
                   placeholder="A short description (one or two lines)…"
-                  aria-label="Short description"
                   onChange={(e) => setShortDescription(e.target.value)}
                   rows={3}
                 />

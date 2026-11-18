@@ -295,7 +295,11 @@ describe("AppSidebar", () => {
   it("while sign-in is checked, shows a placeholder and no rows, so nothing is inserted later", () => {
     state.isLoading = true
     const { container } = render(<AppSidebar />)
-    expect(container.querySelector(".app-sidebar__account-placeholder")).not.toBeNull()
+    const placeholder = container.querySelector(".app-sidebar__account-placeholder")
+    expect(placeholder).not.toBeNull()
+    // Shaped like the control: an avatar, and (shown from 1300px) two lines.
+    expect(placeholder!.querySelector(".app-sidebar__account-placeholder-avatar")).not.toBeNull()
+    expect(placeholder!.querySelectorAll(".app-sidebar__account-placeholder-meta > span")).toHaveLength(2)
     expect(screen.queryByRole("navigation")).toBeNull()
   })
 

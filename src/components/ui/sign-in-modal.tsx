@@ -25,8 +25,19 @@ interface SignInModalProps {
 
 type ModalView = "certified" | "atproto"
 
-/** The dialog's title and accessible name. */
-const TITLE = "Sign in or create an account"
+/** The dialog's title and accessible name, per view: an email that has
+ *  no account yet creates one; a handle only signs in. */
+const TITLES: Record<ModalView, string> = {
+  certified: "Sign in or create an account",
+  atproto: "Sign in with your handle",
+}
+
+/** The dialog keeps its top edge when the view changes (the email view's
+ *  helper line and the titles make the views differ in height): instead of
+ *  centring, its top sits where a dialog of the email view's height would
+ *  start when centred (about 30rem tall, so half of that above the middle),
+ *  never closer than 20px to the top of the screen. */
+const PIN_TOP_CLS = "mt-[max(20px,calc(50dvh-15rem))]"
 
 /** The Terms and Privacy links in the consent line: muted text, underlined
  *  so they read as links. */
@@ -109,7 +120,8 @@ export default function SignInModal({
 
   const isCertified = view === "certified"
 
-  const heading = isCertified ? "Your email" : "Your handle"
+  const title = TITLES[view]
+  const fieldLabel = isCertified ? "Your email" : "Your handle"
   const placeholder = isCertified ? "you@example.com" : "you.bsky.social"
   // Worded and laid out in parallel with "Sign in with Google": same
   // pattern, a 20px mark in the logo's place. The Atmosphere has no agreed
@@ -119,15 +131,14 @@ export default function SignInModal({
   const submitLabel = isSubmitting ? "Connecting…" : "Continue"
 
   return (
-    <AppDialog ariaLabel={TITLE} onClose={handleClose}>
+    <AppDialog ariaLabel={title} onClose={handleClose} className={PIN_TOP_CLS}>
       {/* The standard dialog title (DESIGN §9.8), with the brandmark
-          beside it so it's clear whose account this is. One title for
-          both: an email that has no account yet creates one. */}
+          beside it so it's clear whose account this is. */}
       <AppDialogHeader
         title={
           <span className="flex items-center gap-3">
             <Brandmark size={28} decorative className="block shrink-0 text-[var(--fg-primary)]" />
-            <span className="min-w-0">{TITLE}</span>
+            <span className="min-w-0">{title}</span>
           </span>
         }
         onClose={handleClose}
@@ -135,14 +146,11 @@ export default function SignInModal({
 
       <AppDialogBody>
         <form onSubmit={handleSubmit} className="flex flex-col" method="post" aria-label="Sign in">
-          <label
-            className="font-[var(--font-inter),system-ui,sans-serif] text-[1.125rem] font-semibold tracking-[-0.01em] text-[var(--fg-primary)] mb-3 max-[799px]:text-base"
-            htmlFor={isCertified ? "email" : "username"}
-          >
-            {heading}
-          </label>
+          {/* A standard field label (the dialog title above is the only
+              heading). */}
           <Input
             ref={inputRef}
+            label={fieldLabel}
             id={isCertified ? "email" : "username"}
             name={isCertified ? "email" : "username"}
             type={isCertified ? "email" : "text"}

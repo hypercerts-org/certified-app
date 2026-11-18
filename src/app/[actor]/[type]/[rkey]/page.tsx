@@ -38,7 +38,13 @@ export default function RecordDetailPage() {
     did,
     handle,
     isLoading: resolving,
+    errorKind,
+    retry,
   } = useUserProfile(actor.kind === "invalid" ? null : actor.value)
+  // A failed lookup (a 429, a network error) is not a missing account: the
+  // record pages say they couldn't load, with "Try again", and keep "not
+  // found" for an account or record that really isn't there.
+  const lookupFailed = errorKind === "failed"
 
   // Canonicalize the address bar to the record's current handle once
   // resolved: a DID-addressed URL becomes the handle form, AND a stale
@@ -85,6 +91,8 @@ export default function RecordDetailPage() {
         handle={handle}
         rkey={rkey}
         resolving={resolving}
+        lookupFailed={lookupFailed}
+        onRetryLookup={retry}
       />
     )
   }
@@ -95,6 +103,8 @@ export default function RecordDetailPage() {
       handle={handle}
       rkey={rkey}
       resolving={resolving}
+      lookupFailed={lookupFailed}
+      onRetryLookup={retry}
     />
   )
 }

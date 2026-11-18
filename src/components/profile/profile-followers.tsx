@@ -17,6 +17,7 @@ import SectionHeader from "@/components/ui/section-header"
 import Button from "@/components/ui/button"
 import { Tabs, TabList, Tab, TabPanel } from "@/components/ui/tabs"
 import ProfilePersonRow from "@/components/profile/profile-person-row"
+import { useOptionalToast } from "@/components/profile/use-optional-toast"
 import {
   PANEL_SEARCH_MIN,
   PanelTools,
@@ -72,11 +73,18 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
   const router = useRouter()
   const urlTab: SubTab = searchParams?.get("sub") === "following" ? "following" : "followers"
   // A visitor isn't shown a list known to be empty ("Following 0"): its
-  // segment goes, and with one list left there are no segments at all.
+  // segment goes, and with one list left there are no segments at all;
+  // that list then says what it is in a visible heading. A list that
+  // failed to load isn't known to be empty: it keeps its segment and says
+  // it couldn't load, with "Try again".
   const followersZero =
+    !followers.error &&
     !(followers.isLoading && followers.entries.length === 0) &&
     (followers.count ?? followers.entries.length) === 0
-  const followingZero = !(following.isLoading && following.count === 0) && following.count === 0
+  const followingZero =
+    !following.error &&
+    !(following.isLoading && following.count === 0) &&
+    following.count === 0
   const showFollowersSegment = isThisAccount || !followersZero
   const showFollowingSegment = isThisAccount || !followingZero
   const segmented = showFollowersSegment && showFollowingSegment
@@ -125,8 +133,13 @@ export default function ProfileFollowers({ did }: ProfileFollowersProps) {
       variant="segmented"
       className="profile-panel"
     >
-      {/* The tab names the panel; the heading is for screen readers. */}
-      <SectionHeader title="Followers" titleHidden />
+      {/* The tab names the panel; the heading is for screen readers. With
+          only the follows left (no segments), it says what they are. */}
+      {!segmented && tab === "following" ? (
+        <SectionHeader title="Following" />
+      ) : (
+        <SectionHeader title="Followers" titleHidden />
+      )}
       {segmented ? (
         <div className="profile-panel__head">
           <TabList aria-label="Followers sections">
@@ -411,6 +424,8 @@ function UnfollowButton({
   const { displayName: subjectDisplay } = deriveIdentity(info, subjectDid)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
+  // A failed unfollow is an error toast, as a failed Like is.
+  const toasts = useOptionalToast()
 
   const handleConfirm = async () => {
     if (isRevoking) return
@@ -421,6 +436,9 @@ function UnfollowButton({
       setConfirmOpen(false)
     } catch (err) {
       console.error("Unfollow failed:", err)
+      // The dialog closes; the row stays, and the toast says why.
+      setConfirmOpen(false)
+      toasts?.toast({ title: "Couldn't unfollow. Try again.", variant: "error" })
     } finally {
       setIsRevoking(false)
     }

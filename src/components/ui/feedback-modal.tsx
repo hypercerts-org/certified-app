@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import ResponsiveDialog from "./responsive-dialog"
-import { AppDialogHeader } from "./app-dialog"
+import { AppDialogHeader, AppDialogBody } from "./app-dialog"
 import Button from "./button"
 import Input from "./input"
 import Textarea from "./textarea"
@@ -13,7 +13,8 @@ import { useAuthorInfo } from "@/hooks/use-author-info"
 
 /** Per-variant copy — the form, validation, and submit wiring are
  *  identical; contact requests additionally prefix the message so the
- *  support inbox can tell the two doors apart. */
+ *  support inbox can tell the two doors apart, and need an email to
+ *  answer (`emailRequired`); feedback can be anonymous. */
 const COPY = {
   feedback: {
     title: "Send feedback",
@@ -24,17 +25,21 @@ const COPY = {
     success: "Thank you for your feedback!",
     again: "Send more feedback",
     prefix: "",
+    emailRequired: false,
+    emailMissing: "",
   },
   contact: {
     title: "Get in touch",
     note: "",
     messageLabel:
       "Tell us about your organization, platform, or program, and what you have in mind.",
-    emailLabel: "Your email, so we can get back to you (optional).",
+    emailLabel: "Your email, so we can get back to you.",
     submit: "Send message",
     success: "Thank you! We'll get back to you soon.",
     again: "New message",
     prefix: "[Contact request] ",
+    emailRequired: true,
+    emailMissing: "Enter your email so we can get back to you.",
   },
 } as const
 
@@ -91,7 +96,14 @@ export default function FeedbackModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim() || isSubmitting) return
-    if (!replyEmail && email && !validateEmail(email)) return
+    if (!replyEmail) {
+      // A contact request needs somewhere to answer; feedback doesn't.
+      if (copy.emailRequired && !email.trim()) {
+        setEmailError(copy.emailMissing)
+        return
+      }
+      if (email && !validateEmail(email)) return
+    }
 
     setIsSubmitting(true)
     setError("")
@@ -133,7 +145,9 @@ export default function FeedbackModal() {
       </div>
     </div>
   ) : (
-    <form onSubmit={handleSubmit}>
+    // noValidate: the email field's own messages (missing, invalid) are
+    // ours, in the app's error style, not the browser's bubble.
+    <form onSubmit={handleSubmit} noValidate>
       {greetingName ? (
         <p className="feedback-modal__greeting">Hi, {greetingName}!</p>
       ) : null}
@@ -168,6 +182,8 @@ export default function FeedbackModal() {
             onChange={(e) => { setEmail(e.target.value); if (emailError) validateEmail(e.target.value) }}
             onBlur={() => validateEmail(email)}
             placeholder="you@example.com"
+            autoComplete="email"
+            required={copy.emailRequired}
             disabled={isSubmitting}
             error={emailError || undefined}
           />
@@ -198,7 +214,8 @@ export default function FeedbackModal() {
       maxWidth={420}
       header={<AppDialogHeader title={copy.title} onClose={closeFeedback} />}
     >
-      <div className="feedback-modal__body">{body}</div>
+      {/* The shared dialog body: the same 20px inset as the header. */}
+      <AppDialogBody>{body}</AppDialogBody>
     </ResponsiveDialog>
   )
 }

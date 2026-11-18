@@ -135,11 +135,15 @@ function FundingLoading() {
         </div>
       </div>
       <div className="funding-page__phone-only funding-page__bar" aria-hidden="true">
-        <Skeleton variant="line" width="70%" height={14} />
-        <Button variant="secondary" size="md" disabled tabIndex={-1}>
-          <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
-          Filters
-        </Button>
+        <div className="funding-page__stats-line">
+          <Skeleton variant="line" width="70%" height={12} />
+        </div>
+        <div className="funding-page__bar-row">
+          <Button variant="secondary" size="md" disabled tabIndex={-1}>
+            <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
+            Filters
+          </Button>
+        </div>
       </div>
       <div className="funding-loading" role="status" style={{ minHeight: LOADING_HEIGHT }}>
         <LoadingSpinner size="md" />
@@ -233,17 +237,19 @@ export default function FundingPage() {
                 </div>
                 {confirmedBy}
               </div>
-              {/* Phones: the totals as one line, the chips in the Filters
-                  sheet, so the view is in reach. */}
+              {/* Phones: three figures on one line, then the Filters row
+                  (the chips in its sheet), then the view, then what it
+                  shows: the Graph's and the Map's order. */}
               <div className="funding-page__phone-only funding-page__bar">
                 <p className="funding-page__stats-line">
                   {formatUsd(summary.total)} received · {formatCount(summary.count)} gifts ·{" "}
-                  {formatCount(summary.projects)} projects · {formatCount(summary.namedDonors)} named donors ·{" "}
-                  {formatCount(summary.anonymous)} anonymous gifts
+                  {formatCount(summary.projects)} projects
                 </p>
-                <NetworkFiltersSheet changed={changedRoles(confirmed.roles)} onReset={confirmed.reset}>
-                  {confirmedBy}
-                </NetworkFiltersSheet>
+                <div className="funding-page__bar-row">
+                  <NetworkFiltersSheet changed={changedRoles(confirmed.roles)} onReset={confirmed.reset}>
+                    {confirmedBy}
+                  </NetworkFiltersSheet>
+                </div>
               </div>
               {/* Below the chips, not above: it comes and goes as chips toggle,
                   and must not move them under the pointer. */}
@@ -259,7 +265,7 @@ export default function FundingPage() {
                   , not converted.
                 </p>
               ) : null}
-              <p className="funding-page__blurb">{activeView.blurb}</p>
+              <p className="funding-page__blurb funding-page__desktop-only">{activeView.blurb}</p>
               <section className="funding-page__view" aria-label={activeView.label}>
                 {view === "projects" ? (
                   <FundingMosaic
@@ -300,7 +306,8 @@ export default function FundingPage() {
                   />
                 )}
               </section>
-              {/* Phones: the note after the view, not before it. */}
+              {/* Phones: what the view shows, and the note, after it. */}
+              <p className="funding-page__blurb funding-page__phone-only">{activeView.blurb}</p>
               <div className="funding-page__phone-only funding-page__note-after">
                 <FundingNote />
               </div>

@@ -2,8 +2,12 @@
 
 import { useCallback, useState } from "react"
 import dynamic from "next/dynamic"
+import { Filter as FilterIcon } from "lucide-react"
+import Button from "@/components/ui/button"
+import Input from "@/components/ui/input"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
+import Skeleton from "@/components/ui/skeleton"
 import EndorsementStats from "@/components/visualization/endorsement-stats"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
 import {
@@ -41,7 +45,25 @@ function plural(n: number, one: string, many: string): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
 
-/** The phone's one line of totals above the graph, in place of the
+/** The find field and Filters button while the network loads (below
+ *  1100px), so the graph doesn't move down when the real ones arrive.
+ *  Hidden once the graph has put its own toolbar in the slot before it
+ *  (visualization.css). Not interactive: nothing to find or filter yet. */
+function ToolbarPlaceholder() {
+  return (
+    <div className="viz__toolbar viz__toolbar--placeholder" aria-hidden="true">
+      <div className="viz__search-wrap">
+        <Input disabled tabIndex={-1} placeholder="Find account" className="viz__search" />
+      </div>
+      <Button variant="secondary" size="md" disabled tabIndex={-1} className="network-filters__btn">
+        <FilterIcon size={16} strokeWidth={1.75} aria-hidden />
+        Filters
+      </Button>
+    </div>
+  )
+}
+
+/** The one line of totals above the graph below 1100px, in place of the
  *  StatRow: "205 accounts · 258 endorsements · 1 mutual pair". */
 export function graphSummary(g: EndorsementGraphData): string {
   return [
@@ -53,9 +75,12 @@ export function graphSummary(g: EndorsementGraphData): string {
 
 /**
  * The endorsement network: the graph, and beside it its controls (find,
- * layout, which accounts and lines) above the stats. On phones the graph
- * comes first: one line of totals, the find field and a Filters button
- * (Layout, Show, Lines in a bottom sheet), the graph, then the rankings.
+ * layout, which accounts and lines) above the stats. Below 1100px (phones
+ * and the 800-1099px rail layout) the graph comes first: one line of
+ * totals, the find field and a Filters button (Layout, Show, Lines in a
+ * sheet), the graph, then the rankings. Both lines hold their place while
+ * the network loads. On phones the selected account's card sits under the
+ * graph, not over it.
  * Network → Graph (`/graph`) hosts it `embedded`, inside its page container under the
  * Network tabs. Without `embedded` it takes the full-bleed page layout
  * (`.viz--page`: full shell width, viewport-tall on wide screens), which no
@@ -72,8 +97,13 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
   const [statsGraph, setStatsGraph] = useState<EndorsementGraphData | null>(null)
   // The graph's controls render here, beside it, not over it.
   const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
+  // Phones: where the selected account's card goes (under the graph).
+  const [panelHost, setPanelHost] = useState<HTMLDivElement | null>(null)
   const ready = !isLoading && !error && graph && graph.nodes.length > 0
-  const { isDesktop } = useLayoutBreakpoints()
+  const { isDesktop, hasRightRail } = useLayoutBreakpoints()
+  // Below 1100px the totals are one line and the controls one row above
+  // the graph; from 1100px they are a column beside it.
+  const compact = !hasRightRail
 
   const handleFocus = useCallback((did: string) => {
     setFocusReq((prev) => ({ did, nonce: prev.nonce + 1 }))
@@ -113,25 +143,32 @@ export default function Visualization({ embedded = false }: { embedded?: boolean
               truncated={graph.truncated}
               onStats={setStatsGraph}
               controlsHost={controlsHost}
+              compact={compact}
+              panelHost={isDesktop ? null : panelHost}
             />
           )}
         </div>
+        {!isDesktop ? <div ref={setPanelHost} className="viz__panel-slot" /> : null}
       </div>
 
       {/* Beside the graph from 1100px: its controls, then the totals and
-          rankings. Below that the controls sit above the graph and the
-          stats under it; on phones the totals line and the find + Filters
-          row sit above it (visualization.css). */}
+          rankings. Below that the totals line and the find + Filters row
+          sit above the graph and the rankings under it (visualization.css). */}
       <div className="viz__side">
-        {ready && !isDesktop ? (
+        {compact && ready ? (
           <p className="viz__summary">{graphSummary(statsGraph ?? graph)}</p>
+        ) : compact && isLoading ? (
+          <div className="viz__summary viz__summary--loading" aria-hidden="true">
+            <Skeleton variant="line" width={260} height={12} />
+          </div>
         ) : null}
         <div ref={setControlsHost} className="viz__nav" />
+        {compact && (isLoading || ready) ? <ToolbarPlaceholder /> : null}
         {ready && (
           <EndorsementStats
             graph={statsGraph ?? graph}
             onFocus={handleFocus}
-            showTotals={isDesktop}
+            showTotals={!compact}
           />
         )}
       </div>

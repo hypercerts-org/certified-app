@@ -17,6 +17,8 @@ import EmptyState from "@/components/ui/empty-state"
 import EndorsementSubjectRow from "@/components/endorsements/endorsement-subject-row"
 import { ProfileRowsSkeleton } from "@/components/profile/profile-panel"
 import { PERSON_ROW_CLASSES } from "@/components/profile/profile-person-row"
+import { KindAvatar } from "@/components/feed/account-kind"
+import { useOptionalToast } from "@/components/profile/use-optional-toast"
 
 // Presentational views below ProfileEndorsements' fold: the Received /
 // Given rows, the bulk-action bar, and the pure filter + sort helpers.
@@ -105,6 +107,9 @@ export function RevokeGivenButton({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
+  // A failed revoke is an error toast, as a failed Like is; inline only
+  // without a toast region.
+  const toasts = useOptionalToast()
   const [error, setError] = useState<string | null>(null)
 
   const handleConfirm = async () => {
@@ -118,7 +123,12 @@ export function RevokeGivenButton({
       await onAfterRevoke()
       setConfirmOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to revoke")
+      console.error("Revoke endorsement failed:", err)
+      // The dialog closes; the row stays, and the toast says why.
+      setConfirmOpen(false)
+      const message = "Couldn't revoke the endorsement. Try again."
+      if (toasts) toasts.toast({ title: message, variant: "error" })
+      else setError(message)
     } finally {
       setIsRevoking(false)
     }
@@ -512,7 +522,8 @@ const ReceivedRow = memo(function ReceivedRow({
   const { info, isLoading } = useReceivedIssuerInfo(endorsement)
   // Same derivation the shared row renders, so aria-labels and the
   // response menu match the visible display name.
-  const { displayName: display } = deriveIdentity(info, endorsement.issuerDid)
+  const identity = deriveIdentity(info, endorsement.issuerDid)
+  const display = identity.displayName
   return (
     <li
       className="profile-person"
@@ -535,6 +546,17 @@ const ReceivedRow = memo(function ReceivedRow({
         note={endorsement.note}
         avatarSize="sm"
         classes={PERSON_ROW_CLASSES}
+        // The endorser in the shape of its kind: an organization square,
+        // a person round, a neutral block while that isn't known.
+        avatar={
+          <KindAvatar
+            did={endorsement.issuerDid}
+            size="sm"
+            src={identity.avatarUrl}
+            initials={identity.initials}
+            autoRetry={false}
+          />
+        }
         trailing={
           viewerIsOwner ? (
             <ResponseMenu

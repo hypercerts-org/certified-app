@@ -9,8 +9,8 @@
    /feed; its card styles stay in this file (.home-feed*). */
 
 /* One column below 1100px, in DOM order: the sections (what the account
-   holds, with New activity, first in view), Your groups and the ID
-   boxes, Apps. */
+   holds first; Your records' header carries New activity), the ID and
+   Your groups boxes, Apps. */
 .home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -54,12 +54,6 @@
   .home__side {
     grid-area: side;
     gap: 24px;
-  }
-
-  /* The account's ID heads the side column (it follows Your groups in
-     the DOM, the phone order). */
-  .home__box--id {
-    order: -1;
   }
 
   .home__main {

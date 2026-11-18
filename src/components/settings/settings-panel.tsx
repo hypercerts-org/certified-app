@@ -89,7 +89,7 @@ const SECTIONS: SectionDef[] = [
     label: "Group account",
     icon: Users,
     description:
-      "Turn this personal account into a group that several people can manage.",
+      "Make this account a group that several people can manage, or create a new group alongside it.",
   },
 ]
 

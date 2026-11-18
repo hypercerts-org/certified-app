@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent, act } from "@testing-library/react"
 
 /**
  * The landing bar carries the app's faded Certified.app wordmark and the
@@ -49,5 +49,23 @@ describe("LandingTopBar", () => {
     render(<LandingTopBar />)
     expect(screen.getByRole("link", { name: /Open app/ })).toHaveAttribute("href", "/home")
     expect(screen.queryByRole("button")).toBeNull()
+  })
+
+  it("puts the fixed button in its bar once the wordmark has scrolled away", () => {
+    const { container } = render(<LandingTopBar />)
+    const actions = container.querySelector(".lp-topbar__actions")!
+    expect(actions).not.toHaveClass("lp-topbar__actions--bar")
+
+    Object.defineProperty(window, "scrollY", { value: 200, configurable: true })
+    act(() => {
+      fireEvent.scroll(window)
+    })
+    expect(actions).toHaveClass("lp-topbar__actions--bar")
+
+    Object.defineProperty(window, "scrollY", { value: 0, configurable: true })
+    act(() => {
+      fireEvent.scroll(window)
+    })
+    expect(actions).not.toHaveClass("lp-topbar__actions--bar")
   })
 })

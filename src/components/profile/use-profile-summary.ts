@@ -68,15 +68,23 @@ export function useProfileSummary(did: string | null) {
     const activityMore =
       activityCount === null && activities.hasMore && activityValue !== null && activityValue > 0
 
-    const endorsementsLoading =
-      (received.isLoading && received.endorsements.length === 0) ||
-      (given.isLoading && given.endorsements.length === 0)
-
     const receivedLoading = received.isLoading && received.endorsements.length === 0
+    const givenLoading = given.isLoading && given.endorsements.length === 0
+    const followingLoading = following.isLoading && following.count === 0
+    // The accounts that endorsed this one, each once however many awards
+    // it gave: the trust line's "Endorsed by" counts the same.
+    const endorsers = new Set(received.endorsements.map((e) => e.issuerDid)).size
     const result: Record<
-      "activities" | "projects" | "endorsements" | "endorsementsReceived" | "followers" | "lists",
+      | "activities"
+      | "projects"
+      | "endorsements"
+      | "endorsementsReceived"
+      | "endorsementsGiven"
+      | "followers"
+      | "following"
+      | "lists",
       SectionCount
-    > & { endorsementsGiven: number; following: number } = {
+    > = {
       activities: {
         value: activityValue,
         more: activityMore,
@@ -89,33 +97,40 @@ export function useProfileSummary(did: string | null) {
         isLoading: projects.isLoading && projects.projects.length === 0,
         failed: !!projects.error,
       },
-      // The Endorsements tab holds both lists, so its count is both:
-      // received plus given (a funder that endorsed 148 accounts and was
-      // endorsed once reads "Endorsements 149", not "1").
+      // The Endorsements tab's count is how many accounts endorsed this
+      // one (as the trust line says), not awards and not the endorsements
+      // it gave: "Endorsements 149" on a funder endorsed once read as 149
+      // vouches. The tab still shows for an account that only gave.
       endorsements: {
-        value: endorsementsLoading
-          ? null
-          : received.endorsements.length + given.endorsements.length,
-        isLoading: endorsementsLoading,
-        failed: !!received.error && !!given.error,
+        value: receivedLoading ? null : endorsers,
+        isLoading: receivedLoading,
+        failed: !!received.error,
       },
       endorsementsReceived: {
         value: receivedLoading ? null : received.endorsements.length,
         isLoading: receivedLoading,
         failed: !!received.error,
       },
+      endorsementsGiven: {
+        value: givenLoading ? null : given.endorsements.length,
+        isLoading: givenLoading,
+        failed: !!given.error,
+      },
       followers: {
         value: followers.count,
         isLoading: followers.count === null,
         failed: !!followers.error,
+      },
+      following: {
+        value: followingLoading ? null : following.count,
+        isLoading: followingLoading,
+        failed: !!following.error,
       },
       lists: {
         value: lists.isLoading ? null : lists.lists.length,
         isLoading: lists.isLoading,
         failed: !!lists.error,
       },
-      endorsementsGiven: given.endorsements.length,
-      following: following.count,
     }
     return result
   }, [
@@ -131,7 +146,7 @@ export function useProfileSummary(did: string | null) {
     projects.truncated,
     projects.error,
     received.isLoading,
-    received.endorsements.length,
+    received.endorsements,
     received.error,
     given.isLoading,
     given.endorsements.length,
@@ -139,6 +154,8 @@ export function useProfileSummary(did: string | null) {
     followers.count,
     followers.error,
     following.count,
+    following.isLoading,
+    following.error,
     lists.isLoading,
     lists.lists.length,
     lists.error,

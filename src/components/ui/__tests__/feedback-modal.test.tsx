@@ -97,4 +97,32 @@ describe("FeedbackModal", () => {
 
     expect(screen.getByLabelText("Your email, if you'd like a reply (optional).")).toBeInTheDocument()
   })
+
+  it("sends signed-out feedback without an email", async () => {
+    render(<FeedbackModal />)
+
+    fireEvent.change(screen.getByRole("textbox", { name: /Tell us/ }), { target: { value: "Lovely app" } })
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+  })
+
+  it("needs an email for a signed-out contact request", async () => {
+    variant = "contact"
+    render(<FeedbackModal />)
+
+    const email = screen.getByLabelText("Your email, so we can get back to you.")
+    expect(email).toBeRequired()
+    fireEvent.change(screen.getByRole("textbox", { name: /Tell us/ }), { target: { value: "Hello" } })
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+
+    expect(await screen.findByText("Enter your email so we can get back to you.")).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    fireEvent.change(email, { target: { value: "ada@example.com" } })
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body).toMatchObject({ email: "ada@example.com" })
+  })
 })

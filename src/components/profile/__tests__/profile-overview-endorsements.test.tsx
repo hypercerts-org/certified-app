@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from "vitest"
 import { render, screen, cleanup, within, fireEvent } from "@testing-library/react"
+import type { FollowRecord } from "@/lib/atproto/follow"
 
 import type { ReceivedEndorsement } from "@/hooks/use-received-endorsements"
 import type { GivenEndorsement } from "@/hooks/use-endorsements"
@@ -9,10 +10,13 @@ import type { ProfileSummary, SectionCount } from "../use-profile-summary"
 
 // The endorser's name and avatar come from the indexer block below; the
 // fallback lookup is never needed. A supported account resolves to a
-// name from its DID; "did:plc:subjectfail…" stands for a failed lookup.
+// name from its DID; "did:plc:subjectfail…" stands for a failed lookup,
+// and so does "did:plc:issuerfail…" for an endorser the indexer named no
+// one for.
+const retried: string[] = []
 vi.mock("@/hooks/use-author-info", () => ({
   useAuthorInfo: (did: string | null) => {
-    const failed = !!did?.startsWith("did:plc:subjectfail")
+    const failed = !!did?.startsWith("did:plc:subjectfail") || !!did?.startsWith("did:plc:issuerfail")
     return {
       info: failed
         ? { did, handle: did, displayName: null, avatarUrl: null }
@@ -22,7 +26,9 @@ vi.mock("@/hooks/use-author-info", () => ({
       isLoading: false,
       error: failed ? "Couldn't load this account." : null,
       failed,
-      retry: () => {},
+      retry: () => {
+        if (did) retried.push(did)
+      },
     }
   },
 }))
@@ -115,6 +121,7 @@ function summary({
   projects = [] as CollectionRecord[],
   received = [] as ReceivedEndorsement[],
   given = 0,
+  follows = [] as string[],
   activitiesError = null as string | null,
   projectsError = null as string | null,
   receivedError = null as string | null,
@@ -149,22 +156,37 @@ function summary({
       refetch: vi.fn(),
     },
     followers: {} as ProfileSummary["followers"],
-    following: {} as ProfileSummary["following"],
+    following: {
+      records: follows.map((subject, i) => ({
+        uri: `at://did:plc:me/app.certified.graph.follow/f${i}`,
+        cid: `f${i}`,
+        rkey: `f${i}`,
+        value: { subject, createdAt: `2026-03-0${i + 1}T00:00:00.000Z` },
+      })) as unknown as FollowRecord[],
+      count: follows.length,
+      truncated: false,
+      isLoading: false,
+      error: null,
+    } as unknown as ProfileSummary["following"],
     counts: {
       activities: { ...loaded(activities.length), failed: !!activitiesError },
       projects: { ...loaded(projects.length), failed: !!projectsError },
-      endorsements: { ...loaded(received.length + given), failed: !!receivedError },
+      endorsements: {
+        ...loaded(new Set(received.map((e) => e.issuerDid)).size),
+        failed: !!receivedError,
+      },
       endorsementsReceived: { ...loaded(received.length), failed: !!receivedError },
+      endorsementsGiven: loaded(given),
       followers: loaded(0),
+      following: loaded(follows.length),
       lists: loaded(0),
-      endorsementsGiven: given,
-      following: 0,
     },
   } as unknown as ProfileSummary
 }
 
 afterEach(() => {
   cleanup()
+  retried.length = 0
 })
 
 describe("ProfileOverview: Endorsements", () => {
@@ -259,7 +281,7 @@ describe("ProfileOverview: Endorsements", () => {
     expect(screen.queryByRole("heading", { name: /^Endorses/ })).toBeNull()
   })
 
-  it("never draws an endorsed account whose kind isn't known as a person, nor a failed lookup as an unnamed account", () => {
+  it("never draws an endorsed account whose kind isn't known as a person", () => {
     const tile = (subjectDid: string): GivenEndorsement =>
       ({ ...givenTo(1), uri: `at://x/${subjectDid}`, subjectDid }) as GivenEndorsement
     const { container } = render(
@@ -270,7 +292,7 @@ describe("ProfileOverview: Endorsements", () => {
         summary={{
           ...summary(),
           given: {
-            endorsements: [tile("did:plc:subjectwait1"), tile("did:plc:subjectfail2")],
+            endorsements: [tile("did:plc:subjectwait1")],
             isLoading: false,
             error: null,
             refetch: vi.fn(),
@@ -279,16 +301,87 @@ describe("ProfileOverview: Endorsements", () => {
       />,
     )
     const tiles = container.querySelectorAll(".profile-supports__item")
-    expect(tiles).toHaveLength(2)
+    expect(tiles).toHaveLength(1)
     // Kind still being read: a placeholder block, no avatar at all (so no
     // person's circle).
-    const waiting = Array.from(tiles).find((t) => t.textContent?.includes("Org"))!
-    expect(waiting.querySelector('[data-shape]')).toBeNull()
-    // The failed lookup says so, and still links to the profile.
-    const failed = Array.from(tiles).find((t) => t.textContent?.includes("Couldn't load"))!
-    expect(failed.textContent).toBe("Couldn't load this account")
-    expect(failed.textContent).not.toContain("Unnamed account")
-    expect(failed.querySelector("a")!.getAttribute("href")).toBe("/did:plc:subjectfail2")
+    expect(tiles[0].textContent).toContain("Org")
+    expect(tiles[0].querySelector("[data-shape]")).toBeNull()
+  })
+
+  it("says once that accounts couldn't load, with Try again, instead of a tile for each", () => {
+    const tile = (subjectDid: string): GivenEndorsement =>
+      ({ ...givenTo(1), uri: `at://x/${subjectDid}`, subjectDid }) as GivenEndorsement
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={{
+          ...summary(),
+          given: {
+            endorsements: [
+              tile("did:plc:subject1"),
+              tile("did:plc:subjectfail2"),
+              tile("did:plc:subjectfail3"),
+            ],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+          },
+        } as unknown as ProfileSummary}
+      />,
+    )
+    // The account that loaded keeps its tile; the failed ones leave.
+    const tiles = container.querySelectorAll(".profile-supports__item")
+    expect(tiles).toHaveLength(1)
+    expect(container.textContent).not.toContain("Unnamed account")
+    expect(screen.getAllByText("Couldn't load these accounts.")).toHaveLength(1)
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    expect(retried).toEqual(
+      expect.arrayContaining(["did:plc:subjectfail2", "did:plc:subjectfail3"]),
+    )
+    expect(retried).not.toContain("did:plc:subject1")
+  })
+
+  it('titles the received section "Endorsed by", counting each account once', () => {
+    const again = { ...endorsement(1, "Second award."), uri: "at://did:plc:issuer1/award/again", createdAt: "2026-05-19T00:00:00.000Z" }
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ received: [endorsement(1), endorsement(2), again], given: 6 })}
+      />,
+    )
+    expect(screen.getByRole("heading", { name: "Endorsed by 2" })).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Endorses 6" })).toBeTruthy()
+    expect(screen.queryByRole("heading", { name: "Endorsements" })).toBeNull()
+    // Issuer 1 endorsed twice: one row, its newest award.
+    const rows = container.querySelectorAll('li[data-centerpiece="endorsement"]')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].querySelector('[data-part="note"]')!.textContent).toBe("Second award.")
+  })
+
+  it("leaves out an endorser that couldn't be looked up, and says so once", () => {
+    const failing: ReceivedEndorsement = {
+      ...endorsement(9),
+      uri: "at://did:plc:issuerfail9/award/9",
+      issuerDid: "did:plc:issuerfail9",
+      issuer: undefined,
+    }
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ received: [endorsement(1), failing] })}
+      />,
+    )
+    expect(container.querySelectorAll('li[data-centerpiece="endorsement"]')).toHaveLength(1)
+    expect(container.textContent).not.toContain("did:plc:issuerfail9")
+    expect(screen.getByText("Couldn't load these accounts.")).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+    expect(retried).toContain("did:plc:issuerfail9")
   })
 })
 
@@ -342,6 +435,36 @@ describe("ProfileOverview: what a visitor sees", () => {
     expect(screen.queryByText(/No endorsements yet/)).toBeNull()
     // Not "activities, projects or endorsements": a donor has none of those.
     expect(screen.getAllByText("No public records yet.")).toHaveLength(1)
+    expect(screen.getByRole("heading", { level: 2, name: "No public records yet." })).toBeTruthy()
+    expect(screen.getByText("When this account publishes something, it shows here.")).toBeTruthy()
+    // Following nobody: no "Follows".
+    expect(screen.queryByRole("heading", { name: /^Follows/ })).toBeNull()
+  })
+
+  it("shows whom an account with nothing public follows", () => {
+    const { container } = render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ follows: ["did:plc:subject1", "did:plc:subject2"] })}
+      />,
+    )
+    expect(screen.getByText("No public records yet.")).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "Follows 2" })).toBeTruthy()
+    expect(container.querySelectorAll(".profile-supports__item")).toHaveLength(2)
+  })
+
+  it("has no Follows section on a profile with records", () => {
+    render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary({ activities: [activity(1)], follows: ["did:plc:subject1"] })}
+      />,
+    )
+    expect(screen.queryByRole("heading", { name: /^Follows/ })).toBeNull()
   })
 
   it("keeps every section for the account itself, with the action that fills it", () => {
@@ -445,6 +568,20 @@ describe("ProfileOverview: the Account facts", () => {
     expect(text).toContain("Handle@me.certified.app")
     expect(text).toContain("did:plc:me")
     expect(within(card).getByRole("button", { name: "Copy Permanent ID" })).toBeTruthy()
+  })
+
+  it("doesn't repeat a person's joining, which the header shows", () => {
+    render(
+      <ProfileOverview
+        did="did:plc:me"
+        handle="me.certified.app"
+        basePath="/me.certified.app"
+        summary={summary()}
+        joined="Jun 2026"
+      />,
+    )
+    const card = screen.getByRole("region", { name: "Account" })
+    expect(card.textContent).not.toContain("Joined")
   })
 
   it("leaves out a handle that is only the DID", () => {

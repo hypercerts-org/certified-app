@@ -9,6 +9,7 @@ import {
 import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import ErrorMessage from "@/components/ui/error-message"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 type Step = "idle" | "request" | "confirm" | "done"
 
@@ -34,7 +35,12 @@ export default function GroupPasswordReset({ groupDid }: { groupDid: string }) {
       await requestGroupPasswordReset(groupDid, email.trim())
       setStep("confirm")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send reset code")
+      setError(
+        caughtErrorMessage(
+          err,
+          "Couldn't send the reset code. Check the group's email and try again",
+        ),
+      )
     } finally {
       setSubmitting(false)
     }
@@ -55,7 +61,9 @@ export default function GroupPasswordReset({ groupDid }: { groupDid: string }) {
       await confirmGroupPasswordReset(groupDid, token.trim(), password)
       setStep("done")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reset password")
+      setError(
+        caughtErrorMessage(err, "Couldn't reset the group's password. Try again in a moment"),
+      )
     } finally {
       setSubmitting(false)
     }

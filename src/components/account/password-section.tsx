@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import Banner from "@/components/ui/banner";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { authFetch } from "@/lib/auth/fetch";
-import { accountErrorMessage } from "./account-error";
+import { userErrorMessage } from "@/lib/utils/user-error";
 
 interface PasswordSectionProps {
   email: string;
 }
 
-type State = "idle" | "requesting" | "form" | "success";
+// "asking": Edit opened the step that says where the code goes; nothing
+// is sent until Send code. "requesting": the code is on its way.
+type State = "idle" | "asking" | "requesting" | "form" | "success";
 
 const SEND_FAILED = "Couldn't send the reset code. Try again in a moment";
 const SAVE_FAILED = "Couldn't change your password. Try again in a moment";
@@ -34,6 +36,8 @@ async function readError(
 
 const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
   const [state, setState] = useState<State>("idle");
+  const editRef = useRef<HTMLButtonElement>(null);
+  const stepId = useId();
 
   // Form fields
   const [token, setToken] = useState("");
@@ -73,15 +77,16 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         // Upstream answers ("NotFound", "Not authenticated") become a
         // sentence; the status decides session and server failures.
         const { name, message } = await readError(resetRes);
-        setIdleError(accountErrorMessage(message ?? name, SEND_FAILED, resetRes.status));
-        setState("idle");
+        setIdleError(userErrorMessage(message ?? name, SEND_FAILED, resetRes.status));
+        // The step stays open, so Send code tries again.
+        setState("asking");
         return;
       }
       setState("form");
     } catch {
       // The request didn't get through (offline, blocked).
       setIdleError(`${SEND_FAILED}.`);
-      setState("idle");
+      setState("asking");
     }
   };
 
@@ -135,7 +140,7 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
         } else if (/length/i.test(said)) {
           setFormError("Password is too long (max 256 characters).");
         } else {
-          setFormError(accountErrorMessage(message ?? name, SAVE_FAILED, pwRes.status));
+          setFormError(userErrorMessage(message ?? name, SAVE_FAILED, pwRes.status));
         }
         return;
       }
@@ -153,6 +158,15 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
     clearFormState();
     setState("idle");
   };
+
+  // Close the send step without sending; focus goes back to Edit (the
+  // step's buttons are about to unmount).
+  const closeStep = () => {
+    setState("idle");
+    editRef.current?.focus();
+  };
+
+  const stepOpen = state === "asking" || state === "requesting";
 
   if (state === "form") {
     return (
@@ -223,22 +237,54 @@ const PasswordSection: React.FC<PasswordSectionProps> = ({ email }) => {
     <div className="dash-card">
       <div className="settings-field">
         <span className="settings-field__value">••••••••••••</span>
+        {/* Edit only opens the step below: the reset code is emailed on
+            Send code, never on this click. */}
         <Button
+          ref={editRef}
           variant="ghost"
           size="sm"
-          onClick={handleRequestReset}
+          aria-expanded={stepOpen}
+          aria-controls={stepOpen ? stepId : undefined}
+          onClick={() => {
+            setIdleError(null);
+            if (stepOpen) closeStep();
+            else setState("asking");
+          }}
           disabled={state === "requesting"}
         >
-          {state === "requesting" ? (
-            "Sending…"
-          ) : (
-            <>
-              <Pencil size={16} strokeWidth={1.75} aria-hidden />
-              Edit{" "}<span className="sr-only">password</span>
-            </>
-          )}
+          <Pencil size={16} strokeWidth={1.75} aria-hidden />
+          Edit{" "}<span className="sr-only">password</span>
         </Button>
       </div>
+      {stepOpen && (
+        <div id={stepId}>
+          <p className="password-section__hint">
+            We&rsquo;ll email a code to{" "}
+            <strong className="font-medium text-[var(--fg-primary)] [overflow-wrap:anywhere]">
+              {email || "your email address"}
+            </strong>{" "}
+            so you can set a new password.
+          </p>
+          <div className="password-section__actions">
+            <Button
+              size="sm"
+              onClick={() => void handleRequestReset()}
+              loading={state === "requesting"}
+              disabled={state === "requesting"}
+            >
+              {state === "requesting" ? "Sending…" : "Send code"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeStep}
+              disabled={state === "requesting"}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {state === "success" && (
         <p className="password-section__status password-section__status--success" role="status">Password updated successfully.</p>
       )}

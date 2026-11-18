@@ -517,13 +517,10 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
   const sort = parseSort(searchParams?.get("sort") ?? null)
   const view = parseView(searchParams?.get("view") ?? null)
   const { isDesktop } = useLayoutBreakpoints()
-  // Phones: accounts as rows, activities and projects as image-led cards
-  // (one column). The list / gallery toggle is desktop only.
-  const effectiveView: ListGalleryView = isDesktop
-    ? view
-    : kind === "accounts"
-      ? "list"
-      : "gallery"
+  // Phones: every type as the All tab's rows (a thumbnail, a two-line
+  // title, "by <owner>" and the period or count under it), so the four
+  // tabs read as one list. The list / gallery toggle is desktop only.
+  const effectiveView: ListGalleryView = isDesktop ? view : "list"
   // Endorsement-graph ring tags — multi-select of {1, 2, 3}. The URL
   // stores the active subset under `?degrees=` (sorted); legacy
   // `?degree=N` is read as the cumulative set {1..N} so old bookmarks
@@ -600,11 +597,10 @@ function ExploreMain({ kind, filter, view: allView }: ExploreMainProps) {
     includeOrgLabels: quality.includeOrgLabels,
   })
 
-  // Restore the window scroll offset when the reader returns from a
-  // project/activity detail page (back button). Keyed by the full URL so
-  // each kind/filter/search combination restores independently; gated on
-  // the first rows having rendered (the loader starts idle, before its
-  // fetch, so "not loading" alone is too early).
+  // Restore the reader's place when they return from a project/activity
+  // detail page (back button). Keyed by the full URL so each
+  // kind/filter/search combination restores independently; gated on the
+  // first rows having rendered.
   const scrollKey = `${pathname}?${searchParams?.toString() ?? ""}`
   const hasRows =
     data.certs.length + data.projects.length + data.users.length > 0
@@ -1046,8 +1042,7 @@ function FeaturedSection({
     includeOrgLabels: quality.includeOrgLabels,
   })
   const items = featured.certs.slice(0, ALL_VIEW_BLOCK_SIZE)
-  // Settled: rows arrived, or the load (which starts idle, before its
-  // fetch) ran and came back empty or failed.
+  // Settled: rows arrived, or the load ran and came back empty or failed.
   const started = useRef(false)
   useEffect(() => {
     if (featured.isLoading) {

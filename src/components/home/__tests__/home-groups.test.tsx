@@ -46,7 +46,7 @@ describe("groupProfileHref", () => {
 })
 
 describe("Home: Your groups", () => {
-  it("makes each row a link to the group's profile, with no Switch button", () => {
+  it("makes each row a link to the group's profile, with no Act as button", () => {
     render(<HomeGroups />)
     const estuary = screen.getByRole("link", { name: /Estuary Alliance/ })
     expect(estuary.getAttribute("href")).toBe("/estuary.certified.app")
@@ -56,7 +56,7 @@ describe("Home: Your groups", () => {
     expect(screen.getByRole("link", { name: /Watershed Guild/ }).getAttribute("href")).toBe(
       "/did:plc:guild",
     )
-    expect(screen.queryByRole("button", { name: /Switch to/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /Act as/ })).toBeNull()
   })
 
   it("keeps New group in the header", () => {
@@ -68,12 +68,15 @@ describe("Home: Your groups", () => {
 })
 
 describe("Workspace → Groups rows", () => {
-  it("keep a Switch button that acts as the group", () => {
+  // WS-07: "Act as", the words the Workspace menu uses (was "Switch").
+  it("keep an Act as button that acts as the group", () => {
     render(<GroupRows groups={GROUPS} size="md" />)
     const rows = screen.getAllByRole("listitem")
     expect(rows).toHaveLength(2)
     expect(within(rows[0]).getByRole("link").getAttribute("href")).toBe("/estuary.certified.app")
-    fireEvent.click(within(rows[0]).getByRole("button", { name: "Switch to Estuary Alliance" }))
+    const actAs = within(rows[0]).getByRole("button", { name: "Act as Estuary Alliance" })
+    expect(actAs.textContent).toBe("Act as")
+    fireEvent.click(actAs)
     expect(switchActor).toHaveBeenCalledWith(GROUPS[0])
   })
 

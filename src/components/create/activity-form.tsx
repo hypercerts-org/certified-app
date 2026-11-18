@@ -42,9 +42,13 @@ import type { StrongRef } from "@/lib/atproto/location"
  *
  * Desktop: the main column (title, short description, description,
  * contributors) with the details column on the right (image, time period,
- * work scope, locations, rights). Phones: one column in the order title,
- * short description, image, description, details, contributors (the CSS
- * order lives under `.create-cert` in cert-detail.css).
+ * work scope, locations, rights). The DOM has the main column first, so
+ * the keyboard order is title, short description, description,
+ * contributors, then the details; the grid places the details on the
+ * right. Phones: one column in the order title, short description,
+ * image, description, details, contributors (the CSS order lives under
+ * `.create-cert` in cert-detail.css; there the image and details come
+ * before the contributors on screen but after them in keyboard order).
  */
 
 // Lexicon caps: title.maxLength = 256, shortDescription maxGraphemes = 300.
@@ -279,6 +283,11 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
     shortDescriptionMinApplies(shortDescription, savedShortDescription) &&
     shortDescTrimmed < ACTIVITY_SHORT_DESC_MIN
 
+  // Editing a published summary: the minimum applies only once it has
+  // been changed, so say so, with the way back (undo the change).
+  const changedSummaryUnder =
+    shortDescUnder && savedShortDescription !== undefined && savedShortDescription.trim() !== ""
+
   const datesValid = !startDate || !endDate || startDate <= endDate
 
   const counterClass = (over: boolean, under: boolean) =>
@@ -292,6 +301,101 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
 
   return (
     <article className="page-layout cert-detail--wide create-cert">
+      <div className="page-layout__main cert-detail__main">
+        <div className="create-cert__field create-cert__field--title">
+          <label htmlFor={`${id}-title`} className="cert-detail__meta-label">
+            Title
+          </label>
+          {/* The record title's serif role (h3 step), so the draft reads
+              like the page it publishes to. */}
+          <Input
+            flush
+            ref={titleRef}
+            id={`${id}-title`}
+            type="text"
+            aria-describedby={`${id}-title-count`}
+            aria-invalid={titleOver || titleUnder || undefined}
+            placeholder="Title for your activity"
+            className="font-headline !text-h3"
+            value={title}
+            maxLength={ACTIVITY_TITLE_MAX}
+            onChange={(e) => {
+              setTouched((t) => (t.title ? t : { ...t, title: true }))
+              onTitleChange(e.target.value)
+            }}
+            autoFocus={autoFocusTitle}
+            data-tour={titleTourId}
+          />
+          <p id={`${id}-title-count`} className={counterClass(titleOver, titleUnder)}>
+            {titleCount}/{ACTIVITY_TITLE_MAX} · min. {ACTIVITY_TITLE_MIN} characters
+          </p>
+        </div>
+
+        <div className="create-cert__field create-cert__field--summary">
+          <label htmlFor={`${id}-summary`} className="cert-detail__meta-label">
+            Short description
+          </label>
+          <Textarea
+            flush
+            ref={shortDescriptionRef}
+            id={`${id}-summary`}
+            aria-describedby={
+              changedSummaryUnder
+                ? `${id}-summary-count ${id}-summary-min`
+                : `${id}-summary-count`
+            }
+            aria-invalid={shortDescOver || shortDescUnder || undefined}
+            placeholder="What was done, in two or three sentences."
+            value={shortDescription}
+            rows={3}
+            onChange={(e) => {
+              setTouched((t) =>
+                t.shortDescription ? t : { ...t, shortDescription: true },
+              )
+              onShortDescriptionChange(e.target.value)
+            }}
+          />
+          <p
+            id={`${id}-summary-count`}
+            className={counterClass(shortDescOver, shortDescUnder)}
+          >
+            {shortDescCount}/{ACTIVITY_SHORT_DESC_MAX} · min.{" "}
+            {ACTIVITY_SHORT_DESC_MIN} characters
+          </p>
+          {changedSummaryUnder ? (
+            <p id={`${id}-summary-min`} className="create-cert__field-error">
+              A changed summary needs at least {ACTIVITY_SHORT_DESC_MIN} characters. Undo
+              your change to keep the current one.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="create-cert__field create-cert__field--description">
+          {/* The editor carries the same name as its aria-label. */}
+          <span className="cert-detail__meta-label" aria-hidden>
+            Description
+          </span>
+          <LeafletEditor
+            value={description}
+            onChange={onDescriptionChange}
+            placeholder={descriptionPlaceholder}
+            ariaLabel="Description"
+            did={editorDid}
+            onImageUpload={onEditorImageUpload}
+          />
+        </div>
+
+        <ContributorsEditor
+          contributors={contributors}
+          setContributors={setContributors}
+          selfDid={selfDid}
+          showAllErrors={showAllErrors}
+        />
+      </div>
+
+      {/* After the main column in the DOM, so the keyboard reaches the
+          title first and the details after the contributors; from 800px
+          the grid places this column on the right (cert-detail.css). */}
       <aside className="cert-detail__aside" aria-label="Activity details">
         <div
           className={`cert-detail__image cert-detail__image--editing${
@@ -435,88 +539,6 @@ export function ActivityFormFields(props: ActivityFormFieldsProps) {
           ) : null}
         </div>
       </aside>
-
-      <div className="page-layout__main cert-detail__main">
-        <div className="create-cert__field create-cert__field--title">
-          <label htmlFor={`${id}-title`} className="cert-detail__meta-label">
-            Title
-          </label>
-          {/* The record title's serif role (h3 step), so the draft reads
-              like the page it publishes to. */}
-          <Input
-            flush
-            ref={titleRef}
-            id={`${id}-title`}
-            type="text"
-            aria-describedby={`${id}-title-count`}
-            aria-invalid={titleOver || titleUnder || undefined}
-            placeholder="Title for your activity"
-            className="font-headline !text-h3"
-            value={title}
-            maxLength={ACTIVITY_TITLE_MAX}
-            onChange={(e) => {
-              setTouched((t) => (t.title ? t : { ...t, title: true }))
-              onTitleChange(e.target.value)
-            }}
-            autoFocus={autoFocusTitle}
-            data-tour={titleTourId}
-          />
-          <p id={`${id}-title-count`} className={counterClass(titleOver, titleUnder)}>
-            {titleCount}/{ACTIVITY_TITLE_MAX} · min. {ACTIVITY_TITLE_MIN} characters
-          </p>
-        </div>
-
-        <div className="create-cert__field create-cert__field--summary">
-          <label htmlFor={`${id}-summary`} className="cert-detail__meta-label">
-            Short description
-          </label>
-          <Textarea
-            flush
-            ref={shortDescriptionRef}
-            id={`${id}-summary`}
-            aria-describedby={`${id}-summary-count`}
-            aria-invalid={shortDescOver || shortDescUnder || undefined}
-            placeholder="What was done, in two or three sentences."
-            value={shortDescription}
-            rows={3}
-            onChange={(e) => {
-              setTouched((t) =>
-                t.shortDescription ? t : { ...t, shortDescription: true },
-              )
-              onShortDescriptionChange(e.target.value)
-            }}
-          />
-          <p
-            id={`${id}-summary-count`}
-            className={counterClass(shortDescOver, shortDescUnder)}
-          >
-            {shortDescCount}/{ACTIVITY_SHORT_DESC_MAX} · min.{" "}
-            {ACTIVITY_SHORT_DESC_MIN} characters
-          </p>
-        </div>
-
-        <div className="create-cert__field create-cert__field--description">
-          {/* The editor carries the same name as its aria-label. */}
-          <span className="cert-detail__meta-label" aria-hidden>
-            Description
-          </span>
-          <LeafletEditor
-            value={description}
-            onChange={onDescriptionChange}
-            placeholder={descriptionPlaceholder}
-            ariaLabel="Description"
-            did={editorDid}
-            onImageUpload={onEditorImageUpload}
-          />
-        </div>
-
-        <ContributorsEditor
-          contributors={contributors}
-          setContributors={setContributors}
-          selfDid={selfDid}
-          showAllErrors={showAllErrors}
-        />
-      </div>
     </article>
   )
 }
@@ -647,6 +669,8 @@ function ContributorsEditor({
               isAtprotoIdentity(normalized)
             const roleId = `${id}-${c.key}-role`
             const shareId = `${id}-${c.key}-share`
+            const whoErrorId = `${id}-${c.key}-who-error`
+            const shareErrorId = `${id}-${c.key}-share-error`
             return (
               <li key={c.key} className="create-cert__contrib-row">
                 <div className="create-cert__contrib-who">
@@ -667,6 +691,7 @@ function ContributorsEditor({
                       ariaLabel={`Contributor ${n}: name or handle`}
                       idx={idx}
                       invalid={identityError || identityDuplicate}
+                      errorId={whoErrorId}
                       excludeIdentities={otherIdentities}
                     />
                   )}
@@ -681,6 +706,18 @@ function ContributorsEditor({
                 >
                   <Trash2 size={16} strokeWidth={1.75} aria-hidden />
                 </Button>
+                {/* Right under the field it is about (the row's grid puts
+                    it on its own line, before Role and Share). */}
+                {identityError ? (
+                  <p id={whoErrorId} className="create-cert__field-error" role="alert">
+                    Pick someone from the list, or type a full handle (like
+                    name.certified.app).
+                  </p>
+                ) : identityDuplicate ? (
+                  <p id={whoErrorId} className="create-cert__field-error" role="alert">
+                    Already added. Each contributor can only appear once.
+                  </p>
+                ) : null}
                 <div className="create-cert__contrib-fields">
                   <div className="create-cert__contrib-field">
                     <label htmlFor={roleId} className="cert-detail__meta-label">
@@ -708,23 +745,15 @@ function ContributorsEditor({
                       placeholder="Optional"
                       trailingIcon={<span className="text-ui">%</span>}
                       error={weightValid ? undefined : "Share must be a number."}
+                      aria-describedby={weightValid ? undefined : shareErrorId}
                       value={c.weight}
                       maxLength={100}
                       onChange={(e) => update(c.key, { weight: e.target.value })}
                     />
                   </div>
                 </div>
-                {identityError ? (
-                  <p className="create-cert__field-error" role="alert">
-                    Pick someone from the list, or type a full handle (like
-                    name.certified.app).
-                  </p>
-                ) : identityDuplicate ? (
-                  <p className="create-cert__field-error" role="alert">
-                    Already added. Each contributor can only appear once.
-                  </p>
-                ) : !weightValid ? (
-                  <p className="create-cert__field-error" role="alert">
+                {!weightValid ? (
+                  <p id={shareErrorId} className="create-cert__field-error" role="alert">
                     Share must be a number (decimals are fine, e.g. 12.5).
                   </p>
                 ) : null}

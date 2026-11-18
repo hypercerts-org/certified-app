@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Check, Copy, X } from "lucide-react"
 import Avatar from "@/components/ui/avatar"
@@ -16,7 +16,8 @@ import Map from "@/components/map/map-dynamic"
 import LeafletDocument from "@/components/leaflet/leaflet-document"
 import { ActivityWorkCard, ProjectWorkCard, sameTitle } from "@/components/feed/work-cards"
 import { LocationFactCard, placeFromShape } from "@/components/feed/cert-locations-map"
-import { KindPendingAvatar, useAccountKind } from "@/components/feed/cert-detail-parts"
+import { AccountLoadError } from "@/components/feed/cert-detail-parts"
+import { KindPendingAvatar, useAccountKind } from "@/components/feed/account-kind"
 import { FundingFactCard, useRecordFundingView } from "@/components/funding/record-funding"
 import { projectFundingUris } from "@/components/funding/project-fact-card"
 import {
@@ -34,12 +35,12 @@ import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { ORG_TYPE_PRESETS } from "@/lib/groups/org-types"
 import { formatGraphCount } from "@/lib/utils/format-graph-count"
 import { deriveIdentity } from "@/lib/utils/identity"
-import { parseAtUri, profileUrl, recordUrl } from "@/lib/urls"
+import { parseAtUri, recordUrl } from "@/lib/urls"
 import { useAuthorInfo } from "@/hooks/use-author-info"
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard"
-import type { GivenEndorsement } from "@/hooks/use-endorsements"
 import type { ProfileDrafts } from "@/components/profile/profile-inline-edit-types"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
+import { uniqueEndorsers } from "@/components/profile/profile-trust-line"
 import {
   isKnownEmpty,
   type ProfileSummary,
@@ -89,7 +90,7 @@ interface ProfileOverviewProps {
 const PREVIEW = 4
 /** Endorsements on Overview. */
 const ENDORSEMENTS_PREVIEW = 3
-/** Accounts in the "Endorses" grid. */
+/** Accounts in the "Endorses" (and "Follows") grid. */
 const SUPPORTS_PREVIEW = 12
 /** Projects whose funding the profile's total takes in. Each is read with
  *  its activities (up to 25 each), so the total stops at the newest ten
@@ -112,15 +113,18 @@ function coveredByProject(a: ActivityRecord, projects: readonly CollectionRecord
  * About (when the header's lead is the bio), the latest activities and
  * projects as work cards (one is a wide card, more a 2-up grid; an
  * activity its same-titled project already shows is left out), the
- * accounts it endorses, and the endorsements it received with their
- * notes — and, from 1100px, a 320px rail beside it: the funding across
- * its projects, its Location, then the Account facts (joined, handle,
- * Permanent ID; the type and founding are on the header). On phones the
- * rail follows the content.
+ * accounts it endorses ("Endorses N"), and the accounts that endorsed it
+ * ("Endorsed by", each once, with their notes) — and, from 1100px, a
+ * 320px rail beside it: the funding across its projects, its Location,
+ * then the Account facts (handle, Permanent ID; an organization's joining
+ * too: a person's is on the header, as are an organization's type and
+ * founding). On phones the rail follows the content.
  *
  * A visitor sees only sections with something in them; the account itself
- * sees every section, with the action that fills an empty one. A section
- * that failed to load says so, with "Try again".
+ * sees every section, with the action that fills an empty one. An account
+ * with nothing public says so, and shows whom it follows ("Follows N").
+ * A section that failed to load says so, with "Try again"; a grid of
+ * accounts that couldn't be looked up says it once for all of them.
  */
 export default function ProfileOverview({
   did,
@@ -137,7 +141,8 @@ export default function ProfileOverview({
   location = null,
   joined = null,
 }: ProfileOverviewProps) {
-  const { activities, recentActivities, projects, received, given, counts } = summary
+  const { activities, recentActivities, projects, received, given, following, counts } =
+    summary
 
   const sortedProjects = useMemo(
     () =>
@@ -153,18 +158,30 @@ export default function ProfileOverview({
   )
   const previewActivities = shownActivities.slice(0, PREVIEW)
   const previewProjects = sortedProjects.slice(0, PREVIEW)
-  const previewEndorsements = [...received.endorsements]
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, ENDORSEMENTS_PREVIEW)
+  // Each account that endorsed this one once (its newest award), as the
+  // trust line and the tab's count have it.
+  const endorsers = useMemo(() => uniqueEndorsers(received.endorsements), [received.endorsements])
+  const previewEndorsements = endorsers.slice(0, ENDORSEMENTS_PREVIEW)
   const supported = useMemo(
-    () => [...given.endorsements].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    () =>
+      [...given.endorsements]
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        .map((e) => e.subjectDid),
     [given.endorsements],
   )
+  const followed = useMemo(
+    () =>
+      [...(following.records ?? [])]
+        .sort((a, b) => (a.value.createdAt < b.value.createdAt ? 1 : -1))
+        .map((r) => r.value.subject),
+    [following.records],
+  )
+  const endorserFailures = useSectionFailures()
 
   const activitiesEmpty = isKnownEmpty(counts.activities)
   const projectsEmpty = isKnownEmpty(counts.projects)
   const endorsementsEmpty =
-    isKnownEmpty(counts.endorsements) && counts.endorsementsGiven === 0
+    isKnownEmpty(counts.endorsements) && isKnownEmpty(counts.endorsementsGiven)
   // A visitor doesn't get an Activities section that only repeated the
   // projects below it.
   const allCovered =
@@ -179,6 +196,8 @@ export default function ProfileOverview({
   const showSupports = supported.length > 0
   const nothingToShow =
     !viewerIsOwner && !about && activitiesEmpty && projectsEmpty && endorsementsEmpty
+  // With nothing public, whom the account follows is what there is to see.
+  const showFollows = nothingToShow && followed.length > 0
   // Everything failed at once (the indexer is down): one block, not three.
   const allFailed =
     !!activities.error &&
@@ -327,37 +346,15 @@ export default function ProfileOverview({
         ) : null}
 
         {showSupports && !allFailed ? (
-          <section
-            className="profile-overview__section"
-            aria-labelledby="profile-overview-supports"
-          >
-            <SectionHeader
-              id="profile-overview-supports"
-              title={
-                // "Endorses", not "Supports": on a funder's profile
-                // "Supports 148" reads as money given.
-                <>
-                  Endorses{" "}
-                  <span className="font-normal tabular-nums text-[var(--fg-muted)]">
-                    {formatGraphCount(supported.length)}
-                  </span>
-                </>
-              }
-              action={
-                supported.length > SUPPORTS_PREVIEW ? (
-                  <SeeAllLink
-                    href={`${basePath}?tab=endorsements&sub=given`}
-                    label={`All ${formatGraphCount(supported.length)}`}
-                  />
-                ) : null
-              }
-            />
-            <ul className="profile-supports">
-              {supported.slice(0, SUPPORTS_PREVIEW).map((e) => (
-                <SupportedAccount key={e.subjectDid} endorsement={e} />
-              ))}
-            </ul>
-          </section>
+          <AccountGridSection
+            id="profile-overview-supports"
+            // "Endorses", not "Supports": on a funder's profile "Supports
+            // 148" reads as money given.
+            title="Endorses"
+            dids={supported}
+            count={supported.length}
+            allHref={`${basePath}?tab=endorsements&sub=given`}
+          />
         ) : null}
 
         {showEndorsements && !allFailed ? (
@@ -365,11 +362,24 @@ export default function ProfileOverview({
             className="profile-overview__section"
             aria-labelledby="profile-overview-endorsements"
           >
-            {/* "All endorsements" whenever there is one: the tab holds more
-                than this preview (the endorsements given, too). */}
+            {/* "Endorsed by", beside "Endorses N": the accounts that vouch
+                for this one. "All endorsements" whenever there is one: the
+                tab holds more than this preview (the endorsements given,
+                too). */}
             <SectionHeader
               id="profile-overview-endorsements"
-              title="Endorsements"
+              title={
+                endorsers.length > 0 ? (
+                  <>
+                    Endorsed by{" "}
+                    <span className="font-normal tabular-nums text-[var(--fg-muted)]">
+                      {formatGraphCount(endorsers.length)}
+                    </span>
+                  </>
+                ) : (
+                  "Endorsed by"
+                )
+              }
               action={
                 received.endorsements.length > 0 ? (
                   <SeeAllLink href={`${basePath}?tab=endorsements`} label="All endorsements" />
@@ -388,10 +398,17 @@ export default function ProfileOverview({
               <>
                 {previewEndorsements.length > 0 ? (
                   // The one endorsement row, shared with the Workspace
-                  // Overview: the endorser, the date, their note.
+                  // Overview: the endorser, the date, their note. A row
+                  // whose endorser couldn't be looked up leaves itself out;
+                  // the line under the list says so once for all of them.
                   <ul className="profile-overview__endorse-list">
                     {previewEndorsements.map((e) => (
-                      <EndorsementPreviewRow key={e.uri} endorsement={e} />
+                      <EndorsementPreviewRow
+                        key={e.uri}
+                        endorsement={e}
+                        onFailedChange={endorserFailures.report}
+                        retryTick={endorserFailures.retryTick}
+                      />
                     ))}
                   </ul>
                 ) : viewerIsOwner ? (
@@ -399,6 +416,14 @@ export default function ProfileOverview({
                     variant="inline"
                     title="No endorsements yet. When another account endorses this one, it shows here."
                   />
+                ) : null}
+                {endorserFailures.failed.size > 0 ? (
+                  <p className="profile-overview__load-error">
+                    <AccountLoadError
+                      message="Couldn't load these accounts."
+                      onRetry={endorserFailures.retryAll}
+                    />
+                  </p>
                 ) : null}
               </>
             )}
@@ -409,7 +434,23 @@ export default function ProfileOverview({
           // Not "activities, projects or endorsements": a donor's profile
           // has none of those, and the words would cast it as an empty
           // organization.
-          <EmptyState variant="inline" title="No public records yet." />
+          <EmptyState
+            title="No public records yet."
+            description="When this account publishes something, it shows here."
+            headingLevel={2}
+            className="profile-overview__nothing"
+          />
+        ) : null}
+
+        {showFollows ? (
+          <AccountGridSection
+            id="profile-overview-follows"
+            title="Follows"
+            dids={followed}
+            count={following.count}
+            more={following.truncated}
+            allHref={`${basePath}?tab=followers&sub=following`}
+          />
         ) : null}
       </div>
 
@@ -430,7 +471,9 @@ export default function ProfileOverview({
               did={did}
               handle={handle}
               location={location}
-              joined={joined}
+              // A person's joining is on the header's meta line; an
+              // organization's isn't (its type, place and founding are).
+              joined={isOrg ? joined : null}
             />
           </>
         )}
@@ -476,26 +519,124 @@ function ProfileFundingCard({
   return <FundingFactCard view={view} href={href} scope={scope} />
 }
 
-/** One account the profile endorsed: its avatar and name, to its profile.
- *  While it isn't known whether the account is a group, the avatar is a
- *  neutral block; when looking the account up failed, the tile says so
- *  rather than naming an "Unnamed account". */
-function SupportedAccount({ endorsement }: { endorsement: GivenEndorsement }) {
-  const did = endorsement.subjectDid
-  const { info, isLoading, failed } = useAuthorInfo(did)
+/**
+ * Which of a section's accounts couldn't be looked up, and a "Try again"
+ * for all of them: the section says it once ("Couldn't load these
+ * accounts.") rather than in every tile or row. Each tile or row reports
+ * itself by key and looks up again when `retryTick` changes.
+ */
+function useSectionFailures() {
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set())
+  const [retryTick, setRetryTick] = useState(0)
+  const report = useCallback((key: string, isFailed: boolean) => {
+    setFailed((prev) => {
+      if (prev.has(key) === isFailed) return prev
+      const next = new Set(prev)
+      if (isFailed) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }, [])
+  const retryAll = useCallback(() => setRetryTick((n) => n + 1), [])
+  return { failed, report, retryTick, retryAll }
+}
+
+/**
+ * A grid of accounts with a count in its heading ("Endorses 148",
+ * "Follows 3"): the newest {@link SUPPORTS_PREVIEW}, each avatar and name
+ * to its profile, and "All N" to the full list when there are more. The
+ * accounts that couldn't be looked up leave the grid, and one line under
+ * it says so, with "Try again".
+ */
+function AccountGridSection({
+  id,
+  title,
+  dids,
+  count,
+  more = false,
+  allHref,
+}: {
+  id: string
+  title: string
+  /** Newest first. */
+  dids: readonly string[]
+  count: number
+  /** More exist than were counted ("10,000+"). */
+  more?: boolean
+  allHref: string
+}) {
+  const failures = useSectionFailures()
+  const label = formatGraphCount(count, more)
+  return (
+    <section className="profile-overview__section" aria-labelledby={id}>
+      <SectionHeader
+        id={id}
+        title={
+          <>
+            {title}{" "}
+            <span className="font-normal tabular-nums text-[var(--fg-muted)]">{label}</span>
+          </>
+        }
+        action={
+          count > SUPPORTS_PREVIEW ? <SeeAllLink href={allHref} label={`All ${label}`} /> : null
+        }
+      />
+      <ul className="profile-supports">
+        {dids.slice(0, SUPPORTS_PREVIEW).map((did) => (
+          <AccountTile
+            key={did}
+            did={did}
+            onFailedChange={failures.report}
+            retryTick={failures.retryTick}
+          />
+        ))}
+      </ul>
+      {failures.failed.size > 0 ? (
+        <p className="profile-overview__load-error">
+          <AccountLoadError
+            message="Couldn't load these accounts."
+            onRetry={failures.retryAll}
+          />
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+/** One account in a grid: its avatar and name, to its profile. While it
+ *  isn't known whether the account is a group, the avatar is a neutral
+ *  block. One that couldn't be looked up renders nothing and tells the
+ *  section (`onFailedChange`), which says so once for all of them. */
+function AccountTile({
+  did,
+  onFailedChange,
+  retryTick,
+}: {
+  did: string
+  onFailedChange: (key: string, failed: boolean) => void
+  retryTick: number
+}) {
+  const { info, isLoading, failed, retry } = useAuthorInfo(did)
   const account = useAccountKind(did, { autoRetry: false })
-  if (failed) {
-    return (
-      <li className="profile-supports__item">
-        <Link href={profileUrl(did)} className="profile-supports__link">
-          <KindPendingAvatar size={40} animate={false} />
-          <span className="profile-supports__name" data-unnamed>
-            Couldn&apos;t load this account
-          </span>
-        </Link>
-      </li>
-    )
-  }
+
+  useEffect(() => {
+    onFailedChange(did, failed)
+    return () => onFailedChange(did, false)
+  }, [onFailedChange, did, failed])
+
+  // The section's "Try again": look up again what failed.
+  const latest = useRef({ failed, retry, account })
+  useEffect(() => {
+    latest.current = { failed, retry, account }
+  })
+  useEffect(() => {
+    if (retryTick === 0) return
+    const { failed: f, retry: r, account: a } = latest.current
+    if (f) r()
+    if (a.failed) a.retry()
+  }, [retryTick])
+
+  if (failed) return null
   if (isLoading && !info) {
     return (
       <li className="profile-supports__item" aria-hidden="true">

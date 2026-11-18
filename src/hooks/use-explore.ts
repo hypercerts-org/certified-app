@@ -73,6 +73,9 @@ const EMPTY: InternalState = {
   endorsementClosure: null,
 }
 
+/** The state before the first fetch has run (see useExploreData). */
+const INITIAL: InternalState = { ...EMPTY, isLoading: true }
+
 /**
  * Resolves (kind, filter, sub, search) into the right fetcher and
  * exposes cursor-based pagination via `loadMore`.
@@ -224,7 +227,10 @@ export function useExploreData(opts: {
     getClosureCacheVersionSnapshot,
   )
 
-  const [state, setState] = useState<InternalState>(EMPTY)
+  // Starts loading: the first fetch runs in an effect, so the server
+  // render and the first paint would otherwise read as "nothing here"
+  // ("No activities yet") before it has even begun.
+  const [state, setState] = useState<InternalState>(INITIAL)
   // Track the latest controller so loadMore can short-circuit if a
   // fresh filter-change has superseded it mid-fetch.
   const generationRef = useRef(0)

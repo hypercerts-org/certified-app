@@ -147,24 +147,6 @@
   background: var(--bg-sunken);
 }
 
-/* The eyebrow and title, with the actions at the top right of the block
-   from 1300px (the profile header's place for them): the owner's Edit,
-   Like, Share, More. */
-.record-head__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  min-width: 0;
-}
-
-.record-head__titles {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .record-head__kind {
   min-width: 0;
   margin: 0;
@@ -201,36 +183,14 @@
   }
 }
 
+/* The actions (the owner's Edit, Like, Share, More) are a row of their
+   own under the lead at every width, so the title always has the whole
+   column: beside it they squeezed long titles into three or four lines. */
 .record-head__actions {
   display: flex;
-  flex: none;
   align-items: center;
   gap: 8px;
-}
-
-/* Below 1300px the actions are a row of their own under the lead, so
-   they don't squeeze the title into three or four lines beside them (at
-   1100px the content column is about 580px). From 1300px they sit at the
-   top right, except the owner's four (Edit, Like, Share, More), which
-   would leave the title under half of the 620px column at 1300px. */
-.record-head--actions-row .record-head__top {
-  display: contents;
-}
-
-.record-head--actions-row .record-head__actions {
-  order: 1;
   margin-top: 16px;
-}
-
-@media (max-width: 1299px) {
-  .record-head__top {
-    display: contents;
-  }
-
-  .record-head__actions {
-    order: 1;
-    margin-top: 16px;
-  }
 }
 
 /* Phones: that row is full width, as on the profile: the text buttons
@@ -344,6 +304,41 @@
   color: var(--fg-muted);
 }
 
+/* When and where, together: one wrapping group beside the account. */
+.record-byline__when-where {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  min-width: 0;
+}
+
+/* Phones: the account on its line, the period and the place sharing the
+   next (the place gives way, an ellipsis; the Location card names it
+   whole). */
+@media (max-width: 799px) {
+  .record-byline__when-where {
+    flex-wrap: nowrap;
+    gap: 16px;
+    max-width: 100%;
+  }
+
+  .record-byline__when-where > .record-byline__item {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .record-byline__when-where > .record-byline__item--place {
+    flex: 0 1 auto;
+  }
+
+  .record-byline__place {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* ---------- Tabs ----------
    One underline strip, sticky below the top chrome. It scrolls sideways
    when the tabs don't fit (phones), running to the screen edges there. */
@@ -454,7 +449,8 @@ html:has(.navbar--hidden) .record-tabs {
 
 /* ---------- Rail ---------- */
 
-/* "Who's behind it": avatar and name, the start of its own words. */
+/* "Who's behind it": avatar, name, kind and handle, the start of its own
+   words, a brief trust line. */
 .record-owner {
   display: flex;
   align-items: center;
@@ -464,12 +460,27 @@ html:has(.navbar--hidden) .record-tabs {
   text-decoration: none;
 }
 
+.record-owner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .record-owner__name {
   min-width: 0;
   font-size: var(--text-body-sm);
   font-weight: 600;
   line-height: 1.35;
   color: var(--fg-primary);
+  overflow-wrap: anywhere;
+}
+
+.record-owner__meta {
+  min-width: 0;
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  color: var(--fg-muted);
   overflow-wrap: anywhere;
 }
 
@@ -980,6 +991,13 @@ a.record-project__name:focus-visible {
   .work-card__image--empty {
     display: none;
   }
+}
+
+/* A list where no card has a picture is text cards: empty frames line a
+   row up only when a picture sits beside them. */
+.work-card-list:not(:has(.work-card__image:not(.work-card__image--empty)))
+  .work-card__image--empty {
+  display: none;
 }
 
 /* A list of one: the photo beside the text, the text centred on it. */

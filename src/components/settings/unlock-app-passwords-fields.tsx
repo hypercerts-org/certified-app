@@ -1,9 +1,11 @@
+
 "use client"
 
 import { useCallback, useState, type ReactNode } from "react"
 import Input from "@/components/ui/input"
 import Banner from "@/components/ui/banner"
 import { unlockAppPasswords } from "@/lib/atproto/app-passwords"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 
 /**
  * Shared unlock logic + fields for elevated-session flows (issue #223).
@@ -93,11 +95,7 @@ export function useUnlockSession(
       }
       setInvalid(true)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
-      )
+      setError(caughtErrorMessage(err, "Couldn't check the password. Try again in a moment"))
     } finally {
       setSubmitting(false)
     }

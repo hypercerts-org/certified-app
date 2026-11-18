@@ -31,6 +31,7 @@ import {
 } from "@/lib/atproto/collection"
 import { recordUrl } from "@/lib/urls"
 import { useAuthorInfo } from "@/hooks/use-author-info"
+import { useOwnerByline } from "@/components/explore-page/use-owner-byline"
 import type { ActivityRecord } from "@/lib/atproto/activity-types"
 import { mergePeopleByDid, rankBy } from "@/lib/search/rank"
 import { parseSearchIntent, type SearchIntent } from "@/lib/search/parse-search-intent"
@@ -500,15 +501,28 @@ export default function GlobalSearch({
           )
         }
         if (row.kind === "explore") {
-          // The way on: the same search on Explore, every result.
+          // The way on: the same search on Explore, every result. When the
+          // search found nothing, one muted line says so above it (the
+          // live region already announces "0 results").
           return (
-            <ExploreRowItem
-              query={query.trim()}
-              optionId={optionId}
-              highlighted={highlighted}
-              onHover={onHover}
-              onSelect={onSelect}
-            />
+            <>
+              {resultCount === 0 && !intent ? (
+                <li
+                  className="people-search__empty people-search__no-match"
+                  role="presentation"
+                  aria-hidden="true"
+                >
+                  No activities, projects or accounts match.
+                </li>
+              ) : null}
+              <ExploreRowItem
+                query={query.trim()}
+                optionId={optionId}
+                highlighted={highlighted}
+                onHover={onHover}
+                onSelect={onSelect}
+              />
+            </>
           )
         }
         if (row.kind === "account") {
@@ -686,10 +700,9 @@ function ProjectRowItem({
   onHover,
   onSelect,
 }: RowItemProps & { project: CollectionRecord; did: string }) {
-  const { info } = useAuthorInfo(did)
   const raw = projectImage(project.value, "thumb")
   const imageUrl = raw ? resolveActivityImageUrl(raw, did) : null
-  const handle = info?.handle && info.handle !== did ? info.handle : null
+  const owner = useOwnerByline(did)
   return (
     <li
       id={optionId}
@@ -717,9 +730,7 @@ function ProjectRowItem({
         <span className="cert-search__item-title">
           {projectTitle(project.value)}
         </span>
-        {handle ? (
-          <span className="cert-search__item-handle">@{handle}</span>
-        ) : null}
+        {owner ? <span className="cert-search__item-handle">{owner}</span> : null}
       </div>
     </li>
   )
@@ -776,12 +787,11 @@ function CertRowItem({
   onHover,
   onSelect,
 }: CertRowProps) {
-  const { info } = useAuthorInfo(did)
   const imageUrl = record.value.image
     ? resolveActivityImageUrl(record.value.image, did)
     : null
   const title = record.value.title || "Untitled activity"
-  const handle = info?.handle ?? null
+  const owner = useOwnerByline(did)
 
   return (
     <li
@@ -813,9 +823,7 @@ function CertRowItem({
       )}
       <div className="cert-search__item-info">
         <span className="cert-search__item-title">{title}</span>
-        {handle ? (
-          <span className="cert-search__item-handle">@{handle}</span>
-        ) : null}
+        {owner ? <span className="cert-search__item-handle">{owner}</span> : null}
       </div>
     </li>
   )

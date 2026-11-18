@@ -4,6 +4,10 @@ import Skeleton from "./skeleton";
 
 export interface StatRowItem {
   label: string;
+  /** A shorter label for phones (below 800px), where the section heading
+   *  already names what is counted ("Received" under "Endorsements and
+   *  followers"); `label` shows from 800px. */
+  shortLabel?: string;
   /** `null` once loaded means "unknown" and shows an en dash. */
   value: number | string | null;
   /** Links the whole stat (value and label) to the full list. */
@@ -54,7 +58,14 @@ export default function StatRow({
         const content = (
           <>
             <span className={valueCls}>{value}</span>
-            <span className={labelCls}>{item.label}</span>
+            {item.shortLabel ? (
+              <span className={labelCls}>
+                <span className="md:hidden">{item.shortLabel}</span>
+                <span className="hidden md:inline">{item.label}</span>
+              </span>
+            ) : (
+              <span className={labelCls}>{item.label}</span>
+            )}
           </>
         );
         return (

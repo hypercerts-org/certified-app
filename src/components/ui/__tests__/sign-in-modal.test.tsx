@@ -117,6 +117,35 @@ describe("SignInModal copy", () => {
     )
   })
 
+  it("titles the handle view for signing in with a handle", () => {
+    renderModal()
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Atmosphere" }))
+
+    expect(screen.getByRole("heading", { name: "Sign in with your handle" })).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Sign in with your handle" })).toBeInTheDocument()
+    expect(screen.queryByText("Sign in or create an account")).toBeNull()
+  })
+
+  it("labels the field as a field, not a second title", () => {
+    renderModal()
+
+    const label = screen.getByText("Your email")
+    expect(label.tagName).toBe("LABEL")
+    expect(label.className).toContain("text-ui")
+    expect(label.className).toContain("font-medium")
+  })
+
+  it("keeps its top edge when the view changes", () => {
+    renderModal()
+    const dialog = screen.getByRole("dialog")
+    const pinned = dialog.className
+    expect(pinned).toMatch(/\bmt-\[/)
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with Atmosphere" }))
+
+    expect(screen.getByRole("dialog").className).toBe(pinned)
+  })
+
   it("drops the new-account line on the handle view", () => {
     renderModal()
     fireEvent.click(screen.getByRole("button", { name: "Sign in with Atmosphere" }))

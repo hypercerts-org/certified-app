@@ -58,9 +58,11 @@ afterEach(() => {
 
 describe("Overview order", () => {
   // W3: below 1100px (one column, the DOM order) what the account holds
-  // comes first; the groups and ID boxes follow, then Apps. From 1100px
-  // the CSS lifts the ID box to the top of the side column.
-  it("puts the sections first, then Your groups, the ID box and Apps", () => {
+  // comes first; the ID and groups boxes follow, then Apps. WS-03: the ID
+  // box is before Your groups in the DOM too, the order the side column
+  // shows them from 1100px, so the keyboard follows the page at every
+  // width (no CSS reordering).
+  it("puts the sections first, then the ID box, Your groups and Apps", () => {
     const { container } = render(<Home />)
     const order = Array.from(container.querySelectorAll(".home__layout h2, .home__layout [data-centerpiece='id']")).map(
       (el) => (el.matches("[data-centerpiece='id']") ? "ID box" : el.textContent),
@@ -68,8 +70,8 @@ describe("Overview order", () => {
     expect(order).toEqual([
       "Your records",
       "Endorsements and followers",
-      "Your groups",
       "ID box",
+      "Your groups",
       "Apps",
     ])
     expect(container.querySelector("[data-centerpiece='id']")).toHaveClass("home__box--id")

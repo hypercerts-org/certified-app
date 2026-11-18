@@ -127,12 +127,18 @@ describe("BottomNav (the phone pill)", () => {
     ])
   })
 
-  it("keeps its place but shows no items while auth resolves", () => {
+  it("keeps its place but shows no items, and isn't shown, while auth resolves", () => {
     state.isLoading = true
-    render(<BottomNav />)
-    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument()
+    const { container, rerender } = render(<BottomNav />)
+    const nav = container.querySelector("nav.bottom-nav")!
+    expect(nav).not.toBeNull()
     expect(screen.queryAllByRole("link")).toHaveLength(0)
     expect(screen.queryAllByRole("button")).toHaveLength(0)
+    // Hidden (layout.css), so no empty sliver of a pill.
+    expect(nav).toHaveAttribute("data-pending")
+    state.isLoading = false
+    rerender(<BottomNav />)
+    expect(container.querySelector("nav.bottom-nav")).not.toHaveAttribute("data-pending")
   })
 
   it("is absent on desktop, on the landing page and on forms", () => {

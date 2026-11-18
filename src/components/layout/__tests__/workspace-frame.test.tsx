@@ -129,7 +129,7 @@ describe("Records sections render the frame in every state", () => {
     const { container } = render(<RecordsPage />)
     const { main } = expectFrame(container, { h1: "Endorsements" })
     expect(
-      within(main).getByRole("heading", { name: "A group's endorsements show on its profile" }),
+      within(main).getByRole("heading", { name: "Estuary's endorsements show on its profile" }),
     ).toBeInTheDocument()
   })
 
@@ -140,32 +140,61 @@ describe("Records sections render the frame in every state", () => {
       displayName: "Estuary",
       role: "admin",
     }
+    // WS-06: the heading names the group; Projects and activities links
+    // both of its profile tabs.
     const cases = [
-      { kind: "endorsements", heading: "A group's endorsements show on its profile", link: "Open endorsements", tab: "endorsements" },
-      { kind: "followers", heading: "A group's followers show on its profile", link: "Open followers", tab: "followers" },
-      { kind: "lists", heading: "A group's lists show on its profile", link: "Open lists", tab: "lists" },
-      { kind: "activities", heading: "A group's projects and activities show on its profile", link: "Open activities", tab: "activities" },
+      { kind: "endorsements", heading: "Estuary's endorsements show on its profile", links: [["Open endorsements", "endorsements"]] },
+      { kind: "followers", heading: "Estuary's followers show on its profile", links: [["Open followers", "followers"]] },
+      { kind: "lists", heading: "Estuary's lists show on its profile", links: [["Open lists", "lists"]] },
+      {
+        kind: "activities",
+        heading: "Estuary's projects and activities show on its profile",
+        links: [
+          ["Open activities", "activities"],
+          ["Open projects", "projects"],
+        ],
+      },
     ]
     for (const c of cases) {
       nav.kind = c.kind
       const { container, unmount } = render(<RecordsPage />)
       const main = container.querySelector(".workspace__main") as HTMLElement
       expect(within(main).getByRole("heading", { name: c.heading })).toBeInTheDocument()
-      expect(within(main).getByRole("link", { name: c.link })).toHaveAttribute(
-        "href",
-        `/group.certified.app?tab=${c.tab}`,
-      )
+      for (const [label, tab] of c.links) {
+        expect(within(main).getByRole("link", { name: label })).toHaveAttribute(
+          "href",
+          `/group.certified.app?tab=${tab}`,
+        )
+      }
       expect(within(main).getByRole("button", { name: "Switch to personal account" })).toBeInTheDocument()
-      // Only Projects and activities creates (as the group).
+      // Only Projects and activities creates (as the group); its New
+      // activity is the walk-through's anchor, the only one on the page.
       const creates = within(main).queryByRole("link", { name: "New activity" })
       if (c.kind === "activities") {
         expect(creates).toHaveAttribute("href", "/create")
+        expect(creates).toHaveAttribute("data-tour", "records-new")
+        expect(container.querySelectorAll('[data-tour="records-new"]')).toHaveLength(1)
         expect(within(main).getByRole("link", { name: "New project" })).toHaveAttribute("href", "/project/new")
       } else {
         expect(creates).toBeNull()
       }
       unmount()
     }
+  })
+
+  it("acting as a group with no display name: the heading names its @handle", () => {
+    org.activeOrg = {
+      groupDid: "did:plc:group",
+      handle: "group.certified.app",
+      displayName: "  ",
+      role: "admin",
+    }
+    nav.kind = "followers"
+    const { container } = render(<RecordsPage />)
+    const main = container.querySelector(".workspace__main") as HTMLElement
+    expect(
+      within(main).getByRole("heading", { name: "@group.certified.app's followers show on its profile" }),
+    ).toBeInTheDocument()
   })
 
   it("a section: its title, and its region named by it", () => {

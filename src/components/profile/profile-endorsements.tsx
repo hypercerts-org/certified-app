@@ -15,6 +15,7 @@ import {
   createResponse,
 } from "@/lib/atproto/badges"
 import EndorsePeopleModal from "@/components/profile/endorse-people-modal"
+import { uniqueEndorsers } from "@/components/profile/profile-trust-line"
 import {
   BulkBar,
   GivenList,
@@ -111,13 +112,19 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
   const [subParam, setSubParam] = useUrlParam("sub", { defaultValue: "received" })
   const urlTab: SubTab = subParam === "given" ? "given" : "received"
   // A visitor isn't shown a list known to be empty ("Given 0"): its
-  // segment goes, and with one list left there are no segments at all.
+  // segment goes, and with one list left there are no segments at all;
+  // that list then says what it is in a visible heading. A list that
+  // failed to load isn't known to be empty: it keeps its segment and says
+  // it couldn't load, with "Try again".
   const visitor = !canManage
   const receivedZero =
+    !received.error &&
     !(received.isLoading && received.endorsements.length === 0) &&
     received.endorsements.length === 0
   const givenZero =
-    !(given.isLoading && given.endorsements.length === 0) && given.endorsements.length === 0
+    !given.error &&
+    !(given.isLoading && given.endorsements.length === 0) &&
+    given.endorsements.length === 0
   const showReceivedSegment = !visitor || !receivedZero
   const showGivenSegment = !visitor || !givenZero
   const segmented = showReceivedSegment && showGivenSegment
@@ -153,7 +160,13 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
 
   // The optimistic overlay lives in `useReceivedEndorsements` itself, so
   // the list already reflects an Endorse / Revoke made from the header.
-  const displayReceived = received.endorsements
+  // A visitor sees each account that endorsed this one once (its newest
+  // award), as the tab's count and the trust line count them; the account
+  // itself keeps one row per award, since it accepts or rejects each.
+  const displayReceived = useMemo(
+    () => (canManage ? received.endorsements : uniqueEndorsers(received.endorsements)),
+    [canManage, received.endorsements],
+  )
 
   const rejectedCount = useMemo(
     () =>
@@ -326,9 +339,11 @@ export default function ProfileEndorsements({ did }: ProfileEndorsementsProps) {
       variant="segmented"
       className="profile-panel"
     >
+      {/* The tab names the panel; the heading is for screen readers. With
+          one list left (no segments), it says which list it is. */}
       <SectionHeader
-        title="Endorsements"
-        titleHidden
+        title={segmented ? "Endorsements" : tab === "given" ? "Given" : "Received"}
+        titleHidden={segmented}
         description={
           isPersonalOwner
             ? "Give, hide and sort endorsements into lists in your Workspace."

@@ -592,11 +592,18 @@
   flex-shrink: 0;
 }
 
-/* Overlapping faces, each ringed in the canvas colour. */
+/* Overlapping faces, each ringed in the canvas colour; the ring follows
+   the face's shape (an organization's square, a neutral block while the
+   kind isn't known). */
 .profile-trust__face {
   display: inline-flex;
   border-radius: 50%;
   outline: 2px solid var(--bg-canvas);
+}
+
+.profile-trust__face[data-kind="org"],
+.profile-trust__face[data-kind="unknown"] {
+  border-radius: var(--radius);
 }
 
 .profile-trust__face + .profile-trust__face {
@@ -605,6 +612,55 @@
 
 .profile-trust__name {
   font-weight: 500;
+  color: var(--fg-primary);
+}
+
+/* "Endorsed by Ma Earth +2": the phone's form of the line (the long one
+   names two and says how many others), and the record pages' brief one. */
+.profile-trust__short {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.profile-trust__short-lead {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-trust__more {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-trust__text--short {
+  display: none;
+}
+
+/* The trust line in brief ("Who's behind it" on a record page). */
+.profile-trust-compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-body-sm);
+  line-height: 1.5;
+  color: var(--fg-secondary);
+}
+
+.profile-trust-compact__count {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-trust-compact__count strong {
+  font-weight: 600;
   color: var(--fg-primary);
 }
 
@@ -658,10 +714,12 @@
     min-height: var(--control-h-md);
   }
 
-  .profile-trust__text {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .profile-trust__text--long {
+    display: none;
+  }
+
+  .profile-trust__text--short {
+    display: inline-flex;
   }
 
   .profile-trust__counts {
@@ -871,6 +929,25 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   color: var(--fg-muted);
 }
 
+/* "Couldn't load these accounts. Try again", once under a grid or list of
+   accounts whose lookups failed (the failed ones leave it). */
+.profile-overview__load-error {
+  margin: 0;
+}
+
+/* Every account in the grid or list failed: only the line above stays. */
+.profile-supports:empty,
+.profile-overview__endorse-list:empty {
+  display: none;
+}
+
+/* "No public records yet.", in the column (the rich empty state's
+   centred block, without its tall padding; the parent raises the rule
+   over the utility classes). */
+.profile-overview__main > .profile-overview__nothing {
+  padding-block: 32px;
+}
+
 .profile-overview__about {
   max-width: var(--measure);
 }
@@ -889,8 +966,8 @@ html:has(.navbar--hidden) .profile-page__edit-bar {
   aspect-ratio: 16 / 9;
 }
 
-/* "Endorses": the accounts it endorsed, avatar and name, three a row
-   (two on phones). */
+/* "Endorses" and "Follows": the accounts it endorsed or follows, avatar
+   and name, three a row (two on phones). */
 .profile-supports {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

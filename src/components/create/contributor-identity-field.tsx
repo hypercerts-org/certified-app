@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Combobox from "@/components/ui/combobox"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import { isAtprotoIdentity } from "@/hooks/use-contributor-info"
@@ -78,10 +78,14 @@ export interface ContributorIdentityFieldProps {
    *  and hiding the input. */
   onCommit?: (identity: string) => void
   /** Called when the typed value is offered as final but isn't a
-   *  recognisable handle or DID: blur, or Enter without a pick. The
-   *  parent shows the row's error from then on (until the next edit),
-   *  never while the person is still typing or picking. */
+   *  recognisable handle or DID: blur, or Enter without a pick when
+   *  there is no suggestion to take. The parent shows the row's error
+   *  from then on (until the next edit), never while the person is
+   *  still typing or picking. */
   onCheck?: () => void
+  /** Id of the row's error line under the field, while it shows; the
+   *  input is described by it. */
+  errorId?: string
 }
 
 export function ContributorIdentityField({
@@ -93,8 +97,15 @@ export function ContributorIdentityField({
   excludeIdentities,
   onCommit,
   onCheck,
+  errorId,
 }: ContributorIdentityFieldProps) {
   const [results, setResults] = useState<Actor[]>([])
+  // The text `results` answer (trimmed), so Enter never takes a
+  // suggestion that was found for an earlier, shorter query.
+  const [resultsFor, setResultsFor] = useState("")
+  // Enter on a name (not a handle) while its search is still on the way:
+  // settled once the results for that text land.
+  const [enterFor, setEnterFor] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -105,12 +116,14 @@ export function ContributorIdentityField({
     const trimmed = value.trim()
     if (!trimmed || trimmed.length < 2) {
       setResults([])
+      setResultsFor(trimmed)
       setIsOpen(false)
       return
     }
     if (trimmed === lastSelectedRef.current) return
     if (trimmed.startsWith("did:")) {
       setResults([])
+      setResultsFor(trimmed)
       setIsOpen(false)
       return
     }
@@ -130,8 +143,13 @@ export function ContributorIdentityField({
           setResults([])
           setIsOpen(false)
         }
+        setResultsFor(trimmed)
       } catch {
-        // Search is best-effort; the free-text input still works.
+        // Search is best-effort; the free-text input still works. No
+        // suggestions for this text, so a pending Enter checks it.
+        setResults([])
+        setIsOpen(false)
+        setResultsFor(trimmed)
       } finally {
         setIsSearching(false)
       }
@@ -166,13 +184,26 @@ export function ContributorIdentityField({
     [excludeIdentities, onChange, onCommit],
   )
 
-  const visibleResults = results.filter((a) => {
-    const h = a.handle?.toLowerCase() ?? ""
-    const d = a.did?.toLowerCase() ?? ""
-    if (h && excludeIdentities.has(h)) return false
-    if (d && excludeIdentities.has(d)) return false
-    return true
-  })
+  const visibleResults = useMemo(
+    () =>
+      results.filter((a) => {
+        const h = a.handle?.toLowerCase() ?? ""
+        const d = a.did?.toLowerCase() ?? ""
+        if (h && excludeIdentities.has(h)) return false
+        if (d && excludeIdentities.has(d)) return false
+        return true
+      }),
+    [results, excludeIdentities],
+  )
+
+  // Enter on a name: the first suggestion is the one meant (the list is
+  // what the person was looking at); with none, the value is checked and
+  // its error shows.
+  const pickFirstOrCheck = useCallback(() => {
+    const first = visibleResults[0]
+    if (first) handleSelect(first)
+    else onCheck?.()
+  }, [visibleResults, handleSelect, onCheck])
 
   const handleValueChange = useCallback(
     (next: string) => {
@@ -184,18 +215,36 @@ export function ContributorIdentityField({
     [onChange],
   )
 
-  // Bare Enter with no dropdown match — but the typed value is a
-  // recognisable DID or handle. Treat Enter as "I'm done typing"; the
-  // parent swaps the input out for the contributor card.
+  // Bare Enter without an arrowed-to row. A recognisable DID or handle:
+  // "I'm done typing", and the parent swaps the input out for the
+  // contributor card. Anything else (a name like "Rosa"): take the first
+  // suggestion for that text, waiting for its search if it is still on
+  // the way; the error shows only when there is none.
   const handleSubmitNoMatch = useCallback(
     (raw: string) => {
       const v = raw.trim()
       if (!v) return
-      if (isContributorIdentityAcceptable(raw)) onCommit?.(v)
-      else onCheck?.()
+      if (isContributorIdentityAcceptable(raw)) {
+        onCommit?.(v)
+        return
+      }
+      if (resultsFor === v) pickFirstOrCheck()
+      else setEnterFor(v)
     },
-    [onCommit, onCheck],
+    [onCommit, resultsFor, pickFirstOrCheck],
   )
+
+  useEffect(() => {
+    if (enterFor === null) return
+    // Typed on since: that Enter no longer stands.
+    if (value.trim() !== enterFor) {
+      setEnterFor(null)
+      return
+    }
+    if (resultsFor !== enterFor) return
+    setEnterFor(null)
+    pickFirstOrCheck()
+  }, [enterFor, resultsFor, value, pickFirstOrCheck])
 
   const handleBlur = useCallback(() => {
     // Blur acts as an implicit commit when the typed value is a
@@ -227,10 +276,10 @@ export function ContributorIdentityField({
       onSelect={handleSelect}
       onSubmitNoMatch={handleSubmitNoMatch}
       enableHomeEnd={false}
-      // Don't auto-select the first result: bare Enter commits the typed
+      // Don't auto-select the first result: bare Enter commits a typed
       // handle via onSubmitNoMatch even when prefix-match results are
-      // visible (matches pre-#130 behaviour). Arrowing into a row still
-      // selects it.
+      // visible (matches pre-#130 behaviour), and only a name falls back
+      // to the first result there. Arrowing into a row still selects it.
       autoHighlight={false}
       escapeStage="close-only"
       liveStatus={null}
@@ -242,8 +291,10 @@ export function ContributorIdentityField({
         id: `create-cert-contrib-input-${idx}`,
         "aria-label": ariaLabel,
         // `error` only paints the invalid border in flush mode (and sets
-        // aria-invalid); the row shows the message under the fields.
+        // aria-invalid); the row shows the message right under the field
+        // (`errorId`), which describes the input.
         error: invalid ? "Not a valid handle" : undefined,
+        "aria-describedby": invalid ? errorId : undefined,
         placeholder: "Search by name, or type a handle",
         maxLength: 1000,
         onBlur: handleBlur,

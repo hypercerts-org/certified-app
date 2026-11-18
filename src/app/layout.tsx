@@ -16,14 +16,17 @@ import {
   Noto_Serif,
   Schibsted_Grotesk,
 } from "next/font/google";
-import { LOOK_INIT_SCRIPT } from "@/lib/look/looks";
+// The before-paint scripts come from modules without "use client": from a
+// client module a server component gets a client reference, which reaches
+// the browser only once that chunk loads, and <head> then failed to hydrate.
+import { LOOK_INIT_SCRIPT } from "@/lib/look/look-data";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/auth-context";
 import { NavbarProvider } from "@/lib/navbar-context";
 import { ViewTransitionProvider } from "@/lib/view-transitions";
 import Navbar from "@/components/layout/navbar";
 import AppSidebar from "@/components/layout/app-sidebar";
-import { SIDEBAR_INIT_SCRIPT } from "@/lib/layout/sidebar-state";
+import { SIDEBAR_INIT_SCRIPT } from "@/lib/layout/sidebar-init-script";
 import { Providers } from "@/lib/providers";
 import AppShell from "@/components/layout/app-shell";
 import { OrgProvider } from "@/lib/groups/org-context";

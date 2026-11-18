@@ -19,8 +19,11 @@ import { trackRecentlyViewed } from "@/lib/utils/recently-viewed"
  *
  * `resolving` is true while the parent is still turning the actor segment
  * into a DID; we stay in the loading state instead of flashing "not found".
- * A project that doesn't exist says so (no retry: it can't succeed); one
- * that couldn't be read is an inline block with "Try again".
+ * When that lookup failed (`lookupFailed`: a 429, a network error), the
+ * account may well exist, so the page says it couldn't load the project,
+ * with "Try again" (`onRetryLookup`), never "not found". A project that
+ * doesn't exist says so (no retry: it can't succeed); one that couldn't be
+ * read is an inline block with "Try again".
  *
  * Every state renders inside `<PageContainer>` (the page frame: width,
  * gutters, top and bottom space), so the page doesn't jump between them.
@@ -30,11 +33,17 @@ export default function ProjectDetailRoute({
   handle,
   rkey,
   resolving,
+  lookupFailed = false,
+  onRetryLookup,
 }: {
   did: string | null
   handle: string | null
   rkey: string | null
   resolving: boolean
+  /** Looking the account up failed (not "no such account"). */
+  lookupFailed?: boolean
+  /** Look the account up again. */
+  onRetryLookup?: () => void
 }) {
   const { project, isLoading, error, refetch } = useProject(did, rkey)
 
@@ -48,6 +57,18 @@ export default function ProjectDetailRoute({
     return (
       <PageContainer>
         <RecordDetailSkeleton label="Loading project" />
+      </PageContainer>
+    )
+  }
+
+  if (lookupFailed) {
+    return (
+      <PageContainer>
+        <ErrorMessage
+          title="Couldn't load this project"
+          message="Something went wrong while loading it. Try again in a moment."
+          onRetry={onRetryLookup}
+        />
       </PageContainer>
     )
   }

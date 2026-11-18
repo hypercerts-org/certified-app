@@ -1,6 +1,9 @@
 "use client"
 
+import { useRef } from "react"
 import { ToggleGroup } from "@/components/ui/segmented-control"
+import TabStripFades from "@/components/ui/tab-strip-fades"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import { CONFIRM_ROLES, type ConfirmRole } from "@/lib/atproto/funding-provenance"
 import { confirmRoleHint, confirmRoleLabel } from "@/lib/funding/labels"
 import { ROLE_BIT, selectionSentence } from "@/lib/funding/select"
@@ -30,11 +33,16 @@ export default function FundingConfirmedBy({
   onReset: () => void
 }) {
   const value = CONFIRM_ROLES.filter((r) => roles.has(r))
+  // A row of chips wider than the page scrolls sideways; a fade over the
+  // cut edge says there are more.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const edges = useOverflowEdges(scrollRef)
   return (
     <div className="funding-confirmed">
       <div className="funding-confirmed__row">
         <span className="funding-confirmed__label">Confirmed by</span>
-        <div className="funding-confirmed__scroll">
+        <div className="funding-confirmed__frame">
+        <div className="funding-confirmed__scroll" ref={scrollRef}>
           <ToggleGroup
             aria-label="Confirmed by"
             className="funding-chips"
@@ -59,6 +67,8 @@ export default function FundingConfirmedBy({
               ),
             }))}
           />
+        </div>
+        <TabStripFades start={edges.start} end={edges.end} />
         </div>
       </div>
       <p className="funding-confirmed__readout" aria-live="polite">

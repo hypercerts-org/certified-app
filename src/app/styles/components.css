@@ -239,10 +239,6 @@
   color: var(--fg-primary);
 }
 
-.feedback-modal__body {
-  padding: 24px;
-}
-
 .feedback-modal__greeting {
   font-size: 0.9375rem;
   font-weight: 600;

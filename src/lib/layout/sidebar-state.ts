@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react"
 import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { SIDEBAR_ATTR, SIDEBAR_STORAGE_KEY } from "./sidebar-init-script"
 
 /**
  * Whether the desktop sidebar is collapsed to its rail (from 1300px, where
@@ -10,17 +11,11 @@ import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
  *
  * Held as `data-sidebar="rail"` on <html> (CSS switches the layout from
  * it, with no JS breakpoint) and remembered in this browser
- * (localStorage). `SIDEBAR_INIT_SCRIPT` sets the attribute before first
- * paint, so a collapsed sidebar never flashes open.
+ * (localStorage). `SIDEBAR_INIT_SCRIPT` (sidebar-init-script.ts) sets the
+ * attribute before first paint, so a collapsed sidebar never flashes open.
  */
-const KEY = "certified_sidebar"
-const ATTR = "sidebar"
-
-/** Inline script for <head> (root layout): apply the remembered state
- *  before first paint. */
-export const SIDEBAR_INIT_SCRIPT = `try{if(localStorage.getItem(${JSON.stringify(
-  KEY,
-)})==="rail")document.documentElement.dataset.${ATTR}="rail"}catch(e){}`
+const KEY = SIDEBAR_STORAGE_KEY
+const ATTR = SIDEBAR_ATTR
 
 const listeners = new Set<() => void>()
 

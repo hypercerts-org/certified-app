@@ -19,7 +19,7 @@ import MapBrowse, { MapLayerChips, layerCountsOf } from "./map/map-browse"
 import MapCountries from "./map/map-countries"
 import MapSites from "./map/map-sites"
 import { useMapLayers } from "./map/use-map-layers"
-import type { MapKind } from "./map/world-map"
+import { latitudeBand, type MapKind } from "./map/world-map"
 import NetworkFiltersSheet from "./network-filters-sheet"
 
 const VIEWS = [
@@ -53,9 +53,11 @@ const fmt = (n: number) => n.toLocaleString("en-US")
  * map with a list of what is in view; Countries, the overview; Sites, the
  * drawn boundaries. Each has the flat map / globe switch beside the map
  * (`?projection=globe`, as on /funding). On phones the totals shrink to one
- * line and the Places layer chips move into the Filters sheet, so the map
- * comes first. While the places load, the page keeps its final shape: the
- * tabs, the totals as skeletons and the main box with the message inside.
+ * line of three figures and the Places layer chips move into the Filters
+ * sheet, so the order is the Graph's and Funding's: figures, the Filters /
+ * view row, the map, then what the view shows. While the places load, the
+ * page keeps its final shape: the tabs, the totals as skeletons and the
+ * main box with the message inside.
  */
 export default function MapPage() {
   usePageTitle("Map")
@@ -89,6 +91,9 @@ export default function MapPage() {
     }
   }, [model])
   const layerCounts = useMemo(() => (model ? layerCountsOf(model) : null), [model])
+  // Where a phone's flat map starts: the band of latitudes the places are
+  // in, not the whole height of the world (mostly Arctic in Mercator).
+  const startBand = useMemo(() => (model ? latitudeBand(model.places.map((p) => p.lat)) : null), [model])
 
   const active = VIEWS.find((v) => v.value === view)!
   const resize = { min: MIN_HEIGHT, max: MAX_HEIGHT, onResize: setHeight }
@@ -128,14 +133,16 @@ export default function MapPage() {
                   ]}
                 />
               </div>
+              {/* Phones: three figures, one line (the drawn areas are in the
+                  Sites view). */}
               <div className="map-page__stats-line">
                 {stats ? (
                   <>
-                    {fmt(stats.activities)} activities with a place · {fmt(stats.projects)} projects ·{" "}
-                    {fmt(stats.countries)} countries · {fmt(stats.areas)} drawn areas
+                    {fmt(stats.activities)} activities · {fmt(stats.projects)} projects ·{" "}
+                    {fmt(stats.countries)} countries
                   </>
                 ) : (
-                  <Skeleton variant="line" width="80%" height={12} />
+                  <Skeleton variant="line" width="70%" height={12} />
                 )}
               </div>
               <div className="map-page__bar">
@@ -175,11 +182,11 @@ export default function MapPage() {
               {model ? (
                 <section className="map-page__view" aria-label={active.label}>
                   {view === "places" ? (
-                    <MapBrowse model={model} kind={kind} height={height} resize={resize} layerState={layerState} />
+                    <MapBrowse model={model} kind={kind} height={height} resize={resize} layerState={layerState} startBand={startBand} />
                   ) : view === "countries" ? (
-                    <MapCountries model={model} kind={kind} height={height} resize={resize} />
+                    <MapCountries model={model} kind={kind} height={height} resize={resize} startBand={startBand} />
                   ) : (
-                    <MapSites model={model} kind={kind} height={height} resize={resize} filtersHost={filtersHost} />
+                    <MapSites model={model} kind={kind} height={height} resize={resize} filtersHost={filtersHost} startBand={startBand} />
                   )}
                 </section>
               ) : (
@@ -188,6 +195,9 @@ export default function MapPage() {
                   <p>Gathering every place on the network. The first load can take up to a minute.</p>
                 </div>
               )}
+              {/* Phones: what the view shows comes after it, so the map
+                  is first under the controls. */}
+              <p className="map-page__blurb map-page__blurb--after">{active.blurb}</p>
               {model?.partial ? (
                 <p className="map-page__note">
                   Some places couldn&apos;t be read completely this time, so a few may be missing.

@@ -58,4 +58,24 @@ describe("SyncSocialGraphSection: why a Sync button is off", () => {
     expect(screen.getByText(/already in sync/)).toBeInTheDocument()
     expect(screen.queryByText(/Nothing to sync/)).toBeNull()
   })
+
+  it("says there's nobody to bring over when you follow no one on Bluesky", () => {
+    stats = { inBoth: [], onlyCertified: dids(2, "c"), onlyBluesky: [] }
+    isLoading = false
+    render(<SyncSocialGraphSection did="did:plc:me" ownDid="did:plc:me" />)
+
+    expect(screen.getByRole("button", { name: /Sync from Bluesky/ })).toHaveAccessibleDescription(
+      "You don't follow anyone on Bluesky yet.",
+    )
+    expect(screen.queryByText(/already follow/)).toBeNull()
+  })
+
+  it("doesn't call two empty lists 'in sync'", () => {
+    stats = { inBoth: [], onlyCertified: [], onlyBluesky: [] }
+    isLoading = false
+    render(<SyncSocialGraphSection did="did:plc:me" ownDid="did:plc:me" />)
+
+    expect(screen.getByText("You don't follow anyone on Certified or Bluesky yet.")).toBeInTheDocument()
+    expect(screen.queryByText(/already in sync/)).toBeNull()
+  })
 })

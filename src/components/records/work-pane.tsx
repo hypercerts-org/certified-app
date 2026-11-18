@@ -3,8 +3,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
+  ArrowRight,
   ChevronRight,
-  ExternalLink,
   Folder,
   FolderGit2,
   FolderPlus,
@@ -813,7 +813,7 @@ function ProjectFolder({
               label={`More actions for ${title}`}
               title={title}
               entries={[
-                { kind: "link", key: "open", label: "Open project", href, icon: ExternalLink },
+                { kind: "link", key: "open", label: "Open project", href, icon: ArrowRight },
                 {
                   kind: "link",
                   key: "edit",

@@ -57,7 +57,8 @@ function useIssuerInfo(e: ReceivedEndorsement): { info: AuthorInfo | null; isLoa
 }
 
 /**
- * One received endorsement: who gave it, when, the note, and Hide or Show.
+ * One received endorsement: who gave it, when, the note, and "Hide from
+ * profile" or "Show on profile" (what the button changes is the profile).
  * A hidden one carries a "Hidden" tag after the name; its text keeps full
  * contrast.
  * Hiding writes a "rejected" response record on your account; showing
@@ -132,9 +133,9 @@ function ReceivedRow({
               size="sm"
               loading={busy}
               onClick={() => void toggle()}
-              aria-label={`${hidden ? "Show" : "Hide"} the endorsement from ${displayName}`}
+              aria-label={`${hidden ? "Show on profile" : "Hide from profile"}: the endorsement from ${displayName}`}
             >
-              {hidden ? "Show" : "Hide"}
+              {hidden ? "Show on profile" : "Hide from profile"}
             </Button>
           </div>
         }

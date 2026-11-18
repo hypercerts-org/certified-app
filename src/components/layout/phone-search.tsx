@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
-import { Search, X } from "lucide-react"
+import { useEffect, useRef } from "react"
+import { Search } from "lucide-react"
 import { useRouteScopedOpen } from "@/hooks/use-route-scoped-open"
 import AppDialog from "@/components/ui/app-dialog"
 import Button from "@/components/ui/button"
@@ -15,15 +15,35 @@ import GlobalSearch from "@/components/search/global-search"
  * the desktop sidebar's: activities, projects and accounts across the
  * network; Enter searches Explore).
  *
- * Closes on the close button, a tap on the dimmed page, opening a result
- * or Enter, a change of page, and Escape (the first Escape closes the
- * results when they are open, as in the field anywhere else).
+ * Closes on Cancel, a tap on the dimmed page, opening a result or Enter, a
+ * change of page, and Escape (the first Escape closes the results when they
+ * are open, as in the field anywhere else). Cancel is a word, not a second
+ * X beside the field's own clear button (which empties the field). Focus
+ * goes back to the Search button when the panel is dismissed, not when a
+ * result or Enter left for another page.
  */
 export default function PhoneSearch() {
   const [open, setOpen] = useRouteScopedOpen()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  // Set when a result or Enter closed the panel: the reader is on their way
+  // to another page, so the Search button shouldn't take focus (and show a
+  // ring) behind them.
+  const navigatedRef = useRef(false)
   const close = () => setOpen(false)
+  const closeForNavigation = () => {
+    navigatedRef.current = true
+    setOpen(false)
+  }
+
+  // The dialog hands focus back to the trigger as it unmounts (its effect
+  // cleanup runs before this effect in the same commit); after a
+  // navigation, let it go again.
+  useEffect(() => {
+    if (open || !navigatedRef.current) return
+    navigatedRef.current = false
+    if (document.activeElement === triggerRef.current) triggerRef.current?.blur()
+  }, [open])
 
   return (
     <>
@@ -60,18 +80,18 @@ export default function PhoneSearch() {
               close()
             }}
           >
-            <GlobalSearch placeholder="Search" className="phone-search__field" onNavigate={close} />
-            {/* tooltip="": a body-portalled tooltip would sit under the
-                top-layer dialog (and phones have none anyway). */}
+            <GlobalSearch
+              placeholder="Search"
+              className="phone-search__field"
+              onNavigate={closeForNavigation}
+            />
             <Button
               variant="ghost"
-              size="icon"
-              aria-label="Close"
-              tooltip=""
-              className="shrink-0"
+              size="sm"
+              className="phone-search__cancel"
               onClick={close}
             >
-              <X size={20} strokeWidth={1.5} aria-hidden />
+              Cancel
             </Button>
           </div>
         </AppDialog>

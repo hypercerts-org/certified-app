@@ -289,9 +289,12 @@
   padding-left: 16px;
 }
 
+/* From 800px the wordmark starts where the hero copy does: 32px in, or
+   the left edge of the centred 1280px content column on wider screens
+   (x=80 at 1440). */
 @media (min-width: 800px) {
   .lp-topbar {
-    padding-left: 32px;
+    padding-left: max(32px, calc((100% - 1280px) / 2));
   }
 }
 
@@ -320,9 +323,11 @@
   gap: 8px;
 }
 
+/* From 800px it ends where the content column does, mirroring the
+   wordmark (x=1360 at 1440). */
 @media (min-width: 800px) {
   .lp-topbar__actions {
-    right: 32px;
+    right: max(32px, calc((100% - 1280px) / 2));
   }
 }
 
@@ -367,6 +372,37 @@
 @media (max-width: 799px) {
   .lp-topbar__btn {
     height: 44px;
+  }
+}
+
+/* Phones: the fixed button sits in a full-width 64px bar (the height of
+   the wordmark row) that stays clear while the wordmark is on screen and,
+   once the page scrolls past it (landing-topbar.tsx adds --bar), turns
+   into the app's translucent phone bar, so the button never floats over
+   the text. The bar itself lets taps through; only the button takes
+   them. */
+@media (max-width: 799px) {
+  .lp-topbar__actions {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    transform: none;
+    justify-content: flex-end;
+    padding: 0 16px;
+    pointer-events: none;
+    /* Only the colour and hairline fade; backdrop-filter switches (a
+       transitioned blur re-runs every frame). */
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .lp-topbar__actions > * {
+    pointer-events: auto;
+  }
+  .lp-topbar__actions--bar {
+    background-color: color-mix(in srgb, var(--color-off-white) 80%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-navbar-hairline);
   }
 }
 
@@ -533,9 +569,17 @@
     min-height: auto;
     /* The topbar (.lp-topbar) is in normal flow, so its 64px already
        sits above the hero (the wordmark is vertically centered, leaving
-       ~21px of intrinsic space below it); 12px more parts the eyebrow
-       from it. */
-    padding: 12px 20px 48px;
+       ~23px of intrinsic space below it); that is gap enough for the
+       eyebrow, so the hero adds none and the buttons stay on the first
+       screen down to 375 x 553. */
+    padding: 0 20px 48px;
+  }
+  /* A smaller title on phones (32px at 360 to 375, 33px at 390, back up
+     to the desktop floor of 42px from 640), with tighter gaps around it,
+     so the buttons stay on the first screen. */
+  .lp-hero__title {
+    font-size: clamp(2rem, 1.125rem + 3.75vw, 2.625rem);
+    margin: 12px 0 16px;
   }
   /* The seal sits behind the top right of the copy, bleeding off the
      edge as on desktop, instead of a band above it: the band pushed the
@@ -560,13 +604,19 @@
     transform: none;
   }
   .lp-hero__subline {
+    font-size: 1rem;
+    line-height: 1.55;
     margin-bottom: 24px;
   }
   .lp-hero__actions {
     flex-direction: column;
   }
+  /* The standard 44px button height (the chunkier desktop padding made
+     them 48 and 50px). */
   .lp-hero__actions .lp-cta-btn {
     width: 100%;
+    min-height: var(--control-h-md);
+    padding-block: 0;
   }
 }
 
@@ -1214,6 +1264,12 @@
   opacity: 0.55;
 }
 
+/* Dark mode: the band is the light panel, where 0.55 left the eyebrow at
+   3.9:1; 0.65 brings it to 5.3:1 (AA for its 11px text). */
+:root[data-theme="dark"] .lp-band__eyebrow {
+  opacity: 0.65;
+}
+
 /* The eyebrow inherits the band's flipped ink — undo the global
    dark-mode eyebrow lift, which would read against the light panel. */
 :root[data-theme="dark"] .lp-band .lp-eyebrow {
@@ -1558,10 +1614,6 @@
   color: var(--color-navy);
 }
 
-.feedback-modal__body {
-  padding: 24px;
-}
-
 .feedback-modal__label {
   display: block;
   font-size: 0.8125rem;
@@ -1807,6 +1859,13 @@
   .legal-toc ol {
     columns: 2;
     column-gap: 32px;
+  }
+  /* Each link at least 24px tall (WCAG 2.5.8 target size); as an inline
+     run it was only its 17px glyph box. */
+  .legal-toc .legal-link {
+    display: inline-block;
+    min-height: 24px;
+    vertical-align: top;
   }
 }
 

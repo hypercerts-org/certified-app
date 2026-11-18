@@ -269,8 +269,8 @@
 /* ========== Phone search (phone-search.tsx) ==========
    The top bar's Search opens the global search as a panel across the top
    of the screen (an <AppDialog>, so the page behind is dimmed and inert):
-   the field and a close button on one row, the results under them,
-   in the panel's flow, scrolling on their own. */
+   the field and Cancel on one row, the results under them, in the
+   panel's flow, scrolling on their own. */
 dialog.phone-search {
   inset: 0 0 auto;
   width: 100%;
@@ -296,26 +296,48 @@ dialog.phone-search {
   }
 }
 
-/* The field on the 16px gutter; the close button's X on the other. */
+/* Two columns: the field, then Cancel (as wide as its word). The field's
+   own box (the combobox) spans both, as a subgrid, so its input takes the
+   first column and its results the whole width under both. The field on
+   the 16px gutter; Cancel's word on the other (4px here + its 12px). */
 .phone-search__bar {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 4px;
+  align-items: center;
   padding: 8px 4px 8px 16px;
 }
 
-/* Takes what the close button leaves (the field's own width is 100%). */
 .phone-search__field {
-  flex: 1 1 0%;
+  grid-column: 1 / -1;
+  grid-row: 1 / span 2;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  align-items: center;
+}
+
+.phone-search__field > :first-child {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
 }
 
-/* The results: in the flow under the field, out to the right gutter
-   (past the close button: 44px + the 4px gap, less the 12px between the
-   X and the screen's edge), bare rows rather than a floating card. */
+.phone-search .phone-search__cancel {
+  grid-column: 2;
+  grid-row: 1;
+  padding-inline: 12px;
+  font-size: var(--text-body-sm);
+}
+
+/* The results: in the flow under the field and Cancel, out to the right
+   gutter, bare rows rather than a floating card. */
 .phone-search .people-search__dropdown {
+  grid-column: 1 / -1;
+  grid-row: 2;
   position: static;
-  margin: 8px -36px 0 0;
+  margin: 8px 12px 0 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -384,6 +406,20 @@ dialog.phone-search {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-md);
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+/* While sign-in resolves (bottom-nav.tsx): not shown, rather than an empty
+   sliver; it fades in complete. */
+.bottom-nav[data-pending] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav {
+    transition: none;
+  }
 }
 
 .bottom-nav__inner {
@@ -594,7 +630,10 @@ dialog.phone-search {
 .app-shell__content {
   max-width: 720px;
   margin: 0 auto;
-  padding: calc(var(--navbar-height) + 16px) 32px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
+  /* The bottom is plain 24px: the site footer always follows the content
+     and clears the phone pill itself (its own bottom padding), so the
+     pill's room isn't counted twice above the footer. */
+  padding: calc(var(--navbar-height) + 16px) 32px 24px;
   /* Fill the center cell (which fills the flex-grown grid) so pages that
      stretch internally — home/explore — still reach the footer, while
      short pages let the grid's flex-grow do the pushing. Was `100vh`,
@@ -1118,11 +1157,31 @@ dialog.phone-search {
   overflow-y: auto;
 }
 
+/* Desktop: the results grow down the window (to 160px short of its
+   bottom, which the field and the sidebar's top take), so Accounts and
+   the last row, "Search Explore for …", are in view, not under a scroll.
+   The rail's field opens lower (beside its Search item, app-sidebar.tsx),
+   so it keeps more room. */
+@media (min-width: 800px) {
+  .people-search__dropdown {
+    max-height: calc(100svh - 160px);
+  }
+
+  .app-sidebar__search-pop .people-search__dropdown {
+    max-height: calc(100svh - 200px);
+  }
+}
+
 .people-search__empty {
   padding: 14px 12px;
   font-size: 0.8125rem;
   color: var(--fg-muted);
   text-align: left;
+}
+
+/* "No activities, projects or accounts match.", over the Explore row. */
+.people-search__no-match {
+  padding: 10px 10px 6px;
 }
 
 .people-search__item {
@@ -1475,13 +1534,44 @@ dialog.phone-search {
   color: var(--fg-muted);
 }
 
-/* While sign-in is being checked: an avatar-sized blank, so nothing moves
-   when the control arrives. */
+/* While sign-in is being checked: a blank shaped like the control, so
+   nothing moves when it arrives. On the rail the avatar, centred; from
+   1300px (below) the avatar and two lines on the control's left edge. */
 .app-sidebar__account-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px;
+}
+
+.app-sidebar__account-placeholder-avatar {
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: var(--bg-sunken);
+}
+
+.app-sidebar__account-placeholder-meta {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-sidebar__account-placeholder-meta > span {
+  display: block;
+  width: 104px;
+  height: 10px;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.app-sidebar__account-placeholder-meta > span + span {
+  width: 72px;
+  height: 8px;
 }
 
 /* Signed out, the account slot is Sign in: a rail item (icon over the
@@ -1722,6 +1812,15 @@ dialog.phone-search {
     display: inline-flex;
   }
 
+  :root:not([data-sidebar="rail"]) .app-sidebar__account-placeholder {
+    justify-content: flex-start;
+    padding: 6px 10px;
+  }
+
+  :root:not([data-sidebar="rail"]) .app-sidebar__account-placeholder-meta {
+    display: flex;
+  }
+
   :root:not([data-sidebar="rail"]) .app-sidebar__full {
     display: flex;
   }
@@ -1799,24 +1898,6 @@ dialog.phone-search {
   flex-direction: column;
   gap: 24px;
   min-width: 0;
-}
-
-/* /create mobile field order. The create form reuses the cert-detail two-pane
-   shell: in source order the metadata <aside> comes first and the Title/
-   description main pane second (so desktop can explicit-place the aside in
-   column 2). On mobile `.page-layout` collapses to a single grid column and
-   honours source order, which stacked the metadata sidebar ABOVE the Title.
-   Re-order so the primary Title/description main pane leads and the metadata
-   sidebar follows. Scoped to `.create-cert` so the cert-detail read view is
-   untouched; only applies below the 800px desktop breakpoint where no explicit
-   grid placement is set. */
-@media (max-width: 799px) {
-  .create-cert.page-layout > .page-layout__main {
-    order: 0;
-  }
-  .create-cert.page-layout > .cert-detail__aside {
-    order: 1;
-  }
 }
 
 /* SmartLink's default anchor class (src/components/ui/smart-link.tsx),

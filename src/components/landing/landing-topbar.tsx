@@ -1,11 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { useProfile } from "@/hooks/use-profile";
 import Avatar from "@/components/ui/avatar";
 import Wordmark from "@/components/ui/wordmark";
 import { getInitials } from "@/lib/utils/initials";
+
+/** Scrolled this far, the wordmark (its bottom edge at 41px) is off the
+ *  top of the screen: on phones the fixed button then gets its bar. */
+const BAR_AFTER_PX = 40;
 
 /**
  * Landing chrome: the faded Certified.app wordmark (as in the app's top
@@ -15,6 +20,16 @@ import { getInitials } from "@/lib/utils/initials";
 export default function LandingTopBar() {
   const { isLoading, isAuthenticated, openSignInModal, did } = useAuth();
   const { profile, avatarUrl } = useProfile();
+  // Past the wordmark the fixed button would float over the page's text;
+  // on phones (landing.css) it then sits in a translucent bar.
+  const [pastWordmark, setPastWordmark] = useState(false);
+
+  useEffect(() => {
+    const update = () => setPastWordmark(window.scrollY > BAR_AFTER_PX);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
 
   return (
     <>
@@ -26,7 +41,7 @@ export default function LandingTopBar() {
       </div>
       {/* Sign-in / open-app button — position: fixed, persists on scroll.
           Waits for the session to resolve. */}
-      <div className="lp-topbar__actions">
+      <div className={`lp-topbar__actions${pastWordmark ? " lp-topbar__actions--bar" : ""}`}>
         {!isLoading &&
           (isAuthenticated ? (
             <Link href="/home" className="lp-topbar__btn lp-topbar__btn--account">

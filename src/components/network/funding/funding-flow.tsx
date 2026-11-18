@@ -1,10 +1,13 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useId, useMemo, useRef, useState } from "react"
 import { SlidersHorizontal } from "lucide-react"
 import Button from "@/components/ui/button"
 import SegmentedControl from "@/components/ui/segmented-control"
+import TabStripFades from "@/components/ui/tab-strip-fades"
 import { useUrlParam } from "@/hooks/use-url-param"
+import { useLayoutBreakpoints } from "@/hooks/use-layout-breakpoints"
+import { useOverflowEdges } from "@/hooks/use-overflow-edges"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { confirmRoleLabel } from "@/lib/funding/labels"
 import { isTrustedFundingSource } from "@/lib/funding/trusted-sources"
@@ -90,6 +93,11 @@ function destPhrase(dest: Destinations, d: number, ds: FundingDataset): string {
  * went: a region, a continent, or the largest projects (`?to=`). A second
  * trusted platform shows up as a second gate. The sizes are the default
  * ones unless the visitor sets their own (`?sizes=`, in "Gift sizes").
+ *
+ * On phones the three columns stack, each a list of bars (its share of the
+ * money), since the ribbons need more width than a phone has. From 800px,
+ * where the chart can still be wider than its box, the box scrolls
+ * sideways with a fade over the cut edge and a line that says so.
  */
 export default function FundingFlow({
   ds,
@@ -111,6 +119,9 @@ export default function FundingFlow({
   const [editing, setEditing] = useState(false)
   const panelId = useId()
   const custom = bounds.join("-") !== DEFAULT_GIFT_BOUNDS.join("-")
+  const { isDesktop } = useLayoutBreakpoints()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const edges = useOverflowEdges(scrollRef)
 
   const sizeList = useMemo(() => giftSizes(bounds), [bounds])
   const dest = useMemo(() => destinations(ds, to, totals), [ds, to, totals])
@@ -316,11 +327,75 @@ export default function FundingFlow({
   const firstBound = formatUsd(bounds[0])
   const lastBound = formatUsd(bounds[bounds.length - 1])
 
+  const pct = (v: number) => Math.round((v / total) * 100)
+
+  const note = (
+    <p className="funding-note">
+      {big.count > 0 ? (
+        <span>
+          <b>{many(big.count, "gift", "gifts")}</b> of {lastBound} or more carried{" "}
+          <b>{Math.round((big.total / total) * 100)}%</b> of the money.
+        </span>
+      ) : null}
+      {small.count > 0 ? (
+        <span>
+          <b>{many(small.count, "gift", "gifts")}</b> under {firstBound} carried{" "}
+          <b>{Math.round((small.total / total) * 100)}%</b>.
+        </span>
+      ) : null}
+      {lead !== undefined && leadName ? (
+        <span>
+          {leadName} received <b>{Math.round((targets[lead].total / total) * 100)}%</b>.
+        </span>
+      ) : null}
+    </p>
+  )
+
+  // Phones: the three columns one under another, each row a bar of its
+  // share of the money.
+  if (!isDesktop) {
+    return (
+      <div className="funding-flow">
+        {bar}
+        {panel}
+        <div className="funding-flow__stack">
+          <FlowColumn
+            title="Gift size"
+            rows={sizeIdx.map((s) => ({
+              key: `s${s}`,
+              name: sizeList[s].label,
+              sub: `${many(sizes[s].count, "gift", "gifts")} · ${formatUsdShort(sizes[s].total)}`,
+              share: pct(sizes[s].total),
+            }))}
+          />
+          <FlowColumn
+            title="Recorded by"
+            rows={gateOrder.map((g) => ({
+              key: `g${g}`,
+              name: gates[g].label,
+              sub: `${many(gates[g].count, "gift", "gifts")} · ${formatUsdShort(gates[g].total)}`,
+              share: pct(gates[g].total),
+            }))}
+          />
+          <FlowColumn
+            title={AXIS[to].charAt(0) + AXIS[to].slice(1).toLowerCase()}
+            rows={targetOrder.map((d) => {
+              const [name, sub, extra] = targetLines(d)
+              return { key: `t${d}`, name, sub: extra ? `${sub} · ${extra}` : sub, share: pct(targets[d].total) }
+            })}
+          />
+        </div>
+        {note}
+      </div>
+    )
+  }
+
   return (
     <div className="funding-flow">
       {bar}
       {panel}
-      <div className="funding-flow__scroll">
+      <div className="funding-flow__frame">
+      <div className="funding-flow__scroll" ref={scrollRef}>
         <svg
           className="funding-flow__svg"
           viewBox={`0 0 ${W} ${svgH}`}
@@ -412,25 +487,45 @@ export default function FundingFlow({
           })}
         </svg>
       </div>
-      <p className="funding-note">
-        {big.count > 0 ? (
-          <span>
-            <b>{many(big.count, "gift", "gifts")}</b> of {lastBound} or more carried{" "}
-            <b>{Math.round((big.total / total) * 100)}%</b> of the money.
-          </span>
-        ) : null}
-        {small.count > 0 ? (
-          <span>
-            <b>{many(small.count, "gift", "gifts")}</b> under {firstBound} carried{" "}
-            <b>{Math.round((small.total / total) * 100)}%</b>.
-          </span>
-        ) : null}
-        {lead !== undefined && leadName ? (
-          <span>
-            {leadName} received <b>{Math.round((targets[lead].total / total) * 100)}%</b>.
-          </span>
-        ) : null}
-      </p>
+      <TabStripFades start={edges.start} end={edges.end} />
+      </div>
+      {edges.start || edges.end ? (
+        <p className="funding-flow__hint">Scroll sideways for the whole chart.</p>
+      ) : null}
+      {note}
     </div>
+  )
+}
+
+/** One stage of the flow on a phone: its rows, each with its share of the
+ *  money as a bar. */
+function FlowColumn({
+  title,
+  rows,
+}: {
+  title: string
+  rows: { key: string; name: string; sub: string; share: number }[]
+}) {
+  const id = useId()
+  return (
+    <section className="funding-flow__col" aria-labelledby={id}>
+      <p id={id} className="funding-flow__col-title">
+        {title}
+      </p>
+      <ul className="funding-flow__rows">
+        {rows.map((r) => (
+          <li key={r.key} className="funding-flow__row">
+            <span className="funding-flow__row-head">
+              <span className="funding-flow__row-name">{r.name}</span>
+              <span className="funding-flow__row-share">{r.share}%</span>
+            </span>
+            <span className="funding-flow__row-sub">{r.sub}</span>
+            <span className="funding-flow__meter" aria-hidden="true">
+              <span style={{ width: `${Math.max(1, r.share)}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

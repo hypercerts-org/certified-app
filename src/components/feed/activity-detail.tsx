@@ -42,6 +42,7 @@ import {
   RecordDescription,
   RecordHeader,
   RecordImage,
+  RecordOwnerCard,
   RecordSectionTabs,
   WorkScopeTags,
 } from "./cert-detail-parts"
@@ -95,12 +96,12 @@ function isAccount(c: ActivityContributor, did: string): boolean {
  *
  *   - the header: the work's photo, "Activity · Part of <project>" (the
  *     project part hidden when it has the activity's own title), the title
- *     as the page's h1 with the owner's Edit, Share and More at its right,
- *     a byline (who, when, where) and the summary as the lead;
+ *     as the page's h1, a byline (who, when, where), the summary as the
+ *     lead, and the actions (the owner's Edit, Like, Share, More) under it;
  *   - the rail of facts (from 1100px beside the content, sticky when it
- *     fits; on phones under the header, on Overview): funding, details
- *     (what the byline doesn't say: work scope, rights, published), the
- *     location, contributors, the project (with its funding);
+ *     fits; on phones under the header, on Overview): funding, the project
+ *     (with its funding), who's behind it, contributors, the location,
+ *     details (what the byline doesn't say: work scope, rights, published);
  *   - the tabs, only those with something in them: Overview (the
  *     description in place, the latest update; with no description, the
  *     details, so the column is never empty), Contributors, Funding and
@@ -112,6 +113,7 @@ export default function ActivityDetail({
   did,
   value,
   cid,
+  handle,
 }: ActivityDetailProps) {
   const imageUrl = value.image ? resolveActivityImageUrl(value.image, did) : null
   const title = value.title?.trim() || "Untitled activity"
@@ -340,13 +342,15 @@ export default function ActivityDetail({
     }
   }, [rkey, did, canEditAsActiveOrg, router])
 
-  // The record's actions at the header's top-right, in the profile's
-  // order: the owner's Edit, Share for everyone (deep-linking the open
-  // tab), then More.
+  // The record's actions, a row under the header's lead, in the
+  // profile's order: the owner's Edit, Like, Share for everyone
+  // (deep-linking the open tab), then More. Share sends the handle form of
+  // the link when the handle is known, as a profile's Share does.
+  const shareActor = handle && handle !== did && !handle.startsWith("did:") ? handle : did
   const sharePath = (() => {
     const base =
-      (recordUri ? recordUrlFromAtUri(recordUri) : null) ??
-      recordUrl(did, "activity", rkey ?? "")
+      (recordUri ? recordUrlFromAtUri(recordUri, shareActor) : null) ??
+      recordUrl(shareActor, "activity", rkey ?? "")
     return activeTab === "overview" ? base : `${base}?tab=${activeTab}`
   })()
   const recordActions = (
@@ -493,6 +497,7 @@ export default function ActivityDetail({
   const moreCards = (
     <>
       {!wide && !projectLeads ? projectCard : null}
+      <RecordOwnerCard did={did} />
       {/* The Contributors tab lists them, so the card steps aside there. */}
       {hasContributors && activeTab !== "contributors" ? (
         <FactCard
@@ -561,7 +566,6 @@ export default function ActivityDetail({
           eyebrow={eyebrow}
           title={title}
           actions={recordActions}
-          actionsRow={canManage}
           byline={<RecordByline did={did} period={period} place={place} />}
           lead={lead}
           compact={activeTab !== "overview"}

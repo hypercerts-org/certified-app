@@ -81,11 +81,14 @@ describe("PhoneSearch", () => {
     rects.mockRestore()
   })
 
-  it("closes with its close button", () => {
+  it("closes with Cancel, a word rather than a second X beside the field", () => {
     render(<PhoneSearch />)
-    const { dialog } = open()
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }))
+    const { trigger, dialog } = open()
+    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }))
     expect(screen.queryByRole("dialog")).toBeNull()
+    // Dismissed: back to the button that opened it.
+    expect(trigger).toHaveFocus()
   })
 
   it("closes on Escape, after the results when they are open", () => {
@@ -110,6 +113,17 @@ describe("PhoneSearch", () => {
     })
     fireEvent.mouseDown(within(dialog).getByRole("option", { name: "Mangrove replanting" }))
     expect(screen.queryByRole("dialog")).toBeNull()
+  })
+
+  it("leaves focus off the Search button when a result navigates", () => {
+    render(<PhoneSearch />)
+    const { trigger, dialog } = open()
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Search" }), {
+      target: { value: "mangrove" },
+    })
+    fireEvent.mouseDown(within(dialog).getByRole("option", { name: "Mangrove replanting" }))
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(trigger).not.toHaveFocus()
   })
 
   it("closes when the page changes", () => {

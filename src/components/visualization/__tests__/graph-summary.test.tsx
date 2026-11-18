@@ -40,3 +40,19 @@ describe("graphSummary", () => {
     expect(graphSummary(graph(1, 1, 1))).toBe("1 account · 1 endorsement · 1 mutual pair")
   })
 })
+
+// While the network loads (below 1100px) the totals line and the find +
+// Filters row hold their place, so the graph doesn't move down when they
+// arrive.
+describe("Visualization while loading", () => {
+  it("reserves the totals line and the find + Filters row", async () => {
+    const { render } = await import("@testing-library/react")
+    const { default: Visualization } = await import("../visualization")
+    const { container } = render(<Visualization embedded />)
+    expect(container.querySelector(".viz__summary--loading")).not.toBeNull()
+    const row = container.querySelector(".viz__toolbar--placeholder")
+    expect(row).not.toBeNull()
+    expect(row).toHaveAttribute("aria-hidden", "true")
+    expect(row!.querySelector("input")).toBeDisabled()
+  })
+})

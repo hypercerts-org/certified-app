@@ -33,4 +33,18 @@ describe("TOUR_STEPS", () => {
   it("has unique ids", () => {
     expect(new Set(TOUR_STEPS.map((s) => s.id)).size).toBe(TOUR_STEPS.length)
   })
+
+  it("skips your own Settings while acting as a group", () => {
+    const settings = TOUR_STEPS.find((s) => s.anchor === "settings-handle")
+    expect(settings?.navigateTo).toBe("/settings#account")
+    expect(settings?.personalOnly).toBe(true)
+  })
+
+  it("says each thing once, in today's words", () => {
+    const byId = (id: string) => TOUR_STEPS.find((s) => s.id === id)?.body ?? ""
+    expect(byId("feed")).toContain("trusted endorsers you pick in the filters")
+    expect(byId("feed")).not.toMatch(/evaluator/i)
+    // The Network step right after says what Network is.
+    expect(byId("nav-workspace")).not.toMatch(/Network/)
+  })
 })

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ArrowLeftRight, Image as ImageIcon, Users } from "lucide-react"
+import Link from "next/link"
+import { Users } from "lucide-react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrg } from "@/lib/groups/org-context"
 import { useOrgCreationLimit } from "@/lib/groups/use-org-limit"
@@ -445,6 +446,8 @@ export default function CreateGroupPage() {
                       : "create-group__avatar-tile create-group__avatar-tile--placeholder"
                   }
                 >
+                  {/* Empty, the tile shows one affordance: the overlay's
+                      "Add image" pill (no placeholder glyph as well). */}
                   {avatarPreviewUrl ? (
                     <Image
                       src={avatarPreviewUrl}
@@ -453,14 +456,7 @@ export default function CreateGroupPage() {
                       className="create-group__avatar-img"
                       unoptimized
                     />
-                  ) : (
-                    <Users
-                      size={36}
-                      strokeWidth={1.25}
-                      aria-hidden
-                      className="create-group__avatar-placeholder-icon"
-                    />
-                  )}
+                  ) : null}
                   <ImageEditOverlay
                     onFile={handleAvatarFile}
                     hasPending={!!avatarFile}
@@ -488,14 +484,7 @@ export default function CreateGroupPage() {
                       className="project-detail__hero-img"
                       unoptimized
                     />
-                  ) : (
-                    <ImageIcon
-                      size={48}
-                      strokeWidth={1.25}
-                      aria-hidden
-                      className="project-detail__hero-placeholder-icon"
-                    />
-                  )}
+                  ) : null}
                   <ImageEditOverlay
                     onFile={handleBannerFile}
                     hasPending={!!bannerFile}
@@ -509,14 +498,18 @@ export default function CreateGroupPage() {
 
             <header className="cert-detail__headline">
               <div className="create-cert__input-with-counter">
-                {/* The title-style field, as New activity's title: the
-                    Input primitive in the record title's serif role. */}
+                {/* Labelled like every other field (as New activity's
+                    Title). The title-style field, as New activity's
+                    title: the Input primitive in the record title's serif
+                    role. */}
+                <label htmlFor="create-group-name" className="project-detail__meta-label">
+                  Display name
+                </label>
                 <Input
                   flush
                   type="text"
                   id="create-group-name"
                   className="font-headline !text-h3"
-                  aria-label="Display name"
                   aria-describedby={
                     nameError ? "create-group-name-error" : "create-group-name-counter"
                   }
@@ -637,26 +630,17 @@ export default function CreateGroupPage() {
               />
             </section>
 
-            <aside className="create-group__convert">
-              <ArrowLeftRight
-                size={16}
-                strokeWidth={2}
-                aria-hidden
-                className="create-group__convert-icon"
-              />
-              <div className="create-group__convert-body">
-                <p className="create-group__convert-title">
-                  Already have an account for this group?
-                </p>
-                <p className="create-group__convert-text">
-                  Log in as that account, then open{" "}
-                  <span className="create-group__convert-path">
-                    Settings → Group account
-                  </span>{" "}
-                  to convert it.
-                </p>
-              </div>
-            </aside>
+            {/* The other way to a group, in one quiet line: keep an
+                existing account and its records (/groups/import). */}
+            <p className="m-0 text-ui text-[var(--fg-muted)]">
+              Already have an account to turn into a group?{" "}
+              <Link
+                href="/groups/import"
+                className="text-[var(--fg-secondary)] underline underline-offset-2"
+              >
+                Use that account
+              </Link>
+            </p>
           </div>
         </article>
 

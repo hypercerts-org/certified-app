@@ -72,8 +72,9 @@ const NETWORK = DESTINATIONS.find((d) => d.key === "network")!
  * switches rail and full list, so the layout never waits for JS; on
  * routes without the app chrome (chrome.ts) it renders nothing, which
  * zeroes `--sidebar-width` (tokens.css). Until sign-in is known it shows
- * the brand and an avatar-sized placeholder and no rows, so nothing is
- * inserted later.
+ * the brand and a placeholder shaped like the account control (an avatar;
+ * from 1300px an avatar and two lines) and no rows, so nothing is inserted
+ * later.
  */
 export default function AppSidebar() {
   const pathname = usePathname()
@@ -126,7 +127,15 @@ export default function AppSidebar() {
             rows below never move. */}
         <div className="app-sidebar__account-slot">
           {isLoading ? (
-            <span className="app-sidebar__account-placeholder" aria-hidden />
+            // Shaped like the control it stands in for: the avatar on the
+            // rail; from 1300px the avatar and two lines, on its left edge.
+            <span className="app-sidebar__account-placeholder" aria-hidden>
+              <span className="app-sidebar__account-placeholder-avatar" />
+              <span className="app-sidebar__account-placeholder-meta">
+                <span />
+                <span />
+              </span>
+            </span>
           ) : isAuthenticated ? (
             <DesktopAccountSwitcher />
           ) : (
@@ -386,7 +395,7 @@ function SidebarSearch() {
           offset={12}
           minWidth={360}
           aria-label="Search"
-          className="w-[400px] p-2"
+          className="app-sidebar__search-pop w-[400px] p-2"
           style={{ zIndex: "var(--z-chrome-menu)" }}
         >
           <GlobalSearch placeholder="Search" />

@@ -59,7 +59,7 @@ interface Tip {
   detail: string
 }
 
-export default function MapSites({ model, kind, height, resize, filtersHost }: MapViewProps) {
+export default function MapSites({ model, kind, height, resize, filtersHost, startBand }: MapViewProps) {
   const [sort, setSort] = useState<Sort>("size")
   const [filter, setFilter] = useState<Filter>("all")
   const [showHidden, setShowHidden] = useState(false)
@@ -525,6 +525,7 @@ export default function MapSites({ model, kind, height, resize, filtersHost }: M
             ref={mapRef}
             kind={kind}
             height={height}
+            startBand={startBand}
             label="Map of the areas people drew"
             draw={draw}
             drawKey={draw}
@@ -714,7 +715,7 @@ function SiteDetail({
       ) : s.used ? (
         <p className="map-sites__note">An activity names this place among several of its places.</p>
       ) : (
-        <p className="map-sites__note">Not used yet. No activity, project or organization points to this place.</p>
+        <p className="map-sites__note">Not used yet. No activity, project or account points to this place.</p>
       )}
 
       {n > 1 ? (
@@ -894,7 +895,7 @@ function usageCount(uses: readonly SiteUse[]): string {
   const parts: string[] = []
   if (n.activity) parts.push(`${n.activity} ${n.activity === 1 ? "activity" : "activities"}`)
   if (n.project) parts.push(`${n.project} ${n.project === 1 ? "project" : "projects"}`)
-  if (n.org) parts.push(`${n.org} ${n.org === 1 ? "organization" : "organizations"}`)
+  if (n.org) parts.push(`${n.org} ${n.org === 1 ? "account" : "accounts"}`)
   return listText(parts, 0)
 }
 

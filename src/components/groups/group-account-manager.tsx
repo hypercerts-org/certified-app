@@ -15,6 +15,7 @@ import Input from "@/components/ui/input"
 import Button from "@/components/ui/button"
 import EmptyState from "@/components/ui/empty-state"
 import ErrorMessage from "@/components/ui/error-message"
+import { caughtErrorMessage } from "@/lib/utils/user-error"
 import CopyPill from "@/components/account/copy-pill"
 import { useUnlockSession } from "@/components/settings/unlock-app-passwords-fields"
 import { UnlockSessionDialog } from "@/components/settings/unlock-app-passwords-dialog"
@@ -114,7 +115,9 @@ export default function GroupAccountManager({
       setEditingHandle(false)
       void refetchOrgs()
     } catch (err) {
-      setHandleError(err instanceof Error ? err.message : "Failed to update handle")
+      setHandleError(
+        caughtErrorMessage(err, "Couldn't change the group's handle. Try again in a moment"),
+      )
     } finally {
       setSavingHandle(false)
     }
@@ -151,7 +154,9 @@ export default function GroupAccountManager({
       setEmailToken("")
       setNeedsToken(false)
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : "Failed to update email")
+      setEmailError(
+        caughtErrorMessage(err, "Couldn't change the group's email. Try again in a moment"),
+      )
     } finally {
       setSavingEmail(false)
     }

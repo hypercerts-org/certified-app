@@ -81,12 +81,12 @@ type ProjectTab = "overview" | "activities" | "funding" | "updates"
  * laid out like the activity page (one record layout, record-page.css):
  *
  *   - the header: the banner (or the first activity's photo), "Project",
- *     the title as the page's h1 with the owner's Edit, Share and More at
- *     its right, a byline (who, when, where) and the summary as the lead;
+ *     the title as the page's h1, a byline (who, when, where), the summary
+ *     as the lead, and the actions (the owner's Edit, Like, Share, More)
+ *     under it;
  *   - the rail of facts (from 1100px beside the content, sticky when it
  *     fits; on phones under the header, on Overview): funding, who's
- *     behind it (when the account says something about itself), the
- *     location, details (only what the header doesn't say);
+ *     behind it, the location, details (only what the header doesn't say);
  *   - the tabs, only those with something in them: Overview (the
  *     description in place, the activities as work cards, the latest
  *     update), Activities, Funding and Updates.
@@ -100,6 +100,7 @@ export default function ProjectDetail({
   rkey,
   value,
   cid,
+  handle,
 }: ProjectDetailProps) {
   // Edit eligibility mirrors the activity page.
   const { did: sessionDid } = useAuth()
@@ -346,11 +347,14 @@ export default function ProjectDetail({
     }
   }
 
-  // The record's actions at the header's top-right, in the profile's
-  // order: the owner's Edit, Share for everyone (deep-linking the open
-  // tab), then More.
+  // The record's actions, a row under the header's lead, in the
+  // profile's order: the owner's Edit, Like, Share for everyone
+  // (deep-linking the open tab), then More. Share sends the handle form of
+  // the link when the handle is known, as a profile's Share does.
+  const shareActor = handle && handle !== did && !handle.startsWith("did:") ? handle : did
   const sharePath = (() => {
-    const base = recordUrlFromAtUri(recordUri) ?? recordUrl(did, "project", rkey)
+    const base =
+      recordUrlFromAtUri(recordUri, shareActor) ?? recordUrl(shareActor, "project", rkey)
     return activeTab === "overview" ? base : `${base}?tab=${activeTab}`
   })()
   const recordActions = (
@@ -513,7 +517,6 @@ export default function ProjectDetail({
           eyebrow="Project"
           title={title}
           actions={recordActions}
-          actionsRow={canManage}
           byline={<RecordByline did={did} period={period} place={place} />}
           lead={lead}
           compact={compactHeader}

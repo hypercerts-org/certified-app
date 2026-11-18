@@ -1,10 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy"
 import Avatar from "@/components/ui/avatar"
 import Button from "@/components/ui/button"
+import ResponsiveDialog from "@/components/ui/responsive-dialog"
+import { AppDialogHeader } from "@/components/ui/app-dialog"
 import { profileUrl, recordUrlFromAtUri } from "@/lib/urls"
 import type { FundingDataset } from "@/lib/funding/dataset-types"
 import { dailyTotals, type ProjectTotal } from "@/lib/funding/select"
@@ -21,7 +23,14 @@ const STACK_BELOW = 760
 /**
  * Projects first: a wall of the work, each project a tile sized by the
  * money it received, with its banner photo. Picking a tile (or an avatar in
- * the strip) shows that project's funding in the panel.
+ * the strip) shows that project's funding in the panel beside the wall.
+ *
+ * Narrow (phones, and a narrow desktop window) the wall is a two-column
+ * card grid with no room beside it: picking a card opens its funding in a
+ * sheet (a dialog from 800px) over the page, so the reader stays where they
+ * picked it, and the projects past the first cards are a "Show the other N
+ * projects" list of rows (name and amount) rather than a strip of tiny
+ * marks.
  */
 export default function FundingMosaic({
   ds,
@@ -41,6 +50,19 @@ export default function FundingMosaic({
 }) {
   const [ref, width] = useElementWidth<HTMLDivElement>()
   const stacked = width > 0 && width < STACK_BELOW
+  // Narrow: the picked project's funding in a sheet, and the rest of the
+  // projects behind a button.
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [tailOpen, setTailOpen] = useState(false)
+  // The button that showed the list is gone: its first row takes focus.
+  const tailListRef = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    if (tailOpen) tailListRef.current?.querySelector("button")?.focus({ preventScroll: true })
+  }, [tailOpen])
+  const pick = (project: number) => {
+    onSelect(project)
+    if (stacked) setSheetOpen(true)
+  }
   const tiles = totals.slice(0, TILE_COUNT)
   const tail = totals.slice(TILE_COUNT)
   const current = totals.find((t) => t.project === selected) ?? totals[0] ?? null
@@ -77,7 +99,7 @@ export default function FundingMosaic({
         {stacked ? (
           <div className="funding-mosaic__cards">
             {tiles.map((t) => (
-              <ProjectCard key={t.project} ds={ds} t={t} selected={current?.project === t.project} onSelect={onSelect} />
+              <ProjectCard key={t.project} ds={ds} t={t} selected={sheetOpen && current?.project === t.project} onSelect={pick} />
             ))}
           </div>
         ) : (
@@ -94,7 +116,34 @@ export default function FundingMosaic({
             ))}
           </div>
         )}
-        {tail.length > 0 ? (
+        {tail.length > 0 && stacked ? (
+          tailOpen ? (
+            <>
+              <div className="funding-mosaic__tail-caption">
+                <span>
+                  The other {formatCount(tail.length)} projects · {formatUsd(tailTotal)}
+                </span>
+                <span>Largest first</span>
+              </div>
+              <ul ref={tailListRef} className="funding-mosaic__tail-list">
+                {tail.map((t) => (
+                  <li key={t.project}>
+                    <TailRow ds={ds} t={t} onSelect={pick} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <Button
+              variant="secondary"
+              size="md"
+              className="funding-mosaic__tail-more"
+              onClick={() => setTailOpen(true)}
+            >
+              Show the other {formatCount(tail.length)} projects
+            </Button>
+          )
+        ) : tail.length > 0 ? (
           <>
             <div className="funding-mosaic__tail-caption">
               <span>
@@ -130,10 +179,51 @@ export default function FundingMosaic({
           </>
         ) : null}
       </div>
-      {current ? (
+      {current && !stacked ? (
         <ProjectPanel ds={ds} t={current} idx={idx} onShowReceipts={onShowReceipts} />
       ) : null}
+      {current && stacked ? (
+        <ResponsiveDialog
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          ariaLabel={ds.projects[current.project]?.title ?? "Project"}
+          header={<AppDialogHeader title="" bare onClose={() => setSheetOpen(false)} />}
+          className="funding-sheet"
+          maxWidth={420}
+        >
+          <ProjectPanel ds={ds} t={current} idx={idx} onShowReceipts={onShowReceipts} />
+        </ResponsiveDialog>
+      ) : null}
     </div>
+  )
+}
+
+/** One of the other projects, narrow: its mark, name and amount. */
+function TailRow({
+  ds,
+  t,
+  onSelect,
+}: {
+  ds: FundingDataset
+  t: ProjectTotal
+  onSelect: (project: number) => void
+}) {
+  const p = ds.projects[t.project]
+  const owner = ds.accounts[p.owner]
+  const name = owner?.name ?? p.title ?? "Project"
+  return (
+    <button type="button" className="funding-mosaic__tail-row" onClick={() => onSelect(t.project)}>
+      <Avatar
+        src={owner?.avatar ?? p.avatar ?? undefined}
+        alt=""
+        size="xs"
+        shape="square"
+        seed={owner?.did}
+        fallbackInitials={initials(owner?.name ?? p.title)}
+      />
+      <span className="funding-mosaic__tail-name">{name}</span>
+      <span className="funding-mosaic__tail-amount">{formatUsd(t.total)}</span>
+    </button>
   )
 }
 

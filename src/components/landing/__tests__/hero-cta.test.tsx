@@ -19,6 +19,12 @@ describe("HeroCta", () => {
     )
   })
 
+  it("marks the way into the network as in-app: no outward arrow", () => {
+    render(<HeroCta explore />)
+
+    expect(screen.getByRole("link", { name: "Explore the network" }).querySelector("svg")).toBeNull()
+  })
+
   it("keeps the closing section to the two buttons", () => {
     render(<HeroCta />)
 

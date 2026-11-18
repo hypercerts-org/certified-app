@@ -102,10 +102,15 @@ describe("Received rows (EN1, X3)", () => {
     // The shown row has no tag.
     expect(within(rows[0]).queryByText("Hidden")).toBeNull()
     // The exception stands out, as Follow / Following do: a filled Show on
-    // the hidden row, an outlined Hide on the shown one.
-    const show = within(hiddenRow).getByRole("button", { name: "Show the endorsement from Ben Okafor" })
+    // the hidden row, an outlined Hide on the shown one. WS-11: the words
+    // say what changes, the profile.
+    const show = within(hiddenRow).getByRole("button", {
+      name: "Show on profile: the endorsement from Ben Okafor",
+    })
+    expect(show.textContent).toBe("Show on profile")
     expect(show.className).toContain("bg-[var(--btn-primary-bg)]")
-    const hide = within(rows[0]).getByRole("button", { name: /^Hide the endorsement from/ })
+    const hide = within(rows[0]).getByRole("button", { name: /^Hide from profile: the endorsement from/ })
+    expect(hide.textContent).toBe("Hide from profile")
     expect(hide.className).not.toContain("bg-[var(--btn-primary-bg)]")
   })
 
