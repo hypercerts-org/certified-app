@@ -27,6 +27,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Every response: no MIME sniffing, and only the origin in the
+        // Referer sent to other sites (profile pages link out a lot).
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      {
         source: "/:path((?!embed/).*)",
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
