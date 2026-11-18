@@ -66,6 +66,8 @@ Be brief with users and developers without omitting important details.
 
 This branch (`v2`) is a clean-slate rebuild of certified.app; `main` and `staging` hold the previous app. Read `README.md`, especially "How it is put together", before changing data access, caching or rendering.
 
+To review a change against this codebase's standards (architecture, data and caching, permissions, Next.js, the UI toolkit, security, simplicity), use the `review-changes` skill (`.agents/skills/review-changes/SKILL.md`; linked from `.claude/skills`).
+
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `pnpm build` must pass.
 
 API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods (and `com.atproto.server.getServiceAuth`, which calling it needs) are installed and generated with `lex install` and `lex build` (`lexicons.json`, `vendor/cgs-lexicons/`, `src/lexicons/`, never edited by hand).
