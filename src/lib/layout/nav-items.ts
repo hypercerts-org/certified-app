@@ -8,7 +8,6 @@ import {
   Network,
   Newspaper,
   ThumbsUp,
-  UsersRound,
   type LucideIcon,
 } from "lucide-react"
 
@@ -32,7 +31,6 @@ export type WorkspaceSection =
   | "activities"
   | "endorsements"
   | "lists"
-  | "groups"
 
 export const WORKSPACE_SECTIONS: readonly {
   key: WorkspaceSection
@@ -49,7 +47,6 @@ export const WORKSPACE_SECTIONS: readonly {
   },
   { key: "endorsements", label: "Endorsements", href: "/records?kind=endorsements", icon: ThumbsUp },
   { key: "lists", label: "Lists", href: "/records?kind=lists", icon: ListChecks },
-  { key: "groups", label: "Groups", href: "/records?kind=groups", icon: UsersRound },
 ]
 
 /** The label of a Workspace section, for page titles. */
@@ -71,6 +68,12 @@ export function parseRecordKind(value: string | null): RecordKind {
   return (RECORD_KINDS as readonly string[]).includes(value ?? "")
     ? (value as RecordKind)
     : "activities"
+}
+
+/** Whether a `?kind=` value is the old Groups section. Your groups are in
+ *  the account menu (switch, New group) and on the Overview. */
+export function isGroupsKind(value: string | null): boolean {
+  return value === "groups"
 }
 
 /** Whether a `?kind=` value is the old Followers (or older Following)

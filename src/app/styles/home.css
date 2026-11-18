@@ -267,9 +267,7 @@
 }
 
 /* A compact group row (Home's "Your groups"): the link to the group's
-   profile, which takes the full width, and an optional Switch button.
-   Workspace → Groups uses the people row instead (records-person in
-   records.css). */
+   profile, which takes the full width. */
 .home-group {
   display: flex;
   align-items: center;

@@ -51,11 +51,11 @@ describe("/groups/import", () => {
     expect(screen.getByRole("button", { name: "Turn into a group" })).toBeInTheDocument()
   })
 
-  it("Cancel goes to Groups, like the back link", () => {
+  it("Cancel goes to the Overview, like the back link", () => {
     render(<ImportGroupPage />)
-    expect(screen.getByRole("link", { name: /Groups/ })).toHaveAttribute("href", "/records?kind=groups")
+    expect(screen.getByRole("link", { name: /Overview/ })).toHaveAttribute("href", "/home")
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
-    expect(push).toHaveBeenCalledWith("/records?kind=groups")
+    expect(push).toHaveBeenCalledWith("/home")
   })
 
   // C5: the button stays enabled; a click without a password says what's

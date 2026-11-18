@@ -90,7 +90,6 @@ describe("AppSidebar", () => {
       "Projects and activities",
       "Endorsements",
       "Lists",
-      "Groups",
       "Feed",
       "Explore",
       "Graph",
@@ -133,7 +132,6 @@ describe("AppSidebar", () => {
       "Projects and activities",
       "Endorsements",
       "Lists",
-      "Groups",
     ])
     expect(within(menu).getByRole("menuitem", { name: "Lists" })).toHaveAttribute("aria-current", "page")
   })

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   isFollowersKind,
+  isGroupsKind,
   networkSectionFor,
   networkSectionsFor,
   parseRecordKind,
@@ -19,7 +20,13 @@ describe("workspaceSectionFor", () => {
 describe("parseRecordKind", () => {
   it("opens anything unknown on the first section", () => {
     expect(parseRecordKind("nope")).toBe("activities")
-    expect(parseRecordKind("groups")).toBe("groups")
+    expect(parseRecordKind("lists")).toBe("lists")
+  })
+
+  it("knows the old Groups section, which left the Workspace", () => {
+    expect(isGroupsKind("groups")).toBe(true)
+    expect(isGroupsKind("lists")).toBe(false)
+    expect(isGroupsKind(null)).toBe(false)
   })
 
   it("knows the old Followers and Following sections, which are on the profile now", () => {

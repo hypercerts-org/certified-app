@@ -2,9 +2,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Plus, UsersRound } from "lucide-react"
+import { Plus } from "lucide-react"
 import Button from "@/components/ui/button"
-import EmptyState from "@/components/ui/empty-state"
 import { Tab, TabList, TabPanel, Tabs } from "@/components/ui/tabs"
 import NewEndorsementPanel from "@/components/endorsements/new-endorsement-panel"
 import ProfileLists, { LIST_SECTIONS } from "@/components/profile/profile-lists"
@@ -27,9 +26,7 @@ import { useTypedLists } from "@/hooks/use-typed-lists"
 import { profileUrl } from "@/lib/urls"
 import ReceivedEndorsements, { isHiddenEndorsement } from "@/components/records/received-endorsements"
 import GivenEndorsements from "@/components/records/given-endorsements"
-import { GroupRows } from "@/components/home/home-sections"
-import { useOrg } from "@/lib/groups/org-context"
-import { PaneTabBar, RowsSkeleton } from "@/components/records/records-shared"
+import { PaneTabBar } from "@/components/records/records-shared"
 import { WorkspaceFrame } from "@/components/layout/workspace-shell"
 
 type GivenState = ReturnType<typeof useGivenEndorsements>
@@ -406,53 +403,5 @@ function ListsTabs({ did, onRetry }: { did: string; onRetry: () => void }) {
         </div>
       </TabPanel>
     </Tabs>
-  )
-}
-
-// --------------------------------- Groups -----------------------------------
-
-/**
- * Every group the account belongs to, with your role in each: open its
- * profile, or switch to act as it. Home's "Your groups" shows the first
- * few and links here.
- */
-export function GroupsPane() {
-  const titleId = useId()
-  const { groups, isLoading } = useOrg()
-  const newGroup = (
-    <Button href="/groups/create" variant="secondary" size="sm">
-      <Plus size={16} strokeWidth={1.75} aria-hidden />
-      New group
-    </Button>
-  )
-  return (
-    <WorkspaceFrame titleId={titleId}>
-      <section className="records-pane" aria-labelledby={titleId}>
-        {isLoading && groups.length === 0 ? (
-          <RowsSkeleton shape="square" rows={3} />
-        ) : groups.length === 0 ? (
-          <EmptyState
-            icon={UsersRound}
-            headingLevel={2}
-            title="You're not in any groups yet"
-            description="A group is an account that several people manage together, like an organization or a team. Create one, or ask a group's admin to add you."
-          >
-            {newGroup}
-          </EmptyState>
-        ) : (
-          <>
-            {/* No tabs here: the count and New group make the pane's first
-                row, on the line the other panes' tabs sit on. */}
-            <div className="records-pane__headrow">
-              <p className="records-pane__count">
-                {groups.length === 1 ? "1 group" : `${groups.length} groups`}
-              </p>
-              {newGroup}
-            </div>
-            <GroupRows groups={groups} size="md" />
-          </>
-        )}
-      </section>
-    </WorkspaceFrame>
   )
 }

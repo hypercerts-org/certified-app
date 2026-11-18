@@ -370,7 +370,7 @@ export default function CreateGroupPage() {
   // the page keeps its frame while auth and the group count resolve.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/records?kind=groups", label: "Groups" }}
+      back={{ href: "/home", label: "Overview" }}
       title="New group"
       description="A shared account your team can publish records as."
     />
@@ -420,8 +420,8 @@ export default function CreateGroupPage() {
           description={`You've reached the limit of ${MAX_SELF_CREATED_ORGS} self-created groups. Leave or delete one to make room for a new group.`}
           headingLevel={2}
         >
-          <Button variant="secondary" href="/records?kind=groups">
-            Back to Groups
+          <Button variant="secondary" href="/home">
+            Back to Overview
           </Button>
         </EmptyState>
       </PageContainer>

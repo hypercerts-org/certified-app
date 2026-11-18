@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest"
-import { render, screen, cleanup, fireEvent, within } from "@testing-library/react"
+import { render, screen, cleanup } from "@testing-library/react"
 
 import type { Group } from "@/lib/groups/types"
-import { GroupRows, HomeGroups, groupProfileHref } from "../home-sections"
+import { HomeGroups, groupProfileHref } from "../home-sections"
 
 const GROUPS: Group[] = [
   {
@@ -27,14 +27,8 @@ vi.mock("@/lib/groups/org-context", () => ({
   useOrg: () => orgMock(),
 }))
 
-const switchActor = vi.fn()
-vi.mock("@/lib/groups/use-switch-actor", () => ({
-  useSwitchActor: () => switchActor,
-}))
-
 afterEach(() => {
   cleanup()
-  switchActor.mockReset()
 })
 
 describe("groupProfileHref", () => {
@@ -47,7 +41,7 @@ describe("groupProfileHref", () => {
 
 describe("Home: Your groups", () => {
   it("makes each row a link to the group's profile, with no Act as button", () => {
-    render(<HomeGroups />)
+    render(<HomeGroups profileBase="/me.test" />)
     const estuary = screen.getByRole("link", { name: /Estuary Alliance/ })
     expect(estuary.getAttribute("href")).toBe("/estuary.certified.app")
     // The row carries the full name and the role and handle line.
@@ -59,44 +53,23 @@ describe("Home: Your groups", () => {
     expect(screen.queryByRole("button", { name: /Act as/ })).toBeNull()
   })
 
+  it("links to every group on your profile once there are more than it shows", () => {
+    const many = Array.from({ length: 6 }, (_, i) => ({
+      ...GROUPS[0],
+      groupDid: `did:plc:g${i}`,
+      handle: `g${i}.certified.app`,
+      displayName: `Group ${i}`,
+    }))
+    orgMock.mockImplementation(() => ({ groups: many, isLoading: false }))
+    render(<HomeGroups profileBase="/me.test" />)
+    expect(screen.getByRole("link", { name: "All 6 groups" })).toHaveAttribute("href", "/me.test?tab=groups")
+    orgMock.mockImplementation(() => ({ groups: GROUPS, isLoading: false }))
+  })
+
   it("keeps New group in the header", () => {
-    render(<HomeGroups />)
+    render(<HomeGroups profileBase="/me.test" />)
     expect(screen.getByRole("link", { name: /New group/ }).getAttribute("href")).toBe(
       "/groups/create",
     )
-  })
-})
-
-describe("Workspace → Groups rows", () => {
-  // WS-07: "Act as", the words the Workspace menu uses (was "Switch").
-  it("keep an Act as button that acts as the group", () => {
-    render(<GroupRows groups={GROUPS} size="md" />)
-    const rows = screen.getAllByRole("listitem")
-    expect(rows).toHaveLength(2)
-    expect(within(rows[0]).getByRole("link").getAttribute("href")).toBe("/estuary.certified.app")
-    const actAs = within(rows[0]).getByRole("button", { name: "Act as Estuary Alliance" })
-    expect(actAs.textContent).toBe("Act as")
-    fireEvent.click(actAs)
-    expect(switchActor).toHaveBeenCalledWith(GROUPS[0])
-  })
-
-  it("use the people size, like Followers (GR1): 40px square avatar, name in body, meta in ui", () => {
-    render(<GroupRows groups={GROUPS} size="md" />)
-    const row = screen.getAllByRole("listitem")[0]
-    expect(row).toHaveClass("records-person")
-    expect(within(row).getByRole("link")).toHaveClass("hover-tint", "hover-tint--bleed")
-    const avatar = row.querySelector(".h-10.w-10")
-    expect(avatar).not.toBeNull()
-    expect(within(row).getByText("Estuary Alliance")).toHaveClass("records-person__name")
-    expect(within(row).getByText(/Admin/)).toHaveClass("records-person__handle")
-    // The button sits in the people rows' one-width slot.
-    expect(within(row).getByRole("button").closest(".records-person__action")).not.toBeNull()
-  })
-
-  it("stay compact in Home's Your groups", () => {
-    render(<GroupRows groups={GROUPS} size="sm" showSwitch={false} />)
-    const row = screen.getAllByRole("listitem")[0]
-    expect(row).toHaveClass("home-group")
-    expect(row.querySelector(".h-8.w-8")).not.toBeNull()
   })
 })

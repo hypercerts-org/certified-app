@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus, UsersRound } from "lucide-react"
+import { Plus } from "lucide-react"
 import LoadingSpinner from "@/components/ui/loading-spinner"
 import EmptyState from "@/components/ui/empty-state"
 import Button from "@/components/ui/button"
@@ -14,6 +14,7 @@ import WorkspaceShell, {
 } from "@/components/layout/workspace-shell"
 import {
   isFollowersKind,
+  isGroupsKind,
   parseRecordKind,
   WORKSPACE_SECTIONS,
   type RecordKind,
@@ -24,7 +25,6 @@ import { ownProfileUrl } from "@/lib/urls"
 import WorkPane from "@/components/records/work-pane"
 import {
   EndorsementsPane,
-  GroupsPane,
   ListsPane,
   type PaneGroup,
 } from "@/components/records/records-panes"
@@ -40,11 +40,10 @@ import type { CollectionRecord } from "@/lib/atproto/collection"
  * sentence where the group's own records of that kind are (naming the
  * group), and link to those tabs of its profile (`?tab=` keys of the
  * profile page). Endorsements shows the group's own (its pane, read for
- * its DID and written as the group); Groups is a personal list and has
- * its own state.
+ * its DID and written as the group).
  */
 const GROUP_SECTIONS: Record<
-  Exclude<RecordKind, "groups" | "endorsements">,
+  Exclude<RecordKind, "endorsements">,
   {
     /** What shows on the profile, after the group's name. */
     what: string
@@ -74,25 +73,24 @@ export function groupSectionTitle(groupName: string, what: string): string {
 /**
  * `/records` — the Workspace sections that manage what the signed-in
  * person's account holds: projects with their activities (as folders),
- * endorsements given and received, lists, and their groups. `?kind=` picks
- * the section; Endorsements and Lists have tabs (`&tab=`). Followers and
- * who the account follows are on its profile: the old `?kind=followers`
- * (and `?kind=following`) links go to that tab of the profile of the
- * account you act as. The Workspace frame (`WorkspaceShell`
- * and `WorkspaceFrame`), shared with the Overview (`/home`), puts the
- * section's title over it; the navigation lists the sections.
+ * endorsements given and received, and lists. `?kind=` picks the
+ * section; Endorsements and Lists have tabs (`&tab=`). Followers and who
+ * the account follows are on its profile: the old `?kind=followers` (and
+ * `?kind=following`) links go to that tab of the profile of the account
+ * you act as. Your groups are in the account menu (switch, New group) and
+ * on the Overview: the old `?kind=groups` links go to the Overview.
  *
- * Each section carries its own create action in its tab row
- * (New activity and New project, Endorse someone, Find accounts, New
- * list, New group); the top bar's New is the global one.
+ * The Workspace frame (`WorkspaceShell` and `WorkspaceFrame`), shared with
+ * the Overview (`/home`), puts the section's title over it; the navigation
+ * lists the sections. Each section carries its own create action in its
+ * tab row (New activity and New project, Endorse someone, New list).
  *
  * The sections write to the session DID's repo. While acting as a group,
  * Endorsements shows the group's own (read for its DID; owners and admins
  * endorse, revoke and hide as the group through the group routes, a member
- * reads); the other sections say
- * where the group's records of their kind are (that tab of the group's
- * profile) and offer to switch back; Projects and activities still
- * creates, as the group.
+ * reads); the other sections say where the group's records of their kind
+ * are (that tab of the group's profile) and offer to switch back; Projects
+ * and activities still creates, as the group.
  */
 export default function RecordsPage() {
   const router = useRouter()
@@ -145,12 +143,18 @@ export default function RecordsPage() {
     if (toFollowers && isAuthenticated && followersTarget) router.replace(followersTarget)
   }, [toFollowers, isAuthenticated, followersTarget, router])
 
+  // Groups left the Workspace: old links open the Overview.
+  const toOverview = isGroupsKind(kindParam)
+  useEffect(() => {
+    if (toOverview && isAuthenticated) router.replace("/home")
+  }, [toOverview, isAuthenticated, router])
+
   // Every state renders the Workspace frame (side list, content, the
   // page's h1): the panes with their actions, the states below without.
   const content = (() => {
     // While auth resolves (also on the server) and while the signed-out
     // redirect runs: the side list and a spinner.
-    if (authLoading || !isAuthenticated || !did || toFollowers) {
+    if (authLoading || !isAuthenticated || !did || toFollowers || toOverview) {
       return (
         <WorkspaceFrame>
           <div className="records-page__loading">
@@ -184,22 +188,6 @@ export default function RecordsPage() {
         )
       }
       const groupProfile = ownProfileUrl({ activeGroup: activeOrg })
-      if (kind === "groups") {
-        return (
-          <WorkspaceFrame>
-            <EmptyState
-              icon={UsersRound}
-              headingLevel={2}
-              title="Your groups are on your personal account"
-              description="Switch to your personal account to see the groups you belong to."
-            >
-              <Button variant="secondary" onClick={() => switchActor(null)}>
-                Switch to personal account
-              </Button>
-            </EmptyState>
-          </WorkspaceFrame>
-        )
-      }
       const section = GROUP_SECTIONS[kind]
       const icon = WORKSPACE_SECTIONS.find((s) => s.key === kind)?.icon
       return (
@@ -261,8 +249,6 @@ export default function RecordsPage() {
         return <EndorsementsPane did={did} actor={actor} given={given} />
       case "lists":
         return <ListsPane did={did} />
-      case "groups":
-        return <GroupsPane />
     }
   })()
 

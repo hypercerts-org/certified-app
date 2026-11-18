@@ -7,7 +7,7 @@ import WorkspaceShell, { WorkspaceFrame } from "../workspace-shell"
 // Mocks for the pages that use the frame (RecordsPage, Home).
 // ---------------------------------------------------------------------------
 
-const nav = { kind: "groups" }
+const nav = { kind: "lists" }
 const router = { replace: vi.fn(), push: vi.fn(), back: vi.fn() }
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
@@ -70,7 +70,7 @@ function expectFrame(container: HTMLElement, opts: { h1?: string } = {}) {
 
 beforeEach(() => {
   router.replace.mockClear()
-  nav.kind = "groups"
+  nav.kind = "lists"
   auth.isLoading = false
   auth.isAuthenticated = true
   auth.did = "did:plc:me"
@@ -109,7 +109,7 @@ describe("Records sections render the frame in every state", () => {
     auth.isAuthenticated = false
     auth.did = null
     const { container } = render(<RecordsPage />)
-    expectFrame(container, { h1: "Groups" })
+    expectFrame(container, { h1: "Lists" })
   })
 
   it("signed out (while the redirect runs)", () => {
@@ -199,36 +199,6 @@ describe("Records sections render the frame in every state", () => {
       within(main).getByRole("heading", { name: "@group.certified.app's lists show on its profile" }),
     ).toBeInTheDocument()
   })
-
-  it("a section: its title, and its region named by it", () => {
-    org.groups = []
-    const { container } = render(<RecordsPage />)
-    const { main } = expectFrame(container, { h1: "Groups" })
-    const h1 = screen.getByRole("heading", { level: 1, name: "Groups" })
-    // The pane's region lives in the content and points at the h1.
-    const region = within(main).getByRole("region", { name: "Groups" })
-    expect(region).toHaveAttribute("aria-labelledby", h1.id)
-    // With no groups, New group is the empty state's own action.
-    expect(within(main).getByRole("link", { name: "New group" })).toBeInTheDocument()
-  })
-
-  it("a section with groups: their count and New group make its first row", () => {
-    org.groups = [
-      { groupDid: "did:plc:a", handle: "a.certified.app", displayName: "Estuary", role: "admin" },
-      { groupDid: "did:plc:b", handle: "b.certified.app", displayName: "Mangrove", role: "member" },
-    ]
-    const { container } = render(<RecordsPage />)
-    const { main } = expectFrame(container, { h1: "Groups" })
-    const row = main.querySelector(".records-pane__headrow") as HTMLElement
-    expect(within(row).getByText("2 groups")).toBeInTheDocument()
-    expect(within(row).getByRole("link", { name: "New group" })).toBeInTheDocument()
-  })
-
-  it("a section while its list loads", () => {
-    org.isLoading = true
-    const { container } = render(<RecordsPage />)
-    expectFrame(container, { h1: "Groups" })
-  })
 })
 
 describe("Overview renders the frame", () => {
@@ -268,5 +238,13 @@ describe("Followers are on the profile", () => {
     nav.kind = "followers"
     render(<RecordsPage />)
     expect(router.replace).toHaveBeenCalledWith("/group.certified.app?tab=followers")
+  })
+})
+
+describe("Groups left the Workspace", () => {
+  it("old Groups links open the Overview", () => {
+    nav.kind = "groups"
+    render(<RecordsPage />)
+    expect(router.replace).toHaveBeenCalledWith("/home")
   })
 })

@@ -114,7 +114,7 @@ export default function ImportGroupPage() {
   // The page's one header (DESIGN.md §9.13), shared by every state below.
   const pageHeader = (
     <PageHeader
-      back={{ href: "/records?kind=groups", label: "Groups" }}
+      back={{ href: "/home", label: "Overview" }}
       title="Turn an account into a group"
       description="Keep the account and its records, and manage it as a group."
     />
@@ -207,7 +207,7 @@ export default function ImportGroupPage() {
           isSubmitting={isImporting}
           error={error}
           identityLabel={null}
-          onCancel={() => router.push("/records?kind=groups")}
+          onCancel={() => router.push("/home")}
         />
       </form>
     </PageContainer>

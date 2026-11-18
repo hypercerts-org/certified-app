@@ -75,7 +75,6 @@ describe("BottomNav (the phone pill)", () => {
       "Projects and activities",
       "Endorsements",
       "Lists",
-      "Groups",
     ])
     expect(screen.getByRole("menuitem", { name: "Lists" })).toHaveAttribute("aria-current", "page")
     // Followers are on the profile, not a Workspace section.

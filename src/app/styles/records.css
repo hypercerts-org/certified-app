@@ -124,23 +124,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* A pane without tabs (Groups): its count and its action make the first
-   row, on the line and over the hairline the tab strips have. */
-.records-pane__headrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 46px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.records-pane__count {
-  margin: 0;
-  font-size: var(--text-ui);
-  color: var(--fg-muted);
-}
-
 /* Phones: the strip takes the width; the controls drop under it, on the
    right, as the panel's first line. */
 @media (max-width: 799px) {
@@ -178,10 +161,9 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* Right under the tab strip or a head row, their line is the list's top
-   edge: no second hairline just below it. */
-.records-pane__tab-body > .records-list:first-child,
-.records-pane__headrow + .records-list {
+/* Right under the tab strip, its line is the list's top edge: no second
+   hairline just below it. */
+.records-pane__tab-body > .records-list:first-child {
   border-top: 0;
 }
 

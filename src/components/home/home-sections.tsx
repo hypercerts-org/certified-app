@@ -14,7 +14,6 @@ import SectionHeader, { SeeAllLink } from "@/components/ui/section-header"
 import Skeleton from "@/components/ui/skeleton"
 import StatRow from "@/components/ui/stat-row"
 import { EndorsementPreviewRow } from "@/components/profile/endorsement-preview-row"
-import { useSwitchActor } from "@/lib/groups/use-switch-actor"
 import { useUserProjects } from "@/hooks/use-user-projects"
 import { useUserIndexerActivities } from "@/hooks/use-user-indexer-activities"
 import { useReceivedEndorsements } from "@/hooks/use-received-endorsements"
@@ -532,83 +531,13 @@ export function groupProfileHref(group: Pick<Group, "groupDid" | "handle">): str
 }
 
 /**
- * Group rows: the group's square avatar, name, your role and its handle,
- * each row linking to the group's profile.
- *
- * - `size="md"` (Workspace → Groups, a full-page list of accounts): the
- *   people row Followers and Endorsements use (40px avatar, the name in
- *   `body`, the meta in `ui`, `records-person` in records.css), with an
- *   "Act as" button to act as the group (`showSwitch`), the words the
- *   Workspace menu uses.
- * - `size="sm"` (Home's "Your groups", a list inside a section): the
- *   compact row (32px, `body-sm` / `caption`), without "Act as", so the
- *   names get the row's width (switching lives in the Workspace menu).
+ * Group rows (Home's "Your groups", a list inside a section): the group's
+ * square avatar, name, your role and its handle, each row linking to the
+ * group's profile. The compact row (32px, `body-sm` / `caption`), without
+ * an "Act as" button, so the names get the row's width (switching lives
+ * in the account menu).
  */
-export function GroupRows({
-  groups,
-  size = "md",
-  showSwitch = true,
-}: {
-  groups: readonly Group[]
-  /** @default "md" */
-  size?: "sm" | "md"
-  /** Add an "Act as" button to each row. @default true */
-  showSwitch?: boolean
-}) {
-  const switchActor = useSwitchActor()
-  const switchButton = (g: Group, name: string) =>
-    showSwitch ? (
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => switchActor(g)}
-        aria-label={`Act as ${name}`}
-      >
-        Act as
-      </Button>
-    ) : null
-
-  if (size === "md") {
-    return (
-      <ul className="records-list">
-        {groups.map((g) => {
-          const { name, handle } = groupRowLabel(g)
-          return (
-            <li key={g.groupDid} className="records-person">
-              <Link href={groupProfileHref(g)} className="records-person__main hover-tint hover-tint--bleed">
-                <Avatar
-                  size="row"
-                  shape="square"
-                  src={g.avatarUrl}
-                  alt=""
-                  seed={g.groupDid}
-                  fallbackInitials={getInitials(g.displayName, g.handle)}
-                />
-                <span className="records-person__text">
-                  <span className="records-person__name" dir="auto">
-                    {name}
-                  </span>
-                  <span className="records-person__handle">
-                    {roleLabel(g.role)}
-                    {handle ? (
-                      <>
-                        <span aria-hidden> · </span>
-                        {handle}
-                      </>
-                    ) : null}
-                  </span>
-                </span>
-              </Link>
-              {showSwitch ? (
-                <div className="records-person__action">{switchButton(g, name)}</div>
-              ) : null}
-            </li>
-          )
-        })}
-      </ul>
-    )
-  }
-
+export function GroupRows({ groups }: { groups: readonly Group[] }) {
   return (
     <ul className="home-rows">
       {groups.map((g) => {
@@ -639,7 +568,6 @@ export function GroupRows({
                 </span>
               </span>
             </Link>
-            {switchButton(g, name)}
           </li>
         )
       })}
@@ -653,7 +581,7 @@ export function GroupRows({
  * account only: while acting as a group the list would be the person's,
  * not the group's.
  */
-export function HomeGroups() {
+export function HomeGroups({ profileBase }: { profileBase: string }) {
   const { groups, isLoading } = useOrg()
   const preview = groups.slice(0, GROUP_PREVIEW)
 
@@ -673,11 +601,11 @@ export function HomeGroups() {
       ) : groups.length === 0 ? (
         <EmptyState variant="inline" title="You're not in any groups yet." />
       ) : (
-        <GroupRows groups={preview} size="sm" showSwitch={false} />
+        <GroupRows groups={preview} />
       )}
       {groups.length > GROUP_PREVIEW ? (
         <div>
-          <SeeAllLink href="/records?kind=groups" label={`All ${groups.length} groups`} />
+          <SeeAllLink href={`${profileBase}?tab=groups`} label={`All ${groups.length} groups`} />
         </div>
       ) : null}
     </HomeSection>

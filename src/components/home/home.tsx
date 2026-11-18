@@ -174,7 +174,7 @@ function HomeAccount({
           </Card>
           {isGroup ? null : (
             <Card unpadded className="home__box">
-              <HomeGroups />
+              <HomeGroups profileBase={profileBase} />
             </Card>
           )}
         </div>
