@@ -1,51 +1,12 @@
 import { Card, Heading, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { APPS } from "@/lib/apps";
 
 export const metadata: Metadata = {
   title: "Apps",
   description: "Apps you can sign in to with your Certified account.",
 };
-
-// Apps built on the same AT Protocol account, in the order shown. To add one,
-// put a square logo (about 256px) in public/apps and an entry here.
-const APPS = [
-  {
-    name: "Ma Earth",
-    description:
-      "Ma Earth runs collective funding rounds that direct community support and matching funds to community-led regeneration projects.",
-    logo: "/apps/ma-earth.jpeg",
-    url: "https://maearth.com",
-  },
-  {
-    name: "GainForest",
-    description:
-      "GainForest develops open nature tech that monitors ecosystems and rewards verifiable conservation outcomes.",
-    logo: "/apps/gainforest.png",
-    url: "https://gainforest.app",
-  },
-  {
-    name: "Silvi",
-    description:
-      "Silvi connects funders with tree stewards and verifies community-led reforestation through satellite, drone, and on-the-ground monitoring.",
-    logo: "/apps/silvi.png",
-    url: "https://silvi.earth",
-  },
-  {
-    name: "Simocracy",
-    description:
-      "Simocracy lets people build AI digital twins of themselves and send them into governance, deliberation, and capital allocation.",
-    logo: "/apps/simocracy.png",
-    url: "https://simocracy.org",
-  },
-  {
-    name: "Hyperboards",
-    description:
-      "Hyperboards turn signed contributor records on AT Protocol into living, embeddable boards that show who built what.",
-    logo: "/apps/hyperboards.webp",
-    url: "https://hyperboards.org",
-  },
-];
 
 export default function AppsPage() {
   return (

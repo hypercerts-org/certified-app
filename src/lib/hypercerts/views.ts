@@ -51,8 +51,16 @@ export interface ActorDetail extends ActorCard {
   profile: ProfileFields;
   organizationTypes: string[];
   urls: string[];
+  /** The profile's website, if it has one. */
+  website: string | null;
   longDescription: string | null;
   foundedDate: string | null;
+  /** An organization's place, short: "Delaware, United States". */
+  place: string | null;
+  bannerUrl: string | null;
+  pronouns: string | null;
+  /** When the profile was created, as "Jun 2026". */
+  joined: string | null;
 }
 
 export type ActivityCard = {
@@ -63,6 +71,7 @@ export type ActivityCard = {
   author: ActorCard;
   createdAt: string | null;
   indexedAt: string | null;
+  imageUrl: string | null;
 };
 
 export type ProjectCard = {
@@ -71,7 +80,9 @@ export type ProjectCard = {
   authorDid: string;
   title: string;
   summary: string | null;
-  itemCount: number;
+  /** Items that are activities (a project can also hold features and other collections). */
+  activityCount: number;
+  imageUrl: string | null;
 };
 
 export interface ProjectDetail extends ProjectCard {
@@ -79,6 +90,45 @@ export interface ProjectDetail extends ProjectCard {
   author: ActorCard;
   createdAt: string | null;
 }
+
+/** One of an account's latest records on its workspace overview. */
+export type RecentRecord = {
+  uri: string;
+  kind: "Activity" | "Project";
+  title: string;
+  imageUrl: string | null;
+  /** The record's own createdAt, for ordering. */
+  createdAt: string;
+  /** Formatted for display. */
+  date: string | null;
+};
+
+/** A badge award of type "endorsement" that an account received. */
+export type EndorsementCard = {
+  uri: string;
+  issuer: ActorCard;
+  note: string | null;
+  createdAt: string | null;
+};
+
+/** An account in a list of people: who follows, who endorsed, and when. */
+export type PersonRow = {
+  /** The follow or award record, as a stable key. */
+  uri: string;
+  actor: ActorCard;
+  note: string | null;
+  date: string | null;
+};
+
+/** A list an account keeps: a collection with a staging-app list type. */
+export type ListCard = {
+  uri: string;
+  title: string;
+  /** "Accounts", "Activities", "Projects" or "Endorsements". */
+  kind: string;
+  itemCount: number;
+  summary: string | null;
+};
 
 // Badge awards an account has issued, grouped by badge definition. These are
 // plain counts of award records: the app does not interpret what a badge
@@ -138,6 +188,20 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+const monthFormat = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** "Jun 2026". */
+export function formatMonth(value: unknown): string | null {
+  const text = asString(value);
+  if (!text) return null;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : monthFormat.format(date);
+}
+
 export function formatDate(value: unknown): string | null {
   const text = asString(value);
   if (!text) return null;
@@ -171,14 +235,35 @@ function blobCid(image: unknown): string | null {
   return ref ? String(ref) : null;
 }
 
-// Avatars are served through the Bluesky CDN, which fetches the blob from the
-// account's PDS. This avoids resolving every DID to its PDS in the spike.
-export function avatarUrl(did: string, avatar: unknown): string | null {
-  const record = asRecord(avatar);
+// Images are blobs on the author's PDS, up to 5 MB (10 MB for large images),
+// and the API returns only their references. They are served through the
+// Bluesky CDN, which fetches the blob from the account's PDS (for any record,
+// not only Bluesky's), resizes it and caches it. That is Bluesky's
+// infrastructure, not a service offered to other apps: a dependency to replace
+// once the API returns image URLs of its own.
+//
+// Each use asks for the size it shows: a 128px square for avatars and row
+// thumbnails (about 6 KB; the 1000px `avatar` preset is often larger than the
+// original), 1000px wide for card images, and the banner preset for banners.
+const IMAGE_PRESET = {
+  thumbnail: "avatar_thumbnail",
+  card: "feed_thumbnail",
+  banner: "banner",
+} as const;
+
+export type ImageSize = keyof typeof IMAGE_PRESET;
+
+export function imageUrl(did: string, image: unknown, size: ImageSize): string | null {
+  const record = asRecord(image);
   if (!record) return null;
   if (record.$type === "org.hypercerts.defs#uri") return asString(record.uri);
   const cid = blobCid(record.image);
-  return cid ? `https://cdn.bsky.app/img/avatar/plain/${did}/${cid}@jpeg` : null;
+  return cid ? `https://cdn.bsky.app/img/${IMAGE_PRESET[size]}/plain/${did}/${cid}@jpeg` : null;
+}
+
+/** An avatar or row thumbnail: the 128px square. */
+export function avatarUrl(did: string, avatar: unknown): string | null {
+  return imageUrl(did, avatar, "thumbnail");
 }
 
 // A badge award's subject is an account (`{ did }`) or a record
@@ -226,8 +311,14 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
     },
     organizationTypes: organization?.organizationType ?? [],
     urls: (organization?.urls ?? []).map((entry) => entry.url),
+    website: asString(profile?.website),
+    bannerUrl: imageUrl(actor.did, profile?.banner, "banner"),
+    pronouns: asString(profile?.pronouns),
+    joined: formatMonth(profile?.createdAt),
     longDescription: plainText(organization?.longDescription),
-    foundedDate: formatDate(organization?.foundedDate),
+    // "Feb 2023", as the staging redesign shows it.
+    foundedDate: formatMonth(organization?.foundedDate),
+    place: null,
   };
 }
 
@@ -241,6 +332,7 @@ export function toActivityCard(activity: ActivityView): ActivityCard {
     author: toActorCard(activity.author),
     createdAt: formatDate(record.createdAt),
     indexedAt: activity.indexedAt,
+    imageUrl: imageUrl(activity.did, record.image, "card"),
   };
 }
 
@@ -252,7 +344,10 @@ export function toProjectCard(collection: CollectionView): ProjectCard {
     authorDid: collection.did,
     title: record.title || "Untitled project",
     summary: record.shortDescription || null,
-    itemCount: record.items?.length ?? 0,
+    activityCount: (record.items ?? []).filter(
+      (item) => collectionOf(item.itemIdentifier.uri) === "org.hypercerts.claim.activity",
+    ).length,
+    imageUrl: imageUrl(collection.did, record.avatar ?? record.banner, "card"),
   };
 }
 
@@ -273,6 +368,39 @@ export function toBadgeCard(award: BadgeAwardView): BadgeCard {
     badgeType: definition?.badgeType ?? null,
     issuer: toActorCard(award.author),
     response: award.responseStatus,
+    createdAt: formatDate(award.record.createdAt),
+  };
+}
+
+export function activityRecord(activity: ActivityView): RecentRecord {
+  const { record } = activity;
+  return {
+    uri: activity.uri,
+    kind: "Activity",
+    title: record.title || "Untitled activity",
+    imageUrl: avatarUrl(activity.did, record.image),
+    createdAt: record.createdAt,
+    date: formatDate(record.createdAt),
+  };
+}
+
+export function projectRecord(collection: CollectionView): RecentRecord {
+  const { record } = collection;
+  return {
+    uri: collection.uri,
+    kind: "Project",
+    title: record.title || "Untitled project",
+    imageUrl: avatarUrl(collection.did, record.avatar),
+    createdAt: record.createdAt,
+    date: formatDate(record.createdAt),
+  };
+}
+
+export function toEndorsementCard(award: BadgeAwardView): EndorsementCard {
+  return {
+    uri: award.uri,
+    issuer: toActorCard(award.author),
+    note: asString(award.record.note),
     createdAt: formatDate(award.record.createdAt),
   };
 }

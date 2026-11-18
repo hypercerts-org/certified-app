@@ -17,17 +17,25 @@ import {
   type AwardSubject,
   type AwardsIssued,
   awardSubject,
+  activityRecord,
   type BadgeCard,
   collectionOf,
+  type EndorsementCard,
+  formatDate,
+  type ListCard,
+  type PersonRow,
   didOf,
   type Page,
   type ProjectCard,
   type ProfileVersion,
   type ProjectDetail,
+  projectRecord,
+  type RecentRecord,
   toActivityCard,
   toActorCard,
   toActorDetail,
   toBadgeCard,
+  toEndorsementCard,
   toProfileVersion,
   toProjectCard,
   toProjectDetail,
@@ -92,11 +100,35 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     params: { actor: did },
     ...read(),
   });
-  if (organization.success) return toActorDetail(organization.body.actor);
+  if (organization.success) {
+    const detail = toActorDetail(organization.body.actor);
+    const location = organization.body.actor.organization?.record.location?.uri;
+    return location ? { ...detail, place: await placeName(location) } : detail;
+  }
   if (!notFound(organization)) throw organization;
   return profile.success
     ? toActorDetail({ did, profile: profile.body.profile, organization: null })
     : null;
+}
+
+/**
+ * A location record's name, cut to its last two parts ("Wilmington, New
+ * Castle County, Delaware, United States" reads "Delaware, United States"),
+ * or null. A missing or unreadable location never fails the profile.
+ */
+async function placeName(uri: string): Promise<string | null> {
+  const result = await api.xrpcSafe(app.certified.location.getLocation, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  const name = result.success ? result.body.location.record.name : undefined;
+  if (!name) return null;
+  return name
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join(", ");
 }
 
 /**
@@ -396,5 +428,264 @@ export async function getAwardsIssued(did: string): Promise<AwardsIssued | null>
         })),
       };
     }),
+  };
+}
+
+// Workspace overview
+//
+// The overview's counts and latest rows, all public, indexed data. Badge
+// awards and follows come with a total from the API; activities and
+// collections don't, so their counts page through the records, up to
+// MAX_COUNTED, and say "1,000+" beyond it.
+
+const MAX_COUNTED = 1_000;
+
+/** A count of records; `capped` when there are more than were counted. */
+export type Count = { value: number; capped: boolean };
+
+async function countPages(
+  page: (cursor: string | undefined) => Promise<{ count: number; cursor?: string }>,
+): Promise<Count> {
+  let value = 0;
+  let cursor: string | undefined;
+  do {
+    const result = await page(cursor);
+    value += result.count;
+    cursor = result.cursor;
+  } while (cursor && value < MAX_COUNTED);
+  return { value, capped: Boolean(cursor) };
+}
+
+/**
+ * Collection types the staging app writes for lists of endorsements,
+ * activities, projects and accounts. They are that app's convention, not
+ * lexicon values.
+ */
+const LIST_TYPES = ["list:endorsements", "list:certs", "list:projects", "list:accounts"];
+
+export type RecordCounts = { activities: Count; projects: Count; lists: Count };
+
+export async function getRecordCounts(did: string): Promise<RecordCounts> {
+  "use cache";
+  publicData(tags.activities(did));
+  cacheTag(tags.projects(did));
+
+  const collections = (types: string[]) =>
+    countPages(async (cursor) => {
+      const page = await api.call(
+        org.hypercerts.collection.listCollections,
+        { authors: [did as Did], types, limit: 100, cursor },
+        read(),
+      );
+      return { count: page.collections.length, cursor: page.cursor };
+    });
+  const [activities, projects, lists] = await Promise.all([
+    countPages(async (cursor) => {
+      const page = await api.call(
+        org.hypercerts.claim.listActivities,
+        { authors: [did as Did], limit: 100, cursor },
+        read(),
+      );
+      return { count: page.activities.length, cursor: page.cursor };
+    }),
+    collections(["project"]),
+    collections(LIST_TYPES),
+  ]);
+  return { activities, projects, lists };
+}
+
+/** The account's newest activities and projects together, newest first. */
+export async function listLatestRecords(did: string, limit: number): Promise<RecentRecord[]> {
+  "use cache";
+  publicData(tags.activities(did));
+  cacheTag(tags.projects(did));
+
+  const [{ activities }, { collections }] = await Promise.all([
+    api.call(org.hypercerts.claim.listActivities, { authors: [did as Did], limit }, read()),
+    api.call(
+      org.hypercerts.collection.listCollections,
+      { authors: [did as Did], types: ["project"], limit },
+      read(),
+    ),
+  ]);
+  return [...activities.map(activityRecord), ...collections.map(projectRecord)]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+    .slice(0, limit);
+}
+
+export type Endorsements = {
+  /** Received, leaving out those the account rejected. */
+  receivedCount: number;
+  given: number;
+  latestReceived: EndorsementCard[];
+};
+
+/**
+ * Badge awards whose definition has badgeType "endorsement": counted as award
+ * records (two awards to one account count as two).
+ */
+export async function getEndorsements(did: string, latest: number): Promise<Endorsements> {
+  "use cache";
+  publicData(tags.endorsements(did));
+
+  const badgeTypes = ["endorsement"];
+  const [received, given] = await Promise.all([
+    api.call(
+      app.certified.badge.listBadgeAwards,
+      {
+        subjects: [did],
+        badgeTypes,
+        responses: ["accepted", "unanswered"],
+        includeTotal: true,
+        limit: latest,
+      },
+      read(),
+    ),
+    api.call(
+      app.certified.badge.listBadgeAwards,
+      { authors: [did as Did], badgeTypes, includeTotal: true, limit: 1 },
+      read(),
+    ),
+  ]);
+  return {
+    receivedCount: received.totalCount ?? received.badgeAwards.length,
+    given: given.totalCount ?? given.badgeAwards.length,
+    latestReceived: received.badgeAwards.map(toEndorsementCard),
+  };
+}
+
+export type FollowCounts = { followers: number; following: number };
+
+export async function getFollowCounts(did: string): Promise<FollowCounts> {
+  "use cache";
+  publicData(tags.follows(did));
+
+  const [followers, following] = await Promise.all([
+    api.call(app.certified.graph.listActorFollowers, { actor: did as Did, limit: 1 }, read()),
+    api.call(app.certified.graph.listActorFollowing, { actor: did as Did, limit: 1 }, read()),
+  ]);
+  return { followers: followers.totalCount, following: following.totalCount };
+}
+
+// Profile tabs: endorsements, followers and lists
+//
+// One page each (up to PEOPLE_PAGE rows); the pages say when there are more.
+
+const PEOPLE_PAGE = 100;
+
+export type PeoplePage = { rows: PersonRow[]; more: boolean };
+
+/** Endorsements received (leaving out rejected ones) or given, newest first. */
+export async function listEndorsements(
+  did: string,
+  direction: "received" | "given",
+): Promise<PeoplePage> {
+  "use cache";
+  publicData(tags.endorsements(did));
+
+  const { badgeAwards, cursor } = await api.call(
+    app.certified.badge.listBadgeAwards,
+    direction === "received"
+      ? {
+          subjects: [did],
+          badgeTypes: ["endorsement"],
+          responses: ["accepted", "unanswered"],
+          limit: PEOPLE_PAGE,
+        }
+      : { authors: [did as Did], badgeTypes: ["endorsement"], limit: PEOPLE_PAGE },
+    read(),
+  );
+  const subjects =
+    direction === "given"
+      ? await actorCards([
+          ...new Set(
+            badgeAwards
+              .map((award) => awardSubject(award.record.subject))
+              .filter((subject): subject is string => Boolean(subject?.startsWith("did:"))),
+          ),
+        ])
+      : null;
+  const rows: PersonRow[] = [];
+  for (const award of badgeAwards) {
+    const card = toEndorsementCard(award);
+    const subject = awardSubject(award.record.subject);
+    const actor = subjects ? (subject ? subjects.get(subject) : undefined) : card.issuer;
+    if (!actor) continue;
+    rows.push({ uri: award.uri, actor, note: card.note, date: card.createdAt });
+  }
+  return { rows, more: Boolean(cursor) };
+}
+
+/**
+ * The distinct accounts that endorsed `did`, most recent first, from its
+ * latest endorsements: for the header's "Endorsed by" line.
+ */
+export async function getEndorsers(
+  did: string,
+): Promise<{ endorsers: ActorCard[]; more: boolean }> {
+  "use cache";
+  publicData(tags.endorsements(did));
+
+  const { rows, more } = await listEndorsements(did, "received");
+  const seen = new Set<string>();
+  const endorsers = rows
+    .map((row) => row.actor)
+    .filter((actor) => !seen.has(actor.did) && seen.add(actor.did));
+  return { endorsers, more };
+}
+
+/** Who follows `did` ("followers") or whom it follows ("following"), newest first. */
+export async function listFollows(
+  did: string,
+  direction: "followers" | "following",
+): Promise<PeoplePage> {
+  "use cache";
+  publicData(tags.follows(did));
+
+  const params = { actor: did as Did, limit: PEOPLE_PAGE };
+  const { views, cursor } =
+    direction === "followers"
+      ? await api
+          .call(app.certified.graph.listActorFollowers, params, read())
+          .then((out) => ({ views: out.followers, cursor: out.cursor }))
+      : await api
+          .call(app.certified.graph.listActorFollowing, params, read())
+          .then((out) => ({ views: out.following, cursor: out.cursor }));
+  return {
+    rows: views.map((view) => ({
+      uri: view.follow.uri,
+      actor: toActorCard({ did: view.did, profile: view.profile, organization: view.organization }),
+      note: null,
+      date: formatDate(view.follow.record.createdAt),
+    })),
+    more: Boolean(cursor),
+  };
+}
+
+const LIST_KIND: Record<string, string> = {
+  "list:accounts": "Accounts",
+  "list:certs": "Activities",
+  "list:projects": "Projects",
+  "list:endorsements": "Endorsements",
+};
+
+export async function listLists(did: string): Promise<{ lists: ListCard[]; more: boolean }> {
+  "use cache";
+  publicData(tags.projects(did));
+
+  const { collections, cursor } = await api.call(
+    org.hypercerts.collection.listCollections,
+    { authors: [did as Did], types: LIST_TYPES, limit: PEOPLE_PAGE },
+    read(),
+  );
+  return {
+    lists: collections.map((collection) => ({
+      uri: collection.uri,
+      title: collection.record.title || "Untitled list",
+      kind: LIST_KIND[collection.record.type ?? ""] ?? "List",
+      itemCount: collection.record.items?.length ?? 0,
+      summary: collection.record.shortDescription || null,
+    })),
+    more: Boolean(cursor),
   };
 }

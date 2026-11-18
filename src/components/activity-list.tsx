@@ -41,7 +41,7 @@ export function ActivityList({
   return (
     <div className="stack">
       {items.length > 0 && (
-        <ul className="grid">
+        <ul className="work-grid">
           {items.map((activity) => (
             <ActivityCardView key={activity.uri} activity={activity} showAuthor={showAuthor} />
           ))}

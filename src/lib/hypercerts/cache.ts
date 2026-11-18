@@ -9,4 +9,6 @@ export const tags = {
   organizations: () => "organizations",
   badges: (did: string) => `badges:${did}`,
   awardsIssued: (did: string) => `awards-issued:${did}`,
+  endorsements: (did: string) => `endorsements:${did}`,
+  follows: (did: string) => `follows:${did}`,
 };

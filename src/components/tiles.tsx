@@ -1,4 +1,3 @@
-import { ProfileDescription } from "@/components/profile-text";
 import { Badge, EmptyState, Text } from "@hypercerts-org/ui-react";
 import {
   getAwardsIssued,
@@ -6,7 +5,6 @@ import {
   listBadgesReceived,
   listProjectsPage,
 } from "@/lib/hypercerts/queries";
-import type { ActorDetail } from "@/lib/hypercerts/views";
 import { ActivityList } from "./activity-list";
 import { AwardSubjectRow, BadgeCardView, ProjectCardView } from "./cards";
 import { Tile } from "./tile";
@@ -15,47 +13,6 @@ import { Tile } from "./tile";
 // reorder tiles without the others knowing. That is the separability the
 // product definition asks for, at its simplest. Pages place them in a
 // <TileSlot>, so a slow or failing tile never holds up the others.
-
-export function AboutTile({ actor }: { actor: ActorDetail }) {
-  return (
-    <Tile title="About">
-      {/* An organization's long description; otherwise the profile's own,
-          which the account may just have edited here. */}
-      {actor.longDescription ? (
-        <Text relaxed className="prewrap">
-          {actor.longDescription}
-        </Text>
-      ) : (
-        <ProfileDescription did={actor.did} rendered={actor.profile} />
-      )}
-      {(actor.organizationTypes.length > 0 || actor.foundedDate) && (
-        <div className="meta">
-          {actor.organizationTypes.map((type) => (
-            <Badge key={type} variant="tag">
-              {type}
-            </Badge>
-          ))}
-          {actor.foundedDate && (
-            <Text as="span" size="micro" tone="muted">
-              Founded {actor.foundedDate}
-            </Text>
-          )}
-        </div>
-      )}
-      {actor.urls.length > 0 && (
-        <ul className="links">
-          {actor.urls.map((url) => (
-            <li key={url}>
-              <a href={url} rel="noopener noreferrer" target="_blank">
-                {url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Tile>
-  );
-}
 
 export async function ActivitiesTile({ did }: { did: string }) {
   const page = await listActivitiesPage({ author: did, limit: 6 });
@@ -76,7 +33,7 @@ export async function ProjectsTile({ did }: { did: string }) {
       {page.items.length === 0 ? (
         <EmptyState title="No projects yet" />
       ) : (
-        <ul className="grid">
+        <ul className="work-grid">
           {page.items.map((project) => (
             <ProjectCardView key={project.uri} project={project} />
           ))}

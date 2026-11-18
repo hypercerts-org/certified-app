@@ -290,24 +290,6 @@ button.menu-row:hover,
   }
 }
 
-.workspace-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.workspace-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .settings {
   display: flex;
   flex-direction: column;
@@ -345,12 +327,6 @@ button.menu-row:hover,
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
 }
 
 .tiles {
@@ -543,4 +519,726 @@ button.menu-row:hover,
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
+}
+
+/* Workspace overview (src/components/workspace-overview.tsx). One column in
+   DOM order below 1100px; from 1100px the identity and organizations boxes
+   move to a column on the right, level with the first section. */
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+.overview-main,
+.overview-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-inline-size: 0;
+}
+
+@media (min-width: 50rem) {
+  .overview,
+  .overview-main {
+    gap: 3rem;
+  }
+}
+
+@media (min-width: 68.75rem) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "main side"
+      "apps side";
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+
+  .overview-main {
+    grid-area: main;
+  }
+
+  .overview-side {
+    grid-area: side;
+    gap: 1.5rem;
+  }
+
+  .overview-apps {
+    grid-area: apps;
+  }
+}
+
+.overview-box {
+  padding: 1rem;
+}
+
+.overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+.overview-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.overview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-block-start: 0.75rem;
+}
+
+.overview-list-label {
+  margin: 0;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  font-weight: var(--hc-weight-medium);
+}
+
+/* Counts: a large number over its label, in a row that wraps on phones. */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--hc-radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+
+.stat-link:hover {
+  background: var(--hc-surface-tint);
+}
+
+.stat-value {
+  color: var(--hc-text-ink);
+  font-family: var(--hc-font-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+/* Rows between hairlines: latest records, endorsements, organizations, apps. */
+.overview-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.overview-rows > li {
+  padding-block: 0.25rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.overview-box .overview-rows > li:last-child {
+  border-block-end: none;
+}
+
+.overview-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-block-size: 2.75rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--hc-radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+
+.overview-row-link:hover {
+  background: var(--hc-surface-tint);
+}
+
+.overview-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  overflow: hidden;
+  border-radius: var(--hc-radius-tag);
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.overview-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.overview-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.overview-row-title {
+  overflow: hidden;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-row-meta {
+  overflow: hidden;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-row-arrow {
+  flex: none;
+  color: var(--hc-text-muted);
+}
+
+.overview-row-link:hover .overview-row-arrow {
+  color: var(--hc-text-ink);
+}
+
+.overview-see-all {
+  align-self: flex-start;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-underline-offset: 0.25em;
+}
+
+/* The identity box: avatar beside name, bio, website; then the ID. */
+.overview-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block-end: 1rem;
+  margin-block-end: 1rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.overview-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.overview-identity-name {
+  color: inherit;
+  text-decoration: none;
+}
+
+.overview-identity-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.overview-bio {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.overview-website,
+.overview-edit {
+  color: var(--hc-text-body);
+  font-size: var(--hc-type-body-sm);
+  text-underline-offset: 0.2em;
+}
+
+.overview-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.overview-id-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.overview-id-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-block: 0.75rem;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.overview-id-item dt {
+  color: var(--hc-text-body);
+  font-size: var(--hc-type-body-sm);
+  font-weight: var(--hc-weight-medium);
+}
+
+.overview-id-item dd {
+  min-inline-size: 0;
+  margin: 0;
+}
+
+/* Public profile (src/components/profile-header.tsx and the (profile) pages). */
+.profile {
+  gap: 1.5rem;
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.profile-banner {
+  overflow: hidden;
+  aspect-ratio: 3 / 1;
+  max-block-size: 18rem;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+}
+
+.profile-banner img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* Avatar, identity and actions: one row from 64rem, stacked below. */
+.profile-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "avatar identity"
+    "actions actions";
+  gap: 1rem 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .profile-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "avatar identity actions";
+  }
+}
+
+.profile-avatar {
+  grid-area: avatar;
+}
+
+/* Organizations get a square avatar, as on the staging redesign. */
+.profile-avatar-square,
+.profile-avatar-square img {
+  border-radius: var(--hc-radius-control);
+}
+
+@media (min-width: 48rem) {
+  .profile-avatar {
+    inline-size: 8rem;
+    block-size: 8rem;
+  }
+}
+
+.profile-identity {
+  grid-area: identity;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.profile-name {
+  margin: 0;
+  color: var(--hc-text-ink);
+  font-family: var(--hc-font-display);
+  font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  font-weight: var(--hc-weight-display);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.profile-meta {
+  margin: 0;
+  color: var(--hc-text-muted);
+}
+
+/* Each fact stays whole ("Founded Feb 2023"); the line wraps between them. */
+.profile-meta-item {
+  white-space: nowrap;
+}
+
+.profile-lead {
+  max-inline-size: 40rem;
+}
+
+.profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-links li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-inline-size: 0;
+  color: var(--hc-text-muted);
+}
+
+.profile-links a {
+  color: var(--hc-text-ink);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.profile-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.profile-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-block-size: 2.25rem;
+}
+
+/* A square icon-only button, the size of the small buttons beside it. */
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 2.25rem;
+  min-block-size: 2.25rem;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-panel);
+  color: var(--hc-text-ink);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--hc-surface-tint);
+}
+
+/* The profile's pages: links styled as tabs, scrolling sideways if they
+   don't fit. */
+.profile-tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.profile-tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 2.75rem;
+  padding-inline: 0.75rem;
+  border-block-end: 2px solid transparent;
+  margin-block-end: -1px;
+  color: var(--hc-text-muted);
+  text-decoration: none;
+}
+
+.profile-tab:hover {
+  color: var(--hc-text-ink);
+}
+
+.profile-tab[aria-current="page"] {
+  border-block-end-color: var(--hc-text-ink);
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+}
+
+.profile-tab-count {
+  color: var(--hc-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--hc-weight-body);
+}
+
+/* Overview: the reading column, and from 68.75rem the Account rail beside it. */
+.profile-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+@media (min-width: 68.75rem) {
+  .profile-overview {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    align-items: start;
+  }
+}
+
+.profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  min-inline-size: 0;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.see-all {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-underline-offset: 0.2em;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.fact dt {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+.fact dd {
+  margin: 0;
+  color: var(--hc-text-ink);
+  overflow-wrap: anywhere;
+}
+
+/* Activity and project cards. Each card is its own container: wide, the
+   image sits beside the text (as on the staging redesign); narrow, on top. */
+.work-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-card {
+  container: work-card / inline-size;
+  overflow: hidden;
+  padding: 0;
+}
+
+.work-card-image {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: var(--hc-surface-tint);
+}
+
+.work-card-image img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.work-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  min-inline-size: 0;
+}
+
+@container work-card (inline-size > 34rem) {
+  .work-card-layout:has(.work-card-image) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+
+  /* The image follows the text's height, whatever its own shape. */
+  .work-card-image {
+    position: relative;
+    aspect-ratio: auto;
+    min-block-size: 12rem;
+  }
+
+  .work-card-image img {
+    position: absolute;
+    inset: 0;
+  }
+
+  .work-card-body {
+    justify-content: center;
+    padding: 1.5rem 2rem;
+  }
+}
+
+.work-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.work-card-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* The header's trust line: who endorsed the account, and its follows. */
+.trust-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-block-start: 0.25rem;
+}
+
+.trust-endorsed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--hc-text-muted);
+  text-decoration: none;
+}
+
+.trust-name {
+  color: var(--hc-text-ink);
+}
+
+.trust-endorsed:hover .trust-name {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Faces overlap a little, each ringed in the page colour. */
+.trust-faces {
+  display: inline-flex;
+  flex: none;
+}
+
+.trust-faces > * {
+  box-shadow: 0 0 0 2px var(--hc-surface-page);
+  border-radius: 50%;
+}
+
+.trust-faces > * + * {
+  margin-inline-start: -0.375rem;
+}
+
+.trust-counts {
+  margin: 0;
+  color: var(--hc-text-muted);
+}
+
+.trust-count {
+  color: inherit;
+  text-decoration: none;
+}
+
+.trust-count strong {
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+}
+
+.trust-count:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Two lists within one tab (Followers / Following): a segmented switch. */
+.segmented-links {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+}
+
+.segmented-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 2.25rem;
+  padding-inline: 0.875rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-muted);
+  text-decoration: none;
+}
+
+.segmented-link:hover {
+  color: var(--hc-text-ink);
+}
+
+.segmented-link[aria-current="page"] {
+  background: var(--hc-surface-panel);
+  box-shadow: var(--hc-shadow-sm);
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+}
+
+.profile-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-inline-size: 66rem;
+}
+
+.people-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.people-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.75rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.people-row > :first-child {
+  min-inline-size: 0;
+}
+
+.people-date {
+  flex: none;
+  white-space: nowrap;
 }

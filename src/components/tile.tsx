@@ -1,4 +1,4 @@
-import { Eyebrow, Skeleton } from "@hypercerts-org/ui-react";
+import { Heading, Skeleton } from "@hypercerts-org/ui-react";
 import type { ReactNode } from "react";
 import { EmbedButton } from "./embed-button";
 
@@ -16,7 +16,9 @@ export function Tile({
   return (
     <section className="tile">
       <div className="tile-header">
-        <Eyebrow as="p">{title}</Eyebrow>
+        <Heading level={2} size="heading">
+          {title}
+        </Heading>
         {embedPath && <EmbedButton path={embedPath} title={title} />}
       </div>
       {children}
