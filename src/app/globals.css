@@ -88,7 +88,14 @@
 
 /* The app's own controls get the design system's focus ring, like its
    components: keyboard focus only, never on a click. */
-:where(.nav-link, .account-button, .menu-row, .bottom-nav-item, .app-link):focus-visible {
+:where(
+  .nav-link,
+  .account-button,
+  .menu-row,
+  .bottom-nav-item,
+  .app-link,
+  .switch-toast-close
+):focus-visible {
   outline: 2px solid var(--hc-focus-ring);
   outline-offset: 2px;
 }
@@ -105,47 +112,38 @@
 .account-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  max-inline-size: 15rem;
-  padding: 0.125rem 0.5rem 0.125rem 0.125rem;
+  padding: 0;
   border: 0;
-  border-radius: var(--hc-radius-control);
+  border-radius: 50%;
   background: none;
-  color: var(--hc-text-muted);
-  font: inherit;
   cursor: pointer;
-  transition: background-color 150ms ease-out;
+}
+
+/* The avatar of whom you act as, with a marker that it opens a menu. */
+.account-avatar {
+  position: relative;
+  display: inline-flex;
+  transition: filter 150ms ease-out;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .account-button:hover {
-    background: color-mix(in srgb, var(--hc-text-ink) 6%, transparent);
+  .account-button:hover .account-avatar {
+    filter: brightness(0.92);
   }
 }
 
-/* Name over @handle, from 64rem; narrower bars show the avatar alone. */
-.account-button-meta {
-  display: none;
-  flex-direction: column;
-  min-inline-size: 0;
-  line-height: 1.2;
-  text-align: start;
-}
-
-@media (min-width: 64rem) {
-  .account-button-meta {
-    display: flex;
-  }
-}
-
-.account-button-name {
+.account-avatar-marker {
+  position: absolute;
+  inset-block-end: -2px;
+  inset-inline-end: -2px;
+  display: grid;
+  place-items: center;
+  inline-size: 1rem;
+  block-size: 1rem;
+  border: 2px solid var(--hc-surface-panel);
+  border-radius: 50%;
+  background: var(--hc-surface-tint);
   color: var(--hc-text-ink);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.account-button-handle {
-  font-size: 0.75rem;
 }
 
 .account-name {
@@ -177,6 +175,10 @@
   text-decoration: none;
 }
 
+button.menu-row:disabled {
+  cursor: default;
+}
+
 button.menu-row {
   inline-size: 100%;
   border: 0;
@@ -189,8 +191,18 @@ button.menu-row {
 
 a.menu-row:hover,
 button.menu-row:hover,
-.menu-row[aria-current="page"] {
+.menu-row[aria-current] {
   background: var(--hc-surface-tint);
+}
+
+.menu-label {
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.menu-separator {
+  margin-block: 0.25rem;
+  border: 0;
+  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .menu-row-static {
@@ -477,4 +489,58 @@ button.menu-row:hover,
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+/* The toast after switching whom you act as (Sonner renders its frame). */
+.switch-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  inline-size: min(22rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.switch-toast-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.switch-toast-title {
+  font-weight: 600;
+}
+
+.switch-toast-close {
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  margin: -0.25rem -0.25rem 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+  cursor: pointer;
+}
+
+.switch-toast-close:hover {
+  color: var(--hc-text-ink);
+}
+
+.switch-toast-body {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.switch-toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
 }

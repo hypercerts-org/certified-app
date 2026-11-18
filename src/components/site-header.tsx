@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { SiteNav } from "@/components/site-nav";
+import { getActingAs } from "@/lib/acting-as";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
 import { getHandle } from "@/lib/identity";
@@ -35,7 +36,12 @@ async function HeaderNav() {
   if (!user) return <SiteNav account={null} />;
 
   // An account that has never written a Certified profile has no API view.
-  const [actor, handle] = await Promise.all([getActor(user.did), getHandle(user.did)]);
+  const [actor, handle, actingAs] = await Promise.all([
+    getActor(user.did),
+    getHandle(user.did),
+    getActingAs(),
+  ]);
+  const organization = actingAs && actingAs !== user.did ? await getActor(actingAs) : undefined;
   return (
     <SiteNav
       account={{
@@ -44,6 +50,14 @@ async function HeaderNav() {
         handle,
         avatarUrl: actor?.avatarUrl ?? null,
         profile: actor?.profile ?? { displayName: "", description: "" },
+        actingAs:
+          actingAs && actingAs !== user.did
+            ? {
+                did: actingAs,
+                name: organization?.displayName ?? actingAs,
+                avatarUrl: organization?.avatarUrl ?? null,
+              }
+            : null,
       }}
     />
   );

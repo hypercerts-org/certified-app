@@ -7,7 +7,8 @@ import { cookieOptions } from "./config";
 import { getOAuthClient } from "./oauth-client";
 import { store } from "./valkey";
 
-// The app session: which account this browser is signed in as.
+// The app session: which account this browser is signed in as, and whom it
+// acts as.
 //
 // The cookie holds a random 256-bit token. Valkey stores the session under the
 // token's SHA-256 hash, so a leaked Valkey snapshot contains no usable cookie
@@ -15,9 +16,16 @@ import { store } from "./valkey";
 // OAuth tokens live in the OAuth session store, shared by all its browsers;
 // each account keeps a set of its browsers' sessions so the tokens can be
 // revoked when the last one signs out.
+//
+// Whom the browser acts as (an organization's DID, or none for the account
+// itself) is a cookie of its own. Every page reads it, so it is request state
+// like the session token: the server renders each page as that identity, and
+// changing it in a Server Action re-renders the page. It decides only what
+// pages show; writes never read it (see getActingAs).
 
 // Resolved per request: the flags depend on runtime configuration.
 const cookie = () => cookieOptions("certified_session");
+const actingAsCookie = () => cookieOptions("certified_acting_as");
 const TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export type AppSession = { did: string; createdAt: string };
@@ -46,7 +54,24 @@ export async function createAppSession(did: string): Promise<void> {
       .expire(accountKey(did), TTL_SECONDS)
       .exec(),
   );
-  (await cookies()).set(cookie().name, token, { ...cookie().options, maxAge: TTL_SECONDS });
+  const jar = await cookies();
+  jar.set(cookie().name, token, { ...cookie().options, maxAge: TTL_SECONDS });
+  // A new account starts as itself.
+  jar.set(actingAsCookie().name, "", { ...actingAsCookie().options, maxAge: 0 });
+}
+
+/** The organization this browser acts as, as stored: unchecked. */
+export async function readActingAs(): Promise<string | null> {
+  return (await cookies()).get(actingAsCookie().name)?.value || null;
+}
+
+/**
+ * Acts as organization `did` from now on, or as the account itself (null).
+ * Only in a Server Action or Route Handler; the caller checks membership.
+ */
+export async function setActingAs(did: string | null): Promise<void> {
+  const { name, options } = actingAsCookie();
+  (await cookies()).set(name, did ?? "", { ...options, maxAge: did ? TTL_SECONDS : 0 });
 }
 
 async function readAppSessionById(id: string): Promise<AppSession | null> {
@@ -68,6 +93,7 @@ export async function endAppSession({ revokeIfLast }: { revokeIfLast: boolean })
   const id = await currentSessionId();
   // Same flags as when set: a __Host- cookie is only replaced by a Secure one.
   (await cookies()).set(cookie().name, "", { ...cookie().options, maxAge: 0 });
+  await setActingAs(null);
   if (!id) return;
   const session = await readAppSessionById(id);
   await store((r) => r.del(sessionKey(id)));

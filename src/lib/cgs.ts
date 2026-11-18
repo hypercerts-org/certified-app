@@ -94,7 +94,7 @@ export async function listMemberships(session: OAuthSession): Promise<Membership
   return memberships;
 }
 
-// Memberships for display (the workspace switcher and pages), kept in Valkey
+// Memberships for display (the account menu, pages, acting as), kept in Valkey
 // for five minutes per user, so showing them doesn't cost a service-auth token
 // and a CGS call on every request. Decisions about what the user may do never
 // read it: canEdit asks CGS, and CGS checks the role again on every write. A

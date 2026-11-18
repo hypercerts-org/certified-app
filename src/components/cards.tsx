@@ -15,10 +15,13 @@ export function actorHref(did: string) {
   return `/${did}`;
 }
 
-/** An account's workspace. Acting as an organization is named in the URL. */
+/** An account's workspace. */
 export function workspaceHref(did: string) {
   return `/${did}/workspace`;
 }
+
+/** `/workspace`, and any account's workspace or profile editor; group 1 is the DID. */
+export const WORKSPACE_PATH = /^\/(?:workspace|(did:[^/]+)\/(?:workspace|edit))(?:\/|$)/;
 
 export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
   return `/${project.authorDid}/project/${project.rkey}`;
