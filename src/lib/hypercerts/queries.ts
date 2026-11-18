@@ -124,12 +124,16 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
       ? (actor as Did)
       : ((await getDid(actor)) as Did | null);
   if (!did) return null;
+  // Tagged by DID too, whatever the URL said: a profile save expires
+  // tags.actor(did), and the page at /{handle} must go with it.
+  if (actor !== did) cacheTag(tags.actor(did));
   const [organization, handle] = await (byDid ?? lookups(did));
 
   if (organization.success) {
     const detail = { ...toActorDetail(organization.body.actor), handle };
-    const location = organization.body.actor.organization?.record.location?.uri;
-    return location ? { ...detail, place: await placeName(location) } : detail;
+    // The view carries the organization's location record: no second call.
+    const name = organization.body.actor.location?.record.name;
+    return name ? { ...detail, place: placeName(name) } : detail;
   }
   if (!notFound(organization)) throw organization;
   if (profile.success) {
@@ -142,17 +146,10 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
 }
 
 /**
- * A location record's name, cut to its last two parts ("Wilmington, New
- * Castle County, Delaware, United States" reads "Delaware, United States"),
- * or null. A missing or unreadable location never fails the profile.
+ * A location's name, cut to its last two parts ("Wilmington, New Castle
+ * County, Delaware, United States" reads "Delaware, United States").
  */
-async function placeName(uri: string): Promise<string | null> {
-  const result = await api.xrpcSafe(app.certified.location.getLocation, {
-    params: { uri: uri as AtUri },
-    ...read(),
-  });
-  const name = result.success ? result.body.location.record.name : undefined;
-  if (!name) return null;
+function placeName(name: string): string {
   return name
     .split(",")
     .map((part) => part.trim())
