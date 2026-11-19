@@ -30,6 +30,7 @@ import {
   type ExploreProject,
   type FeedEvent,
   type FeedRow,
+  type FeedTarget,
   formatDate,
   formatMoney,
   type ListCard,
@@ -60,6 +61,7 @@ import {
   toProjectDetail,
   toReceipt,
   totalsByCurrency,
+  toWalletTarget,
 } from "./views";
 
 // Response validation is off for reads. Indexed records come from many authors,
@@ -1891,6 +1893,13 @@ async function feedSourcePage(
         events: out.receipts.map((view) => {
           const receipt = toReceipt(view);
           const from = receipt.from;
+          const to = receipt.to;
+          const counterpart =
+            direction === "received"
+              ? from.kind === "account"
+                ? from.did
+                : null
+              : (receipt.forUri ?? (to.kind === "account" ? to.did : null));
           return {
             kind: "gift",
             key: view.uri,
@@ -1899,6 +1908,12 @@ async function feedSourcePage(
             value: receipt.value,
             currency: receipt.currency,
             donor: from.kind === "account" ? from.did : from.kind === "text" ? from.value : null,
+            counterpart,
+            // Given or recorded to a bare address: the address is what there is to name.
+            wallet:
+              direction !== "received" && !counterpart && to.kind === "text"
+                ? toWalletTarget(to.value, asNetwork(view.record.paymentNetwork))
+                : null,
           };
         }),
         cursor: out.cursor ?? null,
@@ -1922,6 +1937,8 @@ function decodeFeedCursor(cursor: string | undefined): FeedState | null {
     return null;
   }
 }
+
+const asNetwork = (value: unknown) => (typeof value === "string" && value.trim() ? value : null);
 
 const dayOf = (time: number) => new Date(time).toISOString().slice(0, 10);
 
@@ -1987,11 +2004,19 @@ export async function getProfileFeed(did: string, cursor?: string): Promise<Page
 
   // Cards for the accounts the events name by DID.
   const dids = new Set<string>();
+  const recordUris = new Set<string>();
   for (const event of taken) {
     if (event.kind === "endorsed" && event.subject?.startsWith("did:")) dids.add(event.subject);
     if (event.kind === "awarded" && event.recipient?.startsWith("did:")) dids.add(event.recipient);
+    if (event.kind === "gift" && event.counterpart) {
+      if (event.counterpart.startsWith("did:")) dids.add(event.counterpart);
+      else recordUris.add(event.counterpart);
+    }
   }
-  const cards = new Map((await getActorCards([...dids])).map((card) => [card.did, card]));
+  const [cards, records] = await Promise.all([
+    getActorCards([...dids]).then((list) => new Map(list.map((card) => [card.did, card]))),
+    feedRecords([...recordUris]),
+  ]);
 
   // An activity its own same-titled project holds: the project's row stands
   // for both (an organization often makes one of each for the same work).
@@ -2001,9 +2026,56 @@ export async function getProfileFeed(did: string, cursor?: string): Promise<Page
   );
 
   return {
-    items: await withFeedHandles(groupFeed(shown, cards)),
+    items: await withFeedHandles(groupFeed(shown, cards, records)),
     cursor: more ? encodeFeedCursor(state) : null,
   };
+}
+
+/**
+ * The projects and activities gifts were for, by URI: their titles, pages and
+ * pictures, read a hundred at a time.
+ */
+async function feedRecords(uris: string[]): Promise<Map<string, FeedTarget>> {
+  const out = new Map<string, FeedTarget>();
+  const projects = uris.filter((uri) => collectionOf(uri) === "org.hypercerts.collection");
+  const activities = uris.filter((uri) => collectionOf(uri) === "org.hypercerts.claim.activity");
+  await Promise.all([
+    ...chunks(projects).map(async (batch) => {
+      const page = await api.call(
+        org.hypercerts.collection.listCollections,
+        { uris: batch as AtUri[], limit: 100 },
+        read(),
+      );
+      for (const view of page.collections) {
+        const project = toProjectCard(view);
+        out.set(view.uri, {
+          kind: "record",
+          uri: view.uri,
+          title: project.title,
+          href: `/${project.authorDid}/project/${project.rkey}`,
+          imageUrl: project.imageUrl,
+        });
+      }
+    }),
+    ...chunks(activities).map(async (batch) => {
+      const page = await api.call(
+        org.hypercerts.claim.listActivities,
+        { uris: batch as AtUri[], limit: 100 },
+        read(),
+      );
+      for (const view of page.activities) {
+        const activity = toActivityCard(view);
+        out.set(view.uri, {
+          kind: "record",
+          uri: view.uri,
+          title: activity.title,
+          href: `/${didOf(view.uri)}/activity/${view.uri.split("/").pop()}`,
+          imageUrl: activity.imageUrl,
+        });
+      }
+    }),
+  ]);
+  return out;
 }
 
 /** How many accounts a grouped row names; the rest it counts. */
@@ -2013,11 +2085,16 @@ const GROUP_NAMED = 3;
  * Rows from events, newest first: gifts, followers, follows and badges
  * awarded come together per day (and per badge), at their newest's place.
  */
-function groupFeed(events: FeedEvent[], cards: Map<string, ActorCard>): FeedRow[] {
+function groupFeed(
+  events: FeedEvent[],
+  cards: Map<string, ActorCard>,
+  records: Map<string, FeedTarget>,
+): FeedRow[] {
   const rows: FeedRow[] = [];
   const groups = new Map<string, FeedRow>();
   const sums = new Map<string, Map<string, number>>();
   const donors = new Map<string, Set<string>>();
+  const targetKeys = new Map<string, Set<string>>();
   for (const event of events) {
     const date = formatDate(new Date(event.time).toISOString());
     const day = dayOf(event.time);
@@ -2120,6 +2197,8 @@ function groupFeed(events: FeedEvent[], cards: Map<string, ActorCard>): FeedRow[
             count: 0,
             totals: [],
             donors: 0,
+            targets: [],
+            targetCount: 0,
           };
           groups.set(id, row);
           sums.set(id, new Map());
@@ -2133,6 +2212,25 @@ function groupFeed(events: FeedEvent[], cards: Map<string, ActorCard>): FeedRow[
         }
         if (event.donor) donors.get(id)?.add(event.donor);
         row.donors = donors.get(id)?.size ?? 0;
+        // What the gift went to (or came from), each once.
+        const target: FeedTarget | undefined = event.counterpart
+          ? event.counterpart.startsWith("did:")
+            ? (() => {
+                const actor = cards.get(event.counterpart);
+                return actor ? { kind: "account" as const, actor } : undefined;
+              })()
+            : records.get(event.counterpart)
+          : undefined;
+        const seen = targetKeys.get(id) ?? new Set<string>();
+        targetKeys.set(id, seen);
+        const named = target ?? event.wallet ?? undefined;
+        const key =
+          event.counterpart ?? (event.wallet?.kind === "wallet" ? event.wallet.address : null);
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          row.targetCount += 1;
+          if (named && row.targets.length < GROUP_NAMED) row.targets.push(named);
+        }
         row.totals = [...(sums.get(id) ?? new Map<string, number>()).entries()]
           .sort((a, b) => b[1] - a[1])
           .map(([currency, sum]) => ({ currency, amount: formatMoney(String(sum), currency) }));
@@ -2150,6 +2248,9 @@ async function withFeedHandles(rows: FeedRow[]): Promise<FeedRow[]> {
     if (row.kind === "endorsedBy") return [row.issuer];
     if (row.kind === "awarded") return row.recipients;
     if (row.kind === "followers" || row.kind === "following") return row.actors;
+    if (row.kind === "gifts") {
+      return row.targets.flatMap((target) => (target.kind === "account" ? [target.actor] : []));
+    }
     return [];
   });
   const named = new Map((await withHandles(all)).map((card) => [card.did, card]));
@@ -2160,6 +2261,14 @@ async function withFeedHandles(rows: FeedRow[]): Promise<FeedRow[]> {
     if (row.kind === "awarded") return { ...row, recipients: row.recipients.map(card) };
     if (row.kind === "followers" || row.kind === "following") {
       return { ...row, actors: row.actors.map(card) };
+    }
+    if (row.kind === "gifts") {
+      return {
+        ...row,
+        targets: row.targets.map((target) =>
+          target.kind === "account" ? { ...target, actor: card(target.actor) } : target,
+        ),
+      };
     }
     return row;
   });

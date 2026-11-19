@@ -9,13 +9,13 @@
 // server, later pages here, for Load more.
 
 import { Avatar, Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { SquareCheckBig } from "lucide-react";
+import { Folder, SquareCheckBig } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import { nameOf } from "@/components/list-items";
-import type { ActorCard, FeedLink, FeedRow, Page } from "@/lib/hypercerts/views";
+import type { ActorCard, FeedLink, FeedRow, FeedTarget, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 
 const numberFormat = new Intl.NumberFormat("en");
@@ -149,6 +149,79 @@ function Note({ note }: { note: string | null }) {
 function Kind({ badge }: { badge: string | null }) {
   if (!badge || badge === "Endorsement") return null;
   return <span className="post-muted"> · {badge}</span>;
+}
+
+/** Where a gift post's amount leads: the account's Funding tab for that direction. */
+const FUNDING_TAB: Record<"received" | "given" | "recorded", string> = {
+  received: "",
+  given: "/given",
+  recorded: "/confirmed",
+};
+
+const targetKey = (target: FeedTarget) =>
+  target.kind === "account"
+    ? target.actor.did
+    : target.kind === "wallet"
+      ? target.address
+      : target.uri;
+
+/** A gift's account or record, by name, to its page. */
+function TargetName({ target }: { target: FeedTarget }) {
+  if (target.kind === "account") return <Name actor={target.actor} />;
+  if (target.kind === "wallet") {
+    return target.href ? (
+      <a
+        href={target.href}
+        className="post-name post-wallet"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {target.label}
+      </a>
+    ) : (
+      <span className="post-wallet">{target.label}</span>
+    );
+  }
+  return (
+    <IntentLink href={target.href} className="post-name" dir="auto">
+      {target.title}
+    </IntentLink>
+  );
+}
+
+/** The accounts' faces and the records' pictures, small, in a row. */
+function TargetFaces({ targets }: { targets: FeedTarget[] }) {
+  return (
+    <span className="post-targets">
+      {targets.map((target) =>
+        target.kind === "wallet" ? null : target.kind === "account" ? (
+          <IntentLink
+            key={targetKey(target)}
+            href={actorHref(target.actor)}
+            tabIndex={-1}
+            aria-hidden
+          >
+            <Face actor={target.actor} size="sm" />
+          </IntentLink>
+        ) : (
+          <IntentLink
+            key={targetKey(target)}
+            href={target.href}
+            className="post-target-thumb"
+            tabIndex={-1}
+            aria-hidden
+          >
+            {target.imageUrl ? (
+              // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
+              <img src={target.imageUrl} alt="" loading="lazy" />
+            ) : (
+              <Folder size={16} aria-hidden />
+            )}
+          </IntentLink>
+        ),
+      )}
+    </span>
+  );
 }
 
 const GIFTS: Record<"received" | "given" | "recorded", string> = {
@@ -301,27 +374,48 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
       };
     case "gifts": {
       const [main, ...others] = row.totals;
+      const tab = `${actorHref(owner)}/funding${FUNDING_TAB[row.direction]}`;
+      const targets = row.targets.map((target) => (
+        <TargetName key={targetKey(target)} target={target} />
+      ));
+      // Received: from the donors; given and recorded: to what it was for.
+      const named =
+        targets.length > 0 ? (
+          <>
+            {row.direction === "received" ? " from " : " to "}
+            <Names items={targets} count={row.targetCount} />
+          </>
+        ) : null;
       return {
         who: owner,
         line: (
           <>
             {me} {GIFTS[row.direction]} {plural(row.count, "gift", "gifts")}
-            {row.direction !== "given" && row.donors > 0 && (
-              <> from {plural(row.donors, "named donor", "named donors")}</>
+            {named}
+          </>
+        ),
+        body: (
+          <>
+            {row.targets.filter((target) => target.kind !== "wallet").length > 1 && (
+              <TargetFaces targets={row.targets} />
+            )}
+            {main && (
+              <IntentLink href={tab} className="post-amount">
+                {main.amount}
+                {others.map((total) => (
+                  <span key={total.currency} className="post-muted">
+                    {" "}
+                    + {total.amount}
+                  </span>
+                ))}
+              </IntentLink>
             )}
           </>
         ),
-        body: main ? (
-          <p className="post-amount">
-            {main.amount}
-            {others.map((total) => (
-              <span key={total.currency} className="post-muted">
-                {" "}
-                + {total.amount}
-              </span>
-            ))}
-          </p>
-        ) : undefined,
+        media:
+          row.targets.length === 1 && row.targets[0].kind === "record" ? (
+            <Media href={row.targets[0].href} src={row.targets[0].imageUrl} />
+          ) : undefined,
       };
     }
   }

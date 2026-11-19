@@ -1236,6 +1236,49 @@ button.menu-row:disabled:not([aria-current]) {
   color: var(--hc-text-body);
 }
 
+/* Gift posts: the projects', activities' and accounts' pictures, small. */
+.post-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.post-target-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  overflow: hidden;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.post-target-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* A wallet address, in the identifiers' type. */
+.post-wallet {
+  font-family: var(--hc-font-mono, ui-monospace, monospace);
+  font-size: var(--hc-type-body-sm);
+  font-weight: var(--hc-weight-medium);
+}
+
+/* The amount leads to the account's Funding tab. */
+a.post-amount {
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+a.post-amount:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .post-amount {
   margin: 0;
   color: var(--hc-text-ink);

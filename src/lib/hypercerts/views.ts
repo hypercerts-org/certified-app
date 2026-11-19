@@ -755,6 +755,21 @@ const EXPLORERS: Record<string, { name: string; tx: string }> = {
   "eip155:8453": { name: "Base", tx: "https://basescan.org/tx/" },
 };
 
+/**
+ * A wallet address as a gift post names it: shortened ("0x6C0f…E401"), and
+ * linked to the address on its network's explorer when that is known.
+ */
+export function toWalletTarget(address: string, network: string | null): FeedTarget {
+  const explorer = network ? EXPLORERS[network.toLowerCase()] : undefined;
+  const evm = /^0x[0-9a-fA-F]{40}$/.test(address);
+  return {
+    kind: "wallet",
+    address,
+    label: address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address,
+    href: explorer && evm ? `${explorer.tx.replace(/\/tx\/$/, "/address/")}${address}` : null,
+  };
+}
+
 export function toReceipt(view: {
   uri: string;
   did: string;
@@ -916,8 +931,22 @@ export type FeedEvent = { key: string; time: number } & (
       currency: string | null;
       /** Who gave it, as a key for counting donors; null when anonymous. */
       donor: string | null;
+      /**
+       * What the post names for it: for gifts received, the donor's DID; for
+       * gifts given or recorded, the record it was for (an AT-URI), else the
+       * receiving account's DID. Null when it names nothing.
+       */
+      counterpart: string | null;
+      /** A wallet the gift went to, when the receipt names only an address. */
+      wallet: FeedTarget | null;
     }
 );
+
+/** What a gift post names: an account, or the project or activity it was for. */
+export type FeedTarget =
+  | { kind: "account"; actor: ActorCard }
+  | { kind: "record"; uri: string; title: string; href: string; imageUrl: string | null }
+  | { kind: "wallet"; address: string; label: string; href: string | null };
 
 /** A row of the feed: one event, or a day's events of one kind together. */
 export type FeedRow = { key: string; date: string | null } & (
@@ -943,5 +972,8 @@ export type FeedRow = { key: string; date: string | null } & (
       count: number;
       totals: { currency: string; amount: string }[];
       donors: number;
+      /** The first few it went to (or came from), linked; and how many there were. */
+      targets: FeedTarget[];
+      targetCount: number;
     }
 );
