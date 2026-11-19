@@ -5,10 +5,11 @@
 // comes with the Hypercerts SDK's writes (a placeholder until then). More
 // items load a page at a time, as on the profile.
 
-import { Button, Checkbox, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react";
-import { List } from "lucide-react";
+import { Button, Checkbox, ErrorMessage } from "@hypercerts-org/ui-react";
+import { ListChecks } from "lucide-react";
 import { useCallback, useState } from "react";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { Empty } from "@/components/empty";
 import { ListItemRows } from "@/components/list-items";
 import type { ListItem, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
@@ -41,8 +42,8 @@ export function ManageListItems({ list, initial }: { list: string; initial: Page
 
   if (items.length === 0 && !hasMore) {
     return (
-      <EmptyState
-        icon={<List size={40} strokeWidth={1.25} aria-hidden />}
+      <Empty
+        icon={ListChecks}
         title="No items yet"
         description="Add items to this list with Add items."
       />

@@ -1,4 +1,5 @@
-import { EmptyState } from "@hypercerts-org/ui-react";
+import { Folder } from "lucide-react";
+import { Empty } from "@/components/empty";
 import { listActivitiesPage, listProjectsPage } from "@/lib/hypercerts/queries";
 import { ActivityList } from "./activity-list";
 import { ProjectCardView, WorkCardsSkeleton } from "./cards";
@@ -26,7 +27,7 @@ export async function ProjectsTile({ did }: { did: string }) {
   return (
     <Tile title="Projects">
       {page.items.length === 0 ? (
-        <EmptyState title="No projects yet" />
+        <Empty icon={Folder} title="No projects yet" />
       ) : (
         <ul className="work-grid">
           {page.items.map((project) => (

@@ -11,11 +11,20 @@
 // deleting and moving activities between projects come with the Hypercerts
 // SDK's writes: until then New activity and New project are placeholders.
 
-import { Button, EmptyState, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
-import { ArrowRight, ChevronRight, Folder, Plus, SquareCheckBig } from "lucide-react";
+import { Button, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
+import {
+  ArrowRight,
+  ChevronRight,
+  Folder,
+  FolderGit2,
+  Plus,
+  SearchX,
+  SquareCheckBig,
+} from "lucide-react";
 import { useState } from "react";
 import { activityHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 
 export type WorkRow = {
@@ -194,7 +203,8 @@ export function WorkFolders({ folders, note }: { folders: WorkFolder[]; note: st
 
   if (folders.length === 0) {
     return (
-      <EmptyState
+      <Empty
+        icon={FolderGit2}
         title="No projects or activities yet"
         description="An activity records a piece of work. Group activities into projects, like folders, to show how they fit together; one activity can sit in several projects."
         action={<NewButtons />}
@@ -217,7 +227,8 @@ export function WorkFolders({ folders, note }: { folders: WorkFolder[]; note: st
     <section className="work" aria-label="Projects and activities">
       <Toolbar query={query} onQuery={setQuery} />
       {shown.length === 0 ? (
-        <EmptyState
+        <Empty
+          icon={SearchX}
           title={`Nothing matches "${query.trim()}".`}
           action={
             <Button variant="secondary" size="sm" onClick={() => setQuery("")}>

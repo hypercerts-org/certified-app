@@ -23,7 +23,6 @@ import {
   Button,
   Card,
   CopyableId,
-  EmptyState,
   Eyebrow,
   Heading,
   IdentityRow,
@@ -44,10 +43,11 @@ import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { actorHref, projectHref, workspaceHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { Empty } from "@/components/empty";
 import { PageTitle } from "@/components/page-title";
+import { StatRow } from "@/components/stat-row";
 import { APPS } from "@/lib/apps";
 import {
-  type Count,
   getActor,
   getEndorsements,
   getFollowCounts,
@@ -125,7 +125,7 @@ function Section({
   return (
     <section className="overview-section" aria-labelledby={titleId}>
       <div className="overview-section-head">
-        <div className="overview-section-header">
+        <div className="section-heading">
           <Heading level={2} size="heading" id={titleId}>
             {title}
           </Heading>
@@ -222,41 +222,6 @@ export function OverviewSkeleton() {
 /** "1 Activity", "3 Activities". */
 const byCount = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
-const numberFormat = new Intl.NumberFormat("en");
-const formatCount = (count: Count | number) =>
-  typeof count === "number"
-    ? numberFormat.format(count)
-    : `${numberFormat.format(count.value)}${count.capped ? "+" : ""}`;
-
-type Stat = { label: string; value: Count | number; href?: string };
-
-/** Counts in a row, each a large number over its label. */
-function StatRow({ label, stats }: { label: string; stats: Stat[] }) {
-  return (
-    <ul className="stat-row" aria-label={label}>
-      {stats.map((stat) => {
-        const content = (
-          <>
-            <span className="stat-value">{formatCount(stat.value)}</span>
-            <span className="stat-label">{stat.label}</span>
-          </>
-        );
-        return (
-          <li key={stat.label}>
-            {stat.href ? (
-              <Link prefetch href={stat.href} className="stat stat-link">
-                {content}
-              </Link>
-            ) : (
-              <span className="stat">{content}</span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 function ListLabel({ children }: { children: ReactNode }) {
   // A heading for the outline, an eyebrow to look at (Eyebrow can't be a
   // heading itself: toolkit gap).
@@ -290,9 +255,8 @@ async function RecordsSection({ did }: { did: string }) {
       action={empty ? undefined : <Placeholder>New activity</Placeholder>}
     >
       {empty ? (
-        <EmptyState
-          className="overview-empty"
-          icon={<FileBadge size={40} strokeWidth={1.25} aria-hidden />}
+        <Empty
+          icon={FileBadge}
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
           action={
@@ -524,7 +488,7 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
         </div>
       </div>
       <section aria-labelledby={idTitleId} className="overview-id">
-        <div className="overview-section-header">
+        <div className="section-heading">
           <Heading level={2} size="heading" id={idTitleId}>
             ID
           </Heading>

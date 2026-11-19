@@ -1,7 +1,9 @@
-import { EmptyState, Text } from "@hypercerts-org/ui-react";
+import { Text } from "@hypercerts-org/ui-react";
+import { ListChecks } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
+import { Empty } from "@/components/empty";
 import { NewListDialog } from "@/components/list-dialogs";
 import { PageTitle } from "@/components/page-title";
 import { ListGroups, ListGroupsSkeleton } from "@/components/profile-lists";
@@ -20,7 +22,8 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
   const { lists, more } = await listLists(did);
   if (lists.length === 0) {
     return (
-      <EmptyState
+      <Empty
+        icon={ListChecks}
         title="No lists yet"
         description="A list gathers activities, projects, accounts or endorsements to show together on the profile, like a funding round's applicants."
         action={<NewListDialog />}

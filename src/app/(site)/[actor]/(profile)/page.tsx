@@ -1,61 +1,32 @@
-import {
-  Avatar,
-  Card,
-  CopyableId,
-  Heading,
-  IdentityRow,
-  Skeleton,
-  Text,
-} from "@hypercerts-org/ui-react";
+import { Card, CopyableId, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ChevronRight, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
-import { BadgeTiles, IssuedBadgeTiles } from "@/components/badges";
-import {
-  ActivityCardView,
-  actorHref,
-  ProjectCardView,
-  WorkCardsSkeleton,
-} from "@/components/cards";
-import { ComingSoonButton } from "@/components/coming-soon";
-import { IntentLink } from "@/components/intent-link";
+import { skeletonSlots } from "@/components/cards";
 import { LocationMap } from "@/components/location-map";
-import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
+import { ProfileFeed, ProfileFeedSkeleton } from "@/components/profile-feed";
+import { type Stat, StatRow } from "@/components/stat-row";
 import {
   getActor,
   getBadges,
-  getEndorsements,
+  getFundingSummary,
   getIssuedBadges,
-  getRecordCounts,
-  listActivitiesPage,
+  getProfileFeed,
+  hasFunding,
   listEndorsements,
-  listFollows,
-  listProjectsPage,
+  listLists,
 } from "@/lib/hypercerts/queries";
-import {
-  type ActivityCard,
-  type ActorCard,
-  endorsementLine,
-  type PersonRow,
-  type ProjectCard,
-} from "@/lib/hypercerts/views";
+import type { ActorCard, PersonRow } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
-// The profile's Overview, after the staging redesign: a reading column with
-// About, the latest activities and projects, the accounts it endorses
-// ("Endorses N") and those that endorsed it ("Endorsed by N"), beside a rail
-// with the Account facts. A visitor sees only sections with something in
-// them; the account itself (whoever acts as it) sees every section, with the
-// action that fills an empty one. An account with nothing public says so,
-// and shows whom it follows.
-
-/** Work cards per section. */
-const PREVIEW = 4;
-/** Rows in "Endorsed by". */
-const ENDORSEMENTS_PREVIEW = 3;
-/** Accounts in the "Endorses" and "Follows" grids. */
-const GRID_PREVIEW = 12;
+// The profile's Overview: one reading column, and the facts beside it. The
+// column opens with the account's figures, each a link to its tab (whom it
+// endorses, its badges, its lists, the funding it received), then About (an
+// organization's long description) and its feed: what it did, newest first,
+// its projects and activities among it. Beside it: where it is, and its
+// identifiers. Who endorsed the account and who follows it are in the
+// header, so nothing here repeats them.
 
 const numberFormat = new Intl.NumberFormat("en");
 
@@ -95,29 +66,6 @@ function Section({
   );
 }
 
-/** An empty section on the account's own profile: what goes here, and how. */
-function Empty({ text, action }: { text: string; action?: string }) {
-  return (
-    <div className="profile-empty">
-      <Text tone="muted">{text}</Text>
-      {action && (
-        // A placeholder until the Hypercerts SDK ships the write.
-        <ComingSoonButton>{action}</ComingSoonButton>
-      )}
-    </div>
-  );
-}
-
-const sameTitle = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-
-/** An activity its own same-titled project already shows: the project card stands for both. */
-function coveredByProject(activity: ActivityCard, projects: ProjectCard[]): boolean {
-  return projects.some(
-    (project) =>
-      sameTitle(project.title, activity.title) && project.activityUris.includes(activity.uri),
-  );
-}
-
 /** Each account once, newest first. */
 function uniqueActors(rows: PersonRow[]): { actor: ActorCard; row: PersonRow }[] {
   const seen = new Set<string>();
@@ -129,252 +77,98 @@ function uniqueActors(rows: PersonRow[]): { actor: ActorCard; row: PersonRow }[]
 const countLabel = (count: number, more: boolean) =>
   `${numberFormat.format(count)}${more ? "+" : ""}`;
 
-/** A grid of accounts, each avatar and name to its profile. */
-function AccountGrid({ actors }: { actors: ActorCard[] }) {
-  // An account without a Certified profile has only its DID for a name: its
-  // handle reads better.
-  const shown = actors
-    .slice(0, GRID_PREVIEW)
-    .map((actor) =>
-      actor.displayName === actor.did && actor.handle
-        ? { ...actor, displayName: `@${actor.handle}` }
-        : actor,
-    );
-  return (
-    <ul className="account-grid">
-      {shown.map((actor) => (
-        <li key={actor.did}>
-          <IntentLink href={actorHref(actor)} className="account-grid-link">
-            <Avatar
-              // A handle's initial, not "@".
-              name={actor.displayName.replace(/^@/, "")}
-              src={actor.avatarUrl}
-              size="md"
-              className={actor.isOrganization ? "avatar-square" : undefined}
-            />
-            <span className="account-grid-name" dir="auto">
-              {actor.displayName}
-            </span>
-          </IntentLink>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-async function Work({ did, base }: { did: string; base: string }) {
-  const [activityPage, projectPage] = await Promise.all([
-    listActivitiesPage({ author: did, limit: PREVIEW * 2 }),
-    listProjectsPage({ author: did }),
+/**
+ * The account's figures, each a link to its tab: the accounts it endorses,
+ * the badges it holds and issues, its lists. Only those it has.
+ */
+async function Figures({ did, base }: { did: string; base: string }) {
+  const [given, { accepted }, issued, { lists, more: moreLists }] = await Promise.all([
+    listEndorsements(did, "given"),
+    getBadges(did),
+    getIssuedBadges(did),
+    listLists(did),
   ]);
-  const projects = projectPage.items;
-  const activities = activityPage.items.filter((a) => !coveredByProject(a, projects));
-  const moreActivities = activities.length > PREVIEW || Boolean(activityPage.cursor);
-
-  // An empty section is shown only to the account itself, with what fills it;
-  // a visitor doesn't get an Activities section that only repeats the projects.
-  const activitiesSection = (
-    <Section
-      title="Activities"
-      seeAll={moreActivities ? { href: `${base}/activities`, label: "All activities" } : undefined}
-    >
-      {activities.length > 0 ? (
-        <ul className="work-grid">
-          {activities.slice(0, PREVIEW).map((activity) => (
-            <ActivityCardView key={activity.uri} activity={activity} showAuthor={false} />
-          ))}
-        </ul>
-      ) : (
-        <Empty
-          text={
-            activityPage.items.length > 0
-              ? "Each activity is in its project below."
-              : "No activities yet. Activities you publish or contribute to show here."
-          }
-          action={activityPage.items.length > 0 ? undefined : "New activity"}
-        />
-      )}
-    </Section>
-  );
-  const projectsSection = (
-    <Section
-      title="Projects"
-      seeAll={
-        projects.length > PREVIEW || projectPage.cursor
-          ? { href: `${base}/projects`, label: "All projects" }
-          : undefined
-      }
-    >
-      {projects.length > 0 ? (
-        <ul className="work-grid">
-          {projects.slice(0, PREVIEW).map((project) => (
-            <ProjectCardView key={project.uri} project={project} />
-          ))}
-        </ul>
-      ) : (
-        <Empty text="No projects yet. A project groups related activities." action="New project" />
-      )}
-    </Section>
-  );
-  return (
-    <>
-      {activities.length > 0 ? (
-        activitiesSection
-      ) : (
-        <OwnerOnly did={did}>{activitiesSection}</OwnerOnly>
-      )}
-      {projects.length > 0 ? projectsSection : <OwnerOnly did={did}>{projectsSection}</OwnerOnly>}
-    </>
-  );
-}
-
-/** The accounts this one endorses, newest first. */
-async function Endorses({ did, base }: { did: string; base: string }) {
-  const { rows, more } = await listEndorsements(did, "given");
-  const actors = uniqueActors(rows).map(({ actor }) => actor);
-  if (actors.length === 0) return null;
-  const label = countLabel(actors.length, more);
-  return (
-    <Section
-      title="Endorses"
-      count={label}
-      seeAll={
-        actors.length > GRID_PREVIEW
-          ? { href: `${base}/endorsements/given`, label: `All ${label}` }
-          : undefined
-      }
-    >
-      <AccountGrid actors={actors} />
-    </Section>
-  );
-}
-
-/** How many badges the Overview shows before "All badges". */
-const BADGES_PREVIEW = 6;
-
-/**
- * The badges the account accepted. Those awaiting its response wait on the
- * Badges tab: anyone can award a badge, and only an accepted one is shown
- * here as the account's own.
- */
-async function Badges({ did, base }: { did: string; base: string }) {
-  const { accepted, awaiting } = await getBadges(did);
-  if (accepted.length === 0) return null;
-  const more = accepted.length > BADGES_PREVIEW || awaiting.length > 0;
-  return (
-    <Section
-      title="Badges"
-      count={String(accepted.length)}
-      seeAll={more ? { href: `${base}/badges`, label: "All badges" } : undefined}
-    >
-      <BadgeTiles badges={accepted.slice(0, BADGES_PREVIEW)} />
-    </Section>
-  );
-}
-
-/** The badges this account defined for others, the most held first. */
-async function BadgesIssued({ did, base }: { did: string; base: string }) {
-  const { badges, more } = await getIssuedBadges(did);
-  if (badges.length === 0) return null;
-  return (
-    <Section
-      title="Badges issued"
-      count={`${badges.length}${more ? "+" : ""}`}
-      seeAll={
-        badges.length > BADGES_PREVIEW
-          ? { href: `${base}/badges/issued`, label: "All badges issued" }
-          : undefined
-      }
-    >
-      <IssuedBadgeTiles badges={badges.slice(0, BADGES_PREVIEW)} />
-    </Section>
-  );
-}
-
-/** The accounts that endorsed this one, each once with its latest endorsement. */
-async function EndorsedBy({ did, base }: { did: string; base: string }) {
-  const { rows, more } = await listEndorsements(did, "received");
-  const endorsers = uniqueActors(rows);
-  if (endorsers.length === 0) {
-    return (
-      <OwnerOnly did={did}>
-        <Section title="Endorsed by">
-          <Empty text="No endorsements yet. When another account endorses this one, it shows here." />
-        </Section>
-      </OwnerOnly>
-    );
+  const endorsed = uniqueActors(given.rows).length;
+  const stats: Stat[] = [];
+  if (endorsed > 0) {
+    stats.push({
+      label: "Endorses",
+      value: countLabel(endorsed, given.more),
+      href: `${base}/endorsements/given`,
+    });
   }
+  if (accepted.length > 0) {
+    stats.push({ label: "Badges", value: accepted.length, href: `${base}/badges` });
+  }
+  if (issued.badges.length > 0) {
+    stats.push({
+      label: "Badges issued",
+      value: countLabel(issued.badges.length, issued.more),
+      href: `${base}/badges/issued`,
+    });
+  }
+  if (lists.length > 0) {
+    stats.push({
+      label: "Lists",
+      value: countLabel(lists.length, moreLists),
+      href: `${base}/lists`,
+    });
+  }
+  if (stats.length === 0) return null;
+  return <StatRow label="At a glance" stats={stats} />;
+}
+
+/**
+ * What the account received, beside the other figures. On its own: adding up
+ * a large account's receipts takes a while the first time.
+ */
+async function Received({ did, base }: { did: string; base: string }) {
+  const { received } = await hasFunding(did);
+  if (!received) return null;
+  const summary = await getFundingSummary({ to: did });
+  const [main] = summary.totals;
+  if (!main) return null;
   return (
-    <Section
-      title="Endorsed by"
-      count={countLabel(endorsers.length, more)}
-      seeAll={{ href: `${base}/endorsements`, label: "All endorsements" }}
-    >
-      <ul className="overview-rows">
-        {endorsers.slice(0, ENDORSEMENTS_PREVIEW).map(({ actor, row }) => (
-          <li key={row.uri} className="overview-row-dated">
-            <IdentityRow
-              size="md"
-              name={actor.displayName}
-              avatarSrc={actor.avatarUrl}
-              href={actorHref(actor)}
-              secondary={endorsementLine(row)}
-            />
-            {row.date && <span className="overview-row-date">{row.date}</span>}
-          </li>
-        ))}
-      </ul>
+    <StatRow
+      label="Funding"
+      stats={[
+        {
+          label: "Received",
+          value: `${main.amount}${summary.capped ? "+" : ""}`,
+          href: `${base}/funding`,
+        },
+      ]}
+    />
+  );
+}
+
+/** The figures on their way. */
+function FiguresSkeleton() {
+  return (
+    <div className="stat-row" aria-hidden>
+      {skeletonSlots(3).map((slot) => (
+        <Skeleton key={slot} variant="box" className="skeleton-stat" />
+      ))}
+    </div>
+  );
+}
+
+/** What the account did, newest first: its feed's first page. */
+async function Latest({ did }: { did: string }) {
+  const initial = await getProfileFeed(did);
+  return (
+    <Section title="Latest">
+      <ProfileFeed did={did} initial={initial} />
     </Section>
   );
 }
 
-/**
- * For a visitor, when the account has published nothing: says so, then
- * whom it follows, which is what there is to see.
- */
-async function NothingPublic({ did, base, about }: { did: string; base: string; about: boolean }) {
-  if (about) return null;
-  // The counts the profile's tabs already asked for (same cached answers):
-  // whether anything is there at all, with no request of its own.
-  const [records, endorsements] = await Promise.all([getRecordCounts(did), getEndorsements(did)]);
-  const empty =
-    records.activities.value === 0 &&
-    records.projects.value === 0 &&
-    endorsements.given === 0 &&
-    endorsements.receivedCount === 0;
-  if (!empty) return null;
-  const following = await listFollows(did, "following");
-  const followed = uniqueActors(following.rows).map(({ actor }) => actor);
-  // The account itself sees its empty sections instead.
-  return (
-    <VisitorOnly did={did}>
-      <div className="profile-nothing">
-        <Heading level={2} size="heading">
-          No public records yet.
-        </Heading>
-        <Text tone="muted">When this account publishes something, it shows here.</Text>
-      </div>
-      {followed.length > 0 && (
-        <Section
-          title="Follows"
-          count={countLabel(followed.length, following.more)}
-          seeAll={
-            followed.length > GRID_PREVIEW ? { href: `${base}/following`, label: "All" } : undefined
-          }
-        >
-          <AccountGrid actors={followed} />
-        </Section>
-      )}
-    </VisitorOnly>
-  );
-}
-
-/** A section on its way: its heading and two cards' worth of room. */
-function SectionSkeleton() {
+/** The feed on its way: its heading and a few cards. */
+function LatestSkeleton() {
   return (
     <div className="profile-section" aria-hidden>
       <Skeleton variant="line" className="skeleton-heading" />
-      <WorkCardsSkeleton />
+      <ProfileFeedSkeleton />
     </div>
   );
 }
@@ -384,7 +178,8 @@ function OverviewSkeleton() {
   return (
     <div className="profile-overview" aria-hidden>
       <div className="profile-main">
-        <SectionSkeleton />
+        <FiguresSkeleton />
+        <LatestSkeleton />
       </div>
       <div className="profile-rail">
         <Skeleton variant="box" className="skeleton-rail" />
@@ -401,32 +196,25 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
   return (
     <div className="profile-overview">
       <div className="profile-main">
+        <div className="profile-figures">
+          <Suspense fallback={<FiguresSkeleton />}>
+            <Figures did={did} base={base} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <Received did={did} base={base} />
+          </Suspense>
+        </div>
         {/* The header's lead is the bio, so an organization's longer
             description gets its own section. */}
         {about && (
           <Section title="About">
-            <Text relaxed className="prewrap" dir="auto">
+            <Text relaxed className="prewrap measure" dir="auto">
               {about}
             </Text>
           </Section>
         )}
-        <Suspense fallback={<SectionSkeleton />}>
-          <Work did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={null}>
-          <Badges did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={null}>
-          <BadgesIssued did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={null}>
-          <Endorses did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={null}>
-          <EndorsedBy did={did} base={base} />
-        </Suspense>
-        <Suspense fallback={null}>
-          <NothingPublic did={did} base={base} about={Boolean(about)} />
+        <Suspense fallback={<LatestSkeleton />}>
+          <Latest did={did} />
         </Suspense>
       </div>
       <aside className="profile-rail" aria-label="Facts about this account">

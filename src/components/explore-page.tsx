@@ -59,15 +59,11 @@ function Section({
   return (
     <section className="explore-section" aria-label={title}>
       <div className="explore-section-head">
-        <div>
+        <div className="section-heading">
           <Heading level={2} size="heading">
             {title}
           </Heading>
-          {description && (
-            <Text size="body-sm" tone="muted">
-              {description}
-            </Text>
-          )}
+          {description && <Text tone="muted">{description}</Text>}
         </div>
         <Link prefetch href={moreHref} className="explore-more">
           {more}

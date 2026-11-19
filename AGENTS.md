@@ -68,6 +68,8 @@ This branch (`v2`) is a clean-slate rebuild of certified.app; `main` and `stagin
 
 To review a change against this codebase's standards (architecture, data and caching, permissions, Next.js, the UI toolkit, security, simplicity), use the `review-changes` skill (`.agents/skills/review-changes/SKILL.md`; linked from `.claude/skills`).
 
+Styling follows `docs/design-system.md`: type, spacing and colors only from its tokens, and its patterns (page header, sections, rows, empty states). Toolkit gaps bridged in CSS are listed in `docs/toolkit-gaps.md`.
+
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `pnpm build` must pass.
 
 API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods (and `com.atproto.server.getServiceAuth`, which calling it needs) are installed and generated with `lex install` and `lex build` (`lexicons.json`, `lexicons/`, `src/lexicons/`). CGS doesn't publish its lexicons, so its files in `lexicons/` are copies from the certified-group-service repository: update them by copying, never by hand-editing.

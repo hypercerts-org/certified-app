@@ -4,11 +4,12 @@
 // keeps. Hiding, showing, revoking and endorsing someone come with the
 // Hypercerts SDK's writes: until then their buttons are placeholders.
 
-import { Badge, Button, EmptyState, IdentityRow, Text } from "@hypercerts-org/ui-react";
-import { Plus } from "lucide-react";
+import { Badge, Button, IdentityRow, Text } from "@hypercerts-org/ui-react";
+import { ListChecks, Plus, ThumbsUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { actorHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { Empty } from "@/components/empty";
 import { PeopleListSkeleton } from "@/components/people-list";
 import { ListGroups } from "@/components/profile-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
@@ -56,7 +57,8 @@ function More({ page }: { page: PeoplePage }) {
 export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; profile: string }) {
   if (page.rows.length === 0) {
     return (
-      <EmptyState
+      <Empty
+        icon={ThumbsUp}
         title="No endorsements received yet"
         description="When another account endorses yours, it shows here. You choose which ones show on your profile."
         action={
@@ -92,7 +94,11 @@ export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; prof
 export function GivenEndorsements({ page }: { page: PeoplePage }) {
   if (page.rows.length === 0) {
     return (
-      <EmptyState title="No endorsements given yet" description="Accounts you endorse show here." />
+      <Empty
+        icon={ThumbsUp}
+        title="No endorsements given yet"
+        description="Accounts you endorse show here."
+      />
     );
   }
   return (
@@ -112,7 +118,8 @@ export function EndorsementLists({ lists, base }: { lists: ListCard[]; base: str
   return lists.length > 0 ? (
     <ListGroups lists={lists} base={base} />
   ) : (
-    <EmptyState
+    <Empty
+      icon={ListChecks}
       title="No endorsement lists yet"
       description="A list gathers endorsements to show together, like a set of references. Make one under Lists."
     />

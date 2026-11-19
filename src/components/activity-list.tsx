@@ -1,7 +1,9 @@
 "use client";
 
-import { Button, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { SquareCheckBig } from "lucide-react";
 import { useCallback } from "react";
+import { Empty } from "@/components/empty";
 import type { ActivityCard, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 import { ActivityCardView, ActivityPostView } from "./cards";
@@ -42,7 +44,8 @@ export function ActivityList({
   // A project page can come back empty after filtering (collection items that
   // are not activities) while later pages still hold activities, so the empty
   // state waits for the last page.
-  if (items.length === 0 && !hasMore) return <EmptyState title="No activities yet" />;
+  if (items.length === 0 && !hasMore)
+    return <Empty icon={SquareCheckBig} title="No activities yet" />;
 
   return (
     <div className="stack">

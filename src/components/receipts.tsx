@@ -5,10 +5,11 @@
 // receipt, usually the platform that processed the payment). An onchain
 // payment links to its transaction. A page loads at a time ("Load more").
 
-import { Avatar, Button, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react";
-import { ExternalLink } from "lucide-react";
+import { Avatar, Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { ExternalLink, HandCoins } from "lucide-react";
 import { useCallback } from "react";
 import { actorHref } from "@/components/cards";
+import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import type { ReceiptFilter, ReceiptRow } from "@/lib/hypercerts/queries";
 import type { ActorCard, Page, ReceiptParty } from "@/lib/hypercerts/views";
@@ -67,7 +68,7 @@ export function Ledger({
     [filter],
   );
   const { items, hasMore, loading, error, loadMore } = useCursorPages(initial, pageUrl, receiptKey);
-  if (items.length === 0 && !hasMore) return <EmptyState title={empty} />;
+  if (items.length === 0 && !hasMore) return <Empty icon={HandCoins} title={empty} />;
   return (
     <div className="stack">
       <div className="ledger-scroll">

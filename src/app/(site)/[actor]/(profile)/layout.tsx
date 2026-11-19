@@ -40,11 +40,6 @@ async function Header({ params }: { params: Promise<{ actor: string }> }) {
   );
 }
 
-const numberFormat = new Intl.NumberFormat("en");
-const format = (count: Count | number) =>
-  typeof count === "number"
-    ? numberFormat.format(count)
-    : `${numberFormat.format(count.value)}${count.capped ? "+" : ""}`;
 const value = (count: Count | number) => (typeof count === "number" ? count : count.value);
 
 type TabCounts = {
@@ -62,7 +57,12 @@ type TabCounts = {
   funding: boolean;
 };
 
-/** Overview always; the others once their counts are known, and only when not empty. */
+/**
+ * Overview always; the others once their counts are known, and only when not
+ * empty. The tabs carry no numbers: several hold lists of their own (received
+ * and given, followers and following), so one number on the tab misleads, and
+ * the header already says how many follow and who endorsed.
+ */
 function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
   const tab = (
     label: string,
@@ -74,8 +74,6 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
     ({
       label,
       href: `${base}${path}`,
-      // No count on a tab with none ("Endorsements" with only some given).
-      count: count === undefined || value(count) === 0 ? undefined : format(count),
       also: also?.map((sub) => `${base}${sub}`),
       empty,
     }) satisfies ProfileTab;

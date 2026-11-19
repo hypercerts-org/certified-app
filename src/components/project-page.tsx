@@ -11,12 +11,7 @@ import { actorHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
-import {
-  getActor,
-  getFundingSummary,
-  getProject,
-  getProjectFollowers,
-} from "@/lib/hypercerts/queries";
+import { getActor, getProject, getProjectFollowers } from "@/lib/hypercerts/queries";
 
 export type ProjectParams = Promise<{ actor: string; rkey: string }>;
 
@@ -55,31 +50,9 @@ const TABS = [
   { label: "Followers", path: "/followers" },
 ] as const;
 
-function tabs(base: string, counts?: [number, number, number]) {
-  return TABS.map((tab, i) => ({
-    label: tab.label,
-    href: `${base}${tab.path}`,
-    count: counts && counts[i] > 0 ? numberFormat.format(counts[i]) : undefined,
-  }));
-}
-
-/** The tabs with their counts: activities, gifts and followers. */
-async function TabsWithCounts({
-  uri,
-  base,
-  activities,
-}: {
-  uri: string;
-  base: string;
-  activities: number;
-}) {
-  const [funding, followers] = await Promise.all([
-    getFundingSummary({ for: uri }),
-    getProjectFollowers(uri),
-  ]);
-  return (
-    <ProfileTabs label="Project" tabs={tabs(base, [activities, funding.gifts, followers.total])} />
-  );
+/** The tabs carry no numbers: the header already says how many follow. */
+function tabs(base: string) {
+  return TABS.map((tab) => ({ label: tab.label, href: `${base}${tab.path}` }));
 }
 
 export async function ProjectHeader({ params }: { params: ProjectParams }) {
@@ -105,7 +78,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           </div>
           {project.description && (
             // Long descriptions fade out above Read more, as on profiles.
-            <ExpandableText lines={4} className="expandable-fade">
+            <ExpandableText lines={4} className="expandable-fade measure">
               <Text relaxed className="prewrap" dir="auto">
                 {project.description}
               </Text>
@@ -118,9 +91,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           Follow
         </ComingSoonButton>
       </div>
-      <Suspense fallback={<ProfileTabs label="Project" tabs={tabs(base)} />}>
-        <TabsWithCounts uri={uri} base={base} activities={project.activityCount} />
-      </Suspense>
+      <ProfileTabs label="Project" tabs={tabs(base)} />
     </>
   );
 }

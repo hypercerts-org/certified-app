@@ -888,3 +888,60 @@ export function toExploreProject(collection: CollectionView, now: number): Explo
     age: toAge(collection.record.createdAt, now),
   };
 }
+
+// Profile feed
+//
+// What an account did, newest first: work it published, endorsements and
+// badges, follows, funding. Events that come in numbers (gifts, followers,
+// badges awarded) are grouped per day into one row.
+
+/** A badge or project as a feed row names it: its title and its page. */
+export type FeedLink = { title: string; href: string };
+
+/** One event, as read from the API (cached per page): DIDs, not cards yet. */
+export type FeedEvent = { key: string; time: number } & (
+  | { kind: "activity"; activity: ActivityCard }
+  | { kind: "project"; project: ProjectCard }
+  | { kind: "endorsed"; subject: string | null; badge: string | null; note: string | null }
+  | { kind: "endorsedBy"; issuer: ActorCard; badge: string | null; note: string | null }
+  | { kind: "badge"; badge: BadgeCard }
+  | { kind: "awarded"; badge: FeedLink; recipient: string | null }
+  | { kind: "follower"; actor: ActorCard }
+  | { kind: "followed"; actor: ActorCard }
+  | { kind: "followedProject"; project: FeedLink }
+  | {
+      kind: "gift";
+      direction: "received" | "given" | "recorded";
+      value: number | null;
+      currency: string | null;
+      /** Who gave it, as a key for counting donors; null when anonymous. */
+      donor: string | null;
+    }
+);
+
+/** A row of the feed: one event, or a day's events of one kind together. */
+export type FeedRow = { key: string; date: string | null } & (
+  | { kind: "activity"; activity: ActivityCard }
+  | { kind: "project"; project: ProjectCard }
+  | {
+      kind: "endorsed";
+      /** The accounts endorsed that day with this kind of endorsement; the rest counted. */
+      subjects: ActorCard[];
+      count: number;
+      badge: string | null;
+      /** The note, when the row is one endorsement. */
+      note: string | null;
+    }
+  | { kind: "endorsedBy"; issuer: ActorCard; badge: string | null; note: string | null }
+  | { kind: "badge"; badge: BadgeCard }
+  | { kind: "awarded"; badge: FeedLink; count: number; recipients: ActorCard[] }
+  | { kind: "followers" | "following"; count: number; actors: ActorCard[] }
+  | { kind: "projectsFollowed"; count: number; projects: FeedLink[] }
+  | {
+      kind: "gifts";
+      direction: "received" | "given" | "recorded";
+      count: number;
+      totals: { currency: string; amount: string }[];
+      donors: number;
+    }
+);

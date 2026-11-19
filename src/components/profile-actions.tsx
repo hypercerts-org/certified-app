@@ -91,7 +91,9 @@ export function VisitorActions({
       <ShareButton path={path} title={title} />
       <Menu>
         <MenuTrigger asChild>
-          <MenuButton label={`More actions for ${title}`} />
+          {/* The full name for screen readers; on hover, a tooltip short enough
+              not to run past the page's edge (it centers on the button). */}
+          <MenuButton label={`More actions for ${title}`} tooltip="More actions" />
         </MenuTrigger>
         <MenuContent label="More actions" align="end">
           <MenuItem disabled title={COMING_SOON}>

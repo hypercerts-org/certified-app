@@ -2,7 +2,7 @@ import { Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { PageTitle } from "@/components/page-title";
+import { PageHeader } from "@/components/page-title";
 import { ProfileForm, ProfileFormSkeleton } from "@/components/profile-form";
 import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
@@ -49,13 +49,10 @@ async function Editor({ params }: Pick<PageProps<"/[actor]/edit">, "params">) {
 export default function EditProfilePage(props: PageProps<"/[actor]/edit">) {
   return (
     <div className="page">
-      <div className="stack">
-        <PageTitle>Edit profile</PageTitle>
-        <Text tone="muted">
-          Saved to the account's own repository, and signed by certified.app so other apps can see
-          where the change was made.
-        </Text>
-      </div>
+      <PageHeader
+        title="Edit profile"
+        description="Saved to the account's own repository, and signed by certified.app so other apps can see where the change was made."
+      />
       <Suspense fallback={<ProfileFormSkeleton />}>
         <Editor params={props.params} />
       </Suspense>

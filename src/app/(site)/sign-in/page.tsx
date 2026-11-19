@@ -3,7 +3,7 @@ import { Banner, Button, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { PageTitle } from "@/components/page-title";
+import { PageHeader } from "@/components/page-title";
 import { SignInButton } from "@/components/sign-in-button";
 import { getUser } from "@/lib/auth/dal";
 import type { SignInError } from "@/lib/auth/start-sign-in";
@@ -59,13 +59,10 @@ async function SignIn({ searchParams }: Pick<PageProps<"/sign-in">, "searchParam
 export default function SignInPage(props: PageProps<"/sign-in">) {
   return (
     <div className="page">
-      <div className="stack">
-        <PageTitle>Sign in</PageTitle>
-        <Text tone="muted">
-          Sign in with your Certified account: an email code, Google, or a handle on Bluesky or any
-          other AT Protocol server.
-        </Text>
-      </div>
+      <PageHeader
+        title="Sign in"
+        description="Sign in with your Certified account: an email code, Google, or a handle on Bluesky or any other AT Protocol server."
+      />
       <Suspense fallback={<Skeleton variant="box" className="skeleton-button" />}>
         <SignIn searchParams={props.searchParams} />
       </Suspense>

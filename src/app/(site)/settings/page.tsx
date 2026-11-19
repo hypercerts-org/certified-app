@@ -1,9 +1,9 @@
-import { Button, CopyableId, SettingRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Button, CopyableId, SettingRow, Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { actorHref, workspaceHref } from "@/components/cards";
-import { PageTitle } from "@/components/page-title";
+import { PageHeader } from "@/components/page-title";
 import { SignOutForm } from "@/components/sign-out-form";
 import { getUser } from "@/lib/auth/dal";
 import { signInHref } from "@/lib/validate";
@@ -72,10 +72,7 @@ function SettingsSkeleton() {
 export default function SettingsPage() {
   return (
     <div className="page">
-      <div className="stack">
-        <PageTitle>Settings</PageTitle>
-        <Text tone="muted">Your account on Certified.</Text>
-      </div>
+      <PageHeader title="Settings" description="Your account on Certified." />
       <Suspense fallback={<SettingsSkeleton />}>
         <Settings />
       </Suspense>

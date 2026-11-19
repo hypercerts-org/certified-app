@@ -1,8 +1,10 @@
 "use client";
 
-import { Button, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Folder, SearchX, SquareCheckBig, Users } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { Empty } from "@/components/empty";
 import { type ExploreItem, ExploreItems, exploreKey } from "@/components/explore-items";
 import { type ExploreKind, type ExploreState, exploreSearch } from "@/lib/explore-state";
 import type { Page } from "@/lib/hypercerts/views";
@@ -37,7 +39,16 @@ export function ExploreList({
     exploreKey,
   );
 
-  if (items.length === 0) return <EmptyState title={empty} />;
+  if (items.length === 0) {
+    const icon = state.query
+      ? SearchX
+      : kind === "activities"
+        ? SquareCheckBig
+        : kind === "projects"
+          ? Folder
+          : Users;
+    return <Empty icon={icon} title={empty} />;
+  }
   return (
     <div className="stack">
       <ExploreItems kind={kind} items={items} view={view} />
