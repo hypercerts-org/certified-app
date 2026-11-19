@@ -832,7 +832,7 @@ button.menu-row:disabled:not([aria-current]) {
   grid-template-areas:
     "avatar identity"
     "actions actions";
-  gap: 1rem 1.5rem;
+  gap: 1rem 1.25rem;
   align-items: start;
 }
 
@@ -857,8 +857,8 @@ button.menu-row:disabled:not([aria-current]) {
 
 @media (min-width: 48rem) {
   .profile-avatar {
-    inline-size: 8rem;
-    block-size: 8rem;
+    inline-size: 6rem;
+    block-size: 6rem;
   }
 }
 
@@ -972,7 +972,7 @@ button.menu-row:disabled:not([aria-current]) {
 .profile-overview {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 2.5rem;
+  gap: 2rem;
 }
 
 @media (min-width: 68.75rem) {
@@ -985,7 +985,7 @@ button.menu-row:disabled:not([aria-current]) {
 .profile-main {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 2rem;
   min-inline-size: 0;
 }
 
@@ -1329,12 +1329,20 @@ button.workspace-nav-item:hover,
 @media (min-width: 64rem) {
   .app-shell {
     display: grid;
-    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-columns: 15.5rem minmax(0, 1fr);
   }
 
-  /* Its width is what the workspace measures (100cqi) to span it. */
+  /* Its width is what the workspace measures (100cqi) to span it. Pages
+     use it up to 80rem (the theme's container stops at 64rem, which left a
+     wide empty margin beside the sidebar), 2rem in from the sidebar, as on
+     staging. */
   .app-body {
     container-type: inline-size;
+    --hc-container-max: 80rem;
+  }
+
+  .site-main {
+    padding-inline: 2rem;
   }
 
   .app-body > .site-header {
@@ -1354,9 +1362,9 @@ button.workspace-nav-item:hover,
     inset-block-start: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
     block-size: 100dvh;
-    padding: 1.5rem 1rem 1rem;
+    padding: 1rem 0.75rem 0.75rem;
     border-inline-end: 1px solid var(--hc-line-hairline);
     background: var(--hc-surface-panel);
   }
@@ -1365,7 +1373,7 @@ button.workspace-nav-item:hover,
 .sidebar-brand {
   display: flex;
   align-items: baseline;
-  padding-inline: 0.5rem;
+  padding-inline: 0.625rem;
   padding-block-end: 0.5rem;
   text-decoration: none;
 }
@@ -1379,7 +1387,7 @@ button.workspace-nav-item:hover,
 }
 
 .sidebar-account-slot {
-  min-block-size: 3rem;
+  min-block-size: 2.75rem;
 }
 
 /* The account menu's wrapper is inline-block, sized to the name: as a block
@@ -1398,7 +1406,7 @@ button.workspace-nav-item:hover,
   align-items: center;
   gap: 0.625rem;
   inline-size: 100%;
-  padding: 0.375rem 0.5rem;
+  padding: 0.375rem 0.625rem;
   border: 0;
   border-radius: var(--hc-radius-control);
   background: none;
@@ -1427,13 +1435,13 @@ button.workspace-nav-item:hover,
 }
 
 .sidebar-account-name {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .sidebar-account-handle {
   color: var(--hc-text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .sidebar-account-chevron {
@@ -1449,14 +1457,14 @@ button.workspace-nav-item:hover,
 
 .sidebar-search input {
   inline-size: 100%;
-  min-block-size: 2.5rem;
-  padding-inline: 2.25rem 4rem;
+  min-block-size: 2.25rem;
+  padding-inline: 2.125rem 4rem;
   border: 1px solid var(--hc-line-hairline);
   border-radius: var(--hc-radius-control);
   background: var(--hc-surface-page);
   color: var(--hc-text-ink);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--hc-type-body-sm);
 }
 
 .sidebar-search input::placeholder {
@@ -1465,7 +1473,7 @@ button.workspace-nav-item:hover,
 
 .sidebar-search-icon {
   position: absolute;
-  inset-inline-start: 0.75rem;
+  inset-inline-start: 0.625rem;
   color: var(--hc-text-muted);
   pointer-events: none;
 }
@@ -1501,32 +1509,33 @@ button.workspace-nav-item:hover,
 
 /* An Eyebrow; only its place. */
 .sidebar-group-label {
-  margin: 0 0 0.25rem;
-  padding-inline: 0.75rem;
+  margin: 0 0 0.375rem;
+  padding-inline: 0.625rem;
 }
 
 .sidebar-list {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Compact rows, as on staging: 2rem tall, in the small type. */
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   inline-size: 100%;
-  min-block-size: 2.5rem;
-  padding-inline: 0.75rem;
+  min-block-size: 2rem;
+  padding-inline: 0.625rem;
   border: 0;
   border-radius: var(--hc-radius-control);
   background: none;
   color: var(--hc-text-ink);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: var(--hc-type-body-sm);
   text-align: start;
   text-decoration: none;
   white-space: nowrap;
@@ -1552,7 +1561,7 @@ button.sidebar-item:hover,
 }
 
 .sidebar-foot {
-  padding-block-start: 0.75rem;
+  padding-block-start: 0.5rem;
   border-block-start: 1px solid var(--hc-line-hairline);
 }
 
@@ -1693,8 +1702,8 @@ button.sidebar-item:hover,
 
 @media (min-width: 48rem) {
   .skeleton-avatar {
-    inline-size: 8rem;
-    block-size: 8rem;
+    inline-size: 6rem;
+    block-size: 6rem;
   }
 }
 

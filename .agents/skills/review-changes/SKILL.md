@@ -191,8 +191,8 @@ Before judging a Next.js API, read its guide in
   `Eyebrow`, `CopyableId`, `IdentityRow`, `Skeleton` exist). Don't replace
   a good-looking local piece with a worse toolkit one; if the toolkit lacks
   something, add it to `docs/toolkit-gaps.md` with a one-line proposal.
-- D2. Headings: `PageTitle` for each page's one h1; `Heading` display-3
-  for sections in the page flow; `Heading` "heading" inside a card or box.
+- D2. Headings: `PageTitle` for each page's one h1; `Heading` "heading"
+  for every heading below it, a section's or a box's.
   Never a heading in the sans; labels are `Eyebrow`.
 - D3. No `font-family`, `font-size` or `font-weight` on heading classes in
   CSS; type comes from components or `--hc-type-*` / `--hc-weight-*`

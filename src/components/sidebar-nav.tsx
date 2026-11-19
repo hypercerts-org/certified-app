@@ -93,7 +93,7 @@ function Row({ item, pathname }: { item: Item; pathname: string | null }) {
   if (!href) {
     return (
       <span className="sidebar-item" aria-disabled="true" title="Coming soon">
-        <Icon size={20} strokeWidth={1.5} aria-hidden />
+        <Icon size={18} strokeWidth={1.5} aria-hidden />
         {label}
         <span className="visually-hidden"> (coming soon)</span>
       </span>
@@ -102,7 +102,7 @@ function Row({ item, pathname }: { item: Item; pathname: string | null }) {
   const active = (pathname !== null && item.isActive?.(pathname)) || false;
   return (
     <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
-      <Icon size={20} strokeWidth={active ? 2 : 1.5} aria-hidden />
+      <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden />
       {label}
       <LinkPending />
     </Link>

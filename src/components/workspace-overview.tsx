@@ -108,15 +108,12 @@ function Section({
   title,
   description,
   action,
-  inBox = false,
   children,
 }: {
   title: string;
   description?: string;
   /** Beside the title, on the right ("New activity", "New group"). */
   action?: ReactNode;
-  /** In a box on the side: a box's heading size, not a section's. */
-  inBox?: boolean;
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -124,7 +121,7 @@ function Section({
     <section className="overview-section" aria-labelledby={titleId}>
       <div className="overview-section-head">
         <div className="overview-section-header">
-          <Heading level={2} size={inBox ? "heading" : "display-3"} id={titleId}>
+          <Heading level={2} size="heading" id={titleId}>
             {title}
           </Heading>
           {description && <Text tone="muted">{description}</Text>}
@@ -191,7 +188,7 @@ function IdentitySkeleton() {
 
 export function OrganizationsSkeleton() {
   return (
-    <Section title="Your groups" inBox>
+    <Section title="Your groups">
       <RowsSkeleton rows={2} />
     </Section>
   );
@@ -573,7 +570,7 @@ export function OrganizationsSection({
   organizations: Organization[] | "unavailable" | "expired";
 }) {
   return (
-    <Section title="Your groups" inBox action={<NewGroup />}>
+    <Section title="Your groups" action={<NewGroup />}>
       {organizations === "unavailable" || organizations === "expired" ? (
         <Text size="body-sm" tone="muted">
           {organizations === "expired"
