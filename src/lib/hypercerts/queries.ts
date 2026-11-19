@@ -25,6 +25,9 @@ import {
   type BadgeDetail,
   didOf,
   type EndorsementCard,
+  type ExploreAccount,
+  type ExploreActivity,
+  type ExploreProject,
   formatDate,
   type ListCard,
   type ListItem,
@@ -42,9 +45,12 @@ import {
   toActivityCard,
   toActorCard,
   toActorDetail,
+  toAge,
   toBadgeCard,
   toBadgeDetail,
   toEndorsementCard,
+  toExploreActivity,
+  toExploreProject,
   toPlace,
   toProfileVersion,
   toProjectCard,
@@ -63,6 +69,9 @@ type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
 
 const api = new Client(process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts.dev", {
   validateResponse: false,
+  // Nor reject a whole response over one record's malformed blob reference
+  // (a banner whose $link is "[object Object]" failed every page holding it).
+  strictResponseProcessing: false,
 });
 
 const read = () => ({ signal: AbortSignal.timeout(8_000) });
@@ -272,29 +281,6 @@ export async function listProjectActivitiesPage(options: {
     items: await withHandlesIn(activities.map(toActivityCard), "author"),
     cursor: cursor ?? null,
   };
-}
-
-export async function listOrganizationsPage(options: {
-  query?: string;
-  cursor?: string;
-}): Promise<Page<ActorCard>> {
-  "use cache";
-  publicData(tags.organizations());
-
-  const params = { cursor: options.cursor, limit: 12 };
-  const { actors, cursor } = options.query
-    ? await api.call(
-        app.certified.actor.searchOrganizations,
-        { ...params, search: options.query },
-        read(),
-      )
-    : await api.call(app.certified.actor.listOrganizations, params, read());
-  // An organization may ask not to be listed ("unlisted"): its page stays
-  // reachable, but Explore leaves it out. The API's filter matches one value
-  // exactly, and most records have none, so the app filters (a page may come
-  // up one short).
-  const listed = actors.filter((actor) => actor.organization?.record.visibility !== "unlisted");
-  return { items: await withHandles(listed.map(toActorCard)), cursor: cursor ?? null };
 }
 
 /** The badge type of endorsements, which pages show apart from other badges. */
@@ -1385,3 +1371,313 @@ export async function getActivity(
   const [card] = await withHandlesIn([toActivityCard(activity)], "author");
   return { ...card, description: plainText(activity.record.description) };
 }
+
+// Explore
+//
+// The network's activities, projects and accounts, newest or oldest first,
+// listed or searched; and Featured, the picks Ma Earth curates as lists.
+
+export type ExploreSort = "newest" | "oldest";
+export type AccountType = "all" | "people" | "organizations";
+
+export const EXPLORE_PAGE = 24;
+
+const sortDirection = (sort: ExploreSort): "asc" | "desc" => (sort === "oldest" ? "asc" : "desc");
+
+export async function exploreActivities(options: {
+  query?: string;
+  sort: ExploreSort;
+  cursor?: string;
+  limit: number;
+}): Promise<Page<ExploreActivity>> {
+  "use cache";
+  publicData(tags.explore());
+
+  const params = {
+    sortDirection: sortDirection(options.sort),
+    cursor: options.cursor,
+    limit: options.limit,
+  } as const;
+  const { activities, cursor } = options.query
+    ? await api.call(
+        org.hypercerts.claim.searchActivities,
+        { ...params, search: options.query },
+        read(),
+      )
+    : await api.call(org.hypercerts.claim.listActivities, params, read());
+  const now = Date.now();
+  return {
+    items: await withHandlesIn(
+      activities.map((activity) => toExploreActivity(activity, now)),
+      "author",
+    ),
+    cursor: cursor ?? null,
+  };
+}
+
+export async function exploreProjects(options: {
+  query?: string;
+  sort: ExploreSort;
+  cursor?: string;
+  limit: number;
+}): Promise<Page<ExploreProject>> {
+  "use cache";
+  publicData(tags.explore());
+
+  const params = {
+    types: ["project"],
+    sortDirection: sortDirection(options.sort),
+    cursor: options.cursor,
+    limit: options.limit,
+  };
+  const { collections, cursor } = options.query
+    ? await api.call(
+        org.hypercerts.collection.searchCollections,
+        { ...params, search: options.query },
+        read(),
+      )
+    : await api.call(org.hypercerts.collection.listCollections, params, read());
+  const now = Date.now();
+  return {
+    items: await withHandlesIn(
+      collections.map((collection) => toExploreProject(collection, now)),
+      "author",
+    ),
+    cursor: cursor ?? null,
+  };
+}
+
+/** An organization asked not to be listed: its page stays reachable, Explore leaves it out. */
+type OrganizationView = app.certified.actor.getOrganization.OrganizationActorView;
+const unlisted = (view: OrganizationView | null | undefined) =>
+  view?.organization?.record.visibility === "unlisted";
+
+/** An account, dated by its profile (or, without one, its organization record). */
+function toExploreAccount(view: OrganizationView | ActorCardInput, now: number): ExploreAccount {
+  const created = view.profile?.record.createdAt ?? view.organization?.record.createdAt;
+  return { ...toActorCard(view), age: toAge(created, now) };
+}
+type ActorCardInput = Parameters<typeof toActorCard>[0];
+
+/** The organization records of these accounts, those that have one. */
+async function organizationsOf(dids: string[]): Promise<Map<string, OrganizationView>> {
+  if (dids.length === 0) return new Map();
+  const { organizations } = await api.call(
+    app.certified.actor.getOrganizations,
+    { actors: dids as Did[] },
+    read(),
+  );
+  return new Map(
+    organizations.flatMap((result) =>
+      result.organization ? [[result.actor, result.organization] as const] : [],
+    ),
+  );
+}
+
+/** A page of profiles (people and organizations alike), with their organization records. */
+async function profilePage(options: {
+  query?: string;
+  sort: ExploreSort;
+  cursor?: string;
+  limit: number;
+}) {
+  const params = {
+    sortDirection: sortDirection(options.sort),
+    cursor: options.cursor,
+    limit: options.limit,
+  } as const;
+  const { profiles, cursor } = options.query
+    ? await api.call(
+        app.certified.actor.searchProfiles,
+        { ...params, search: options.query },
+        read(),
+      )
+    : await api.call(app.certified.actor.listProfiles, params, read());
+  const organizations = await organizationsOf(profiles.map((profile) => profile.did));
+  return { profiles, organizations, cursor: cursor ?? null };
+}
+
+/** How many pages of profiles People reads, at most, to fill one of its own. */
+const PEOPLE_READS = 4;
+
+/**
+ * Accounts: everyone (profiles, organizations among them), organizations
+ * only, or people only. The API lists profiles and organizations but not
+ * people, so People reads profiles and leaves the organizations out, reading
+ * on (a few pages at most) until it has a page's worth.
+ */
+export async function exploreAccounts(options: {
+  query?: string;
+  sort: ExploreSort;
+  type: AccountType;
+  cursor?: string;
+  limit: number;
+}): Promise<Page<ExploreAccount>> {
+  "use cache";
+  publicData(tags.explore());
+  const now = Date.now();
+
+  if (options.type === "organizations") {
+    const params = {
+      sortDirection: sortDirection(options.sort),
+      cursor: options.cursor,
+      limit: options.limit,
+    } as const;
+    const { actors, cursor } = options.query
+      ? await api.call(
+          app.certified.actor.searchOrganizations,
+          { ...params, search: options.query },
+          read(),
+        )
+      : await api.call(app.certified.actor.listOrganizations, params, read());
+    const listed = actors.filter((actor) => !unlisted(actor));
+    return {
+      items: await withHandles(listed.map((actor) => toExploreAccount(actor, now))),
+      cursor: cursor ?? null,
+    };
+  }
+
+  const items: ExploreAccount[] = [];
+  let cursor: string | null = options.cursor ?? null;
+  for (let read = 0; read < (options.type === "people" ? PEOPLE_READS : 1); read++) {
+    const page = await profilePage({ ...options, cursor: cursor ?? undefined });
+    for (const profile of page.profiles) {
+      const organization = page.organizations.get(profile.did);
+      if (options.type === "people" && organization) continue;
+      if (unlisted(organization)) continue;
+      items.push(
+        toExploreAccount(organization ?? { did: profile.did, profile, organization: null }, now),
+      );
+    }
+    cursor = page.cursor;
+    if (!cursor || items.length >= options.limit) break;
+  }
+  return { items: await withHandles(items), cursor };
+}
+
+export type FeaturedKind = "activities" | "projects" | "accounts";
+
+/**
+ * Featured: Ma Earth's funding rounds, kept as lists on the hypercerts.org
+ * account (as on staging), latest round first.
+ */
+const FEATURED_LISTS: Record<FeaturedKind, string[]> = {
+  activities: ["3mmrtsu7thf2j", "3mmrvaih43w2j", "3mmrr5xafi42z"],
+  projects: ["3mmrtyyadrc2s", "3mmrtpxcmfs2z", "3mmrravn7kl2s"],
+  accounts: ["3mmrt4snnh72t", "3mmrtqoixzv2z", "3mmrvar2ofs24"],
+};
+const FEATURED_CURATOR = "did:plc:s4puetfspot742ai7y4otuel";
+const FEATURED_RECORDS: Record<FeaturedKind, string> = {
+  activities: "org.hypercerts.claim.activity",
+  projects: "org.hypercerts.collection",
+  accounts: "app.certified.actor.profile",
+};
+
+/**
+ * The featured records of one kind, by URI, each once: activities and
+ * projects newest first; accounts in the lists' order (latest round first).
+ */
+async function featuredUris(kind: FeaturedKind): Promise<string[]> {
+  "use cache";
+  cacheLife("hours");
+  const uris = FEATURED_LISTS[kind].map(
+    (rkey) => `at://${FEATURED_CURATOR}/org.hypercerts.collection/${rkey}`,
+  );
+  for (const uri of uris) cacheTag(tags.list(uri));
+  const { collections } = await api.call(
+    org.hypercerts.collection.listCollections,
+    { uris: uris as AtUri[], limit: uris.length },
+    read(),
+  );
+  const byUri = new Map<string, (typeof collections)[number]>(
+    collections.map((collection) => [collection.uri, collection]),
+  );
+  const items = uris.flatMap((uri) =>
+    (byUri.get(uri)?.record.items ?? []).map((item) => item.itemIdentifier.uri),
+  );
+  const featured = [
+    ...new Set(items.filter((uri) => collectionOf(uri) === FEATURED_RECORDS[kind])),
+  ];
+  if (kind === "accounts") return featured;
+  // Activities and projects newest first, by their own createdAt: read their
+  // records a hundred at a time (cached with the list, for hours).
+  const created = new Map<string, string>();
+  await Promise.all(
+    chunks(featured).map(async (batch) => {
+      const page =
+        kind === "activities"
+          ? (
+              await api.call(
+                org.hypercerts.claim.listActivities,
+                { uris: batch as AtUri[], limit: 100 },
+                read(),
+              )
+            ).activities
+          : (
+              await api.call(
+                org.hypercerts.collection.listCollections,
+                { uris: batch as AtUri[], limit: 100 },
+                read(),
+              )
+            ).collections;
+      for (const view of page) created.set(view.uri, String(view.record.createdAt ?? ""));
+    }),
+  );
+  return featured
+    .filter((uri) => created.has(uri))
+    .sort((a, b) => (created.get(b) ?? "").localeCompare(created.get(a) ?? ""));
+}
+
+/** A page of Featured, from `offset` (its cursor), newest or oldest first. */
+export async function exploreFeatured<K extends FeaturedKind>(
+  kind: K,
+  offset: number,
+  limit: number,
+  sort: ExploreSort = "newest",
+): Promise<Page<ExploreItem<K>>> {
+  "use cache";
+  publicData(tags.explore());
+  const listed = await featuredUris(kind);
+  const all = sort === "oldest" ? [...listed].reverse() : listed;
+  const uris = all.slice(offset, offset + limit);
+  const cursor = offset + limit < all.length ? String(offset + limit) : null;
+  const now = Date.now();
+  const inOrder = <T extends { uri: string }>(items: T[]) => {
+    const byUri = new Map(items.map((item) => [item.uri, item]));
+    return uris.flatMap((uri) => byUri.get(uri) ?? []);
+  };
+
+  if (kind === "accounts") {
+    const cards = await getActorCards(uris.map(didOf));
+    const items = cards.map((card) => ({ ...card, age: null }));
+    return { items: items as ExploreItem<K>[], cursor };
+  }
+  if (kind === "projects") {
+    const { collections } = await api.call(
+      org.hypercerts.collection.listCollections,
+      { uris: uris as AtUri[], limit: 100 },
+      read(),
+    );
+    const items = await withHandlesIn(
+      inOrder(collections.map((collection) => toExploreProject(collection, now))),
+      "author",
+    );
+    return { items: items as ExploreItem<K>[], cursor };
+  }
+  const { activities } = await api.call(
+    org.hypercerts.claim.listActivities,
+    { uris: uris as AtUri[], limit: 100 },
+    read(),
+  );
+  const items = await withHandlesIn(
+    inOrder(activities.map((activity) => toExploreActivity(activity, now))),
+    "author",
+  );
+  return { items: items as ExploreItem<K>[], cursor };
+}
+
+export type ExploreItem<K extends FeaturedKind> = K extends "activities"
+  ? ExploreActivity
+  : K extends "projects"
+    ? ExploreProject
+    : ExploreAccount;

@@ -1829,7 +1829,9 @@ button.sidebar-item:hover,
 }
 
 a.list-item-title:hover,
-a.list-item-main:hover .list-item-title {
+a.list-item-main:hover .list-item-title,
+a.explore-card-author:hover .list-item-title,
+a.explore-account-link:hover .list-item-title {
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
@@ -2838,6 +2840,206 @@ details[open] > .work-folder-head .work-folder-chevron {
   font-family: var(--hc-font-mono);
 }
 
+/* Explore: the tabs, a toolbar, then rows or a gallery (as on staging). */
+.page.explore {
+  gap: 1.5rem;
+}
+
+.explore-panel {
+  container: explore / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.explore-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.explore-search {
+  flex: 1 1 16rem;
+  min-inline-size: 0;
+}
+
+.explore-actions,
+.explore-views {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.explore-views {
+  gap: 0.25rem;
+}
+
+/* The sort menu's tick, on the current order only (the items stay aligned). */
+.explore-check {
+  visibility: hidden;
+}
+
+.explore-check[data-on] {
+  visibility: visible;
+}
+
+/* All, People or Organizations: as wide as its options. */
+.stack > .explore-types {
+  inline-size: auto;
+}
+
+/* Featured, said in a grey bar above the results, with the way back. */
+.explore-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-fill-subtle);
+}
+
+.explore-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.explore-section + .explore-section {
+  margin-block-start: 1.5rem;
+}
+
+.explore-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.explore-more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  text-decoration: none;
+}
+
+.explore-more:hover {
+  color: var(--hc-text-ink);
+}
+
+/* A row: the record, its author's column, how long ago. */
+.explore-row .list-item-who {
+  inline-size: 16rem;
+  max-inline-size: none;
+}
+
+.explore-handle {
+  flex: none;
+  inline-size: 16rem;
+}
+
+.explore-age {
+  flex: none;
+  inline-size: 6rem;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.explore-by {
+  display: none;
+}
+
+.explore-row-who-skeleton {
+  flex: none;
+  inline-size: 10rem;
+}
+
+/* Narrow: the author column gives way to "by …" under the title. */
+@container explore (inline-size < 44rem) {
+  .explore-row .list-item-who,
+  .explore-row-who-skeleton,
+  .explore-handle {
+    display: none;
+  }
+
+  .explore-by {
+    display: block;
+  }
+
+  .explore-age {
+    inline-size: auto;
+  }
+}
+
+.explore-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: 2rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.explore-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-inline-size: 0;
+}
+
+.explore-card-author,
+.explore-account-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.explore-account-link {
+  gap: 0.75rem;
+}
+
+.explore-card-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.explore-card-image img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.explore-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explore-card .explore-age {
+  inline-size: auto;
+  text-align: start;
+}
+
+.explore-account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 /* Toolkit bridges. Each rule restyles a toolkit component in a way the
    toolkit doesn't offer yet; each goes when its prop exists (listed in
    docs/toolkit-gaps.md). Nowhere else may app CSS reach into a toolkit
@@ -2898,4 +3100,16 @@ details[open] > .work-folder-head .work-folder-chevron {
 
 .expandable-fade > button[aria-expanded] > svg {
   display: none;
+}
+
+/* Button pressed: the toolkit adds its pressed fill, but the variant's
+   transparent background wins, so a pressed button looks unpressed. */
+button[aria-pressed="true"] {
+  background-color: var(--hc-fill-subtle);
+}
+
+/* SearchInput has its own clear button; Chrome and Safari add a second one
+   to every search field. */
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
 }

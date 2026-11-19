@@ -7,6 +7,8 @@ export const tags = {
   projects: (author: string) => `projects:${author}`,
   project: (uri: string) => `project:${uri}`,
   organizations: () => "organizations",
+  /** Explore's network-wide lists: activities, projects and accounts. */
+  explore: () => "explore",
   endorsements: (did: string) => `endorsements:${did}`,
   badges: (did: string) => `badges:${did}`,
   badge: (uri: string) => `badge:${uri}`,

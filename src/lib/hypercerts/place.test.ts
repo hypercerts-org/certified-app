@@ -50,10 +50,17 @@ describe("toPlace", () => {
       locationType: "coordinate-decimal",
       location: {
         $type: "org.hypercerts.defs#smallBlob",
-        blob: { $type: "blob", mimeType: "text/plain", ref: { $link: "bafkreicay" }, size: 37 },
+        blob: {
+          $type: "blob",
+          mimeType: "text/plain",
+          ref: { $link: "bafkreiflm5pe2akiwr7fkj3dmpkl2tchcdgefn6dnda4g6c3ssdwwbj6gi" },
+          size: 37,
+        },
       },
     };
-    expect(locationBlobCid(record)).toBe("bafkreicay");
+    expect(locationBlobCid(record)).toBe(
+      "bafkreiflm5pe2akiwr7fkj3dmpkl2tchcdgefn6dnda4g6c3ssdwwbj6gi",
+    );
     expect(toPlace(record, "44.545457499208084,-123.2611234945545\n")?.point).toEqual({
       lat: 44.545457499208084,
       lng: -123.2611234945545,

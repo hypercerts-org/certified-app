@@ -12,13 +12,15 @@ are the rules in the "Toolkit bridges" section at the end of
 
 ## Bridged in CSS today
 
-| Gap                   | Proposal                                                                                                              | Bridge in the app                                                                 |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Square avatars        | `Avatar shape="circle" \| "square"`, forwarded by `IdentityRow`                                                       | `.identity-org .rounded-full` (rows), `.avatar-square` (Avatar's own `className`) |
-| A larger identity row | `IdentityRow size="lg"` (name at body, secondary at body-sm, 40px avatar)                                             | `.overview-rows .text-hc-body-sm`, `.text-hc-micro`                               |
-| Unframed empty state  | `EmptyState variant="plain"`, and `actions` for several buttons that wrap                                             | `.overview-empty`                                                                 |
-| ID shown as a field   | `CopyableId variant="field"`: full width, tinted, body-size text, ellipsis                                            | `.overview-id-field`                                                              |
-| Fading long text      | `ExpandableText variant="fade"`: the last lines fade out, and the toggle is a plain underlined link without a chevron | `.expandable-fade`                                                                |
+| Gap                   | Proposal                                                                                                                         | Bridge in the app                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Square avatars        | `Avatar shape="circle" \| "square"`, forwarded by `IdentityRow`                                                                  | `.identity-org .rounded-full` (rows), `.avatar-square` (Avatar's own `className`) |
+| A larger identity row | `IdentityRow size="lg"` (name at body, secondary at body-sm, 40px avatar)                                                        | `.overview-rows .text-hc-body-sm`, `.text-hc-micro`                               |
+| Unframed empty state  | `EmptyState variant="plain"`, and `actions` for several buttons that wrap                                                        | `.overview-empty`                                                                 |
+| ID shown as a field   | `CopyableId variant="field"`: full width, tinted, body-size text, ellipsis                                                       | `.overview-id-field`                                                              |
+| Fading long text      | `ExpandableText variant="fade"`: the last lines fade out, and the toggle is a plain underlined link without a chevron            | `.expandable-fade`                                                                |
+| Pressed buttons       | `Button pressed` on `secondary` and `ghost`: its `bg-fill-subtle` loses to the variant's `bg-transparent`, so it looks unpressed | `button[aria-pressed="true"]`                                                     |
+| Double clear button   | `SearchInput` hides the browser's own clear button (`::-webkit-search-cancel-button`) beside its own                             | `input[type="search"]::-webkit-search-cancel-button`                              |
 
 ## Built in the app
 

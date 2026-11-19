@@ -10,7 +10,7 @@ import { activityHref, actorHref, projectHref, skeletonSlots } from "@/component
 import { IntentLink } from "@/components/intent-link";
 import type { ActorCard, ListItem } from "@/lib/hypercerts/views";
 
-function Thumb({ src, project }: { src: string | null; project: boolean }) {
+export function Thumb({ src, project }: { src: string | null; project: boolean }) {
   return (
     <span className="list-item-thumb">
       {src ? (
@@ -29,11 +29,11 @@ function Thumb({ src, project }: { src: string | null; project: boolean }) {
  * An account's name. One without a Certified profile has only its DID for a
  * name: its handle reads better (as on the Overview's account grid).
  */
-function nameOf(actor: ActorCard): string {
+export function nameOf(actor: ActorCard): string {
   return actor.displayName === actor.did && actor.handle ? `@${actor.handle}` : actor.displayName;
 }
 
-function Who({ actor }: { actor: ActorCard }) {
+export function Who({ actor }: { actor: ActorCard }) {
   return (
     <IntentLink href={actorHref(actor)} className="list-item-who">
       <Avatar name={nameOf(actor).replace(/^@/, "")} src={actor.avatarUrl} size="sm" />

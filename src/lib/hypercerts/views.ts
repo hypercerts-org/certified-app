@@ -207,11 +207,12 @@ export function plainText(value: unknown): string | null {
 
 function blobCid(image: unknown): string | null {
   const ref = asRecord(image)?.ref;
-  if (typeof ref === "string") return ref;
   const link = asRecord(ref)?.$link;
-  if (typeof link === "string") return link;
-  // Parsed CID instances stringify to their base32 form.
-  return ref ? String(ref) : null;
+  // A string, a { $link }, or a parsed CID (which stringifies to its base32
+  // form). Some records hold junk ("[object Object]"): only a CID's shape passes.
+  const cid =
+    typeof ref === "string" ? ref : typeof link === "string" ? link : ref ? String(ref) : "";
+  return /^(?:b[a-z2-7]{20,}|Qm[1-9A-HJ-NP-Za-km-z]{44})$/.test(cid) ? cid : null;
 }
 
 // Images are blobs on the author's PDS, up to 5 MB (10 MB for large images),
@@ -809,4 +810,81 @@ export function totalsByCurrency(receipts: Receipt[]): { currency: string; amoun
   return [...sums.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([currency, sum]) => ({ currency, amount: formatMoney(String(sum), currency) }));
+}
+
+// Explore
+//
+// Explore's rows, as staging's: an activity with its dates and work scope, a
+// project with its author, an account with its handle, each with how long ago
+// it was created ("2d ago", then the date after a week).
+
+/** When a record was created: for a `<time>` and for reading. */
+export type Age = { iso: string; label: string };
+
+export type ExploreActivity = ActivityCard & { scope: string | null; age: Age | null };
+export type ExploreProject = ProjectCard & { author: ActorCard; age: Age | null };
+export type ExploreAccount = ActorCard & { age: Age | null };
+
+const DAY = 86_400_000;
+
+/** "Just now", "5m ago", "3h ago", "6d ago", then "12 Nov 2026". */
+export function toAge(value: unknown, now: number): Age | null {
+  const text = asString(value);
+  if (!text) return null;
+  const time = new Date(text).getTime();
+  if (Number.isNaN(time)) return null;
+  const elapsed = Math.max(0, now - time);
+  const minutes = Math.floor(elapsed / 60_000);
+  const label =
+    minutes < 1
+      ? "Just now"
+      : minutes < 60
+        ? `${minutes}m ago`
+        : elapsed < DAY
+          ? `${Math.floor(minutes / 60)}h ago`
+          : elapsed < 7 * DAY
+            ? `${Math.floor(elapsed / DAY)}d ago`
+            : dateFormat.format(new Date(time));
+  return { iso: new Date(time).toISOString(), label };
+}
+
+/**
+ * An activity's work scope as words: "Forest protection, Community
+ * stewardship". The record holds a string or a CEL expression
+ * (`scope.hasAny(['forest_protection'])`) whose tags, referenced by URI, the
+ * API doesn't resolve: the tokens in the expression are the readable part.
+ */
+export function workScopeWords(value: unknown): string | null {
+  let tokens: string[] = [];
+  const text = asString(value);
+  const record = asRecord(value);
+  const expression = text ?? asString(record?.expression) ?? asString(record?.scope);
+  if (!expression) return null;
+  const list = expression.match(/hasAny\s*\(\s*\[([\s\S]*?)\]\s*\)/);
+  if (list) tokens = [...list[1].matchAll(/(["'])((?:\\.|(?!\1).)*)\1/g)].map((m) => m[2]);
+  else if (!/scope\s*\./.test(expression)) tokens = expression.split(",");
+  const words = new Map<string, string>();
+  for (const token of tokens) {
+    const plain = token.trim().replace(/[_-]+/g, " ").trim();
+    if (!plain) continue;
+    const word = /[A-Z]/.test(plain) ? plain : plain[0].toUpperCase() + plain.slice(1);
+    words.set(word.toLowerCase(), word);
+  }
+  return words.size > 0 ? [...words.values()].join(", ") : null;
+}
+
+export function toExploreActivity(activity: ActivityView, now: number): ExploreActivity {
+  return {
+    ...toActivityCard(activity),
+    scope: workScopeWords(activity.record.workScope),
+    age: toAge(activity.record.createdAt, now),
+  };
+}
+
+export function toExploreProject(collection: CollectionView, now: number): ExploreProject {
+  return {
+    ...toProjectCard(collection),
+    author: toActorCard(collection.author),
+    age: toAge(collection.record.createdAt, now),
+  };
 }
