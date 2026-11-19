@@ -767,7 +767,7 @@ export type Badges = {
   more: boolean;
 };
 
-async function badgeAwards(did: string, response: "accepted" | "unanswered") {
+async function badgeAwards(did: string, response: "accepted" | "unanswered" | "rejected") {
   const awards: BadgeAwardView[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < BADGE_PAGES; page++) {
@@ -806,6 +806,72 @@ export async function getBadges(did: string): Promise<Badges> {
   };
 }
 
+/**
+ * The badges `did` rejected: for its workspace only, where they can be
+ * accepted again. A profile never shows them.
+ */
+export async function getRejectedBadges(did: string): Promise<BadgeCard[]> {
+  "use cache";
+  publicData(tags.badges(did));
+
+  const { awards } = await badgeAwards(did, "rejected");
+  return sortBadges(
+    await withHandlesIn(
+      awards.flatMap((award) => toBadgeCard(award, Date.now(), { withRejected: true }) ?? []),
+      "issuer",
+    ),
+  );
+}
+
+/** A badge an account defined, with how many hold it. */
+export type IssuedBadge = BadgeDetail & {
+  /** Awards accepted or awaiting a response (not rejected). */
+  holders: number;
+};
+
+/** How many issued badges a profile reads (one page of definitions). */
+const ISSUED_PAGE = 100;
+
+/**
+ * The badges `did` defined, most held first, with their holders counted: one
+ * call for the definitions, then one count per badge (totals only).
+ */
+export async function getIssuedBadges(
+  did: string,
+): Promise<{ badges: IssuedBadge[]; more: boolean }> {
+  "use cache";
+  publicData(tags.badges(did));
+
+  const { badgeDefinitions, cursor } = await api.call(
+    app.certified.badge.listBadgeDefinitions,
+    { authors: [did as Did], limit: ISSUED_PAGE },
+    read(),
+  );
+  const details = badgeDefinitions.flatMap((view) => toBadgeDetail(view) ?? []);
+  const badges = await Promise.all(
+    details.map(async (badge) => {
+      const { totalCount } = await api.call(
+        app.certified.badge.listBadgeAwards,
+        {
+          badgeUris: [badge.uri as AtUri],
+          responses: ["accepted", "unanswered"],
+          limit: 1,
+          includeTotal: true,
+        },
+        read(),
+      );
+      return { ...badge, holders: totalCount ?? 0 };
+    }),
+  );
+  const [issuer] = details.length > 0 ? await withHandles([details[0].issuer]) : [];
+  return {
+    badges: badges
+      .map((badge) => ({ ...badge, issuer: issuer ?? badge.issuer }))
+      .sort((a, b) => b.holders - a.holders),
+    more: Boolean(cursor),
+  };
+}
+
 /** A badge definition, or null when there is none at `uri`. */
 export async function getBadge(uri: string): Promise<BadgeDetail | null> {
   "use cache";
@@ -825,12 +891,10 @@ export async function getBadge(uri: string): Promise<BadgeDetail | null> {
   throw result;
 }
 
-export type BadgeHolders = {
-  /** Accounts holding the badge, newest award first (one page). */
-  rows: PersonRow[];
+/** One page of a badge's holders, newest award first. */
+export type BadgeHolders = Page<PersonRow> & {
   /** Every award with this response, as the API counts them. */
   total: number;
-  more: boolean;
   /** Awards on this page given to a record (a project, an activity), not an account. */
   records: number;
 };
@@ -844,15 +908,23 @@ export async function listBadgeHolders(
   uri: string,
   response: "accepted" | "unanswered",
   allowedIssuers: string[],
+  cursor?: string,
 ): Promise<BadgeHolders> {
   "use cache";
   publicData(tags.badge(uri));
 
-  const { badgeAwards, cursor, totalCount } = await api.call(
+  const out = await api.call(
     app.certified.badge.listBadgeAwards,
-    { badgeUris: [uri as AtUri], responses: [response], limit: PEOPLE_PAGE, includeTotal: true },
+    {
+      badgeUris: [uri as AtUri],
+      responses: [response],
+      limit: PEOPLE_PAGE,
+      includeTotal: true,
+      cursor,
+    },
     read(),
   );
+  const { badgeAwards, totalCount } = out;
   const awards = badgeAwards.filter(
     (award) => allowedIssuers.length === 0 || allowedIssuers.includes(award.author.did),
   );
@@ -879,9 +951,9 @@ export async function listBadgeHolders(
     rows.push({ uri: award.uri, actor, note, date: createdAt });
   }
   return {
-    rows: await withHandlesIn(rows, "actor"),
+    items: await withHandlesIn(rows, "actor"),
+    cursor: out.cursor ?? null,
     total: totalCount ?? rows.length,
-    more: Boolean(cursor),
     records,
   };
 }

@@ -6,10 +6,11 @@
 
 import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import { actorHref, badgeHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
-import { getBadges } from "@/lib/hypercerts/queries";
+import { getBadges, getIssuedBadges, type IssuedBadge } from "@/lib/hypercerts/queries";
 import type { BadgeCard } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
@@ -64,7 +65,16 @@ export function BadgeTiles({ badges }: { badges: BadgeCard[] }) {
 }
 
 /** A Badges tab's list: each badge with its type, issuer, dates, note and link. */
-export function BadgeList({ badges, empty }: { badges: BadgeCard[]; empty: string }) {
+export function BadgeList({
+  badges,
+  empty,
+  actions,
+}: {
+  badges: BadgeCard[];
+  empty: string;
+  /** Buttons at a row's end: the workspace's responses. */
+  actions?: (badge: BadgeCard) => ReactNode;
+}) {
   if (badges.length === 0) return <Text tone="muted">{empty}</Text>;
   return (
     <ul className="badge-list">
@@ -100,6 +110,7 @@ export function BadgeList({ badges, empty }: { badges: BadgeCard[]; empty: strin
               </a>
             )}
           </div>
+          {actions && <div className="badge-row-actions">{actions(badge)}</div>}
         </li>
       ))}
     </ul>
@@ -134,62 +145,123 @@ export function BadgeListSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-const BADGE_TABS = ["Accepted", "Awaiting response"];
+const numberFormat = new Intl.NumberFormat("en");
+const holdersLabel = (n: number) => `${numberFormat.format(n)} ${n === 1 ? "holder" : "holders"}`;
+
+/** The badges an account defined, as tiles: icon, title, type and holders. */
+export function IssuedBadgeTiles({ badges }: { badges: IssuedBadge[] }) {
+  return (
+    <ul className="badge-tiles">
+      {badges.map((badge) => (
+        <li key={badge.uri} className="badge-tile">
+          <BadgeIcon badge={badge} />
+          <span className="badge-tile-text">
+            <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
+              {badge.title}
+            </IntentLink>
+            <span className="badge-meta">
+              {[badge.type, holdersLabel(badge.holders)].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The badges an account defined, as rows: with their description. */
+export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
+  if (badges.length === 0) return <Text tone="muted">This account hasn't defined any badges.</Text>;
+  return (
+    <ul className="badge-list">
+      {badges.map((badge) => (
+        <li key={badge.uri} className="badge-row">
+          <BadgeIcon badge={badge} />
+          <div className="badge-row-text">
+            <p className="badge-row-head">
+              <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
+                {badge.title}
+              </IntentLink>
+              {badge.type && <span className="badge-type">{badge.type}</span>}
+            </p>
+            <p className="badge-meta">{holdersLabel(badge.holders)}</p>
+            {badge.description && (
+              <p className="badge-note" dir="auto">
+                {badge.description}
+              </p>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+type Which = "accepted" | "awaiting" | "issued";
+
+const BADGE_TABS: Record<Which, { label: string; path: string }> = {
+  accepted: { label: "Accepted", path: "/badges" },
+  awaiting: { label: "Awaiting response", path: "/badges/awaiting" },
+  issued: { label: "Issued", path: "/badges/issued" },
+};
 
 /**
- * A profile's Badges tab, `which` of its two lists: the badges the account
- * accepted, or those awaiting its response.
+ * A profile's Badges tab, `which` of its three lists: the badges the account
+ * accepted, those awaiting its response, and those it defined for others.
  */
 export async function ProfileBadges({
   params,
   which,
 }: {
   params: Promise<{ actor: string }>;
-  which: "accepted" | "awaiting";
+  which: Which;
 }) {
-  const path = which === "accepted" ? "/badges" : "/badges/awaiting";
-  const { actor, base } = await profileActor(params, path);
-  const badges = await getBadges(actor.did);
+  const { actor, base } = await profileActor(params, BADGE_TABS[which].path);
+  const [received, issued] = await Promise.all([getBadges(actor.did), getIssuedBadges(actor.did)]);
+  const counts: Record<Which, number> = {
+    accepted: received.accepted.length,
+    awaiting: received.awaiting.length,
+    issued: issued.badges.length,
+  };
   return (
     <div className="profile-list-page">
       <ProfileTabs
         label="Badges"
         variant="segmented"
-        tabs={[
-          { label: "Accepted", href: `${base}/badges`, count: count(badges.accepted.length) },
-          {
-            label: "Awaiting response",
-            href: `${base}/badges/awaiting`,
-            count: count(badges.awaiting.length),
-          },
-        ]}
+        tabs={(Object.keys(BADGE_TABS) as Which[]).map((key) => ({
+          label: BADGE_TABS[key].label,
+          href: `${base}${BADGE_TABS[key].path}`,
+          count: counts[key] > 0 ? String(counts[key]) : undefined,
+        }))}
       />
-      <BadgeList
-        badges={badges[which]}
-        empty={
-          which === "accepted"
-            ? "No accepted badges yet."
-            : "No badges are awaiting this account's response."
-        }
-      />
-      {badges.more && (
+      {which === "issued" ? (
+        <IssuedBadgeList badges={issued.badges} />
+      ) : (
+        <BadgeList
+          badges={received[which]}
+          empty={
+            which === "accepted"
+              ? "No accepted badges yet."
+              : "No badges are awaiting this account's response."
+          }
+        />
+      )}
+      {(which === "issued" ? issued.more : received.more) && (
         <Text size="body-sm" tone="muted">
-          Showing the latest {badges[which].length}.
+          Showing the latest {which === "issued" ? issued.badges.length : received[which].length}.
         </Text>
       )}
     </div>
   );
 }
 
-const count = (n: number) => (n > 0 ? String(n) : undefined);
-
-/** A Badges tab on its way: its two lists' switch, then rows. */
-export function ProfileBadgesSkeleton({ which }: { which: "accepted" | "awaiting" }) {
+/** A Badges tab on its way: its lists' switch, then rows. */
+export function ProfileBadgesSkeleton({ which }: { which: Which }) {
   return (
     <div className="profile-list-page">
       <SegmentedLinksSkeleton
-        labels={BADGE_TABS}
-        current={which === "accepted" ? "Accepted" : "Awaiting response"}
+        labels={Object.values(BADGE_TABS).map((tab) => tab.label)}
+        current={BADGE_TABS[which].label}
       />
       <BadgeListSkeleton />
     </div>

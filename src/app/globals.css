@@ -1877,6 +1877,13 @@ a.badge-title:hover {
   text-transform: uppercase;
 }
 
+.badge-row-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .badge-note {
   max-inline-size: 40rem;
   margin: 0;

@@ -2,6 +2,7 @@
 
 import { Eyebrow } from "@hypercerts-org/ui-react";
 import {
+  Award,
   Compass,
   FolderGit2,
   HandCoins,
@@ -60,6 +61,12 @@ function workspaceItems(overview: string): Item[] {
       icon: ThumbsUp,
       href: `${overview}/endorsements`,
       isActive: under(`${overview}/endorsements`),
+    },
+    {
+      label: "Badges",
+      icon: Award,
+      href: `${overview}/badges`,
+      isActive: under(`${overview}/badges`),
     },
     {
       label: "Lists",

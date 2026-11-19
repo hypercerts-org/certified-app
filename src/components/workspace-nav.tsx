@@ -2,6 +2,7 @@
 
 import { Eyebrow } from "@hypercerts-org/ui-react";
 import {
+  Award,
   FolderGit2,
   LayoutDashboard,
   ListChecks,
@@ -26,6 +27,7 @@ const SECTIONS: readonly Section[] = [
   { label: "Overview", icon: LayoutDashboard, path: "" },
   { label: "Projects and activities", icon: FolderGit2, path: "/projects" },
   { label: "Endorsements", icon: ThumbsUp, path: "/endorsements" },
+  { label: "Badges", icon: Award, path: "/badges" },
   { label: "Lists", icon: ListChecks, path: "/lists" },
 ];
 

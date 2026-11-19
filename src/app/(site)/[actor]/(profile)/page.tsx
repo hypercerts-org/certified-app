@@ -11,7 +11,7 @@ import { ChevronRight, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
-import { BadgeTiles } from "@/components/badges";
+import { BadgeTiles, IssuedBadgeTiles } from "@/components/badges";
 import {
   ActivityCardView,
   actorHref,
@@ -26,6 +26,7 @@ import {
   getActor,
   getBadges,
   getEndorsements,
+  getIssuedBadges,
   getRecordCounts,
   listActivitiesPage,
   listEndorsements,
@@ -265,6 +266,25 @@ async function Badges({ did, base }: { did: string; base: string }) {
   );
 }
 
+/** The badges this account defined for others, the most held first. */
+async function BadgesIssued({ did, base }: { did: string; base: string }) {
+  const { badges, more } = await getIssuedBadges(did);
+  if (badges.length === 0) return null;
+  return (
+    <Section
+      title="Badges issued"
+      count={`${badges.length}${more ? "+" : ""}`}
+      seeAll={
+        badges.length > BADGES_PREVIEW
+          ? { href: `${base}/badges/issued`, label: "All badges issued" }
+          : undefined
+      }
+    >
+      <IssuedBadgeTiles badges={badges.slice(0, BADGES_PREVIEW)} />
+    </Section>
+  );
+}
+
 /** The accounts that endorsed this one, each once with its latest endorsement. */
 async function EndorsedBy({ did, base }: { did: string; base: string }) {
   const { rows, more } = await listEndorsements(did, "received");
@@ -388,6 +408,9 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
         </Suspense>
         <Suspense fallback={null}>
           <Badges did={did} base={base} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <BadgesIssued did={did} base={base} />
         </Suspense>
         <Suspense fallback={null}>
           <Endorses did={did} base={base} />

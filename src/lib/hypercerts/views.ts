@@ -510,8 +510,8 @@ export type BadgeCard = {
   note: string | null;
   /** A link the award gives, http(s) only. */
   url: string | null;
-  /** The recipient's response: accepted, or still unanswered. */
-  status: "accepted" | "unanswered";
+  /** The recipient's response. Rejected ones show only in its workspace. */
+  status: "accepted" | "unanswered" | "rejected";
   /** Sort keys: the recipient's weight (0 without one), and the award's time. */
   weight: number;
   time: number;
@@ -522,14 +522,19 @@ const PLAIN_ENDORSEMENT = "Endorsement";
 
 /**
  * An award as a badge card, or null when it isn't shown as a badge:
- * - rejected by the recipient, or its definition can't be read;
+ * - rejected by the recipient (unless `withRejected`: its workspace), or its
+ *   definition can't be read;
  * - a plain endorsement (a definition of type "endorsement" titled
  *   "Endorsement", one per endorser): the profile's Endorsements show those.
  *   Endorsement-type badges with other titles ("Trusted Evaluator") are badges;
  * - issued by someone the definition doesn't allow (allowedIssuers).
  */
-export function toBadgeCard(award: BadgeAwardView, now = Date.now()): BadgeCard | null {
-  if (award.responseStatus === "rejected" || !award.badge) return null;
+export function toBadgeCard(
+  award: BadgeAwardView,
+  now = Date.now(),
+  { withRejected = false } = {},
+): BadgeCard | null {
+  if (!award.badge || (award.responseStatus === "rejected" && !withRejected)) return null;
   const definition = award.badge.record;
   const title = asString(definition.title)?.trim();
   if (!title) return null;
@@ -557,7 +562,7 @@ export function toBadgeCard(award: BadgeAwardView, now = Date.now()): BadgeCard 
     expired: Number.isFinite(untilTime) && untilTime < now,
     note: asString(award.record.note)?.trim() || null,
     url: safeUrl(award.record.url),
-    status: award.responseStatus === "accepted" ? "accepted" : "unanswered",
+    status: award.responseStatus === "unanswered" ? "unanswered" : award.responseStatus,
     weight: Number.isFinite(weight) ? weight : 0,
     time: new Date(asString(award.record.createdAt) ?? 0).getTime() || 0,
   };

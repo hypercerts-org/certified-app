@@ -8,6 +8,7 @@ import {
   getBadges,
   getEndorsements,
   getFollowCounts,
+  getIssuedBadges,
   getRecordCounts,
 } from "@/lib/hypercerts/queries";
 import { profileBase } from "@/lib/profile-route";
@@ -55,6 +56,7 @@ type TabCounts = {
   lists: Count;
   badgesAccepted: number;
   badgesAwaiting: number;
+  badgesIssued: number;
 };
 
 /** Overview always; the others once their counts are known, and only when not empty. */
@@ -97,13 +99,14 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
           ["/following"],
           !counts || counts.followers + counts.following === 0,
         ),
-        // Counts accepted badges, and shows while either list has one.
+        // Counts accepted badges, and shows while any of its lists has one
+        // (an issuer may hold none).
         tab(
           "Badges",
           "/badges",
           counts?.badgesAccepted,
-          ["/badges/awaiting"],
-          !counts || counts.badgesAccepted + counts.badgesAwaiting === 0,
+          ["/badges/awaiting", "/badges/issued"],
+          !counts || counts.badgesAccepted + counts.badgesAwaiting + counts.badgesIssued === 0,
         ),
         tab("Lists", "/lists", counts?.lists),
       ]}
@@ -112,11 +115,12 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [records, endorsements, follows, badges] = await Promise.all([
+  const [records, endorsements, follows, badges, issued] = await Promise.all([
     getRecordCounts(did),
     getEndorsements(did),
     getFollowCounts(did),
     getBadges(did),
+    getIssuedBadges(did),
   ]);
   return (
     <Tabs
@@ -131,6 +135,7 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
         lists: records.lists,
         badgesAccepted: badges.accepted.length,
         badgesAwaiting: badges.awaiting.length,
+        badgesIssued: issued.badges.length,
       }}
     />
   );

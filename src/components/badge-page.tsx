@@ -6,11 +6,12 @@
 
 import { Avatar, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
+import { BadgeHolderList } from "@/components/badge-holders";
 import { BadgeIcon } from "@/components/badges";
 import { actorHref } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { PageTitle } from "@/components/page-title";
-import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
+import { PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
 import { getActor, getBadge, listBadgeHolders } from "@/lib/hypercerts/queries";
 
@@ -73,21 +74,23 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
             { label: "Awaiting response", href: `${base}/awaiting`, count: count(awaiting.total) },
           ]}
         />
-        <PeopleList
-          page={shown}
+        <BadgeHolderList
+          // A new list per tab: each keeps its own pages.
+          key={which}
+          badge={badge.uri}
+          response={which === "accepted" ? "accepted" : "unanswered"}
+          initial={{ items: shown.items, cursor: shown.cursor }}
           empty={
             which === "accepted"
               ? "No one has accepted this badge yet."
               : "No awards of this badge are awaiting a response."
           }
         />
-        {(shown.more || shown.records > 0) && (
+        {shown.records > 0 && (
           <Text size="body-sm" tone="muted">
-            {shown.more &&
-              `Showing the latest ${numberFormat.format(shown.rows.length)} of ${numberFormat.format(shown.total)}.`}
-            {shown.more && shown.records > 0 && " "}
-            {shown.records > 0 &&
-              `${shown.records} ${shown.records === 1 ? "award goes" : "awards go"} to a record (a project or an activity), not an account.`}
+            {shown.records} {shown.records === 1 ? "award" : "awards"} on the first page{" "}
+            {shown.records === 1 ? "goes" : "go"} to a record (a project or an activity), not an
+            account.
           </Text>
         )}
       </div>
