@@ -70,7 +70,7 @@ To review a change against this codebase's standards (architecture, data and cac
 
 Use pnpm, the version pinned in `package.json`. Before handing work back, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `pnpm build` must pass.
 
-API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods (and `com.atproto.server.getServiceAuth`, which calling it needs) are installed and generated with `lex install` and `lex build` (`lexicons.json`, `vendor/cgs-lexicons/`, `src/lexicons/`, never edited by hand).
+API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexicon`, installed from npm. Do not add local lexicon code generation, with one exception until the Certified Group Service publishes a client package: its methods (and `com.atproto.server.getServiceAuth`, which calling it needs) are installed and generated with `lex install` and `lex build` (`lexicons.json`, `lexicons/`, `src/lexicons/`). CGS doesn't publish its lexicons, so its files in `lexicons/` are copies from the certified-group-service repository: update them by copying, never by hand-editing.
 
 Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`; `getOAuthSession()` in Server Actions and Route Handlers; `readOAuthSession()` in Server Components), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Valkey; see the README's "Signing in locally".
 

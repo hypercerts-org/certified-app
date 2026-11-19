@@ -235,6 +235,12 @@ Before judging a Next.js API, read its guide in
   shortcut that hides a real state.
 - F7. README routes, "Adapting this app" and the spike findings change in
   the same change as the code they describe.
+- F8. Read the repository's layout as a newcomer would, not only `src/`:
+  run `git ls-files | cut -d/ -f1 | sort -u` and open any top-level
+  folder or config the change adds or touches. Each should have an
+  obvious purpose and one copy: no file kept in two places, no copy of
+  another repository's code or schemas without a stated reason to copy
+  rather than install, and nothing a tool generates kept by hand.
 
 ## 5. Verify before reporting
 
