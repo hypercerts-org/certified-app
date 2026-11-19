@@ -22,6 +22,7 @@ import {
   activityRecord,
   awardSubject,
   type BadgeCard,
+  type BadgeDetail,
   didOf,
   type EndorsementCard,
   formatDate,
@@ -39,6 +40,7 @@ import {
   toActorCard,
   toActorDetail,
   toBadgeCard,
+  toBadgeDetail,
   toEndorsementCard,
   toPlace,
   toProfileVersion,
@@ -801,6 +803,86 @@ export async function getBadges(did: string): Promise<Badges> {
     accepted: await cards(accepted.awards),
     awaiting: await cards(awaiting.awards),
     more: accepted.more || awaiting.more,
+  };
+}
+
+/** A badge definition, or null when there is none at `uri`. */
+export async function getBadge(uri: string): Promise<BadgeDetail | null> {
+  "use cache";
+  publicData(tags.badge(uri));
+
+  const result = await api.xrpcSafe(app.certified.badge.getBadgeDefinition, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (result.success) {
+    const badge = toBadgeDetail(result.body.badgeDefinition);
+    if (!badge) return null;
+    const [issuer] = await withHandles([badge.issuer]);
+    return { ...badge, issuer };
+  }
+  if (notFound(result)) return null;
+  throw result;
+}
+
+export type BadgeHolders = {
+  /** Accounts holding the badge, newest award first (one page). */
+  rows: PersonRow[];
+  /** Every award with this response, as the API counts them. */
+  total: number;
+  more: boolean;
+  /** Awards on this page given to a record (a project, an activity), not an account. */
+  records: number;
+};
+
+/**
+ * Who holds the badge at `uri`, by the recipient's response: accepted, or
+ * still unanswered. Awards from issuers the definition doesn't allow are left
+ * out (`allowedIssuers`, empty for anyone).
+ */
+export async function listBadgeHolders(
+  uri: string,
+  response: "accepted" | "unanswered",
+  allowedIssuers: string[],
+): Promise<BadgeHolders> {
+  "use cache";
+  publicData(tags.badge(uri));
+
+  const { badgeAwards, cursor, totalCount } = await api.call(
+    app.certified.badge.listBadgeAwards,
+    { badgeUris: [uri as AtUri], responses: [response], limit: PEOPLE_PAGE, includeTotal: true },
+    read(),
+  );
+  const awards = badgeAwards.filter(
+    (award) => allowedIssuers.length === 0 || allowedIssuers.includes(award.author.did),
+  );
+  const subjectOf = (award: BadgeAwardView) => awardSubject(award.record.subject);
+  const dids = [
+    ...new Set(
+      awards
+        .map(subjectOf)
+        .filter((subject): subject is string => Boolean(subject?.startsWith("did:"))),
+    ),
+  ];
+  const cards = await actorCards(dids);
+  const rows: PersonRow[] = [];
+  let records = 0;
+  for (const award of awards) {
+    const subject = subjectOf(award);
+    if (!subject?.startsWith("did:")) {
+      records += 1;
+      continue;
+    }
+    const actor = cards.get(subject);
+    if (!actor) continue;
+    const { note, createdAt } = toEndorsementCard(award); // an award's note and date
+    rows.push({ uri: award.uri, actor, note, date: createdAt });
+  }
+  return {
+    rows: await withHandlesIn(rows, "actor"),
+    total: totalCount ?? rows.length,
+    more: Boolean(cursor),
+    records,
   };
 }
 

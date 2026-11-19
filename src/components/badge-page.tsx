@@ -1,0 +1,119 @@
+// A badge's own page, under the account that defined it
+// (/{issuer}/badge/{rkey}): what the badge is, then who holds it, by the
+// holder's response: Accepted, or Awaiting response. Every badge on a
+// profile links here, so a badge can be followed to everyone else who holds
+// it.
+
+import { Avatar, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { notFound } from "next/navigation";
+import { BadgeIcon } from "@/components/badges";
+import { actorHref } from "@/components/cards";
+import { IntentLink } from "@/components/intent-link";
+import { PageTitle } from "@/components/page-title";
+import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
+import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
+import { getActor, getBadge, listBadgeHolders } from "@/lib/hypercerts/queries";
+
+export type BadgeParams = Promise<{ actor: string; rkey: string }>;
+type Which = "accepted" | "awaiting";
+
+/** A record key as AT Protocol allows it; anything else is no badge. */
+const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
+
+const numberFormat = new Intl.NumberFormat("en");
+
+/** The badge at these params, or a 404. Shared with the pages' titles. */
+export async function badgeFrom(params: BadgeParams) {
+  const { actor: id, rkey } = await params;
+  if (!RKEY.test(rkey)) notFound();
+  const owner = await getActor(decodeURIComponent(id));
+  if (!owner) notFound();
+  const badge = await getBadge(`at://${owner.did}/app.certified.badge.definition/${rkey}`);
+  if (!badge) notFound();
+  // The tabs link within the address the page was opened at (handle or DID).
+  return { badge, base: `/${decodeURIComponent(id)}/badge/${rkey}` };
+}
+
+export async function BadgePage({ params, which }: { params: BadgeParams; which: Which }) {
+  const { badge, base } = await badgeFrom(params);
+  const [accepted, awaiting] = await Promise.all([
+    listBadgeHolders(badge.uri, "accepted", badge.allowedIssuers),
+    listBadgeHolders(badge.uri, "unanswered", badge.allowedIssuers),
+  ]);
+  const shown = which === "accepted" ? accepted : awaiting;
+  const count = (n: number) => (n > 0 ? numberFormat.format(n) : undefined);
+  return (
+    <>
+      <header className="badge-hero">
+        <BadgeIcon badge={badge} large />
+        <div className="stack">
+          <Eyebrow>{badge.type ?? "Badge"}</Eyebrow>
+          <PageTitle>
+            <span dir="auto">{badge.title}</span>
+          </PageTitle>
+          <IntentLink href={actorHref(badge.issuer)} className="meta-author">
+            <Avatar name={badge.issuer.displayName} src={badge.issuer.avatarUrl} size="sm" />
+            <Text as="span" size="body-sm">
+              Issued by {badge.issuer.displayName}
+            </Text>
+          </IntentLink>
+          {badge.description && (
+            <Text relaxed className="prewrap" dir="auto">
+              {badge.description}
+            </Text>
+          )}
+        </div>
+      </header>
+      <div className="profile-list-page">
+        <ProfileTabs
+          label="Holders"
+          variant="segmented"
+          tabs={[
+            { label: "Accepted", href: base, count: count(accepted.total) },
+            { label: "Awaiting response", href: `${base}/awaiting`, count: count(awaiting.total) },
+          ]}
+        />
+        <PeopleList
+          page={shown}
+          empty={
+            which === "accepted"
+              ? "No one has accepted this badge yet."
+              : "No awards of this badge are awaiting a response."
+          }
+        />
+        {(shown.more || shown.records > 0) && (
+          <Text size="body-sm" tone="muted">
+            {shown.more &&
+              `Showing the latest ${numberFormat.format(shown.rows.length)} of ${numberFormat.format(shown.total)}.`}
+            {shown.more && shown.records > 0 && " "}
+            {shown.records > 0 &&
+              `${shown.records} ${shown.records === 1 ? "award goes" : "awards go"} to a record (a project or an activity), not an account.`}
+          </Text>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** The page on its way: the badge's header, the switch, then holders. */
+export function BadgePageSkeleton({ which }: { which: Which }) {
+  return (
+    <>
+      <div className="badge-hero" aria-hidden>
+        <Skeleton variant="box" className="badge-icon badge-icon-large" />
+        <div className="stack">
+          <Skeleton variant="line" className="skeleton-meta" />
+          <Skeleton variant="line" className="skeleton-name" />
+          <Skeleton variant="text" lines={2} className="skeleton-lead" />
+        </div>
+      </div>
+      <div className="profile-list-page">
+        <SegmentedLinksSkeleton
+          labels={["Accepted", "Awaiting response"]}
+          current={which === "accepted" ? "Accepted" : "Awaiting response"}
+        />
+        <PeopleListSkeleton />
+      </div>
+    </>
+  );
+}

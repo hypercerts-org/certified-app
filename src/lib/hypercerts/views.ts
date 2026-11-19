@@ -10,6 +10,7 @@ import type { app, org } from "@hypercerts-org/api";
 type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
 type ActorView = org.hypercerts.api.defs.ActorView;
 type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
+type BadgeDefinitionView = app.certified.badge.getBadgeDefinition.BadgeDefinitionView;
 type CollectionActorView = org.hypercerts.collection.getCollection.CollectionActorView;
 type CollectionView = org.hypercerts.collection.getCollection.CollectionView;
 type OrganizationActorView = app.certified.actor.getOrganization.OrganizationActorView;
@@ -492,6 +493,9 @@ export function toEndorsementCard(award: BadgeAwardView): EndorsementCard {
 
 export type BadgeCard = {
   uri: string;
+  /** The definition's owner and record key: its page (badgeHref). */
+  ownerDid: string;
+  rkey: string;
   title: string;
   /** The definition's type, as a label: "Certification", "Recognition". */
   type: string | null;
@@ -538,17 +542,15 @@ export function toBadgeCard(award: BadgeAwardView, now = Date.now()): BadgeCard 
   const until = asString(award.record.validUntil);
   const untilTime = until ? new Date(until).getTime() : Number.NaN;
   const weight = Number(asString(award.recipientResponse?.record.weight));
-  const iconCid = blobCid(definition.icon);
   const type = asString(definition.badgeType);
   return {
     uri: award.uri,
     title,
-    type: type ? type.charAt(0).toUpperCase() + type.slice(1) : null,
+    type: badgeTypeLabel(type),
     description: asString(definition.description)?.trim() || null,
-    // The icon is a blob in the definition's repository.
-    iconUrl: iconCid
-      ? `https://cdn.bsky.app/img/${IMAGE_PRESET.thumbnail}/plain/${award.badge.did}/${iconCid}@jpeg`
-      : null,
+    ownerDid: award.badge.did,
+    rkey: award.badge.uri.split("/").pop() ?? "",
+    iconUrl: badgeIconUrl(award.badge.did, definition.icon),
     issuer: toActorCard(award.author),
     awarded: formatDate(award.record.createdAt),
     validUntil: formatMonth(until),
@@ -566,4 +568,51 @@ export function sortBadges(cards: BadgeCard[]): BadgeCard[] {
   return [...cards].sort(
     (a, b) => Number(a.expired) - Number(b.expired) || b.weight - a.weight || b.time - a.time,
   );
+}
+
+/** A badge type as a label: "certification" reads "Certification". */
+function badgeTypeLabel(type: string | null): string | null {
+  return type ? type.charAt(0).toUpperCase() + type.slice(1) : null;
+}
+
+/** A badge's icon: a blob in the repository of the account that defined it. */
+function badgeIconUrl(ownerDid: string, icon: unknown): string | null {
+  const cid = blobCid(icon);
+  return cid
+    ? `https://cdn.bsky.app/img/${IMAGE_PRESET.thumbnail}/plain/${ownerDid}/${cid}@jpeg`
+    : null;
+}
+
+/** A badge definition, for its own page. */
+export type BadgeDetail = {
+  uri: string;
+  ownerDid: string;
+  rkey: string;
+  title: string;
+  type: string | null;
+  description: string | null;
+  iconUrl: string | null;
+  /** The account that defined it. */
+  issuer: ActorCard;
+  /** Who may award it, when the definition says (allowedIssuers); empty: anyone. */
+  allowedIssuers: string[];
+};
+
+export function toBadgeDetail(view: BadgeDefinitionView): BadgeDetail | null {
+  const definition = view.record;
+  const title = asString(definition.title)?.trim();
+  if (!title) return null;
+  return {
+    uri: view.uri,
+    ownerDid: view.did,
+    rkey: view.uri.split("/").pop() ?? "",
+    title,
+    type: badgeTypeLabel(asString(definition.badgeType)),
+    description: asString(definition.description)?.trim() || null,
+    iconUrl: badgeIconUrl(view.did, definition.icon),
+    issuer: toActorCard(view.author),
+    allowedIssuers: (definition.allowedIssuers ?? []).flatMap(
+      (issuer) => asString(asRecord(issuer)?.did) ?? [],
+    ),
+  };
 }

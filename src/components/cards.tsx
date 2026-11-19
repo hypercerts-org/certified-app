@@ -34,6 +34,11 @@ export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
   return `/${project.authorDid}/project/${project.rkey}`;
 }
 
+/** A badge's page, under the account that defined it: /{issuer}/badge/{rkey}. */
+export function badgeHref(badge: { ownerDid: string; rkey: string }) {
+  return `/${badge.ownerDid}/badge/${badge.rkey}`;
+}
+
 export function ActorCardView({ actor }: { actor: ActorCard }) {
   return (
     <Card as="li" variant="panel" className="card">

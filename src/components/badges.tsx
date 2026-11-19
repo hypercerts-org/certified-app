@@ -6,16 +6,23 @@
 
 import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
-import { actorHref, skeletonSlots } from "@/components/cards";
+import { actorHref, badgeHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
 import { getBadges } from "@/lib/hypercerts/queries";
 import type { BadgeCard } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
-function BadgeIcon({ badge }: { badge: BadgeCard }) {
+/** A badge's icon, or a generic one. `large` on the badge's own page. */
+export function BadgeIcon({
+  badge,
+  large = false,
+}: {
+  badge: Pick<BadgeCard, "iconUrl">;
+  large?: boolean;
+}) {
   return (
-    <span className="badge-icon">
+    <span className={large ? "badge-icon badge-icon-large" : "badge-icon"}>
       {badge.iconUrl ? (
         // biome-ignore lint/performance/noImgElement: Bluesky's CDN, already sized
         <img src={badge.iconUrl} alt="" loading="lazy" />
@@ -42,9 +49,9 @@ export function BadgeTiles({ badges }: { badges: BadgeCard[] }) {
         <li key={badge.uri} className="badge-tile" data-expired={badge.expired || undefined}>
           <BadgeIcon badge={badge} />
           <span className="badge-tile-text">
-            <span className="badge-title" dir="auto">
+            <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
               {badge.title}
-            </span>
+            </IntentLink>
             <span className="badge-meta">
               {badge.expired ? "Expired · " : ""}
               <Issuer badge={badge} />
@@ -66,9 +73,9 @@ export function BadgeList({ badges, empty }: { badges: BadgeCard[]; empty: strin
           <BadgeIcon badge={badge} />
           <div className="badge-row-text">
             <p className="badge-row-head">
-              <span className="badge-title" dir="auto">
+              <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
                 {badge.title}
-              </span>
+              </IntentLink>
               {badge.type && <span className="badge-type">{badge.type}</span>}
               {badge.expired && <span className="badge-type">Expired</span>}
             </p>

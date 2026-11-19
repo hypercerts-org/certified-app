@@ -1761,6 +1761,33 @@ button.sidebar-item:hover,
   opacity: 0.7;
 }
 
+/* The badge's own page: its icon large, beside its name and issuer. */
+.badge-icon-large {
+  inline-size: 6rem;
+  block-size: 6rem;
+}
+
+.badge-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.badge-hero > .stack {
+  flex: 1;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+a.badge-title {
+  text-decoration: none;
+}
+
+a.badge-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .badge-title {
   color: var(--hc-text-ink);
   font-weight: var(--hc-weight-medium);
