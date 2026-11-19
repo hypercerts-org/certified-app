@@ -92,7 +92,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
             </p>
           )}
           {lead && (
-            <ExpandableText lines={3} className="profile-lead">
+            <ExpandableText lines={4} className="profile-lead expandable-fade">
               {bio ? (
                 // The bio as this browser should show it, saves included.
                 <ProfileDescription did={actor.did} rendered={actor.profile} />

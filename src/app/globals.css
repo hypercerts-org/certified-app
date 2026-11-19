@@ -2194,3 +2194,24 @@ details[open] > .work-folder-head .work-folder-chevron {
   --border-radius: var(--hc-radius-control);
   font-family: var(--hc-font-body);
 }
+
+/* ExpandableText that fades out above a plain "Read more" link, as on
+   staging (gap: ExpandableText variant="fade"). Through the className on the
+   component's root: its first child is the clamped text, and the toggle
+   button follows only when some text is hidden, so a short text never
+   fades. */
+.expandable-fade > :first-child:has(+ button[aria-expanded="false"]) {
+  mask-image: linear-gradient(to bottom, #000 40%, transparent);
+}
+
+.expandable-fade > button[aria-expanded] {
+  margin-block-start: 0.375rem;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.expandable-fade > button[aria-expanded] > svg {
+  display: none;
+}
