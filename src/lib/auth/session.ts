@@ -79,6 +79,17 @@ async function readAppSessionById(id: string): Promise<AppSession | null> {
   return raw ? (JSON.parse(raw) as AppSession) : null;
 }
 
+/**
+ * For src/proxy.ts, which has the request's cookies rather than cookies():
+ * the session cookie's name and flags, and whether its token still names a
+ * session.
+ */
+export const sessionCookie = cookie;
+
+export async function hasAppSession(token: string): Promise<boolean> {
+  return (await store((r) => r.exists(sessionKey(hash(token))))) === 1;
+}
+
 export async function readAppSession(): Promise<AppSession | null> {
   const id = await currentSessionId();
   return id ? readAppSessionById(id) : null;

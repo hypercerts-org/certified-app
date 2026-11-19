@@ -1,16 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { hasAppSession, sessionCookie } from "@/lib/auth/session";
+import { logError } from "@/lib/log";
 
-// `/` for a visitor without a session cookie: a real 307 to the landing page
-// before anything renders (a redirect from a streamed page is a 200 with a
-// meta refresh), which is what crawlers and new visitors get. With a cookie,
-// src/app/(site)/page.tsx decides: the cookie may be stale (expired, revoked,
-// or from before a store change), so only the session itself can say whether
-// to open the workspace or the landing page.
-const SESSION_COOKIES = ["__Host-certified_session", "certified_session"];
+// `/` decides before anything renders, so every visitor gets a real 307 and
+// never sees one page flash before another: signed in, the workspace;
+// otherwise the landing page. "Signed in" means the cookie still names a
+// session (one Valkey read, only for `/`); a dead cookie (expired, revoked,
+// from before a store change) goes to the landing page and is cleared. If
+// Valkey can't answer, src/app/(site)/page.tsx decides instead.
 
-export function proxy(request: NextRequest) {
-  if (SESSION_COOKIES.some((name) => request.cookies.has(name))) return NextResponse.next();
-  return NextResponse.redirect(new URL("/welcome", request.url), 307);
+const to = (path: string, request: NextRequest) =>
+  NextResponse.redirect(new URL(path, request.url), 307);
+
+export async function proxy(request: NextRequest) {
+  try {
+    const { name, options } = sessionCookie();
+    const token = request.cookies.get(name)?.value;
+    if (!token) return to("/welcome", request);
+    if (await hasAppSession(token)) return to("/workspace", request);
+    const response = to("/welcome", request);
+    response.cookies.set(name, "", { ...options, maxAge: 0 });
+    return response;
+  } catch (err) {
+    logError("[proxy] session check failed", err);
+    return NextResponse.next(); // the page checks the session itself
+  }
 }
 
 export const config = { matcher: "/" };
