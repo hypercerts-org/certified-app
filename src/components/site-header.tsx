@@ -1,19 +1,20 @@
-import { Container } from "@hypercerts-org/ui-react";
+import { Container, Skeleton } from "@hypercerts-org/ui-react";
 import Image from "next/image";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { cache, Suspense } from "react";
+import { cache, type ReactNode, Suspense } from "react";
 import { SignInButton } from "@/components/sign-in-button";
-import { type Account, SiteNav } from "@/components/site-nav";
+import { type Account, Destinations, HeaderAccountMenus } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
 import { logError } from "@/lib/log";
 
 // The site's top bar, full width (and, on phones, its bottom tab bar), below
-// 64rem; wider, the sidebar (app-sidebar.tsx) takes its place. The navigation
-// depends on who is signed in, so it streams in behind a Suspense boundary and
-// pages keep their cached shell.
+// 64rem; wider, the sidebar (app-sidebar.tsx) takes its place. As there, what
+// is the same for everyone (the wordmark, Network, Apps) renders at once, in
+// the cached shell; what depends on who is signed in (Workspace, the account
+// menu or Sign in) streams in, each piece on its own.
 export function SiteHeader() {
   return (
     <header className="site-header">
@@ -27,12 +28,50 @@ export function SiteHeader() {
             preload
           />
         </Link>
-        <Suspense fallback={null}>
-          <HeaderNav />
-        </Suspense>
+        <nav aria-label="Main" className="site-nav desktop-only">
+          <Suspense fallback={null}>
+            <SignedIn>
+              <Destinations variant="top" only={["workspace"]} />
+            </SignedIn>
+          </Suspense>
+          <Destinations variant="top" only={["network", "apps"]} />
+        </nav>
+        <div className="site-header-actions">
+          <Suspense fallback={null}>
+            <HeaderAccount />
+          </Suspense>
+        </div>
       </div>
+      <nav aria-label="Main" className="bottom-nav phone-only">
+        <Suspense fallback={null}>
+          <SignedIn>
+            <Destinations variant="bottom" only={["workspace"]} />
+          </SignedIn>
+        </Suspense>
+        <Destinations variant="bottom" only={["network", "apps"]} />
+      </nav>
     </header>
   );
+}
+
+/** Signed in, the account menu (a skeleton of its picture until the profile arrives); signed out, Sign in. */
+async function HeaderAccount() {
+  if (!(await getNavigationIdentity())) return <SignInButton variant="secondary" />;
+  return (
+    <Suspense fallback={<Skeleton variant="box" className="skeleton-account-avatar" />}>
+      <HeaderAccountLoaded />
+    </Suspense>
+  );
+}
+
+async function HeaderAccountLoaded() {
+  const account = await getAccount();
+  return account ? <HeaderAccountMenus account={account} /> : null;
+}
+
+/** Its children, only for someone signed in. */
+export async function SignedIn({ children }: { children: ReactNode }) {
+  return (await getNavigationIdentity()) ? children : null;
 }
 
 /**
@@ -47,10 +86,6 @@ export async function SignedOutBar() {
       <SignInButton variant="secondary" />
     </Container>
   );
-}
-
-async function HeaderNav() {
-  return <SiteNav account={await getAccount()} />;
 }
 
 /**
@@ -69,6 +104,27 @@ export const getAccount = cache(async (): Promise<Account | null> => {
     return null;
   }
 });
+
+/**
+ * Who the navigation is for, without the profile: the signed-in account and
+ * whom it acts as, or null when signed out. Fast (the session and the
+ * memberships are cached), so the sidebar's signed-in pieces don't wait for
+ * the account's name and picture. Like getAccount, an outage shows the
+ * signed-out navigation rather than failing the page.
+ */
+export const getNavigationIdentity = cache(
+  async (): Promise<{ did: string; actingAs: string } | null> => {
+    try {
+      const user = await getUser();
+      if (!user) return null;
+      return { did: user.did, actingAs: (await getActingAs()) ?? user.did };
+    } catch (err) {
+      unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
+      logError("[account] navigation identity failed", err);
+      return null;
+    }
+  },
+);
 
 async function readAccount(): Promise<Account | null> {
   const user = await getUser();

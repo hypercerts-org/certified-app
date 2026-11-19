@@ -19,17 +19,16 @@ import {
 import Form from "next/form";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { WORKSPACE_OVERVIEW_PATH, workspaceHref } from "@/components/cards";
-import { HelpMenu } from "@/components/help-menu";
+import { type ReactNode, Suspense, useEffect, useId, useRef, useState } from "react";
+import { WORKSPACE_OVERVIEW_PATH } from "@/components/cards";
 import { LinkPending } from "@/components/link-pending";
-import { type Account, SidebarAccountMenu } from "@/components/site-nav";
 
-// The sidebar's contents, after the staging redesign: whom you act as, the
-// search, then the app's pages in three groups (Workspace, Network,
-// Ecosystem), with Help and Settings at the foot. Pages not built yet are
-// shown dimmed, not as links, so the list has its final shape without
-// leading anywhere empty.
+// The sidebar's pieces, after the staging redesign: the search, then the
+// app's pages in groups (Workspace, Network, Ecosystem), with Help and
+// Settings at the foot. Pages not built yet are shown dimmed, not as links,
+// so the list has its final shape without leading anywhere empty. What is the
+// same for everyone renders at once; app-sidebar.tsx streams in the few
+// pieces that depend on who is signed in.
 
 type Item = {
   label: string;
@@ -37,7 +36,6 @@ type Item = {
   /** Where it leads, or null while the page isn't built. */
   href: string | null;
   isActive?: (pathname: string) => boolean;
-  signedInOnly?: boolean;
 };
 
 const under = (base: string) => (pathname: string) =>
@@ -72,9 +70,10 @@ function workspaceItems(overview: string): Item[] {
   ];
 }
 
+// The Feed follows your account, so it is signed-in only.
+const FEED: readonly Item[] = [{ label: "Feed", icon: Newspaper, href: null }];
+
 const NETWORK: readonly Item[] = [
-  // The Feed follows your account, so it is signed-in only.
-  { label: "Feed", icon: Newspaper, href: null, signedInOnly: true },
   { label: "Explore", icon: Compass, href: "/explore", isActive: under("/explore") },
   { label: "Graph", icon: Network, href: null },
   { label: "Map", icon: MapIcon, href: null },
@@ -85,7 +84,11 @@ const ECOSYSTEM: readonly Item[] = [
   { label: "Apps", icon: LayoutGrid, href: "/apps", isActive: under("/apps") },
 ];
 
-function Row({ item, pathname }: { item: Item; pathname: string }) {
+const SETTINGS: readonly Item[] = [
+  { label: "Settings", icon: Settings, href: "/settings", isActive: under("/settings") },
+];
+
+function Row({ item, pathname }: { item: Item; pathname: string | null }) {
   const { label, icon: Icon, href } = item;
   if (!href) {
     return (
@@ -96,7 +99,7 @@ function Row({ item, pathname }: { item: Item; pathname: string }) {
       </span>
     );
   }
-  const active = item.isActive?.(pathname) ?? false;
+  const active = (pathname !== null && item.isActive?.(pathname)) || false;
   return (
     <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
       <Icon size={20} strokeWidth={active ? 2 : 1.5} aria-hidden />
@@ -106,7 +109,39 @@ function Row({ item, pathname }: { item: Item; pathname: string }) {
   );
 }
 
-function Group({ label, children }: { label: string; children: ReactNode }) {
+function RowsView({ items, pathname }: { items: readonly Item[]; pathname: string | null }) {
+  return items.map((item) => (
+    <li key={item.label}>
+      <Row item={item} pathname={pathname} />
+    </li>
+  ));
+}
+
+function RowsHere({ items }: { items: readonly Item[] }) {
+  return <RowsView items={items} pathname={decodeURIComponent(usePathname())} />;
+}
+
+/**
+ * One group's rows. The page marks its own row once the path is read; until
+ * then (prerendering) the same rows show, none marked, so nothing moves.
+ */
+export function SidebarRows(
+  props:
+    | { group: "network" | "feed" | "ecosystem" | "settings" }
+    | { group: "workspace"; overview: string },
+) {
+  const items =
+    props.group === "workspace"
+      ? workspaceItems(props.overview)
+      : { network: NETWORK, feed: FEED, ecosystem: ECOSYSTEM, settings: SETTINGS }[props.group];
+  return (
+    <Suspense fallback={<RowsView items={items} pathname={null} />}>
+      <RowsHere items={items} />
+    </Suspense>
+  );
+}
+
+export function SidebarGroup({ label, children }: { label: string; children: ReactNode }) {
   const id = useId();
   return (
     <div className="sidebar-group">
@@ -124,7 +159,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
  * Search, under the account control: Explore's search, from any page.
  * Ctrl K (⌘K on Apple devices) puts the cursor in it.
  */
-function SidebarSearch() {
+export function SidebarSearch() {
   const input = useRef<HTMLInputElement>(null);
   // The server can't know the platform, so the hint appears once mounted.
   const [shortcut, setShortcut] = useState<string | null>(null);
@@ -163,65 +198,5 @@ function SidebarSearch() {
         </kbd>
       )}
     </Form>
-  );
-}
-
-export function SidebarNav({ account }: { account: Account | null }) {
-  const pathname = decodeURIComponent(usePathname());
-  const visible = (item: Item) => account || !item.signedInOnly;
-
-  return (
-    <>
-      {/* Signed out, Sign in is at the page's top right (SignedOutBar). */}
-      {account && (
-        <div className="sidebar-account-slot">
-          <SidebarAccountMenu account={account} />
-        </div>
-      )}
-      <SidebarSearch />
-      <nav aria-label="Main" className="sidebar-nav">
-        {account && (
-          <Group label="Workspace">
-            {workspaceItems(workspaceHref(account.actingAs?.did ?? account.did)).map((item) => (
-              <li key={item.label}>
-                <Row item={item} pathname={pathname} />
-              </li>
-            ))}
-          </Group>
-        )}
-        <Group label="Network">
-          {NETWORK.filter(visible).map((item) => (
-            <li key={item.label}>
-              <Row item={item} pathname={pathname} />
-            </li>
-          ))}
-        </Group>
-        <Group label="Ecosystem">
-          {ECOSYSTEM.map((item) => (
-            <li key={item.label}>
-              <Row item={item} pathname={pathname} />
-            </li>
-          ))}
-        </Group>
-      </nav>
-      <ul className="sidebar-list sidebar-foot">
-        <li>
-          <HelpMenu className="sidebar-item" />
-        </li>
-        {account && (
-          <li>
-            <Row
-              item={{
-                label: "Settings",
-                icon: Settings,
-                href: "/settings",
-                isActive: under("/settings"),
-              }}
-              pathname={pathname}
-            />
-          </li>
-        )}
-      </ul>
-    </>
   );
 }

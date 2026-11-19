@@ -15,9 +15,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.bsky.app" }],
   },
-  // Extra hosts allowed to load the dev server, for example over Tailscale:
-  // ALLOWED_DEV_ORIGINS=myhost.tailnet.ts.net,100.64.0.1 pnpm dev
-  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",") ?? [],
+  // Hosts allowed to load the dev server besides localhost. 127.0.0.1 always:
+  // local sign-in only works there (atproto's loopback client), and Next
+  // blocks its dev connection from any other host, which leaves pages without
+  // JavaScript (nothing opens, nothing switches). More, for example over
+  // Tailscale: ALLOWED_DEV_ORIGINS=myhost.tailnet.ts.net,100.64.0.1 pnpm dev
+  allowedDevOrigins: ["127.0.0.1", ...(process.env.ALLOWED_DEV_ORIGINS?.split(",") ?? [])],
   // Your organizations are listed in your workspace now.
   async redirects() {
     return [{ source: "/settings/organizations", destination: "/workspace", permanent: true }];

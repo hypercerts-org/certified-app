@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { Suspense, useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { COMING_SOON } from "@/components/coming-soon";
@@ -62,7 +62,6 @@ type Destination = {
   label: string;
   href: string;
   icon: LucideIcon;
-  signedInOnly: boolean;
   isActive: (pathname: string) => boolean;
 };
 
@@ -75,7 +74,6 @@ const DESTINATIONS: readonly Destination[] = [
     label: "Workspace",
     href: "/workspace",
     icon: FolderOpen,
-    signedInOnly: true,
     isActive: (pathname) => WORKSPACE_PATH.test(pathname),
   },
   {
@@ -83,7 +81,6 @@ const DESTINATIONS: readonly Destination[] = [
     label: "Network",
     href: "/explore",
     icon: Globe,
-    signedInOnly: false,
     isActive: under("/explore"),
   },
   {
@@ -91,7 +88,6 @@ const DESTINATIONS: readonly Destination[] = [
     label: "Apps",
     href: "/apps",
     icon: LayoutGrid,
-    signedInOnly: false,
     isActive: under("/apps"),
   },
 ];
@@ -100,50 +96,62 @@ function useDecodedPathname() {
   return decodeURIComponent(usePathname());
 }
 
-export function SiteNav({ account }: { account: Account | null }) {
-  const pathname = useDecodedPathname();
-  const destinations = DESTINATIONS.filter((d) => account || !d.signedInOnly);
+type Variant = "top" | "bottom";
 
+function DestinationLinks({
+  items,
+  variant,
+  pathname,
+}: {
+  items: readonly Destination[];
+  variant: Variant;
+  pathname: string | null;
+}) {
+  return items.map((destination) => (
+    <Link
+      key={destination.key}
+      href={destination.href}
+      className={variant === "top" ? "nav-link" : "bottom-nav-item"}
+      aria-current={pathname !== null && destination.isActive(pathname) ? "page" : undefined}
+    >
+      <destination.icon size={variant === "top" ? 18 : 22} strokeWidth={1.5} aria-hidden />
+      {destination.label}
+    </Link>
+  ));
+}
+
+function DestinationLinksHere(props: { items: readonly Destination[]; variant: Variant }) {
+  return <DestinationLinks {...props} pathname={useDecodedPathname()} />;
+}
+
+/**
+ * Some of the app's destinations, as top bar links or phone tab bar items.
+ * The page marks its own once the path is read; until then (prerendering)
+ * the same links show, none marked, so nothing moves. site-header.tsx places
+ * the signed-in-only ones (Workspace) behind the sign-in check, and the rest
+ * at once.
+ */
+export function Destinations({
+  variant,
+  only,
+}: {
+  variant: Variant;
+  only: readonly Destination["key"][];
+}) {
+  const items = DESTINATIONS.filter((destination) => only.includes(destination.key));
+  return (
+    <Suspense fallback={<DestinationLinks items={items} variant={variant} pathname={null} />}>
+      <DestinationLinksHere items={items} variant={variant} />
+    </Suspense>
+  );
+}
+
+/** The top bar's account menu (and, on phones, its sheet). */
+export function HeaderAccountMenus({ account }: { account: Account }) {
   return (
     <>
-      <nav aria-label="Main" className="site-nav desktop-only">
-        {destinations.map((destination) => (
-          <Link
-            key={destination.key}
-            href={destination.href}
-            className="nav-link"
-            aria-current={destination.isActive(pathname) ? "page" : undefined}
-          >
-            <destination.icon size={18} strokeWidth={1.5} aria-hidden />
-            {destination.label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="site-header-actions">
-        {account ? (
-          <>
-            <DesktopAccountMenu account={account} />
-            <PhoneAccountMenu account={account} />
-          </>
-        ) : (
-          <SignInButton variant="secondary" />
-        )}
-      </div>
-
-      <nav aria-label="Main" className="bottom-nav phone-only">
-        {destinations.map((destination) => (
-          <Link
-            key={destination.key}
-            href={destination.href}
-            className="bottom-nav-item"
-            aria-current={destination.isActive(pathname) ? "page" : undefined}
-          >
-            <destination.icon size={22} strokeWidth={1.5} aria-hidden />
-            {destination.label}
-          </Link>
-        ))}
-      </nav>
+      <DesktopAccountMenu account={account} />
+      <PhoneAccountMenu account={account} />
     </>
   );
 }

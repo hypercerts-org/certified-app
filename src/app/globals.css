@@ -1961,6 +1961,12 @@ details[open] > .work-folder-head .work-folder-chevron {
   max-inline-size: 20rem;
 }
 
+.skeleton-account-avatar {
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-radius: 50%;
+}
+
 .skeleton-person-avatar {
   flex: none;
   inline-size: 2.5rem;
