@@ -10,6 +10,7 @@ import { Client, l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
 import { getBlobText } from "@/lib/blobs";
+import { getPlaceLabel } from "@/lib/geocode";
 import { getDid, getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
 import { isDid as isDidParam } from "@/lib/validate";
@@ -145,7 +146,11 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     if (!record) return detail;
     // Some records keep their coordinates in a blob on the account's server.
     const cid = locationBlobCid(record);
-    return { ...detail, place: toPlace(record, cid ? await getBlobText(did, cid) : null) };
+    const place = toPlace(record, cid ? await getBlobText(did, cid) : null);
+    // The short name from the point ("Corvallis, United States"), as the
+    // record's own name is free text; without one, its last two parts.
+    const label = place?.point ? await getPlaceLabel(place.point) : null;
+    return { ...detail, place: place && label ? { ...place, short: label } : place };
   }
   if (!notFound(organization)) throw organization;
   if (profile.success) {

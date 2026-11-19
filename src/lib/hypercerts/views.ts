@@ -313,7 +313,11 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
 export type Place = {
   /** The record's name in full: "Wilmington, New Castle County, Delaware, United States". */
   name: string;
-  /** Its last two parts, for a meta line: "Delaware, United States". */
+  /**
+   * For a meta line: its last two parts ("Delaware, United States"), which
+   * the profile query replaces with the point's locality and country
+   * (geocode.ts) when it has a point.
+   */
   short: string;
   /** For a map, when the record holds a point in a format read here. */
   point: { lat: number; lng: number } | null;
