@@ -672,6 +672,28 @@ export async function getFollowCounts(did: string): Promise<FollowCounts> {
   return { followers: followers.totalCount, following: following.totalCount };
 }
 
+/**
+ * Who follows a project (an entity follow, app.certified.graph.entityFollow),
+ * newest first (one page), and how many do in all.
+ */
+export async function getProjectFollowers(uri: string): Promise<PeoplePage & { total: number }> {
+  "use cache";
+  publicData(tags.project(uri));
+
+  const { followers, totalCount, cursor } = await api.call(
+    app.certified.graph.listEntityFollowers,
+    { entity: uri as AtUri, limit: PEOPLE_PAGE },
+    read(),
+  );
+  const rows = followers.map((view) => ({
+    uri: view.follow.uri,
+    actor: toActorCard({ did: view.did, profile: view.profile, organization: view.organization }),
+    note: null,
+    date: formatDate(view.follow.record.createdAt),
+  }));
+  return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor), total: totalCount };
+}
+
 // Profile tabs: endorsements, followers and lists
 //
 // One page each (up to PEOPLE_PAGE rows); the pages say when there are more.

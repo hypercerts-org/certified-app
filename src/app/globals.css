@@ -1994,6 +1994,27 @@ a.list-item-main:hover .list-item-title {
   block-size: 6rem;
 }
 
+/* A project's page: its details, with Follow at the top right. */
+.project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+.project-head > .stack {
+  flex: 1 1 32rem;
+  min-inline-size: 0;
+}
+
+.project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
 .badge-hero {
   display: flex;
   align-items: flex-start;
