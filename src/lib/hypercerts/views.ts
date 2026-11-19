@@ -58,8 +58,8 @@ export interface ActorDetail extends ActorCard {
   website: string | null;
   longDescription: string | null;
   foundedDate: string | null;
-  /** An organization's place, short: "Delaware, United States". */
-  place: string | null;
+  /** An organization's location record, as shown (toPlace). */
+  place: Place | null;
   bannerUrl: string | null;
   pronouns: string | null;
   /** When the profile was created, as "Jun 2026". */
@@ -307,6 +307,71 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
     foundedDate: formatMonth(organization?.foundedDate),
     place: null,
   };
+}
+
+/** Where an account is: from its app.certified.location record. */
+export type Place = {
+  /** The record's name in full: "Wilmington, New Castle County, Delaware, United States". */
+  name: string;
+  /** Its last two parts, for a meta line: "Delaware, United States". */
+  short: string;
+  /** For a map, when the record holds a point in a format read here. */
+  point: { lat: number; lng: number } | null;
+};
+
+type LocationRecord = { name?: unknown; locationType?: unknown; location?: unknown };
+
+/**
+ * The CID of the blob a location record keeps its value in
+ * ("org.hypercerts.defs#smallBlob"), or null when the value is inline.
+ */
+export function locationBlobCid(record: LocationRecord): string | null {
+  const location = asRecord(record.location);
+  return location?.$type === "org.hypercerts.defs#smallBlob" ? blobCid(location.blob) : null;
+}
+
+/**
+ * A location record as a Place, or null without a name. The value is the
+ * record's inline string, or `blobText` when the record keeps it in a blob
+ * (locationBlobCid; the caller reads it). The point is read from the two
+ * formats that hold one (Location Protocol types): "coordinate-decimal",
+ * "lat, lng" in WGS 84, and "geojson-point", a GeoJSON Point ([lng, lat]).
+ * Anything else, or out of range, has no point: the name still shows.
+ */
+export function toPlace(record: LocationRecord, blobText: string | null = null): Place | null {
+  const name = asString(record.name)?.trim();
+  if (!name) return null;
+  const short = name
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join(", ");
+  const value = asString(asRecord(record.location)?.string) ?? blobText?.trim() ?? null;
+  return { name, short, point: value ? readPoint(record.locationType, value) : null };
+}
+
+function readPoint(type: unknown, value: string): Place["point"] {
+  let lat: number;
+  let lng: number;
+  if (type === "coordinate-decimal") {
+    const parts = value.split(",").map((part) => part.trim());
+    if (parts.length !== 2 || parts.some((part) => part === "")) return null;
+    [lat, lng] = parts.map(Number);
+  } else if (type === "geojson-point") {
+    try {
+      const geometry = JSON.parse(value) as { type?: unknown; coordinates?: unknown };
+      if (geometry.type !== "Point" || !Array.isArray(geometry.coordinates)) return null;
+      [lng, lat] = geometry.coordinates as number[];
+    } catch {
+      return null;
+    }
+  } else {
+    return null;
+  }
+  const valid =
+    Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+  return valid ? { lat, lng } : null;
 }
 
 export function toActivityCard(activity: ActivityView): ActivityCard {

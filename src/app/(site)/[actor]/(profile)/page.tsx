@@ -7,7 +7,7 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
@@ -19,6 +19,7 @@ import {
 } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { IntentLink } from "@/components/intent-link";
+import { LocationMap } from "@/components/location-map";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
@@ -371,17 +372,31 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
         </Suspense>
       </div>
       <aside className="profile-rail" aria-label="Facts about this account">
+        {actor.place && (
+          <Card variant="panel" className="overview-box">
+            <Heading level={2} size="heading">
+              Location
+            </Heading>
+            <div className="location">
+              {actor.place.point && (
+                <LocationMap
+                  point={actor.place.point}
+                  label={`${actor.displayName}, ${actor.place.short}`}
+                  imageUrl={actor.avatarUrl}
+                />
+              )}
+              <p className="location-name">
+                <MapPin size={16} aria-hidden />
+                <span dir="auto">{actor.place.name}</span>
+              </p>
+            </div>
+          </Card>
+        )}
         <Card variant="panel" className="overview-box">
           <Heading level={2} size="heading">
             Account
           </Heading>
           <dl className="facts">
-            {actor.place && (
-              <div className="fact">
-                <dt>Location</dt>
-                <dd>{actor.place}</dd>
-              </div>
-            )}
             {/* A person's joining is on the header's meta line. */}
             {actor.isOrganization && actor.joined && (
               <div className="fact">

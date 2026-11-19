@@ -1,5 +1,6 @@
 import "server-only";
 
+import { extractPdsUrl } from "@atproto/did";
 import { AtprotoHandleResolverNode } from "@atproto/oauth-client-node";
 import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import { createIdentityResolver } from "@atproto-labs/identity-resolver";
@@ -12,7 +13,9 @@ import { cacheLife } from "next/cache";
 // private and local addresses (SSRF-safe), since anyone can point a handle at
 // any domain.
 
-const fetch = safeFetchWrap({ allowImplicitRedirect: true });
+/** Refuses private and local addresses: for any URL a record or DID names. */
+export const safeFetch = safeFetchWrap({ allowImplicitRedirect: true });
+const fetch = safeFetch;
 const resolver = createIdentityResolver({
   fetch,
   handleResolver: new AtprotoHandleResolverNode({ fetch }),
@@ -64,4 +67,15 @@ export async function getHandle(did: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * The address of the server holding an account's data (its PDS), from its
+ * DID document. Throws when it can't be resolved; failures aren't cached.
+ */
+export async function getPdsUrl(did: string): Promise<string> {
+  "use cache";
+  cacheLife("hours");
+  const { didDoc } = await resolver.resolve(did);
+  return extractPdsUrl(didDoc).origin;
 }

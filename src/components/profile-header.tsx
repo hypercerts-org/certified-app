@@ -46,7 +46,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
         actor.organizationTypes
           .map((type) => type.charAt(0).toUpperCase() + type.slice(1))
           .join(", "),
-        actor.place,
+        actor.place?.short,
         actor.foundedDate && `Founded ${actor.foundedDate}`,
       ]
     : [actor.pronouns, actor.joined && `Joined ${actor.joined}`];

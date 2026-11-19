@@ -9,6 +9,7 @@ import "server-only";
 import { Client, l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
+import { getBlobText } from "@/lib/blobs";
 import { getDid, getHandle } from "@/lib/identity";
 import { logError } from "@/lib/log";
 import { isDid as isDidParam } from "@/lib/validate";
@@ -23,6 +24,7 @@ import {
   type EndorsementCard,
   formatDate,
   type ListCard,
+  locationBlobCid,
   type Page,
   type PersonRow,
   type ProfileVersion,
@@ -34,6 +36,7 @@ import {
   toActorCard,
   toActorDetail,
   toEndorsementCard,
+  toPlace,
   toProfileVersion,
   toProjectCard,
   toProjectDetail,
@@ -138,8 +141,11 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   if (organization.success) {
     const detail = { ...toActorDetail(organization.body.actor), handle };
     // The view carries the organization's location record: no second call.
-    const name = organization.body.actor.location?.record.name;
-    return name ? { ...detail, place: placeName(name) } : detail;
+    const record = organization.body.actor.location?.record;
+    if (!record) return detail;
+    // Some records keep their coordinates in a blob on the account's server.
+    const cid = locationBlobCid(record);
+    return { ...detail, place: toPlace(record, cid ? await getBlobText(did, cid) : null) };
   }
   if (!notFound(organization)) throw organization;
   if (profile.success) {
@@ -149,19 +155,6 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   // links from followers and endorsements don't lead to "not found".
   const bare = toActorDetail({ did, profile: null, organization: null });
   return { ...bare, handle, displayName: handle ? `@${handle}` : did };
-}
-
-/**
- * A location's name, cut to its last two parts ("Wilmington, New Castle
- * County, Delaware, United States" reads "Delaware, United States").
- */
-function placeName(name: string): string {
-  return name
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(-2)
-    .join(", ");
 }
 
 /**
