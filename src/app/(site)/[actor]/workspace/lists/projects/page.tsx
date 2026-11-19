@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { workspaceDid } from "@/components/workspace-access";
-import { LIST_KINDS, ListCards, type ListKind } from "@/components/workspace-lists";
+import {
+  LIST_KINDS,
+  ListCards,
+  ListCardsSkeleton,
+  type ListKind,
+} from "@/components/workspace-lists";
 import { listLists } from "@/lib/hypercerts/queries";
 
 export const metadata: Metadata = { title: "Project lists", robots: { index: false } };
@@ -18,5 +24,9 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
 
 /** The workspace account's lists of projects. */
 export default function Page({ params }: PageProps<"/[actor]/workspace/lists/projects">) {
-  return <Lists params={params} />;
+  return (
+    <Suspense fallback={<ListCardsSkeleton />}>
+      <Lists params={params} />
+    </Suspense>
+  );
 }

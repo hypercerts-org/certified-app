@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { workspaceDid } from "@/components/workspace-access";
 import { EndorsementLists } from "@/components/workspace-endorsements";
+import { ListCardsSkeleton } from "@/components/workspace-lists";
 import { listLists } from "@/lib/hypercerts/queries";
 
 export const metadata: Metadata = { title: "Endorsement lists", robots: { index: false } };
@@ -16,5 +18,9 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
 
 /** The endorsement lists the workspace's account keeps. */
 export default function ListsPage({ params }: PageProps<"/[actor]/workspace/endorsements/lists">) {
-  return <Lists params={params} />;
+  return (
+    <Suspense fallback={<ListCardsSkeleton />}>
+      <Lists params={params} />
+    </Suspense>
+  );
 }

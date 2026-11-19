@@ -52,7 +52,7 @@ export default function ListsLayout({ children, params }: LayoutProps<"/[actor]/
           <Tabs params={params} />
         </Suspense>
       </div>
-      {/* Its pages load behind loading.tsx, so a tab switches at once. */}
+      {/* Each page shows its own skeleton while it loads, so a tab switches at once. */}
       {children}
     </>
   );

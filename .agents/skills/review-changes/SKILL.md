@@ -162,7 +162,9 @@ Before judging a Next.js API, read its guide in
 
 - C1. Session reads sit inside a `<Suspense>` boundary, so public pages
   keep their cached shell. Await `params` and `searchParams` inside a
-  Suspense child, and validate them before calling the API.
+  Suspense child in the page itself (a `loading.tsx` above it doesn't
+  count: Next's dev overlay reports "encountered URL data outside of
+  Suspense"), and validate them before calling the API.
 - C2. Every click shows at once: a new tab bar or nav uses `LinkPending`
   in its links; a new route segment that loads data has a `loading.tsx`
   shaped like its content.
