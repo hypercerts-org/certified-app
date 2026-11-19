@@ -14,7 +14,7 @@ async function Followers({
   return (
     <div className="stack">
       {/* Its own "more" line, below, gives the total. */}
-      <PeopleList page={{ ...page, more: false }} empty="No one follows this project yet." />
+      <PeopleList page={{ ...page, more: false }} empty="No followers yet" />
       {page.more && (
         <Text size="body-sm" tone="muted">
           Showing the latest {page.rows.length} of {numberFormat.format(page.total)}.

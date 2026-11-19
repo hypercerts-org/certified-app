@@ -80,11 +80,7 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
           badge={badge.uri}
           response={which === "accepted" ? "accepted" : "unanswered"}
           initial={{ items: shown.items, cursor: shown.cursor }}
-          empty={
-            which === "accepted"
-              ? "No one has accepted this badge yet."
-              : "No awards of this badge are awaiting a response."
-          }
+          empty={which === "accepted" ? "No holders yet" : "No holders awaiting a response"}
         />
         {shown.records > 0 && (
           <Text size="body-sm" tone="muted">

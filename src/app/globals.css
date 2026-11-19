@@ -678,11 +678,14 @@ button.menu-row:disabled:not([aria-current]) {
 
 /* Counts: a large number over its label, in a row that wraps on phones. */
 /* Counts packed to the left, as on staging: a number over its label. */
+/* Figures: each a padded block, and a linked one tints whole on hover (as on
+   staging). The row is pulled out by the padding, so the figures' text lines
+   up with the column's edge. */
 .stat-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-8);
-  margin: 0;
+  gap: var(--space-1) var(--space-4);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-3));
   padding: 0;
   list-style: none;
 }
@@ -691,8 +694,19 @@ button.menu-row:disabled:not([aria-current]) {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--hc-radius-control);
   color: inherit;
   text-decoration: none;
+}
+
+.stat-link {
+  transition: background-color 150ms ease;
+}
+
+.stat-link:hover,
+.stat-link:focus-visible {
+  background: var(--hc-fill-subtle);
 }
 
 .stat-value {
@@ -709,8 +723,6 @@ button.menu-row:disabled:not([aria-current]) {
 
 .stat-link:hover .stat-label {
   color: var(--hc-text-ink);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 /* Rows between hairlines: latest records, endorsements, organizations, apps. */
@@ -905,8 +917,14 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* Public profile (src/components/profile-header.tsx and the (profile) pages). */
+/* A profile, centered at its own width: the header across the top, then two
+   columns, each no wider than its maximum. */
 .profile {
+  container: profile / inline-size;
   gap: var(--space-6);
+  inline-size: 100%;
+  max-inline-size: 62rem;
+  margin-inline: auto;
 }
 
 .profile-header {
@@ -1072,16 +1090,19 @@ button.menu-row:disabled:not([aria-current]) {
   font-weight: var(--hc-weight-body);
 }
 
-/* Overview: the reading column, and from 68.75rem the Account rail beside it. */
-.profile-overview {
+/* Left, the tabs and the tab's page; right, the account's figures and facts,
+   level with the tabs (they switch only the left column). Stacked when the
+   profile is narrower than both side by side. */
+.profile-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-8);
 }
 
-@media (min-width: 68.75rem) {
-  .profile-overview {
-    grid-template-columns: minmax(0, 1fr) 20rem;
+@container profile (inline-size >= 56rem) {
+  .profile-columns {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 20rem);
+    justify-content: space-between;
     align-items: start;
   }
 }
@@ -1089,8 +1110,152 @@ button.menu-row:disabled:not([aria-current]) {
 .profile-main {
   display: flex;
   flex-direction: column;
-  gap: var(--rhythm-section);
+  gap: var(--space-6);
   min-inline-size: 0;
+}
+
+/* The tabs share the column's width, as on X (and scroll when they can't). */
+.profile-main > .profile-tabs .profile-tab {
+  flex: 1 0 auto;
+  justify-content: center;
+}
+
+/* Overview: About, then the feed, card after card. */
+.profile-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.about-card,
+.post-card {
+  overflow: hidden;
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-panel);
+}
+
+.about-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rhythm-block);
+  padding: var(--space-5);
+}
+
+.rail-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rhythm-block);
+}
+
+.rail-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+
+/* The feed's posts: who acted and what they did, the record across the
+   post's width, its picture edge to edge at the bottom (after X, Facebook). */
+.post-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.post-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.post-avatar {
+  flex: none;
+}
+
+.post-byline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-inline-size: 0;
+}
+
+.post-line {
+  margin: 0;
+}
+
+.post-date,
+.post-muted {
+  color: var(--hc-text-muted);
+}
+
+.post-date {
+  font-size: var(--hc-type-body-sm);
+}
+
+.post-name {
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-strong);
+  text-decoration: none;
+}
+
+.post-record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.post-title {
+  color: var(--hc-text-ink);
+  font-family: var(--hc-font-display);
+  font-size: var(--hc-type-heading);
+  font-weight: var(--hc-weight-display);
+  line-height: var(--hc-type-heading-lh);
+  text-decoration: none;
+}
+
+.post-name:hover,
+.post-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.post-note {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--hc-line-hairline);
+  color: var(--hc-text-body);
+}
+
+.post-amount {
+  margin: 0;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-display-3);
+  font-weight: var(--hc-weight-strong);
+  line-height: var(--hc-type-display-3-lh);
+  font-variant-numeric: tabular-nums;
+}
+
+.post-media {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-block-start: 1px solid var(--hc-line-hairline);
+  background: var(--hc-surface-tint);
+}
+
+.post-media img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
 }
 
 .profile-section {
@@ -1122,17 +1287,6 @@ button.menu-row:disabled:not([aria-current]) {
   flex-direction: column;
   gap: var(--space-4);
   min-inline-size: 0;
-}
-
-/* The profile's figures: one row, the funding total joining when ready. */
-.profile-figures {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-8);
-}
-
-.profile-figures:empty {
-  display: none;
 }
 
 /* The Location card: a small map, then the place's full name. */
@@ -3134,140 +3288,6 @@ details[open] > .work-folder-head .work-folder-chevron {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/* A profile's feed: one card per event, its icon in a column of its own,
-   then what happened and the date, and the record below it. */
-.feed {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.feed-item {
-  display: flex;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--hc-line-hairline);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-panel);
-}
-
-.feed-icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--space-8);
-  block-size: var(--space-8);
-  border-radius: 50%;
-  background: var(--hc-surface-tint);
-  color: var(--hc-text-muted);
-}
-
-.feed-content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-inline-size: 0;
-  /* The line sits level with the icon's middle. */
-  padding-block-start: var(--space-1);
-}
-
-.feed-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.feed-line {
-  margin: 0;
-  min-inline-size: 0;
-}
-
-.feed-date {
-  flex: none;
-  color: var(--hc-text-muted);
-  font-size: var(--hc-type-body-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.feed-name,
-.feed-record-title {
-  color: var(--hc-text-ink);
-  font-weight: var(--hc-weight-medium);
-  text-decoration: none;
-}
-
-.feed-name:hover,
-.feed-record-title:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
-.feed-muted {
-  color: var(--hc-text-muted);
-}
-
-.feed-note {
-  margin: 0;
-  padding-inline-start: var(--space-3);
-  border-inline-start: 2px solid var(--hc-line-hairline);
-  color: var(--hc-text-body);
-  font-size: var(--hc-type-body-sm);
-}
-
-.feed-amount {
-  margin: 0;
-  color: var(--hc-text-ink);
-  font-size: var(--hc-type-display-3);
-  font-weight: var(--hc-weight-strong);
-  line-height: var(--hc-type-display-3-lh);
-  font-variant-numeric: tabular-nums;
-}
-
-/* An activity or project in the feed: its picture beside its title. */
-.feed-record {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-}
-
-.feed-record-image {
-  flex: none;
-  inline-size: 10rem;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-tint);
-}
-
-.feed-record-image img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-.feed-record-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-inline-size: 0;
-}
-
-@media (max-width: 36rem) {
-  .feed-record {
-    flex-direction: column;
-  }
-
-  .feed-record-image {
-    inline-size: 100%;
-  }
 }
 
 /* Toolkit bridges. Each rule restyles a toolkit component in a way the

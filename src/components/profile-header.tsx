@@ -345,7 +345,6 @@ export function ProfileHeaderSkeleton() {
           <Skeleton variant="text" lines={2} className="skeleton-lead" />
         </div>
       </div>
-      <Skeleton variant="line" className="skeleton-tabs" />
     </div>
   );
 }

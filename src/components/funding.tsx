@@ -149,17 +149,17 @@ export async function ProfileFunding({
         }))}
       />
       {which === "received" && (
-        <Funding filter={{ to: did }} label="Received" omit="to" empty="No funding received yet." />
+        <Funding filter={{ to: did }} label="Received" omit="to" empty="No funding received yet" />
       )}
       {which === "given" && (
-        <Funding filter={{ from: did }} label="Given" omit="from" empty="No funding given yet." />
+        <Funding filter={{ from: did }} label="Given" omit="from" empty="No funding given yet" />
       )}
       {which === "confirmed" && (
         <Funding
           filter={{ by: did }}
           label="Confirmed"
           omit="by"
-          empty="This account hasn't confirmed any funding. Platforms that process payments confirm them by recording receipts."
+          empty="No funding confirmed yet"
         />
       )}
     </div>

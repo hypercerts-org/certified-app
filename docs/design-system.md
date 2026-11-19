@@ -87,8 +87,15 @@ Only the theme's tokens; no hex values in app CSS.
 - **Rows**: a hairline between rows, a 40px picture or avatar, the title in
   `body` medium, a meta line in `body-sm` muted.
 - **Empty states**: always `Empty` (`src/components/empty.tsx`): no frame,
-  the section's navigation icon, a title, a line saying what will show up,
-  at most one action. Never a bare box.
+  the icon of what the list holds, at most one action. Never a bare box, never
+  plain text. The title names the list, after its tab: "No {list} yet" ("No
+  endorsements given yet", "No accounts followed yet", "No badges accepted
+  yet"), no full stop. On a public profile the title stands alone; in your
+  own workspace one line under it says how the list fills.
+- **Figures** (`StatRow`): a large number over its label; a linked figure
+  tints whole on hover, never an underline.
+- **Sub-tabs** (a tab's lists, as segmented links): each carries its count,
+  none when empty.
 - **Notices**: a `--hc-fill-subtle` bar with the message on the left and the
   way out on the right (Explore's "Showing featured picks").
 - **Loading**: skeletons shaped like the component they stand in for, inside

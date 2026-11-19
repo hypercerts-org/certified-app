@@ -10,11 +10,19 @@ import type { BadgeCard } from "@/lib/hypercerts/views";
 
 export type ReceivedKind = "awaiting" | "accepted" | "rejected";
 
-const EMPTY: Record<ReceivedKind, string> = {
-  awaiting:
-    "No badges are awaiting your response. When an account awards this one a badge, it shows here to accept or reject.",
-  accepted: "No accepted badges yet. Accepted badges show on the profile.",
-  rejected: "No rejected badges. A rejected badge never shows on the profile.",
+const EMPTY: Record<ReceivedKind, { title: string; description: string }> = {
+  awaiting: {
+    title: "No badges awaiting a response",
+    description: "When an account awards you a badge, it shows here to accept or reject.",
+  },
+  accepted: {
+    title: "No badges accepted yet",
+    description: "Badges you accept show on your profile.",
+  },
+  rejected: {
+    title: "No badges rejected yet",
+    description: "A badge you reject never shows on your profile.",
+  },
 };
 
 /**
@@ -26,7 +34,8 @@ export function ReceivedBadges({ kind, badges }: { kind: ReceivedKind; badges: B
   return (
     <BadgeList
       badges={badges}
-      empty={EMPTY[kind]}
+      empty={EMPTY[kind].title}
+      emptyDescription={EMPTY[kind].description}
       actions={() => (
         <>
           {kind !== "accepted" && <ComingSoonButton variant="primary">Accept</ComingSoonButton>}

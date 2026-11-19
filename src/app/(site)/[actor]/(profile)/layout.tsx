@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { type ProfileTab, ProfileTabs } from "@/components/profile-actions";
+import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { ProfileHeader, ProfileHeaderSkeleton } from "@/components/profile-header";
+import { ProfileRail, ProfileRailSkeleton } from "@/components/profile-rail";
 import {
   type Count,
   getActor,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/hypercerts/queries";
 import { profileBase } from "@/lib/profile-route";
 
-// A public profile: the header, then its pages as tabs. Each tab is its own
+// A public profile: the header, then its pages as tabs beside its facts. Each tab is its own
 // URL, prerendered and cached like the rest of the profile; only the header's
 // actions depend on who is viewing. Profiles live at their handle; a page
 // opened by DID redirects there (src/lib/profile-route.ts).
@@ -29,15 +30,28 @@ async function Header({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
   const actor = await getActor(decodeURIComponent(id));
   if (!actor) notFound();
+  return <ProfileHeader actor={actor} base={profileBase(id)} />;
+}
+
+/** The tabs, over the left column: they switch what it shows. */
+async function Nav({ params }: { params: Promise<{ actor: string }> }) {
+  const id = (await params).actor;
+  const actor = await getActor(decodeURIComponent(id));
+  if (!actor) return null;
   const base = profileBase(id);
   return (
-    <>
-      <ProfileHeader actor={actor} base={base} />
-      <Suspense fallback={<Tabs base={base} />}>
-        <TabsWithCounts did={actor.did} base={base} />
-      </Suspense>
-    </>
+    <Suspense fallback={<Tabs base={base} />}>
+      <TabsWithCounts did={actor.did} base={base} />
+    </Suspense>
   );
+}
+
+/** The right column, the same on every tab. */
+async function Rail({ params }: { params: Promise<{ actor: string }> }) {
+  const id = (await params).actor;
+  const actor = await getActor(decodeURIComponent(id));
+  if (!actor) return null;
+  return <ProfileRail actor={actor} base={profileBase(id)} />;
 }
 
 const value = (count: Count | number) => (typeof count === "number" ? count : count.value);
@@ -151,13 +165,28 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
   );
 }
 
+// The header across the top; then two columns, each with a maximum width:
+// on the left the tabs and the tab's page, on the right the account's
+// figures and facts, level with the tabs (globals.css, .profile-columns).
 export default function ProfileLayout({ children, params }: LayoutProps<"/[actor]">) {
   return (
     <div className="page profile">
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />
       </Suspense>
-      {children}
+      <div className="profile-columns">
+        <div className="profile-main">
+          <Suspense fallback={<ProfileTabsSkeleton labels={["Overview"]} />}>
+            <Nav params={params} />
+          </Suspense>
+          {children}
+        </div>
+        <aside className="profile-rail" aria-label="About this account">
+          <Suspense fallback={<ProfileRailSkeleton />}>
+            <Rail params={params} />
+          </Suspense>
+        </aside>
+      </div>
     </div>
   );
 }

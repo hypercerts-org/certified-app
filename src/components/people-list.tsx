@@ -1,5 +1,5 @@
 import { IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { Users } from "lucide-react";
+import { type LucideIcon, Users } from "lucide-react";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
@@ -32,8 +32,17 @@ export function PeopleRows({ rows }: { rows: PersonRow[] }) {
 }
 
 /** Accounts in rows (avatar, name, a note), each with its date on the right. */
-export function PeopleList({ page, empty }: { page: PeoplePage; empty: string }) {
-  if (page.rows.length === 0) return <Empty icon={Users} title={empty} />;
+export function PeopleList({
+  page,
+  empty,
+  icon = Users,
+}: {
+  page: PeoplePage;
+  empty: string;
+  /** The empty list's icon: people for follows, a thumbs-up for endorsements. */
+  icon?: LucideIcon;
+}) {
+  if (page.rows.length === 0) return <Empty icon={icon} title={empty} />;
   return (
     <>
       <PeopleRows rows={page.rows} />

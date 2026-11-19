@@ -8,6 +8,7 @@ import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { actorHref, badgeHref, skeletonSlots } from "@/components/cards";
+import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
 import { getBadges, getIssuedBadges, type IssuedBadge } from "@/lib/hypercerts/queries";
@@ -68,14 +69,18 @@ export function BadgeTiles({ badges }: { badges: BadgeCard[] }) {
 export function BadgeList({
   badges,
   empty,
+  emptyDescription,
   actions,
 }: {
   badges: BadgeCard[];
+  /** The empty list's title ("No badges accepted yet"), and in the workspace a line on how it fills. */
   empty: string;
+  emptyDescription?: string;
   /** Buttons at a row's end: the workspace's responses. */
   actions?: (badge: BadgeCard) => ReactNode;
 }) {
-  if (badges.length === 0) return <Text tone="muted">{empty}</Text>;
+  if (badges.length === 0)
+    return <Empty icon={Award} title={empty} description={emptyDescription} />;
   return (
     <ul className="badge-list">
       {badges.map((badge) => (
@@ -171,7 +176,7 @@ export function IssuedBadgeTiles({ badges }: { badges: IssuedBadge[] }) {
 
 /** The badges an account defined, as rows: with their description. */
 export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
-  if (badges.length === 0) return <Text tone="muted">This account hasn't defined any badges.</Text>;
+  if (badges.length === 0) return <Empty icon={Award} title="No badges issued yet" />;
   return (
     <ul className="badge-list">
       {badges.map((badge) => (
@@ -239,11 +244,7 @@ export async function ProfileBadges({
       ) : (
         <BadgeList
           badges={received[which]}
-          empty={
-            which === "accepted"
-              ? "No accepted badges yet."
-              : "No badges are awaiting this account's response."
-          }
+          empty={which === "accepted" ? "No badges accepted yet" : "No badges awaiting a response"}
         />
       )}
       {(which === "issued" ? issued.more : received.more) && (

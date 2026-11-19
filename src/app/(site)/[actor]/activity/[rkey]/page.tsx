@@ -37,12 +37,7 @@ export async function generateMetadata({
 async function ActivityFunding({ uri }: { uri: string }) {
   return (
     <Tile title="Funding">
-      <Funding
-        filter={{ for: uri }}
-        label="Received"
-        omit="for"
-        empty="No funding recorded for this activity yet."
-      />
+      <Funding filter={{ for: uri }} label="Received" omit="for" empty="No funding yet" />
     </Tile>
   );
 }
