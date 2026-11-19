@@ -108,7 +108,7 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
           ["/badges/awaiting", "/badges/issued"],
           !counts || counts.badgesAccepted + counts.badgesAwaiting + counts.badgesIssued === 0,
         ),
-        tab("Lists", "/lists", counts?.lists),
+        { ...tab("Lists", "/lists", counts?.lists), nested: true },
       ]}
     />
   );

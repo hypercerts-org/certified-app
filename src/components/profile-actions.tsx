@@ -142,6 +142,8 @@ export type ProfileTab = {
   also?: string[];
   /** Known to be empty: left out, unless it is the page open. */
   empty?: boolean;
+  /** Also current on the pages below it (a list under Lists). */
+  nested?: boolean;
 };
 
 /**
@@ -160,7 +162,8 @@ export function ProfileTabs({
 }) {
   const pathname = decodeURIComponent(usePathname()).toLowerCase();
   const current = (tab: ProfileTab) =>
-    [tab.href, ...(tab.also ?? [])].some((href) => href.toLowerCase() === pathname);
+    [tab.href, ...(tab.also ?? [])].some((href) => href.toLowerCase() === pathname) ||
+    Boolean(tab.nested && pathname.startsWith(`${tab.href.toLowerCase()}/`));
   const nav = useRef<HTMLElement>(null);
   // On a narrow screen the row scrolls sideways: keep the current tab in view
   // (opened from a link, a tab further along would be off-screen).

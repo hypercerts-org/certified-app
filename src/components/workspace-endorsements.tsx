@@ -10,20 +10,19 @@ import type { ReactNode } from "react";
 import { actorHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { PeopleListSkeleton } from "@/components/people-list";
-import { LIST_KINDS, ListCards, type ListKind } from "@/components/workspace-lists";
+import { ListGroups } from "@/components/profile-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
-import type { ListCard, PersonRow } from "@/lib/hypercerts/views";
+import { endorsementLine, type ListCard, type PersonRow } from "@/lib/hypercerts/views";
 
 function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   const { actor } = row;
-  const handle = actor.handle ? `@${actor.handle}` : null;
   return (
     <li className="people-row endorsement-row">
       <IdentityRow
         name={actor.displayName}
         avatarSrc={actor.avatarUrl}
         href={actorHref(actor)}
-        secondary={[handle, row.note].filter(Boolean).join(" · ") || undefined}
+        secondary={endorsementLine(row)}
       />
       <span className="endorsement-row-end">
         {row.hidden && <Badge variant="tag">Hidden</Badge>}
@@ -108,12 +107,17 @@ export function GivenEndorsements({ page }: { page: PeoplePage }) {
   );
 }
 
-/** The account's lists of endorsements. */
-export function EndorsementLists({ lists, more }: { lists: ListCard[]; more: boolean }) {
-  return <ListCards kind={ENDORSEMENT_LISTS} lists={lists} more={more} />;
+/** The account's lists of endorsements, as rows, each leading to where it is managed. */
+export function EndorsementLists({ lists, base }: { lists: ListCard[]; base: string }) {
+  return lists.length > 0 ? (
+    <ListGroups lists={lists} base={base} />
+  ) : (
+    <EmptyState
+      title="No endorsement lists yet"
+      description="A list gathers endorsements to show together, like a set of references. Make one under Lists."
+    />
+  );
 }
-
-const ENDORSEMENT_LISTS = LIST_KINDS.find((kind) => kind.label === "Endorsements") as ListKind;
 
 /** Shaped like four rows of accounts, so nothing moves when they arrive. */
 export function EndorsementRowsSkeleton() {

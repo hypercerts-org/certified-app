@@ -54,8 +54,13 @@ import {
   getRecordCounts,
   listLatestRecords,
 } from "@/lib/hypercerts/queries";
-import type { ActorDetail, RecentRecord } from "@/lib/hypercerts/views";
-import { didOf, rkeyOf } from "@/lib/hypercerts/views";
+import {
+  type ActorDetail,
+  didOf,
+  endorsementLine,
+  type RecentRecord,
+  rkeyOf,
+} from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
 
 const LATEST_RECORDS = 4;
@@ -424,21 +429,21 @@ async function EndorsementsSection({ did }: { did: string }) {
       />
       {endorsements.latestReceived.length > 0 && (
         <div className="overview-list">
-          <ListLabel>Latest received</ListLabel>
+          <ListLabel>Latest endorsements received</ListLabel>
           <ul className="overview-rows">
             {endorsements.latestReceived.map((endorsement) => (
-              <li key={endorsement.uri}>
+              <li key={endorsement.uri} className="overview-row-dated">
                 <IdentityRow
                   size="md"
                   className={endorsement.issuer.isOrganization ? "identity-org" : undefined}
                   name={endorsement.issuer.displayName}
                   avatarSrc={endorsement.issuer.avatarUrl}
                   href={actorHref(endorsement.issuer)}
-                  secondary={
-                    [endorsement.note, endorsement.createdAt].filter(Boolean).join(" · ") ||
-                    undefined
-                  }
+                  secondary={endorsementLine(endorsement)}
                 />
+                {endorsement.createdAt && (
+                  <span className="overview-row-date">{endorsement.createdAt}</span>
+                )}
               </li>
             ))}
           </ul>

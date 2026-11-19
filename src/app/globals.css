@@ -646,6 +646,26 @@ button.menu-row:disabled:not([aria-current]) {
   border-block-end: none;
 }
 
+/* An endorsement in an Overview list: the account and what kind of
+   endorsement, the date on the right (as on the Endorsements pages). */
+.overview-row-dated {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.overview-row-dated > :first-child {
+  min-inline-size: 0;
+}
+
+.overview-row-date {
+  flex: none;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  white-space: nowrap;
+}
+
 .overview-row {
   display: flex;
   align-items: center;
@@ -1734,6 +1754,210 @@ button.sidebar-item:hover,
 }
 
 /* "Endorses N" and "Follows N": accounts in columns, avatar and name. */
+/* Lists (src/components/profile-lists.tsx, list-items.tsx): a profile's
+   lists grouped by kind, as rows, and a list's items as rows, after staging. */
+.list-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-inline-size: 48rem;
+}
+
+.list-rows,
+.list-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.25rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+  color: inherit;
+  text-decoration: none;
+}
+
+.list-row:hover {
+  background: var(--hc-surface-tint);
+}
+
+.list-row-text,
+.list-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.list-row-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 0.75rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.list-item-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.list-item-title {
+  overflow: hidden;
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.list-item-title:hover,
+a.list-item-main:hover .list-item-title {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.list-item-meta {
+  overflow: hidden;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-item-thumb {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  overflow: hidden;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.list-item-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* The author (or endorser) beside an item: avatar and name, quiet. */
+.list-item-who {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  max-inline-size: 14rem;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-decoration: none;
+}
+
+.list-item-who span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-item-endorsement {
+  flex-wrap: wrap;
+}
+
+/* Workspace → Lists: the title with New list beside it, then the groups. */
+.workspace-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  /* The groups' width, so New list ends where the rows do. */
+  max-inline-size: 48rem;
+}
+
+.workspace-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Managing a list in the workspace: its actions, then the selection bar. */
+.manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-inline-size: 66rem;
+}
+
+.manage-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.manage-list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* A card's title as a link: the card's text, underlined on hover. */
+.card-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-title-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* A list's page: back to the lists, its title and count. */
+.list-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.list-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--hc-radius-control);
+  color: var(--hc-text-muted);
+}
+
+.list-back:hover {
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-ink);
+}
+
+@media (width < 40rem) {
+  .list-item-who span {
+    display: none;
+  }
+}
+
 /* Badges (src/components/badges.tsx): tiles on the Overview, rows on the
    Badges tab. The icon is the issuer's, in a square frame; an expired badge
    keeps its place after the others, its icon dimmed. */

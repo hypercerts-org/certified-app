@@ -33,7 +33,13 @@ import {
   listFollows,
   listProjectsPage,
 } from "@/lib/hypercerts/queries";
-import type { ActivityCard, ActorCard, PersonRow, ProjectCard } from "@/lib/hypercerts/views";
+import {
+  type ActivityCard,
+  type ActorCard,
+  endorsementLine,
+  type PersonRow,
+  type ProjectCard,
+} from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 // The profile's Overview, after the staging redesign: a reading column with
@@ -306,14 +312,15 @@ async function EndorsedBy({ did, base }: { did: string; base: string }) {
     >
       <ul className="overview-rows">
         {endorsers.slice(0, ENDORSEMENTS_PREVIEW).map(({ actor, row }) => (
-          <li key={row.uri}>
+          <li key={row.uri} className="overview-row-dated">
             <IdentityRow
               size="md"
               name={actor.displayName}
               avatarSrc={actor.avatarUrl}
               href={actorHref(actor)}
-              secondary={[row.date, row.note].filter(Boolean).join(" · ") || undefined}
+              secondary={endorsementLine(row)}
             />
+            {row.date && <span className="overview-row-date">{row.date}</span>}
           </li>
         ))}
       </ul>

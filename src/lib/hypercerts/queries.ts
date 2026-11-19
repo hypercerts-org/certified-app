@@ -27,12 +27,14 @@ import {
   type EndorsementCard,
   formatDate,
   type ListCard,
+  type ListItem,
   locationBlobCid,
   type Page,
   type PersonRow,
   type ProfileVersion,
   type ProjectCard,
   type ProjectDetail,
+  plainText,
   projectRecord,
   type RecentRecord,
   sortBadges,
@@ -725,6 +727,7 @@ export async function listEndorsements(
     rows.push({
       uri: award.uri,
       actor,
+      badge: card.badge,
       note: card.note,
       date: card.createdAt,
       hidden: award.responseStatus === "rejected",
@@ -1003,11 +1006,147 @@ export async function listLists(did: string): Promise<{ lists: ListCard[]; more:
   return {
     lists: collections.map((collection) => ({
       uri: collection.uri,
+      rkey: collection.uri.split("/").pop() ?? "",
       title: collection.record.title || "Untitled list",
       kind: LIST_KIND[collection.record.type ?? ""] ?? "List",
       itemCount: collection.record.items?.length ?? 0,
-      summary: collection.record.shortDescription || null,
+      // The short description, else the start of the long one (as staging shows).
+      summary: collection.record.shortDescription || plainText(collection.record.description),
     })),
     more: Boolean(cursor),
+  };
+}
+
+// One list, and its items a page at a time.
+
+export type ListDetail = ListCard & {
+  description: string | null;
+  /** Its items' addresses, in the list's order. */
+  itemUris: string[];
+};
+
+/** How many of a list's items a page resolves. */
+export const LIST_ITEMS_PAGE = 50;
+
+/** The list `rkey` of `did`, or null when there is none (or it isn't a list). */
+export async function getList(did: string, rkey: string): Promise<ListDetail | null> {
+  "use cache";
+  const uri = `at://${did}/org.hypercerts.collection/${rkey}`;
+  publicData(tags.list(uri));
+
+  const result = await api.xrpcSafe(org.hypercerts.collection.getCollection, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (!result.success) {
+    if (notFound(result)) return null;
+    throw result;
+  }
+  const { record } = result.body.collection;
+  if (!LIST_TYPES.includes(record.type ?? "")) return null;
+  const itemUris = (record.items ?? []).flatMap((item) => item.itemIdentifier?.uri ?? []);
+  return {
+    uri,
+    rkey,
+    title: record.title || "Untitled list",
+    kind: LIST_KIND[record.type ?? ""] ?? "List",
+    itemCount: itemUris.length,
+    summary: record.shortDescription || null,
+    description: plainText(record.description),
+    itemUris,
+  };
+}
+
+const collectionOf = (uri: string) => uri.split("/")[3] ?? "";
+
+/**
+ * These items resolved, in their order: accounts in one batch, projects and
+ * activities a hundred per call, endorsements one call each.
+ */
+export async function resolveListItems(uris: string[]): Promise<ListItem[]> {
+  "use cache";
+  cacheLife("public");
+  for (const uri of uris) cacheTag(tags.list(uri));
+
+  const of = (...nsids: string[]) => uris.filter((uri) => nsids.includes(collectionOf(uri)));
+  const accountUris = of("app.certified.actor.profile", "app.bsky.actor.profile");
+  const projectUris = of("org.hypercerts.collection");
+  const activityUris = of("org.hypercerts.claim.activity");
+  const awardUris = of("app.certified.badge.award");
+
+  const projects = new Map<string, ProjectCard>();
+  const activities = new Map<string, ActivityCard>();
+  const awards = new Map<string, BadgeAwardView>();
+  await Promise.all([
+    ...chunks(projectUris).map(async (batch) => {
+      const page = await api.call(
+        org.hypercerts.collection.listCollections,
+        { uris: batch as AtUri[], limit: 100 },
+        read(),
+      );
+      for (const view of page.collections) projects.set(view.uri, toProjectCard(view));
+    }),
+    ...chunks(activityUris).map(async (batch) => {
+      const page = await api.call(
+        org.hypercerts.claim.listActivities,
+        { uris: batch as AtUri[], limit: 100 },
+        read(),
+      );
+      for (const view of page.activities) activities.set(view.uri, toActivityCard(view));
+    }),
+    ...awardUris.map(async (uri) => {
+      const result = await api.xrpcSafe(app.certified.badge.getBadgeAward, {
+        params: { uri: uri as AtUri },
+        ...read(),
+      });
+      if (result.success) awards.set(uri, result.body.badgeAward);
+    }),
+  ]);
+
+  // Every account the items name: the listed accounts, the projects' authors,
+  // and the endorsements' subjects.
+  const dids = new Set<string>([
+    ...accountUris.map(didOf),
+    ...[...projects.values()].map((project) => project.authorDid),
+    ...[...awards.values()].flatMap((award) => {
+      const subject = awardSubject(award.record.subject);
+      return subject?.startsWith("did:") ? [subject] : [];
+    }),
+  ]);
+  const actors = new Map(
+    (await withHandles(await getActorCards([...dids]))).map((actor) => [actor.did, actor]),
+  );
+
+  return uris.map((uri): ListItem => {
+    const project = projects.get(uri);
+    if (project) {
+      return { kind: "project", uri, project, author: actors.get(project.authorDid) ?? null };
+    }
+    const activity = activities.get(uri);
+    if (activity) return { kind: "activity", uri, activity };
+    const award = awards.get(uri);
+    if (award) {
+      const subject = awardSubject(award.record.subject);
+      return {
+        kind: "endorsement",
+        uri,
+        issuer: toActorCard(award.author),
+        subject: subject ? (actors.get(subject) ?? null) : null,
+        date: formatDate(award.record.createdAt),
+      };
+    }
+    const actor = accountUris.includes(uri) ? actors.get(didOf(uri)) : undefined;
+    if (actor) return { kind: "account", uri, actor };
+    return { kind: "missing", uri };
+  });
+}
+
+/** A page of a list's items, from `offset`: for the list's page and "Load more". */
+export async function getListItems(list: ListDetail, offset = 0): Promise<Page<ListItem>> {
+  const uris = list.itemUris.slice(offset, offset + LIST_ITEMS_PAGE);
+  const next = offset + LIST_ITEMS_PAGE;
+  return {
+    items: await resolveListItems(uris),
+    cursor: next < list.itemUris.length ? String(next) : null,
   };
 }

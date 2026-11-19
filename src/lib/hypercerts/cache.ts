@@ -10,5 +10,6 @@ export const tags = {
   endorsements: (did: string) => `endorsements:${did}`,
   badges: (did: string) => `badges:${did}`,
   badge: (uri: string) => `badge:${uri}`,
+  list: (uri: string) => `list:${uri}`,
   follows: (did: string) => `follows:${did}`,
 };

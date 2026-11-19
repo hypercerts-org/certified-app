@@ -1,7 +1,7 @@
-import { Card, EmptyState, Heading, Text } from "@hypercerts-org/ui-react";
+import { EmptyState, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ListCardsSkeleton } from "@/components/workspace-lists";
+import { ListGroups, ListGroupsSkeleton } from "@/components/profile-lists";
 import { getActor, listLists } from "@/lib/hypercerts/queries";
 import { profileActor } from "@/lib/profile-route";
 
@@ -11,24 +11,12 @@ export async function generateMetadata({ params }: PageProps<"/[actor]/lists">):
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) {
-  const { actor } = await profileActor(params, "/lists");
+  const { actor, base } = await profileActor(params, "/lists");
   const { lists, more } = await listLists(actor.did);
   if (lists.length === 0) return <EmptyState title="No lists yet" />;
   return (
     <div className="profile-list-page">
-      <ul className="work-grid">
-        {lists.map((list) => (
-          <Card as="li" variant="panel" className="card" key={list.uri}>
-            <Heading level={2} size="heading">
-              {list.title}
-            </Heading>
-            <Text size="body-sm" tone="muted">
-              {list.kind} · {list.itemCount} {list.itemCount === 1 ? "item" : "items"}
-            </Text>
-            {list.summary && <Text size="body-sm">{list.summary}</Text>}
-          </Card>
-        ))}
-      </ul>
+      <ListGroups lists={lists} base={`${base}/lists`} />
       {more && (
         <Text size="body-sm" tone="muted">
           Showing the latest {lists.length}.
@@ -38,10 +26,10 @@ async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) 
   );
 }
 
-/** The lists the account keeps: accounts, activities, projects or endorsements. */
+/** The lists the account keeps, by what they hold. */
 export default function ListsPage(props: PageProps<"/[actor]/lists">) {
   return (
-    <Suspense fallback={<ListCardsSkeleton />}>
+    <Suspense fallback={<ListGroupsSkeleton />}>
       <Content params={props.params} />
     </Suspense>
   );

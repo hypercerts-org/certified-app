@@ -119,6 +119,8 @@ export type RecentRecord = {
 export type EndorsementCard = {
   uri: string;
   issuer: ActorCard;
+  /** Its badge's title, what kind of endorsement it is: "Highly recommended". */
+  badge: string | null;
   note: string | null;
   createdAt: string | null;
 };
@@ -130,6 +132,8 @@ export type PersonRow = {
   actor: ActorCard;
   note: string | null;
   date: string | null;
+  /** For an endorsement: its badge's title, what kind it is ("Trusted Evaluator"). */
+  badge?: string | null;
   /** A received endorsement its subject hid from its profile (a "rejected" response). */
   hidden?: boolean;
 };
@@ -137,6 +141,8 @@ export type PersonRow = {
 /** A list an account keeps: a collection with a staging-app list type. */
 export type ListCard = {
   uri: string;
+  /** Its record key: its page under the account (/{account}/lists/{rkey}). */
+  rkey: string;
   title: string;
   /** "Accounts", "Activities", "Projects" or "Endorsements". */
   kind: string;
@@ -480,6 +486,7 @@ export function toEndorsementCard(award: BadgeAwardView): EndorsementCard {
   return {
     uri: award.uri,
     issuer: toActorCard(award.author),
+    badge: asString(award.badge?.record.title)?.trim() || null,
     note: asString(award.record.note),
     createdAt: formatDate(award.record.createdAt),
   };
@@ -620,4 +627,34 @@ export function toBadgeDetail(view: BadgeDefinitionView): BadgeDetail | null {
       (issuer) => asString(asRecord(issuer)?.did) ?? [],
     ),
   };
+}
+
+// List items ------------------------------------------------------------------
+//
+// A list's items are strong references to records. Each shows as what it
+// points to (an account, a project, an activity, an endorsement), whatever
+// kind the list says it holds; one that can't be read shows as missing.
+
+export type ListItem =
+  | { kind: "account"; uri: string; actor: ActorCard }
+  | { kind: "project"; uri: string; project: ProjectCard; author: ActorCard | null }
+  | { kind: "activity"; uri: string; activity: ActivityCard }
+  | {
+      kind: "endorsement";
+      uri: string;
+      issuer: ActorCard;
+      subject: ActorCard | null;
+      date: string | null;
+    }
+  | { kind: "missing"; uri: string };
+
+/**
+ * The line under an endorsement's account, the same wherever one is listed:
+ * what kind of endorsement it is (its badge's title), then the endorser's note.
+ */
+export function endorsementLine(row: {
+  badge?: string | null;
+  note: string | null;
+}): string | undefined {
+  return [row.badge, row.note].filter(Boolean).join(" · ") || undefined;
 }

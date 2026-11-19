@@ -1,7 +1,7 @@
 import { EmptyState, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
-import type { PersonRow } from "@/lib/hypercerts/views";
+import { endorsementLine, type PersonRow } from "@/lib/hypercerts/views";
 
 /**
  * The rows themselves: also rendered in the browser, for lists that load
@@ -16,7 +16,7 @@ export function PeopleRows({ rows }: { rows: PersonRow[] }) {
             name={row.actor.displayName}
             avatarSrc={row.actor.avatarUrl}
             href={actorHref(row.actor)}
-            secondary={row.note ?? undefined}
+            secondary={endorsementLine(row)}
           />
           {row.date && (
             <Text as="span" size="body-sm" tone="muted" className="people-date">
