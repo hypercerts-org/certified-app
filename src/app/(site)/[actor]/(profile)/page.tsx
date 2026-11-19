@@ -11,7 +11,12 @@ import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
-import { ActivityCardView, actorHref, ProjectCardView } from "@/components/cards";
+import {
+  ActivityCardView,
+  actorHref,
+  ProjectCardView,
+  WorkCardsSkeleton,
+} from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { IntentLink } from "@/components/intent-link";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
@@ -316,10 +321,7 @@ function SectionSkeleton() {
   return (
     <div className="profile-section" aria-hidden>
       <Skeleton variant="line" className="skeleton-heading" />
-      <div className="work-grid">
-        <Skeleton variant="box" className="skeleton-card" />
-        <Skeleton variant="box" className="skeleton-card" />
-      </div>
+      <WorkCardsSkeleton />
     </div>
   );
 }

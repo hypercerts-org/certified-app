@@ -4,11 +4,12 @@
 // keeps. Hiding, showing, revoking and endorsing someone come with the
 // Hypercerts SDK's writes: until then their buttons are placeholders.
 
-import { Badge, Button, EmptyState, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Badge, Button, EmptyState, IdentityRow, Text } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { actorHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
+import { PeopleListSkeleton } from "@/components/people-list";
 import { LIST_KINDS, ListCards, type ListKind } from "@/components/workspace-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
 import type { ListCard, PersonRow } from "@/lib/hypercerts/views";
@@ -116,18 +117,7 @@ const ENDORSEMENT_LISTS = LIST_KINDS.find((kind) => kind.label === "Endorsements
 
 /** Shaped like four rows of accounts, so nothing moves when they arrive. */
 export function EndorsementRowsSkeleton() {
-  return (
-    <div className="people-list" aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="people-row">
-          <div className="endorsement-skeleton-identity">
-            <Skeleton variant="box" className="skeleton-person-avatar" />
-            <Skeleton variant="text" lines={2} className="overview-row-text" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <PeopleListSkeleton rows={4} />;
 }
 
 /** "Endorse someone": a placeholder until the SDK can write endorsements. */

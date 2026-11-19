@@ -1,9 +1,9 @@
 "use client";
 
-import { Banner, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
+import { Banner, Button, Field, Input, Skeleton, Text, Textarea } from "@hypercerts-org/ui-react";
 import { type FormEvent, useState } from "react";
-import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import type { SaveProfileResult } from "@/lib/hypercerts/actions";
+import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import { useSaveProfile } from "@/lib/write-overlay/use-profile";
 
 const NO_PROFILE: ProfileFields = { displayName: "", description: "" };
@@ -83,5 +83,18 @@ function SaveStatus({ result }: { result: SaveProfileResult }) {
     <Text tone="muted" role="status">
       Saved. The public profile will show the change shortly.
     </Text>
+  );
+}
+
+/** The form on its way: its two fields and the button, in place. */
+export function ProfileFormSkeleton() {
+  return (
+    <div className="stack" aria-hidden>
+      <Skeleton variant="line" className="skeleton-label" />
+      <Skeleton variant="box" className="skeleton-input" />
+      <Skeleton variant="line" className="skeleton-label" />
+      <Skeleton variant="box" className="skeleton-textarea" />
+      <Skeleton variant="box" className="skeleton-button" />
+    </div>
   );
 }

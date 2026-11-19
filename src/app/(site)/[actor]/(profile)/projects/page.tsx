@@ -1,7 +1,6 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ProjectsTile } from "@/components/tiles";
+import { ProjectsTile, ProjectsTileSkeleton } from "@/components/tiles";
 import { getActor } from "@/lib/hypercerts/queries";
 import { profileActor } from "@/lib/profile-route";
 
@@ -20,7 +19,7 @@ async function Content({ params }: Pick<PageProps<"/[actor]/projects">, "params"
 /** An account's projects, newest first. */
 export default function ProjectsPage(props: PageProps<"/[actor]/projects">) {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+    <Suspense fallback={<ProjectsTileSkeleton />}>
       <Content params={props.params} />
     </Suspense>
   );

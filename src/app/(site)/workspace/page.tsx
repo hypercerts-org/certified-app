@@ -1,8 +1,8 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
+import { OverviewSkeleton } from "@/components/workspace-overview";
 import { getActingAs } from "@/lib/acting-as";
 import { signInHref } from "@/lib/validate";
 
@@ -16,7 +16,7 @@ async function ToWorkspace(): Promise<never> {
 /** `/workspace` opens the workspace of whoever you act as. */
 export default function WorkspacePage() {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={3} />}>
+    <Suspense fallback={<OverviewSkeleton />}>
       <ToWorkspace />
     </Suspense>
   );

@@ -1,6 +1,7 @@
 import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ActorCardsSkeleton } from "@/components/cards";
 import { ExploreSearch } from "@/components/explore-search";
 import { OrganizationList } from "@/components/organization-list";
 import { PageTitle } from "@/components/page-title";
@@ -30,7 +31,14 @@ export default function ExplorePage(props: PageProps<"/explore">) {
     <div className="page">
       <PageTitle>Organizations</PageTitle>
       <div className="stack">
-        <Suspense fallback={<Skeleton variant="text" lines={4} />}>
+        <Suspense
+          fallback={
+            <>
+              <Skeleton variant="box" className="skeleton-search" />
+              <ActorCardsSkeleton />
+            </>
+          }
+        >
           <Results searchParams={props.searchParams} />
         </Suspense>
       </div>

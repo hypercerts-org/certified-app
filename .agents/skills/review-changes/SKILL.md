@@ -178,6 +178,11 @@ Before judging a Next.js API, read its guide in
 - C7. A catch block around a session read, `redirect()` or `notFound()`
   starts with `unstable_rethrow(err)`.
 - C8. `'use client'` only where interactivity needs it.
+- C9. Every skeleton belongs to a component: exported from the same file
+  as the component it stands in for, shaped like what it renders. A
+  Suspense fallback or `loading.tsx` is built from those skeletons, with
+  static parts (titles, tab labels) as themselves. Grep the change for
+  `variant="text" lines=` used as a page's placeholder: it is a finding.
 
 ### D. UI toolkit, typography and CSS
 

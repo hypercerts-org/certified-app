@@ -1,4 +1,4 @@
-import { Avatar, Card, Heading, IdentityRow, Text } from "@hypercerts-org/ui-react";
+import { Avatar, Card, Heading, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { IntentLink } from "@/components/intent-link";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
@@ -131,5 +131,40 @@ export function ProjectCardView({ project }: { project: ProjectCard }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+/** Keys for n placeholders of a skeleton, which have no identity of their own. */
+export const skeletonSlots = (n: number) => Array.from({ length: n }, (_, i) => `slot-${i}`);
+
+/** Activity or project cards on their way: each a card with a title and a line under it. */
+export function WorkCardsSkeleton({ count = 2 }: { count?: number }) {
+  return (
+    <div className="work-grid" aria-hidden>
+      {skeletonSlots(count).map((slot) => (
+        <Card key={slot} variant="panel" className="work-card">
+          <div className="work-card-body">
+            <Skeleton variant="line" className="skeleton-card-title" />
+            <Skeleton variant="line" className="skeleton-card-meta" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/** Account cards on their way: each an avatar, a name and a line under it. */
+export function ActorCardsSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid" aria-hidden>
+      {skeletonSlots(count).map((slot) => (
+        <Card key={slot} variant="panel" className="card">
+          <div className="skeleton-identity">
+            <Skeleton variant="box" className="skeleton-person-avatar" />
+            <Skeleton variant="text" lines={2} className="overview-row-text" />
+          </div>
+        </Card>
+      ))}
+    </div>
   );
 }

@@ -1,7 +1,6 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ActivitiesTile } from "@/components/tiles";
+import { ActivitiesTile, ActivitiesTileSkeleton } from "@/components/tiles";
 import { getActor } from "@/lib/hypercerts/queries";
 import { profileActor } from "@/lib/profile-route";
 
@@ -20,7 +19,7 @@ async function Content({ params }: Pick<PageProps<"/[actor]/activities">, "param
 /** All of an account's activities, newest first, with "load more". */
 export default function ActivitiesPage(props: PageProps<"/[actor]/activities">) {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+    <Suspense fallback={<ActivitiesTileSkeleton />}>
       <Content params={props.params} />
     </Suspense>
   );

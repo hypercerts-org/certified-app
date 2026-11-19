@@ -1,9 +1,9 @@
-import { Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PageTitle } from "@/components/page-title";
-import { ProfileForm } from "@/components/profile-form";
+import { ProfileForm, ProfileFormSkeleton } from "@/components/profile-form";
 import { SignInAgain } from "@/components/sign-out-form";
 import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { editableRepository, getProfile } from "@/lib/hypercerts/writes";
@@ -56,7 +56,7 @@ export default function EditProfilePage(props: PageProps<"/[actor]/edit">) {
           where the change was made.
         </Text>
       </div>
-      <Suspense fallback={<Skeleton variant="text" lines={4} />}>
+      <Suspense fallback={<ProfileFormSkeleton />}>
         <Editor params={props.params} />
       </Suspense>
     </div>

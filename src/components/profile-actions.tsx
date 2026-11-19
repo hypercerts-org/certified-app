@@ -16,6 +16,7 @@ import {
 import { Check, Copy, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { COMING_SOON, ComingSoonButton } from "@/components/coming-soon";
 import { LinkPending } from "@/components/link-pending";
@@ -160,8 +161,26 @@ export function ProfileTabs({
   const pathname = decodeURIComponent(usePathname()).toLowerCase();
   const current = (tab: ProfileTab) =>
     [tab.href, ...(tab.also ?? [])].some((href) => href.toLowerCase() === pathname);
+  const nav = useRef<HTMLElement>(null);
+  // On a narrow screen the row scrolls sideways: keep the current tab in view
+  // (opened from a link, a tab further along would be off-screen).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the page changes
+  useEffect(() => {
+    const row = nav.current;
+    const tab = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
+    const start =
+      tab.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
+    const end = start + tab.offsetWidth;
+    if (start < row.scrollLeft) row.scrollLeft = start;
+    else if (end > row.scrollLeft + row.clientWidth) row.scrollLeft = end - row.clientWidth;
+  }, [pathname]);
   return (
-    <nav aria-label={label} className={variant === "tabs" ? "profile-tabs" : "segmented-links"}>
+    <nav
+      ref={nav}
+      aria-label={label}
+      className={variant === "tabs" ? "profile-tabs" : "segmented-links"}
+    >
       {tabs
         .filter((tab) => !tab.empty || current(tab))
         .map((tab) => (
@@ -178,5 +197,38 @@ export function ProfileTabs({
           </Link>
         ))}
     </nav>
+  );
+}
+
+/**
+ * Segmented links while their page loads: the same control, with the labels
+ * (the current one marked) but no links yet, so it doesn't move or flicker.
+ */
+export function SegmentedLinksSkeleton({ labels, current }: { labels: string[]; current: string }) {
+  return (
+    <div className="segmented-links" aria-hidden>
+      {labels.map((label) => (
+        <span
+          key={label}
+          className="segmented-link"
+          aria-current={label === current ? "page" : undefined}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Tabs while their links load: the labels in place, no links yet. */
+export function ProfileTabsSkeleton({ labels }: { labels: string[] }) {
+  return (
+    <div className="profile-tabs" aria-hidden>
+      {labels.map((label) => (
+        <span key={label} className="profile-tab">
+          {label}
+        </span>
+      ))}
+    </div>
   );
 }

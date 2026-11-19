@@ -1,10 +1,8 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PeopleList } from "@/components/people-list";
-import { ProfileTabs } from "@/components/profile-actions";
-import { listEndorsements } from "@/lib/hypercerts/queries";
-import { getActor } from "@/lib/hypercerts/queries";
+import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
+import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
+import { getActor, listEndorsements } from "@/lib/hypercerts/queries";
 import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({
@@ -35,7 +33,14 @@ async function Content({ params }: Pick<PageProps<"/[actor]/endorsements/given">
 /** Endorsements the account gave. */
 export default function EndorsementsGivenPage(props: PageProps<"/[actor]/endorsements/given">) {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+    <Suspense
+      fallback={
+        <div className="profile-list-page">
+          <SegmentedLinksSkeleton labels={["Received", "Given"]} current="Given" />
+          <PeopleListSkeleton />
+        </div>
+      }
+    >
       <Content params={props.params} />
     </Suspense>
   );

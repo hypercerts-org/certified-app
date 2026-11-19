@@ -1,4 +1,4 @@
-import { Heading, Skeleton } from "@hypercerts-org/ui-react";
+import { Heading } from "@hypercerts-org/ui-react";
 import type { ReactNode } from "react";
 import { EmbedButton } from "./embed-button";
 
@@ -26,10 +26,7 @@ export function Tile({
   );
 }
 
-export function TileSkeleton({ title }: { title: string }) {
-  return (
-    <Tile title={title}>
-      <Skeleton variant="text" lines={3} />
-    </Tile>
-  );
+/** A tile on its way: its title, and its content's own skeleton. */
+export function TileSkeleton({ title, children }: { title: string; children: ReactNode }) {
+  return <Tile title={title}>{children}</Tile>;
 }

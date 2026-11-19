@@ -927,11 +927,17 @@ button.menu-row:disabled:not([aria-current]) {
 
 /* The profile's pages: links styled as tabs, scrolling sideways if they
    don't fit. */
+/* One row that scrolls sideways on narrow screens. The hairline is an inset
+   shadow and each tab's underline a border inside it, so nothing overflows
+   the row vertically (a scroll container in x scrolls in y too). Phones
+   swipe; the scrollbar would only add noise under the tabs. */
 .profile-tabs {
   display: flex;
   gap: 0.25rem;
   overflow-x: auto;
-  border-block-end: 1px solid var(--hc-line-hairline);
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  box-shadow: inset 0 -1px var(--hc-line-hairline);
 }
 
 .profile-tab {
@@ -942,7 +948,6 @@ button.menu-row:disabled:not([aria-current]) {
   min-block-size: 2.75rem;
   padding-inline: 0.75rem;
   border-block-end: 2px solid transparent;
-  margin-block-end: -1px;
   color: var(--hc-text-muted);
   text-decoration: none;
 }
@@ -1717,8 +1722,37 @@ button.sidebar-item:hover,
   block-size: 1.5rem;
 }
 
-.skeleton-card {
-  block-size: 12rem;
+.skeleton-card-title {
+  inline-size: 60%;
+  block-size: 1.25rem;
+}
+
+.skeleton-card-meta {
+  inline-size: 35%;
+  block-size: 0.875rem;
+}
+
+.skeleton-label {
+  inline-size: 7rem;
+  block-size: 0.875rem;
+}
+
+.skeleton-input {
+  block-size: 2.5rem;
+}
+
+.skeleton-textarea {
+  block-size: 6rem;
+}
+
+.skeleton-button {
+  inline-size: 8rem;
+  block-size: 2.5rem;
+}
+
+.skeleton-control {
+  inline-size: 8rem;
+  block-size: 2rem;
 }
 
 .skeleton-rail {
@@ -1900,12 +1934,12 @@ details[open] > .work-folder-head .work-folder-chevron {
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
-  border-block-end: 1px solid var(--hc-line-hairline);
+  box-shadow: inset 0 -1px var(--hc-line-hairline);
 }
 
 .workspace-tabbar > .profile-tabs {
   flex: 1;
-  border-block-end: none;
+  box-shadow: none;
 }
 
 .workspace-tabbar > :last-child {
@@ -1919,7 +1953,7 @@ details[open] > .work-folder-head .work-folder-chevron {
   gap: 0.75rem;
 }
 
-.endorsement-skeleton-identity {
+.skeleton-identity {
   display: flex;
   flex: 1;
   align-items: center;

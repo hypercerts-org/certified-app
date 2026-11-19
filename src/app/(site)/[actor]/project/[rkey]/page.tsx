@@ -4,9 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActivityList } from "@/components/activity-list";
-import { actorHref } from "@/components/cards";
+import { actorHref, WorkCardsSkeleton } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
-import { Tile } from "@/components/tile";
+import { Tile, TileSkeleton } from "@/components/tile";
 import { TileSlot } from "@/components/tile-slot";
 import { getActor, getProject, listProjectActivitiesPage } from "@/lib/hypercerts/queries";
 
@@ -59,9 +59,26 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
           </Text>
         )}
       </div>
-      <TileSlot title="Activities in this project">
+      <TileSlot title="Activities in this project" skeleton={<WorkCardsSkeleton count={4} />}>
         <ProjectActivities uri={uri} />
       </TileSlot>
+    </>
+  );
+}
+
+/** The project on its way: its title, author and description, then its activities. */
+function ProjectSkeleton() {
+  return (
+    <>
+      <div className="stack" aria-hidden>
+        <Eyebrow>Project</Eyebrow>
+        <Skeleton variant="line" className="skeleton-name" />
+        <Skeleton variant="line" className="skeleton-meta" />
+        <Skeleton variant="text" lines={2} className="skeleton-lead" />
+      </div>
+      <TileSkeleton title="Activities in this project">
+        <WorkCardsSkeleton count={4} />
+      </TileSkeleton>
     </>
   );
 }
@@ -69,7 +86,7 @@ async function Project({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "p
 export default function ProjectPage(props: PageProps<"/[actor]/project/[rkey]">) {
   return (
     <div className="page">
-      <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+      <Suspense fallback={<ProjectSkeleton />}>
         <Project params={props.params} />
       </Suspense>
     </div>

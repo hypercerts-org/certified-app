@@ -1,8 +1,8 @@
-import { ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ErrorMessage, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ActivityList } from "@/components/activity-list";
-import { actorHref } from "@/components/cards";
+import { actorHref, WorkCardsSkeleton } from "@/components/cards";
 import { listActivitiesPage } from "@/lib/hypercerts/queries";
 import { isDid } from "@/lib/validate";
 
@@ -37,7 +37,7 @@ async function EmbeddedActivities({
 export default function EmbedActivitiesPage(props: PageProps<"/embed/activities">) {
   return (
     <main className="embed">
-      <Suspense fallback={<Skeleton variant="text" lines={4} />}>
+      <Suspense fallback={<WorkCardsSkeleton count={4} />}>
         <EmbeddedActivities searchParams={props.searchParams} />
       </Suspense>
     </main>

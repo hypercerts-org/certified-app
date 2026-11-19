@@ -1,8 +1,8 @@
 import { EmptyState } from "@hypercerts-org/ui-react";
 import { listActivitiesPage, listProjectsPage } from "@/lib/hypercerts/queries";
 import { ActivityList } from "./activity-list";
-import { ProjectCardView } from "./cards";
-import { Tile } from "./tile";
+import { ProjectCardView, WorkCardsSkeleton } from "./cards";
+import { Tile, TileSkeleton } from "./tile";
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
 // reorder tiles without the others knowing. That is the separability the
@@ -35,5 +35,21 @@ export async function ProjectsTile({ did }: { did: string }) {
         </ul>
       )}
     </Tile>
+  );
+}
+
+export function ActivitiesTileSkeleton() {
+  return (
+    <TileSkeleton title="Activities">
+      <WorkCardsSkeleton count={4} />
+    </TileSkeleton>
+  );
+}
+
+export function ProjectsTileSkeleton() {
+  return (
+    <TileSkeleton title="Projects">
+      <WorkCardsSkeleton count={2} />
+    </TileSkeleton>
   );
 }

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { ListTabAction } from "@/components/list-tab-action";
 import { PageTitle } from "@/components/page-title";
-import { ProfileTabs } from "@/components/profile-actions";
+import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { LIST_KINDS } from "@/components/workspace-lists";
 import { listLists } from "@/lib/hypercerts/queries";
 
@@ -48,7 +48,7 @@ export default function ListsLayout({ children, params }: LayoutProps<"/[actor]/
     <>
       <PageTitle className="workspace-title">Lists</PageTitle>
       <div className="workspace-tabbar">
-        <Suspense fallback={<div className="profile-tabs" />}>
+        <Suspense fallback={<ProfileTabsSkeleton labels={LIST_KINDS.map((kind) => kind.label)} />}>
           <Tabs params={params} />
         </Suspense>
       </div>

@@ -1,9 +1,8 @@
-import { Skeleton } from "@hypercerts-org/ui-react";
+import { Card, EmptyState, Heading, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Card, EmptyState, Heading, Text } from "@hypercerts-org/ui-react";
-import { listLists } from "@/lib/hypercerts/queries";
-import { getActor } from "@/lib/hypercerts/queries";
+import { ListCardsSkeleton } from "@/components/workspace-lists";
+import { getActor, listLists } from "@/lib/hypercerts/queries";
 import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({ params }: PageProps<"/[actor]/lists">): Promise<Metadata> {
@@ -42,7 +41,7 @@ async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) 
 /** The lists the account keeps: accounts, activities, projects or endorsements. */
 export default function ListsPage(props: PageProps<"/[actor]/lists">) {
   return (
-    <Suspense fallback={<Skeleton variant="text" lines={6} />}>
+    <Suspense fallback={<ListCardsSkeleton />}>
       <Content params={props.params} />
     </Suspense>
   );

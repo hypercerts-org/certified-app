@@ -28,10 +28,21 @@ const TileBoundary = catchError(TileError);
 
 /** Where a page places a tile: a skeleton while it loads, and its own error
  *  state if it fails, so neither holds up the rest of the page. */
-export function TileSlot({ title, children }: { title: string; children: ReactNode }) {
+export function TileSlot({
+  title,
+  skeleton,
+  children,
+}: {
+  title: string;
+  /** The tile's content while it loads (the component's own skeleton). */
+  skeleton: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <TileBoundary title={title}>
-      <Suspense fallback={<TileSkeleton title={title} />}>{children}</Suspense>
+      <Suspense fallback={<TileSkeleton title={title}>{skeleton}</TileSkeleton>}>
+        {children}
+      </Suspense>
     </TileBoundary>
   );
 }

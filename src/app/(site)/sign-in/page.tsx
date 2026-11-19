@@ -66,7 +66,7 @@ export default function SignInPage(props: PageProps<"/sign-in">) {
           other AT Protocol server.
         </Text>
       </div>
-      <Suspense fallback={<Skeleton variant="text" lines={2} />}>
+      <Suspense fallback={<Skeleton variant="box" className="skeleton-button" />}>
         <SignIn searchParams={props.searchParams} />
       </Suspense>
     </div>
