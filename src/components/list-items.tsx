@@ -6,7 +6,7 @@
 import { Avatar, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ArrowRight, Folder, SquareCheckBig } from "lucide-react";
 import type { ReactNode } from "react";
-import { actorHref, projectHref, skeletonSlots } from "@/components/cards";
+import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import type { ActorCard, ListItem } from "@/lib/hypercerts/views";
 
@@ -88,9 +88,13 @@ export function ListItemContent({ item }: { item: ListItem }) {
           <span className="list-item-main">
             <Thumb src={item.activity.imageUrl} project={false} />
             <span className="list-item-text">
-              <span className="list-item-title" dir="auto">
+              <IntentLink
+                href={activityHref(item.activity.uri)}
+                className="list-item-title"
+                dir="auto"
+              >
                 {item.activity.title}
-              </span>
+              </IntentLink>
               {(item.activity.period ?? item.activity.createdAt) && (
                 <span className="list-item-meta">
                   {item.activity.period ?? item.activity.createdAt}

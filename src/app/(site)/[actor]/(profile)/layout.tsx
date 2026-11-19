@@ -10,6 +10,7 @@ import {
   getFollowCounts,
   getIssuedBadges,
   getRecordCounts,
+  hasFunding,
 } from "@/lib/hypercerts/queries";
 import { profileBase } from "@/lib/profile-route";
 
@@ -57,6 +58,8 @@ type TabCounts = {
   badgesAccepted: number;
   badgesAwaiting: number;
   badgesIssued: number;
+  /** Whether the account received or gave any funding. */
+  funding: boolean;
 };
 
 /** Overview always; the others once their counts are known, and only when not empty. */
@@ -109,18 +112,26 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
           !counts || counts.badgesAccepted + counts.badgesAwaiting + counts.badgesIssued === 0,
         ),
         { ...tab("Lists", "/lists", counts?.lists), nested: true },
+        // No count: totals are in several currencies (the tab shows them).
+        {
+          label: "Funding",
+          href: `${base}/funding`,
+          also: [`${base}/funding/given`, `${base}/funding/confirmed`],
+          empty: !counts?.funding,
+        },
       ]}
     />
   );
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [records, endorsements, follows, badges, issued] = await Promise.all([
+  const [records, endorsements, follows, badges, issued, funding] = await Promise.all([
     getRecordCounts(did),
     getEndorsements(did),
     getFollowCounts(did),
     getBadges(did),
     getIssuedBadges(did),
+    hasFunding(did),
   ]);
   return (
     <Tabs
@@ -136,6 +147,7 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
         badgesAccepted: badges.accepted.length,
         badgesAwaiting: badges.awaiting.length,
         badgesIssued: issued.badges.length,
+        funding: funding.received || funding.given || funding.confirmed,
       }}
     />
   );

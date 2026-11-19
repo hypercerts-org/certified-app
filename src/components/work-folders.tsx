@@ -14,6 +14,7 @@
 import { Button, EmptyState, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
 import { ArrowRight, ChevronRight, Folder, Plus, SquareCheckBig } from "lucide-react";
 import { useState } from "react";
+import { activityHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { IntentLink } from "@/components/intent-link";
 
@@ -93,16 +94,16 @@ function Thumb({ src, project }: { src: string | null; project: boolean }) {
   );
 }
 
-/** An activity. Activities have no page of their own yet, so it isn't a link. */
+/** An activity, its title leading to its page. */
 function Row({ row }: { row: WorkRow }) {
   const [first, ...rest] = row.alsoIn;
   return (
     <li className="overview-row work-row">
       <Thumb src={row.imageUrl} project={false} />
       <span className="overview-row-text">
-        <span className="overview-row-title" dir="auto">
+        <IntentLink href={activityHref(row.uri)} className="overview-row-title" dir="auto">
           {row.title}
-        </span>
+        </IntentLink>
         <span className="overview-row-meta">
           {row.meta}
           {row.by && (

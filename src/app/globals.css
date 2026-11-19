@@ -1994,6 +1994,276 @@ a.list-item-main:hover .list-item-title {
   block-size: 6rem;
 }
 
+/* Funding (src/components/funding.tsx, receipts.tsx): the figures, then the
+   ledger of receipts, after staging's Funding page. */
+.funding {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.funding-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+}
+
+.funding-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.funding-stat-value {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-heading);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--hc-weight-strong);
+}
+
+.funding-page {
+  gap: 1.5rem;
+}
+
+/* Wide tables scroll sideways on narrow screens, as ledgers do. */
+.ledger-scroll {
+  overflow-x: auto;
+}
+
+.ledger {
+  inline-size: 100%;
+  min-inline-size: 44rem;
+  border-collapse: collapse;
+  font-size: var(--hc-type-body-sm);
+}
+
+.ledger th {
+  padding: 0.5rem 0.75rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-label);
+  font-weight: var(--hc-weight-medium);
+  letter-spacing: var(--hc-tracking-eyebrow);
+  text-align: start;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ledger td {
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+  vertical-align: middle;
+}
+
+.ledger tbody tr:hover {
+  background: var(--hc-surface-tint);
+}
+
+.ledger .ledger-amount {
+  text-align: end;
+  white-space: nowrap;
+}
+
+.ledger-value {
+  display: block;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--hc-weight-strong);
+}
+
+.ledger-detail {
+  display: inline-flex;
+  gap: 0.5rem;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-label);
+}
+
+.ledger-tx {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  color: var(--hc-text-muted);
+}
+
+.ledger-tx:hover {
+  color: var(--hc-text-ink);
+}
+
+.ledger-mono {
+  font-family: var(--hc-font-mono);
+  font-size: 0.8125em;
+}
+
+.ledger-when {
+  color: var(--hc-text-muted);
+  white-space: nowrap;
+}
+
+.ledger-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-inline-size: 15rem;
+  color: var(--hc-text-ink);
+  text-decoration: none;
+}
+
+.ledger-account span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-account:hover span {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.ledger-anonymous {
+  color: var(--hc-text-muted);
+  font-style: italic;
+}
+
+.ledger-muted {
+  color: var(--hc-text-muted);
+}
+
+/* What it's for: two lines at most. */
+.ledger-for {
+  max-inline-size: 18rem;
+}
+
+.ledger-for a {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--hc-text-body);
+  text-decoration: none;
+}
+
+.ledger-for a:hover {
+  color: var(--hc-text-ink);
+  text-decoration: underline;
+}
+
+.ledger-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ledger-skeleton-row {
+  block-size: 2.5rem;
+}
+
+/* Posts (a project's activities): one under another, like a blog's list; the
+   picture beside the text, above it on narrow screens. */
+.posts {
+  display: flex;
+  flex-direction: column;
+  max-inline-size: 52rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding-block: 1.5rem;
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.post:first-child {
+  padding-block-start: 0.5rem;
+}
+
+.post-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.post-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--hc-text-body);
+}
+
+.post-meta {
+  margin: 0;
+}
+
+.post-author {
+  color: var(--hc-text-ink);
+  text-decoration: none;
+}
+
+.post-author:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.post-image {
+  display: block;
+  flex: none;
+  inline-size: 12rem;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+}
+
+.post-image img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+@media (width < 40rem) {
+  .post {
+    flex-direction: column-reverse;
+  }
+
+  .post-image {
+    inline-size: 100%;
+  }
+}
+
+/* An activity's page, like a blog post: its header, the picture as a hero
+   image across the column, then the full text. */
+.activity-post {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-inline-size: 52rem;
+}
+
+.activity-hero {
+  overflow: hidden;
+  border-radius: var(--hc-radius-control);
+  aspect-ratio: 16 / 9;
+  background: var(--hc-surface-tint);
+}
+
+.activity-hero img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.activity-body {
+  max-inline-size: 42rem;
+  color: var(--hc-text-body);
+}
+
 /* A project's page: its details, with Follow at the top right. */
 .project-head {
   display: flex;

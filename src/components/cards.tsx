@@ -34,6 +34,12 @@ export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
   return `/${project.authorDid}/project/${project.rkey}`;
 }
 
+/** An activity's page: /{author}/activity/{rkey}. */
+export function activityHref(uri: string) {
+  const [, , did, , rkey] = uri.split("/");
+  return `/${did}/activity/${rkey}`;
+}
+
 /** A badge's page, under the account that defined it: /{issuer}/badge/{rkey}. */
 export function badgeHref(badge: { ownerDid: string; rkey: string }) {
   return `/${badge.ownerDid}/badge/${badge.rkey}`;
@@ -82,7 +88,9 @@ export function ActivityCardView({
         <CardImage src={activity.imageUrl} />
         <div className="work-card-body">
           <Heading level={3} size="heading">
-            {activity.title}
+            <IntentLink href={activityHref(activity.uri)} className="work-card-link">
+              {activity.title}
+            </IntentLink>
           </Heading>
           {activity.summary && (
             <Text size="body-sm" className="clamp">
@@ -169,6 +177,73 @@ export function ActorCardsSkeleton({ count = 6 }: { count?: number }) {
             <Skeleton variant="text" lines={2} className="overview-row-text" />
           </div>
         </Card>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * An activity as a post in a list, like a blog's: its title, the start of
+ * its text, its date (and its author, when not the page's own account), and
+ * its picture beside them.
+ */
+export function ActivityPostView({
+  activity,
+  ownerDid,
+}: {
+  activity: ActivityCard;
+  ownerDid?: string;
+}) {
+  const href = activityHref(activity.uri);
+  const byOther = activity.author.did !== ownerDid;
+  return (
+    <li className="post">
+      <div className="post-text">
+        <Heading level={2} size="heading">
+          <IntentLink href={href} className="work-card-link" dir="auto">
+            {activity.title}
+          </IntentLink>
+        </Heading>
+        {activity.summary && (
+          <Text className="post-excerpt" dir="auto">
+            {activity.summary}
+          </Text>
+        )}
+        <Text as="p" size="body-sm" tone="muted" className="post-meta">
+          {activity.period ?? activity.createdAt}
+          {byOther && (
+            <>
+              {(activity.period ?? activity.createdAt) && " · "}
+              by{" "}
+              <IntentLink href={actorHref(activity.author)} className="post-author">
+                {activity.author.displayName}
+              </IntentLink>
+            </>
+          )}
+        </Text>
+      </div>
+      {activity.imageUrl && (
+        <IntentLink href={href} className="post-image" tabIndex={-1} aria-hidden>
+          {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
+          <img src={activity.imageUrl} alt="" loading="lazy" />
+        </IntentLink>
+      )}
+    </li>
+  );
+}
+
+/** Posts on their way: a title, lines of text, and a picture beside them. */
+export function ActivityPostsSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="posts" aria-hidden>
+      {skeletonSlots(count).map((slot) => (
+        <div key={slot} className="post">
+          <div className="post-text">
+            <Skeleton variant="line" className="skeleton-card-title" />
+            <Skeleton variant="text" lines={3} />
+          </div>
+          <Skeleton variant="box" className="post-image" />
+        </div>
       ))}
     </div>
   );

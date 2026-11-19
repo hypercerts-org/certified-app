@@ -658,3 +658,155 @@ export function endorsementLine(row: {
 }): string | undefined {
   return [row.badge, row.note].filter(Boolean).join(" · ") || undefined;
 }
+
+// Funding receipts ------------------------------------------------------------
+//
+// A payment from a sender to a recipient (org.hypercerts.funding.receipt),
+// recorded by any party: mostly a platform that processed it (via). Sender and
+// recipient are an account, a record, or free text (a wallet address); the
+// sender may be absent (anonymous). `for` is what the funding relates to: a
+// project, an activity or an organization.
+
+/** A sender or recipient as a receipt names it. */
+export type ReceiptParty =
+  | { kind: "account"; did: string }
+  | { kind: "text"; value: string }
+  | { kind: "anonymous" };
+
+export type Receipt = {
+  uri: string;
+  /** Who wrote the receipt (often the platform). */
+  recorderDid: string;
+  from: ReceiptParty;
+  to: ReceiptParty;
+  viaDid: string | null;
+  /** What the funding is for: a record's address, or null. */
+  forUri: string | null;
+  /** "Donation", "Match", "Grant", or null. */
+  type: string | null;
+  /** The amount as money: "$100.00", "1 USDC"; null when the receipt has none. */
+  amount: string | null;
+  /** Its value and currency, for totals. */
+  value: number | null;
+  currency: string | null;
+  /** When the payment happened (else when it was recorded): "19 Nov 2026". */
+  date: string | null;
+  /** The same, short and with the time, for a ledger: "Nov 19 · 08:42" (UTC). */
+  stamp: string | null;
+  time: number;
+  /** Where it was paid: "Celo", "Ethereum", "Base", "Stripe"; null when not said. */
+  network: string | null;
+  /** The payment's ID, shortened ("0x5442…ee13"), and its explorer page when known. */
+  transaction: { id: string; short: string; href: string | null } | null;
+  notes: string | null;
+};
+
+const stampDay = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" });
+const stampTime = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
+
+/** "Nov 19 · 08:42", as staging's receipts show it. */
+function formatStamp(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${stampDay.format(date)} · ${stampTime.format(date)}`;
+}
+
+function party(value: unknown): ReceiptParty {
+  const record = asRecord(value);
+  const did = asString(record?.did);
+  if (did?.startsWith("did:")) return { kind: "account", did };
+  const uri = asString(record?.uri);
+  if (uri?.startsWith("at://")) return { kind: "account", did: didOf(uri) };
+  const text = asString(record?.value)?.trim();
+  return text ? { kind: "text", value: text } : { kind: "anonymous" };
+}
+
+/**
+ * An amount in its currency: ISO 4217 codes as money ("$100.00", "¥10,000"),
+ * anything else (a token) as a number and its ticker ("1 USDC", "0.05 USDC").
+ */
+export function formatMoney(amount: string, currency: string | null): string {
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return currency ? `${amount} ${currency}` : amount;
+  if (currency && /^[A-Z]{3}$/.test(currency)) {
+    try {
+      return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
+    } catch {
+      // Not a currency Intl knows: shown as a token.
+    }
+  }
+  const number = new Intl.NumberFormat("en", { maximumFractionDigits: 6 }).format(value);
+  return currency ? `${number} ${currency}` : number;
+}
+
+/** Block explorers by network, for an onchain payment's transaction hash. */
+const EXPLORERS: Record<string, { name: string; tx: string }> = {
+  celo: { name: "Celo", tx: "https://celoscan.io/tx/" },
+  "eip155:42220": { name: "Celo", tx: "https://celoscan.io/tx/" },
+  ethereum: { name: "Ethereum", tx: "https://etherscan.io/tx/" },
+  "eip155:1": { name: "Ethereum", tx: "https://etherscan.io/tx/" },
+  base: { name: "Base", tx: "https://basescan.org/tx/" },
+  "eip155:8453": { name: "Base", tx: "https://basescan.org/tx/" },
+};
+
+export function toReceipt(view: {
+  uri: string;
+  did: string;
+  record: Record<string, unknown>;
+}): Receipt {
+  const record = view.record;
+  const amount = asString(record.amount) ?? asString(record.netAmount);
+  const currency =
+    asString(record.amount) !== null ? asString(record.currency) : asString(record.netCurrency);
+  const value = amount !== null ? Number(amount) : Number.NaN;
+  const when = asString(record.occurredAt) ?? asString(record.createdAt);
+  const network = asString(record.paymentNetwork)?.trim() || null;
+  const explorer = network ? EXPLORERS[network.toLowerCase()] : undefined;
+  const id = asString(record.transactionId)?.trim() || null;
+  const type = asString(record.type);
+  return {
+    uri: view.uri,
+    recorderDid: view.did,
+    from: party(record.from),
+    to: party(record.to),
+    viaDid: (() => {
+      const via = party(record.via);
+      return via.kind === "account" ? via.did : null;
+    })(),
+    forUri: asString(asRecord(record.for)?.uri),
+    type: type ? type.charAt(0).toUpperCase() + type.slice(1) : null,
+    amount: amount !== null ? formatMoney(amount, currency) : null,
+    value: Number.isFinite(value) ? value : null,
+    currency,
+    date: formatDate(when),
+    stamp: formatStamp(when),
+    time: when ? new Date(when).getTime() || 0 : 0,
+    network:
+      explorer?.name ?? (network ? network.charAt(0).toUpperCase() + network.slice(1) : null),
+    transaction: id
+      ? {
+          id,
+          short: id.length > 14 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id,
+          href: explorer && /^0x[0-9a-fA-F]{64}$/.test(id) ? `${explorer.tx}${id}` : null,
+        }
+      : null,
+    notes: asString(record.notes)?.trim() || null,
+  };
+}
+
+/** Totals by currency, largest first: what a list of receipts adds up to. */
+export function totalsByCurrency(receipts: Receipt[]): { currency: string; amount: string }[] {
+  const sums = new Map<string, number>();
+  for (const receipt of receipts) {
+    if (receipt.value === null || !receipt.currency) continue;
+    sums.set(receipt.currency, (sums.get(receipt.currency) ?? 0) + receipt.value);
+  }
+  return [...sums.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([currency, sum]) => ({ currency, amount: formatMoney(String(sum), currency) }));
+}

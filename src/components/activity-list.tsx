@@ -4,7 +4,7 @@ import { Button, EmptyState, ErrorMessage } from "@hypercerts-org/ui-react";
 import { useCallback } from "react";
 import type { ActivityCard, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
-import { ActivityCardView } from "./cards";
+import { ActivityCardView, ActivityPostView } from "./cards";
 
 export type ActivitySource = { kind: "author"; did: string } | { kind: "project"; uri: string };
 
@@ -21,10 +21,16 @@ export function ActivityList({
   initial,
   source,
   showAuthor = true,
+  variant = "cards",
+  ownerDid,
 }: {
   initial: Page<ActivityCard>;
   source: ActivitySource;
   showAuthor?: boolean;
+  /** "posts": one under another, like a blog's list (a project's activities). */
+  variant?: "cards" | "posts";
+  /** As posts: whose page this is (its own activities don't name their author). */
+  ownerDid?: string;
 }) {
   const nextPageUrl = useCallback((cursor: string) => pageUrl(source, cursor), [source]);
   const { items, hasMore, loading, error, loadMore } = useCursorPages(
@@ -40,7 +46,14 @@ export function ActivityList({
 
   return (
     <div className="stack">
-      {items.length > 0 && (
+      {items.length > 0 && variant === "posts" && (
+        <ul className="posts">
+          {items.map((activity) => (
+            <ActivityPostView key={activity.uri} activity={activity} ownerDid={ownerDid} />
+          ))}
+        </ul>
+      )}
+      {items.length > 0 && variant === "cards" && (
         <ul className="work-grid">
           {items.map((activity) => (
             <ActivityCardView key={activity.uri} activity={activity} showAuthor={showAuthor} />

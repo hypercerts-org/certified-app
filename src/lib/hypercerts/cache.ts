@@ -11,5 +11,7 @@ export const tags = {
   badges: (did: string) => `badges:${did}`,
   badge: (uri: string) => `badge:${uri}`,
   list: (uri: string) => `list:${uri}`,
+  /** Receipts to, from or for this account or record. */
+  funding: (subject: string) => `funding:${subject}`,
   follows: (did: string) => `follows:${did}`,
 };
