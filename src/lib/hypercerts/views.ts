@@ -52,8 +52,12 @@ export interface ActorDetail extends ActorCard {
   /** The profile record's own fields, without display fallbacks. */
   profile: ProfileFields;
   organizationTypes: string[];
-  /** An organization's links, http(s) only (safeUrl). */
-  urls: string[];
+  /** An organization's links, http(s) only (safeUrl), with their labels ("Donation page"). */
+  urls: { url: string; label: string | null }[];
+  /** An organization's registered name. */
+  legalName: string | null;
+  /** The contact address an organization chose to show, when it looks like one. */
+  publicEmail: string | null;
   /** The profile's website, if it has one: http(s) only (safeUrl). */
   website: string | null;
   longDescription: string | null;
@@ -297,7 +301,12 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
       description: profile?.description ?? "",
     },
     organizationTypes: organization?.organizationType ?? [],
-    urls: (organization?.urls ?? []).flatMap((entry) => safeUrl(entry.url) ?? []),
+    urls: (organization?.urls ?? []).flatMap((entry) => {
+      const url = safeUrl(entry.url);
+      return url ? [{ url, label: asString(entry.label)?.trim() || null }] : [];
+    }),
+    legalName: asString(organization?.legalName)?.trim() || null,
+    publicEmail: emailAddress(organization?.publicEmail),
     website: safeUrl(profile?.website),
     bannerUrl: imageUrl(actor.did, profile?.banner, "banner"),
     pronouns: asString(profile?.pronouns),
@@ -307,6 +316,19 @@ export function toActorDetail(actor: AnyActorView): ActorDetail {
     foundedDate: formatMonth(organization?.foundedDate),
     place: null,
   };
+}
+
+/**
+ * An email address to show and link (mailto:), or null unless it is one
+ * plain address. Records are written by anyone; this keeps the link from
+ * carrying anything else.
+ */
+export function emailAddress(value: unknown): string | null {
+  const text = asString(value)?.trim();
+  if (!text || text.length > 254) return null;
+  // The part before @ without spaces, separators or a query; the domain
+  // letters, digits, hyphens and dots, so the link can't carry a subject or body.
+  return /^[^\s@<>()",;:?&=/%]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(text) ? text : null;
 }
 
 /** Where an account is: from its app.certified.location record. */

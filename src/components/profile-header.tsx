@@ -5,7 +5,7 @@
 // actions. The tabs follow it (see the profile layout).
 
 import { Avatar, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { Eye, Link2 } from "lucide-react";
+import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
@@ -18,24 +18,91 @@ import { getEndorsers, getFollowCounts, isFollowing } from "@/lib/hypercerts/que
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
 
-type AccountLink = { href: string; label: string; bluesky: boolean };
+/** One of the header's links: Bluesky as its icon, an email as itself, the rest by label. */
+function ProfileLink({ link }: { link: AccountLink }) {
+  if (link.kind === "bluesky") {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="profile-link-icon"
+        title={link.label}
+      >
+        <BlueskyIcon />
+        <span className="visually-hidden">Bluesky (opens in a new tab)</span>
+      </a>
+    );
+  }
+  if (link.kind === "email") {
+    return (
+      <>
+        <Mail size={16} aria-hidden />
+        <a href={link.href}>{link.label}</a>
+      </>
+    );
+  }
+  return (
+    <>
+      <Link2 size={16} aria-hidden />
+      {/* A labelled link names its address on hover, where it leads. */}
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={link.address ?? undefined}
+        dir="auto"
+      >
+        {link.label}
+        <span className="visually-hidden"> (opens in a new tab)</span>
+      </a>
+    </>
+  );
+}
+
+type AccountLink = {
+  href: string;
+  /** What the link reads: its own label, else the address without the scheme. */
+  label: string;
+  /** The address, for a link shown by its label. */
+  address: string | null;
+  kind: "web" | "bluesky" | "email";
+};
+
+const shortAddress = (url: string) =>
+  url
+    .replace(/^https?:\/\/(www\.)?/i, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
 
 /**
- * Every link once: the website first, then an organization's other links. A
- * Bluesky profile shows as its butterfly, as on staging.
+ * Every link once: the website first, then an organization's other links (by
+ * their labels, "Donation page", when they have one), then its public email.
+ * A Bluesky profile shows as its butterfly, as on staging.
  */
 function links(actor: ActorDetail): AccountLink[] {
   const seen = new Set<string>();
   const out: AccountLink[] = [];
-  for (const raw of [actor.website, ...actor.urls]) {
-    if (!raw) continue; // http(s) only, checked when mapped (safeUrl)
-    const label = raw
-      .replace(/^https?:\/\/(www\.)?/i, "")
-      .replace(/\/+$/, "")
-      .toLowerCase();
-    if (seen.has(label)) continue;
-    seen.add(label);
-    out.push({ href: raw, label, bluesky: /^(bsky\.app|bsky\.social)(\/|$)/.test(label) });
+  const entries = [...(actor.website ? [{ url: actor.website, label: null }] : []), ...actor.urls];
+  for (const { url, label } of entries) {
+    const address = shortAddress(url); // http(s) only, checked when mapped (safeUrl)
+    if (seen.has(address)) continue;
+    seen.add(address);
+    const bluesky = /^(bsky\.app|bsky\.social)(\/|$)/.test(address);
+    out.push({
+      href: url,
+      label: label ?? address,
+      address: label ? address : null,
+      kind: bluesky ? "bluesky" : "web",
+    });
+  }
+  if (actor.publicEmail) {
+    out.push({
+      href: `mailto:${actor.publicEmail}`,
+      label: actor.publicEmail,
+      address: null,
+      kind: "email",
+    });
   }
   return out;
 }
@@ -105,30 +172,11 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
           )}
           {accountLinks.length > 0 && (
             <ul className="profile-links" aria-label="Links">
-              {accountLinks.map((link) =>
-                link.bluesky ? (
-                  <li key={link.href}>
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="profile-link-icon"
-                      title={link.label}
-                    >
-                      <BlueskyIcon />
-                      <span className="visually-hidden">Bluesky (opens in a new tab)</span>
-                    </a>
-                  </li>
-                ) : (
-                  <li key={link.href}>
-                    <Link2 size={16} aria-hidden />
-                    <a href={link.href} target="_blank" rel="noopener noreferrer">
-                      {link.label}
-                      <span className="visually-hidden"> (opens in a new tab)</span>
-                    </a>
-                  </li>
-                ),
-              )}
+              {accountLinks.map((link) => (
+                <li key={link.href}>
+                  <ProfileLink link={link} />
+                </li>
+              ))}
             </ul>
           )}
           <Suspense fallback={null}>

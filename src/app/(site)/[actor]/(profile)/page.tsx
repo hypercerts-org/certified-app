@@ -397,6 +397,14 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
             Account
           </Heading>
           <dl className="facts">
+            {/* Only when it differs from the name the profile shows. */}
+            {actor.legalName &&
+              actor.legalName.toLowerCase() !== actor.displayName.toLowerCase() && (
+                <div className="fact">
+                  <dt>Legal name</dt>
+                  <dd dir="auto">{actor.legalName}</dd>
+                </div>
+              )}
             {/* A person's joining is on the header's meta line. */}
             {actor.isOrganization && actor.joined && (
               <div className="fact">

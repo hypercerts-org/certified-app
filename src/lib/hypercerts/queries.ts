@@ -277,7 +277,12 @@ export async function listOrganizationsPage(options: {
         read(),
       )
     : await api.call(app.certified.actor.listOrganizations, params, read());
-  return { items: await withHandles(actors.map(toActorCard)), cursor: cursor ?? null };
+  // An organization may ask not to be listed ("unlisted"): its page stays
+  // reachable, but Explore leaves it out. The API's filter matches one value
+  // exactly, and most records have none, so the app filters (a page may come
+  // up one short).
+  const listed = actors.filter((actor) => actor.organization?.record.visibility !== "unlisted");
+  return { items: await withHandles(listed.map(toActorCard)), cursor: cursor ?? null };
 }
 
 /** The badge type of endorsements, which pages show apart from other badges. */
