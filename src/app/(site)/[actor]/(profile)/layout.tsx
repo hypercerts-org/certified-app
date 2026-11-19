@@ -5,6 +5,7 @@ import { ProfileHeader, ProfileHeaderSkeleton } from "@/components/profile-heade
 import {
   type Count,
   getActor,
+  getBadges,
   getEndorsements,
   getFollowCounts,
   getRecordCounts,
@@ -52,6 +53,8 @@ type TabCounts = {
   followers: number;
   following: number;
   lists: Count;
+  badgesAccepted: number;
+  badgesAwaiting: number;
 };
 
 /** Overview always; the others once their counts are known, and only when not empty. */
@@ -94,6 +97,14 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
           ["/following"],
           !counts || counts.followers + counts.following === 0,
         ),
+        // Counts accepted badges, and shows while either list has one.
+        tab(
+          "Badges",
+          "/badges",
+          counts?.badgesAccepted,
+          ["/badges/awaiting"],
+          !counts || counts.badgesAccepted + counts.badgesAwaiting === 0,
+        ),
         tab("Lists", "/lists", counts?.lists),
       ]}
     />
@@ -101,10 +112,11 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [records, endorsements, follows] = await Promise.all([
+  const [records, endorsements, follows, badges] = await Promise.all([
     getRecordCounts(did),
     getEndorsements(did),
     getFollowCounts(did),
+    getBadges(did),
   ]);
   return (
     <Tabs
@@ -117,6 +129,8 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
         followers: follows.followers,
         following: follows.following,
         lists: records.lists,
+        badgesAccepted: badges.accepted.length,
+        badgesAwaiting: badges.awaiting.length,
       }}
     />
   );

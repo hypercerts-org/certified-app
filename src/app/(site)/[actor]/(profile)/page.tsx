@@ -11,6 +11,7 @@ import { ChevronRight, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
+import { BadgeTiles } from "@/components/badges";
 import {
   ActivityCardView,
   actorHref,
@@ -23,6 +24,7 @@ import { LocationMap } from "@/components/location-map";
 import { OwnerOnly, VisitorOnly } from "@/components/viewer-only";
 import {
   getActor,
+  getBadges,
   getEndorsements,
   getRecordCounts,
   listActivitiesPage,
@@ -240,6 +242,29 @@ async function Endorses({ did, base }: { did: string; base: string }) {
   );
 }
 
+/** How many badges the Overview shows before "All badges". */
+const BADGES_PREVIEW = 6;
+
+/**
+ * The badges the account accepted. Those awaiting its response wait on the
+ * Badges tab: anyone can award a badge, and only an accepted one is shown
+ * here as the account's own.
+ */
+async function Badges({ did, base }: { did: string; base: string }) {
+  const { accepted, awaiting } = await getBadges(did);
+  if (accepted.length === 0) return null;
+  const more = accepted.length > BADGES_PREVIEW || awaiting.length > 0;
+  return (
+    <Section
+      title="Badges"
+      count={String(accepted.length)}
+      seeAll={more ? { href: `${base}/badges`, label: "All badges" } : undefined}
+    >
+      <BadgeTiles badges={accepted.slice(0, BADGES_PREVIEW)} />
+    </Section>
+  );
+}
+
 /** The accounts that endorsed this one, each once with its latest endorsement. */
 async function EndorsedBy({ did, base }: { did: string; base: string }) {
   const { rows, more } = await listEndorsements(did, "received");
@@ -360,6 +385,9 @@ async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
         )}
         <Suspense fallback={<SectionSkeleton />}>
           <Work did={did} base={base} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <Badges did={did} base={base} />
         </Suspense>
         <Suspense fallback={null}>
           <Endorses did={did} base={base} />

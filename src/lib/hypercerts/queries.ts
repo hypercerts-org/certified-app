@@ -21,6 +21,7 @@ import {
   type ActorDetail,
   activityRecord,
   awardSubject,
+  type BadgeCard,
   didOf,
   type EndorsementCard,
   formatDate,
@@ -33,9 +34,11 @@ import {
   type ProjectDetail,
   projectRecord,
   type RecentRecord,
+  sortBadges,
   toActivityCard,
   toActorCard,
   toActorDetail,
+  toBadgeCard,
   toEndorsementCard,
   toPlace,
   toProfileVersion,
@@ -49,6 +52,8 @@ import {
 // response. Responses are still typed from the lexicons; the view mappers in
 // ./views stay defensive only where the data is known to diverge. Writes
 // should keep strict validation.
+type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
+
 const api = new Client(process.env.HYPERCERTS_API_URL ?? "https://api.hypercerts.dev", {
   validateResponse: false,
 });
@@ -742,6 +747,61 @@ export async function getEndorsers(
     .map((row) => row.actor)
     .filter((actor) => !seen.has(actor.did) && seen.add(actor.did));
   return { endorsers, more };
+}
+
+// Badges
+//
+// Every badge awarded to an account, apart from the ones a profile shows as
+// endorsements (views.ts, toBadgeCard): accepted by the recipient, or still
+// awaiting its response. Rejected ones never show.
+
+/** Pages of awards read per response, a hundred each. */
+const BADGE_PAGES = 3;
+
+export type Badges = {
+  accepted: BadgeCard[];
+  awaiting: BadgeCard[];
+  /** Whether either list stopped at BADGE_PAGES with more to read. */
+  more: boolean;
+};
+
+async function badgeAwards(did: string, response: "accepted" | "unanswered") {
+  const awards: BadgeAwardView[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < BADGE_PAGES; page++) {
+    const out = await api.call(
+      app.certified.badge.listBadgeAwards,
+      { subjects: [did], responses: [response], limit: 100, cursor },
+      read(),
+    );
+    awards.push(...out.badgeAwards);
+    cursor = out.cursor;
+    if (!cursor) return { awards, more: false };
+  }
+  return { awards, more: true };
+}
+
+/** The badges awarded to `did`, each list in force first, then newest; expired last. */
+export async function getBadges(did: string): Promise<Badges> {
+  "use cache";
+  publicData(tags.badges(did));
+
+  const [accepted, awaiting] = await Promise.all([
+    badgeAwards(did, "accepted"),
+    badgeAwards(did, "unanswered"),
+  ]);
+  const cards = async (awards: BadgeAwardView[]) =>
+    sortBadges(
+      await withHandlesIn(
+        awards.flatMap((award) => toBadgeCard(award) ?? []),
+        "issuer",
+      ),
+    );
+  return {
+    accepted: await cards(accepted.awards),
+    awaiting: await cards(awaiting.awards),
+    more: accepted.more || awaiting.more,
+  };
 }
 
 /** Who follows `did` ("followers") or whom it follows ("following"), newest first. */

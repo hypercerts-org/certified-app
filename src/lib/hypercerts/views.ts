@@ -483,3 +483,87 @@ export function toEndorsementCard(award: BadgeAwardView): EndorsementCard {
     createdAt: formatDate(award.record.createdAt),
   };
 }
+
+// Badges ----------------------------------------------------------------------
+//
+// A badge award to an account, with its definition (what the badge is) and
+// the recipient's response. Shown literally: the definition's own title and
+// type, the issuer's note. What a badge means is for its issuer to say.
+
+export type BadgeCard = {
+  uri: string;
+  title: string;
+  /** The definition's type, as a label: "Certification", "Recognition". */
+  type: string | null;
+  description: string | null;
+  iconUrl: string | null;
+  issuer: ActorCard;
+  /** When it was awarded: "12 Jun 2026". */
+  awarded: string | null;
+  /** When it stops applying, if it does: "Mar 2027". */
+  validUntil: string | null;
+  expired: boolean;
+  note: string | null;
+  /** A link the award gives, http(s) only. */
+  url: string | null;
+  /** The recipient's response: accepted, or still unanswered. */
+  status: "accepted" | "unanswered";
+  /** Sort keys: the recipient's weight (0 without one), and the award's time. */
+  weight: number;
+  time: number;
+};
+
+/** The definition the per-account endorsements use, which the profile shows apart. */
+const PLAIN_ENDORSEMENT = "Endorsement";
+
+/**
+ * An award as a badge card, or null when it isn't shown as a badge:
+ * - rejected by the recipient, or its definition can't be read;
+ * - a plain endorsement (a definition of type "endorsement" titled
+ *   "Endorsement", one per endorser): the profile's Endorsements show those.
+ *   Endorsement-type badges with other titles ("Trusted Evaluator") are badges;
+ * - issued by someone the definition doesn't allow (allowedIssuers).
+ */
+export function toBadgeCard(award: BadgeAwardView, now = Date.now()): BadgeCard | null {
+  if (award.responseStatus === "rejected" || !award.badge) return null;
+  const definition = award.badge.record;
+  const title = asString(definition.title)?.trim();
+  if (!title) return null;
+  if (definition.badgeType === "endorsement" && title === PLAIN_ENDORSEMENT) return null;
+  const allowed = (definition.allowedIssuers ?? []).map((issuer) =>
+    asString(asRecord(issuer)?.did),
+  );
+  if (allowed.length > 0 && !allowed.includes(award.author.did)) return null;
+
+  const until = asString(award.record.validUntil);
+  const untilTime = until ? new Date(until).getTime() : Number.NaN;
+  const weight = Number(asString(award.recipientResponse?.record.weight));
+  const iconCid = blobCid(definition.icon);
+  const type = asString(definition.badgeType);
+  return {
+    uri: award.uri,
+    title,
+    type: type ? type.charAt(0).toUpperCase() + type.slice(1) : null,
+    description: asString(definition.description)?.trim() || null,
+    // The icon is a blob in the definition's repository.
+    iconUrl: iconCid
+      ? `https://cdn.bsky.app/img/${IMAGE_PRESET.thumbnail}/plain/${award.badge.did}/${iconCid}@jpeg`
+      : null,
+    issuer: toActorCard(award.author),
+    awarded: formatDate(award.record.createdAt),
+    validUntil: formatMonth(until),
+    expired: Number.isFinite(untilTime) && untilTime < now,
+    note: asString(award.record.note)?.trim() || null,
+    url: safeUrl(award.record.url),
+    status: award.responseStatus === "accepted" ? "accepted" : "unanswered",
+    weight: Number.isFinite(weight) ? weight : 0,
+    time: new Date(asString(award.record.createdAt) ?? 0).getTime() || 0,
+  };
+}
+
+/** Badges in force first, by the recipient's weight, then newest; expired ones last. */
+export function sortBadges(cards: BadgeCard[]): BadgeCard[] {
+  return [...cards].sort(
+    (a, b) => Number(a.expired) - Number(b.expired) || b.weight - a.weight || b.time - a.time,
+  );
+}
