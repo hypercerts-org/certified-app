@@ -127,7 +127,7 @@ export function SiteNav({ account }: { account: Account | null }) {
             <PhoneAccountMenu account={account} />
           </>
         ) : (
-          <SignInButton />
+          <SignInButton variant="secondary" />
         )}
       </div>
 

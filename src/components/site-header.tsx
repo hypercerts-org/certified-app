@@ -1,7 +1,9 @@
+import { Container } from "@hypercerts-org/ui-react";
 import Image from "next/image";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { cache, Suspense } from "react";
+import { SignInButton } from "@/components/sign-in-button";
 import { type Account, SiteNav } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
 import { getUser } from "@/lib/auth/dal";
@@ -30,6 +32,20 @@ export function SiteHeader() {
         </Suspense>
       </div>
     </header>
+  );
+}
+
+/**
+ * From 64rem, signed out: Sign in at the top right of the page, where people
+ * look for it (as on the landing page), not in the sidebar among the
+ * navigation. Below 64rem the top bar has it.
+ */
+export async function SignedOutBar() {
+  if (await getAccount()) return null;
+  return (
+    <Container className="signed-out-bar">
+      <SignInButton variant="secondary" />
+    </Container>
   );
 }
 

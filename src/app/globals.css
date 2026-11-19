@@ -1316,7 +1316,8 @@ button.workspace-nav-item:hover,
 
 /* The app sidebar (src/components/app-sidebar.tsx), from 64rem: on the left,
    the window's full height, staying put while the page scrolls. */
-.app-sidebar {
+.app-sidebar,
+.signed-out-bar {
   display: none;
 }
 
@@ -1333,6 +1334,14 @@ button.workspace-nav-item:hover,
 
   .app-body > .site-header {
     display: none;
+  }
+
+  /* Signed out, Sign in at the top right, at the content's edge. */
+  .signed-out-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-block-size: 3.5rem;
   }
 
   .app-sidebar {

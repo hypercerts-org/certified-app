@@ -23,7 +23,6 @@ import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { WORKSPACE_OVERVIEW_PATH, workspaceHref } from "@/components/cards";
 import { HelpMenu } from "@/components/help-menu";
 import { LinkPending } from "@/components/link-pending";
-import { SignInButton } from "@/components/sign-in-button";
 import { type Account, SidebarAccountMenu } from "@/components/site-nav";
 
 // The sidebar's contents, after the staging redesign: whom you act as, the
@@ -173,9 +172,12 @@ export function SidebarNav({ account }: { account: Account | null }) {
 
   return (
     <>
-      <div className="sidebar-account-slot">
-        {account ? <SidebarAccountMenu account={account} /> : <SignInButton />}
-      </div>
+      {/* Signed out, Sign in is at the page's top right (SignedOutBar). */}
+      {account && (
+        <div className="sidebar-account-slot">
+          <SidebarAccountMenu account={account} />
+        </div>
+      )}
       <SidebarSearch />
       <nav aria-label="Main" className="sidebar-nav">
         {account && (

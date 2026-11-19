@@ -1,16 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-// `/` sends a visitor on before anything renders, so browsers and crawlers
-// get a real 307 (a redirect from a streamed page is a 200 with a meta
-// refresh): to the workspace with a session cookie, otherwise to the landing
-// page. The cookie's presence is enough to choose; the workspace checks the
-// session itself and sends a stale one to sign in. (src/app/(site)/page.tsx
-// does the same if this doesn't run.)
+// `/` for a visitor without a session cookie: a real 307 to the landing page
+// before anything renders (a redirect from a streamed page is a 200 with a
+// meta refresh), which is what crawlers and new visitors get. With a cookie,
+// src/app/(site)/page.tsx decides: the cookie may be stale (expired, revoked,
+// or from before a store change), so only the session itself can say whether
+// to open the workspace or the landing page.
 const SESSION_COOKIES = ["__Host-certified_session", "certified_session"];
 
 export function proxy(request: NextRequest) {
-  const signedIn = SESSION_COOKIES.some((name) => request.cookies.has(name));
-  return NextResponse.redirect(new URL(signedIn ? "/workspace" : "/welcome", request.url), 307);
+  if (SESSION_COOKIES.some((name) => request.cookies.has(name))) return NextResponse.next();
+  return NextResponse.redirect(new URL("/welcome", request.url), 307);
 }
 
 export const config = { matcher: "/" };

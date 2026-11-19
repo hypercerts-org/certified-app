@@ -13,6 +13,7 @@ export function SignInButton({
   returnTo,
   anotherAccount = false,
   buttonClassName,
+  variant = "primary",
   children = "Sign in",
 }: {
   returnTo?: string;
@@ -20,6 +21,8 @@ export function SignInButton({
   anotherAccount?: boolean;
   /** Replaces the design-system button with a plain one, for a menu row. */
   buttonClassName?: string;
+  /** Secondary in the chrome (top bars), where it sits beside the navigation. */
+  variant?: "primary" | "secondary";
   children?: ReactNode;
 }) {
   const pathname = usePathname();
@@ -34,7 +37,7 @@ export function SignInButton({
           {children}
         </button>
       ) : (
-        <Button type="submit" variant="primary" size="sm">
+        <Button type="submit" variant={variant} size="sm">
           {children}
         </Button>
       )}
