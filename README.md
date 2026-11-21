@@ -105,3 +105,13 @@ Known challenges and our current answers. These feed the architecture notes and 
 - The Hypercerts API answers HTTP 500 (`script_error`, with `RecordNotFound` in the message) for a record it hasn't indexed, instead of a `RecordNotFound` error. The app recognizes the message for now: [TECH-858](https://linear.app/hypercerts/issue/TECH-858).
 
 Checked 2026-11-09 against the dev server in headless Chromium, with the browser in Europe/Stockholm, America/Los_Angeles and Pacific/Auckland: no hydration warnings or page errors on `/`, `/explore`, `/explore?q=earth`, an organization page, a project page and the embed. "Load more" pages correctly (three rounds each) on Explore, search, an organization's Activities tile and the embed, including inside an iframe on another origin, where links open in a new tab.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE). Section 4 of the license sets the conditions for redistribution; under section 4(d), a modified version you distribute must include the attribution notices from the [NOTICE](NOTICE) file that pertain to it.
+
+Versions from before the change to Apache-2.0 were licensed under MIT. The [NOTICE](NOTICE) file keeps the MIT terms for that earlier code.
+
+The `com.atproto` Lexicon schema in `lexicons/com/` comes from Bluesky's [atproto](https://github.com/bluesky-social/atproto) repository and keeps its upstream license: MIT OR Apache-2.0, Copyright (c) 2022-2026 Bluesky Social PBC, and Contributors.
+
+The licenses don't cover the logos and wordmarks in this repository, such as the Certified brandmark and wordmark and the partner logos. They belong to their owners.
