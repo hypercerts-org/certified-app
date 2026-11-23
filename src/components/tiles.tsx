@@ -2,7 +2,7 @@ import { Folder } from "lucide-react";
 import { Empty } from "@/components/empty";
 import { listActivitiesPage, listProjectsPage } from "@/lib/hypercerts/queries";
 import { ActivityList } from "./activity-list";
-import { ProjectCardView, WorkCardsSkeleton } from "./cards";
+import { ActivityPostsSkeleton, ProjectCardsSkeleton, ProjectCardView } from "./cards";
 import { Tile, TileSkeleton } from "./tile";
 
 // Profile tiles. Each tile fetches its own data, so a page can show, hide or
@@ -14,7 +14,7 @@ export async function ActivitiesTile({ did }: { did: string }) {
   const page = await listActivitiesPage({ author: did, limit: 6 });
   return (
     <Tile title="Activities">
-      <ActivityList initial={page} source={{ kind: "author", did }} showAuthor={false} />
+      <ActivityList initial={page} source={{ kind: "author", did }} ownerDid={did} />
     </Tile>
   );
 }
@@ -26,7 +26,7 @@ export async function ProjectsTile({ did }: { did: string }) {
       {page.items.length === 0 ? (
         <Empty icon={Folder} title="No projects yet" />
       ) : (
-        <ul className="work-grid">
+        <ul className="card-gallery">
           {page.items.map((project) => (
             <ProjectCardView key={project.uri} project={project} />
           ))}
@@ -39,7 +39,7 @@ export async function ProjectsTile({ did }: { did: string }) {
 export function ActivitiesTileSkeleton() {
   return (
     <TileSkeleton title="Activities">
-      <WorkCardsSkeleton count={4} />
+      <ActivityPostsSkeleton />
     </TileSkeleton>
   );
 }
@@ -47,7 +47,7 @@ export function ActivitiesTileSkeleton() {
 export function ProjectsTileSkeleton() {
   return (
     <TileSkeleton title="Projects">
-      <WorkCardsSkeleton count={2} />
+      <ProjectCardsSkeleton />
     </TileSkeleton>
   );
 }

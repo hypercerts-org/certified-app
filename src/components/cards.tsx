@@ -1,6 +1,9 @@
 import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { ActorLink, ActorRow, actorHref } from "@/components/actor";
+import { Folder } from "lucide-react";
+import type { ReactNode } from "react";
+import { ActorHandle, ActorLink, ActorRow, actorHref } from "@/components/actor";
 import { IntentLink } from "@/components/intent-link";
+import { activityMeta, projectMeta } from "@/components/records";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
 // Presentational cards. They render the same on the server (first page) and on
@@ -57,101 +60,75 @@ export function ActorCardView({ actor }: { actor: ActorCard }) {
   );
 }
 
-/** A record's image, or nothing: cards without one stay text only. */
-function CardImage({ src }: { src: string | null }) {
-  if (!src) return null;
-  return (
-    <div className="work-card-image">
-      {/* Indexed images come from many hosts: no next/image optimization. */}
-      {/* biome-ignore lint/performance/noImgElement: arbitrary remote hosts */}
-      <img src={src} alt="" loading="lazy" />
-    </div>
-  );
-}
-
-export function ActivityCardView({
-  activity,
-  showAuthor,
+/**
+ * A project as a card: its picture (or a folder), its title, its short
+ * description (else how many activities it holds); its author above it where
+ * the list mixes authors (`author`), and anything else under it (`footer`).
+ * The whole card leads to the project.
+ */
+export function ProjectCardView({
+  project,
+  author,
+  footer,
 }: {
-  activity: ActivityCard;
-  showAuthor: boolean;
+  project: ProjectCard;
+  author?: ActorCard;
+  footer?: ReactNode;
 }) {
   return (
-    <Card as="li" variant="panel" className="work-card">
-      <div className="work-card-layout">
-        <CardImage src={activity.imageUrl} />
-        <div className="work-card-body">
-          <Heading level={3} size="heading">
-            <IntentLink href={activityHref(activity.uri)} className="work-card-link">
-              {activity.title}
-            </IntentLink>
-          </Heading>
-          {activity.summary && (
-            <Text size="body-sm" className="clamp">
-              {activity.summary}
-            </Text>
-          )}
-          <div className="meta">
-            {showAuthor && (
-              <Text as="span" size="micro">
-                <ActorLink actor={activity.author} />
-              </Text>
-            )}
-            {activity.createdAt && (
-              <Text as="span" size="micro" tone="muted">
-                {activity.createdAt}
-              </Text>
-            )}
-          </div>
-        </div>
+    <li className="project-card">
+      {author && (
+        <ActorRow
+          actor={author}
+          href={actorHref(author)}
+          size="sm"
+          secondary={<ActorHandle actor={author} />}
+        />
+      )}
+      <div className="project-card-image">
+        {project.imageUrl ? (
+          // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
+          <img src={project.imageUrl} alt="" loading="lazy" />
+        ) : (
+          <Folder size={32} strokeWidth={1.25} aria-hidden />
+        )}
       </div>
-    </Card>
+      <Heading level={3} size="heading" className="project-card-title">
+        <IntentLink href={projectHref(project)} className="card-link" dir="auto">
+          {project.title}
+        </IntentLink>
+      </Heading>
+      <Text size="body-sm" tone="muted" className="clamp" dir="auto">
+        {project.summary ?? projectMeta(project)}
+      </Text>
+      {footer}
+    </li>
   );
 }
 
-export function ProjectCardView({ project }: { project: ProjectCard }) {
+/** Project cards on their way: a picture and a title each. */
+export function ProjectCardsSkeleton({
+  count = 4,
+  author = false,
+}: {
+  count?: number;
+  author?: boolean;
+}) {
   return (
-    <Card as="li" variant="panel" className="work-card">
-      <div className="work-card-layout">
-        <CardImage src={project.imageUrl} />
-        <div className="work-card-body">
-          <Heading level={3} size="heading">
-            <IntentLink href={projectHref(project)} className="work-card-link">
-              {project.title}
-            </IntentLink>
-          </Heading>
-          <Text size="body-sm" tone="muted">
-            {project.activityCount === 1 ? "1 activity" : `${project.activityCount} activities`}
-          </Text>
-          {project.summary && (
-            <Text size="body-sm" className="clamp">
-              {project.summary}
-            </Text>
-          )}
+    <div className="card-gallery" aria-hidden>
+      {skeletonSlots(count).map((slot) => (
+        <div key={slot} className="project-card">
+          {author && <Skeleton variant="line" className="skeleton-card-meta" />}
+          <Skeleton variant="box" className="project-card-image" />
+          <Skeleton variant="line" className="skeleton-card-title" />
         </div>
-      </div>
-    </Card>
+      ))}
+    </div>
   );
 }
 
 /** Keys for n placeholders of a skeleton, which have no identity of their own. */
 export const skeletonSlots = (n: number) => Array.from({ length: n }, (_, i) => `slot-${i}`);
-
-/** Activity or project cards on their way: each a card with a title and a line under it. */
-export function WorkCardsSkeleton({ count = 2 }: { count?: number }) {
-  return (
-    <div className="work-grid" aria-hidden>
-      {skeletonSlots(count).map((slot) => (
-        <Card key={slot} variant="panel" className="work-card">
-          <div className="work-card-body">
-            <Skeleton variant="line" className="skeleton-card-title" />
-            <Skeleton variant="line" className="skeleton-card-meta" />
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
 
 /** Account cards on their way: each an avatar, a name and a line under it. */
 export function ActorCardsSkeleton({ count = 6 }: { count?: number }) {
@@ -170,24 +147,26 @@ export function ActorCardsSkeleton({ count = 6 }: { count?: number }) {
 }
 
 /**
- * An activity as a post in a list, like a blog's: its title, the start of
- * its text, its date (and its author, when not the page's own account), and
- * its picture beside them.
+ * An activity as a post, like a blog's: its title, the start of its text,
+ * its meta line (as its row has it) and its author when not the page's own
+ * account (`ownerDid`), its picture beside them. Activities are often updates
+ * to a project, so this is how a list of them reads everywhere. The whole
+ * post leads to the activity.
  */
-export function ActivityPostView({
+export function ActivityPost({
   activity,
   ownerDid,
 }: {
   activity: ActivityCard;
   ownerDid?: string;
 }) {
-  const href = activityHref(activity.uri);
+  const meta = activityMeta(activity);
   const byOther = activity.author.did !== ownerDid;
   return (
     <li className="post">
       <div className="post-text">
         <Heading level={2} size="heading">
-          <IntentLink href={href} className="work-card-link" dir="auto">
+          <IntentLink href={activityHref(activity.uri)} className="card-link" dir="auto">
             {activity.title}
           </IntentLink>
         </Heading>
@@ -196,21 +175,23 @@ export function ActivityPostView({
             {activity.summary}
           </Text>
         )}
-        <Text as="p" size="body-sm" tone="muted" className="post-meta">
-          {activity.period ?? activity.createdAt}
-          {byOther && (
-            <>
-              {(activity.period ?? activity.createdAt) && " · "}
-              by <ActorLink actor={activity.author} avatar={false} />
-            </>
-          )}
-        </Text>
+        {(meta || byOther) && (
+          <Text as="p" size="body-sm" tone="muted" className="post-meta">
+            {meta}
+            {byOther && (
+              <>
+                {meta && " · "}
+                by <ActorLink actor={activity.author} avatar={false} />
+              </>
+            )}
+          </Text>
+        )}
       </div>
       {activity.imageUrl && (
-        <IntentLink href={href} className="post-image" tabIndex={-1} aria-hidden>
+        <div className="post-image">
           {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
           <img src={activity.imageUrl} alt="" loading="lazy" />
-        </IntentLink>
+        </div>
       )}
     </li>
   );

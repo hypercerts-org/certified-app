@@ -1424,73 +1424,21 @@ a.post-amount:hover {
   overflow-wrap: anywhere;
 }
 
-/* Activity and project cards. Each card is its own container: wide, the
-   image sits beside the text (as on the staging redesign); narrow, on top. */
-.work-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.work-card {
-  container: work-card / inline-size;
-  overflow: hidden;
-  padding: 0;
-}
-
-.work-card-image {
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-  background: var(--hc-surface-tint);
-}
-
-.work-card-image img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-.work-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  min-inline-size: 0;
-}
-
-@container work-card (inline-size > 34rem) {
-  .work-card-layout:has(.work-card-image) {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-  }
-
-  /* The image follows the text's height, whatever its own shape. */
-  .work-card-image {
-    position: relative;
-    aspect-ratio: auto;
-    min-block-size: 12rem;
-  }
-
-  .work-card-image img {
-    position: absolute;
-    inset: 0;
-  }
-
-  .work-card-body {
-    justify-content: center;
-    padding: var(--space-6) var(--space-8);
-  }
-}
-
-.work-card-link {
+/* A card's title as its link: its hit area covers the card (the card is
+   positioned), so the whole card leads to the record; links inside the card
+   (its author) sit above it and stay their own. */
+.card-link {
   color: inherit;
   text-decoration: none;
 }
 
-.work-card-link:hover {
+.card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.card-link:hover {
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
@@ -2448,6 +2396,7 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .post {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: var(--space-6);
@@ -2815,24 +2764,7 @@ a.badge-title:hover {
 
 .work-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.work-search {
-  position: relative;
-  display: flex;
-  flex: 1 1 16rem;
-  align-items: center;
-  max-inline-size: 24rem;
-}
-
-.skeleton-search {
-  flex: 1 1 16rem;
-  max-inline-size: 24rem;
-  block-size: 2.5rem;
+  justify-content: flex-end;
 }
 
 .work-actions {
@@ -3301,7 +3233,7 @@ details[open] > .work-folder-head .work-folder-chevron {
   }
 }
 
-.explore-gallery {
+.card-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
   gap: var(--space-8) var(--space-6);
@@ -3310,7 +3242,8 @@ details[open] > .work-folder-head .work-folder-chevron {
   list-style: none;
 }
 
-.explore-card {
+.project-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -3330,7 +3263,7 @@ details[open] > .work-folder-head .work-folder-chevron {
   gap: var(--space-3);
 }
 
-.explore-card-image {
+.project-card-image {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3340,19 +3273,19 @@ details[open] > .work-folder-head .work-folder-chevron {
   color: var(--hc-text-muted);
 }
 
-.explore-card-image img {
+.project-card-image img {
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;
 }
 
-.explore-card-title {
+.project-card-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.explore-card .explore-age {
+.project-card .explore-age {
   inline-size: auto;
   text-align: start;
 }
@@ -3621,6 +3554,13 @@ details[open] > .work-folder-head .work-folder-chevron {
 a.actor-row-main:hover .actor-row-name {
   text-decoration: underline;
   text-underline-offset: 0.2em;
+}
+
+/* Account links inside a card whose title link covers it (.card-link). */
+.post .actor-link,
+.project-card .actor-row {
+  position: relative;
+  z-index: 1;
 }
 
 .overview-rows .text-hc-micro {

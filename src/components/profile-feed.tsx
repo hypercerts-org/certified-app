@@ -15,6 +15,7 @@ import { ActorAvatar, ActorLink } from "@/components/actor";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
+import { activityMeta, projectMeta } from "@/components/records";
 import type { ActorCard, FeedLink, FeedRow, FeedTarget, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 
@@ -234,7 +235,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
           <RecordText
             href={href}
             title={row.activity.title}
-            meta={row.activity.period}
+            meta={activityMeta(row.activity)}
             text={row.activity.summary}
           />
         ),
@@ -250,7 +251,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
           <RecordText
             href={href}
             title={row.project.title}
-            meta={plural(row.project.activityCount, "activity", "activities")}
+            meta={projectMeta(row.project)}
             text={row.project.summary}
           />
         ),

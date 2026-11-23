@@ -2,20 +2,20 @@
 // when, the author and how long ago) or a gallery of cards. Plain view models
 // only: the first page renders on the server, later ones in the browser.
 
-import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { Folder, SquareCheckBig } from "lucide-react";
-import { ActorAvatar, ActorHandle, ActorLink, ActorName, ActorRow } from "@/components/actor";
-import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
+import { Card, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ActorAvatar, ActorHandle, ActorLink, ActorName } from "@/components/actor";
+import {
+  ActivityPost,
+  ActivityPostsSkeleton,
+  actorHref,
+  ProjectCardsSkeleton,
+  ProjectCardView,
+  skeletonSlots,
+} from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
-import { ActivityRow, activityCount, ProjectRow, RecordRowSkeleton } from "@/components/records";
+import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import type { ExploreKind, ExploreView } from "@/lib/explore-state";
-import type {
-  ActorCard,
-  Age,
-  ExploreAccount,
-  ExploreActivity,
-  ExploreProject,
-} from "@/lib/hypercerts/views";
+import type { Age, ExploreAccount, ExploreActivity, ExploreProject } from "@/lib/hypercerts/views";
 
 export type ExploreItem = ExploreActivity | ExploreProject | ExploreAccount;
 
@@ -85,69 +85,6 @@ function AccountRow({ account }: { account: ExploreAccount }) {
   );
 }
 
-/** The author above a gallery card: avatar, name and handle. */
-function CardAuthor({ actor }: { actor: ActorCard }) {
-  return (
-    <ActorRow
-      actor={actor}
-      href={actorHref(actor)}
-      size="sm"
-      secondary={<ActorHandle actor={actor} />}
-    />
-  );
-}
-
-function CardImage({ href, src, project }: { href: string; src: string | null; project: boolean }) {
-  return (
-    <IntentLink href={href} className="explore-card-image" tabIndex={-1} aria-hidden>
-      {src ? (
-        // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
-        <img src={src} alt="" loading="lazy" />
-      ) : project ? (
-        <Folder size={32} strokeWidth={1.25} aria-hidden />
-      ) : (
-        <SquareCheckBig size={32} strokeWidth={1.25} aria-hidden />
-      )}
-    </IntentLink>
-  );
-}
-
-function WorkCard({
-  href,
-  title,
-  text,
-  image,
-  project,
-  author,
-  age,
-}: {
-  href: string;
-  title: string;
-  text: string | null;
-  image: string | null;
-  project: boolean;
-  author: ActorCard;
-  age: Age | null;
-}) {
-  return (
-    <li className="explore-card">
-      <CardAuthor actor={author} />
-      <CardImage href={href} src={image} project={project} />
-      <Heading level={3} size="heading" className="explore-card-title">
-        <IntentLink href={href} className="work-card-link" dir="auto">
-          {title}
-        </IntentLink>
-      </Heading>
-      {text && (
-        <Text size="body-sm" tone="muted" className="clamp" dir="auto">
-          {text}
-        </Text>
-      )}
-      <AgeText age={age} />
-    </li>
-  );
-}
-
 function AccountCard({ account }: { account: ExploreAccount }) {
   return (
     <Card as="li" variant="panel" className="explore-account-card">
@@ -173,36 +110,6 @@ function Row({ kind, item }: { kind: ExploreKind; item: ExploreItem }) {
   return <AccountRow account={item as ExploreAccount} />;
 }
 
-function GalleryCard({ kind, item }: { kind: ExploreKind; item: ExploreItem }) {
-  if (kind === "accounts") return <AccountCard account={item as ExploreAccount} />;
-  if (kind === "projects") {
-    const project = item as ExploreProject;
-    return (
-      <WorkCard
-        href={projectHref(project)}
-        title={project.title}
-        text={project.summary ?? activityCount(project.activityCount)}
-        image={project.imageUrl}
-        project
-        author={project.author}
-        age={project.age}
-      />
-    );
-  }
-  const activity = item as ExploreActivity;
-  return (
-    <WorkCard
-      href={activityHref(activity.uri)}
-      title={activity.title}
-      text={activity.summary}
-      image={activity.imageUrl}
-      project={false}
-      author={activity.author}
-      age={activity.age}
-    />
-  );
-}
-
 export function ExploreItems({
   kind,
   items,
@@ -212,11 +119,36 @@ export function ExploreItems({
   items: ExploreItem[];
   view?: ExploreView;
 }) {
+  // Cards: accounts and projects as the profile's tabs show them; activities
+  // as posts, as everywhere.
   if (view === "gallery") {
+    if (kind === "activities") {
+      return (
+        <ul className="posts">
+          {(items as ExploreActivity[]).map((activity) => (
+            <ActivityPost key={activity.uri} activity={activity} />
+          ))}
+        </ul>
+      );
+    }
+    if (kind === "projects") {
+      return (
+        <ul className="card-gallery">
+          {(items as ExploreProject[]).map((project) => (
+            <ProjectCardView
+              key={project.uri}
+              project={project}
+              author={project.author}
+              footer={<AgeText age={project.age} />}
+            />
+          ))}
+        </ul>
+      );
+    }
     return (
-      <ul className={kind === "accounts" ? "grid" : "explore-gallery"}>
-        {items.map((item) => (
-          <GalleryCard key={exploreKey(item)} kind={kind} item={item} />
+      <ul className="grid">
+        {(items as ExploreAccount[]).map((account) => (
+          <AccountCard key={account.did} account={account} />
         ))}
       </ul>
     );
@@ -255,30 +187,19 @@ export function ExploreRowsSkeleton({ rows = 8, kind }: { rows?: number; kind: E
   );
 }
 
-/** Gallery cards on their way: an author, a picture and a title. */
+/** Gallery cards on their way: as the cards themselves will be. */
 export function ExploreGallerySkeleton({ count = 8, kind }: { count?: number; kind: ExploreKind }) {
-  if (kind === "accounts") {
-    return (
-      <div className="grid" aria-hidden>
-        {skeletonSlots(count).map((slot) => (
-          <Card key={slot} variant="panel" className="explore-account-card">
-            <div className="skeleton-identity">
-              <Skeleton variant="box" className="skeleton-person-avatar" />
-              <Skeleton variant="text" lines={2} className="overview-row-text" />
-            </div>
-          </Card>
-        ))}
-      </div>
-    );
-  }
+  if (kind === "activities") return <ActivityPostsSkeleton count={4} />;
+  if (kind === "projects") return <ProjectCardsSkeleton count={count} author />;
   return (
-    <div className="explore-gallery" aria-hidden>
+    <div className="grid" aria-hidden>
       {skeletonSlots(count).map((slot) => (
-        <div key={slot} className="explore-card">
-          <Skeleton variant="line" className="skeleton-card-meta" />
-          <Skeleton variant="box" className="explore-card-image" />
-          <Skeleton variant="line" className="skeleton-card-title" />
-        </div>
+        <Card key={slot} variant="panel" className="explore-account-card">
+          <div className="skeleton-identity">
+            <Skeleton variant="box" className="skeleton-person-avatar" />
+            <Skeleton variant="text" lines={2} className="overview-row-text" />
+          </div>
+        </Card>
       ))}
     </div>
   );

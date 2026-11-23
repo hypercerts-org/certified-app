@@ -62,9 +62,9 @@ function ProfileLink({ link }: { link: AccountLink }) {
 
 type AccountLink = {
   href: string;
-  /** What the link reads: its own label, else the address without the scheme. */
+  /** What the link reads: its own label, else its domain. */
   label: string;
-  /** The address, for a link shown by its label. */
+  /** The full address, shown on hover. */
   address: string | null;
   kind: "web" | "bluesky" | "email";
 };
@@ -74,6 +74,9 @@ const shortAddress = (url: string) =>
     .replace(/^https?:\/\/(www\.)?/i, "")
     .replace(/\/+$/, "")
     .toLowerCase();
+
+/** The domain a link leads to, without "www.": "facebook.com". */
+const domainOf = (url: string) => new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
 
 /**
  * Every link once: the website first, then an organization's other links (by
@@ -91,8 +94,10 @@ function links(actor: ActorDetail): AccountLink[] {
     const bluesky = /^(bsky\.app|bsky\.social)(\/|$)/.test(address);
     out.push({
       href: url,
-      label: label ?? address,
-      address: label ? address : null,
+      // Long addresses made the list hard to read: the domain says where it
+      // leads, and the full address shows on hover.
+      label: label ?? domainOf(url),
+      address,
       kind: bluesky ? "bluesky" : "web",
     });
   }

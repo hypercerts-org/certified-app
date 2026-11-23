@@ -2,8 +2,10 @@
 // and reach the index a moment later (it should take a second or two); an
 // action waits for that, then expires the cached pages the write changes, so
 // every page shows it from the server, the one source of what is indexed.
-// Each caller checks for its own record, as the API can't say which repository
-// revision it has indexed (TECH-938); with that, one generic check would do.
+// Each caller checks for its own record. One generic check would need the
+// index to report which repository revision it has reached (as Bluesky's
+// AppView does), an upstream change to HappyView that was judged not worth it
+// (TECH-938, canceled): a per-record check is simple and reliable.
 import "server-only";
 
 /** How long an action waits for the index before giving up. */

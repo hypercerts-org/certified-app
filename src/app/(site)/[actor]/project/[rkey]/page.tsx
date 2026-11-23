@@ -7,14 +7,7 @@ import { listProjectActivitiesPage } from "@/lib/hypercerts/queries";
 async function Activities({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "params">) {
   const { actor, uri } = await projectFrom(params);
   const page = await listProjectActivitiesPage({ project: uri });
-  return (
-    <ActivityList
-      initial={page}
-      source={{ kind: "project", uri }}
-      variant="posts"
-      ownerDid={actor.did}
-    />
-  );
+  return <ActivityList initial={page} source={{ kind: "project", uri }} ownerDid={actor.did} />;
 }
 
 /** A project's activities, newest first, as posts: its default tab. */

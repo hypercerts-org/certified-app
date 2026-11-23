@@ -1,19 +1,15 @@
-"use client";
-
 // Projects and activities, after the staging redesign's Workspace section:
 // each project a folder holding its activities, then "Without a project" for
 // the account's activities that sit in none. One activity can sit in several
 // projects, so it shows in each, with a chip naming the others.
 //
-// The rows arrive rendered by the server (work-page data, cached); this
-// component only adds the search and remembers folders opened by hand.
-// Folders are <details>, so they open and close without JavaScript. New
+// Rendered on the server from the work-page data (cached). Folders are
+// <details>, so they open and close without JavaScript. New
 // activity and New project open their forms; deleting, and moving activities
 // between projects, come later.
 
-import { Button, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
-import { ArrowRight, ChevronRight, FolderGit2, Plus, SearchX } from "lucide-react";
-import { useState } from "react";
+import { Button } from "@hypercerts-org/ui-react";
+import { ArrowRight, ChevronRight, FolderGit2, Plus } from "lucide-react";
 import { ActorLink } from "@/components/actor";
 import { projectHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
@@ -44,33 +40,6 @@ export type WorkFolder = {
 
 /** Up to this many folders start open, as on staging. */
 const OPEN_BY_DEFAULT = 3;
-
-const matches = (text: string, query: string) => text.toLowerCase().includes(query);
-
-function Toolbar({
-  query,
-  onQuery,
-  section,
-}: {
-  query: string;
-  onQuery: (query: string) => void;
-  section: string;
-}) {
-  return (
-    <div className="work-toolbar">
-      {/* Filters what's on the page: no debounce needed. */}
-      <SearchInput
-        className="work-search"
-        label="Search projects and activities"
-        placeholder="Search projects and activities"
-        value={query}
-        debounceMs={0}
-        onChange={onQuery}
-      />
-      <NewButtons section={section} />
-    </div>
-  );
-}
 
 /**
  * New activity and New project: their forms, under the section's address
@@ -130,22 +99,11 @@ function Row({ row, owner }: { row: WorkRow; owner: string }) {
 
 const chevron = <ChevronRight size={16} aria-hidden className="work-folder-chevron" />;
 
-function FolderView({
-  folder,
-  rows,
-  open,
-  onToggle,
-  query,
-}: {
-  folder: WorkFolder;
-  rows: WorkRow[];
-  open: boolean;
-  onToggle: (open: boolean) => void;
-  query: string;
-}) {
+function FolderView({ folder, open }: { folder: WorkFolder; open: boolean }) {
+  const { rows } = folder;
   return (
     <li className="work-folder">
-      <details open={open} onToggle={(event) => onToggle(event.currentTarget.open)}>
+      <details open={open}>
         {/* The head opens the folder; the arrow beside it opens the project. */}
         <summary className="work-folder-head">
           {folder.project ? (
@@ -168,9 +126,7 @@ function FolderView({
             ))}
           </ul>
         ) : (
-          <p className="work-folder-empty">
-            {query ? "No activities in this project match." : "No activities in this project yet."}
-          </p>
+          <p className="work-folder-empty">No activities in this project yet.</p>
         )}
       </details>
       {folder.project && (
@@ -197,11 +153,6 @@ export function WorkFolders({
   note: string | null;
   section: string;
 }) {
-  const [query, setQuery] = useState("");
-  // Folders opened or closed by hand; the rest follow OPEN_BY_DEFAULT.
-  const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(new Map());
-  const q = query.trim().toLowerCase();
-
   if (folders.length === 0) {
     return (
       <Empty
@@ -212,60 +163,27 @@ export function WorkFolders({
       />
     );
   }
-
-  // While searching, a folder shows when its name or any activity in it
-  // matches, open, with the matching activities (all of them when its name
-  // matches).
-  const shown = folders.flatMap((folder) => {
-    if (!q) return [{ folder, rows: folder.rows }];
-    if (matches(folder.project?.title ?? "Without a project", q))
-      return [{ folder, rows: folder.rows }];
-    const rows = folder.rows.filter((row) => matches(row.activity.title, q));
-    return rows.length > 0 ? [{ folder, rows }] : [];
-  });
   const openByDefault = folders.length <= OPEN_BY_DEFAULT;
-
   return (
     <section className="work" aria-label="Projects and activities">
-      <Toolbar query={query} onQuery={setQuery} section={section} />
-      {shown.length === 0 ? (
-        <Empty
-          icon={SearchX}
-          title={`Nothing matches "${query.trim()}".`}
-          action={
-            <Button variant="secondary" size="sm" onClick={() => setQuery("")}>
-              Clear search
-            </Button>
-          }
-        />
-      ) : (
-        <ul className="work-folders">
-          {shown.map(({ folder, rows }) => (
-            <FolderView
-              key={folder.key}
-              folder={folder}
-              rows={rows}
-              query={q}
-              open={Boolean(q) || (opened.get(folder.key) ?? openByDefault)}
-              onToggle={(open) => {
-                // <details> reports its own toggles, also the ones the search causes.
-                if (!q) setOpened((prev) => new Map(prev).set(folder.key, open));
-              }}
-            />
-          ))}
-        </ul>
-      )}
+      <div className="work-toolbar">
+        <NewButtons section={section} />
+      </div>
+      <ul className="work-folders">
+        {folders.map((folder) => (
+          <FolderView key={folder.key} folder={folder} open={openByDefault} />
+        ))}
+      </ul>
       {note && <p className="work-note">{note}</p>}
     </section>
   );
 }
 
-/** Shaped like the toolbar and three folders, so nothing moves when they arrive. */
+/** Shaped like the buttons and three folders, so nothing moves when they arrive. */
 export function WorkFoldersSkeleton() {
   return (
     <div className="work" aria-hidden>
       <div className="work-toolbar">
-        <Skeleton variant="box" className="skeleton-search" />
         <NewButtons section={null} />
       </div>
       <div className="work-folders">
