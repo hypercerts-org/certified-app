@@ -124,20 +124,6 @@ function Section({
   );
 }
 
-/** New activity: its page, as a button. */
-function NewActivity({ href, primary }: { href: string; primary?: boolean }) {
-  return (
-    <Button
-      href={href}
-      variant={primary ? "primary" : "secondary"}
-      size={primary ? undefined : "sm"}
-    >
-      <Plus size={16} aria-hidden />
-      New activity
-    </Button>
-  );
-}
-
 // Skeletons, shaped like the sections, so nothing moves when they arrive.
 
 function RowsSkeleton({ rows }: { rows: number }) {
@@ -227,7 +213,6 @@ async function RecordsSection({ did }: { did: string }) {
     listLatestRecords(did, LATEST_RECORDS),
   ]);
   const work = `${workspaceHref(did)}/projects`;
-  const newActivity = `${work}/new-activity`;
   const empty =
     latest.length === 0 &&
     counts.activities.value === 0 &&
@@ -235,13 +220,7 @@ async function RecordsSection({ did }: { did: string }) {
     counts.lists.value === 0;
 
   return (
-    <Section
-      title="Your records"
-      description="What you have published, here or in other apps."
-      // With records, New activity sits beside the title; without, the
-      // empty state carries it (as on staging).
-      action={empty ? undefined : <NewActivity href={newActivity} />}
-    >
+    <Section title="Your records" description="What you have published, here or in other apps.">
       {empty ? (
         <Empty
           icon={FileBadge}
@@ -249,7 +228,11 @@ async function RecordsSection({ did }: { did: string }) {
           description="Activities and projects you publish, here or in other apps, show up here."
           action={
             <div className="empty-actions">
-              <NewActivity href={newActivity} primary />
+              {/* Without records, a way to start; the projects page has these too. */}
+              <Button href={`${work}/new-activity`} variant="primary">
+                <Plus size={16} aria-hidden />
+                New activity
+              </Button>
               <Button href={`${work}/new-project`} variant="secondary">
                 <Plus size={16} aria-hidden />
                 New project
