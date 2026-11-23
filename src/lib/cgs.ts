@@ -12,7 +12,7 @@ import { app, com } from "@/lexicons";
 import { jsonStore } from "@/lib/auth/stores";
 import { logError } from "@/lib/log";
 
-const CGS_URL = new URL(process.env.CGS_URL || "https://groups.certified.app");
+export const CGS_URL = new URL(process.env.CGS_URL || "https://groups.certified.app");
 if (
   CGS_URL.protocol !== "https:" &&
   !["127.0.0.1", "[::1]", "localhost"].includes(CGS_URL.hostname)
@@ -22,7 +22,7 @@ if (
 }
 // The DID CGS gives itself unless its deployment sets SERVICE_DID: did:web
 // of its hostname, without a port (CGS src/config.ts). Tokens must match it.
-const CGS_DID = process.env.CGS_DID || `did:web:${CGS_URL.hostname}`;
+export const CGS_DID = process.env.CGS_DID || `did:web:${CGS_URL.hostname}`;
 
 /** Unauthenticated: each call passes its own token (see cgsAuth). */
 export const cgs = new Client({

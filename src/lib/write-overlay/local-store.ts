@@ -1,6 +1,9 @@
-// Saves the PDS has confirmed, kept in IndexedDB so a reload shows them until
-// the Hypercerts API's index catches up. Only public record content is stored.
-import { Dexie, type EntityTable } from "dexie";
+// Writes made in this browser, kept in IndexedDB so a reload shows them until
+// the Hypercerts API's index catches up: saves the PDS has confirmed, and
+// follows and unfollows (shown from the click on). Only public record content
+// is stored.
+import { Dexie, type EntityTable, type Table } from "dexie";
+import type { FollowRef } from "@/lib/hypercerts/views";
 
 export type SavedRecord<T = unknown> = {
   /** The record's AT-URI. */
@@ -15,12 +18,29 @@ export type SavedRecord<T = unknown> = {
   value: T;
 };
 
+/** This browser's last follow or unfollow of `subject` by `actor`. */
+export type FollowSave = {
+  actor: string;
+  subject: string;
+  following: boolean;
+  /** The follow record made (null until the PDS answers, and for an unfollow). */
+  follow: FollowRef | null;
+  /** The follow records an unfollow deletes: the index showing one is lag. */
+  removed: string[];
+  savedAt: number;
+};
+
+/** Index lag is seconds; a follow save this old is forgotten, whatever the index says. */
+const FOLLOW_SAVE_TTL = 60 * 60 * 1000;
+
 class WriteStore extends Dexie {
   saved!: EntityTable<SavedRecord, "uri">;
+  follows!: Table<FollowSave, [string, string]>;
 
   constructor() {
     super("certified-writes");
     this.version(1).stores({ saved: "uri" });
+    this.version(2).stores({ saved: "uri", follows: "[actor+subject], subject" });
   }
 }
 
@@ -64,7 +84,53 @@ export function forgetSave(uri: string, cid: string): Promise<number> {
     .delete();
 }
 
+/**
+ * The index has caught up with a follow once it shows a follow, and with an
+ * unfollow once it shows none, or one the unfollow didn't delete (made since,
+ * elsewhere).
+ */
+export function followCaughtUp(indexed: FollowRef | null, save: FollowSave): boolean {
+  if (save.following) return indexed !== null;
+  return indexed === null || !save.removed.includes(indexed.uri);
+}
+
+const fresh = (save: FollowSave | undefined) =>
+  save && Date.now() - save.savedAt < FOLLOW_SAVE_TTL ? save : undefined;
+
+export async function getFollowSave(actor: string, subject: string) {
+  return fresh(await db().follows.get([actor, subject]));
+}
+
+/** The follows and unfollows of `subject` the index may not show yet. */
+export async function getFollowSavesOf(subject: string): Promise<FollowSave[]> {
+  const saves = await db().follows.where("subject").equals(subject).toArray();
+  return saves.filter((save) => fresh(save));
+}
+
+export async function putFollowSave(save: FollowSave): Promise<void> {
+  await db().follows.put(save);
+}
+
+/** Puts back what was there before a follow or unfollow that failed. */
+export async function restoreFollowSave(
+  actor: string,
+  subject: string,
+  previous: FollowSave | undefined,
+): Promise<void> {
+  if (previous) await db().follows.put(previous);
+  else await db().follows.delete([actor, subject]);
+}
+
+/** Forgets the follow save made at `savedAt`, unless a newer one replaced it. */
+export function forgetFollowSave(actor: string, subject: string, savedAt: number) {
+  return db()
+    .follows.where("[actor+subject]")
+    .equals([actor, subject])
+    .filter((save) => save.savedAt === savedAt)
+    .delete();
+}
+
 /** Forgets every save, so the next person on this browser sees none. */
 export async function clearWriteStore(): Promise<void> {
-  await db().saved.clear();
+  await Promise.all([db().saved.clear(), db().follows.clear()]);
 }

@@ -947,21 +947,26 @@ button.menu-row:disabled:not([aria-current]) {
   object-fit: cover;
 }
 
-/* Avatar, identity and actions: one row from 64rem, stacked below. */
+/* Avatar, identity (name and meta), about (bio, links, trust) and actions.
+   From 64rem the actions sit beside the name and the about runs on beneath
+   them; below, everything stacks beside the avatar and the actions go last. */
 .profile-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
     "avatar identity"
+    "avatar about"
     "actions actions";
-  gap: var(--space-4) var(--space-5);
+  gap: var(--space-2) var(--space-5);
   align-items: start;
 }
 
 @media (min-width: 64rem) {
   .profile-head {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "avatar identity actions";
+    grid-template-areas:
+      "avatar identity actions"
+      "avatar about about";
   }
 }
 
@@ -984,12 +989,26 @@ button.menu-row:disabled:not([aria-current]) {
   }
 }
 
-.profile-identity {
+.profile-identity,
+.profile-about {
   grid-area: identity;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-inline-size: 0;
+}
+
+.profile-about {
+  grid-area: about;
+}
+
+/* Beside the two columns, the about may run a fifth of the way into the
+   right one (20rem, so it stops 16rem short of the edge), past the
+   avatar (6rem) and its gap. */
+@container profile (inline-size >= 56rem) {
+  .profile-about {
+    max-inline-size: calc(100cqi - 16rem - 6rem - var(--space-5));
+  }
 }
 
 /* Its type is Heading's (display-2): only how a long name breaks. */
@@ -1005,10 +1024,6 @@ button.menu-row:disabled:not([aria-current]) {
 /* Each fact stays whole ("Founded Feb 2023"); the line wraps between them. */
 .profile-meta-item {
   white-space: nowrap;
-}
-
-.profile-lead {
-  max-inline-size: 40rem;
 }
 
 .profile-links {
@@ -1045,6 +1060,13 @@ button.menu-row:disabled:not([aria-current]) {
   flex-wrap: wrap;
   gap: var(--space-2);
   min-block-size: 2.25rem;
+}
+
+/* Stacked last, a step further from the about than its lines are apart. */
+@media (width < 64rem) {
+  .profile-actions {
+    margin-block-start: var(--space-2);
+  }
 }
 
 /* The profile's pages: links styled as tabs, scrolling sideways if they
@@ -1510,6 +1532,11 @@ a.post-amount:hover {
   flex-direction: column;
   gap: var(--space-2);
   margin-block-start: var(--space-1);
+}
+
+/* Nothing for this viewer (no endorsements, followers or follows). */
+.trust-line:empty {
+  display: none;
 }
 
 .trust-endorsed {

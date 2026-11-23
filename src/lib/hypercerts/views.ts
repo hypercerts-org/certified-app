@@ -7,6 +7,9 @@
 
 import type { app, org } from "@hypercerts-org/api";
 
+/** A follow record: what unfollowing deletes. */
+export type FollowRef = { uri: string; cid: string };
+
 type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
 type ActorView = org.hypercerts.api.defs.ActorView;
 type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;

@@ -2,8 +2,8 @@
 
 // The profile header's actions and tabs: the client-side pieces.
 //
-// Follow, Endorse and Add to list are placeholders until the Hypercerts SDK
-// ships those writes: shown, so the page has its final shape, but disabled.
+// Endorse and Add to list are placeholders until the Hypercerts SDK ships
+// those writes: shown, so the page has its final shape, but disabled.
 
 import {
   Button,
@@ -20,6 +20,8 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { COMING_SOON, ComingSoonButton } from "@/components/coming-soon";
 import { LinkPending } from "@/components/link-pending";
+import type { FollowRef } from "@/lib/hypercerts/views";
+import { useFollow } from "@/lib/write-overlay/use-follow";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
 async function copy(text: string, what: string) {
@@ -57,32 +59,63 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
 }
 
 /**
- * A visitor's actions: Follow (Following, when the account you act as
- * already does), Endorse, Share and More.
+ * Follow, or Following (a click unfollows), as the account you act as. The
+ * change shows at once; see useFollow.
+ */
+function FollowButton({
+  actor,
+  subject,
+  rendered,
+}: {
+  actor: string;
+  subject: string;
+  rendered: FollowRef | null;
+}) {
+  const { following, toggle } = useFollow(actor, subject, rendered);
+  return following ? (
+    <Button variant="secondary" size="sm" onClick={toggle} title="Unfollow">
+      <Check size={16} aria-hidden />
+      Following
+    </Button>
+  ) : (
+    <Button variant="primary" size="sm" onClick={toggle}>
+      <UserPlus size={16} aria-hidden />
+      Follow
+    </Button>
+  );
+}
+
+/**
+ * A visitor's actions: Follow (signed out, it leads to signing in), Endorse,
+ * Share and More. `actor` is the account the visitor acts as, `follow` its
+ * follow of this one, if any.
  */
 export function VisitorActions({
   did,
   path,
   title,
-  following,
+  actor,
+  follow,
 }: {
   did: string;
   path: string;
   title: string;
-  following: boolean;
+  actor: string | null;
+  follow: FollowRef | null;
 }) {
   return (
     <>
-      {following ? (
-        <ComingSoonButton>
-          <Check size={16} aria-hidden />
-          Following
-        </ComingSoonButton>
+      {actor ? (
+        <FollowButton actor={actor} subject={did} rendered={follow} />
       ) : (
-        <ComingSoonButton variant="primary">
+        <Button
+          href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
+          variant="primary"
+          size="sm"
+        >
           <UserPlus size={16} aria-hidden />
           Follow
-        </ComingSoonButton>
+        </Button>
       )}
       <ComingSoonButton>
         <ThumbsUp size={16} aria-hidden />

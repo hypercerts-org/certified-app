@@ -31,6 +31,7 @@ import {
   type FeedEvent,
   type FeedRow,
   type FeedTarget,
+  type FollowRef,
   formatDate,
   formatMoney,
   type ListCard,
@@ -642,15 +643,25 @@ export async function getEndorsements(did: string): Promise<Endorsements> {
 }
 
 /** Whether `actor` follows `subject`: one lookup, not a page of follows. */
-export async function isFollowing(actor: string, subject: string): Promise<boolean> {
-  "use cache";
-  publicData(tags.follows(actor));
+/**
+ * The index's follow of `subject` by `actor` (the earliest, if there are
+ * duplicates), or null. Never cached: the write overlay asks it whether the
+ * index has caught up with a follow or an unfollow.
+ */
+export async function getIndexedFollow(actor: string, subject: string): Promise<FollowRef | null> {
   const { follow } = await api.call(
     app.certified.graph.getFollow,
     { actor: actor as Did, subject: subject as Did },
     read(),
   );
-  return Boolean(follow);
+  return follow ? { uri: follow.uri, cid: follow.cid } : null;
+}
+
+/** {@link getIndexedFollow}, cached with the actor's follows. */
+export async function getFollow(actor: string, subject: string): Promise<FollowRef | null> {
+  "use cache";
+  publicData(tags.follows(actor));
+  return getIndexedFollow(actor, subject);
 }
 
 export type FollowCounts = { followers: number; following: number };

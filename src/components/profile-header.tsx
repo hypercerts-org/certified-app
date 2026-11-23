@@ -9,12 +9,13 @@ import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
+import { FollowCounts } from "@/components/follow-counts";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { OwnerOnly } from "@/components/viewer-only";
 import { getActingAs } from "@/lib/acting-as";
-import { getEndorsers, getFollowCounts, isFollowing } from "@/lib/hypercerts/queries";
+import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
 
@@ -158,6 +159,9 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
               ))}
             </p>
           )}
+        </div>
+        {/* Its own area, so on a wide page it can run on under the actions. */}
+        <div className="profile-about">
           {lead && (
             <ExpandableText lines={4} className="profile-lead expandable-fade">
               {bio ? (
@@ -213,7 +217,8 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
       did={actor.did}
       path={base}
       title={actor.displayName}
-      following={actingAs ? await isFollowing(actingAs, actor.did) : false}
+      actor={actingAs}
+      follow={actingAs ? await getFollow(actingAs, actor.did) : null}
     />
   );
 }
@@ -278,25 +283,10 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
     getFollowCounts(did),
   ]);
   const { followers, following } = counts;
-  // Only the account itself is told about what isn't there.
-  const none = (
-    <OwnerOnly did={did}>
-      <span className="trust-none">No endorsements yet</span>
-    </OwnerOnly>
-  );
-  if (endorsers.length === 0 && followers === 0 && following === 0) {
-    return (
-      <OwnerOnly did={did}>
-        <div className="trust-line">
-          <span className="trust-none">No endorsements yet</span>
-        </div>
-      </OwnerOnly>
-    );
-  }
-
   return (
+    // Empty (hidden) when there is nothing to show this viewer.
     <div className="trust-line">
-      {endorsers.length > 0 && (
+      {endorsers.length > 0 ? (
         <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
           <span className="trust-faces" aria-hidden>
             {endorsers.slice(0, FACES).map((actor) => (
@@ -305,25 +295,14 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
           </span>
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
+      ) : (
+        // Only the account itself is told about what isn't there.
+        <OwnerOnly did={did}>
+          <span className="trust-none">No endorsements yet</span>
+        </OwnerOnly>
       )}
-      {/* On one line with the counts, as staging has it. */}
-      {endorsers.length === 0 && none}
-      {(followers > 0 || following > 0) && (
-        <p className="trust-counts">
-          {followers > 0 && (
-            <Link prefetch href={`${base}/followers`} className="trust-count">
-              <strong>{numberFormat.format(followers)}</strong>
-              {followers === 1 ? " follower" : " followers"}
-            </Link>
-          )}
-          {followers > 0 && following > 0 && <span aria-hidden> · </span>}
-          {following > 0 && (
-            <Link prefetch href={`${base}/following`} className="trust-count">
-              <strong>{numberFormat.format(following)}</strong> following
-            </Link>
-          )}
-        </p>
-      )}
+      {/* On one line with the endorsements, as staging has it. */}
+      <FollowCounts did={did} base={base} followers={followers} following={following} />
     </div>
   );
 }
@@ -342,6 +321,8 @@ export function ProfileHeaderSkeleton() {
         <div className="profile-identity">
           <Skeleton variant="line" className="skeleton-name" />
           <Skeleton variant="line" className="skeleton-meta" />
+        </div>
+        <div className="profile-about">
           <Skeleton variant="text" lines={2} className="skeleton-lead" />
         </div>
       </div>

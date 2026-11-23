@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { indexCaughtUp, type SavedRecord } from "./local-store";
+import { type FollowSave, followCaughtUp, indexCaughtUp, type SavedRecord } from "./local-store";
 
 const save = (cid: string, replaced: (string | null)[]): SavedRecord => ({
   uri: "at://did:plc:ewvi7nxzyoun6zhxrhs64oiz/app.certified.actor.profile/self",
@@ -31,5 +31,35 @@ describe("indexCaughtUp", () => {
 
   it("is caught up when the index shows a later change made elsewhere", () => {
     expect(indexCaughtUp("bafyother", save("bafyb", ["bafya"]))).toBe(true);
+  });
+});
+
+const followSave = (following: boolean, removed: string[] = []): FollowSave => ({
+  actor: "did:plc:ewvi7nxzyoun6zhxrhs64oiz",
+  subject: "did:plc:sgbjeh7yb3n2edoiaty3gheq",
+  following,
+  follow: null,
+  removed,
+  savedAt: 0,
+});
+const indexed = (rkey: string) => ({
+  uri: `at://did:plc:ewvi7nxzyoun6zhxrhs64oiz/app.certified.graph.follow/${rkey}`,
+  cid: "bafya",
+});
+
+describe("followCaughtUp", () => {
+  it("waits for a follow until the index shows one", () => {
+    expect(followCaughtUp(null, followSave(true))).toBe(false);
+    expect(followCaughtUp(indexed("3k1"), followSave(true))).toBe(true);
+  });
+
+  it("waits for an unfollow while the index shows a follow it deleted", () => {
+    const save = followSave(false, [indexed("3k1").uri]);
+    expect(followCaughtUp(indexed("3k1"), save)).toBe(false);
+    expect(followCaughtUp(null, save)).toBe(true);
+  });
+
+  it("is caught up with an unfollow when the index shows a follow made since", () => {
+    expect(followCaughtUp(indexed("3k2"), followSave(false, [indexed("3k1").uri]))).toBe(true);
   });
 });
