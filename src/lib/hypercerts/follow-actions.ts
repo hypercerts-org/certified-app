@@ -1,8 +1,9 @@
 "use server";
 
 // Follow and unfollow, as the account the user acts as (their own, or an
-// organization through CGS), written with the Hypercerts SDK. The browser
-// shows the change from the click on (lib/write-overlay/use-follow).
+// organization through CGS), written with the Hypercerts SDK. Each waits for
+// the index to show the change, then expires the cached pages it changes, so
+// the page the action returns with (and every page after) shows it.
 
 import {
   followAccount,
@@ -14,6 +15,7 @@ import { updateTag } from "next/cache";
 import { getActingAs } from "@/lib/acting-as";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
+import { waitForIndex } from "@/lib/hypercerts/index-wait";
 import { getIndexedFollow } from "@/lib/hypercerts/queries";
 import { sdkContext, writeTo } from "@/lib/hypercerts/sdk";
 import type { FollowRef } from "@/lib/hypercerts/views";
@@ -24,8 +26,12 @@ type FollowFailure = "signed-out" | "forbidden" | "invalid" | "unknown" | "unava
 type Action = "follow" | "unfollow";
 
 export type FollowFailed = { ok: false; reason: FollowFailure; message: string };
-export type FollowResult = { ok: true; follow: FollowRef } | FollowFailed;
-export type UnfollowResult = { ok: true; removed: string[] } | FollowFailed;
+/**
+ * `follow`: the follow record after the action (null after an unfollow).
+ * `indexed`: the index showed the change before the action gave up waiting.
+ */
+export type FollowResult = { ok: true; follow: FollowRef; indexed: boolean } | FollowFailed;
+export type UnfollowResult = { ok: true; follow: null; indexed: boolean } | FollowFailed;
 
 /**
  * What went wrong, for the toast. `asOrganization`: the write went through
@@ -88,6 +94,17 @@ async function writer(subject: unknown, action: Action) {
 }
 
 /**
+ * Expires what a follow between the two accounts changes: their follows
+ * (counts, lists, the Follow button) and their profiles' feeds.
+ */
+function expireFollows(actor: string, subject: string) {
+  for (const did of [actor, subject]) {
+    updateTag(tags.follows(did));
+    updateTag(tags.actor(did));
+  }
+}
+
+/**
  * Follows account `subject`. When the index already shows a follow (made in
  * another tab, say), returns that one rather than writing a duplicate.
  */
@@ -98,13 +115,17 @@ export async function follow(subject: string): Promise<FollowResult> {
     if ("ok" in w) return w;
     asOrganization = w.asOrganization;
     const existing = await getIndexedFollow(w.actor, w.subject).catch(() => null);
-    if (existing) return { ok: true, follow: existing };
+    if (existing) return { ok: true, follow: existing, indexed: true };
     const made = await followAccount(
       sdkContext(w.session),
       { subject: { did: w.subject } },
       writeTo(w.session, w.actor),
     );
-    return { ok: true, follow: { uri: made.uri, cid: made.cid } };
+    const indexed = await waitForIndex(
+      async () => (await getIndexedFollow(w.actor, w.subject)) !== null,
+    );
+    expireFollows(w.actor, w.subject);
+    return { ok: true, follow: { uri: made.uri, cid: made.cid }, indexed };
   } catch (err) {
     return failed(err, "follow", asOrganization);
   }
@@ -112,7 +133,8 @@ export async function follow(subject: string): Promise<FollowResult> {
 
 /**
  * Unfollows account `subject`: deletes the follow records the browser knows
- * of (`uris`) and the one the index shows. Safe to repeat.
+ * of (`uris`: one the index didn't show yet) and the one the index shows.
+ * Safe to repeat.
  */
 export async function unfollow(input: {
   subject: string;
@@ -127,31 +149,21 @@ export async function unfollow(input: {
     if (known.length > 5 || known.some((uri) => typeof uri !== "string")) {
       return failure("invalid", "unfollow");
     }
-    const indexed = await getIndexedFollow(w.actor, w.subject).catch(() => null);
-    const removed = [...new Set([...known, ...(indexed ? [indexed.uri] : [])])];
+    const shown = await getIndexedFollow(w.actor, w.subject).catch(() => null);
+    const removed = [...new Set([...known, ...(shown ? [shown.uri] : [])])];
     const context = sdkContext(w.session);
     // One at a time: each is its own write, and a failure stops the rest.
     for (const uri of removed) {
       await unfollowAccount(context, { follow: { uri } }, writeTo(w.session, w.actor));
     }
-    return { ok: true, removed };
+    // Done once the index shows none of them (a follow made since, elsewhere, may remain).
+    const indexed = await waitForIndex(async () => {
+      const follow = await getIndexedFollow(w.actor, w.subject);
+      return follow === null || !removed.includes(follow.uri);
+    });
+    expireFollows(w.actor, w.subject);
+    return { ok: true, follow: null, indexed };
   } catch (err) {
     return failed(err, "unfollow", asOrganization);
-  }
-}
-
-/**
- * The index has caught up with a follow or unfollow of `subject`: expire the
- * cached follows of both accounts, so pages render fresh.
- */
-export async function followIndexed(subject: string): Promise<void> {
-  if (typeof subject !== "string" || !isDid(subject)) return;
-  try {
-    const actor = await getActingAs();
-    if (!actor) return;
-    updateTag(tags.follows(actor));
-    updateTag(tags.follows(subject));
-  } catch (err) {
-    if (!(err instanceof SessionUnavailableError)) logError("[follow] cache refresh failed", err);
   }
 }

@@ -1,11 +1,9 @@
-"use client";
-
 import { Text } from "@hypercerts-org/ui-react";
 import type { ProfileFields } from "@/lib/hypercerts/views";
-import { useProfileDisplay } from "@/lib/write-overlay/use-profile";
 
-// A profile's name and description as this browser should show them: what the
-// server rendered, or a save made here that the index hasn't caught up with.
+// A profile's name and description as the index has them. A save waits for
+// the index and expires the cached page (lib/hypercerts/actions), so these
+// show it from the next render on.
 
 /** The profile's name, or `fallback` (the handle, for accounts without one). */
 export function ProfileName({
@@ -17,14 +15,13 @@ export function ProfileName({
   rendered: ProfileFields;
   fallback?: string;
 }) {
-  return useProfileDisplay(did, rendered).displayName || fallback || did;
+  return rendered.displayName || fallback || did;
 }
 
-export function ProfileDescription({ did, rendered }: { did: string; rendered: ProfileFields }) {
-  const { description } = useProfileDisplay(did, rendered);
-  return description ? (
+export function ProfileDescription({ rendered }: { rendered: ProfileFields }) {
+  return rendered.description ? (
     <Text relaxed className="prewrap">
-      {description}
+      {rendered.description}
     </Text>
   ) : (
     <Text tone="muted">No description yet.</Text>

@@ -16,12 +16,12 @@ import {
 import { Check, Copy, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { COMING_SOON, ComingSoonButton } from "@/components/coming-soon";
 import { LinkPending } from "@/components/link-pending";
+import * as followActions from "@/lib/hypercerts/follow-actions";
 import type { FollowRef } from "@/lib/hypercerts/views";
-import { useFollow } from "@/lib/write-overlay/use-follow";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
 async function copy(text: string, what: string) {
@@ -58,20 +58,47 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
   );
 }
 
+/** The action's answer was lost: the change may or may not have been made. */
+const lost = (action: "follow" | "unfollow") =>
+  ({ ok: false, message: `We couldn't confirm the ${action}. Reload to check.` }) as const;
+
 /**
  * Follow, or Following (a click unfollows), as the account you act as. The
- * change shows at once; see useFollow.
+ * click shows the new state at once; the action returns with the page
+ * refreshed from the index, which then shows it. If the index was slower than
+ * the action waited, the button keeps what was written until the page shows
+ * something new.
  */
-function FollowButton({
-  actor,
-  subject,
-  rendered,
-}: {
-  actor: string;
-  subject: string;
-  rendered: FollowRef | null;
-}) {
-  const { following, toggle } = useFollow(actor, subject, rendered);
+function FollowButton({ subject, rendered }: { subject: string; rendered: FollowRef | null }) {
+  const [written, setWritten] = useState<{
+    follow: FollowRef | null;
+    over: FollowRef | null;
+  } | null>(null);
+  // Kept only while the page still shows what it showed when it was written.
+  const current = written && written.over?.uri === rendered?.uri ? written.follow : rendered;
+  const [following, setFollowing] = useOptimistic(current !== null);
+  const [pending, startTransition] = useTransition();
+
+  const toggle = () => {
+    if (pending) return;
+    const next = !following;
+    startTransition(async () => {
+      setFollowing(next);
+      const result = next
+        ? await followActions.follow(subject).catch(() => lost("follow"))
+        : await followActions
+            .unfollow({ subject, uris: current ? [current.uri] : [] })
+            .catch(() => lost("unfollow"));
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      if (!result.indexed) {
+        startTransition(() => setWritten({ follow: result.follow, over: rendered }));
+      }
+    });
+  };
+
   return following ? (
     <Button variant="secondary" size="sm" onClick={toggle} title="Unfollow">
       <Check size={16} aria-hidden />
@@ -106,7 +133,7 @@ export function VisitorActions({
   return (
     <>
       {actor ? (
-        <FollowButton actor={actor} subject={did} rendered={follow} />
+        <FollowButton subject={did} rendered={follow} />
       ) : (
         <Button
           href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}

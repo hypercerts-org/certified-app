@@ -1,18 +1,25 @@
 "use client";
 
 import { Banner, Button, Field, Input, Skeleton, Text, Textarea } from "@hypercerts-org/ui-react";
+import { useMutation } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import type { SaveProfileResult } from "@/lib/hypercerts/actions";
+import { type SaveProfileResult, saveProfile } from "@/lib/hypercerts/actions";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
-import { useSaveProfile } from "@/lib/write-overlay/use-profile";
 
 const NO_PROFILE: ProfileFields = { displayName: "", description: "" };
+
+/** The action's answer was lost: the save may or may not have been made. */
+const UNKNOWN: SaveProfileResult = {
+  ok: false,
+  reason: "unknown",
+  message: "We couldn't confirm whether the profile was saved. Reload to check.",
+};
 
 /**
  * Edits profile `did`'s display name and description: the signed-in user's
  * own, or an organization's they manage. `current` is the profile as its PDS
  * had it when the page was rendered (null: none yet). The form is disabled
- * while a save waits for the PDS to confirm it. Each save is based on the
+ * while a save waits for the PDS, and then the index, to show it. Each save is based on the
  * newest version known here (the last save's, or the page's) and is refused
  * if the profile changed elsewhere in the meantime.
  */
@@ -23,7 +30,12 @@ export function ProfileForm({ did, current }: { did: string; current: ProfileVer
     description: initial.description,
   });
   const [baseCid, setBaseCid] = useState(current?.cid ?? null);
-  const save = useSaveProfile();
+  // Never retried automatically: a lost answer may hide a save that was made.
+  const save = useMutation({
+    retry: false,
+    mutationFn: (input: Parameters<typeof saveProfile>[0]) =>
+      saveProfile(input).catch(() => UNKNOWN),
+  });
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,7 +93,7 @@ function SaveStatus({ result }: { result: SaveProfileResult }) {
   }
   return (
     <Text tone="muted" role="status">
-      Saved. The public profile will show the change shortly.
+      {result.indexed ? "Saved." : "Saved. The public profile will show the change shortly."}
     </Text>
   );
 }

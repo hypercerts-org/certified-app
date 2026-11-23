@@ -2,9 +2,10 @@
 
 import { updateTag } from "next/cache";
 import { getRecordSigner } from "@/lib/atproto/app-key";
-import { getOAuthSession, getUser, SessionUnavailableError } from "@/lib/auth/dal";
-import { canEdit } from "@/lib/cgs";
+import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
+import { waitForIndex } from "@/lib/hypercerts/index-wait";
+import { getIndexedProfile } from "@/lib/hypercerts/queries";
 import type { ProfileFields, ProfileVersion } from "@/lib/hypercerts/views";
 import { editableRepository, updateProfile, WriteError } from "@/lib/hypercerts/writes";
 import { logError } from "@/lib/log";
@@ -12,8 +13,9 @@ import { isDid } from "@/lib/validate";
 
 type SaveFailure = "signed-out" | "unavailable" | WriteError["reason"];
 
+/** `indexed`: the index showed the save before the action gave up waiting. */
 export type SaveProfileResult =
-  | { ok: true; saved: ProfileVersion }
+  | { ok: true; saved: ProfileVersion; indexed: boolean }
   | {
       ok: false;
       /**
@@ -79,33 +81,17 @@ export async function saveProfile(input: {
       expectedCid,
       await getRecordSigner(),
     );
-    return { ok: true, saved };
+    // Then the public pages, expired, render the save from the index.
+    const indexed = await waitForIndex(
+      async () => (await getIndexedProfile(repo))?.cid === saved.cid,
+    );
+    updateTag(tags.actor(repo));
+    return { ok: true, saved, indexed };
   } catch (err) {
     if (err instanceof WriteError) {
       return err.reason === "invalid" ? failure("invalid", err.message) : failure(err.reason);
     }
     if (!(err instanceof SessionUnavailableError)) logError("[profile] save failed", err);
     return failure("unavailable");
-  }
-}
-
-/**
- * The index has caught up with a save of profile `did`: expire the account's
- * cached public pages, so the next request renders fresh. Only someone who
- * may edit the profile may ask.
- */
-export async function profileIndexed(did: string): Promise<void> {
-  if (typeof did !== "string" || !isDid(did)) return;
-  try {
-    const user = await getUser();
-    if (!user) return;
-    if (user.did !== did) {
-      const session = await getOAuthSession();
-      if (!session || !(await canEdit(session, did))) return;
-    }
-    updateTag(tags.actor(did));
-  } catch (err) {
-    // Errors can carry upstream requests and tokens: only logError strips them.
-    if (!(err instanceof SessionUnavailableError)) logError("[profile] cache refresh failed", err);
   }
 }

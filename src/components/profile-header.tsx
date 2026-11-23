@@ -9,7 +9,6 @@ import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { actorHref } from "@/components/cards";
-import { FollowCounts } from "@/components/follow-counts";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
@@ -166,7 +165,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
             <ExpandableText lines={4} className="profile-lead expandable-fade">
               {bio ? (
                 // The bio as this browser should show it, saves included.
-                <ProfileDescription did={actor.did} rendered={actor.profile} />
+                <ProfileDescription rendered={actor.profile} />
               ) : (
                 <Text relaxed className="prewrap" dir="auto">
                   {lead}
@@ -302,7 +301,22 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
         </OwnerOnly>
       )}
       {/* On one line with the endorsements, as staging has it. */}
-      <FollowCounts did={did} base={base} followers={followers} following={following} />
+      {(followers > 0 || following > 0) && (
+        <p className="trust-counts">
+          {followers > 0 && (
+            <Link prefetch href={`${base}/followers`} className="trust-count">
+              <strong>{numberFormat.format(followers)}</strong>
+              {followers === 1 ? " follower" : " followers"}
+            </Link>
+          )}
+          {followers > 0 && following > 0 && <span aria-hidden> · </span>}
+          {following > 0 && (
+            <Link prefetch href={`${base}/following`} className="trust-count">
+              <strong>{numberFormat.format(following)}</strong> following
+            </Link>
+          )}
+        </p>
+      )}
     </div>
   );
 }
