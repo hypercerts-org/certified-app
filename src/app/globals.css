@@ -477,11 +477,6 @@ button.menu-row:disabled:not([aria-current]) {
   min-block-size: 2rem;
 }
 
-.embed-code {
-  font-family: ui-monospace, monospace;
-  font-size: var(--hc-type-body-sm);
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
@@ -525,14 +520,6 @@ button.menu-row:disabled:not([aria-current]) {
 
 .prewrap {
   white-space: pre-line;
-}
-
-.embed {
-  padding: var(--space-4);
-}
-
-.embed-footer {
-  margin-block-start: var(--space-4);
 }
 
 .profile-form {

@@ -5,6 +5,6 @@ import type { MetadataRoute } from "next";
 // account handle by the [actor] route).
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/oauth/", "/embed/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/oauth/"] },
   };
 }

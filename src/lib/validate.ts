@@ -1,4 +1,4 @@
-// Input validation for public query parameters. Route handlers and embeds
+// Input validation for public query parameters. Route handlers
 // accept only bounded, well-formed values; nothing is passed upstream raw.
 import type { l } from "@atproto/lex";
 

@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   description: "Organizations, projects and activities on the Hypercerts protocol.",
 };
 
-// Root layout shared by the site and the embeds: theme, design system and
-// providers only. Site chrome lives in the (site) route group.
+// Root layout: theme, design system and providers only. Site chrome lives
+// in the (site) route group.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-hc-theme="certified" className={`${inter.variable} ${notoSerif.variable}`}>

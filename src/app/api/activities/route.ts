@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { listActivitiesPage, listProjectActivitiesPage } from "@/lib/hypercerts/queries";
 import { cursorParam, isAtUri, isDid } from "@/lib/validate";
 
-// Later pages of an activity list, for "load more" on the site and in embeds.
+// Later pages of an activity list, for "Load more".
 // Public data, so the CDN may cache each page briefly.
 const cacheHeaders = {
   "Cache-Control": "public, s-maxage=60, stale-while-revalidate=600",

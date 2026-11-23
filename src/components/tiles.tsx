@@ -13,10 +13,7 @@ import { Tile, TileSkeleton } from "./tile";
 export async function ActivitiesTile({ did }: { did: string }) {
   const page = await listActivitiesPage({ author: did, limit: 6 });
   return (
-    <Tile
-      title="Activities"
-      embedPath={`/embed/activities?${new URLSearchParams({ author: did })}`}
-    >
+    <Tile title="Activities">
       <ActivityList initial={page} source={{ kind: "author", did }} showAuthor={false} />
     </Tile>
   );

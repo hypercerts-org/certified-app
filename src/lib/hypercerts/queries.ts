@@ -1,6 +1,6 @@
 // Read queries against the Hypercerts API.
 //
-// Every page, route handler and embed reads through these functions; nothing
+// Every page and route handler reads through these functions; nothing
 // else talks to the API. They call the XRPC endpoints with @atproto/lex and
 // the query definitions from @hypercerts-org/api. When the Hypercerts SDK
 // ships its read layer, only the bodies of these functions should change.

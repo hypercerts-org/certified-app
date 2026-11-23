@@ -31,8 +31,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: "/settings/organizations", destination: "/workspace", permanent: true }];
   },
-  // Only the embeds may be framed by other sites. Everything else, sign-in and
-  // profile editing included, refuses framing (clickjacking).
+  // No page may be framed by other sites (clickjacking).
   async headers() {
     return [
       {
@@ -45,7 +44,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/:path((?!embed/).*)",
+        source: "/:path*",
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           { key: "X-Frame-Options", value: "DENY" },
