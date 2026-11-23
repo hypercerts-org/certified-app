@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ProfileFeed, ProfileFeedSkeleton } from "@/components/profile-feed";
 import { getActor, getProfileFeed } from "@/lib/hypercerts/queries";
 import type { ActorCard } from "@/lib/hypercerts/views";
+import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 // The profile's Overview, the left column under the tabs: About (an
@@ -14,7 +15,7 @@ import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor?.displayName ?? "Not found" };
+  return { title: actor ? nameOf(actor) : "Not found" };
 }
 
 async function Feed({ owner }: { owner: ActorCard }) {

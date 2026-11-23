@@ -5,9 +5,10 @@
 // receipt, usually the platform that processed the payment). An onchain
 // payment links to its transaction. A page loads at a time ("Load more").
 
-import { Avatar, Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
 import { ExternalLink, HandCoins } from "lucide-react";
 import { useCallback } from "react";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -23,13 +24,8 @@ const receiptKey = (row: ReceiptRow) => row.uri;
 function Account({ actor }: { actor: ActorCard }) {
   return (
     <IntentLink href={actorHref(actor)} className="ledger-account">
-      <Avatar
-        name={actor.displayName}
-        src={actor.avatarUrl}
-        size="sm"
-        className={actor.isOrganization ? "avatar-square" : undefined}
-      />
-      <span dir="auto">{actor.displayName}</span>
+      <ActorAvatar actor={actor} size="sm" />
+      <ActorName actor={actor} />
     </IntentLink>
   );
 }

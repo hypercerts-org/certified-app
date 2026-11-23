@@ -4,10 +4,12 @@ import { type Membership, manages } from "@/lib/cgs";
 import { getActorCards } from "@/lib/hypercerts/queries";
 
 /** An organization the signed-in user belongs to, as the app shows it. */
+/** An organization you belong to: the account (as the app shows any), and your role in it. */
 export type Organization = {
   did: string;
-  name: string;
+  displayName: string;
   avatarUrl: string | null;
+  isOrganization: true;
   /** Its handle, verified both ways, or null. */
   handle: string | null;
   /** "Member", "Admin" or "Owner". */
@@ -28,8 +30,9 @@ export async function toOrganizations(memberships: Membership[]): Promise<Organi
     const card = cards.get(membership.groupDid);
     return {
       did: membership.groupDid,
-      name: card?.displayName ?? membership.groupDid,
+      displayName: card?.displayName ?? membership.groupDid,
       avatarUrl: card?.avatarUrl ?? null,
+      isOrganization: true as const,
       handle: card?.handle ?? null,
       roleLabel: ROLE_LABEL[membership.role] ?? membership.role,
       manages: manages(membership),

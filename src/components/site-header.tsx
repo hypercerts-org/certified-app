@@ -135,7 +135,7 @@ async function readAccount(): Promise<Account | null> {
   const organization = actingAs && actingAs !== user.did ? await getActor(actingAs) : undefined;
   return {
     did: user.did,
-    name: actor?.displayName ?? user.did,
+    displayName: actor?.displayName ?? user.did,
     handle: actor?.handle ?? null,
     avatarUrl: actor?.avatarUrl ?? null,
     profile: actor?.profile ?? { displayName: "", description: "" },
@@ -143,8 +143,10 @@ async function readAccount(): Promise<Account | null> {
       actingAs && actingAs !== user.did
         ? {
             did: actingAs,
-            name: organization?.displayName ?? actingAs,
+            handle: organization?.handle ?? null,
+            displayName: organization?.displayName ?? actingAs,
             avatarUrl: organization?.avatarUrl ?? null,
+            isOrganization: true,
           }
         : null,
   };

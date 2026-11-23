@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { actorHref, projectHref } from "@/components/cards";
+import { actorHref, projectHref, workspaceHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import {
   type WorkFolder,
@@ -11,6 +11,7 @@ import {
 import { workspaceDid } from "@/components/workspace-access";
 import { getWork, type Work } from "@/lib/hypercerts/queries";
 import type { ActivityCard } from "@/lib/hypercerts/views";
+import { nameOf } from "@/lib/hypercerts/views";
 
 export const metadata: Metadata = {
   title: "Projects and activities",
@@ -42,7 +43,7 @@ function toFolders(did: string, work: Work): WorkFolder[] {
     by:
       activity.author.did === did
         ? null
-        : { name: activity.author.displayName, href: actorHref(activity.author) },
+        : { name: nameOf(activity.author), href: actorHref(activity.author) },
   });
 
   const folders: WorkFolder[] = work.projects.map((project) => {
@@ -83,6 +84,7 @@ async function WorkSection({ params }: { params: Promise<{ actor: string }> }) {
     <WorkFolders
       folders={toFolders(did, work)}
       note={work.truncated ? "Showing the first 500 activities and projects." : null}
+      section={`${workspaceHref(did)}/projects`}
     />
   );
 }

@@ -1,4 +1,5 @@
-import { Avatar, Card, Heading, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ActorAvatar, ActorName, ActorRow } from "@/components/actor";
 import { IntentLink } from "@/components/intent-link";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
@@ -48,9 +49,8 @@ export function badgeHref(badge: { ownerDid: string; rkey: string }) {
 export function ActorCardView({ actor }: { actor: ActorCard }) {
   return (
     <Card as="li" variant="panel" className="card">
-      <IdentityRow
-        name={actor.displayName}
-        avatarSrc={actor.avatarUrl}
+      <ActorRow
+        actor={actor}
         href={actorHref(actor)}
         secondary={actor.isOrganization ? "Organization" : "Person"}
       />
@@ -100,13 +100,9 @@ export function ActivityCardView({
           <div className="meta">
             {showAuthor && (
               <IntentLink href={actorHref(activity.author)} className="meta-author">
-                <Avatar
-                  name={activity.author.displayName}
-                  src={activity.author.avatarUrl}
-                  size="sm"
-                />
+                <ActorAvatar actor={activity.author} size="sm" />
                 <Text as="span" size="micro">
-                  {activity.author.displayName}
+                  <ActorName actor={activity.author} />
                 </Text>
               </IntentLink>
             )}
@@ -216,7 +212,7 @@ export function ActivityPostView({
               {(activity.period ?? activity.createdAt) && " · "}
               by{" "}
               <IntentLink href={actorHref(activity.author)} className="post-author">
-                {activity.author.displayName}
+                <ActorName actor={activity.author} />
               </IntentLink>
             </>
           )}

@@ -12,6 +12,7 @@ import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
 import { ListItemRows } from "@/components/list-items";
 import type { ListItem, Page } from "@/lib/hypercerts/views";
+import { nameOf } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 
 const itemKey = (item: ListItem) => item.uri;
@@ -20,13 +21,13 @@ const itemKey = (item: ListItem) => item.uri;
 function itemName(item: ListItem): string {
   switch (item.kind) {
     case "account":
-      return item.actor.displayName;
+      return nameOf(item.actor);
     case "project":
       return item.project.title;
     case "activity":
       return item.activity.title;
     case "endorsement":
-      return `${item.issuer.displayName}'s endorsement`;
+      return `${nameOf(item.issuer)}'s endorsement`;
     case "missing":
       return "an unavailable record";
   }

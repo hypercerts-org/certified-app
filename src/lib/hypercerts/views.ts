@@ -102,6 +102,8 @@ export type ProjectCard = {
 
 export interface ProjectDetail extends ProjectCard {
   description: string | null;
+  /** The project's banner, at the banner size; null without one. */
+  bannerUrl: string | null;
   author: ActorCard;
   createdAt: string | null;
 }
@@ -288,9 +290,21 @@ export function rkeyOf(uri: string): string {
 
 // The mappers take the typed API views. Where indexed data is known to diverge
 // from the lexicons (descriptions, blob references), they read defensively.
+/** A contributor's account: its profile, but not whether it is an organization. */
+type ContributorActorView = org.hypercerts.claim.getActivity.ContributorActorView;
 type AnyActorView = ActorView | OrganizationActorView | CollectionActorView;
 
-export function toActorCard(actor: AnyActorView): ActorCard {
+/**
+ * An account's name, as every page shows it. One without a Certified profile
+ * has only its DID for a name: its handle reads better.
+ */
+export function nameOf(
+  actor: Pick<ActorCard, "handle" | "displayName"> & { did?: string },
+): string {
+  return actor.displayName === actor.did && actor.handle ? `@${actor.handle}` : actor.displayName;
+}
+
+export function toActorCard(actor: AnyActorView | ContributorActorView): ActorCard {
   const profile = actor.profile?.record;
   return {
     did: actor.did,
@@ -298,7 +312,7 @@ export function toActorCard(actor: AnyActorView): ActorCard {
     displayName: profile?.displayName || actor.did,
     description: profile?.description || null,
     avatarUrl: avatarUrl(actor.did, profile?.avatar),
-    isOrganization: Boolean(actor.organization),
+    isOrganization: "organization" in actor && Boolean(actor.organization),
   };
 }
 
@@ -436,6 +450,60 @@ function formatPeriod(start: unknown, end: unknown): string | null {
   return null;
 }
 
+/** Someone who did an activity's work, as its page lists them. */
+export type Contributor = {
+  key: string;
+  /** The account, when the contributor is one the index knows: its row links to it. */
+  actor: ActorCard | null;
+  /** Without an account: the name and picture the record gives. */
+  name: string;
+  avatarUrl: string | null;
+  role: string | null;
+  /** Its part of the work, from the weights: "67%". Null unless every contributor has one. */
+  share: string | null;
+};
+
+type ContributorView = org.hypercerts.claim.getActivity.ActivityContributorView;
+
+const shareFormat = new Intl.NumberFormat("en", { style: "percent", maximumFractionDigits: 0 });
+const smallShareFormat = new Intl.NumberFormat("en", {
+  style: "percent",
+  maximumSignificantDigits: 1,
+});
+
+/**
+ * An activity's contributors, as the API hydrates them: an account (its
+ * profile), a contributor-information record (its name and picture), or the
+ * name the record gives. Weights are relative, so a share is a weight's part
+ * of their sum; with one contributor, or a weight missing, there is none.
+ */
+export function toContributors(views: ContributorView[] | undefined): Contributor[] {
+  const list = views ?? [];
+  const weights = list.map((view) => Number(view.contributionWeight));
+  const total = weights.every((w) => Number.isFinite(w) && w > 0)
+    ? weights.reduce((sum, w) => sum + w, 0)
+    : 0;
+  return list.map((view, i) => {
+    const info = view.contributorInformation;
+    const inline = asString(asRecord(view.contributorIdentity)?.identity)?.trim() || null;
+    const actor = view.actor ? toActorCard(view.actor) : null;
+    const part = list.length > 1 && total > 0 ? weights[i] / total : null;
+    return {
+      key: `${i}:${view.actor?.did ?? info?.uri ?? inline}`,
+      actor,
+      name:
+        actor?.displayName ??
+        (asString(info?.record.displayName)?.trim() ||
+          asString(info?.record.identifier)?.trim() ||
+          inline ||
+          "Unnamed contributor"),
+      avatarUrl: actor?.avatarUrl ?? (info ? avatarUrl(info.did, info.record.image) : null),
+      role: asString(asRecord(view.contributionDetails)?.role)?.trim() || null,
+      share: part === null ? null : (part < 0.01 ? smallShareFormat : shareFormat).format(part),
+    };
+  });
+}
+
 export function toProjectCard(collection: CollectionView): ProjectCard {
   const { record } = collection;
   const activityUris = (record.items ?? [])
@@ -457,6 +525,7 @@ export function toProjectDetail(collection: CollectionView): ProjectDetail {
   return {
     ...toProjectCard(collection),
     description: plainText(collection.record.description),
+    bannerUrl: imageUrl(collection.did, collection.record.banner, "banner"),
     author: toActorCard(collection.author),
     createdAt: formatDate(collection.record.createdAt),
   };

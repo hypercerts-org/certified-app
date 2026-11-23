@@ -17,6 +17,7 @@ import {
   listLists,
 } from "@/lib/hypercerts/queries";
 import type { ActorDetail } from "@/lib/hypercerts/views";
+import { nameOf } from "@/lib/hypercerts/views";
 
 const numberFormat = new Intl.NumberFormat("en");
 const countLabel = (count: number, more: boolean) =>
@@ -113,7 +114,7 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
             {actor.place.point && (
               <LocationMap
                 point={actor.place.point}
-                label={`${actor.displayName}, ${actor.place.short}`}
+                label={`${nameOf(actor)}, ${actor.place.short}`}
                 imageUrl={actor.avatarUrl}
               />
             )}
@@ -130,7 +131,7 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
         </Heading>
         <dl className="facts">
           {/* Only when it differs from the name the profile shows. */}
-          {actor.legalName && actor.legalName.toLowerCase() !== actor.displayName.toLowerCase() && (
+          {actor.legalName && actor.legalName.toLowerCase() !== nameOf(actor).toLowerCase() && (
             <div className="fact">
               <dt>Legal name</dt>
               <dd dir="auto">{actor.legalName}</dd>

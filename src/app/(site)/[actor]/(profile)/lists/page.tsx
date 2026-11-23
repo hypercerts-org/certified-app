@@ -5,11 +5,12 @@ import { Suspense } from "react";
 import { Empty } from "@/components/empty";
 import { ListGroups, ListGroupsSkeleton } from "@/components/profile-lists";
 import { getActor, listLists } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({ params }: PageProps<"/[actor]/lists">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${actor.displayName}: Lists` : "Not found" };
+  return { title: actor ? `${nameOf(actor)}: Lists` : "Not found" };
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) {

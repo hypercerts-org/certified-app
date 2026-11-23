@@ -4,9 +4,10 @@
 // keeps. Hiding, showing, revoking and endorsing someone come with the
 // Hypercerts SDK's writes: until then their buttons are placeholders.
 
-import { Badge, Button, IdentityRow, Text } from "@hypercerts-org/ui-react";
+import { Badge, Button, Text } from "@hypercerts-org/ui-react";
 import { ListChecks, Plus, ThumbsUp } from "lucide-react";
 import type { ReactNode } from "react";
+import { ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
@@ -19,12 +20,7 @@ function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   const { actor } = row;
   return (
     <li className="people-row endorsement-row">
-      <IdentityRow
-        name={actor.displayName}
-        avatarSrc={actor.avatarUrl}
-        href={actorHref(actor)}
-        secondary={endorsementLine(row)}
-      />
+      <ActorRow actor={actor} href={actorHref(actor)} secondary={endorsementLine(row)} />
       <span className="endorsement-row-end">
         {row.hidden && <Badge variant="tag">Hidden</Badge>}
         {row.date && (

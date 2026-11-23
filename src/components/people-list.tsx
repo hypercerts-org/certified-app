@@ -1,5 +1,6 @@
-import { IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { type LucideIcon, Users } from "lucide-react";
+import { ActorRow } from "@/components/actor";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
@@ -14,9 +15,8 @@ export function PeopleRows({ rows }: { rows: PersonRow[] }) {
     <ul className="people-list">
       {rows.map((row) => (
         <li key={row.uri} className="people-row">
-          <IdentityRow
-            name={row.actor.displayName}
-            avatarSrc={row.actor.avatarUrl}
+          <ActorRow
+            actor={row.actor}
             href={actorHref(row.actor)}
             secondary={endorsementLine(row)}
           />

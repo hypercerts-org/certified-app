@@ -7,9 +7,9 @@
 //
 // The rows arrive rendered by the server (work-page data, cached); this
 // component only adds the search and remembers folders opened by hand.
-// Folders are <details>, so they open and close without JavaScript. Creating,
-// deleting and moving activities between projects come with the Hypercerts
-// SDK's writes: until then New activity and New project are placeholders.
+// Folders are <details>, so they open and close without JavaScript. New
+// activity and New project open their forms; deleting, and moving activities
+// between projects, come later.
 
 import { Button, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
 import {
@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { activityHref } from "@/components/cards";
-import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 
@@ -54,7 +53,15 @@ const OPEN_BY_DEFAULT = 3;
 
 const matches = (text: string, query: string) => text.toLowerCase().includes(query);
 
-function Toolbar({ query, onQuery }: { query: string; onQuery: (query: string) => void }) {
+function Toolbar({
+  query,
+  onQuery,
+  section,
+}: {
+  query: string;
+  onQuery: (query: string) => void;
+  section: string;
+}) {
   return (
     <div className="work-toolbar">
       {/* Filters what's on the page: no debounce needed. */}
@@ -66,23 +73,27 @@ function Toolbar({ query, onQuery }: { query: string; onQuery: (query: string) =
         debounceMs={0}
         onChange={onQuery}
       />
-      <NewButtons />
+      <NewButtons section={section} />
     </div>
   );
 }
 
-/** Placeholders until the Hypercerts SDK ships these writes. */
-function NewButtons() {
+/**
+ * New activity and New project: their forms, under the section's address
+ * (`section`; null in the skeleton, where they are inert).
+ */
+function NewButtons({ section }: { section: string | null }) {
+  const href = (form: string) => (section ? `${section}/${form}` : undefined);
   return (
     <div className="work-actions">
-      <ComingSoonButton variant="primary">
+      <Button href={href("new-activity")} variant="primary" size="sm" disabled={!section}>
         <Plus size={16} aria-hidden />
         New activity
-      </ComingSoonButton>
-      <ComingSoonButton>
+      </Button>
+      <Button href={href("new-project")} variant="secondary" size="sm" disabled={!section}>
         <Plus size={16} aria-hidden />
         New project
-      </ComingSoonButton>
+      </Button>
     </div>
   );
 }
@@ -195,7 +206,16 @@ function FolderView({
   );
 }
 
-export function WorkFolders({ folders, note }: { folders: WorkFolder[]; note: string | null }) {
+/** `section`: this page's address, under which New activity and New project are. */
+export function WorkFolders({
+  folders,
+  note,
+  section,
+}: {
+  folders: WorkFolder[];
+  note: string | null;
+  section: string;
+}) {
   const [query, setQuery] = useState("");
   // Folders opened or closed by hand; the rest follow OPEN_BY_DEFAULT.
   const [opened, setOpened] = useState<ReadonlyMap<string, boolean>>(new Map());
@@ -207,7 +227,7 @@ export function WorkFolders({ folders, note }: { folders: WorkFolder[]; note: st
         icon={FolderGit2}
         title="No projects or activities yet"
         description="An activity records a piece of work. Group activities into projects, like folders, to show how they fit together; one activity can sit in several projects."
-        action={<NewButtons />}
+        action={<NewButtons section={section} />}
       />
     );
   }
@@ -225,7 +245,7 @@ export function WorkFolders({ folders, note }: { folders: WorkFolder[]; note: st
 
   return (
     <section className="work" aria-label="Projects and activities">
-      <Toolbar query={query} onQuery={setQuery} />
+      <Toolbar query={query} onQuery={setQuery} section={section} />
       {shown.length === 0 ? (
         <Empty
           icon={SearchX}
@@ -264,7 +284,7 @@ export function WorkFoldersSkeleton() {
     <div className="work" aria-hidden>
       <div className="work-toolbar">
         <Skeleton variant="box" className="skeleton-search" />
-        <NewButtons />
+        <NewButtons section={null} />
       </div>
       <div className="work-folders">
         {[0, 1, 2].map((i) => (

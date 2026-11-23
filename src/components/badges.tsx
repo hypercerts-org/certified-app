@@ -7,6 +7,7 @@
 import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
+import { ActorName } from "@/components/actor";
 import { actorHref, badgeHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -37,8 +38,8 @@ export function BadgeIcon({
 
 function Issuer({ badge }: { badge: BadgeCard }) {
   return (
-    <IntentLink href={actorHref(badge.issuer)} className="badge-issuer" dir="auto">
-      {badge.issuer.displayName}
+    <IntentLink href={actorHref(badge.issuer)} className="badge-issuer">
+      <ActorName actor={badge.issuer} />
     </IntentLink>
   );
 }

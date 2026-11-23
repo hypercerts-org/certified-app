@@ -8,13 +8,13 @@
 // worth in one post. Plain view models: the first page renders on the
 // server, later pages here, for Load more.
 
-import { Avatar, Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder, SquareCheckBig } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
-import { nameOf } from "@/components/list-items";
 import type { ActorCard, FeedLink, FeedRow, FeedTarget, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
 
@@ -24,8 +24,8 @@ const plural = (n: number, one: string, many: string) =>
 
 function Name({ actor }: { actor: ActorCard }) {
   return (
-    <IntentLink href={actorHref(actor)} className="post-name" dir="auto">
-      {nameOf(actor)}
+    <IntentLink href={actorHref(actor)} className="post-name">
+      <ActorName actor={actor} />
     </IntentLink>
   );
 }
@@ -65,14 +65,7 @@ function Names({
 }
 
 function Face({ actor, size = "md" }: { actor: ActorCard; size?: "sm" | "md" }) {
-  return (
-    <Avatar
-      name={nameOf(actor).replace(/^@/, "")}
-      src={actor.avatarUrl}
-      size={size}
-      className={actor.isOrganization ? "avatar-square" : undefined}
-    />
-  );
+  return <ActorAvatar actor={actor} size={size} />;
 }
 
 function Faces({ actors }: { actors: ActorCard[] }) {

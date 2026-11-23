@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileBadges, ProfileBadgesSkeleton } from "@/components/badges";
 import { getActor } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/badges">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${actor.displayName}: Badges` : "Not found" };
+  return { title: actor ? `${nameOf(actor)}: Badges` : "Not found" };
 }
 
 /** The badges the account accepted. */

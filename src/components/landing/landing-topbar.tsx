@@ -1,7 +1,7 @@
-import { Avatar } from "@hypercerts-org/ui-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ActorAvatar } from "@/components/actor";
 import { getAccount } from "@/components/site-header";
 
 /**
@@ -41,7 +41,7 @@ async function AccountButton() {
   if (account) {
     return (
       <Link href="/workspace" className="lp-topbar__btn lp-topbar__btn--account">
-        <Avatar name={account.name} src={account.avatarUrl} size="sm" />
+        <ActorAvatar actor={account} size="sm" />
         Open app
       </Link>
     );

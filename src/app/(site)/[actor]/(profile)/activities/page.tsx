@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ActivitiesTile, ActivitiesTileSkeleton } from "@/components/tiles";
 import { getActor } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/activities">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${actor.displayName}: Activities` : "Not found" };
+  return { title: actor ? `${nameOf(actor)}: Activities` : "Not found" };
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/activities">, "params">) {

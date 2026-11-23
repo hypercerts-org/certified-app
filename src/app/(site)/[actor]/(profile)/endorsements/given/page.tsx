@@ -4,13 +4,14 @@ import { Suspense } from "react";
 import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
 import { getActor, getEndorsements, listEndorsements } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/endorsements/given">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${actor.displayName}: Endorsements given` : "Not found" };
+  return { title: actor ? `${nameOf(actor)}: Endorsements given` : "Not found" };
 }
 
 const numberFormat = new Intl.NumberFormat("en");

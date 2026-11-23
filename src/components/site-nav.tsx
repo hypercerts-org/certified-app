@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Avatar,
   BottomSheet,
   Button,
   Eyebrow,
@@ -32,23 +31,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ActorAvatar, type ActorLike, ActorName } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { COMING_SOON } from "@/components/coming-soon";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
-import type { ProfileFields } from "@/lib/hypercerts/views";
+import { nameOf, type ProfileFields } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
 
 /** The signed-in account, as the header shows it. */
-export type Account = {
-  did: string;
-  name: string;
-  handle: string | null;
-  avatarUrl: string | null;
+export type Account = Identity & {
   profile: ProfileFields;
   /** The organization this browser acts as, or null for the account itself. */
-  actingAs: { did: string; name: string; avatarUrl: string | null } | null;
+  actingAs: Identity | null;
 };
 
 // The app's destinations, in the order every navigation surface uses:
@@ -178,16 +174,16 @@ function useOrganizations() {
 }
 
 /** An identity you can act as: you, or an organization you belong to. */
-type Identity = { did: string; name: string; avatarUrl: string | null };
+type Identity = ActorLike & { did: string };
 
 /** Whom the header shows: the organization you act as, or you. */
 function current(account: Account): Identity {
-  return account.actingAs ?? { did: account.did, name: account.name, avatarUrl: account.avatarUrl };
+  return account.actingAs ?? account;
 }
 
 /** "@you", or "via @you" while acting as an organization. */
 function byline(account: Account): string | null {
-  const you = account.handle ? `@${account.handle}` : account.actingAs ? account.name : null;
+  const you = account.handle ? `@${account.handle}` : account.actingAs ? nameOf(account) : null;
   return account.actingAs && you ? `via ${you}` : you;
 }
 
@@ -209,12 +205,12 @@ function useSwitchActingAs(account: Account) {
     startTransition(async () => {
       const result = await switchActingAs(target.did);
       if (!result.ok) {
-        toast.error(`Couldn't switch to ${target.name}. Try again.`);
+        toast.error(`Couldn't switch to ${nameOf(target)}. Try again.`);
         return;
       }
       if (WORKSPACE_PATH.test(pathname)) toWorkspace(target.did);
       if (!previous) {
-        toast(`Switched back to ${target.name}`);
+        toast(`Switched back to ${nameOf(target)}`);
         return;
       }
       toast.custom(
@@ -258,7 +254,7 @@ function SwitchedToast({
     <div className="switch-toast">
       <div className="switch-toast-header">
         <Text as="span" tone="ink" className="switch-toast-title">
-          Switched to {identity.name}
+          Switched to <ActorName actor={identity} />
         </Text>
         <button
           type="button"
@@ -270,9 +266,9 @@ function SwitchedToast({
         </button>
       </div>
       <div className="switch-toast-body">
-        <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
+        <ActorAvatar actor={identity} />
         <Text as="span" size="body-sm">
-          {self ? "You're now acting as yourself." : `You're now acting as ${identity.name}.`}
+          {self ? "You're now acting as yourself." : `You're now acting as ${nameOf(identity)}.`}
         </Text>
       </div>
       <div className="switch-toast-actions">
@@ -303,15 +299,12 @@ function rowSecondary(note: string, handle: string | null): string {
 function ActAsRow({
   identity,
   secondary,
-  square,
   active,
   onSwitch,
   settings,
 }: {
   identity: Identity;
   secondary: string;
-  /** Organizations' avatars are square, people's round. */
-  square: boolean;
   active: boolean;
   onSwitch: (target: Identity) => void;
   /** The account's settings, or null while it has none in this app. */
@@ -326,15 +319,10 @@ function ActAsRow({
         disabled={active}
         onClick={() => onSwitch(identity)}
       >
-        <Avatar
-          name={identity.name}
-          src={identity.avatarUrl}
-          size="md"
-          className={square ? "avatar-square" : undefined}
-        />
+        <ActorAvatar actor={identity} />
         <span className="menu-row-text">
           <Text as="span" tone="ink">
-            {identity.name}
+            <ActorName actor={identity} />
           </Text>
           <Text as="span" size="body-sm" tone="muted" className="ellipsis">
             {secondary}
@@ -357,7 +345,7 @@ function ActAsRow({
           aria-disabled="true"
           title={COMING_SOON}
           role="img"
-          aria-label={`${identity.name} settings (coming soon)`}
+          aria-label={`${nameOf(identity)} settings (coming soon)`}
         >
           <Settings size={16} aria-hidden />
         </span>
@@ -379,7 +367,7 @@ function ActAsList({
   const labelId = useId();
   const organizations = useOrganizations();
   const activeDid = current(account).did;
-  const you: Identity = { did: account.did, name: account.name, avatarUrl: account.avatarUrl };
+  const you: Identity = account;
   return (
     <>
       <Eyebrow id={labelId} className="menu-label">
@@ -389,7 +377,6 @@ function ActAsList({
         <ActAsRow
           identity={you}
           secondary={rowSecondary("You", account.handle)}
-          square={false}
           active={activeDid === account.did}
           onSwitch={onSwitch}
           settings={{ href: "/settings", label: "Your settings", onNavigate }}
@@ -410,7 +397,6 @@ function ActAsList({
               key={organization.did}
               identity={organization}
               secondary={rowSecondary(organization.roleLabel, organization.handle)}
-              square
               active={activeDid === organization.did}
               onSwitch={onSwitch}
               settings={null}
@@ -453,7 +439,7 @@ function AccountMenuContent({
       />
       <hr className="menu-separator" />
       <Eyebrow as="p" id={youId} className="menu-label menu-label-signed-in">
-        Signed in as <span className="menu-label-name">{account.name}</span>
+        Signed in as <ActorName actor={account} className="menu-label-name" />
       </Eyebrow>
       <ul className="menu-list" aria-labelledby={youId}>
         <li>
@@ -505,7 +491,7 @@ function AccountMenuContent({
 function AccountAvatar({ identity }: { identity: Identity }) {
   return (
     <span className="account-avatar">
-      <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
+      <ActorAvatar actor={identity} />
       <span className="account-avatar-marker" aria-hidden>
         <ChevronDown size={12} strokeWidth={2.5} />
       </span>
@@ -522,7 +508,7 @@ function DesktopAccountMenu({ account }: { account: Account }) {
   const identity = current(account);
   return (
     <Popover kind="navigation" open={open} onOpenChange={setOpen} className="desktop-only">
-      <PopoverTrigger className="account-button" aria-label={`${identity.name}, account menu`}>
+      <PopoverTrigger className="account-button" aria-label={`${nameOf(identity)}, account menu`}>
         <AccountAvatar identity={identity} />
       </PopoverTrigger>
       <PopoverContent label="Account" align="end" className="menu-panel">
@@ -546,7 +532,7 @@ function PhoneAccountMenu({ account }: { account: Account }) {
       <button
         type="button"
         className="account-button phone-only"
-        aria-label={`${identity.name}, account menu`}
+        aria-label={`${nameOf(identity)}, account menu`}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
@@ -581,10 +567,10 @@ export function SidebarAccountMenu({ account }: { account: Account }) {
       onOpenChange={setOpen}
       className="sidebar-account-popover"
     >
-      <PopoverTrigger className="sidebar-account" aria-label={`${identity.name}, account menu`}>
-        <Avatar name={identity.name} src={identity.avatarUrl} size="md" />
+      <PopoverTrigger className="sidebar-account" aria-label={`${nameOf(identity)}, account menu`}>
+        <ActorAvatar actor={identity} />
         <span className="sidebar-account-text">
-          <span className="sidebar-account-name">{identity.name}</span>
+          <ActorName actor={identity} className="sidebar-account-name" />
           {subline && <span className="sidebar-account-handle">{subline}</span>}
         </span>
         <ChevronsUpDown size={16} aria-hidden className="sidebar-account-chevron" />

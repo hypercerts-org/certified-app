@@ -3,9 +3,10 @@
 // endorsement (who endorsed whom). Plain view models only: the rows also
 // render in the browser, for "Load more" and the workspace's selection.
 
-import { Avatar, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ArrowRight, Folder, SquareCheckBig } from "lucide-react";
 import type { ReactNode } from "react";
+import { ActorAvatar, ActorHandle, ActorName } from "@/components/actor";
 import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import type { ActorCard, ListItem } from "@/lib/hypercerts/views";
@@ -25,19 +26,11 @@ export function Thumb({ src, project }: { src: string | null; project: boolean }
   );
 }
 
-/**
- * An account's name. One without a Certified profile has only its DID for a
- * name: its handle reads better (as on the Overview's account grid).
- */
-export function nameOf(actor: ActorCard): string {
-  return actor.displayName === actor.did && actor.handle ? `@${actor.handle}` : actor.displayName;
-}
-
 export function Who({ actor }: { actor: ActorCard }) {
   return (
     <IntentLink href={actorHref(actor)} className="list-item-who">
-      <Avatar name={nameOf(actor).replace(/^@/, "")} src={actor.avatarUrl} size="sm" />
-      <span dir="auto">{nameOf(actor)}</span>
+      <ActorAvatar actor={actor} size="sm" />
+      <ActorName actor={actor} />
     </IntentLink>
   );
 }
@@ -48,18 +41,10 @@ export function ListItemContent({ item }: { item: ListItem }) {
     case "account":
       return (
         <IntentLink href={actorHref(item.actor)} className="list-item-main">
-          <Avatar
-            name={nameOf(item.actor).replace(/^@/, "")}
-            src={item.actor.avatarUrl}
-            size="md"
-          />
+          <ActorAvatar actor={item.actor} />
           <span className="list-item-text">
-            <span className="list-item-title" dir="auto">
-              {nameOf(item.actor)}
-            </span>
-            {item.actor.handle && nameOf(item.actor) !== `@${item.actor.handle}` && (
-              <span className="list-item-meta">@{item.actor.handle}</span>
-            )}
+            <ActorName actor={item.actor} className="list-item-title" />
+            <ActorHandle actor={item.actor} className="list-item-meta" />
           </span>
         </IntentLink>
       );

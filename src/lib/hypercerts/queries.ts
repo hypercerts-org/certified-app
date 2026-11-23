@@ -23,6 +23,7 @@ import {
   awardSubject,
   type BadgeCard,
   type BadgeDetail,
+  type Contributor,
   didOf,
   type EndorsementCard,
   type ExploreAccount,
@@ -53,6 +54,7 @@ import {
   toAge,
   toBadgeCard,
   toBadgeDetail,
+  toContributors,
   toEndorsementCard,
   toExploreActivity,
   toExploreProject,
@@ -63,6 +65,7 @@ import {
   toReceipt,
   totalsByCurrency,
   toWalletTarget,
+  workScopeWords,
 } from "./views";
 
 // Response validation is off for reads. Indexed records come from many authors,
@@ -183,10 +186,10 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   if (profile.success) {
     return { ...toActorDetail({ did, profile: profile.body.profile, organization: null }), handle };
   }
-  // No Certified records at all: the account by its handle (or DID), so
-  // links from followers and endorsements don't lead to "not found".
-  const bare = toActorDetail({ did, profile: null, organization: null });
-  return { ...bare, handle, displayName: handle ? `@${handle}` : did };
+  // No Certified records at all: the account all the same (shown by its
+  // handle, nameOf), so links from followers and endorsements don't lead to
+  // "not found".
+  return { ...toActorDetail({ did, profile: null, organization: null }), handle };
 }
 
 /**
@@ -642,7 +645,6 @@ export async function getEndorsements(did: string): Promise<Endorsements> {
   };
 }
 
-/** Whether `actor` follows `subject`: one lookup, not a page of follows. */
 /**
  * The index's follow of `subject` by `actor` (the earliest, if there are
  * duplicates), or null. Never cached: the write overlay asks it whether the
@@ -662,6 +664,29 @@ export async function getFollow(actor: string, subject: string): Promise<FollowR
   "use cache";
   publicData(tags.follows(actor));
   return getIndexedFollow(actor, subject);
+}
+
+/**
+ * The index's follow of record `entity` (a project) by `actor`, or null.
+ * Never cached, like {@link getIndexedFollow}.
+ */
+export async function getIndexedEntityFollow(
+  actor: string,
+  entity: string,
+): Promise<FollowRef | null> {
+  const { follow } = await api.call(
+    app.certified.graph.getEntityFollow,
+    { actor: actor as Did, entity: entity as AtUri },
+    read(),
+  );
+  return follow ? { uri: follow.uri, cid: follow.cid } : null;
+}
+
+/** {@link getIndexedEntityFollow}, cached with the actor's follows. */
+export async function getEntityFollow(actor: string, entity: string): Promise<FollowRef | null> {
+  "use cache";
+  publicData(tags.follows(actor));
+  return getIndexedEntityFollow(actor, entity);
 }
 
 export type FollowCounts = { followers: number; following: number };
@@ -1368,10 +1393,37 @@ export async function hasFunding(
 const projectHrefOf = (project: ProjectCard) => `/${project.authorDid}/project/${project.rkey}`;
 const activityHrefOf = (uri: string) => `/${didOf(uri)}/activity/${uri.split("/").pop()}`;
 
+/** Whether the index shows project (collection) `uri` yet. Never cached: actions ask it after a write. */
+export async function projectIndexed(uri: string): Promise<boolean> {
+  const result = await api.xrpcSafe(org.hypercerts.collection.getCollection, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (result.success) return true;
+  if (notFound(result)) return false;
+  throw result;
+}
+
+/** Whether the index shows activity `uri` yet. Never cached: actions ask it after a write. */
+export async function activityIndexed(uri: string): Promise<boolean> {
+  const result = await api.xrpcSafe(org.hypercerts.claim.getActivity, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (result.success) return true;
+  if (notFound(result)) return false;
+  throw result;
+}
+
 /** An activity for its own page: its card, and its full description. */
-export async function getActivity(
-  uri: string,
-): Promise<(ActivityCard & { description: string | null }) | null> {
+/** An activity as its own page shows it: the card, the full text, who did it and its work scope. */
+export type ActivityDetail = ActivityCard & {
+  description: string | null;
+  contributors: Contributor[];
+  scope: string | null;
+};
+
+export async function getActivity(uri: string): Promise<ActivityDetail | null> {
   "use cache";
   publicData(tags.activities(didOf(uri)));
 
@@ -1384,8 +1436,19 @@ export async function getActivity(
     throw result;
   }
   const { activity } = result.body;
-  const [card] = await withHandlesIn([toActivityCard(activity)], "author");
-  return { ...card, description: plainText(activity.record.description) };
+  const contributors = toContributors(activity.contributors);
+  const [[card], actors] = await Promise.all([
+    withHandlesIn([toActivityCard(activity)], "author"),
+    withHandles(contributors.flatMap((c) => (c.actor ? [c.actor] : []))),
+  ]);
+  // The accounts, with their handles for links, back in their places.
+  let next = 0;
+  return {
+    ...card,
+    description: plainText(activity.record.description),
+    contributors: contributors.map((c) => (c.actor ? { ...c, actor: actors[next++] } : c)),
+    scope: workScopeWords(activity.record.workScope),
+  };
 }
 
 // Explore
@@ -1473,7 +1536,7 @@ function toExploreAccount(view: OrganizationView | ActorCardInput, now: number):
   const created = view.profile?.record.createdAt ?? view.organization?.record.createdAt;
   return { ...toActorCard(view), age: toAge(created, now) };
 }
-type ActorCardInput = Parameters<typeof toActorCard>[0];
+type ActorCardInput = org.hypercerts.api.defs.ActorView;
 
 /** The organization records of these accounts, those that have one. */
 async function organizationsOf(dids: string[]): Promise<Map<string, OrganizationView>> {

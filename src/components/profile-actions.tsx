@@ -63,7 +63,8 @@ const lost = (action: "follow" | "unfollow") =>
   ({ ok: false, message: `We couldn't confirm the ${action}. Reload to check.` }) as const;
 
 /**
- * Follow, or Following (a click unfollows), as the account you act as. The
+ * Follow, or Following (a click unfollows), as the account you act as:
+ * `subject` is an account's DID or a project's URI. The
  * click shows the new state at once; the action returns with the page
  * refreshed from the index, which then shows it. If the index was slower than
  * the action waited, the button keeps what was written until the page shows
@@ -113,6 +114,35 @@ function FollowButton({ subject, rendered }: { subject: string; rendered: Follow
 }
 
 /**
+ * Follow for whoever visits: as `actor`, the account they act as, with its
+ * `follow` of `subject` if any; signed out (`actor` null), it leads to
+ * signing in and back to `path`.
+ */
+export function FollowControl({
+  subject,
+  path,
+  actor,
+  follow,
+}: {
+  subject: string;
+  path: string;
+  actor: string | null;
+  follow: FollowRef | null;
+}) {
+  if (actor) return <FollowButton subject={subject} rendered={follow} />;
+  return (
+    <Button
+      href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
+      variant="primary"
+      size="sm"
+    >
+      <UserPlus size={16} aria-hidden />
+      Follow
+    </Button>
+  );
+}
+
+/**
  * A visitor's actions: Follow (signed out, it leads to signing in), Endorse,
  * Share and More. `actor` is the account the visitor acts as, `follow` its
  * follow of this one, if any.
@@ -132,18 +162,7 @@ export function VisitorActions({
 }) {
   return (
     <>
-      {actor ? (
-        <FollowButton subject={did} rendered={follow} />
-      ) : (
-        <Button
-          href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
-          variant="primary"
-          size="sm"
-        >
-          <UserPlus size={16} aria-hidden />
-          Follow
-        </Button>
-      )}
+      <FollowControl subject={did} path={path} actor={actor} follow={follow} />
       <ComingSoonButton>
         <ThumbsUp size={16} aria-hidden />
         Endorse

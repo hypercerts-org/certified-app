@@ -148,7 +148,7 @@ p + p {
 }
 
 .nav-link[aria-current="page"] {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 /* Forced colors (Windows high contrast) drop the background above, so mark the
@@ -263,7 +263,7 @@ button.menu-row {
 a.menu-row:hover,
 button.menu-row:hover,
 .menu-row[aria-current] {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .menu-label {
@@ -316,7 +316,7 @@ button.menu-row:hover,
 }
 
 a.act-as-settings:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
   color: var(--hc-text-ink);
 }
 
@@ -774,7 +774,7 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 .overview-row-link:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .overview-thumb {
@@ -975,8 +975,6 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* Organizations get a square avatar, as on the staging redesign. */
-.profile-avatar-square,
-.profile-avatar-square img,
 .avatar-square,
 .avatar-square img {
   border-radius: var(--hc-radius-control);
@@ -1711,7 +1709,7 @@ a.post-amount:hover {
 a.workspace-nav-item:hover,
 button.workspace-nav-item:hover,
 .workspace-nav-item[aria-current="page"] {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 /* Not built yet: shown dimmed, inert. */
@@ -1844,7 +1842,7 @@ button.workspace-nav-item:hover,
 }
 
 .sidebar-account:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .sidebar-account-text {
@@ -1973,7 +1971,7 @@ button.workspace-nav-item:hover,
 a.sidebar-item:hover,
 button.sidebar-item:hover,
 .sidebar-item[aria-current="page"] {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 /* The current page: a tint and a heavier weight, not color alone. */
@@ -2027,18 +2025,6 @@ button.sidebar-item:hover,
   margin: 0 0 var(--space-4);
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
-}
-
-/* "No endorsements yet", on one line with the follower counts. */
-.trust-line:has(> .trust-none) {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: var(--space-8);
-}
-
-.trust-none {
-  color: var(--hc-text-muted);
 }
 
 /* A link shown as its service's mark (Bluesky). */
@@ -2106,7 +2092,7 @@ button.sidebar-item:hover,
 }
 
 .list-row:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .list-row-text,
@@ -2274,7 +2260,7 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .list-back:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
   color: var(--hc-text-ink);
 }
 
@@ -2379,7 +2365,7 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .ledger tbody tr:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .ledger .ledger-amount {
@@ -2762,7 +2748,7 @@ a.badge-title:hover {
 }
 
 .account-grid-link:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .account-grid-link:focus-visible {
@@ -2934,7 +2920,7 @@ a.badge-title:hover {
 }
 
 .work-folder-head:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
 }
 
 .work-folder-chevron {
@@ -2970,7 +2956,7 @@ details[open] > .work-folder-head .work-folder-chevron {
 }
 
 .work-folder-open:hover {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
   color: var(--hc-text-ink);
 }
 
@@ -3115,7 +3101,7 @@ details[open] > .work-folder-head .work-folder-chevron {
 }
 
 :is(.sidebar-item, .workspace-nav-item):has(> .link-pending[data-pending]) {
-  background: var(--hc-surface-tint);
+  background: var(--hc-fill-subtle);
   font-weight: var(--hc-weight-strong);
 }
 
@@ -3360,6 +3346,188 @@ details[open] > .work-folder-head .work-folder-chevron {
   gap: var(--space-3);
 }
 
+/* New activity and New project (src/components/record-form.tsx and the
+   forms on it). Laid out like the record's page: the text on the left, the
+   image and details on the right (from 52rem of workspace), one column below
+   that, the details after the text. Then the action bar. */
+.record-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.record-form-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+@container workspace (inline-size >= 52rem) {
+  .record-form-columns {
+    grid-template-columns: minmax(0, 40rem) minmax(0, 18rem);
+    justify-content: space-between;
+  }
+}
+
+.record-form-main,
+.record-form-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-inline-size: 0;
+}
+
+.record-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rhythm-block);
+}
+
+/* A group's name (the image, the time period), styled as the toolkit's
+   Field labels are. */
+.record-form-legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+  font-size: var(--hc-type-label);
+  line-height: var(--hc-type-label-lh);
+  letter-spacing: var(--hc-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--hc-text-body);
+}
+
+.record-form-period {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.date-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* The date picker is inline-block; as wide as the column, like the other fields. */
+.date-field > :first-child {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.date-field > :first-child > * {
+  inline-size: 100%;
+}
+
+.record-form-image {
+  display: flex;
+  flex-direction: column;
+}
+
+.record-form-image-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+  aspect-ratio: 16 / 9;
+}
+
+.record-form-image-preview img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.record-form-image-remove {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+/* Contributors: a row each (who, role, share, remove), a hairline between;
+   stacked on a narrow column. */
+.contributor-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contributor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding-block: var(--space-4);
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.contributor-row:first-child {
+  padding-block-start: 0;
+}
+
+.contributor-row > :not(.contributor-remove) {
+  grid-column: 1;
+}
+
+.contributor-remove {
+  grid-column: 2;
+  grid-row: 1;
+  /* Level with the input, below its label. */
+  margin-block-start: var(--space-6);
+}
+
+@container workspace (inline-size >= 40rem) {
+  .contributor-row {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) 7rem auto;
+  }
+
+  .contributor-row > :not(.contributor-remove) {
+    grid-column: auto;
+  }
+
+  .contributor-remove {
+    grid-column: 4;
+  }
+}
+
+.record-form-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* New project: the account's activities to choose, a hairline between. */
+.activity-choices {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-choices > li {
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+/* Cancel and Publish, on the right. */
+.form-action-bar {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.skeleton-image {
+  aspect-ratio: 16 / 9;
+}
+
 /* Toolkit bridges. Each rule restyles a toolkit component in a way the
    toolkit doesn't offer yet; each goes when its prop exists (listed in
    docs/toolkit-gaps.md). Nowhere else may app CSS reach into a toolkit
@@ -3376,16 +3544,66 @@ details[open] > .work-folder-head .work-folder-chevron {
   color: var(--hc-text-muted);
 }
 
-/* Square avatars for organizations in IdentityRow (gap: Avatar and
-   IdentityRow shape="square"). Same radius as .avatar-square. */
-.identity-org .rounded-full,
-.identity-org .rounded-full img {
-  border-radius: var(--hc-radius-control);
+/* An account (src/components/actor.tsx). Its picture's fallback disc is
+   opaque: the toolkit's fill is translucent, so overlapping avatars showed
+   through each other (gap: the toolkit's Avatar fill). */
+.actor-avatar {
+  background:
+    linear-gradient(var(--hc-fill-subtle), var(--hc-fill-subtle)), var(--hc-surface-panel);
 }
 
-/* IdentityRow at the overview rows' size (gap: IdentityRow size="lg"). */
-.overview-rows .text-hc-body-sm {
+.actor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.actor-row-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.actor-row-text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.actor-row-name,
+.actor-row-secondary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actor-row-name {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  font-weight: var(--hc-weight-medium);
+}
+
+.overview-rows .actor-row-name {
   font-size: var(--hc-type-body);
+}
+
+.actor-row-secondary {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-micro);
+}
+
+.actor-row-action {
+  flex: none;
+}
+
+a.actor-row-main:hover .actor-row-name {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .overview-rows .text-hc-micro {

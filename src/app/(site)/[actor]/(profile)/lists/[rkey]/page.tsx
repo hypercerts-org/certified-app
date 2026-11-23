@@ -7,6 +7,7 @@ import { IntentLink } from "@/components/intent-link";
 import { ListItemList } from "@/components/list-item-list";
 import { ListItemsSkeleton } from "@/components/list-items";
 import { getActor, getList, getListItems } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
 /** A record key as AT Protocol allows it; anything else is no list. */
@@ -18,7 +19,7 @@ export async function generateMetadata({
   const { actor: id, rkey } = await params;
   const actor = await getActor(decodeURIComponent(id));
   const list = actor && RKEY.test(rkey) ? await getList(actor.did, rkey) : null;
-  return { title: list ? `${list.title} (${actor?.displayName})` : "Not found" };
+  return { title: list ? `${list.title} (${actor ? nameOf(actor) : ""})` : "Not found" };
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists/[rkey]">, "params">) {

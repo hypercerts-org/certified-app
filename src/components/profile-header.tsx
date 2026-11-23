@@ -4,18 +4,18 @@
 // description, cut to three lines with Read more); the links; and the viewer's
 // actions. The tabs follow it (see the profile layout).
 
-import { Avatar, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
-import { OwnerOnly } from "@/components/viewer-only";
 import { getActingAs } from "@/lib/acting-as";
 import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
-import type { ActorCard, ActorDetail } from "@/lib/hypercerts/views";
+import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
 
 /** One of the header's links: Bluesky as its icon, an email as itself, the rest by label. */
@@ -134,18 +134,11 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
         </div>
       )}
       <div className="profile-head">
-        <Avatar
-          name={actor.displayName.replace(/^@/, "")}
-          src={actor.avatarUrl}
-          size="lg"
-          className={
-            actor.isOrganization ? "profile-avatar profile-avatar-square" : "profile-avatar"
-          }
-        />
+        <ActorAvatar actor={actor} size="lg" className="profile-avatar" />
         <div className="profile-identity">
           <PageTitle className="profile-name">
             <span dir="auto">
-              <ProfileName did={actor.did} rendered={actor.profile} fallback={actor.displayName} />
+              <ProfileName did={actor.did} rendered={actor.profile} fallback={nameOf(actor)} />
             </span>
           </PageTitle>
           {facts.length > 0 && (
@@ -207,7 +200,7 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
       <OwnerActions
         editHref={(await mayEditProfile(actor.did)) ? `${actorHref(actor.did)}/edit` : null}
         path={base}
-        title={actor.displayName}
+        title={nameOf(actor)}
       />
     );
   }
@@ -215,7 +208,7 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
     <VisitorActions
       did={actor.did}
       path={base}
-      title={actor.displayName}
+      title={nameOf(actor)}
       actor={actingAs}
       follow={actingAs ? await getFollow(actingAs, actor.did) : null}
     />
@@ -248,11 +241,7 @@ const numberFormat = new Intl.NumberFormat("en");
 
 /** "A", "A and B", "A, B and 3 others" (or "and others" past the latest page). */
 function endorserNames(endorsers: ActorCard[], more: boolean): ReactNode {
-  const name = (actor: ActorCard) => (
-    <span className="trust-name" dir="auto">
-      {actor.displayName}
-    </span>
-  );
+  const name = (actor: ActorCard) => <ActorName actor={actor} className="trust-name" />;
   const [first, second] = endorsers;
   const rest = endorsers.length - NAMED;
   if (!second) return name(first);
@@ -285,20 +274,16 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
   return (
     // Empty (hidden) when there is nothing to show this viewer.
     <div className="trust-line">
-      {endorsers.length > 0 ? (
+      {/* Endorsements and follows only when there are some: an absence says nothing here. */}
+      {endorsers.length > 0 && (
         <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
           <span className="trust-faces" aria-hidden>
             {endorsers.slice(0, FACES).map((actor) => (
-              <Avatar key={actor.did} name={actor.displayName} src={actor.avatarUrl} size="sm" />
+              <ActorAvatar key={actor.did} actor={actor} size="sm" />
             ))}
           </span>
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
-      ) : (
-        // Only the account itself is told about what isn't there.
-        <OwnerOnly did={did}>
-          <span className="trust-none">No endorsements yet</span>
-        </OwnerOnly>
       )}
       {/* On one line with the endorsements, as staging has it. */}
       {(followers > 0 || following > 0) && (

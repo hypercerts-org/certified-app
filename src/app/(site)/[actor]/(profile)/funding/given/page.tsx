@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileFunding, ProfileFundingSkeleton } from "@/components/funding";
 import { getActor } from "@/lib/hypercerts/queries";
+import { nameOf } from "@/lib/hypercerts/views";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/funding/given">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? `${actor.displayName}: Funding given` : "Not found" };
+  return { title: actor ? `${nameOf(actor)}: Funding given` : "Not found" };
 }
 
 /** The funding the account gave: figures and receipts. */

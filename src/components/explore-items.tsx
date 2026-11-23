@@ -2,11 +2,12 @@
 // when, the author and how long ago) or a gallery of cards. Plain view models
 // only: the first page renders on the server, later ones in the browser.
 
-import { Avatar, Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder, SquareCheckBig } from "lucide-react";
+import { ActorAvatar, ActorHandle, ActorName } from "@/components/actor";
 import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
-import { nameOf, Thumb, Who } from "@/components/list-items";
+import { Thumb, Who } from "@/components/list-items";
 import type { ExploreKind, ExploreView } from "@/lib/explore-state";
 import type {
   ActorCard,
@@ -32,7 +33,11 @@ function AgeText({ age }: { age: Age | null }) {
 
 /** "by Name", under the title where the author column gives way (phones). */
 function By({ actor }: { actor: ActorCard }) {
-  return <span className="list-item-meta explore-by">by {nameOf(actor)}</span>;
+  return (
+    <span className="list-item-meta explore-by">
+      by <ActorName actor={actor} />
+    </span>
+  );
 }
 
 const joined = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ");
@@ -79,15 +84,12 @@ function ProjectRow({ project }: { project: ExploreProject }) {
 }
 
 function AccountRow({ account }: { account: ExploreAccount }) {
-  const name = nameOf(account);
   return (
     <li className="list-item explore-row">
       <IntentLink href={actorHref(account)} className="list-item-main">
-        <Avatar name={name.replace(/^@/, "")} src={account.avatarUrl} size="md" />
+        <ActorAvatar actor={account} />
         <span className="list-item-text">
-          <span className="list-item-title" dir="auto">
-            {name}
-          </span>
+          <ActorName actor={account} className="list-item-title" />
           {account.description && (
             <span className="list-item-meta" dir="auto">
               {account.description}
@@ -96,7 +98,7 @@ function AccountRow({ account }: { account: ExploreAccount }) {
         </span>
       </IntentLink>
       <span className="list-item-meta explore-handle">
-        {account.handle && name !== `@${account.handle}` ? `@${account.handle}` : ""}
+        <ActorHandle actor={account} />
       </span>
       <AgeText age={account.age} />
     </li>
@@ -107,12 +109,10 @@ function AccountRow({ account }: { account: ExploreAccount }) {
 function CardAuthor({ actor }: { actor: ActorCard }) {
   return (
     <IntentLink href={actorHref(actor)} className="explore-card-author">
-      <Avatar name={nameOf(actor).replace(/^@/, "")} src={actor.avatarUrl} size="sm" />
+      <ActorAvatar actor={actor} size="sm" />
       <span className="list-item-text">
-        <span className="list-item-title" dir="auto">
-          {nameOf(actor)}
-        </span>
-        {actor.handle && <span className="list-item-meta">@{actor.handle}</span>}
+        <ActorName actor={actor} className="list-item-title" />
+        <ActorHandle actor={actor} className="list-item-meta" />
       </span>
     </IntentLink>
   );
@@ -170,18 +170,13 @@ function WorkCard({
 }
 
 function AccountCard({ account }: { account: ExploreAccount }) {
-  const name = nameOf(account);
   return (
     <Card as="li" variant="panel" className="explore-account-card">
       <IntentLink href={actorHref(account)} className="explore-account-link">
-        <Avatar name={name.replace(/^@/, "")} src={account.avatarUrl} size="lg" />
+        <ActorAvatar actor={account} size="lg" />
         <span className="list-item-text">
-          <span className="list-item-title" dir="auto">
-            {name}
-          </span>
-          {account.handle && name !== `@${account.handle}` && (
-            <span className="list-item-meta">@{account.handle}</span>
-          )}
+          <ActorName actor={account} className="list-item-title" />
+          <ActorHandle actor={account} className="list-item-meta" />
         </span>
       </IntentLink>
       {account.description && (

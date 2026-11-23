@@ -1,29 +1,33 @@
 "use server";
 
-// Follow and unfollow, as the account the user acts as (their own, or an
-// organization through CGS), written with the Hypercerts SDK. Each waits for
-// the index to show the change, then expires the cached pages it changes, so
-// the page the action returns with (and every page after) shows it.
+// Follow and unfollow an account or a project, as the account the user acts
+// as (their own, or an organization through CGS), written with the Hypercerts
+// SDK: an account follow (app.certified.graph.follow) for an account's DID,
+// an entity follow (app.certified.graph.entityFollow) for a project's URI.
+// Each waits for the index to show the change, then expires the cached pages
+// it changes, so the page the action returns with (and every page after)
+// shows it.
 
+import type { SDKContext, WriteOptions } from "@hypercerts-org/sdk";
 import {
   followAccount,
+  followEntity,
   unfollowAccount,
-  WriteOutcomeUnknownError,
-  WriteRejectedError,
+  unfollowEntity,
 } from "@hypercerts-org/sdk/social";
 import { updateTag } from "next/cache";
 import { getActingAs } from "@/lib/acting-as";
-import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
+import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
-import { getIndexedFollow } from "@/lib/hypercerts/queries";
-import { sdkContext, writeTo } from "@/lib/hypercerts/sdk";
-import type { FollowRef } from "@/lib/hypercerts/views";
-import { logError } from "@/lib/log";
-import { isDid } from "@/lib/validate";
+import { getIndexedEntityFollow, getIndexedFollow } from "@/lib/hypercerts/queries";
+import { sdkContext, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
+import { collectionOf, didOf, type FollowRef } from "@/lib/hypercerts/views";
+import { isAtUri, isDid } from "@/lib/validate";
 
 type FollowFailure = "signed-out" | "forbidden" | "invalid" | "unknown" | "unavailable";
 type Action = "follow" | "unfollow";
+type Kind = "account" | "project";
 
 export type FollowFailed = { ok: false; reason: FollowFailure; message: string };
 /**
@@ -33,17 +37,54 @@ export type FollowFailed = { ok: false; reason: FollowFailure; message: string }
 export type FollowResult = { ok: true; follow: FollowRef; indexed: boolean } | FollowFailed;
 export type UnfollowResult = { ok: true; follow: null; indexed: boolean } | FollowFailed;
 
+/** What can be followed: an account by its DID, a project by its URI. */
+function kindOf(subject: unknown): Kind | null {
+  if (typeof subject !== "string") return null;
+  if (isDid(subject)) return "account";
+  if (isAtUri(subject) && collectionOf(subject) === "org.hypercerts.collection") return "project";
+  return null;
+}
+
+type Repo = WriteOptions | undefined;
+
+/** How each kind is followed, looked up, unfollowed and expired. */
+const KINDS: Record<
+  Kind,
+  {
+    indexed: (actor: string, subject: string) => Promise<FollowRef | null>;
+    create: (context: SDKContext, subject: string, repo: Repo) => Promise<FollowRef>;
+    remove: (context: SDKContext, uri: string, repo: Repo) => Promise<void>;
+    /** The cache tags a follow of `subject` by `actor` changes. */
+    expire: (actor: string, subject: string) => string[];
+  }
+> = {
+  account: {
+    indexed: getIndexedFollow,
+    create: (context, did, repo) => followAccount(context, { subject: { did } }, repo),
+    remove: (context, uri, repo) => unfollowAccount(context, { follow: { uri } }, repo),
+    // Both accounts' follows (counts, lists, the button) and feeds.
+    expire: (actor, did) => [actor, did].flatMap((d) => [tags.follows(d), tags.actor(d)]),
+  },
+  project: {
+    indexed: getIndexedEntityFollow,
+    create: (context, uri, repo) => followEntity(context, { subject: { uri } }, repo),
+    remove: (context, uri, repo) => unfollowEntity(context, { follow: { uri } }, repo),
+    // The follower's follows (the button) and feed; the project's followers.
+    expire: (actor, uri) => [tags.follows(actor), tags.actor(actor), tags.project(uri)],
+  },
+};
+
 /**
  * What went wrong, for the toast. `asOrganization`: the write went through
  * CGS, where any member may follow, but only admins and owners may delete a
  * record another member made.
  */
-function message(reason: FollowFailure, action: Action, asOrganization: boolean): string {
+function message(reason: FollowFailure, action: Action, kind: Kind, asOrganization: boolean) {
   switch (reason) {
     case "signed-out":
       return action === "follow"
-        ? "Your session has ended. Sign in again to follow accounts."
-        : "Your session has ended. Sign in again to unfollow accounts.";
+        ? `Your session has ended. Sign in again to follow ${kind}s.`
+        : `Your session has ended. Sign in again to unfollow ${kind}s.`;
     case "forbidden":
       if (!asOrganization) {
         return "Your sign-in doesn't allow this. Sign out and sign in again.";
@@ -53,7 +94,7 @@ function message(reason: FollowFailure, action: Action, asOrganization: boolean)
         : "Only the organization's admins and owners can undo a follow another member made.";
     case "invalid":
       return action === "follow"
-        ? "This account can't be followed."
+        ? `This ${kind} can't be followed.`
         : "This follow couldn't be undone.";
     case "unknown":
       return action === "follow"
@@ -66,104 +107,102 @@ function message(reason: FollowFailure, action: Action, asOrganization: boolean)
   }
 }
 
-const failure = (reason: FollowFailure, action: Action, asOrganization = false): FollowFailed => ({
+/** Who writes, and how: known once the request checks out. */
+type Writer = {
+  session: NonNullable<Awaited<ReturnType<typeof getOAuthSession>>>;
+  actor: string;
+  subject: string;
+  kind: Kind;
+  repo: Repo;
+  asOrganization: boolean;
+};
+
+const failure = (reason: FollowFailure, action: Action, w?: Partial<Writer>): FollowFailed => ({
   ok: false,
   reason,
-  message: message(reason, action, asOrganization),
+  message: message(reason, action, w?.kind ?? "account", w?.asOrganization ?? false),
 });
 
-function failed(err: unknown, action: Action, asOrganization: boolean): FollowFailed {
-  const fail = (reason: FollowFailure) => failure(reason, action, asOrganization);
-  if (err instanceof WriteOutcomeUnknownError) return fail("unknown");
-  if (err instanceof WriteRejectedError) {
-    return fail(err.status === 401 || err.status === 403 ? "forbidden" : "invalid");
-  }
-  if (err instanceof TypeError) return fail("invalid");
-  // Errors can carry upstream requests and tokens: only logError strips them.
-  if (!(err instanceof SessionUnavailableError)) logError(`[follow] ${action} failed`, err);
-  return fail("unavailable");
-}
-
 /** The session, and the account it acts as, when that may follow `subject`. */
-async function writer(subject: unknown, action: Action) {
-  if (typeof subject !== "string" || !isDid(subject)) return failure("invalid", action);
+async function writer(subject: unknown, action: Action): Promise<Writer | FollowFailed> {
+  const kind = kindOf(subject);
+  if (!kind) return failure("invalid", action);
   const [session, actor] = await Promise.all([getOAuthSession(), getActingAs()]);
-  if (!session || !actor) return failure("signed-out", action);
-  if (actor === subject) return failure("invalid", action);
-  return { session, actor, subject, asOrganization: actor !== session.did };
-}
-
-/**
- * Expires what a follow between the two accounts changes: their follows
- * (counts, lists, the Follow button) and their profiles' feeds.
- */
-function expireFollows(actor: string, subject: string) {
-  for (const did of [actor, subject]) {
-    updateTag(tags.follows(did));
-    updateTag(tags.actor(did));
+  if (!session || !actor) return failure("signed-out", action, { kind });
+  const target = subject as string;
+  // Not yourself, nor your own project.
+  if (actor === (kind === "account" ? target : didOf(target))) {
+    return failure("invalid", action, { kind });
   }
+  return {
+    session,
+    actor,
+    subject: target,
+    kind,
+    repo: writeTo(session, actor),
+    asOrganization: actor !== session.did,
+  };
+}
+
+function expire(tagged: string[]) {
+  for (const tag of tagged) updateTag(tag);
 }
 
 /**
- * Follows account `subject`. When the index already shows a follow (made in
- * another tab, say), returns that one rather than writing a duplicate.
+ * Follows `subject`: an account's DID, or a project's URI. When the index
+ * already shows a follow (made in another tab, say), returns that one rather
+ * than writing a duplicate.
  */
 export async function follow(subject: string): Promise<FollowResult> {
-  let asOrganization = false;
+  let w: Writer | FollowFailed | undefined;
   try {
-    const w = await writer(subject, "follow");
+    w = await writer(subject, "follow");
     if ("ok" in w) return w;
-    asOrganization = w.asOrganization;
-    const existing = await getIndexedFollow(w.actor, w.subject).catch(() => null);
+    const { actor, subject: target } = w;
+    const how = KINDS[w.kind];
+    const existing = await how.indexed(actor, target).catch(() => null);
     if (existing) return { ok: true, follow: existing, indexed: true };
-    const made = await followAccount(
-      sdkContext(w.session),
-      { subject: { did: w.subject } },
-      writeTo(w.session, w.actor),
-    );
-    const indexed = await waitForIndex(
-      async () => (await getIndexedFollow(w.actor, w.subject)) !== null,
-    );
-    expireFollows(w.actor, w.subject);
+    const made = await how.create(sdkContext(w.session), target, w.repo);
+    const indexed = await waitForIndex(async () => (await how.indexed(actor, target)) !== null);
+    expire(how.expire(actor, target));
     return { ok: true, follow: { uri: made.uri, cid: made.cid }, indexed };
   } catch (err) {
-    return failed(err, "follow", asOrganization);
+    return failure(writeFailure(err, "follow"), "follow", w && !("ok" in w) ? w : undefined);
   }
 }
 
 /**
- * Unfollows account `subject`: deletes the follow records the browser knows
- * of (`uris`: one the index didn't show yet) and the one the index shows.
+ * Unfollows `subject`: deletes the follow records the browser knows of
+ * (`uris`: one the index didn't show yet) and the one the index shows.
  * Safe to repeat.
  */
 export async function unfollow(input: {
   subject: string;
   uris: string[];
 }): Promise<UnfollowResult> {
-  let asOrganization = false;
+  let w: Writer | FollowFailed | undefined;
   try {
-    const w = await writer(input?.subject, "unfollow");
+    w = await writer(input?.subject, "unfollow");
     if ("ok" in w) return w;
-    asOrganization = w.asOrganization;
+    const { actor, subject: target } = w;
+    const how = KINDS[w.kind];
     const known = Array.isArray(input.uris) ? input.uris : [];
     if (known.length > 5 || known.some((uri) => typeof uri !== "string")) {
-      return failure("invalid", "unfollow");
+      return failure("invalid", "unfollow", w);
     }
-    const shown = await getIndexedFollow(w.actor, w.subject).catch(() => null);
+    const shown = await how.indexed(actor, target).catch(() => null);
     const removed = [...new Set([...known, ...(shown ? [shown.uri] : [])])];
     const context = sdkContext(w.session);
     // One at a time: each is its own write, and a failure stops the rest.
-    for (const uri of removed) {
-      await unfollowAccount(context, { follow: { uri } }, writeTo(w.session, w.actor));
-    }
+    for (const uri of removed) await how.remove(context, uri, w.repo);
     // Done once the index shows none of them (a follow made since, elsewhere, may remain).
     const indexed = await waitForIndex(async () => {
-      const follow = await getIndexedFollow(w.actor, w.subject);
-      return follow === null || !removed.includes(follow.uri);
+      const left = await how.indexed(actor, target);
+      return left === null || !removed.includes(left.uri);
     });
-    expireFollows(w.actor, w.subject);
+    expire(how.expire(actor, target));
     return { ok: true, follow: null, indexed };
   } catch (err) {
-    return failed(err, "unfollow", asOrganization);
+    return failure(writeFailure(err, "unfollow"), "unfollow", w && !("ok" in w) ? w : undefined);
   }
 }

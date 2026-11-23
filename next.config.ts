@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
   cacheLife: {
     public: { stale: 300, revalidate: 60, expire: 3600 },
   },
+  // Images are sent to the Server Actions that publish them: an activity's
+  // up to 5 MB, a project's banner up to 10 MB (the lexicon's limits). The
+  // default limit is 1 MB.
+  experimental: {
+    serverActions: { bodySizeLimit: "11mb" },
+  },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.bsky.app" }],
   },

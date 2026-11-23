@@ -1,5 +1,5 @@
-import { Avatar } from "@hypercerts-org/ui-react";
 import Link from "next/link";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import LpArrow from "@/components/landing/lp-arrow";
 import { getActor } from "@/lib/hypercerts/queries";
@@ -53,7 +53,14 @@ export default async function ExploreProfiles() {
         </header>
         <div className="lp-split__body">
           {profiles.map(({ featured, actor }) => {
-            const name = actor?.profile.displayName || featured.name;
+            // The account as indexed, named as we feature it until it has a profile name.
+            const account = {
+              did: featured.did,
+              handle: actor?.handle ?? null,
+              displayName: actor?.profile.displayName || featured.name,
+              avatarUrl: actor?.avatarUrl ?? null,
+              isOrganization: actor?.isOrganization,
+            };
             return (
               <Link
                 key={featured.did}
@@ -61,14 +68,9 @@ export default async function ExploreProfiles() {
                 href={actor ? actorHref(actor) : actorHref(featured.did)}
                 className="lp-explore__row"
               >
-                <Avatar
-                  name={name}
-                  src={actor?.avatarUrl}
-                  size="md"
-                  className="lp-explore__avatar"
-                />
+                <ActorAvatar actor={account} className="lp-explore__avatar" />
                 <span className="lp-explore__text">
-                  <span className="lp-explore__name">{name}</span>
+                  <ActorName actor={account} className="lp-explore__name" />
                   <span className="lp-explore__bio">{actor?.description || featured.tagline}</span>
                 </span>
                 <LpArrow className="lp-explore__arrow" />

@@ -4,8 +4,9 @@
 // profile links here, so a badge can be followed to everyone else who holds
 // it.
 
-import { Avatar, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { BadgeHolderList } from "@/components/badge-holders";
 import { BadgeIcon } from "@/components/badges";
 import { actorHref } from "@/components/cards";
@@ -53,9 +54,9 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
             <span dir="auto">{badge.title}</span>
           </PageTitle>
           <IntentLink href={actorHref(badge.issuer)} className="meta-author">
-            <Avatar name={badge.issuer.displayName} src={badge.issuer.avatarUrl} size="sm" />
+            <ActorAvatar actor={badge.issuer} size="sm" />
             <Text as="span" size="body-sm">
-              Issued by {badge.issuer.displayName}
+              Issued by <ActorName actor={badge.issuer} />
             </Text>
           </IntentLink>
           {badge.description && (

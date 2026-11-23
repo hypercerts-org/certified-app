@@ -73,8 +73,10 @@ Only the theme's tokens; no hex values in app CSS.
 - Text: `--hc-text-ink` (titles, primary text), `--hc-text-body` (long
   passages), `--hc-text-muted` (descriptions, meta, inactive items).
 - Surfaces: `--hc-surface-page` (the canvas), `--hc-surface-panel` (boxes,
-  the sidebar), `--hc-surface-tint` (hover, current item, placeholders),
-  `--hc-fill-subtle` (pressed, notices).
+  the sidebar), `--hc-surface-tint` (placeholders, image backdrops),
+  `--hc-fill-subtle` (hover, current item, pressed, notices). Hover is
+  `--hc-fill-subtle` everywhere, as in the toolkit's own components, so a
+  hovered row, card, figure or menu item looks the same wherever it is.
 - Lines: `--hc-line-hairline` between rows and around boxes.
 
 ## Patterns

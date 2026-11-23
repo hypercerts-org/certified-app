@@ -19,11 +19,10 @@ export function ProfileName({
 }
 
 export function ProfileDescription({ rendered }: { rendered: ProfileFields }) {
-  return rendered.description ? (
+  if (!rendered.description) return null;
+  return (
     <Text relaxed className="prewrap">
       {rendered.description}
     </Text>
-  ) : (
-    <Text tone="muted">No description yet.</Text>
   );
 }

@@ -1,17 +1,22 @@
-// A project's page, like a profile: its header (what it is, by whom, how many
-// follow it, Follow), then its pages as tabs, each its own URL: Activities
-// (the default), Funding and Followers.
+// A project's page, like a profile: its banner, its header (what it is, by
+// whom, how many follow it, Follow), then its pages as tabs, each its own
+// URL: Activities (the default), Funding and Followers.
 
-import { Avatar, ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { UserPlus } from "lucide-react";
+import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ActorAvatar, ActorName } from "@/components/actor";
 import { actorHref } from "@/components/cards";
-import { ComingSoonButton } from "@/components/coming-soon";
 import { PageTitle } from "@/components/page-title";
-import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
-import { getActor, getProject, getProjectFollowers } from "@/lib/hypercerts/queries";
+import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { getActingAs } from "@/lib/acting-as";
+import {
+  getActor,
+  getEntityFollow,
+  getProject,
+  getProjectFollowers,
+} from "@/lib/hypercerts/queries";
 
 export type ProjectParams = Promise<{ actor: string; rkey: string }>;
 
@@ -44,6 +49,20 @@ async function FollowerCount({ uri }: { uri: string }) {
   );
 }
 
+/** Follow, for anyone but the project's author (as whom it acts, it has nothing to follow). */
+async function ProjectFollow({ uri, author, path }: { uri: string; author: string; path: string }) {
+  const actingAs = await getActingAs();
+  if (actingAs === author) return null;
+  return (
+    <FollowControl
+      subject={uri}
+      path={path}
+      actor={actingAs}
+      follow={actingAs ? await getEntityFollow(actingAs, uri) : null}
+    />
+  );
+}
+
 const TABS = [
   { label: "Activities", path: "" },
   { label: "Funding", path: "/funding" },
@@ -59,6 +78,12 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
   const { actor, project, uri, base } = await projectFrom(params);
   return (
     <>
+      {project.bannerUrl && (
+        <div className="profile-banner">
+          {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
+          <img src={project.bannerUrl} alt="" />
+        </div>
+      )}
       <div className="project-head">
         <div className="stack">
           <Eyebrow>Project</Eyebrow>
@@ -67,9 +92,9 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           </PageTitle>
           <div className="project-meta">
             <Link prefetch href={actorHref(actor)} className="meta-author">
-              <Avatar name={actor.displayName} src={actor.avatarUrl} size="sm" />
+              <ActorAvatar actor={actor} size="sm" />
               <Text as="span" size="body-sm">
-                {actor.displayName}
+                <ActorName actor={actor} />
               </Text>
             </Link>
             <Suspense fallback={null}>
@@ -85,11 +110,9 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
             </ExpandableText>
           )}
         </div>
-        {/* Following a project comes with the Hypercerts SDK's writes. */}
-        <ComingSoonButton>
-          <UserPlus size={16} aria-hidden />
-          Follow
-        </ComingSoonButton>
+        <Suspense fallback={null}>
+          <ProjectFollow uri={uri} author={actor.did} path={base} />
+        </Suspense>
       </div>
       <ProfileTabs label="Project" tabs={tabs(base)} />
     </>

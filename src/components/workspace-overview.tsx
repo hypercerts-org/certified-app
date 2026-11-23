@@ -19,13 +19,11 @@
 // about the account, so a prefetching link brings them along.
 
 import {
-  Avatar,
   Button,
   Card,
   CopyableId,
   Eyebrow,
   Heading,
-  IdentityRow,
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
@@ -41,7 +39,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
-import { actorHref, projectHref, workspaceHref } from "@/components/cards";
+import { ActorAvatar, ActorHandle, ActorName, ActorRow } from "@/components/actor";
+import { activityHref, actorHref, projectHref, workspaceHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
 import { PageTitle } from "@/components/page-title";
@@ -138,13 +137,17 @@ function Section({
   );
 }
 
-/** A write that isn't available yet: shown, disabled, until the SDK ships it. */
-function Placeholder({ children }: { children: ReactNode }) {
+/** New activity: its page, as a button. */
+function NewActivity({ href, primary }: { href: string; primary?: boolean }) {
   return (
-    <ComingSoonButton>
+    <Button
+      href={href}
+      variant={primary ? "primary" : "secondary"}
+      size={primary ? undefined : "sm"}
+    >
       <Plus size={16} aria-hidden />
-      {children}
-    </ComingSoonButton>
+      New activity
+    </Button>
   );
 }
 
@@ -240,6 +243,7 @@ async function RecordsSection({ did }: { did: string }) {
     listLatestRecords(did, LATEST_RECORDS),
   ]);
   const work = `${workspaceHref(did)}/projects`;
+  const newActivity = `${work}/new-activity`;
   const empty =
     latest.length === 0 &&
     counts.activities.value === 0 &&
@@ -252,7 +256,7 @@ async function RecordsSection({ did }: { did: string }) {
       description="What you have published, here or in other apps."
       // With records, New activity sits beside the title; without, the
       // empty state carries it (as on staging).
-      action={empty ? undefined : <Placeholder>New activity</Placeholder>}
+      action={empty ? undefined : <NewActivity href={newActivity} />}
     >
       {empty ? (
         <Empty
@@ -260,17 +264,12 @@ async function RecordsSection({ did }: { did: string }) {
           title="No records yet"
           description="Activities and projects you publish, here or in other apps, show up here."
           action={
-            // New activity and New project are placeholders until the
-            // Hypercerts SDK ships those writes.
             <div className="empty-actions">
-              <ComingSoonButton variant="primary">
-                <Plus size={16} aria-hidden />
-                New activity
-              </ComingSoonButton>
-              <ComingSoonButton>
+              <NewActivity href={newActivity} primary />
+              <Button href={`${work}/new-project`} variant="secondary">
                 <Plus size={16} aria-hidden />
                 New project
-              </ComingSoonButton>
+              </Button>
               <Button href="/explore" variant="secondary">
                 <Search size={16} aria-hidden />
                 Find accounts
@@ -318,7 +317,7 @@ async function RecordsSection({ did }: { did: string }) {
   );
 }
 
-/** A latest record: thumbnail, title, kind and date. Projects link to their page. */
+/** A latest record: thumbnail, title, kind and date, linking to its page. */
 function RecordRow({ record }: { record: RecentRecord }) {
   const content = (
     <>
@@ -344,17 +343,15 @@ function RecordRow({ record }: { record: RecentRecord }) {
       </span>
     </>
   );
-  // Activities have no page of their own yet.
-  return record.kind === "Project" ? (
-    <Link
-      prefetch
-      href={projectHref({ authorDid: didOf(record.uri), rkey: rkeyOf(record.uri) })}
-      className="overview-row overview-row-link"
-    >
+  // The whole row is the link, to the record's page.
+  const href =
+    record.kind === "Project"
+      ? projectHref({ authorDid: didOf(record.uri), rkey: rkeyOf(record.uri) })
+      : activityHref(record.uri);
+  return (
+    <Link prefetch href={href} className="overview-row overview-row-link">
       {content}
     </Link>
-  ) : (
-    <div className="overview-row">{content}</div>
   );
 }
 
@@ -397,11 +394,8 @@ async function EndorsementsSection({ did }: { did: string }) {
           <ul className="overview-rows">
             {endorsements.latestReceived.map((endorsement) => (
               <li key={endorsement.uri} className="overview-row-dated">
-                <IdentityRow
-                  size="md"
-                  className={endorsement.issuer.isOrganization ? "identity-org" : undefined}
-                  name={endorsement.issuer.displayName}
-                  avatarSrc={endorsement.issuer.avatarUrl}
+                <ActorRow
+                  actor={endorsement.issuer}
                   href={actorHref(endorsement.issuer)}
                   secondary={endorsementLine(endorsement)}
                 />
@@ -435,7 +429,8 @@ async function IdentityBox({ did }: { did: string }) {
 
 function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }) {
   const handle = actor?.handle ?? null;
-  const name = actor?.displayName ?? (handle ? `@${handle}` : did);
+  // An account the index doesn't know yet: by its DID.
+  const account = actor ?? { did, handle, displayName: did, avatarUrl: null };
   const bio = firstLine(actor?.description ?? null);
   const website = actor?.website ?? null;
   const isOrganization = actor?.isOrganization ?? false;
@@ -444,21 +439,11 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
   return (
     <>
       <div className="overview-identity">
-        <Avatar
-          name={name.replace(/^@/, "")}
-          src={actor?.avatarUrl}
-          size="lg"
-          className={isOrganization ? "overview-avatar avatar-square" : "overview-avatar"}
-        />
+        <ActorAvatar actor={account} size="lg" className="overview-avatar" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
-            <Link
-              prefetch
-              href={actorHref({ did, handle })}
-              className="overview-identity-name"
-              dir="auto"
-            >
-              {name}
+            <Link prefetch href={actorHref({ did, handle })} className="overview-identity-name">
+              <ActorName actor={account} />
             </Link>
           </Heading>
           {bio ? (
@@ -466,12 +451,9 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
               {bio}
             </Text>
           ) : (
-            handle &&
-            actor?.displayName && (
-              <Text size="body-sm" tone="muted">
-                @{handle}
-              </Text>
-            )
+            <Text size="body-sm" tone="muted">
+              <ActorHandle actor={account} />
+            </Text>
           )}
           {website && (
             <a
@@ -554,11 +536,8 @@ export function OrganizationsSection({
         <ul className="overview-rows">
           {organizations.map((organization) => (
             <li key={organization.did}>
-              <IdentityRow
-                size="md"
-                className="identity-org"
-                name={organization.name}
-                avatarSrc={organization.avatarUrl}
+              <ActorRow
+                actor={organization}
                 href={actorHref(organization)}
                 secondary={[
                   organization.roleLabel,
