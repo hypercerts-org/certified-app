@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
-import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { NewBadge } from "@/components/workspace-badges";
+import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getBadges, getIssuedBadges, getRejectedBadges } from "@/lib/hypercerts/queries";
 
 // Workspace → Badges: received ones by the account's response (awaiting
@@ -51,13 +51,15 @@ export default function BadgesLayout({
 }: LayoutProps<"/[actor]/workspace/badges">) {
   return (
     <>
-      <PageTitle className="workspace-title">Badges</PageTitle>
-      <div className="workspace-tabbar">
-        <Suspense fallback={<ProfileTabsSkeleton labels={LABELS} />}>
-          <Tabs params={params} />
-        </Suspense>
-        <NewBadge />
-      </div>
+      <WorkspaceSectionHead
+        title="Badges"
+        tabs={
+          <Suspense fallback={<ProfileTabsSkeleton labels={LABELS} />}>
+            <Tabs params={params} />
+          </Suspense>
+        }
+        action={<NewBadge />}
+      />
       {/* Each page shows its own skeleton while it loads, so a tab switches at once. */}
       {children}
     </>

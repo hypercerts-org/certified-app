@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
-import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { EndorseSomeone } from "@/components/workspace-endorsements";
+import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getEndorsements, listLists } from "@/lib/hypercerts/queries";
 
 // Workspace → Endorsements: received, given and the endorsement lists, each
@@ -53,15 +53,17 @@ export default function EndorsementsLayout({
 }: LayoutProps<"/[actor]/workspace/endorsements">) {
   return (
     <>
-      <PageTitle className="workspace-title">Endorsements</PageTitle>
-      <div className="workspace-tabbar">
-        <Suspense
-          fallback={<ProfileTabsSkeleton labels={["Received", "Given", "Endorsement lists"]} />}
-        >
-          <Tabs params={params} />
-        </Suspense>
-        <EndorseSomeone />
-      </div>
+      <WorkspaceSectionHead
+        title="Endorsements"
+        tabs={
+          <Suspense
+            fallback={<ProfileTabsSkeleton labels={["Received", "Given", "Endorsement lists"]} />}
+          >
+            <Tabs params={params} />
+          </Suspense>
+        }
+        action={<EndorseSomeone />}
+      />
       {/* Each page shows its own skeleton while it loads, so a tab switches at once. */}
       {children}
     </>

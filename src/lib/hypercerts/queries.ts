@@ -9,22 +9,26 @@ import "server-only";
 import { Client, l } from "@atproto/lex";
 import { app, org } from "@hypercerts-org/api";
 import { cacheLife, cacheTag } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { getBlobText } from "@/lib/blobs";
 import { getPlaceLabel } from "@/lib/geocode";
-import { getDid, getHandle } from "@/lib/identity";
+import { getDid, getHandle, getPdsUrl } from "@/lib/identity";
 import { logError } from "@/lib/log";
+import { type RichText, richTextOf } from "@/lib/rich-text";
 import { isDid as isDidParam } from "@/lib/validate";
 import { tags } from "./cache";
 import {
   type ActivityCard,
   type ActorCard,
   type ActorDetail,
+  type Attachment,
   awardSubject,
   type BadgeCard,
   type BadgeDetail,
   type Contributor,
   didOf,
   type EndorsementCard,
+  type Evaluation,
   type ExploreAccount,
   type ExploreActivity,
   type ExploreProject,
@@ -38,8 +42,10 @@ import {
   type ListCard,
   type ListItem,
   locationBlobCid,
+  type Measurement,
   type Page,
   type PersonRow,
+  type Place,
   type ProfileVersion,
   type ProjectCard,
   type ProjectDetail,
@@ -50,12 +56,15 @@ import {
   toActorCard,
   toActorDetail,
   toAge,
+  toAttachment,
   toBadgeCard,
   toBadgeDetail,
   toContributors,
   toEndorsementCard,
+  toEvaluation,
   toExploreActivity,
   toExploreProject,
+  toMeasurement,
   toPlace,
   toProfileVersion,
   toProjectCard,
@@ -129,6 +138,19 @@ type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
 type Did = l.DidString;
 type AtUri = l.AtUriString;
 
+/**
+ * A location record of account `did` as a place. Some records keep their
+ * coordinates in a blob on the account's server. The short name comes from
+ * the point ("Corvallis, United States"), as the record's own name is free
+ * text; without one, its last two parts.
+ */
+async function placeOf(record: Parameters<typeof toPlace>[0], did: string): Promise<Place | null> {
+  const cid = locationBlobCid(record);
+  const place = toPlace(record, cid ? await getBlobText(did, cid) : null);
+  const label = place?.point ? await getPlaceLabel(place.point) : null;
+  return place && label ? { ...place, short: label } : place;
+}
+
 export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache";
   publicData(tags.actor(actor));
@@ -171,13 +193,7 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
     // The view carries the organization's location record: no second call.
     const record = organization.body.actor.location?.record;
     if (!record) return detail;
-    // Some records keep their coordinates in a blob on the account's server.
-    const cid = locationBlobCid(record);
-    const place = toPlace(record, cid ? await getBlobText(did, cid) : null);
-    // The short name from the point ("Corvallis, United States"), as the
-    // record's own name is free text; without one, its last two parts.
-    const label = place?.point ? await getPlaceLabel(place.point) : null;
-    return { ...detail, place: place && label ? { ...place, short: label } : place };
+    return { ...detail, place: await placeOf(record, did) };
   }
   if (!notFound(organization)) throw organization;
   if (profile.success) {
@@ -698,17 +714,75 @@ export async function getEntityFollow(actor: string, entity: string): Promise<Fo
   return getIndexedEntityFollow(actor, entity);
 }
 
-export type FollowCounts = { followers: number; following: number };
+/**
+ * How many follow `did`, and how many it follows: accounts and projects
+ * together (`following`), and each kind on its own.
+ */
+export type FollowCounts = {
+  followers: number;
+  following: number;
+  followingAccounts: number;
+  followingProjects: number;
+  /** More projects are followed than were counted (ProjectsFollowed's cap). */
+  followingMore: boolean;
+};
 
 export async function getFollowCounts(did: string): Promise<FollowCounts> {
   "use cache";
   publicData(tags.follows(did));
 
-  const [followers, following] = await Promise.all([
+  const [followers, following, projects] = await Promise.all([
     api.call(app.certified.graph.listActorFollowers, { actor: did as Did, limit: 1 }, read()),
     api.call(app.certified.graph.listActorFollowing, { actor: did as Did, limit: 1 }, read()),
+    listProjectsFollowed(did),
   ]);
-  return { followers: followers.totalCount, following: following.totalCount };
+  return {
+    followers: followers.totalCount,
+    following: following.totalCount + projects.rows.length,
+    followingAccounts: following.totalCount,
+    followingProjects: projects.rows.length,
+    followingMore: projects.more,
+  };
+}
+
+/** A project an account follows, with the follow record that unfollowing deletes. */
+export type ProjectFollowRow = { follow: FollowRef; project: ProjectCard; author: ActorCard };
+
+/** Followed projects read, at most: the API gives no total for entity follows (TECH-944). */
+const PROJECTS_FOLLOWED_CAP = 500;
+
+/**
+ * The projects `did` follows (entity follows of org.hypercerts.collection),
+ * newest first. The API has no total for these, so they are read in pages up
+ * to PROJECTS_FOLLOWED_CAP; `more` says there are more than that.
+ */
+export async function listProjectsFollowed(
+  did: string,
+): Promise<{ rows: ProjectFollowRow[]; more: boolean }> {
+  "use cache";
+  publicData(tags.follows(did));
+
+  const rows: ProjectFollowRow[] = [];
+  let cursor: string | undefined;
+  do {
+    const out = await api.call(
+      app.certified.graph.listEntityFollowing,
+      { actor: did as Did, limit: 100, cursor },
+      read(),
+    );
+    for (const item of out.entities) {
+      const entity = item.entity as { $type?: string } & CollectionViewLike;
+      if (entity.$type !== "org.hypercerts.collection.getCollection#collectionView") continue;
+      const view = entity as unknown as Parameters<typeof toProjectDetail>[0];
+      rows.push({
+        follow: { uri: item.follow.uri, cid: item.follow.cid },
+        project: toProjectCard(view),
+        author: toActorCard(view.author),
+      });
+    }
+    cursor = out.cursor ?? undefined;
+  } while (cursor && rows.length < PROJECTS_FOLLOWED_CAP);
+  return { rows: await withHandlesIn(rows, "author"), more: Boolean(cursor) };
 }
 
 /**
@@ -1044,6 +1118,7 @@ export async function listFollows(
     actor: toActorCard({ did: view.did, profile: view.profile, organization: view.organization }),
     note: null,
     date: formatDate(view.follow.record.createdAt),
+    follow: { uri: view.follow.uri, cid: view.follow.cid },
   }));
   return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor) };
 }
@@ -1424,10 +1499,11 @@ export async function activityIndexed(uri: string): Promise<boolean> {
   throw result;
 }
 
-/** An activity for its own page: its card, and its full description. */
-/** An activity as its own page shows it: the card, the full text, who did it and its work scope. */
+/** An activity as its own page shows it: the card, its full text (rich-text) and who did it. */
 export type ActivityDetail = ActivityCard & {
-  description: string | null;
+  /** Its own short description only (a card's summary falls back to the long text). */
+  shortDescription: string | null;
+  description: RichText | null;
   contributors: Contributor[];
 };
 
@@ -1453,9 +1529,126 @@ export async function getActivity(uri: string): Promise<ActivityDetail | null> {
   let next = 0;
   return {
     ...card,
-    description: plainText(activity.record.description),
+    shortDescription: activity.record.shortDescription?.trim() || null,
+    description: richTextOf(activity.record.description),
     contributors: contributors.map((c) => (c.actor ? { ...c, actor: actors[next++] } : c)),
   };
+}
+
+// What others add to an activity or a project
+//
+// Evaluations, measurements and attachments (updates among them) name the
+// records they are about; each kind is one call filtered by the record, so a
+// page asks for its own and shows each section as it arrives. All public,
+// cached with the record's context (tags.context).
+
+/** The address files are served from on an account's server, or null if it can't be found. */
+async function blobBase(did: string): Promise<string | null> {
+  try {
+    return new URL("/xrpc/com.atproto.sync.getBlob", await getPdsUrl(did)).href;
+  } catch (err) {
+    unstable_rethrow(err);
+    return null;
+  }
+}
+
+/** Each DID's blob address, looked up once per account. */
+async function blobBases(dids: string[]): Promise<Map<string, string | null>> {
+  const unique = [...new Set(dids)];
+  return new Map(await Promise.all(unique.map(async (did) => [did, await blobBase(did)] as const)));
+}
+
+/** An evaluation, with its evaluators' cards (those the API knows). */
+export type EvaluationWithEvaluators = Evaluation & { evaluators: ActorCard[] };
+
+/** The evaluations of record `uri`, newest first. */
+export async function getEvaluations(uri: string): Promise<EvaluationWithEvaluators[]> {
+  "use cache";
+  publicData(tags.context(uri));
+
+  const { evaluations } = await api.call(
+    org.hypercerts.context.listEvaluations,
+    { subjects: [uri as AtUri], sortDirection: "desc", limit: 50 },
+    read(),
+  );
+  const bases = await blobBases(evaluations.map((view) => view.did));
+  const items = evaluations.map((view) => toEvaluation(view, bases.get(view.did) ?? null));
+  const cards = new Map(
+    (await getActorCards([...new Set(items.flatMap((item) => item.evaluatorDids))])).map((card) => [
+      card.did,
+      card,
+    ]),
+  );
+  return items.map((item) => ({
+    ...item,
+    evaluators: item.evaluatorDids.flatMap((did) => cards.get(did) ?? []),
+  }));
+}
+
+/** The measurements of record `uri`, newest first. */
+export async function getMeasurements(uri: string): Promise<Measurement[]> {
+  "use cache";
+  publicData(tags.context(uri));
+
+  const { measurements } = await api.call(
+    org.hypercerts.context.listMeasurements,
+    { subjects: [uri as AtUri], sortDirection: "desc", limit: 50 },
+    read(),
+  );
+  return measurements.map(toMeasurement).filter((m) => m.metric && m.value);
+}
+
+/** Record `uri`'s attachments: its updates (newest first), and the rest. Comments are left out. */
+export async function getAttachments(
+  uri: string,
+): Promise<{ updates: Attachment[]; files: Attachment[] }> {
+  "use cache";
+  publicData(tags.context(uri));
+
+  const { attachments } = await api.call(
+    org.hypercerts.context.listAttachments,
+    { subjects: [uri as AtUri], sortDirection: "desc", limit: 100 },
+    read(),
+  );
+  const bases = await blobBases(attachments.map((view) => view.did));
+  const items = await withHandlesIn(
+    attachments.map((view) => toAttachment(view, bases.get(view.did) ?? null)),
+    "author",
+  );
+  return {
+    updates: items.filter((item) => item.kind === "update"),
+    files: items.filter((item) => item.kind !== "update" && item.kind !== "comment"),
+  };
+}
+
+/** The projects holding activity `uri`, any author's. */
+export async function getProjectsWith(uri: string): Promise<ProjectCard[]> {
+  "use cache";
+  publicData(tags.context(uri));
+  cacheTag(tags.activities(didOf(uri)));
+
+  const { collections } = await api.call(
+    org.hypercerts.collection.listCollections,
+    { itemUris: [uri as AtUri], types: ["project"], limit: 20 },
+    read(),
+  );
+  return collections.map(toProjectCard);
+}
+
+/** A location record (app.certified.location) as a place, with a short name from its point. */
+export async function getPlace(uri: string): Promise<Place | null> {
+  "use cache";
+  publicData(tags.context(uri));
+
+  const result = await api.xrpcSafe(app.certified.location.getLocation, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (!result.success) {
+    if (notFound(result)) return null;
+    throw result;
+  }
+  return placeOf(result.body.location.record, didOf(uri));
 }
 
 // Explore

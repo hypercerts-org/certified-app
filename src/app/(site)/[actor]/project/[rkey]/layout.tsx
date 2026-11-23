@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ProjectHeader, ProjectHeaderSkeleton, projectFrom } from "@/components/project-page";
+import {
+  ProjectHeader,
+  ProjectHeaderSkeleton,
+  ProjectRail,
+  ProjectTabs,
+  ProjectTabsSkeleton,
+  projectFrom,
+} from "@/components/project-page";
 
-// A project: its header and tabs, then the open tab (Activities, Funding,
-// Followers).
+// A project: its header across the top, then (as on a profile) the tabs and
+// the open tab on the left, and the side column on the right.
 
 export async function generateStaticParams() {
   return [{ actor: "did:plc:6taywkxm2zmfsbqikjdaapey", rkey: "3msind56wn22t" }];
@@ -21,11 +28,23 @@ export default function ProjectLayout({
   params,
 }: LayoutProps<"/[actor]/project/[rkey]">) {
   return (
-    <div className="page project">
+    <div className="page record-page project">
       <Suspense fallback={<ProjectHeaderSkeleton />}>
         <ProjectHeader params={params} />
       </Suspense>
-      {children}
+      <div className="page-columns">
+        <div className="page-main">
+          <Suspense fallback={<ProjectTabsSkeleton />}>
+            <ProjectTabs params={params} />
+          </Suspense>
+          {children}
+        </div>
+        <aside className="page-rail" aria-label="About this project">
+          <Suspense fallback={null}>
+            <ProjectRail params={params} />
+          </Suspense>
+        </aside>
+      </div>
     </div>
   );
 }

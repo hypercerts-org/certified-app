@@ -1,5 +1,6 @@
 import { Skeleton, Text } from "@hypercerts-org/ui-react";
 import { type LucideIcon, Users } from "lucide-react";
+import type { ReactNode } from "react";
 import { ActorRow } from "@/components/actor";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
@@ -10,7 +11,14 @@ import { endorsementLine, type PersonRow } from "@/lib/hypercerts/views";
  * The rows themselves: also rendered in the browser, for lists that load
  * more (badge-holders.tsx), so they take only plain view models.
  */
-export function PeopleRows({ rows }: { rows: PersonRow[] }) {
+export function PeopleRows({
+  rows,
+  action,
+}: {
+  rows: PersonRow[];
+  /** Something at each row's end, after its date (an Unfollow button). */
+  action?: (row: PersonRow) => ReactNode;
+}) {
   return (
     <ul className="people-list">
       {rows.map((row) => (
@@ -20,10 +28,15 @@ export function PeopleRows({ rows }: { rows: PersonRow[] }) {
             href={actorHref(row.actor)}
             secondary={endorsementLine(row)}
           />
-          {row.date && (
-            <Text as="span" size="body-sm" tone="muted" className="people-date">
-              {row.date}
-            </Text>
+          {(row.date || action) && (
+            <span className="people-row-end">
+              {row.date && (
+                <Text as="span" size="body-sm" tone="muted" className="people-date">
+                  {row.date}
+                </Text>
+              )}
+              {action?.(row)}
+            </span>
           )}
         </li>
       ))}

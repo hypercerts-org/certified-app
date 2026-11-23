@@ -1,20 +1,28 @@
-// A project's page, like a profile: its banner, its header (what it is, by
-// whom, how many follow it, Follow), then its pages as tabs, each its own
-// URL: Activities (the default), Funding and Followers.
+// A project's page, like a profile: its banner and header (what it is, by
+// whom, how many follow it, Follow), then two columns: its pages as tabs,
+// each its own URL (Activities, the default; Updates, when it has any;
+// Funding; Followers), and beside them where it is, what was measured and
+// its attachments.
 
 import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActorLink } from "@/components/actor";
+import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { Attachments, hasUpdates, Measurements } from "@/components/record-context";
+import { RichText } from "@/components/rich-text";
+import { TileSlot } from "@/components/tile-slot";
 import { getActingAs } from "@/lib/acting-as";
 import {
   getActor,
   getEntityFollow,
+  getPlace,
   getProject,
   getProjectFollowers,
 } from "@/lib/hypercerts/queries";
+import { leadOf } from "@/lib/rich-text";
 
 export type ProjectParams = Promise<{ actor: string; rkey: string }>;
 
@@ -63,17 +71,80 @@ async function ProjectFollow({ uri, author, path }: { uri: string; author: strin
 
 const TABS = [
   { label: "Activities", path: "" },
+  { label: "Updates", path: "/updates" },
   { label: "Funding", path: "/funding" },
   { label: "Followers", path: "/followers" },
 ] as const;
 
-/** The tabs carry no numbers: the header already says how many follow. */
-function tabs(base: string) {
-  return TABS.map((tab) => ({ label: tab.label, href: `${base}${tab.path}` }));
+/**
+ * The tabs carry no numbers: the header already says how many follow.
+ * Updates shows only when the project has some.
+ */
+export async function ProjectTabs({ params }: { params: ProjectParams }) {
+  const { uri, base } = await projectFrom(params);
+  const updates = await hasUpdates(uri);
+  return (
+    <ProfileTabs
+      label="Project"
+      tabs={TABS.map((tab) => ({
+        label: tab.label,
+        href: `${base}${tab.path}`,
+        empty: tab.path === "/updates" && !updates,
+      }))}
+    />
+  );
+}
+
+export function ProjectTabsSkeleton() {
+  return (
+    <ProfileTabsSkeleton
+      labels={TABS.filter((tab) => tab.path !== "/updates").map((tab) => tab.label)}
+    />
+  );
+}
+
+/** Where the project is, as a map with its name, when it says. */
+async function ProjectLocation({
+  locationUri,
+  title,
+  imageUrl,
+}: {
+  locationUri: string;
+  title: string;
+  imageUrl: string | null;
+}) {
+  const place = await getPlace(locationUri);
+  if (!place) return null;
+  return <LocationCard place={place} who={title} imageUrl={imageUrl} />;
+}
+
+/** The side column: where, what was measured, attachments; each only when there is one. */
+export async function ProjectRail({ params }: { params: ProjectParams }) {
+  const { actor, project, uri } = await projectFrom(params);
+  return (
+    <>
+      {project.locationUri && (
+        <TileSlot title="Location" skeleton={null}>
+          <ProjectLocation
+            locationUri={project.locationUri}
+            title={project.title}
+            imageUrl={project.imageUrl ?? actor.avatarUrl}
+          />
+        </TileSlot>
+      )}
+      <TileSlot title="Measured" skeleton={null}>
+        <Measurements uri={uri} />
+      </TileSlot>
+      <TileSlot title="Attachments" skeleton={null}>
+        <Attachments uri={uri} />
+      </TileSlot>
+    </>
+  );
 }
 
 export async function ProjectHeader({ params }: { params: ProjectParams }) {
   const { actor, project, uri, base } = await projectFrom(params);
+  const lead = leadOf(project.summary, project.description);
   return (
     <>
       {project.bannerUrl && (
@@ -96,12 +167,16 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
               <FollowerCount uri={uri} />
             </Suspense>
           </div>
+          {/* The short description leads; the long one fades out above Read
+              more, as a profile's does. */}
+          {lead && (
+            <Text className="project-lead measure" dir="auto">
+              {lead}
+            </Text>
+          )}
           {project.description && (
-            // Long descriptions fade out above Read more, as on profiles.
             <ExpandableText lines={4} className="expandable-fade measure">
-              <Text relaxed className="prewrap" dir="auto">
-                {project.description}
-              </Text>
+              <RichText text={project.description} />
             </ExpandableText>
           )}
         </div>
@@ -109,22 +184,18 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           <ProjectFollow uri={uri} author={actor.did} path={base} />
         </Suspense>
       </div>
-      <ProfileTabs label="Project" tabs={tabs(base)} />
     </>
   );
 }
 
-/** The header on its way: what it is, by whom, then the tabs. */
+/** The header on its way: what it is, by whom. */
 export function ProjectHeaderSkeleton() {
   return (
-    <>
-      <div className="stack" aria-hidden>
-        <Eyebrow>Project</Eyebrow>
-        <Skeleton variant="line" className="skeleton-name" />
-        <Skeleton variant="line" className="skeleton-meta" />
-        <Skeleton variant="text" lines={3} className="skeleton-lead" />
-      </div>
-      <ProfileTabsSkeleton labels={TABS.map((tab) => tab.label)} />
-    </>
+    <div className="stack" aria-hidden>
+      <Eyebrow>Project</Eyebrow>
+      <Skeleton variant="line" className="skeleton-name" />
+      <Skeleton variant="line" className="skeleton-meta" />
+      <Skeleton variant="text" lines={3} className="skeleton-lead" />
+    </div>
   );
 }

@@ -888,10 +888,12 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* Public profile (src/components/profile-header.tsx and the (profile) pages). */
-/* A profile, centered at its own width: the header across the top, then two
-   columns, each no wider than its maximum. */
-.profile {
-  container: profile / inline-size;
+/* A profile, a project or an activity, centered at its own width: the header
+   across the top, then two columns (.page-columns), each no wider than its
+   maximum. */
+.profile,
+.record-page {
+  container: profile page / inline-size;
   gap: var(--space-6);
   inline-size: 100%;
   max-inline-size: 62rem;
@@ -1084,21 +1086,21 @@ button.menu-row:disabled:not([aria-current]) {
 /* Left, the tabs and the tab's page; right, the account's figures and facts,
    level with the tabs (they switch only the left column). Stacked when the
    profile is narrower than both side by side. */
-.profile-columns {
+.page-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-8);
 }
 
-@container profile (inline-size >= 56rem) {
-  .profile-columns {
+@container page (inline-size >= 56rem) {
+  .page-columns {
     grid-template-columns: minmax(0, 40rem) minmax(0, 20rem);
     justify-content: space-between;
     align-items: start;
   }
 }
 
-.profile-main {
+.page-main {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
@@ -1106,7 +1108,7 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* The tabs share the column's width, as on X (and scroll when they can't). */
-.profile-main > .profile-tabs .profile-tab {
+.page-main > .profile-tabs .profile-tab {
   flex: 1 0 auto;
   justify-content: center;
 }
@@ -1316,7 +1318,7 @@ a.post-amount:hover {
 }
 
 /* The Overview's side column: its cards, 1rem apart. */
-.profile-rail {
+.page-rail {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -1562,6 +1564,27 @@ a.post-amount:hover {
   gap: var(--space-4);
   padding-block: var(--space-3);
   border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.people-row-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Whom an account follows (src/components/follow-lists.tsx): accounts, then
+   projects, each under its heading when both are there. */
+.following-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.following-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .people-row > :first-child {
@@ -2098,7 +2121,9 @@ a.explore-account-link:hover .list-item-title {
 
 /* A link to an account (ActorLink, src/components/actor.tsx): its picture
    and name, or the name alone; the name underlines on hover, everywhere. */
-.actor-link {
+/* :where() keeps it overridable: a place's own class (an author column's
+   width) wins over these defaults. */
+:where(.actor-link) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -2454,19 +2479,88 @@ a.explore-account-link:hover .list-item-title {
   }
 }
 
-/* An activity's page, like a blog post: its header, the picture as a hero
-   image across the column, then the full text. */
-.activity-post {
+/* A long text (src/components/rich-text.tsx): a record's description or an
+   update, in the body type, paragraphs a paragraph's distance apart. A block
+   (not flex), so a "Read more" fold can clamp it by lines. */
+.rich-text {
+  color: var(--hc-text-body);
+  font-size: var(--hc-type-body);
+  line-height: var(--hc-type-body-lh);
+  overflow-wrap: anywhere;
+}
+
+.rich-text > * {
+  margin: 0;
+}
+
+.rich-text > * + * {
+  margin-block-start: var(--rhythm-paragraph);
+}
+
+.rich-text p {
+  white-space: pre-line;
+}
+
+.rich-text :is(h3, h4, h5) {
+  margin-block-start: var(--space-2);
+  color: var(--hc-text-ink);
+  font-family: var(--hc-font-display);
+  font-weight: var(--hc-weight-display);
+}
+
+.rich-text h3 {
+  font-size: var(--hc-type-heading);
+  line-height: var(--hc-type-heading-lh);
+}
+
+.rich-text :is(h4, h5) {
+  font-size: var(--hc-type-body);
+}
+
+.rich-text ul {
+  padding-inline-start: var(--space-6);
+}
+
+.rich-text :where(li + li) {
+  margin-block-start: var(--space-1);
+}
+
+.rich-text blockquote {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--hc-line-hairline);
+  color: var(--hc-text-muted);
+}
+
+.rich-text hr {
+  inline-size: 100%;
+  border: none;
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.rich-text a {
+  color: var(--hc-text-ink);
+  text-underline-offset: 0.2em;
+}
+
+.rich-text-embed a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* An activity's page, like a blog post: its header and its picture as a
+   hero image across the page, then the columns (.page-columns): the lead and
+   the full text first, at a reading measure. */
+.activity-head {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  max-inline-size: 52rem;
 }
 
 .activity-hero {
   overflow: hidden;
   border-radius: var(--hc-radius-control);
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 21 / 9;
   background: var(--hc-surface-tint);
 }
 
@@ -2477,8 +2571,255 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .activity-body {
-  max-inline-size: 42rem;
-  color: var(--hc-text-body);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rhythm-paragraph);
+}
+
+/* The short description, leading the text: a step larger, as an intro. */
+.activity-lead,
+.project-lead {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-heading);
+  line-height: var(--hc-type-heading-lh);
+}
+
+/* What others add to a record (src/components/record-context.tsx). */
+.context-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.context-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--hc-type-body-sm);
+}
+
+.context-files a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--hc-text-ink);
+  text-underline-offset: 0.2em;
+}
+
+/* A record's pictures: small thumbnails in a grid, each opening the full
+   picture; the last shown counts the rest ("+12"). */
+.context-pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.context-pictures a {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border-radius: var(--hc-radius-tag);
+  background: var(--hc-surface-tint);
+}
+
+.context-pictures img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: opacity 150ms ease;
+}
+
+.context-pictures :where(a:hover) img {
+  opacity: 0.85;
+}
+
+/* "+12" over the last thumbnail: the picture dimmed under the count. */
+.context-pictures-more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--hc-text-ink) 55%, transparent);
+  color: var(--hc-text-on-fill);
+  font-weight: var(--hc-weight-strong);
+}
+
+.context-audio {
+  inline-size: 100%;
+  block-size: 2.5rem;
+}
+
+/* Evaluations: who evaluated and when, the score at the right, then the
+   summary (long ones fold) and the report's links. */
+.evaluations,
+.updates,
+.measurements,
+.attachments {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evaluation,
+.update {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block: var(--space-5);
+  border-block-start: 1px solid var(--hc-line-hairline);
+}
+
+.evaluation-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.evaluation-faces {
+  flex: none;
+}
+
+.evaluation-by {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+}
+
+.evaluation-date {
+  color: var(--hc-text-muted);
+}
+
+/* The score as a figure: the value large, its scale beside it. */
+.evaluation-score {
+  display: inline-flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-fill-subtle);
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.evaluation-score strong {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-heading);
+  font-weight: var(--hc-weight-strong);
+}
+
+/* Updates: the date over the title, then the text. */
+.update-meta {
+  margin: 0;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+.update-title {
+  margin-block-start: calc(-1 * var(--space-2));
+}
+
+/* "Show all N updates": a quiet link-like toggle under the latest few. */
+.updates-more > summary {
+  inline-size: fit-content;
+  padding-block: var(--space-3);
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+  list-style: none;
+}
+
+.updates-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.updates-more[open] > summary {
+  display: none;
+}
+
+/* Measurements in the side column: each a figure over what it measured. */
+.measurements {
+  gap: var(--space-5);
+}
+
+.measurement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.measurement-value {
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-display-3);
+  font-weight: var(--hc-weight-strong);
+  line-height: var(--hc-type-display-3-lh);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.measurement-metric {
+  color: var(--hc-text-ink);
+}
+
+.measurement-meta,
+.measurement-comment {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+/* Attachments in the side column: an icon by kind, the title linking to the
+   file, what it is and when. */
+.attachments {
+  gap: var(--space-4);
+}
+
+.attachment {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.attachment-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.attachment-title {
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+a.attachment-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.attachment-meta {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
 }
 
 /* A project's page: its details, with Follow at the top right. */
@@ -2981,7 +3322,9 @@ details[open] > .work-folder-head .work-folder-chevron {
   box-shadow: none;
 }
 
-.workspace-tabbar > :last-child {
+/* An action at the bar's end (src/components/workspace-section-head.tsx),
+   raised off the line the tabs sit on. */
+.workspace-tabbar-action {
   margin-block-end: var(--space-2);
 }
 

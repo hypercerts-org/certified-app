@@ -167,21 +167,21 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 
 // The header across the top; then two columns, each with a maximum width:
 // on the left the tabs and the tab's page, on the right the account's
-// figures and facts, level with the tabs (globals.css, .profile-columns).
+// figures and facts, level with the tabs (globals.css, .page-columns).
 export default function ProfileLayout({ children, params }: LayoutProps<"/[actor]">) {
   return (
     <div className="page profile">
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />
       </Suspense>
-      <div className="profile-columns">
-        <div className="profile-main">
+      <div className="page-columns">
+        <div className="page-main">
           <Suspense fallback={<ProfileTabsSkeleton labels={["Overview"]} />}>
             <Nav params={params} />
           </Suspense>
           {children}
         </div>
-        <aside className="profile-rail" aria-label="About this account">
+        <aside className="page-rail" aria-label="About this account">
           <Suspense fallback={<ProfileRailSkeleton />}>
             <Rail params={params} />
           </Suspense>

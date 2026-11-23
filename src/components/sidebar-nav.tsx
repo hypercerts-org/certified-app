@@ -2,20 +2,15 @@
 
 import { Eyebrow } from "@hypercerts-org/ui-react";
 import {
-  Award,
   Compass,
-  FolderGit2,
   HandCoins,
-  LayoutDashboard,
   LayoutGrid,
-  ListChecks,
   type LucideIcon,
   MapIcon,
   Network,
   Newspaper,
   Search,
   Settings,
-  ThumbsUp,
 } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
@@ -23,6 +18,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, Suspense, useEffect, useId, useRef, useState } from "react";
 import { WORKSPACE_OVERVIEW_PATH } from "@/components/cards";
 import { LinkPending } from "@/components/link-pending";
+import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 
 // The sidebar's pieces, after the staging redesign: the search, then the
 // app's pages in groups (Workspace, Network, Ecosystem), with Help and
@@ -43,38 +39,15 @@ const under = (base: string) => (pathname: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
 
 function workspaceItems(overview: string): Item[] {
-  return [
-    {
-      label: "Overview",
-      icon: LayoutDashboard,
-      href: overview,
-      isActive: (pathname) => WORKSPACE_OVERVIEW_PATH.test(pathname),
-    },
-    {
-      label: "Projects and activities",
-      icon: FolderGit2,
-      href: `${overview}/projects`,
-      isActive: under(`${overview}/projects`),
-    },
-    {
-      label: "Endorsements",
-      icon: ThumbsUp,
-      href: `${overview}/endorsements`,
-      isActive: under(`${overview}/endorsements`),
-    },
-    {
-      label: "Badges",
-      icon: Award,
-      href: `${overview}/badges`,
-      isActive: under(`${overview}/badges`),
-    },
-    {
-      label: "Lists",
-      icon: ListChecks,
-      href: `${overview}/lists`,
-      isActive: under(`${overview}/lists`),
-    },
-  ];
+  return WORKSPACE_SECTIONS.map(({ label, icon, path }) => ({
+    label,
+    icon,
+    href: `${overview}${path}`,
+    isActive:
+      path === ""
+        ? (pathname: string) => WORKSPACE_OVERVIEW_PATH.test(pathname)
+        : under(`${overview}${path}`),
+  }));
 }
 
 // The Feed follows your account, so it is signed-in only.

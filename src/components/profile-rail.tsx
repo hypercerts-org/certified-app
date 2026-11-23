@@ -3,10 +3,9 @@
 // identifiers. Like the intro beside a Facebook profile's feed.
 
 import { Card, CopyableId, Heading, Skeleton } from "@hypercerts-org/ui-react";
-import { MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { skeletonSlots } from "@/components/cards";
-import { LocationMap } from "@/components/location-map";
+import { LocationCard } from "@/components/location-card";
 import { type Stat, StatRow } from "@/components/stat-row";
 import {
   getBadges,
@@ -106,24 +105,7 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
         <Figures did={did} base={base} />
       </Suspense>
       {actor.place && (
-        <Card variant="panel" className="overview-box rail-card">
-          <Heading level={2} size="heading">
-            Location
-          </Heading>
-          <div className="location">
-            {actor.place.point && (
-              <LocationMap
-                point={actor.place.point}
-                label={`${nameOf(actor)}, ${actor.place.short}`}
-                imageUrl={actor.avatarUrl}
-              />
-            )}
-            <p className="location-name">
-              <MapPin size={16} aria-hidden />
-              <span dir="auto">{actor.place.name}</span>
-            </p>
-          </div>
-        </Card>
+        <LocationCard place={actor.place} who={nameOf(actor)} imageUrl={actor.avatarUrl} />
       )}
       <Card variant="panel" className="overview-box rail-card">
         <Heading level={2} size="heading">

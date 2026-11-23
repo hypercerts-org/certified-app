@@ -1,35 +1,17 @@
 "use client";
 
 import { Eyebrow } from "@hypercerts-org/ui-react";
-import {
-  Award,
-  FolderGit2,
-  LayoutDashboard,
-  ListChecks,
-  type LucideIcon,
-  Settings,
-  ThumbsUp,
-} from "lucide-react";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HelpMenu } from "@/components/help-menu";
 import { LinkPending } from "@/components/link-pending";
+import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 
 // The Workspace's sidebar, after the staging redesign: its sections, then
 // Help and Settings at the foot. The network's pages (Explore, Apps) stay in
 // the top bar. Sections not built yet are shown dimmed, not as links, so the
 // list has its final shape without leading anywhere empty.
-
-/** `path` is under the workspace's address ("" for the Overview); null while not built. */
-type Section = { label: string; icon: LucideIcon; path: string | null };
-
-const SECTIONS: readonly Section[] = [
-  { label: "Overview", icon: LayoutDashboard, path: "" },
-  { label: "Projects and activities", icon: FolderGit2, path: "/projects" },
-  { label: "Endorsements", icon: ThumbsUp, path: "/endorsements" },
-  { label: "Badges", icon: Award, path: "/badges" },
-  { label: "Lists", icon: ListChecks, path: "/lists" },
-];
 
 /** `overview` is the workspace's own address. */
 export function WorkspaceNav({ overview }: { overview: string }) {
@@ -44,31 +26,23 @@ export function WorkspaceNavView({ overview, pathname }: { overview: string; pat
         Workspace
       </Eyebrow>
       <ul className="workspace-nav-list">
-        {SECTIONS.map(({ label, icon: Icon, path }) => (
+        {WORKSPACE_SECTIONS.map(({ label, icon: Icon, path }) => (
           <li key={label}>
-            {path !== null ? (
-              <Link
-                prefetch
-                href={`${overview}${path}`}
-                className="workspace-nav-item"
-                aria-current={
-                  pathname === `${overview}${path}` ||
-                  (path !== "" && pathname?.startsWith(`${overview}${path}/`))
-                    ? "page"
-                    : undefined
-                }
-              >
-                <Icon size={20} strokeWidth={1.5} aria-hidden />
-                {label}
-                <LinkPending />
-              </Link>
-            ) : (
-              <span className="workspace-nav-item" aria-disabled="true" title="Coming soon">
-                <Icon size={20} strokeWidth={1.5} aria-hidden />
-                {label}
-                <span className="visually-hidden"> (coming soon)</span>
-              </span>
-            )}
+            <Link
+              prefetch
+              href={`${overview}${path}`}
+              className="workspace-nav-item"
+              aria-current={
+                pathname === `${overview}${path}` ||
+                (path !== "" && pathname?.startsWith(`${overview}${path}/`))
+                  ? "page"
+                  : undefined
+              }
+            >
+              <Icon size={20} strokeWidth={1.5} aria-hidden />
+              {label}
+              <LinkPending />
+            </Link>
           </li>
         ))}
       </ul>

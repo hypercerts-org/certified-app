@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PeopleList, PeopleListSkeleton } from "@/components/people-list";
+import { FollowingLists } from "@/components/follow-lists";
+import { PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
-import { getActor, getFollowCounts, listFollows } from "@/lib/hypercerts/queries";
+import {
+  getActor,
+  getFollowCounts,
+  listFollows,
+  listProjectsFollowed,
+} from "@/lib/hypercerts/queries";
 import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
@@ -19,8 +25,9 @@ const tabCount = (n: number) => (n > 0 ? numberFormat.format(n) : undefined);
 
 async function Content({ params }: Pick<PageProps<"/[actor]/following">, "params">) {
   const { actor, base } = await profileActor(params, "/following");
-  const [page, counts] = await Promise.all([
+  const [page, projects, counts] = await Promise.all([
     listFollows(actor.did, "following"),
+    listProjectsFollowed(actor.did),
     getFollowCounts(actor.did),
   ]);
   return (
@@ -41,12 +48,13 @@ async function Content({ params }: Pick<PageProps<"/[actor]/following">, "params
           },
         ]}
       />
-      <PeopleList page={page} empty="No accounts followed yet" />
+      {/* Accounts, then projects: two lists, one beneath the other. */}
+      <FollowingLists accounts={page} projects={projects} path={`${base}/following`} />
     </div>
   );
 }
 
-/** Whom the account follows. */
+/** Whom the account follows: accounts, then projects. */
 export default function FollowingPage(props: PageProps<"/[actor]/following">) {
   return (
     <Suspense

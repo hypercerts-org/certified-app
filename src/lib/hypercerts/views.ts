@@ -6,6 +6,10 @@
 // Hypercerts SDK later) does not touch any component.
 
 import type { app, org } from "@hypercerts-org/api";
+import { type RichText, richTextOf } from "@/lib/rich-text";
+import { safeUrl } from "@/lib/safe-url";
+
+export { safeUrl };
 
 /** A follow record: what unfollowing deletes. */
 export type FollowRef = { uri: string; cid: string };
@@ -108,7 +112,10 @@ export type LatestRecord =
   | { kind: "project"; project: ProjectCard; createdAt: string };
 
 export interface ProjectDetail extends ProjectCard {
-  description: string | null;
+  /** Its long description, as rich text (rich-text). */
+  description: RichText | null;
+  /** Its location record (app.certified.location), to look up; null without one. */
+  locationUri: string | null;
   /** The project's banner, at the banner size; null without one. */
   bannerUrl: string | null;
   author: ActorCard;
@@ -136,6 +143,8 @@ export type PersonRow = {
   badge?: string | null;
   /** A received endorsement its subject hid from its profile (a "rejected" response). */
   hidden?: boolean;
+  /** For a follow: the follow record itself, which unfollowing deletes. */
+  follow?: FollowRef;
 };
 
 /** A list an account keeps: a collection with a staging-app list type. */
@@ -232,22 +241,6 @@ const IMAGE_PRESET = {
 } as const;
 
 export type ImageSize = keyof typeof IMAGE_PRESET;
-
-/**
- * A URL from a record, if it is http(s): anything else (javascript:, data:,
- * ftp:) never reaches an href. `httpsOnly` for what browsers load on their
- * own, such as images: no mixed content.
- */
-export function safeUrl(value: unknown, httpsOnly = false): string | null {
-  const text = asString(value);
-  if (!text) return null;
-  try {
-    const { protocol } = new URL(text);
-    return protocol === "https:" || (!httpsOnly && protocol === "http:") ? text : null;
-  } catch {
-    return null;
-  }
-}
 
 export function imageUrl(did: string, image: unknown, size: ImageSize): string | null {
   const record = asRecord(image);
@@ -520,7 +513,8 @@ export function toProjectCard(collection: CollectionView): ProjectCard {
 export function toProjectDetail(collection: CollectionView): ProjectDetail {
   return {
     ...toProjectCard(collection),
-    description: plainText(collection.record.description),
+    description: richTextOf(collection.record.description),
+    locationUri: asString(asRecord(collection.record.location)?.uri),
     bannerUrl: imageUrl(collection.did, collection.record.banner, "banner"),
     author: toActorCard(collection.author),
     createdAt: formatDate(collection.record.createdAt),
@@ -1020,3 +1014,186 @@ export type FeedRow = { key: string; date: string | null } & (
       targetCount: number;
     }
 );
+
+// What others add to an activity or a project (org.hypercerts.context.*):
+// evaluations, measurements and attachments. Updates are attachments of type
+// "update"; comments (attachments of type "comment") are left out until the
+// app has a place for a conversation.
+
+type EvaluationRecordView = org.hypercerts.context.getEvaluation.EvaluationView;
+type MeasurementRecordView = org.hypercerts.context.getMeasurement.MeasurementView;
+type AttachmentRecordView = org.hypercerts.context.getAttachment.AttachmentView;
+
+/**
+ * A file or page a record points to, with what it reads as. An image has
+ * `thumbnail` (shown as a picture, linking to the full size); a sound file
+ * has `audio` (played in place).
+ */
+export type FileLink = { href: string; label: string; thumbnail?: string; audio?: boolean };
+
+/** An evaluation of the work: by whom, its verdict, and its score if it gives one. */
+export type Evaluation = {
+  uri: string;
+  /** The evaluators' DIDs, in the record's order (the query turns them into cards). */
+  evaluatorDids: string[];
+  summary: string;
+  /** "8", out of "10" (from "1"). */
+  score: { value: string; min: string; max: string } | null;
+  date: string | null;
+  /** Its reports and data, where they are links. */
+  files: FileLink[];
+};
+
+/** A measured result: "25 hectares", what was measured, when and how. */
+export type Measurement = {
+  uri: string;
+  /** "Forest area restored". */
+  metric: string;
+  /** The value as written, numbers grouped: "1,250", "30000 records". */
+  value: string;
+  unit: string;
+  /** When it was measured: a date, or a period. */
+  period: string | null;
+  /** "Manual count". */
+  method: string | null;
+  comment: string | null;
+  /** Its source, methodology or evidence, as links. */
+  files: FileLink[];
+};
+
+/** An attachment: an update, a report, a recording, a photo. */
+export type Attachment = {
+  uri: string;
+  author: ActorCard;
+  /** The record's own type ("update", "report", "audio"), as written. */
+  kind: string;
+  title: string;
+  date: string | null;
+  body: RichText | null;
+  files: FileLink[];
+};
+
+const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 6 });
+
+/** "items_described", "forest-area" → "Items described", "Forest area". */
+export function humanize(token: string): string {
+  const plain = token.trim().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  if (!plain) return plain;
+  return /[A-Z]/.test(plain) ? plain : plain[0].toUpperCase() + plain.slice(1);
+}
+
+/** A numeric string grouped for reading ("1250.5" → "1,250.5"); anything else as written. */
+function formatValue(value: string): string {
+  const text = value.trim();
+  return /^-?\d+(\.\d+)?$/.test(text) ? numberFormat.format(Number(text)) : text;
+}
+
+const MIME_LABEL: Record<string, string> = {
+  "application/pdf": "PDF",
+  "text/csv": "CSV",
+  "application/json": "JSON",
+  "application/zip": "ZIP",
+};
+
+/** "PDF", "Image", "Audio", or the file's subtype in capitals. */
+function fileKind(mimeType: string): string {
+  if (MIME_LABEL[mimeType]) return MIME_LABEL[mimeType];
+  const [type, subtype = ""] = mimeType.split("/");
+  if (type === "image") return "Image";
+  if (type === "audio") return "Audio";
+  if (type === "video") return "Video";
+  return subtype.split(/[.+-]/)[0]?.toUpperCase() || "File";
+}
+
+/**
+ * A record's files and links as links: web addresses as they are (http(s)
+ * only), blobs at the author's server (`blobBase`: its getBlob address),
+ * anything else (an at:// reference to a record of another app) left out.
+ */
+export function fileLinks(items: unknown, did: string, blobBase: string | null): FileLink[] {
+  return (Array.isArray(items) ? items : []).flatMap((entry): FileLink[] => {
+    const item = asRecord(entry);
+    const uri = safeUrl(typeof entry === "string" ? entry : item?.uri);
+    if (uri) {
+      const { hostname, pathname } = new URL(uri);
+      const file = decodeURIComponent(pathname.split("/").filter(Boolean).at(-1) ?? "");
+      const label = /\.[a-z0-9]{2,5}$/i.test(file) ? file : hostname.replace(/^www\./, "");
+      // A picture on the web loads only over https (no mixed content).
+      const picture = /\.(jpe?g|png|webp|gif)$/i.test(file) ? safeUrl(uri, true) : null;
+      return [picture ? { href: uri, label, thumbnail: picture } : { href: uri, label }];
+    }
+    const blob = asRecord(item?.blob);
+    const cid = blobCid(blob);
+    if (!cid) return [];
+    const mimeType = asString(blob?.mimeType) ?? "";
+    // Pictures through the image CDN, as every record image (see IMAGE_PRESET).
+    if (mimeType.startsWith("image/")) {
+      const at = (preset: string) => `https://cdn.bsky.app/img/${preset}/plain/${did}/${cid}@jpeg`;
+      return [{ href: at("feed_fullsize"), label: "Image", thumbnail: at("feed_thumbnail") }];
+    }
+    if (!blobBase) return [];
+    const href = `${blobBase}?${new URLSearchParams({ did, cid })}`;
+    return [{ href, label: fileKind(mimeType), audio: mimeType.startsWith("audio/") || undefined }];
+  });
+}
+
+export function toEvaluation(view: EvaluationRecordView, blobBase: string | null): Evaluation {
+  const record = view.record as unknown as UnknownRecord;
+  const evaluators = (Array.isArray(record.evaluators) ? record.evaluators : []).flatMap(
+    (entry) => {
+      const did = asString(asRecord(entry)?.did) ?? asString(entry);
+      return did ? [did] : [];
+    },
+  );
+  const score = asRecord(record.score);
+  const value = asString(score?.value);
+  const max = asString(score?.max);
+  return {
+    uri: view.uri,
+    evaluatorDids: evaluators.length > 0 ? [...new Set(evaluators)] : [view.did],
+    summary: asString(record.summary)?.trim() ?? "",
+    score: value && max ? { value, min: asString(score?.min) ?? "0", max } : null,
+    date: formatDate(record.createdAt),
+    files: fileLinks(record.content, view.did, blobBase),
+  };
+}
+
+export function toMeasurement(view: MeasurementRecordView): Measurement {
+  const record = view.record as unknown as UnknownRecord;
+  const from = formatDate(record.startDate);
+  const to = formatDate(record.endDate);
+  return {
+    uri: view.uri,
+    metric: humanize(asString(record.metric) ?? ""),
+    value: formatValue(asString(record.value) ?? ""),
+    unit: asString(record.unit)?.trim() ?? "",
+    period:
+      from && to && from !== to ? `${from} – ${to}` : (from ?? to ?? formatDate(record.createdAt)),
+    method: asString(record.methodType) ? humanize(asString(record.methodType) ?? "") : null,
+    comment: asString(record.comment)?.trim() || null,
+    // The lexicon's methodology and evidence, and the source some apps write.
+    files: fileLinks(
+      [
+        record.sourceUrl,
+        record.methodURI,
+        ...(Array.isArray(record.evidenceURI) ? record.evidenceURI : []),
+      ],
+      view.did,
+      null,
+    ),
+  };
+}
+
+export function toAttachment(view: AttachmentRecordView, blobBase: string | null): Attachment {
+  const record = view.record as unknown as UnknownRecord;
+  const short = asString(record.shortDescription)?.trim();
+  return {
+    uri: view.uri,
+    author: toActorCard(view.author),
+    kind: asString(record.contentType)?.trim().toLowerCase() || "attachment",
+    title: asString(record.title)?.trim() || "Untitled",
+    date: formatDate(record.capturedAt ?? record.createdAt),
+    body: richTextOf(record.description) ?? (short ? richTextOf(short) : null),
+    files: fileLinks(record.content, view.did, blobBase),
+  };
+}

@@ -319,8 +319,13 @@ async function EndorsementsSection({ did }: { did: string }) {
           {
             label: byCount(follows.followers, "Follower", "Followers"),
             value: follows.followers,
+            href: `${workspaceHref(did)}/followers`,
           },
-          { label: "Following", value: follows.following },
+          {
+            label: "Following",
+            value: follows.following,
+            href: `${workspaceHref(did)}/followers/following`,
+          },
         ]}
       />
       {endorsements.latestReceived.length > 0 && (

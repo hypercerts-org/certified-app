@@ -16,4 +16,6 @@ export const tags = {
   /** Receipts to, from or for this account or record. */
   funding: (subject: string) => `funding:${subject}`,
   follows: (did: string) => `follows:${did}`,
+  /** What others add to a record: evaluations, measurements, attachments. */
+  context: (uri: string) => `context:${uri}`,
 };

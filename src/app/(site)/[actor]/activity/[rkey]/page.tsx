@@ -6,14 +6,25 @@ import { ActorLink, ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { Funding } from "@/components/funding";
 import { PageTitle } from "@/components/page-title";
+import {
+  Attachments,
+  Evaluations,
+  Measurements,
+  PartOf,
+  Updates,
+} from "@/components/record-context";
+import { RichText } from "@/components/rich-text";
 import { Tile } from "@/components/tile";
 import { TileSlot } from "@/components/tile-slot";
 import { getActivity, getActor, listReceiptsPage } from "@/lib/hypercerts/queries";
 import type { Contributor } from "@/lib/hypercerts/views";
+import { leadOf } from "@/lib/rich-text";
 
 // An activity's own page, laid out like a blog post: its title, by whom,
-// when and in what scope, its picture as a hero image, the full text, then
-// who did the work and the funding recorded for it.
+// when and in what scope, its picture as a hero image; then, as on a profile,
+// two columns. The text, its evaluations, updates, contributors and funding
+// on the left; on the right the projects it is part of, what was measured and
+// its attachments. Sections without records don't show.
 
 /** A record key as AT Protocol allows it; anything else is no activity. */
 const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
@@ -70,15 +81,25 @@ function Contributors({ contributors }: { contributors: Contributor[] }) {
   );
 }
 
+/** An optional section: nothing while it loads, and its own error if it fails. */
+function Optional({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <TileSlot title={title} skeleton={null}>
+      {children}
+    </TileSlot>
+  );
+}
+
 async function Activity({ params }: Pick<PageProps<"/[actor]/activity/[rkey]">, "params">) {
   const activity = await activityFrom(params);
-  const { author } = activity;
+  const { author, uri } = activity;
+  const lead = leadOf(activity.shortDescription, activity.description);
   // When, then the work scope, as Explore's rows say them.
   const meta = [activity.period ?? activity.createdAt, activity.scope].filter(Boolean).join(" · ");
   return (
     <>
-      <article className="activity-post">
-        <header className="stack">
+      <header className="activity-head">
+        <div className="stack">
           <Eyebrow>Activity</Eyebrow>
           <PageTitle>
             <span dir="auto">{activity.title}</span>
@@ -93,26 +114,52 @@ async function Activity({ params }: Pick<PageProps<"/[actor]/activity/[rkey]">, 
               </Text>
             )}
           </div>
-        </header>
+        </div>
         {activity.imageUrl && (
           <div className="activity-hero">
             {/* biome-ignore lint/performance/noImgElement: indexed images come from many hosts */}
             <img src={activity.imageUrl} alt="" />
           </div>
         )}
-        {/* The full text, as a post reads: never cut (the short one when
-            there is no other). */}
-        {(activity.description ?? activity.summary) && (
-          <Text relaxed className="prewrap activity-body" dir="auto">
-            {activity.description ?? activity.summary}
-          </Text>
-        )}
-      </article>
-      {activity.contributors.length > 0 && <Contributors contributors={activity.contributors} />}
-      {/* No skeleton: the tile may not be there at all. */}
-      <TileSlot title="Funding" skeleton={null}>
-        <ActivityFunding uri={activity.uri} />
-      </TileSlot>
+      </header>
+      <div className="page-columns">
+        <div className="page-main">
+          {/* The short description leads; the full text follows, never cut. */}
+          {(lead || activity.description) && (
+            <article className="activity-body">
+              {lead && (
+                <Text className="activity-lead" dir="auto">
+                  {lead}
+                </Text>
+              )}
+              {activity.description && <RichText text={activity.description} />}
+            </article>
+          )}
+          <Optional title="Evaluations">
+            <Evaluations uri={uri} />
+          </Optional>
+          <Optional title="Updates">
+            <Updates uri={uri} ownerDid={author.did} />
+          </Optional>
+          {activity.contributors.length > 0 && (
+            <Contributors contributors={activity.contributors} />
+          )}
+          <Optional title="Funding">
+            <ActivityFunding uri={uri} />
+          </Optional>
+        </div>
+        <aside className="page-rail" aria-label="About this activity">
+          <Optional title="Part of">
+            <PartOf uri={uri} />
+          </Optional>
+          <Optional title="Measured">
+            <Measurements uri={uri} />
+          </Optional>
+          <Optional title="Attachments">
+            <Attachments uri={uri} />
+          </Optional>
+        </aside>
+      </div>
     </>
   );
 }
@@ -131,7 +178,7 @@ function ActivitySkeleton() {
 
 export default function ActivityPage(props: PageProps<"/[actor]/activity/[rkey]">) {
   return (
-    <div className="page">
+    <div className="page record-page">
       <Suspense fallback={<ActivitySkeleton />}>
         <Activity params={props.params} />
       </Suspense>
