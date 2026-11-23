@@ -499,12 +499,6 @@ button.menu-row:disabled:not([aria-current]) {
   gap: var(--space-2) var(--space-3);
 }
 
-.meta-author {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .links {
   list-style: none;
   margin: 0;
@@ -837,16 +831,6 @@ button.menu-row:disabled:not([aria-current]) {
   gap: var(--space-1);
   min-inline-size: 0;
   overflow-wrap: anywhere;
-}
-
-.overview-identity-name {
-  color: inherit;
-  text-decoration: none;
-}
-
-.overview-identity-name:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .overview-bio {
@@ -2124,7 +2108,6 @@ button.sidebar-item:hover,
 
 a.list-item-title:hover,
 a.list-item-main:hover .list-item-title,
-a.explore-card-author:hover .list-item-title,
 a.explore-account-link:hover .list-item-title {
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -2158,21 +2141,35 @@ a.explore-account-link:hover .list-item-title {
 }
 
 /* The author (or endorser) beside an item: avatar and name, quiet. */
+/* An account link (actor.tsx) as a list's author column. */
 .list-item-who {
-  display: inline-flex;
   flex: none;
+  max-inline-size: 14rem;
+  font-size: var(--hc-type-body-sm);
+}
+
+/* A link to an account (ActorLink, src/components/actor.tsx): its picture
+   and name, or the name alone; the name underlines on hover, everywhere. */
+.actor-link {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  max-inline-size: 14rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   color: var(--hc-text-ink);
-  font-size: var(--hc-type-body-sm);
+  vertical-align: bottom;
   text-decoration: none;
 }
 
-.list-item-who span {
+.actor-link-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.actor-link:hover .actor-link-name {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .list-item-endorsement {
@@ -2251,8 +2248,9 @@ a.explore-account-link:hover .list-item-title {
   color: var(--hc-text-ink);
 }
 
+/* Narrow: an author column keeps the avatar, not the name. */
 @media (width < 40rem) {
-  .list-item-who span {
+  .list-item-who .actor-link-name {
     display: none;
   }
 }
@@ -2397,23 +2395,7 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .ledger-account {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
   max-inline-size: 15rem;
-  color: var(--hc-text-ink);
-  text-decoration: none;
-}
-
-.ledger-account span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ledger-account:hover span {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .ledger-anonymous {
@@ -2495,16 +2477,6 @@ a.explore-account-link:hover .list-item-title {
 
 .post-meta {
   margin: 0;
-}
-
-.post-author {
-  color: var(--hc-text-ink);
-  text-decoration: none;
-}
-
-.post-author:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .post-image {
@@ -2611,16 +2583,6 @@ a.badge-title:hover {
   margin: 0;
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
-}
-
-.badge-issuer {
-  color: var(--hc-text-ink);
-  text-decoration: none;
-}
-
-.badge-issuer:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 .badge-tiles {
@@ -2879,6 +2841,91 @@ a.badge-title:hover {
   gap: var(--space-2);
 }
 
+/* A project or an activity as a row (src/components/records.tsx). The row
+   reaches past its list's edge by its padding, so its text lines up with the
+   list's and the hover tint has room. With a link, the title's hit area
+   covers the row; what sits at its end stays clickable above it. */
+.record-row {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  min-block-size: 3.5rem;
+  margin-inline: calc(-1 * var(--space-2));
+  padding: var(--space-2);
+  border-radius: var(--hc-radius-control);
+}
+
+.record-row-linked:hover {
+  background: var(--hc-fill-subtle);
+}
+
+.record-row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.record-row-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.record-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  overflow: hidden;
+  border-radius: var(--hc-radius-tag);
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.record-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.record-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.record-row-title,
+.record-row-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-row-title {
+  color: var(--hc-text-ink);
+  font-weight: var(--hc-weight-medium);
+}
+
+.record-row-meta {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+.record-row-end {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
 .work-folders {
   margin: 0;
   padding: 0;
@@ -2891,13 +2938,11 @@ a.badge-title:hover {
   border-block-end: 1px solid var(--hc-line-hairline);
 }
 
+/* The folder's head: its project's row (records.tsx), opening the folder.
+   Room on the right for the arrow that opens the project. */
 .work-folder-head {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-block-size: 3.25rem;
-  padding: var(--space-2) var(--space-12) var(--space-2) var(--space-2);
-  border-radius: var(--hc-radius-control);
+  padding-inline-end: var(--space-12);
   cursor: pointer;
   list-style: none;
 }
@@ -2906,7 +2951,7 @@ a.badge-title:hover {
   display: none;
 }
 
-.work-folder-head:hover {
+.work-folder-head:hover .record-row {
   background: var(--hc-fill-subtle);
 }
 
@@ -2918,14 +2963,6 @@ a.badge-title:hover {
 
 details[open] > .work-folder-head .work-folder-chevron {
   rotate: 90deg;
-}
-
-.work-folder-title {
-  overflow: hidden;
-  color: var(--hc-text-ink);
-  font-weight: var(--hc-weight-medium);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Open project: beside the folder head, outside the <summary>, so it is a
@@ -2956,11 +2993,6 @@ details[open] > .work-folder-head .work-folder-chevron {
 
 .work-row + .work-row {
   border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.work-row-by {
-  color: inherit;
-  text-underline-offset: 0.2em;
 }
 
 .work-chips {
@@ -3244,25 +3276,24 @@ details[open] > .work-folder-head .work-folder-chevron {
   text-align: end;
 }
 
-.explore-by {
-  display: none;
-}
-
 .explore-row-who-skeleton {
   flex: none;
   inline-size: 10rem;
 }
 
-/* Narrow: the author column gives way to "by …" under the title. */
+/* Narrow: the author column narrows to the author's avatar. */
 @container explore (inline-size < 44rem) {
-  .explore-row .list-item-who,
-  .explore-row-who-skeleton,
-  .explore-handle {
+  .explore-row .list-item-who {
+    inline-size: auto;
+  }
+
+  .explore-row .list-item-who .actor-link-name {
     display: none;
   }
 
-  .explore-by {
-    display: block;
+  .explore-row-who-skeleton,
+  .explore-handle {
+    display: none;
   }
 
   .explore-age {
@@ -3286,7 +3317,6 @@ details[open] > .work-folder-head .work-folder-chevron {
   min-inline-size: 0;
 }
 
-.explore-card-author,
 .explore-account-link {
   display: flex;
   align-items: center;

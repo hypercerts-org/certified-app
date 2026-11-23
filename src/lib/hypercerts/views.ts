@@ -85,6 +85,8 @@ export type ActivityCard = {
   imageUrl: string | null;
   /** When the work happened: "1 Jun 2026 – 3 Jun 2026", "1 Jun 2026 (ongoing)", "Until …". */
   period: string | null;
+  /** The kinds of work, as words (workScopeWords). */
+  scope: string | null;
 };
 
 export type ProjectCard = {
@@ -100,6 +102,11 @@ export type ProjectCard = {
   imageUrl: string | null;
 };
 
+/** One of an account's latest records (its workspace's Latest), with when it was created, for ordering. */
+export type LatestRecord =
+  | { kind: "activity"; activity: ActivityCard; createdAt: string }
+  | { kind: "project"; project: ProjectCard; createdAt: string };
+
 export interface ProjectDetail extends ProjectCard {
   description: string | null;
   /** The project's banner, at the banner size; null without one. */
@@ -107,18 +114,6 @@ export interface ProjectDetail extends ProjectCard {
   author: ActorCard;
   createdAt: string | null;
 }
-
-/** One of an account's latest records on its workspace overview. */
-export type RecentRecord = {
-  uri: string;
-  kind: "Activity" | "Project";
-  title: string;
-  imageUrl: string | null;
-  /** The record's own createdAt, for ordering. */
-  createdAt: string;
-  /** Formatted for display. */
-  date: string | null;
-};
 
 /** A badge award of type "endorsement" that an account received. */
 export type EndorsementCard = {
@@ -437,6 +432,7 @@ export function toActivityCard(activity: ActivityView): ActivityCard {
     indexedAt: activity.indexedAt,
     imageUrl: imageUrl(activity.did, record.image, "card"),
     period: formatPeriod(record.startDate, record.endDate),
+    scope: workScopeWords(record.workScope),
   };
 }
 
@@ -528,30 +524,6 @@ export function toProjectDetail(collection: CollectionView): ProjectDetail {
     bannerUrl: imageUrl(collection.did, collection.record.banner, "banner"),
     author: toActorCard(collection.author),
     createdAt: formatDate(collection.record.createdAt),
-  };
-}
-
-export function activityRecord(activity: ActivityView): RecentRecord {
-  const { record } = activity;
-  return {
-    uri: activity.uri,
-    kind: "Activity",
-    title: record.title || "Untitled activity",
-    imageUrl: avatarUrl(activity.did, record.image),
-    createdAt: record.createdAt,
-    date: formatDate(record.createdAt),
-  };
-}
-
-export function projectRecord(collection: CollectionView): RecentRecord {
-  const { record } = collection;
-  return {
-    uri: collection.uri,
-    kind: "Project",
-    title: record.title || "Untitled project",
-    imageUrl: avatarUrl(collection.did, record.avatar),
-    createdAt: record.createdAt,
-    date: formatDate(record.createdAt),
   };
 }
 
@@ -908,7 +880,7 @@ export function totalsByCurrency(receipts: Receipt[]): { currency: string; amoun
 /** When a record was created: for a `<time>` and for reading. */
 export type Age = { iso: string; label: string };
 
-export type ExploreActivity = ActivityCard & { scope: string | null; age: Age | null };
+export type ExploreActivity = ActivityCard & { age: Age | null };
 export type ExploreProject = ProjectCard & { author: ActorCard; age: Age | null };
 export type ExploreAccount = ActorCard & { age: Age | null };
 
@@ -963,7 +935,6 @@ export function workScopeWords(value: unknown): string | null {
 export function toExploreActivity(activity: ActivityView, now: number): ExploreActivity {
   return {
     ...toActivityCard(activity),
-    scope: workScopeWords(activity.record.workScope),
     age: toAge(activity.record.createdAt, now),
   };
 }

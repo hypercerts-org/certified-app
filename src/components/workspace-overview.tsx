@@ -27,23 +27,16 @@ import {
   Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
-import {
-  ArrowUpRight,
-  FileBadge,
-  FolderGit2,
-  Link2,
-  Plus,
-  Search,
-  SquareCheckBig,
-} from "lucide-react";
+import { ArrowUpRight, FileBadge, Link2, Plus, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
-import { ActorAvatar, ActorHandle, ActorName, ActorRow } from "@/components/actor";
-import { activityHref, actorHref, projectHref, workspaceHref } from "@/components/cards";
+import { ActorAvatar, ActorHandle, ActorLink, ActorRow } from "@/components/actor";
+import { actorHref, workspaceHref } from "@/components/cards";
 import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
 import { PageTitle } from "@/components/page-title";
+import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import { StatRow } from "@/components/stat-row";
 import { APPS } from "@/lib/apps";
 import {
@@ -53,13 +46,7 @@ import {
   getRecordCounts,
   listLatestRecords,
 } from "@/lib/hypercerts/queries";
-import {
-  type ActorDetail,
-  didOf,
-  endorsementLine,
-  type RecentRecord,
-  rkeyOf,
-} from "@/lib/hypercerts/views";
+import { type ActorDetail, endorsementLine } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
 
 const LATEST_RECORDS = 4;
@@ -158,10 +145,7 @@ function RowsSkeleton({ rows }: { rows: number }) {
     <div className="overview-rows" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholders
-        <div key={i} className="overview-row">
-          <Skeleton variant="box" className="overview-thumb" />
-          <Skeleton variant="text" lines={2} className="overview-row-text" />
-        </div>
+        <RecordRowSkeleton key={i} />
       ))}
     </div>
   );
@@ -303,55 +287,23 @@ async function RecordsSection({ did }: { did: string }) {
             <div className="overview-list">
               <ListLabel>Latest</ListLabel>
               <ul className="overview-rows">
-                {latest.map((record) => (
-                  <li key={record.uri}>
-                    <RecordRow record={record} />
-                  </li>
-                ))}
+                {latest.map((record) =>
+                  record.kind === "activity" ? (
+                    <li key={record.activity.uri}>
+                      <ActivityRow activity={record.activity} />
+                    </li>
+                  ) : (
+                    <li key={record.project.uri}>
+                      <ProjectRow project={record.project} />
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           )}
         </>
       )}
     </Section>
-  );
-}
-
-/** A latest record: thumbnail, title, kind and date, linking to its page. */
-function RecordRow({ record }: { record: RecentRecord }) {
-  const content = (
-    <>
-      <span className="overview-thumb">
-        {record.imageUrl ? (
-          // Indexed images come from many hosts: no next/image optimization.
-          // biome-ignore lint/performance/noImgElement: arbitrary remote hosts
-          <img src={record.imageUrl} alt="" width={32} height={32} loading="lazy" />
-        ) : record.kind === "Project" ? (
-          <FolderGit2 size={16} aria-hidden />
-        ) : (
-          <SquareCheckBig size={16} aria-hidden />
-        )}
-      </span>
-      <span className="overview-row-text">
-        <span className="overview-row-title" dir="auto">
-          {record.title}
-        </span>
-        <span className="overview-row-meta">
-          {record.kind}
-          {record.date && ` · ${record.date}`}
-        </span>
-      </span>
-    </>
-  );
-  // The whole row is the link, to the record's page.
-  const href =
-    record.kind === "Project"
-      ? projectHref({ authorDid: didOf(record.uri), rkey: rkeyOf(record.uri) })
-      : activityHref(record.uri);
-  return (
-    <Link prefetch href={href} className="overview-row overview-row-link">
-      {content}
-    </Link>
   );
 }
 
@@ -442,9 +394,7 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
         <ActorAvatar actor={account} size="lg" className="overview-avatar" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
-            <Link prefetch href={actorHref({ did, handle })} className="overview-identity-name">
-              <ActorName actor={account} />
-            </Link>
+            <ActorLink actor={account} avatar={false} />
           </Heading>
           {bio ? (
             <Text size="body-sm" tone="muted" className="overview-bio" dir="auto">

@@ -1,19 +1,13 @@
 import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { ActorAvatar, ActorName, ActorRow } from "@/components/actor";
+import { ActorLink, ActorRow, actorHref } from "@/components/actor";
 import { IntentLink } from "@/components/intent-link";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
 
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.
 
-/**
- * An account's profile: at its handle when known (the address people share),
- * otherwise at its DID, which redirects to the handle.
- */
-export function actorHref(actor: string | { did: string; handle: string | null }) {
-  if (typeof actor === "string") return `/${actor}`;
-  return `/${actor.handle ?? actor.did}`;
-}
+// An account's profile address lives with the account components.
+export { actorHref } from "@/components/actor";
 
 /** An account's workspace. */
 export function workspaceHref(did: string) {
@@ -99,12 +93,9 @@ export function ActivityCardView({
           )}
           <div className="meta">
             {showAuthor && (
-              <IntentLink href={actorHref(activity.author)} className="meta-author">
-                <ActorAvatar actor={activity.author} size="sm" />
-                <Text as="span" size="micro">
-                  <ActorName actor={activity.author} />
-                </Text>
-              </IntentLink>
+              <Text as="span" size="micro">
+                <ActorLink actor={activity.author} />
+              </Text>
             )}
             {activity.createdAt && (
               <Text as="span" size="micro" tone="muted">
@@ -210,10 +201,7 @@ export function ActivityPostView({
           {byOther && (
             <>
               {(activity.period ?? activity.createdAt) && " · "}
-              by{" "}
-              <IntentLink href={actorHref(activity.author)} className="post-author">
-                <ActorName actor={activity.author} />
-              </IntentLink>
+              by <ActorLink actor={activity.author} avatar={false} />
             </>
           )}
         </Text>

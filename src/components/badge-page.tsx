@@ -6,11 +6,9 @@
 
 import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
-import { ActorAvatar, ActorName } from "@/components/actor";
+import { ActorLink } from "@/components/actor";
 import { BadgeHolderList } from "@/components/badge-holders";
 import { BadgeIcon } from "@/components/badges";
-import { actorHref } from "@/components/cards";
-import { IntentLink } from "@/components/intent-link";
 import { PageTitle } from "@/components/page-title";
 import { PeopleListSkeleton } from "@/components/people-list";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
@@ -53,12 +51,9 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
           <PageTitle>
             <span dir="auto">{badge.title}</span>
           </PageTitle>
-          <IntentLink href={actorHref(badge.issuer)} className="meta-author">
-            <ActorAvatar actor={badge.issuer} size="sm" />
-            <Text as="span" size="body-sm">
-              Issued by <ActorName actor={badge.issuer} />
-            </Text>
-          </IntentLink>
+          <Text as="span" size="body-sm">
+            Issued by <ActorLink actor={badge.issuer} />
+          </Text>
           {badge.description && (
             <Text relaxed className="prewrap" dir="auto">
               {badge.description}

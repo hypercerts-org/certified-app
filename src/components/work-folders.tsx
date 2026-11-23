@@ -12,40 +12,34 @@
 // between projects, come later.
 
 import { Button, SearchInput, Skeleton } from "@hypercerts-org/ui-react";
-import {
-  ArrowRight,
-  ChevronRight,
-  Folder,
-  FolderGit2,
-  Plus,
-  SearchX,
-  SquareCheckBig,
-} from "lucide-react";
+import { ArrowRight, ChevronRight, FolderGit2, Plus, SearchX } from "lucide-react";
 import { useState } from "react";
-import { activityHref } from "@/components/cards";
+import { ActorLink } from "@/components/actor";
+import { projectHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
+import {
+  ActivityRow,
+  activityCount,
+  ProjectRow,
+  RecordRow,
+  RecordRowSkeleton,
+} from "@/components/records";
+import type { ActivityCard, ProjectCard } from "@/lib/hypercerts/views";
 
+/** An activity in a folder, with the other projects it sits in. */
 export type WorkRow = {
-  uri: string;
-  title: string;
-  imageUrl: string | null;
-  /** When the work happened, else when it was created. */
-  meta: string;
-  /** The other projects it sits in. */
+  activity: ActivityCard;
   alsoIn: string[];
-  /** Who published it, when not this account. */
-  by: { name: string; href: string } | null;
 };
 
+/** A project and its activities; `project` null for "Without a project". */
 export type WorkFolder = {
   key: string;
-  title: string;
-  /** The project's page; null for "Without a project". */
-  href: string | null;
-  imageUrl: string | null;
-  meta: string;
+  project: ProjectCard | null;
   rows: WorkRow[];
+  /** The workspace's account: activities by others name their author. */
+  owner: string;
 };
 
 /** Up to this many folders start open, as on staging. */
@@ -98,61 +92,43 @@ function NewButtons({ section }: { section: string | null }) {
   );
 }
 
-function Thumb({ src, project }: { src: string | null; project: boolean }) {
+/** An activity in a folder: other projects it is in as chips, and its author when not the account's. */
+function Row({ row, owner }: { row: WorkRow; owner: string }) {
+  const { activity, alsoIn } = row;
+  const [first, ...rest] = alsoIn;
   return (
-    <span className="overview-thumb">
-      {src ? (
-        // Indexed images come from many hosts: no next/image optimization.
-        // biome-ignore lint/performance/noImgElement: arbitrary remote hosts
-        <img src={src} alt="" width={32} height={32} loading="lazy" />
-      ) : project ? (
-        <Folder size={16} aria-hidden />
-      ) : (
-        <SquareCheckBig size={16} aria-hidden />
-      )}
-    </span>
-  );
-}
-
-/** An activity, its title leading to its page. */
-function Row({ row }: { row: WorkRow }) {
-  const [first, ...rest] = row.alsoIn;
-  return (
-    <li className="overview-row work-row">
-      <Thumb src={row.imageUrl} project={false} />
-      <span className="overview-row-text">
-        <IntentLink href={activityHref(row.uri)} className="overview-row-title" dir="auto">
-          {row.title}
-        </IntentLink>
-        <span className="overview-row-meta">
-          {row.meta}
-          {row.by && (
+    <li className="work-row">
+      <ActivityRow
+        activity={activity}
+        end={
+          (first || activity.author.did !== owner) && (
             <>
-              {" · by "}
-              <IntentLink href={row.by.href} className="work-row-by">
-                {row.by.name}
-              </IntentLink>
+              {first && (
+                <span className="work-chips" title={`Also in ${alsoIn.join(", ")}`}>
+                  <span className="visually-hidden">Also in </span>
+                  <span className="work-chip" dir="auto">
+                    {first}
+                  </span>
+                  {rest.length > 0 && (
+                    <span className="work-chip">
+                      <span aria-hidden>+{rest.length}</span>
+                      <span className="visually-hidden"> and {rest.length} more</span>
+                    </span>
+                  )}
+                </span>
+              )}
+              {activity.author.did !== owner && (
+                <ActorLink actor={activity.author} className="list-item-who" />
+              )}
             </>
-          )}
-        </span>
-      </span>
-      {first && (
-        <span className="work-chips" title={`Also in ${row.alsoIn.join(", ")}`}>
-          <span className="visually-hidden">Also in </span>
-          <span className="work-chip" dir="auto">
-            {first}
-          </span>
-          {rest.length > 0 && (
-            <span className="work-chip">
-              <span aria-hidden>+{rest.length}</span>
-              <span className="visually-hidden"> and {rest.length} more</span>
-            </span>
-          )}
-        </span>
-      )}
+          )
+        }
+      />
     </li>
   );
 }
+
+const chevron = <ChevronRight size={16} aria-hidden className="work-folder-chevron" />;
 
 function FolderView({
   folder,
@@ -170,20 +146,25 @@ function FolderView({
   return (
     <li className="work-folder">
       <details open={open} onToggle={(event) => onToggle(event.currentTarget.open)}>
+        {/* The head opens the folder; the arrow beside it opens the project. */}
         <summary className="work-folder-head">
-          <ChevronRight size={16} aria-hidden className="work-folder-chevron" />
-          <Thumb src={folder.imageUrl} project={folder.href !== null} />
-          <span className="overview-row-text">
-            <span className="work-folder-title" dir="auto">
-              {folder.title}
-            </span>
-            <span className="overview-row-meta">{folder.meta}</span>
-          </span>
+          {folder.project ? (
+            <ProjectRow project={folder.project} href={null} start={chevron} />
+          ) : (
+            <RecordRow
+              kind="project"
+              title="Without a project"
+              meta={activityCount(folder.rows.length)}
+              imageUrl={null}
+              href={null}
+              start={chevron}
+            />
+          )}
         </summary>
         {rows.length > 0 ? (
           <ul className="work-rows">
             {rows.map((row) => (
-              <Row key={row.uri} row={row} />
+              <Row key={row.activity.uri} row={row} owner={folder.owner} />
             ))}
           </ul>
         ) : (
@@ -192,11 +173,11 @@ function FolderView({
           </p>
         )}
       </details>
-      {folder.href && (
+      {folder.project && (
         <IntentLink
-          href={folder.href}
+          href={projectHref(folder.project)}
           className="work-folder-open"
-          aria-label={`Open ${folder.title}`}
+          aria-label={`Open ${folder.project.title}`}
           title="Open project"
         >
           <ArrowRight size={16} aria-hidden />
@@ -237,8 +218,9 @@ export function WorkFolders({
   // matches).
   const shown = folders.flatMap((folder) => {
     if (!q) return [{ folder, rows: folder.rows }];
-    if (matches(folder.title, q)) return [{ folder, rows: folder.rows }];
-    const rows = folder.rows.filter((row) => matches(row.title, q));
+    if (matches(folder.project?.title ?? "Without a project", q))
+      return [{ folder, rows: folder.rows }];
+    const rows = folder.rows.filter((row) => matches(row.activity.title, q));
     return rows.length > 0 ? [{ folder, rows }] : [];
   });
   const openByDefault = folders.length <= OPEN_BY_DEFAULT;
@@ -290,8 +272,7 @@ export function WorkFoldersSkeleton() {
         {[0, 1, 2].map((i) => (
           <div key={i} className="work-folder">
             <div className="work-folder-head">
-              <Skeleton variant="box" className="overview-thumb" />
-              <Skeleton variant="text" lines={2} className="overview-row-text" />
+              <RecordRowSkeleton />
             </div>
           </div>
         ))}

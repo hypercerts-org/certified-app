@@ -4,10 +4,10 @@
 
 import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder, SquareCheckBig } from "lucide-react";
-import { ActorAvatar, ActorHandle, ActorName } from "@/components/actor";
+import { ActorAvatar, ActorHandle, ActorLink, ActorName, ActorRow } from "@/components/actor";
 import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
-import { Thumb, Who } from "@/components/list-items";
+import { ActivityRow, activityCount, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import type { ExploreKind, ExploreView } from "@/lib/explore-state";
 import type {
   ActorCard,
@@ -31,54 +31,34 @@ function AgeText({ age }: { age: Age | null }) {
   );
 }
 
-/** "by Name", under the title where the author column gives way (phones). */
-function By({ actor }: { actor: ActorCard }) {
-  return (
-    <span className="list-item-meta explore-by">
-      by <ActorName actor={actor} />
-    </span>
-  );
-}
-
-const joined = (...parts: (string | null)[]) => parts.filter(Boolean).join(" · ");
-
-const activities = (n: number) => (n === 1 ? "1 activity" : `${n} activities`);
-
-function ActivityRow({ activity }: { activity: ExploreActivity }) {
-  const meta = joined(activity.period, activity.scope);
+function ExploreActivityRow({ activity }: { activity: ExploreActivity }) {
   return (
     <li className="list-item explore-row">
-      <span className="list-item-main">
-        <Thumb src={activity.imageUrl} project={false} />
-        <span className="list-item-text">
-          <IntentLink href={activityHref(activity.uri)} className="list-item-title" dir="auto">
-            {activity.title}
-          </IntentLink>
-          {meta && <span className="list-item-meta">{meta}</span>}
-          <By actor={activity.author} />
-        </span>
-      </span>
-      <Who actor={activity.author} />
-      <AgeText age={activity.age} />
+      <ActivityRow
+        activity={activity}
+        end={
+          <>
+            <ActorLink actor={activity.author} className="list-item-who" />
+            <AgeText age={activity.age} />
+          </>
+        }
+      />
     </li>
   );
 }
 
-function ProjectRow({ project }: { project: ExploreProject }) {
+function ExploreProjectRow({ project }: { project: ExploreProject }) {
   return (
     <li className="list-item explore-row">
-      <span className="list-item-main">
-        <Thumb src={project.imageUrl} project />
-        <span className="list-item-text">
-          <IntentLink href={projectHref(project)} className="list-item-title" dir="auto">
-            {project.title}
-          </IntentLink>
-          <span className="list-item-meta">{activities(project.activityCount)}</span>
-          <By actor={project.author} />
-        </span>
-      </span>
-      <Who actor={project.author} />
-      <AgeText age={project.age} />
+      <ProjectRow
+        project={project}
+        end={
+          <>
+            <ActorLink actor={project.author} className="list-item-who" />
+            <AgeText age={project.age} />
+          </>
+        }
+      />
     </li>
   );
 }
@@ -108,13 +88,12 @@ function AccountRow({ account }: { account: ExploreAccount }) {
 /** The author above a gallery card: avatar, name and handle. */
 function CardAuthor({ actor }: { actor: ActorCard }) {
   return (
-    <IntentLink href={actorHref(actor)} className="explore-card-author">
-      <ActorAvatar actor={actor} size="sm" />
-      <span className="list-item-text">
-        <ActorName actor={actor} className="list-item-title" />
-        <ActorHandle actor={actor} className="list-item-meta" />
-      </span>
-    </IntentLink>
+    <ActorRow
+      actor={actor}
+      href={actorHref(actor)}
+      size="sm"
+      secondary={<ActorHandle actor={actor} />}
+    />
   );
 }
 
@@ -189,8 +168,8 @@ function AccountCard({ account }: { account: ExploreAccount }) {
 }
 
 function Row({ kind, item }: { kind: ExploreKind; item: ExploreItem }) {
-  if (kind === "activities") return <ActivityRow activity={item as ExploreActivity} />;
-  if (kind === "projects") return <ProjectRow project={item as ExploreProject} />;
+  if (kind === "activities") return <ExploreActivityRow activity={item as ExploreActivity} />;
+  if (kind === "projects") return <ExploreProjectRow project={item as ExploreProject} />;
   return <AccountRow account={item as ExploreAccount} />;
 }
 
@@ -202,7 +181,7 @@ function GalleryCard({ kind, item }: { kind: ExploreKind; item: ExploreItem }) {
       <WorkCard
         href={projectHref(project)}
         title={project.title}
-        text={project.summary ?? activities(project.activityCount)}
+        text={project.summary ?? activityCount(project.activityCount)}
         image={project.imageUrl}
         project
         author={project.author}
@@ -257,14 +236,19 @@ export function ExploreRowsSkeleton({ rows = 8, kind }: { rows?: number; kind: E
     <div className="list-items explore-rows" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="list-item explore-row">
-          <div className="skeleton-identity list-item-main">
-            <Skeleton
-              variant="box"
-              className={kind === "accounts" ? "skeleton-person-avatar" : "list-item-thumb"}
+          {kind === "accounts" ? (
+            <>
+              <div className="skeleton-identity list-item-main">
+                <Skeleton variant="box" className="skeleton-person-avatar" />
+                <Skeleton variant="text" lines={2} className="overview-row-text" />
+              </div>
+              <Skeleton variant="line" className="explore-row-who-skeleton" />
+            </>
+          ) : (
+            <RecordRowSkeleton
+              end={<Skeleton variant="line" className="explore-row-who-skeleton" />}
             />
-            <Skeleton variant="text" lines={2} className="overview-row-text" />
-          </div>
-          <Skeleton variant="line" className="explore-row-who-skeleton" />
+          )}
         </div>
       ))}
     </div>

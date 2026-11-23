@@ -1,13 +1,23 @@
 // An account, wherever the app shows one: its name (ActorName), its picture
-// (ActorAvatar), or both as a row (ActorRow). Every account goes through
+// (ActorAvatar), a link to it (ActorLink: the picture and name, or the name in
+// a sentence), or a row (ActorRow). Every account goes through
 // these, so an account reads and looks the same everywhere: its profile name,
 // else its handle, else its DID (nameOf); its picture, else the initials of
 // that name on an opaque disc; a square for an organization.
 
 import { Avatar } from "@hypercerts-org/ui-react";
-import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { IntentLink } from "@/components/intent-link";
 import { type ActorCard, nameOf } from "@/lib/hypercerts/views";
+
+/**
+ * An account's profile: at its handle when known (the address people share),
+ * otherwise at its DID, which redirects to the handle.
+ */
+export function actorHref(actor: string | { did: string; handle: string | null }) {
+  if (typeof actor === "string") return `/${actor}`;
+  return `/${actor.handle ?? actor.did}`;
+}
 
 /**
  * What these need of an account: an ActorCard, or as much of one as a caller
@@ -62,6 +72,31 @@ export function ActorAvatar({
 }
 
 /**
+ * A link to the account's profile: its picture and name, or (`avatar`
+ * false) its name alone, as in a sentence. The name underlines on hover, as
+ * every account link does.
+ */
+export function ActorLink({
+  actor,
+  avatar = "sm",
+  className,
+}: {
+  actor: ActorLike & { did: string };
+  avatar?: ComponentProps<typeof Avatar>["size"] | false;
+  className?: string;
+}) {
+  return (
+    <IntentLink
+      href={actorHref({ did: actor.did, handle: actor.handle })}
+      className={["actor-link", className].filter(Boolean).join(" ")}
+    >
+      {avatar && <ActorAvatar actor={actor} size={avatar} />}
+      <ActorName actor={actor} className="actor-link-name" />
+    </IntentLink>
+  );
+}
+
+/**
  * An account as a row: its picture, its name, and a line under it
  * (`secondary`); a link to its profile unless `href` is null, with something
  * on the right (`action`) if given.
@@ -91,9 +126,9 @@ export function ActorRow({
   return (
     <div className="actor-row">
       {href ? (
-        <Link prefetch href={href} className="actor-row-main">
+        <IntentLink href={href} className="actor-row-main">
           {body}
-        </Link>
+        </IntentLink>
       ) : (
         <span className="actor-row-main">{body}</span>
       )}

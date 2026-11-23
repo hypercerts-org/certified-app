@@ -1,9 +1,8 @@
 import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ActorAvatar, ActorName, ActorRow } from "@/components/actor";
+import { ActorLink, ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { Funding } from "@/components/funding";
 import { PageTitle } from "@/components/page-title";
@@ -85,12 +84,9 @@ async function Activity({ params }: Pick<PageProps<"/[actor]/activity/[rkey]">, 
             <span dir="auto">{activity.title}</span>
           </PageTitle>
           <div className="project-meta">
-            <Link prefetch href={actorHref(author)} className="meta-author">
-              <ActorAvatar actor={author} size="sm" />
-              <Text as="span" size="body-sm">
-                <ActorName actor={author} />
-              </Text>
-            </Link>
+            <Text as="span" size="body-sm">
+              <ActorLink actor={author} />
+            </Text>
             {meta && (
               <Text as="span" size="body-sm" tone="muted">
                 {meta}

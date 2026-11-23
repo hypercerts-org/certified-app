@@ -4,36 +4,13 @@
 // render in the browser, for "Load more" and the workspace's selection.
 
 import { Skeleton, Text } from "@hypercerts-org/ui-react";
-import { ArrowRight, Folder, SquareCheckBig } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorAvatar, ActorHandle, ActorName } from "@/components/actor";
-import { activityHref, actorHref, projectHref, skeletonSlots } from "@/components/cards";
+import { ActorAvatar, ActorHandle, ActorLink, ActorName } from "@/components/actor";
+import { actorHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
-import type { ActorCard, ListItem } from "@/lib/hypercerts/views";
-
-export function Thumb({ src, project }: { src: string | null; project: boolean }) {
-  return (
-    <span className="list-item-thumb">
-      {src ? (
-        // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
-        <img src={src} alt="" loading="lazy" />
-      ) : project ? (
-        <Folder size={16} aria-hidden />
-      ) : (
-        <SquareCheckBig size={16} aria-hidden />
-      )}
-    </span>
-  );
-}
-
-export function Who({ actor }: { actor: ActorCard }) {
-  return (
-    <IntentLink href={actorHref(actor)} className="list-item-who">
-      <ActorAvatar actor={actor} size="sm" />
-      <ActorName actor={actor} />
-    </IntentLink>
-  );
-}
+import { ActivityRow, ProjectRow } from "@/components/records";
+import type { ListItem } from "@/lib/hypercerts/views";
 
 /** One item's content (no row of its own: the caller adds the row and a checkbox). */
 export function ListItemContent({ item }: { item: ListItem }) {
@@ -50,52 +27,28 @@ export function ListItemContent({ item }: { item: ListItem }) {
       );
     case "project":
       return (
-        <>
-          <span className="list-item-main">
-            <Thumb src={item.project.imageUrl} project />
-            <span className="list-item-text">
-              <IntentLink href={projectHref(item.project)} className="list-item-title" dir="auto">
-                {item.project.title}
-              </IntentLink>
-              <span className="list-item-meta">
-                {item.project.activityCount === 1
-                  ? "1 activity"
-                  : `${item.project.activityCount} activities`}
-              </span>
-            </span>
-          </span>
-          {item.author && <Who actor={item.author} />}
-        </>
+        <ProjectRow
+          project={item.project}
+          end={item.author && <ActorLink actor={item.author} className="list-item-who" />}
+        />
       );
     case "activity":
       return (
-        <>
-          <span className="list-item-main">
-            <Thumb src={item.activity.imageUrl} project={false} />
-            <span className="list-item-text">
-              <IntentLink
-                href={activityHref(item.activity.uri)}
-                className="list-item-title"
-                dir="auto"
-              >
-                {item.activity.title}
-              </IntentLink>
-              {(item.activity.period ?? item.activity.createdAt) && (
-                <span className="list-item-meta">
-                  {item.activity.period ?? item.activity.createdAt}
-                </span>
-              )}
-            </span>
-          </span>
-          <Who actor={item.activity.author} />
-        </>
+        <ActivityRow
+          activity={item.activity}
+          end={<ActorLink actor={item.activity.author} className="list-item-who" />}
+        />
       );
     case "endorsement":
       return (
         <span className="list-item-main list-item-endorsement">
-          <Who actor={item.issuer} />
+          <ActorLink actor={item.issuer} className="list-item-who" />
           <ArrowRight size={16} aria-label="endorsed" />
-          {item.subject ? <Who actor={item.subject} /> : <span>an account</span>}
+          {item.subject ? (
+            <ActorLink actor={item.subject} className="list-item-who" />
+          ) : (
+            <span>an account</span>
+          )}
           {item.date && <span className="list-item-meta">{item.date}</span>}
         </span>
       );

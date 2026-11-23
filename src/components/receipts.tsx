@@ -8,8 +8,7 @@
 import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
 import { ExternalLink, HandCoins } from "lucide-react";
 import { useCallback } from "react";
-import { ActorAvatar, ActorName } from "@/components/actor";
-import { actorHref } from "@/components/cards";
+import { ActorLink } from "@/components/actor";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import type { ReceiptFilter, ReceiptRow } from "@/lib/hypercerts/queries";
@@ -22,12 +21,7 @@ export type LedgerOmit = "from" | "to" | "for" | "by";
 const receiptKey = (row: ReceiptRow) => row.uri;
 
 function Account({ actor }: { actor: ActorCard }) {
-  return (
-    <IntentLink href={actorHref(actor)} className="ledger-account">
-      <ActorAvatar actor={actor} size="sm" />
-      <ActorName actor={actor} />
-    </IntentLink>
-  );
+  return <ActorLink actor={actor} className="ledger-account" />;
 }
 
 function Party({ party, actor }: { party: ReceiptParty; actor: ActorCard | null }) {

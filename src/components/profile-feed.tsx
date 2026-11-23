@@ -11,7 +11,7 @@
 import { Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder, SquareCheckBig } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
-import { ActorAvatar, ActorName } from "@/components/actor";
+import { ActorAvatar, ActorLink } from "@/components/actor";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -23,11 +23,7 @@ const plural = (n: number, one: string, many: string) =>
   `${numberFormat.format(n)} ${n === 1 ? one : many}`;
 
 function Name({ actor }: { actor: ActorCard }) {
-  return (
-    <IntentLink href={actorHref(actor)} className="post-name">
-      <ActorName actor={actor} />
-    </IntentLink>
-  );
+  return <ActorLink actor={actor} avatar={false} className="post-name" />;
 }
 
 function PageLink({ link }: { link: FeedLink }) {

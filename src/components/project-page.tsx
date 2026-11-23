@@ -3,11 +3,9 @@
 // URL: Activities (the default), Funding and Followers.
 
 import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ActorAvatar, ActorName } from "@/components/actor";
-import { actorHref } from "@/components/cards";
+import { ActorLink } from "@/components/actor";
 import { PageTitle } from "@/components/page-title";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { getActingAs } from "@/lib/acting-as";
@@ -91,12 +89,9 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
             <span dir="auto">{project.title}</span>
           </PageTitle>
           <div className="project-meta">
-            <Link prefetch href={actorHref(actor)} className="meta-author">
-              <ActorAvatar actor={actor} size="sm" />
-              <Text as="span" size="body-sm">
-                <ActorName actor={actor} />
-              </Text>
-            </Link>
+            <Text as="span" size="body-sm">
+              <ActorLink actor={actor} />
+            </Text>
             <Suspense fallback={null}>
               <FollowerCount uri={uri} />
             </Suspense>

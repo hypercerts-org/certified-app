@@ -19,7 +19,6 @@ import {
   type ActivityCard,
   type ActorCard,
   type ActorDetail,
-  activityRecord,
   awardSubject,
   type BadgeCard,
   type BadgeDetail,
@@ -35,6 +34,7 @@ import {
   type FollowRef,
   formatDate,
   formatMoney,
+  type LatestRecord,
   type ListCard,
   type ListItem,
   locationBlobCid,
@@ -44,9 +44,7 @@ import {
   type ProjectCard,
   type ProjectDetail,
   plainText,
-  projectRecord,
   type Receipt,
-  type RecentRecord,
   sortBadges,
   toActivityCard,
   toActorCard,
@@ -65,7 +63,6 @@ import {
   toReceipt,
   totalsByCurrency,
   toWalletTarget,
-  workScopeWords,
 } from "./views";
 
 // Response validation is off for reads. Indexed records come from many authors,
@@ -408,7 +405,7 @@ export async function getRecordCounts(did: string): Promise<RecordCounts> {
 }
 
 /** The account's newest activities and projects together, newest first. */
-export async function listLatestRecords(did: string, limit: number): Promise<RecentRecord[]> {
+export async function listLatestRecords(did: string, limit: number): Promise<LatestRecord[]> {
   "use cache";
   publicData(tags.activities(did));
   cacheTag(tags.projects(did));
@@ -421,7 +418,19 @@ export async function listLatestRecords(did: string, limit: number): Promise<Rec
       read(),
     ),
   ]);
-  return [...activities.map(activityRecord), ...collections.map(projectRecord)]
+  const latest: LatestRecord[] = [
+    ...activities.map((view) => ({
+      kind: "activity" as const,
+      activity: toActivityCard(view),
+      createdAt: view.record.createdAt,
+    })),
+    ...collections.map((view) => ({
+      kind: "project" as const,
+      project: toProjectCard(view),
+      createdAt: view.record.createdAt,
+    })),
+  ];
+  return latest
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
     .slice(0, limit);
 }
@@ -1420,7 +1429,6 @@ export async function activityIndexed(uri: string): Promise<boolean> {
 export type ActivityDetail = ActivityCard & {
   description: string | null;
   contributors: Contributor[];
-  scope: string | null;
 };
 
 export async function getActivity(uri: string): Promise<ActivityDetail | null> {
@@ -1447,7 +1455,6 @@ export async function getActivity(uri: string): Promise<ActivityDetail | null> {
     ...card,
     description: plainText(activity.record.description),
     contributors: contributors.map((c) => (c.actor ? { ...c, actor: actors[next++] } : c)),
-    scope: workScopeWords(activity.record.workScope),
   };
 }
 
