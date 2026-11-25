@@ -140,7 +140,7 @@ function ImageField({
         </div>
       ) : (
         <FileDropzone
-          label="Add an image"
+          label="Drop an image here, or click to choose one"
           hint={limits.maxSize ? `${types}, up to ${formatFileSize(limits.maxSize)}.` : `${types}.`}
           accept={limits.accept.join(",")}
           maxSize={limits.maxSize ?? undefined}

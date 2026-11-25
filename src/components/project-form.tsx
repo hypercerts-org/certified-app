@@ -10,10 +10,13 @@
 
 import { Checkbox, ErrorMessage, Heading, SearchInput, Text } from "@hypercerts-org/ui-react";
 import { useState } from "react";
+import { LocationField } from "@/components/location-picker";
 import { useRecordForm } from "@/components/record-form";
 import { TITLE_MIN, titleProblem } from "@/lib/form-rules";
 import { type ProjectDraft, publishProject } from "@/lib/hypercerts/project-actions";
+import type { SavedPlace } from "@/lib/hypercerts/queries";
 import { textLimit } from "@/lib/lexicon-fields";
+import { locationProblem } from "@/lib/location-choice";
 import {
   bannerLimits,
   checkProjectField,
@@ -30,6 +33,7 @@ const EMPTY: ProjectDraft = {
   description: "",
   banner: null,
   activities: [],
+  location: null,
 };
 
 const LABELS: Record<string, string> = {
@@ -38,6 +42,7 @@ const LABELS: Record<string, string> = {
   description: "Description",
   banner: "Banner",
   activities: "Activities",
+  location: "Location",
 };
 const labelOf = (name: string) => LABELS[name] ?? name;
 
@@ -55,10 +60,13 @@ const SEARCH_FROM = 8;
 export function ProjectForm({
   repo,
   activities,
+  places,
   cancelHref,
 }: {
   repo: string;
   activities: ActivityChoice[];
+  /** The account's published places, to pick again. */
+  places: SavedPlace[];
   cancelHref: string;
 }) {
   const { form, formProps, failure } = useRecordForm({
@@ -151,6 +159,21 @@ export function ProjectForm({
               }}
             >
               {(field) => <field.ImageField label="Banner (optional)" limits={bannerLimits} />}
+            </form.AppField>
+
+            <form.AppField
+              name="location"
+              validators={{ onDynamic: ({ value }) => locationProblem(value, repo) }}
+            >
+              {(field) => (
+                <LocationField
+                  label="Location (optional)"
+                  value={field.state.value}
+                  onChange={(next) => field.handleChange(next)}
+                  saved={places}
+                  error={field.state.meta.errors.find(Boolean) as string | undefined}
+                />
+              )}
             </form.AppField>
           </aside>
         </div>

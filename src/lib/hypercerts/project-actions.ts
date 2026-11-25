@@ -16,6 +16,7 @@ import { waitForIndex } from "@/lib/hypercerts/index-wait";
 import { mayPublish } from "@/lib/hypercerts/publish-access";
 import { projectIndexed } from "@/lib/hypercerts/queries";
 import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
+import { type LocationChoice, locationProblem, newLocationRecord } from "@/lib/location-choice";
 import { bannerLimits, checkProjectField, shortDescriptionProblem } from "@/lib/project-rules";
 import { isDid } from "@/lib/validate";
 
@@ -27,6 +28,8 @@ export type ProjectDraft = {
   /** A File in the browser; it may reach the server as a plain Blob. */
   banner: Blob | null;
   activities: string[];
+  /** Where the work happens: one of the account's places, or a new one; or none. */
+  location: LocationChoice | null;
 };
 
 /** `fields`: messages for the fields at fault, by the form's field names. */
@@ -60,7 +63,8 @@ function wellFormed(draft: unknown): draft is ProjectDraft {
     Array.isArray(d.activities) &&
     d.activities.length <= 1000 &&
     d.activities.every(isText) &&
-    (d.banner === null || d.banner instanceof Blob)
+    (d.banner === null || d.banner instanceof Blob) &&
+    (d.location === null || typeof d.location === "object")
   );
 }
 
@@ -78,6 +82,7 @@ function problems(repo: string, draft: ProjectDraft): Record<string, string> {
   if (draft.activities.some((uri) => !uri.startsWith(own))) {
     add("activities", "Choose from this account's activities.");
   }
+  add("location", locationProblem(draft.location, repo));
   if (draft.banner) {
     if (bannerLimits.accept.length > 0 && !bannerLimits.accept.includes(draft.banner.type)) {
       add("banner", "Use a JPEG, PNG or WebP image.");
@@ -115,6 +120,11 @@ export async function publishProject(
         description: text(draft.description),
         banner: draft.banner ?? undefined,
         activities: draft.activities.map((uri) => ({ activity: { uri } })),
+        location: !draft.location
+          ? undefined
+          : draft.location.kind === "saved"
+            ? { uri: draft.location.uri }
+            : newLocationRecord(draft.location),
       },
       writeTo(session, repo),
     );
@@ -126,6 +136,7 @@ export async function publishProject(
     updateTag(tags.activities(repo));
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
+    if (draft.location?.kind === "new") updateTag(tags.locations(repo));
     const [, , , , rkey] = created.uri.split("/");
     return { ok: true, href: projectHref({ authorDid: repo, rkey }), indexed };
   } catch (err) {

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-title";
 import { type ActivityChoice, ProjectForm } from "@/components/project-form";
 import { RecordFormSkeleton } from "@/components/record-form";
 import { workspaceDid } from "@/components/workspace-access";
-import { getWork } from "@/lib/hypercerts/queries";
+import { getWork, listSavedPlaces } from "@/lib/hypercerts/queries";
 
 export const metadata: Metadata = { title: "New project", robots: { index: false } };
 
@@ -16,14 +16,19 @@ export const metadata: Metadata = { title: "New project", robots: { index: false
 async function NewProject({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
-  const work = await getWork(did);
+  const [work, places] = await Promise.all([getWork(did), listSavedPlaces(did)]);
   const activities: ActivityChoice[] = work.activities.map((activity) => ({
     uri: activity.uri,
     title: activity.title,
     meta: activity.period ?? (activity.createdAt ? `Created ${activity.createdAt}` : ""),
   }));
   return (
-    <ProjectForm repo={did} activities={activities} cancelHref={`${workspaceHref(did)}/projects`} />
+    <ProjectForm
+      repo={did}
+      activities={activities}
+      places={places}
+      cancelHref={`${workspaceHref(did)}/projects`}
+    />
   );
 }
 

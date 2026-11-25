@@ -1325,6 +1325,11 @@ a.post-amount:hover {
   inset: 0;
 }
 
+/* The picker's map (location-picker): taller, to aim a pin. */
+.location-map-picker {
+  block-size: min(22rem, 45vh);
+}
+
 /* The account's picture as the pin: a framed disc that lifts on hover. */
 .location-map-pin {
   display: block;
@@ -3805,6 +3810,60 @@ details[open] > .work-folder-head .work-folder-chevron {
   flex-direction: column;
 }
 
+/* A form's location (components/location-picker): the chosen place with
+   Change and Remove under it, or Add location. */
+.location-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.location-field-chosen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.location-field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The picker's dialog: the source switch, the search, the map, the name. */
+.location-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.location-picker-saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-block-size: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+}
+
+/* A search result: the place, then where it is, quieter. */
+.location-hit {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.location-hit-where {
+  overflow: hidden;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .record-form-image-preview {
   position: relative;
   overflow: hidden;
@@ -3888,9 +3947,13 @@ details[open] > .work-folder-head .work-folder-chevron {
   list-style: none;
 }
 
+/* A line between choices, none after the last. */
 .activity-choices > li {
   padding-block: var(--space-3);
-  border-block-end: 1px solid var(--hc-line-hairline);
+}
+
+.activity-choices > li + li {
+  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 /* Cancel and Publish, on the right. */
