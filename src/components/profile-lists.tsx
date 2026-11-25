@@ -22,7 +22,7 @@ export function ListGroups({ lists, base }: { lists: ListCard[]; base: string })
               {kind.label}
               <span className="profile-section-count"> {ofKind.length}</span>
             </Heading>
-            <ul className="list-rows">
+            <ul className="list-rows divided">
               {ofKind.map((list) => (
                 <li key={list.uri}>
                   <IntentLink href={`${base}/${list.rkey}`} className="list-row">
@@ -57,7 +57,7 @@ export function ListGroupsSkeleton() {
     <div className="list-groups" aria-hidden>
       <div className="profile-section">
         <Skeleton variant="line" className="skeleton-heading" />
-        <div className="list-rows">
+        <div className="list-rows divided">
           {skeletonSlots(3).map((slot) => (
             <div key={slot} className="list-row">
               <Skeleton variant="text" lines={1} className="list-row-text" />

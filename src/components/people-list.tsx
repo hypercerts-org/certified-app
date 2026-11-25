@@ -44,7 +44,7 @@ export function PeopleRows({
   action?: (row: PersonRow) => ReactNode;
 }) {
   return (
-    <ul className="people-list">
+    <ul className="people-list divided">
       {rows.map((row) => (
         <PersonRowItem key={row.uri} row={row} action={action?.(row)} />
       ))}
@@ -79,7 +79,7 @@ export function PeopleList({
 /** Rows of accounts on their way: an avatar and a name with a line under it. */
 export function PeopleListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="people-list" aria-hidden>
+    <div className="people-list divided" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="people-row">
           <div className="skeleton-identity">

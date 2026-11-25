@@ -128,7 +128,7 @@ function Section({
 
 function RowsSkeleton({ rows }: { rows: number }) {
   return (
-    <div className="overview-rows" aria-hidden>
+    <div className="overview-rows divided" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholders
         <RecordRowSkeleton key={i} />
@@ -269,7 +269,7 @@ async function RecordsSection({ did }: { did: string }) {
           {latest.length > 0 && (
             <div className="overview-list">
               <ListLabel>Latest</ListLabel>
-              <ul className="overview-rows">
+              <ul className="overview-rows divided">
                 {latest.map((record) =>
                   record.kind === "activity" ? (
                     <li key={record.activity.uri}>
@@ -331,7 +331,7 @@ async function EndorsementsSection({ did }: { did: string }) {
       {endorsements.latestReceived.length > 0 && (
         <div className="overview-list">
           <ListLabel>Latest endorsements received</ListLabel>
-          <ul className="overview-rows">
+          <ul className="overview-rows divided">
             {endorsements.latestReceived.map((endorsement) => (
               <li key={endorsement.uri} className="overview-row-dated">
                 <ActorRow
@@ -418,7 +418,7 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
               : "Identifies your account in every app."}
           </Text>
         </div>
-        <dl className="overview-id-list">
+        <dl className="overview-id-list divided">
           {handle && (
             <div className="overview-id-item">
               <dt>Handle</dt>
@@ -471,7 +471,7 @@ export function OrganizationsSection({
           You don't belong to any group yet.
         </Text>
       ) : (
-        <ul className="overview-rows">
+        <ul className="overview-rows divided">
           {organizations.map((organization) => (
             <li key={organization.did}>
               <ActorRow
@@ -507,7 +507,7 @@ function NewGroup() {
 function AppsSection() {
   return (
     <Section title="Apps" description="Sign in to each of these with your Certified account.">
-      <ul className="overview-rows">
+      <ul className="overview-rows divided">
         {APPS.map((app) => (
           <li key={app.name}>
             <a

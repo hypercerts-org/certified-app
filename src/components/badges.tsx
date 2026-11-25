@@ -94,7 +94,7 @@ export async function RecordBadgeList({ uri }: { uri: string }) {
 export function ProjectBadgeList({ badges }: { badges: ProjectBadge[] }) {
   if (badges.length === 0) return <Empty icon={Award} title="No badges for projects yet" />;
   return (
-    <ul className="list-items">
+    <ul className="list-items divided">
       {badges.map((badge) => (
         <li key={badge.uri} className="list-item">
           <ProjectRow
@@ -125,7 +125,7 @@ export function BadgeList({
   if (badges.length === 0)
     return <Empty icon={Award} title={empty} description={emptyDescription} />;
   return (
-    <ul className="badge-list">
+    <ul className="badge-list divided">
       {badges.map((badge) => (
         <li key={badge.uri} className="badge-row" data-expired={badge.expired || undefined}>
           <BadgeIcon badge={badge} />
@@ -182,7 +182,7 @@ export function BadgeTilesSkeleton({ count = 4 }: { count?: number }) {
 /** Badge rows on their way. */
 export function BadgeListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="badge-list" aria-hidden>
+    <div className="badge-list divided" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="badge-row">
           <Skeleton variant="box" className="badge-icon" />
@@ -221,7 +221,7 @@ export function IssuedBadgeTiles({ badges }: { badges: IssuedBadge[] }) {
 export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
   if (badges.length === 0) return <Empty icon={Award} title="No badges issued yet" />;
   return (
-    <ul className="badge-list">
+    <ul className="badge-list divided">
       {badges.map((badge) => (
         <li key={badge.uri} className="badge-row">
           <BadgeIcon badge={badge} />
@@ -332,7 +332,7 @@ export function ProfileBadgesSkeleton({ which }: { which: Which }) {
 /** Project badge rows on their way. */
 function ProjectBadgeListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="list-items" aria-hidden>
+    <div className="list-items divided" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="list-item">
           <RecordRowSkeleton />

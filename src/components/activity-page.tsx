@@ -143,7 +143,7 @@ export function ActivityHeaderSkeleton() {
 /** Who did the work: an account links to its profile; role beneath, share on the right. */
 export function Contributors({ contributors }: { contributors: Contributor[] }) {
   return (
-    <ul className="people-list">
+    <ul className="people-list divided">
       {contributors.map((c) => (
         <li key={c.key} className="people-row">
           <ActorRow

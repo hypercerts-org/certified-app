@@ -165,7 +165,7 @@ export function ActivityForm({
                     </Text>
                   </div>
                   {list.state.value.length > 0 && (
-                    <ul className="contributor-rows">
+                    <ul className="contributor-rows divided">
                       {list.state.value.map((_, i) => (
                         // Rows have no identity of their own until filled in.
                         // biome-ignore lint/suspicious/noArrayIndexKey: TanStack Form addresses array rows by index

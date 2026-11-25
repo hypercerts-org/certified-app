@@ -255,7 +255,7 @@ function ActivityPicker({
         />
       )}
       {choices.length > 0 && (
-        <ul className="activity-choices">
+        <ul className="activity-choices divided">
           {shown.map((choice) => (
             <li key={choice.uri}>
               <Checkbox

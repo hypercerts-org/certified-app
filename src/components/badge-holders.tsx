@@ -58,7 +58,7 @@ export function BadgeHolderList({
   if (items.length === 0 && !hasMore) return <Empty icon={Award} title={empty} />;
   return (
     <div className="stack">
-      <ul className="people-list">
+      <ul className="people-list divided">
         {items.map((holder) => (
           <HolderRow key={holder.uri} holder={holder} />
         ))}

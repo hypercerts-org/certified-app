@@ -124,7 +124,7 @@ export function ExploreItems({
   if (view === "gallery") {
     if (kind === "activities") {
       return (
-        <ul className="posts">
+        <ul className="posts divided">
           {(items as ExploreActivity[]).map((activity) => (
             <ActivityPost key={activity.uri} activity={activity} />
           ))}
@@ -154,7 +154,7 @@ export function ExploreItems({
     );
   }
   return (
-    <ul className="list-items explore-rows">
+    <ul className="list-items explore-rows divided">
       {items.map((item) => (
         <Row key={exploreKey(item)} kind={kind} item={item} />
       ))}
@@ -165,7 +165,7 @@ export function ExploreItems({
 /** Rows on their way: a picture (or avatar), a title and a line, then the author. */
 export function ExploreRowsSkeleton({ rows = 8, kind }: { rows?: number; kind: ExploreKind }) {
   return (
-    <div className="list-items explore-rows" aria-hidden>
+    <div className="list-items explore-rows divided" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="list-item explore-row">
           {kind === "accounts" ? (

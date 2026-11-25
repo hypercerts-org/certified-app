@@ -46,7 +46,7 @@ export function ActivityList({
   return (
     <div className="stack">
       {items.length > 0 && (
-        <ul className="posts">
+        <ul className="posts divided">
           {items.map((activity) => (
             <ActivityPost key={activity.uri} activity={activity} ownerDid={ownerDid} />
           ))}

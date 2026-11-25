@@ -200,7 +200,7 @@ export function ActivityPost({
 /** Posts on their way: a title, lines of text, and a picture beside them. */
 export function ActivityPostsSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="posts" aria-hidden>
+    <div className="posts divided" aria-hidden>
       {skeletonSlots(count).map((slot) => (
         <div key={slot} className="post">
           <div className="post-text">

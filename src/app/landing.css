@@ -1441,15 +1441,11 @@
   max-width: 720px;
   margin-left: auto;
   margin-right: auto;
-  border-bottom: 1px solid var(--color-light-gray);
 }
 
-.lp-faq__item {
+/* Lines between the questions only. */
+.lp-faq__item + .lp-faq__item {
   border-top: 1px solid var(--color-light-gray);
-}
-
-.lp-faq__item:first-child {
-  border-top: 0;
 }
 
 /* Semantic heading around each trigger; neutral so the button's own type

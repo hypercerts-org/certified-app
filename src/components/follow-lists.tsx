@@ -24,7 +24,7 @@ export function FollowedProjects({
   path: string;
 }) {
   return (
-    <ul className="people-list">
+    <ul className="people-list divided">
       {rows.map((row) => (
         <li key={row.follow.uri} className="people-row">
           <ProjectRow

@@ -7,6 +7,10 @@
    the faces next/font self-hosts (src/app/layout.tsx), with the theme's own
    fallbacks. */
 [data-hc-theme="certified"] {
+  /* Every dividing line in the app: between a list's items (.divided), under
+     the site header, above a form's buttons. Change the lines here. */
+  --divider: 1px solid var(--hc-line-hairline);
+
   --hc-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
   --hc-font-display: var(--font-noto-serif), Georgia, serif;
 
@@ -94,7 +98,7 @@ p + p {
 }
 
 .site-header {
-  border-block-end: 1px solid var(--hc-line-hairline);
+  border-block-end: var(--divider);
   background: var(--hc-surface-panel);
 }
 
@@ -273,7 +277,7 @@ button.menu-row:hover,
 .menu-separator {
   margin-block: var(--space-1);
   border: 0;
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
 }
 
 /* Names in menus wrap rather than end in "…": there is no other way to read
@@ -368,7 +372,7 @@ button.menu-row:disabled:not([aria-current]) {
   inset-inline: 0;
   z-index: 10;
   display: flex;
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
   background: var(--hc-surface-panel);
   padding-block-end: env(safe-area-inset-bottom);
 }
@@ -706,21 +710,15 @@ button.menu-row:disabled:not([aria-current]) {
   color: var(--hc-text-ink);
 }
 
-/* Rows between hairlines: latest records, endorsements, organizations, apps. */
+/* Rows with lines between (.divided): latest records, endorsements, organizations, apps. */
 .overview-rows {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .overview-rows > li {
   padding-block: var(--space-2);
-  border-block-end: 1px solid var(--hc-line-hairline);
-}
-
-.overview-box .overview-rows > li:last-child {
-  border-block-end: none;
 }
 
 /* An endorsement in an Overview list: the account and what kind of
@@ -822,7 +820,7 @@ button.menu-row:disabled:not([aria-current]) {
   gap: var(--space-3);
   padding-block-end: var(--space-4);
   margin-block-end: var(--space-4);
-  border-block-end: 1px solid var(--hc-line-hairline);
+  border-block-end: var(--divider);
 }
 
 .overview-identity-text {
@@ -873,7 +871,6 @@ button.menu-row:disabled:not([aria-current]) {
   flex-direction: column;
   gap: var(--space-2);
   padding-block: var(--space-3);
-  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .overview-id-item dt {
@@ -1260,7 +1257,7 @@ a.post-amount:hover {
 .post-media {
   display: block;
   aspect-ratio: 16 / 9;
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
   background: var(--hc-surface-tint);
 }
 
@@ -1578,7 +1575,6 @@ a.post-amount:hover {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .people-row {
@@ -1587,7 +1583,6 @@ a.post-amount:hover {
   justify-content: space-between;
   gap: var(--space-4);
   padding-block: var(--space-3);
-  border-block-end: 1px solid var(--hc-line-hairline);
 }
 
 .people-row-end {
@@ -1756,7 +1751,7 @@ button.workspace-nav-item:hover,
     gap: var(--space-2);
     block-size: 100dvh;
     padding: var(--space-4) var(--space-3) var(--space-3);
-    border-inline-end: 1px solid var(--hc-line-hairline);
+    border-inline-end: var(--divider);
     background: var(--hc-surface-panel);
   }
 }
@@ -1954,7 +1949,7 @@ button.sidebar-item:hover,
 
 .sidebar-foot {
   padding-block-start: var(--space-2);
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
 }
 
 :where(.sidebar-item, .sidebar-account, .sidebar-brand):focus-visible,
@@ -2039,12 +2034,18 @@ button.sidebar-item:hover,
   max-inline-size: 48rem;
 }
 
+/* Lines between a list's items, never above the first or below the last.
+   Every list with dividing lines has this class, so they all look alike; the
+   line itself is --divider. */
+.divided > * + * {
+  border-block-start: var(--divider);
+}
+
 .list-rows,
 .list-items {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .list-row {
@@ -2052,7 +2053,6 @@ button.sidebar-item:hover,
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-1);
-  border-block-end: 1px solid var(--hc-line-hairline);
   color: inherit;
   text-decoration: none;
 }
@@ -2079,7 +2079,6 @@ button.sidebar-item:hover,
   align-items: center;
   gap: var(--space-4);
   padding-block: var(--space-3);
-  border-block-end: 1px solid var(--hc-line-hairline);
 }
 
 .list-item-main {
@@ -2332,7 +2331,7 @@ a.explore-account-link:hover .list-item-title {
 
 .ledger th {
   padding: var(--space-2) var(--space-3);
-  border-block-end: 1px solid var(--hc-line-hairline);
+  border-block-end: var(--divider);
   color: var(--hc-text-muted);
   font-size: var(--hc-type-label);
   font-weight: var(--hc-weight-medium);
@@ -2344,8 +2343,12 @@ a.explore-account-link:hover .list-item-title {
 
 .ledger td {
   padding: var(--space-3);
-  border-block-end: 1px solid var(--hc-line-hairline);
   vertical-align: middle;
+}
+
+/* Lines between the rows only, as .divided lists have them. */
+.ledger tbody tr + tr td {
+  border-block-start: var(--divider);
 }
 
 /* Narrow: tighter cells, the outer ones flush with the column's edges. */
@@ -2485,7 +2488,6 @@ a.explore-account-link:hover .list-item-title {
   align-items: flex-start;
   gap: var(--space-6);
   padding-block: var(--space-6);
-  border-block-end: 1px solid var(--hc-line-hairline);
 }
 
 .post:first-child {
@@ -2593,7 +2595,7 @@ a.explore-account-link:hover .list-item-title {
 .rich-text hr {
   inline-size: 100%;
   border: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
 }
 
 .rich-text a {
@@ -2985,7 +2987,6 @@ a.badge-title:hover {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
 }
 
 .badge-row {
@@ -2993,7 +2994,6 @@ a.badge-title:hover {
   align-items: flex-start;
   gap: var(--space-4);
   padding-block: var(--space-4);
-  border-block-end: 1px solid var(--hc-line-hairline);
 }
 
 .badge-row-text {
@@ -3172,25 +3172,6 @@ a.badge-title:hover {
   border-radius: 50%;
 }
 
-/* Projects and activities (src/components/work-folders.tsx): the search and
-   New buttons, then each project as a folder of activity rows. */
-.work {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.work-toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.work-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* A project or an activity as a row (src/components/records.tsx). The row
    reaches past its list's edge by its padding, so its text lines up with the
    list's and the hover tint has room. With a link, the title's hit area
@@ -3289,98 +3270,16 @@ a.badge-title:hover {
   min-inline-size: 0;
 }
 
-.work-folders {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.work-folder {
-  position: relative;
-  border-block-end: 1px solid var(--hc-line-hairline);
-}
-
-/* The folder's head: its project's row (records.tsx), opening the folder.
-   Room on the right for the arrow that opens the project. */
-.work-folder-head {
-  display: flex;
-  padding-inline-end: var(--space-12);
-  cursor: pointer;
-  list-style: none;
-}
-
-.work-folder-head::-webkit-details-marker {
-  display: none;
-}
-
-.work-folder-head:hover .record-row {
-  background: var(--hc-fill-subtle);
-}
-
-.work-folder-chevron {
+/* Workspace → Projects and activities (src/components/work-lists.tsx): an
+   activity row's projects at its end, and the note when the lists are cut. */
+.work-in {
   flex: none;
-  color: var(--hc-text-muted);
-  transition: rotate 150ms ease;
-}
-
-details[open] > .work-folder-head .work-folder-chevron {
-  rotate: 90deg;
-}
-
-/* Open project: beside the folder head, outside the <summary>, so it is a
-   link of its own and not part of the toggle. */
-.work-folder-open {
-  position: absolute;
-  inset-block-start: 0.5rem;
-  inset-inline-end: 0.5rem;
-  display: grid;
-  place-items: center;
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
-  border-radius: var(--hc-radius-control);
-  color: var(--hc-text-muted);
-}
-
-.work-folder-open:hover {
-  background: var(--hc-fill-subtle);
-  color: var(--hc-text-ink);
-}
-
-.work-rows {
-  margin: 0 0 var(--space-2);
-  /* Indented under the chevron and folder icon above. */
-  padding: 0 0 0 2.25rem;
-  list-style: none;
-}
-
-.work-row + .work-row {
-  border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.work-chips {
-  display: flex;
-  flex: none;
-  gap: var(--space-1);
-  max-inline-size: 40%;
-}
-
-.work-chip {
   overflow: hidden;
-  padding: var(--space-0-5) var(--space-2);
-  border-radius: var(--hc-radius-tag);
-  background: var(--hc-surface-tint);
-  color: var(--hc-text-muted);
-  font-size: var(--hc-type-micro);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.work-folder-empty {
-  /* Indented under the folder's title, past its chevron and icon. */
-  margin: 0 0 0.75rem 2.75rem;
+  max-inline-size: 14rem;
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .work-note {
@@ -3389,9 +3288,9 @@ details[open] > .work-folder-head .work-folder-chevron {
   font-size: var(--hc-type-body-sm);
 }
 
-/* Below 40rem the rows keep their title and dates; the chips go. */
+/* Below 40rem the rows keep their title and dates; the projects go. */
 @media (width < 40rem) {
-  .work-chips {
+  .work-in {
     display: none;
   }
 }
@@ -3900,7 +3799,6 @@ details[open] > .work-folder-head .work-folder-chevron {
   gap: var(--space-3);
   align-items: start;
   padding-block: var(--space-4);
-  border-block-end: 1px solid var(--hc-line-hairline);
 }
 
 .contributor-row:first-child {
@@ -3952,9 +3850,7 @@ details[open] > .work-folder-head .work-folder-chevron {
   padding-block: var(--space-3);
 }
 
-.activity-choices > li + li {
-  border-block-start: 1px solid var(--hc-line-hairline);
-}
+
 
 /* Cancel and Publish, on the right. */
 .form-action-bar {
@@ -3962,7 +3858,7 @@ details[open] > .work-folder-head .work-folder-chevron {
   gap: var(--space-2);
   justify-content: flex-end;
   padding-block-start: var(--space-4);
-  border-block-start: 1px solid var(--hc-line-hairline);
+  border-block-start: var(--divider);
 }
 
 .skeleton-image {

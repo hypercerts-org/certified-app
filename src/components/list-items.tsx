@@ -70,7 +70,7 @@ export function ListItemRows({
   start?: (item: ListItem) => ReactNode;
 }) {
   return (
-    <ul className="list-items">
+    <ul className="list-items divided">
       {items.map((item) => (
         <li key={item.uri} className="list-item">
           {start?.(item)}
@@ -84,7 +84,7 @@ export function ListItemRows({
 /** Item rows on their way. */
 export function ListItemsSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="list-items" aria-hidden>
+    <div className="list-items divided" aria-hidden>
       {skeletonSlots(rows).map((slot) => (
         <div key={slot} className="list-item">
           <div className="skeleton-identity">

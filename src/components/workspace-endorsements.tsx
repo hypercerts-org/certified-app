@@ -67,7 +67,7 @@ export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; prof
   }
   return (
     <>
-      <ul className="people-list">
+      <ul className="people-list divided">
         {page.rows.map((row) => (
           <Row
             key={row.uri}
@@ -99,7 +99,7 @@ export function GivenEndorsements({ page }: { page: PeoplePage }) {
   }
   return (
     <>
-      <ul className="people-list">
+      <ul className="people-list divided">
         {page.rows.map((row) => (
           <Row key={row.uri} row={row} action={<Placeholder>Revoke</Placeholder>} />
         ))}

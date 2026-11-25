@@ -54,10 +54,7 @@ export default function EditActivityPage({
 }: PageProps<"/[actor]/workspace/projects/edit-activity/[rkey]">) {
   return (
     <>
-      <PageHeader
-        title="Edit activity"
-        description="Change what the published activity says."
-      />
+      <PageHeader title="Edit activity" description="Change what the published activity says." />
       <Suspense fallback={<RecordFormSkeleton />}>
         <EditActivity params={params} />
       </Suspense>

@@ -57,10 +57,7 @@ export default function EditProjectPage({
 }: PageProps<"/[actor]/workspace/projects/edit-project/[rkey]">) {
   return (
     <>
-      <PageHeader
-        title="Edit project"
-        description="Change what the published project says."
-      />
+      <PageHeader title="Edit project" description="Change what the published project says." />
       <Suspense fallback={<RecordFormSkeleton />}>
         <EditProject params={params} />
       </Suspense>

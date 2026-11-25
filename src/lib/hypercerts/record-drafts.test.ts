@@ -1,3 +1,4 @@
+import type { LexMap } from "@atproto/lex";
 import { describe, expect, it, vi } from "vitest";
 import { activityForEditing, projectForEditing } from "./record-drafts";
 import type { Repository } from "./writes";
@@ -10,7 +11,7 @@ vi.mock("@/lib/hypercerts/queries", () => ({
 const DID = "did:plc:abc123";
 const repoWith = (value: Record<string, unknown>): Repository => ({
   did: DID,
-  getRecord: async () => ({ cid: "bafycurrent", value }),
+  getRecord: async () => ({ cid: "bafycurrent", value: value as LexMap }),
   putRecord: async () => {
     throw new Error("no writes");
   },
@@ -51,9 +52,18 @@ describe("activityForEditing", () => {
       startDate: "2026-03-01",
       endDate: "",
       contributors: [{ identity: "alice.example.com", role: "", share: "2" }],
-      location: { kind: "saved", uri: `at://${DID}/app.certified.location/1`, name: "Kitale, Kenya" },
+      location: {
+        kind: "saved",
+        uri: `at://${DID}/app.certified.location/1`,
+        name: "Kitale, Kenya",
+      },
     });
-    expect(editing?.kept).toEqual({ description: false, workScope: false, contributors: 0, locations: 0 });
+    expect(editing?.kept).toEqual({
+      description: false,
+      workScope: false,
+      contributors: 0,
+      locations: 0,
+    });
   });
 
   it("keeps what the form can't show", async () => {
@@ -67,7 +77,12 @@ describe("activityForEditing", () => {
       }),
       "3k",
     );
-    expect(editing?.kept).toEqual({ description: true, workScope: true, contributors: 1, locations: 0 });
+    expect(editing?.kept).toEqual({
+      description: true,
+      workScope: true,
+      contributors: 1,
+      locations: 0,
+    });
     expect(editing?.initial.contributors).toEqual([]);
   });
 });
