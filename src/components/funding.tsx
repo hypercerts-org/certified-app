@@ -30,7 +30,7 @@ async function FundingStats({
 }: {
   filter: ReceiptFilter;
   label: string;
-  omit: LedgerOmit;
+  omit: LedgerOmit[];
 }) {
   const summary = await getFundingSummary(filter);
   if (summary.gifts === 0) return null;
@@ -48,7 +48,7 @@ async function FundingStats({
         />
       ))}
       <Stat value={count(summary.gifts)} label="Gifts" />
-      {omit !== "from" && (
+      {!omit.includes("from") && (
         <>
           <Stat value={count(summary.namedDonors)} label="Named donors" />
           <Stat value={count(summary.anonymousGifts)} label="Anonymous gifts" />
@@ -70,7 +70,7 @@ function FundingStatsSkeleton() {
 
 /**
  * The figures and the ledger for receipts `filter` selects. `label` names
- * the total ("Received", "Given"); `omit` the ledger's repeated column. The
+ * the total ("Received", "Given"); `omit` what every row would repeat. The
  * figures load on their own: adding up a large account takes a while, and
  * the ledger needn't wait for it.
  */
@@ -82,7 +82,7 @@ export async function Funding({
 }: {
   filter: ReceiptFilter;
   label: string;
-  omit: LedgerOmit;
+  omit: LedgerOmit[];
   empty: string;
 }) {
   const first = await listReceiptsPage(filter);
@@ -149,16 +149,26 @@ export async function ProfileFunding({
         }))}
       />
       {which === "received" && (
-        <Funding filter={{ to: did }} label="Received" omit="to" empty="No funding received yet" />
+        <Funding
+          filter={{ to: did }}
+          label="Received"
+          omit={["to"]}
+          empty="No funding received yet"
+        />
       )}
       {which === "given" && (
-        <Funding filter={{ from: did }} label="Given" omit="from" empty="No funding given yet" />
+        <Funding
+          filter={{ from: did }}
+          label="Given"
+          omit={["from"]}
+          empty="No funding given yet"
+        />
       )}
       {which === "confirmed" && (
         <Funding
           filter={{ by: did }}
           label="Confirmed"
-          omit="by"
+          omit={["by"]}
           empty="No funding confirmed yet"
         />
       )}

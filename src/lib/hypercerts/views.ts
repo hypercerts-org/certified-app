@@ -730,8 +730,10 @@ export type Receipt = {
   currency: string | null;
   /** When the payment happened (else when it was recorded): "19 Nov 2026". */
   date: string | null;
-  /** The same, short and with the time, for a ledger: "Nov 19 · 08:42" (UTC). */
+  /** The same, short, for a ledger: "19 Nov" (the year only when it isn't this one). */
   stamp: string | null;
+  /** The same with the time, for the short one's tooltip: "19 Nov 2026, 08:42 UTC". */
+  stampFull: string | null;
   time: number;
   /** Where it was paid: "Celo", "Ethereum", "Base", "Stripe"; null when not said. */
   network: string | null;
@@ -740,19 +742,34 @@ export type Receipt = {
   notes: string | null;
 };
 
-const stampDay = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" });
-const stampTime = new Intl.DateTimeFormat("en-GB", {
+const stampDay = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+const stampFull = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
   timeZone: "UTC",
 });
 
-/** "Nov 19 · 08:42", as staging's receipts show it. */
-function formatStamp(value: string | null): string | null {
+/** "19 Nov", or "19 Nov 2025" when it isn't this year: a ledger's When. */
+function formatStamp(value: string | null, now = Date.now()): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return `${stampDay.format(date)} · ${stampTime.format(date)}`;
+  const thisYear = date.getUTCFullYear() === new Date(now).getUTCFullYear();
+  return thisYear ? stampDay.format(date) : (formatDate(value) ?? stampDay.format(date));
+}
+
+/** "19 Nov 2026, 08:42 UTC": the stamp in full, for its tooltip. */
+function formatStampFull(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : `${stampFull.format(date)} UTC`;
 }
 
 function party(value: unknown): ReceiptParty {
@@ -839,6 +856,7 @@ export function toReceipt(view: {
     currency,
     date: formatDate(when),
     stamp: formatStamp(when),
+    stampFull: formatStampFull(when),
     time: when ? new Date(when).getTime() || 0 : 0,
     network:
       explorer?.name ?? (network ? network.charAt(0).toUpperCase() + network.slice(1) : null),

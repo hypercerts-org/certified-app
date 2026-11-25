@@ -2311,14 +2311,16 @@ a.explore-account-link:hover .list-item-title {
   gap: var(--space-6);
 }
 
-/* Wide tables scroll sideways on narrow screens, as ledgers do. */
+/* At most four columns (When, From, To, Amount), which fit the content
+   column; a party's line under it says what the gift was for. Should a row
+   still not fit (a long wallet address), the table scrolls rather than the
+   page. */
 .ledger-scroll {
   overflow-x: auto;
 }
 
 .ledger {
   inline-size: 100%;
-  min-inline-size: 44rem;
   border-collapse: collapse;
   font-size: var(--hc-type-body-sm);
 }
@@ -2341,6 +2343,21 @@ a.explore-account-link:hover .list-item-title {
   vertical-align: middle;
 }
 
+/* Narrow: tighter cells, the outer ones flush with the column's edges. */
+@container page (max-width: 30rem) {
+  .ledger :is(th, td) {
+    padding-inline: var(--space-2);
+  }
+
+  .ledger :is(th, td):first-child {
+    padding-inline-start: 0;
+  }
+
+  .ledger :is(th, td):last-child {
+    padding-inline-end: 0;
+  }
+}
+
 .ledger tbody tr:hover {
   background: var(--hc-fill-subtle);
 }
@@ -2358,11 +2375,18 @@ a.explore-account-link:hover .list-item-title {
   font-weight: var(--hc-weight-strong);
 }
 
+/* Under the amount: its kind, the platform that confirmed it, the payment. */
 .ledger-detail {
-  display: inline-flex;
-  gap: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 var(--space-2);
   color: var(--hc-text-muted);
   font-size: var(--hc-type-label);
+}
+
+.ledger-detail .actor-link {
+  color: inherit;
 }
 
 .ledger-tx {
@@ -2382,8 +2406,18 @@ a.explore-account-link:hover .list-item-title {
 }
 
 .ledger-when {
+  inline-size: 1%;
   color: var(--hc-text-muted);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* A party, and under it what the gift was for. */
+.ledger-party {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-inline-size: 0;
 }
 
 .ledger-account {
@@ -2399,16 +2433,17 @@ a.explore-account-link:hover .list-item-title {
   color: var(--hc-text-muted);
 }
 
-/* What it's for: two lines at most. */
+/* What it was for: one line, cut short. */
 .ledger-for {
-  max-inline-size: 18rem;
-}
-
-.ledger-for a {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-label);
+}
+
+.ledger-for a {
   color: var(--hc-text-body);
   text-decoration: none;
 }

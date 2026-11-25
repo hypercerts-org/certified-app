@@ -6,8 +6,10 @@ async function ActivityFunding({
   params,
 }: Pick<PageProps<"/[actor]/activity/[rkey]/funding">, "params">) {
   const { uri } = await activityFrom(params);
-  // "For" is this activity on every row.
-  return <Funding filter={{ for: uri }} label="Received" omit="for" empty="No funding yet" />;
+  // Every row is for this activity, to its organization: neither is repeated.
+  return (
+    <Funding filter={{ for: uri }} label="Received" omit={["to", "for"]} empty="No funding yet" />
+  );
 }
 
 /** The funding recorded for the activity: its figures and receipts. */
