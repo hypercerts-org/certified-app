@@ -52,7 +52,6 @@ import {
   type ProjectDetail,
   plainText,
   type Receipt,
-  safeUrl,
   sortBadges,
   toActivityCard,
   toActorCard,
@@ -1922,31 +1921,6 @@ export async function getPlace(uri: string): Promise<Place | null> {
     throw result;
   }
   return placeOf(result.body.location.record, didOf(uri));
-}
-
-// Badges from one issuer
-
-/**
- * The badges `issuer` awarded `subject` (an account's DID or a record's URI):
- * each badge's title and, when the award carries one, its page address (Good
- * Market puts the account's page there).
- */
-export async function getAwardsFrom(
-  issuer: string,
-  subject: string,
-): Promise<{ title: string; url: string | null }[]> {
-  "use cache";
-  publicData(tags.badges(subject));
-
-  const { badgeAwards } = await api.call(
-    app.certified.badge.listBadgeAwards,
-    { authors: [issuer as Did], subjects: [subject], limit: 20 },
-    read(),
-  );
-  return badgeAwards.map((award) => ({
-    title: String(award.badge?.record.title ?? "").trim(),
-    url: safeUrl((award.record as { url?: unknown }).url),
-  }));
 }
 
 // Explore

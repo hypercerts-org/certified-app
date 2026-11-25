@@ -9,13 +9,13 @@ import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { ActorAvatar, ActorName, ActorStack } from "@/components/actor";
+import { AlsoOnRow } from "@/components/also-on";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
-import { AccountPlatformLinks } from "@/components/platform-links";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
-import { hasMaEarthPage } from "@/lib/hypercerts/platform-links";
+import { getAlsoOn } from "@/lib/also-on";
 import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
@@ -92,8 +92,6 @@ function links(actor: ActorDetail): AccountLink[] {
   for (const { url, label } of entries) {
     const address = shortAddress(url); // http(s) only, checked when mapped (safeUrl)
     if (seen.has(address)) continue;
-    // Its Ma Earth page shows in "Also on", with the app's icon.
-    if (/^maearth\.com(\/|$)/.test(address) && hasMaEarthPage(actor.did)) continue;
     seen.add(address);
     const bluesky = /^(bsky\.app|bsky\.social)(\/|$)/.test(address);
     out.push({
@@ -114,6 +112,44 @@ function links(actor: ActorDetail): AccountLink[] {
     });
   }
   return out;
+}
+
+function LinkList({ links }: { links: AccountLink[] }) {
+  if (links.length === 0) return null;
+  return (
+    <ul className="profile-links" aria-label="Links">
+      {links.map((link) => (
+        <li key={link.href}>
+          <ProfileLink link={link} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The other apps that show the account ("Also on"), then its own links. A
+ * link to one of those apps is left out: "Also on" already leads there.
+ */
+async function AppsAndLinks({
+  did,
+  what,
+  links,
+}: {
+  did: string;
+  what: string;
+  links: AccountLink[];
+}) {
+  const apps = await getAlsoOn(did);
+  const shown = new Set(apps.map((app) => domainOf(app.href)));
+  return (
+    <>
+      <AlsoOnRow links={apps} what={what} />
+      <LinkList
+        links={links.filter((link) => link.kind === "email" || !shown.has(domainOf(link.href)))}
+      />
+    </>
+  );
 }
 
 export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: string }) {
@@ -175,18 +211,13 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
               )}
             </ExpandableText>
           )}
-          <Suspense fallback={null}>
-            <AccountPlatformLinks did={actor.did} organization={actor.isOrganization} />
+          <Suspense fallback={<LinkList links={accountLinks} />}>
+            <AppsAndLinks
+              did={actor.did}
+              what={actor.isOrganization ? "organization" : "profile"}
+              links={accountLinks}
+            />
           </Suspense>
-          {accountLinks.length > 0 && (
-            <ul className="profile-links" aria-label="Links">
-              {accountLinks.map((link) => (
-                <li key={link.href}>
-                  <ProfileLink link={link} />
-                </li>
-              ))}
-            </ul>
-          )}
           <Suspense fallback={null}>
             <TrustLine did={actor.did} base={base} />
           </Suspense>

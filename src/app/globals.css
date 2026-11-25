@@ -2820,22 +2820,22 @@ a.attachment-title:hover {
   font-size: var(--hc-type-body-sm);
 }
 
-/* "Also on" (src/components/platform-links.tsx): the other apps that show
+/* "Also on" (src/components/also-on.tsx): the other apps that show
    a project or an account, as quiet links with each app's icon, in a row
    that wraps. Its label sits on the same line as the links. */
-.platform-links {
+.also-on {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
 
-.platform-links-label {
+.also-on-label {
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
 }
 
-.platform-links ul {
+.also-on ul {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -2844,7 +2844,7 @@ a.attachment-title:hover {
   list-style: none;
 }
 
-.platform-link {
+.also-on-link {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -2862,14 +2862,14 @@ a.attachment-title:hover {
     border-color 150ms ease;
 }
 
-.platform-link:hover {
+.also-on-link:hover {
   border-color: var(--hc-text-muted);
   background: var(--hc-fill-subtle);
 }
 
 /* Each app's own icon, as an app tile: rounded, with a hairline so a light
    icon keeps its edge on a light panel. */
-.platform-link-icon {
+.also-on-icon {
   flex: none;
   inline-size: 1.5rem;
   block-size: 1.5rem;
@@ -2879,17 +2879,17 @@ a.attachment-title:hover {
   object-fit: cover;
 }
 
-.platform-link-note {
+.also-on-note {
   color: var(--hc-text-muted);
   font-weight: var(--hc-weight-body);
 }
 
-.platform-link-arrow {
+.also-on-arrow {
   color: var(--hc-text-muted);
   transition: translate 150ms ease;
 }
 
-.platform-link:hover .platform-link-arrow {
+.also-on-link:hover .also-on-arrow {
   color: var(--hc-text-ink);
   translate: 1px -1px;
 }

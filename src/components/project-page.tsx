@@ -8,9 +8,9 @@ import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-reac
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActorLink } from "@/components/actor";
+import { AlsoOn } from "@/components/also-on";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
-import { ProjectPlatformLinks } from "@/components/platform-links";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { RichText } from "@/components/rich-text";
@@ -170,7 +170,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
             </Suspense>
           </div>
           <Suspense fallback={null}>
-            <ProjectPlatformLinks uri={uri} />
+            <AlsoOn subject={uri} what="project" />
           </Suspense>
           {/* The short description leads; the long one fades out above Read
               more, as a profile's does. */}

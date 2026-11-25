@@ -1,4 +1,4 @@
-// Builds data/maearth-pages.json: which Ma Earth page shows which project and
+// Builds maearth-pages.json, beside this script: which Ma Earth page shows which project and
 // which organization, so a project or a profile can link to its page there.
 //
 // Ma Earth's addresses are a name and a short code ("/the-community-mobiliz-
@@ -6,7 +6,7 @@
 // its public sitemap lists the pages, and each page names its record (a
 // project page the project's URI; an organization page its atprotoDid).
 // A stopgap until Ma Earth writes its page addresses into the records, as Good
-// Market does on its badges. Run with `node scripts/update-maearth-pages.mjs`.
+// Market does on its badges. Run with `node src/lib/also-on/update-maearth-pages.mjs`.
 
 import { writeFile } from "node:fs/promises";
 
@@ -78,7 +78,7 @@ function zip(a, b) {
 const sorted = (record) =>
   Object.fromEntries(Object.entries(record).sort(([x], [y]) => x.localeCompare(y)));
 await writeFile(
-  new URL("../data/maearth-pages.json", import.meta.url),
+  new URL("./maearth-pages.json", import.meta.url),
   `${JSON.stringify({ updated: new Date().toISOString().slice(0, 10), projects: sorted(projects), accounts: sorted(accounts) }, null, 1)}\n`,
 );
 console.log(
