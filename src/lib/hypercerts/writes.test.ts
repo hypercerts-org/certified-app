@@ -2,7 +2,15 @@ import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { CgsAuthError } from "@/lib/cgs";
-import { organizationRepository, ownRepository, updateProfile, WriteError } from "./writes";
+import {
+  deleteBadgeAward,
+  findEndorsementDefinition,
+  organizationRepository,
+  ownRepository,
+  type Repository,
+  updateProfile,
+  WriteError,
+} from "./writes";
 
 const user = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";
 const org = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
@@ -159,5 +167,140 @@ describe("own-repository writes", () => {
     const err = await failureOf(updateProfile(ownRepository(session), NEW, null, sign));
     expect(err).toBeInstanceOf(WriteError);
     expect(err).toMatchObject({ reason: "conflict" });
+  });
+});
+
+describe("findEndorsementDefinition", () => {
+  const defRecord = (
+    rkey: string,
+    overrides: Record<string, unknown> = {},
+    did: string = user,
+  ) => ({
+    uri: `at://${did}/app.certified.badge.definition/${rkey}`,
+    cid: `bafy${rkey}`,
+    value: {
+      $type: "app.certified.badge.definition",
+      badgeType: "endorsement",
+      title: "Endorsement",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      ...overrides,
+    },
+  });
+
+  function repoListing(
+    pages: { records: ReturnType<typeof defRecord>[]; cursor?: string }[],
+    did: string = user,
+  ): Repository {
+    let page = 0;
+    return {
+      did: did as Repository["did"],
+      getRecord: async () => null,
+      listRecords: async () => pages[page++] ?? { records: [] },
+      putRecord: async () => ({ uri: "", cid: "" }),
+      createRecord: async () => ({ uri: "", cid: "" }),
+      deleteRecord: async () => {},
+    };
+  }
+
+  it("returns null when the repository has no matching Endorsement definition", async () => {
+    const repo = repoListing([
+      {
+        records: [
+          defRecord("custom", { title: "Trusted Evaluator" }),
+          defRecord("lowercase", { title: "endorsement" }),
+          defRecord("other-type", { badgeType: "recognition", title: "Endorsement" }),
+          defRecord("disallowed", { allowedIssuers: [{ did: org }] }),
+          defRecord("empty-issuers", { allowedIssuers: [] }),
+          defRecord("invalid", { createdAt: "not-a-datetime" }),
+        ],
+      },
+    ]);
+    expect(await findEndorsementDefinition(repo)).toBeNull();
+  });
+
+  it("matches title 'Endorsement' and badgeType 'endorsement' across pages, picking the oldest", async () => {
+    const repo = repoListing([
+      {
+        records: [
+          defRecord("custom", {
+            title: "Trusted Evaluator",
+            createdAt: "2025-01-01T00:00:00.000Z",
+          }),
+          defRecord("newer", { createdAt: "2026-08-01T00:00:00.000Z" }),
+        ],
+        cursor: "page2",
+      },
+      {
+        records: [
+          defRecord("older", {
+            createdAt: "2026-02-01T00:00:00.000Z",
+            allowedIssuers: [{ did: user }],
+          }),
+        ],
+      },
+    ]);
+    expect(await findEndorsementDefinition(repo)).toBe(
+      `at://${user}/app.certified.badge.definition/older`,
+    );
+  });
+});
+
+describe("deleteBadgeAward", () => {
+  const requests: Request[] = [];
+  let cgsAnswer: () => Response | Promise<Response>;
+
+  beforeEach(() => {
+    requests.length = 0;
+    cgsAnswer = () => Response.json({});
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      requests.push(request);
+      return cgsAnswer();
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("deletes an organization's award through CGS with a deleteRecord service-auth token", async () => {
+    const minted: URL[] = [];
+    const session = fakeSession((url) => {
+      minted.push(url);
+      return Response.json({ token: "token" });
+    });
+    const repo = await organizationRepository(session, org);
+    await deleteBadgeAward(repo, "3k2a4b5c");
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toBe(
+      "https://groups.certified.app/xrpc/app.certified.group.repo.deleteRecord",
+    );
+    expect(minted.map((url) => url.searchParams.get("lxm"))).toEqual([
+      "app.certified.group.repo.deleteRecord",
+    ]);
+    expect(await requests[0].json()).toEqual({
+      repo: org,
+      collection: "app.certified.badge.award",
+      rkey: "3k2a4b5c",
+    });
+  });
+
+  it("treats an already-deleted award (RecordNotFound) as a no-op", async () => {
+    const session = fakeSession(() =>
+      Response.json({ error: "RecordNotFound", message: "missing" }, { status: 400 }),
+    );
+    await expect(deleteBadgeAward(ownRepository(session), "3k2a4b5c")).resolves.toBeUndefined();
+  });
+
+  it("maps CGS 403 to forbidden and 5xx to unknown", async () => {
+    const repo = await organizationRepository(fakeSession(), org);
+    cgsAnswer = () => Response.json({ error: "Forbidden" }, { status: 403 });
+    expect(await failureOf(deleteBadgeAward(repo, "3k2a4b5c"))).toMatchObject({
+      name: "WriteError",
+      reason: "forbidden",
+    });
+    cgsAnswer = () => Response.json({ error: "UpstreamFailure" }, { status: 502 });
+    expect(await failureOf(deleteBadgeAward(repo, "3k2a4b5c"))).toMatchObject({
+      name: "WriteError",
+      reason: "unknown",
+    });
   });
 });

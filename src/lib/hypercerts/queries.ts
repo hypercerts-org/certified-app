@@ -27,7 +27,9 @@ import {
   type BadgeDetail,
   type Contributor,
   didOf,
+  ENDORSEMENT_BADGE_TYPE,
   type EndorsementCard,
+  type EndorsementRef,
   type Evaluation,
   type ExploreAccount,
   type ExploreActivity,
@@ -46,6 +48,7 @@ import {
   type Measurement,
   type Page,
   type PersonRow,
+  PLAIN_ENDORSEMENT,
   type Place,
   type ProfileVersion,
   type ProjectCard,
@@ -669,6 +672,60 @@ export async function getEndorsements(did: string): Promise<Endorsements> {
     given: given.totalCount ?? given.badgeAwards.length,
     latestReceived: await withHandlesIn(received.badgeAwards.map(toEndorsementCard), "issuer"),
   };
+}
+
+/**
+ * Every plain endorsement ("Endorsement" badge of type "endorsement") that
+ * `actor` gave `subject` in the index. Never cached: the write action asks it
+ * before creating or revoking, and waits on it after.
+ */
+export async function getIndexedEndorsements(
+  actor: string,
+  subject: string,
+): Promise<EndorsementRef[]> {
+  const refs: EndorsementRef[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 5; page++) {
+    const out = await api.call(
+      app.certified.badge.listBadgeAwards,
+      {
+        authors: [actor as Did],
+        subjects: [subject],
+        badgeTypes: [ENDORSEMENT_BADGE_TYPE],
+        limit: 100,
+        cursor,
+      },
+      read(),
+    );
+    for (const award of out.badgeAwards) {
+      if (toEndorsementCard(award).badge !== PLAIN_ENDORSEMENT) continue;
+      refs.push({ uri: award.uri, cid: award.cid });
+    }
+    if (!out.cursor || out.cursor === cursor) break;
+    cursor = out.cursor;
+  }
+  return refs;
+}
+
+/**
+ * The index's plain endorsement of `subject` by `actor`, or null. Never
+ * cached: the write action asks it whether the index has caught up.
+ */
+export async function getIndexedEndorsement(
+  actor: string,
+  subject: string,
+): Promise<EndorsementRef | null> {
+  return (await getIndexedEndorsements(actor, subject))[0] ?? null;
+}
+
+/** {@link getIndexedEndorsement}, cached with the actor's endorsements. */
+export async function getEndorsement(
+  actor: string,
+  subject: string,
+): Promise<EndorsementRef | null> {
+  "use cache";
+  publicData(tags.endorsements(actor));
+  return getIndexedEndorsement(actor, subject);
 }
 
 /**

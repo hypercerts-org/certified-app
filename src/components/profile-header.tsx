@@ -16,7 +16,7 @@ import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
 import { getAlsoOn } from "@/lib/also-on";
-import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
+import { getEndorsement, getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditAccount } from "@/lib/memberships";
 
@@ -247,13 +247,17 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
       />
     );
   }
+  const [follow, endorsement] = actingAs
+    ? await Promise.all([getFollow(actingAs, actor.did), getEndorsement(actingAs, actor.did)])
+    : [null, null];
   return (
     <VisitorActions
       did={actor.did}
       path={base}
       title={nameOf(actor)}
       actor={actingAs}
-      follow={actingAs ? await getFollow(actingAs, actor.did) : null}
+      follow={follow}
+      endorsement={endorsement}
     />
   );
 }

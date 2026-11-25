@@ -12,10 +12,14 @@ const DID = "did:plc:abc123";
 const repoWith = (value: Record<string, unknown>): Repository => ({
   did: DID,
   getRecord: async () => ({ cid: "bafycurrent", value: value as LexMap }),
+  listRecords: async () => ({ records: [] }),
   putRecord: async () => {
     throw new Error("no writes");
   },
   createRecord: async () => {
+    throw new Error("no writes");
+  },
+  deleteRecord: async () => {
     throw new Error("no writes");
   },
 });
