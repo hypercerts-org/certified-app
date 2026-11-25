@@ -33,14 +33,14 @@ type Item = {
   /** Where it leads, or null while the page isn't built. */
   href: string | null;
   isActive?: (pathname: string) => boolean;
-  /** Unclaimed items awaiting action, shown as a red notification count. */
-  badge?: number;
+  /** Streamed notification pill shown at the end of the row (e.g. unclaimed badges). */
+  badge?: ReactNode;
 };
 
 const under = (base: string) => (pathname: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
 
-function workspaceItems(overview: string, unclaimedBadges = 0): Item[] {
+function workspaceItems(overview: string, badgesBadge?: ReactNode): Item[] {
   return WORKSPACE_SECTIONS.map(({ label, icon, path }) => ({
     label,
     icon,
@@ -49,7 +49,7 @@ function workspaceItems(overview: string, unclaimedBadges = 0): Item[] {
       path === ""
         ? (pathname: string) => WORKSPACE_OVERVIEW_PATH.test(pathname)
         : under(`${overview}${path}`),
-    badge: path === "/badges" && unclaimedBadges > 0 ? unclaimedBadges : undefined,
+    badge: path === "/badges" ? badgesBadge : undefined,
   }));
 }
 
@@ -87,17 +87,7 @@ function Row({ item, pathname }: { item: Item; pathname: string | null }) {
     <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
       <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden />
       {label}
-      {item.badge !== undefined && (
-        <>
-          <span className="nav-badge" aria-hidden>
-            {item.badge > 99 ? "99+" : item.badge}
-          </span>
-          <span className="visually-hidden">
-            {" "}
-            ({item.badge} unclaimed {item.badge === 1 ? "badge" : "badges"})
-          </span>
-        </>
-      )}
+      {item.badge}
       <LinkPending />
     </Link>
   );
@@ -122,11 +112,11 @@ function RowsHere({ items }: { items: readonly Item[] }) {
 export function SidebarRows(
   props:
     | { group: "network" | "feed" | "ecosystem" | "settings" }
-    | { group: "workspace"; overview: string; unclaimedBadges?: number },
+    | { group: "workspace"; overview: string; badgesBadge?: ReactNode },
 ) {
   const items =
     props.group === "workspace"
-      ? workspaceItems(props.overview, props.unclaimedBadges)
+      ? workspaceItems(props.overview, props.badgesBadge)
       : { network: NETWORK, feed: FEED, ecosystem: ECOSYSTEM, settings: SETTINGS }[props.group];
   return (
     <Suspense fallback={<RowsView items={items} pathname={null} />}>
@@ -182,7 +172,7 @@ export function SidebarSearch() {
         type="search"
         name="q"
         placeholder="Search"
-        aria-label="Search organizations"
+        aria-label="Search Certified"
         enterKeyHint="search"
         autoComplete="off"
       />

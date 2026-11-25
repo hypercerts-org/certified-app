@@ -1,13 +1,18 @@
+import type { LexMap } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { CgsAuthError } from "@/lib/cgs";
 import {
+  addItemsToList,
   deleteBadgeAward,
+  deleteCollectionRecord,
   findEndorsementDefinition,
   organizationRepository,
   ownRepository,
   type Repository,
+  removeItemsFromList,
+  updateListDetails,
   updateProfile,
   WriteError,
 } from "./writes";
@@ -105,6 +110,7 @@ describe("organization writes through CGS", () => {
       repo: org,
       collection: "app.certified.actor.profile",
       rkey: "self",
+      swapRecord: CURRENT_CID,
       record: { displayName: "New", createdAt: "2026-01-01T00:00:00.000Z", signatures: [] },
     });
   });
@@ -302,5 +308,92 @@ describe("deleteBadgeAward", () => {
       name: "WriteError",
       reason: "unknown",
     });
+  });
+
+  it("treats CGS 403 as a no-op when the record is already absent on the org PDS", async () => {
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      return request.url.startsWith(ORG_PDS)
+        ? Response.json({ error: "RecordNotFound" }, { status: 400 })
+        : Response.json({ error: "Forbidden" }, { status: 403 });
+    });
+    const repo = await organizationRepository(fakeSession(), org);
+    await expect(deleteBadgeAward(repo, "gone")).resolves.toBeUndefined();
+    await expect(deleteCollectionRecord(repo, "gone")).resolves.toBeUndefined();
+  });
+});
+
+describe("list record mutations", () => {
+  const existingCollection = (items: { itemIdentifier: { uri: string; cid: string } }[] = []) => ({
+    cid: CURRENT_CID,
+    value: {
+      $type: "org.hypercerts.collection",
+      title: "Round 3",
+      type: "list:certs",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      ...(items.length > 0 && { items }),
+    } as Record<string, unknown>,
+  });
+
+  function mockRepo(current: ReturnType<typeof existingCollection> | null) {
+    const putRecord = vi.fn(async () => ({
+      uri: `at://${user}/org.hypercerts.collection/list1`,
+      cid: "bafyupdated",
+    }));
+    const deleteRecord = vi.fn(async () => {});
+    const repo: Repository = {
+      did: user,
+      getRecord: async () => current as { cid: string; value: LexMap } | null,
+      listRecords: async () => ({ records: [] }),
+      putRecord,
+      createRecord: async () => ({ uri: "", cid: "" }),
+      deleteRecord,
+    };
+    return { repo, putRecord, deleteRecord };
+  }
+
+  it("updates title and description with compare-and-swap CID", async () => {
+    const { repo, putRecord } = mockRepo(existingCollection());
+    const saved = await updateListDetails(
+      repo,
+      "list1",
+      { title: "Renamed", description: "New notes" },
+      sign,
+    );
+    expect(saved.cid).toBe("bafyupdated");
+    expect(putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Renamed",
+        type: "list:certs",
+        description: { $type: "org.hypercerts.defs#descriptionString", value: "New notes" },
+      }),
+      "list1",
+      CURRENT_CID,
+    );
+  });
+
+  it("deduplicates added items and removes only matching item URIs", async () => {
+    const a1 = { uri: `at://${user}/org.hypercerts.claim.activity/a1`, cid: CURRENT_CID };
+    const a2 = { uri: `at://${user}/org.hypercerts.claim.activity/a2`, cid: CURRENT_CID };
+    const { repo, putRecord } = mockRepo(existingCollection([{ itemIdentifier: a1 }]));
+
+    const added = await addItemsToList(repo, "list1", [a1, a2], sign);
+    expect(added).toMatchObject({ added: 1, skipped: 1 });
+    expect(putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [{ itemIdentifier: a1 }, { itemIdentifier: a2 }] }),
+      "list1",
+      CURRENT_CID,
+    );
+
+    const { repo: repo2, putRecord: put2 } = mockRepo(
+      existingCollection([{ itemIdentifier: a1 }, { itemIdentifier: a2 }]),
+    );
+    const removed = await removeItemsFromList(repo2, "list1", new Set([a1.uri]), sign);
+    expect(removed).toMatchObject({ removed: 1 });
+    expect(put2).toHaveBeenCalledWith(
+      expect.objectContaining({ items: [{ itemIdentifier: a2 }] }),
+      "list1",
+      CURRENT_CID,
+    );
   });
 });

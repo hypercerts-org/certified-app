@@ -12,15 +12,27 @@ import { PageTitle } from "@/components/page-title";
 import { workspaceDid } from "@/components/workspace-access";
 import { LIST_KINDS } from "@/components/workspace-lists";
 import { getList, getListItems } from "@/lib/hypercerts/queries";
+import { isRkey } from "@/lib/validate";
 
 export const metadata: Metadata = { title: "List", robots: { index: false } };
 
-/** A record key as AT Protocol allows it; anything else is no list. */
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
+/** Short fingerprint of a list's items so paginated pages reset after any add or remove. */
+function listRevision(uris: string[]): string {
+  let hash = 2166136261;
+  for (const uri of uris) {
+    for (let i = 0; i < uri.length; i++) {
+      hash ^= uri.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    hash ^= 10;
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${uris.length}-${(hash >>> 0).toString(36)}`;
+}
 
 async function Content({ params }: { params: Promise<{ actor: string; rkey: string }> }) {
   const { rkey } = await params;
-  if (!RKEY.test(rkey)) notFound();
+  if (!isRkey(rkey)) notFound();
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
   const list = await getList(did, rkey);
@@ -59,7 +71,13 @@ async function Content({ params }: { params: Promise<{ actor: string; rkey: stri
         />
         <DeleteListDialog repo={did} rkey={rkey} title={list.title} itemCount={list.itemCount} />
       </div>
-      <ManageListItems repo={did} rkey={rkey} list={list.uri} initial={first} />
+      <ManageListItems
+        repo={did}
+        rkey={rkey}
+        list={list.uri}
+        initial={first}
+        revision={listRevision(list.itemUris)}
+      />
     </div>
   );
 }

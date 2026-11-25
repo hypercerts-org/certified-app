@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { workspaceDid } from "@/components/workspace-access";
 import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getFollowCounts } from "@/lib/hypercerts/queries";
 
@@ -18,7 +19,8 @@ function tabs(base: string, counts?: { followers: string; following: string }) {
 }
 
 async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   const base = `${workspaceHref(did)}/followers`;
   return (
     <Suspense fallback={<ProfileTabs label="Followers" tabs={tabs(base)} />}>

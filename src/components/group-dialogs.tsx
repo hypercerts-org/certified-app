@@ -15,16 +15,34 @@ import {
   Text,
   Textarea,
 } from "@hypercerts-org/ui-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import * as groupActions from "@/lib/hypercerts/group-actions";
 
 /** "New group": registers a group on CGS and initializes its organization record. */
-export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
+export function NewGroupDialog({
+  pdsDomain = "certified.one",
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  pdsDomain?: string;
+  /** Controlled open state when triggered from a menu (hides the built-in trigger button). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const formId = useId();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (controlled) onOpenChange?.(next);
+    else setUncontrolledOpen(next);
+  };
   const [handle, setHandle] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
@@ -78,6 +96,7 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
         return;
       }
       setCreated(result);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast(`Created @${result.handle}`);
     } finally {
       setSubmitting(false);
@@ -86,10 +105,19 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
 
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        <Plus size={16} aria-hidden />
-        New group
-      </Button>
+      {!controlled && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setError(null);
+            setOpen(true);
+          }}
+        >
+          <Plus size={16} aria-hidden />
+          New group
+        </Button>
+      )}
       <ResponsiveDialog
         open={open}
         onClose={close}
@@ -122,7 +150,7 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
               <Button variant="secondary" disabled={submitting} onClick={close}>
                 Cancel
               </Button>
-              <Button variant="primary" loading={submitting} onClick={submit}>
+              <Button type="submit" form={formId} variant="primary" loading={submitting}>
                 Create group
               </Button>
             </>
@@ -170,7 +198,15 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
             </dl>
           </div>
         ) : (
-          <div className="stack">
+          <form
+            id={formId}
+            className="stack"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submit();
+            }}
+          >
             {error && (
               <Banner tone="danger" role="alert">
                 {error}
@@ -228,7 +264,7 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
                 />
               )}
             </Field>
-          </div>
+          </form>
         )}
       </ResponsiveDialog>
     </>
@@ -237,7 +273,9 @@ export function NewGroupDialog({ pdsDomain }: { pdsDomain: string }) {
 
 /** "Add member": invites an account into a group with member or admin role. */
 export function AddMemberDialog({ groupDid }: { groupDid: string }) {
+  const formId = useId();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
@@ -276,6 +314,7 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
       }
       setOpen(false);
       reset();
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast("Member added");
       router.refresh();
     } finally {
@@ -285,7 +324,14 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
 
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         <UserPlus size={16} aria-hidden />
         Add member
       </Button>
@@ -299,13 +345,21 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
             <Button variant="secondary" disabled={submitting} onClick={close}>
               Cancel
             </Button>
-            <Button variant="primary" loading={submitting} onClick={submit}>
+            <Button type="submit" form={formId} variant="primary" loading={submitting}>
               Add member
             </Button>
           </>
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -334,7 +388,7 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
             value={role}
             onChange={(next) => setRole(next as "member" | "admin")}
           />
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );
@@ -357,6 +411,7 @@ export function MemberActions({
   canRemove: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -377,6 +432,7 @@ export function MemberActions({
         toast.error(result.message);
         return;
       }
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast(`${memberName} is now ${nextRole === "admin" ? "an admin" : "a member"}`);
       router.refresh();
     });
@@ -394,6 +450,7 @@ export function MemberActions({
         return;
       }
       setConfirming(false);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast(`Removed ${memberName}`);
       router.refresh();
     });

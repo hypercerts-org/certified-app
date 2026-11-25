@@ -16,6 +16,7 @@ import { cidForLex } from "@atproto/lex-cbor";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
 import { app, org } from "@hypercerts-org/lexicon";
+import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
@@ -70,10 +71,7 @@ export type Repository = {
     collection: l.NsidString,
     options?: { limit?: number; cursor?: string },
   ): Promise<{ records: { uri: string; cid: string; value: LexMap }[]; cursor?: string }>;
-  /**
-   * Replaces the record if it is still version `swapRecord`, where the
-   * repository can check that (CGS can't yet: its putRecord has no swapRecord).
-   */
+  /** Replaces the record if it is still version `swapRecord` (compare-and-swap). */
   putRecord(record: TypedRecord, rkey: string, swapRecord: string): Promise<StoredRecord>;
   /** Creates the record; fails if one exists. */
   createRecord(record: TypedRecord, rkey: string): Promise<StoredRecord>;
@@ -115,10 +113,16 @@ export function ownRepository(session: OAuthSession): Repository {
     did: session.did,
     getRecord: (collection, rkey) => getRecordFrom(client, session.did, collection, rkey),
     listRecords: (collection, options) => listRecordsFrom(client, session.did, collection, options),
-    putRecord: async (record, rkey, swapRecord) =>
-      (await client.putRecord(record, rkey, { swapRecord })).body,
-    createRecord: async (record, rkey) => (await client.createRecord(record, rkey)).body,
+    putRecord: async (record, rkey, swapRecord) => {
+      assertWritesAllowed();
+      return (await client.putRecord(record, rkey, { swapRecord })).body;
+    },
+    createRecord: async (record, rkey) => {
+      assertWritesAllowed();
+      return (await client.createRecord(record, rkey)).body;
+    },
     deleteRecord: async (collection, rkey, swapRecord) => {
+      assertWritesAllowed();
       await client.deleteRecord(collection, rkey, swapRecord ? { swapRecord } : undefined);
     },
   };
@@ -142,21 +146,24 @@ export async function organizationRepository(
     did,
     getRecord: (collection, rkey) => getRecordFrom(pds, did, collection, rkey),
     listRecords: (collection, options) => listRecordsFrom(pds, did, collection, options),
-    // No swapRecord (see Repository): the version is checked when the record
-    // is read, just before the write.
-    putRecord: async (record, rkey) =>
-      cgs.call(
+    putRecord: async (record, rkey, swapRecord) => {
+      assertWritesAllowed();
+      return cgs.call(
         putRecord,
-        { repo: did, collection: record.$type, rkey, record },
+        { repo: did, collection: record.$type, rkey, record, ...(swapRecord && { swapRecord }) },
         { headers: await cgsAuth(session, putRecord) },
-      ),
-    createRecord: async (record, rkey) =>
-      cgs.call(
+      );
+    },
+    createRecord: async (record, rkey) => {
+      assertWritesAllowed();
+      return cgs.call(
         createRecord,
         { repo: did, collection: record.$type, rkey, record },
         { headers: await cgsAuth(session, createRecord) },
-      ),
+      );
+    },
     deleteRecord: async (collection, rkey, swapRecord) => {
+      assertWritesAllowed();
       await cgs.call(
         deleteRecord,
         { repo: did, collection, rkey, ...(swapRecord && { swapRecord }) },
@@ -311,17 +318,36 @@ export async function findEndorsementDefinition(repo: Repository): Promise<strin
 }
 
 /**
+ * Deletes a record from `repo`, treating an already-deleted record as a no-op
+ * (including CGS returning 403 for a non-admin deleting an absent record).
+ */
+async function deleteRecordIdempotent(
+  repo: Repository,
+  collectionNsid: l.NsidString,
+  rkey: string,
+): Promise<void> {
+  try {
+    await repo.deleteRecord(collectionNsid, rkey);
+  } catch (err) {
+    if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
+    if (err instanceof XrpcResponseError && err.status === 403) {
+      const stillThere = await repo.getRecord(collectionNsid, rkey).catch(() => ({
+        cid: "",
+        value: {},
+      }));
+      if (stillThere === null) return;
+    }
+    throw writeFailure(err);
+  }
+}
+
+/**
  * Deletes a badge award (`app.certified.badge.award`) from `repo`. A stopgap
  * until the Hypercerts SDK supports deleting awards; safe to repeat if the
  * record is already gone.
  */
 export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<void> {
-  try {
-    await repo.deleteRecord(badgeAward.$type, rkey);
-  } catch (err) {
-    if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
-    throw writeFailure(err);
-  }
+  return deleteRecordIdempotent(repo, badgeAward.$type, rkey);
 }
 
 /**
@@ -345,7 +371,8 @@ export async function resolvePublicRecordRef(uri: string): Promise<StoredRecord 
       rkey,
     );
     return found ? { uri, cid: found.cid } : null;
-  } catch {
+  } catch (err) {
+    logError("[writes] public record ref lookup failed", err, { uri });
     return null;
   }
 }
@@ -480,10 +507,5 @@ export async function removeItemsFromList(
 
 /** Deletes a collection record (`org.hypercerts.collection`) from `repo`. */
 export async function deleteCollectionRecord(repo: Repository, rkey: string): Promise<void> {
-  try {
-    await repo.deleteRecord(collection.$type, rkey);
-  } catch (err) {
-    if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
-    throw writeFailure(err);
-  }
+  return deleteRecordIdempotent(repo, collection.$type, rkey);
 }

@@ -6,9 +6,10 @@ export const tags = {
   activities: (author: string) => `activities:${author}`,
   projects: (author: string) => `projects:${author}`,
   project: (uri: string) => `project:${uri}`,
-  organizations: () => "organizations",
   /** Explore's network-wide lists: activities, projects and accounts. */
   explore: () => "explore",
+  /** Per-user CGS memberships cached privately for display. */
+  memberships: (did: string) => `memberships:${did}`,
   endorsements: (did: string) => `endorsements:${did}`,
   badges: (did: string) => `badges:${did}`,
   badge: (uri: string) => `badge:${uri}`,

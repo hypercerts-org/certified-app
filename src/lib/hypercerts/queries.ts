@@ -157,10 +157,10 @@ async function placeOf(record: Parameters<typeof toPlace>[0], did: string): Prom
 
 export async function getActor(actor: string): Promise<ActorDetail | null> {
   "use cache";
-  publicData(tags.actor(actor));
   // Anything else in the URL (a stray /favicon.png, a probe) is no account:
-  // answered without an API call.
+  // answered without an API call or cache tag pollution.
   if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
+  publicData(tags.actor(actor));
 
   // getProfile accepts a handle or DID; getOrganization needs the DID and
   // fails for accounts without an organization record (people). An
@@ -926,7 +926,10 @@ export async function listEndorsements(
       hidden: award.responseStatus === "rejected",
     });
   }
-  return { rows: await withHandlesIn(rows, "actor"), more: Boolean(cursor) };
+  return {
+    rows: direction === "given" ? rows : await withHandlesIn(rows, "actor"),
+    more: Boolean(cursor),
+  };
 }
 
 /**
@@ -1121,6 +1124,9 @@ export async function getIssuedBadges(
         app.certified.badge.listBadgeAwards,
         {
           badgeUris: [badge.uri as AtUri],
+          ...(badge.allowedIssuers.length > 0 && {
+            authors: badge.allowedIssuers as Did[],
+          }),
           responses: ["accepted", "unanswered"],
           limit: 1,
           includeTotal: true,
@@ -1231,6 +1237,7 @@ export async function listBadgeHolders(
     app.certified.badge.listBadgeAwards,
     {
       badgeUris: [uri as AtUri],
+      ...(allowedIssuers.length > 0 && { authors: allowedIssuers as Did[] }),
       responses: [response],
       limit: PEOPLE_PAGE,
       includeTotal: true,
@@ -1269,17 +1276,8 @@ export async function listBadgeHolders(
       holders.push({ kind: "record", uri: award.uri, item, date: createdAt });
     }
   }
-  const people = await withHandlesIn(
-    holders.flatMap((holder) => (holder.kind === "account" ? [holder.row] : [])),
-    "actor",
-  );
-  const withHandle = new Map(people.map((row) => [row.uri, row]));
   return {
-    items: holders.map((holder) =>
-      holder.kind === "account"
-        ? { ...holder, row: withHandle.get(holder.uri) ?? holder.row }
-        : holder,
-    ),
+    items: holders,
     cursor: out.cursor ?? null,
     total: totalCount ?? holders.length,
   };
@@ -1405,16 +1403,23 @@ const collectionOf = (uri: string) => uri.split("/")[3] ?? "";
  * These items resolved, in their order: accounts in one batch, projects and
  * activities a hundred per call, endorsements one call each.
  */
-export async function resolveListItems(uris: string[]): Promise<ListItem[]> {
+export async function resolveListItems(uris: string[], listUri?: string): Promise<ListItem[]> {
   "use cache";
   cacheLife("public");
-  for (const uri of uris) cacheTag(tags.list(uri));
+  if (listUri) cacheTag(tags.list(listUri));
 
   const of = (...nsids: string[]) => uris.filter((uri) => nsids.includes(collectionOf(uri)));
   const accountUris = of("app.certified.actor.profile", "app.bsky.actor.profile");
   const projectUris = of("org.hypercerts.collection");
   const activityUris = of("org.hypercerts.claim.activity");
   const awardUris = of("app.certified.badge.award");
+
+  const entityTags = new Set<string>();
+  for (const uri of accountUris) entityTags.add(tags.actor(didOf(uri)));
+  for (const uri of projectUris) entityTags.add(tags.project(uri));
+  for (const uri of activityUris) entityTags.add(tags.activities(didOf(uri)));
+  for (const uri of awardUris) entityTags.add(tags.endorsements(didOf(uri)));
+  for (const tag of entityTags) cacheTag(tag);
 
   const projects = new Map<string, ProjectCard>();
   const activities = new Map<string, ActivityCard>();
@@ -1445,19 +1450,18 @@ export async function resolveListItems(uris: string[]): Promise<ListItem[]> {
     }),
   ]);
 
-  // Every account the items name: the listed accounts, the projects' authors,
-  // and the endorsements' subjects.
+  // Every account the items name: listed accounts, project/activity authors,
+  // and endorsement issuers + subjects (resolved with handles in one batch).
   const dids = new Set<string>([
     ...accountUris.map(didOf),
     ...[...projects.values()].map((project) => project.authorDid),
+    ...[...activities.values()].map((activity) => activity.author.did),
     ...[...awards.values()].flatMap((award) => {
       const subject = awardSubject(award.record.subject);
-      return subject?.startsWith("did:") ? [subject] : [];
+      return subject?.startsWith("did:") ? [award.author.did, subject] : [award.author.did];
     }),
   ]);
-  const actors = new Map(
-    (await withHandles(await getActorCards([...dids]))).map((actor) => [actor.did, actor]),
-  );
+  const actors = await actorCards([...dids]);
 
   return uris.map((uri): ListItem => {
     const project = projects.get(uri);
@@ -1465,14 +1469,21 @@ export async function resolveListItems(uris: string[]): Promise<ListItem[]> {
       return { kind: "project", uri, project, author: actors.get(project.authorDid) ?? null };
     }
     const activity = activities.get(uri);
-    if (activity) return { kind: "activity", uri, activity };
+    if (activity) {
+      const author = actors.get(activity.author.did);
+      return {
+        kind: "activity",
+        uri,
+        activity: author ? { ...activity, author } : activity,
+      };
+    }
     const award = awards.get(uri);
     if (award) {
       const subject = awardSubject(award.record.subject);
       return {
         kind: "endorsement",
         uri,
-        issuer: toActorCard(award.author),
+        issuer: actors.get(award.author.did) ?? toActorCard(award.author),
         subject: subject ? (actors.get(subject) ?? null) : null,
         date: formatDate(award.record.createdAt),
       };
@@ -1488,7 +1499,7 @@ export async function getListItems(list: ListDetail, offset = 0): Promise<Page<L
   const uris = list.itemUris.slice(offset, offset + LIST_ITEMS_PAGE);
   const next = offset + LIST_ITEMS_PAGE;
   return {
-    items: await resolveListItems(uris),
+    items: await resolveListItems(uris, list.uri),
     cursor: next < list.itemUris.length ? String(next) : null,
   };
 }

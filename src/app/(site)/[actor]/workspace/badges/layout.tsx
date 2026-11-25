@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { workspaceDid } from "@/components/workspace-access";
 import { NewBadge } from "@/components/workspace-badges";
 import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getBadges, getIssuedBadges, getRejectedBadges } from "@/lib/hypercerts/queries";
@@ -21,7 +22,8 @@ function tabs(base: string, counts?: number[]) {
 }
 
 async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   const base = `${workspaceHref(did)}/badges`;
   return (
     <Suspense fallback={<ProfileTabs label="Badges" tabs={tabs(base)} />}>
@@ -46,7 +48,8 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 }
 
 async function NewBadgeAction({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   return <NewBadge repo={did} />;
 }
 

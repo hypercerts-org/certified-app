@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { activityForEditing, projectForEditing } from "./record-drafts";
 import type { Repository } from "./writes";
 
+vi.mock("@/lib/identity", () => ({
+  getHandle: async () => "alice.example.com",
+}));
 vi.mock("@/lib/hypercerts/queries", () => ({
-  getActor: async (did: string) => ({ did, handle: "alice.example.com" }),
   getPlace: async () => ({ name: "Kitale, Kenya", short: "Kenya", point: { lat: 1, lng: 35 } }),
 }));
 

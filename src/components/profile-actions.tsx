@@ -77,7 +77,15 @@ const lost = (action: "follow" | "unfollow" | "endorse" | "unendorse") =>
  * the action waited, the button keeps what was written until the page shows
  * something new.
  */
-function FollowButton({ subject, rendered }: { subject: string; rendered: FollowRef | null }) {
+function FollowButton({
+  repo,
+  subject,
+  rendered,
+}: {
+  repo: string;
+  subject: string;
+  rendered: FollowRef | null;
+}) {
   const [written, setWritten] = useState<{
     follow: FollowRef | null;
     over: FollowRef | null;
@@ -93,9 +101,9 @@ function FollowButton({ subject, rendered }: { subject: string; rendered: Follow
     startTransition(async () => {
       setFollowing(next);
       const result = next
-        ? await followActions.follow(subject).catch(() => lost("follow"))
+        ? await followActions.follow({ repo, subject }).catch(() => lost("follow"))
         : await followActions
-            .unfollow({ subject, uris: current ? [current.uri] : [] })
+            .unfollow({ repo, subject, uris: current ? [current.uri] : [] })
             .catch(() => lost("unfollow"));
       if (!result.ok) {
         toast.error(result.message);
@@ -136,7 +144,7 @@ export function FollowControl({
   actor: string | null;
   follow: FollowRef | null;
 }) {
-  if (actor) return <FollowButton subject={subject} rendered={follow} />;
+  if (actor) return <FollowButton key={actor} repo={actor} subject={subject} rendered={follow} />;
   return (
     <Button
       href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
@@ -155,9 +163,11 @@ export function FollowControl({
  * holds what was written if the index is slower than the action's wait.
  */
 function EndorseButton({
+  repo,
   subject,
   rendered,
 }: {
+  repo: string;
   subject: string;
   rendered: EndorsementRef | null;
 }) {
@@ -176,9 +186,9 @@ function EndorseButton({
     startTransition(async () => {
       setEndorsed(next);
       const result = next
-        ? await endorsementActions.endorse(subject).catch(() => lost("endorse"))
+        ? await endorsementActions.endorse({ repo, subject }).catch(() => lost("endorse"))
         : await endorsementActions
-            .unendorse({ subject, uris: current ? [current.uri] : [] })
+            .unendorse({ repo, subject, uris: current ? [current.uri] : [] })
             .catch(() => lost("unendorse"));
       if (!result.ok) {
         toast.error(result.message);
@@ -219,7 +229,8 @@ export function EndorseControl({
   actor: string | null;
   endorsement: EndorsementRef | null;
 }) {
-  if (actor) return <EndorseButton key={actor} subject={subject} rendered={endorsement} />;
+  if (actor)
+    return <EndorseButton key={actor} repo={actor} subject={subject} rendered={endorsement} />;
   return (
     <Button
       href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}

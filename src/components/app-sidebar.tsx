@@ -7,7 +7,7 @@ import { HelpMenu } from "@/components/help-menu";
 import { SidebarGroup, SidebarRows, SidebarSearch } from "@/components/sidebar-nav";
 import { getAccount, getNavigationIdentity, SignedIn } from "@/components/site-header";
 import { SidebarAccountMenu } from "@/components/site-nav";
-import { getBadges } from "@/lib/hypercerts/queries";
+import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
 
 // The app's navigation from 64rem, after the staging redesign: a sidebar on
 // the left, full height, in place of the top bar (site-header.tsx), which
@@ -99,15 +99,16 @@ function AccountControlSkeleton() {
 async function WorkspaceGroup() {
   const identity = await getNavigationIdentity();
   if (!identity) return null;
-  const unclaimedBadges = await getBadges(identity.actingAs)
-    .then((badges) => badges.awaiting.length)
-    .catch(() => 0);
   return (
     <SidebarGroup label="Workspace">
       <SidebarRows
         group="workspace"
         overview={workspaceHref(identity.actingAs)}
-        unclaimedBadges={unclaimedBadges}
+        badgesBadge={
+          <Suspense fallback={null}>
+            <UnclaimedBadgesPill did={identity.actingAs} />
+          </Suspense>
+        }
       />
     </SidebarGroup>
   );

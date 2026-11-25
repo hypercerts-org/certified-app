@@ -6,7 +6,6 @@
 
 import { Button, Checkbox, ErrorMessage } from "@hypercerts-org/ui-react";
 import { ListChecks } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Empty } from "@/components/empty";
@@ -39,18 +38,28 @@ export function ManageListItems({
   rkey,
   list,
   initial,
+  revision,
 }: {
   repo: string;
   rkey: string;
   list: string;
   initial: Page<ListItem>;
+  revision?: string;
 }) {
-  const router = useRouter();
   const pageUrl = useCallback(
-    (cursor: string) => `/api/lists/items?${new URLSearchParams({ list, cursor })}`,
-    [list],
+    (cursor: string) => {
+      const params = new URLSearchParams({ list, cursor });
+      if (revision) params.set("v", revision);
+      return `/api/lists/items?${params}`;
+    },
+    [list, revision],
   );
-  const { items, hasMore, loading, error, loadMore } = useCursorPages(initial, pageUrl, itemKey);
+  const { items, hasMore, loading, error, loadMore } = useCursorPages(
+    initial,
+    pageUrl,
+    itemKey,
+    revision,
+  );
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [removing, startTransition] = useTransition();
 
@@ -87,7 +96,6 @@ export function ManageListItems({
       }
       setSelected(new Set());
       toast(result.removed === 1 ? "Removed 1 item" : `Removed ${result.removed} items`);
-      router.refresh();
     });
   };
 

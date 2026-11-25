@@ -4,14 +4,7 @@
 
 import { Card, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ActorAvatar, ActorHandle, ActorLink, ActorName } from "@/components/actor";
-import {
-  ActivityPost,
-  ActivityPostsSkeleton,
-  actorHref,
-  ProjectCardsSkeleton,
-  ProjectCardView,
-  skeletonSlots,
-} from "@/components/cards";
+import { ActivityPost, actorHref, ProjectCardView, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import type { ExploreKind, ExploreView } from "@/lib/explore-state";
@@ -182,24 +175,6 @@ export function ExploreRowsSkeleton({ rows = 8, kind }: { rows?: number; kind: E
             />
           )}
         </div>
-      ))}
-    </div>
-  );
-}
-
-/** Gallery cards on their way: as the cards themselves will be. */
-export function ExploreGallerySkeleton({ count = 8, kind }: { count?: number; kind: ExploreKind }) {
-  if (kind === "activities") return <ActivityPostsSkeleton count={4} />;
-  if (kind === "projects") return <ProjectCardsSkeleton count={count} author />;
-  return (
-    <div className="grid" aria-hidden>
-      {skeletonSlots(count).map((slot) => (
-        <Card key={slot} variant="panel" className="explore-account-card">
-          <div className="skeleton-identity">
-            <Skeleton variant="box" className="skeleton-person-avatar" />
-            <Skeleton variant="text" lines={2} className="overview-row-text" />
-          </div>
-        </Card>
       ))}
     </div>
   );

@@ -6,11 +6,10 @@
 import "server-only";
 
 import { getDid } from "@/lib/identity";
-import { isAtUri, isDid } from "@/lib/validate";
+import { isAtUri, isDid, isRkey } from "@/lib/validate";
 
 const HANDLE =
   /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
 const PATH_COLLECTIONS: Record<string, string> = {
   project: "org.hypercerts.collection",
@@ -56,17 +55,22 @@ export function parseTarget(raw: string): ParsedTarget | null {
     } catch {
       return null;
     }
-    const segments = url.pathname
-      .split("/")
-      .filter(Boolean)
-      .map((s) => decodeURIComponent(s));
+    let segments: string[];
+    try {
+      segments = url.pathname
+        .split("/")
+        .filter(Boolean)
+        .map((s) => decodeURIComponent(s));
+    } catch {
+      return null;
+    }
     if (segments.length === 0) return null;
     const [first, second, third] = segments;
     if (RESERVED_SEGMENTS.has(first.toLowerCase())) return null;
     const actor = first.replace(/^@/, "");
     if (!isDid(actor) && !HANDLE.test(actor)) return null;
 
-    if (second && third && PATH_COLLECTIONS[second] && RKEY.test(third)) {
+    if (second && third && PATH_COLLECTIONS[second] && isRkey(third)) {
       return {
         kind: "record-path",
         actor,

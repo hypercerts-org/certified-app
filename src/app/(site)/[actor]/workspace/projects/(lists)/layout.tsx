@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { NewWorkButton } from "@/components/new-work-button";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { workspaceDid } from "@/components/workspace-access";
 import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getWork } from "@/lib/hypercerts/queries";
 
@@ -23,7 +24,8 @@ function tabs(base: string, counts?: number[]) {
 }
 
 async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   const base = `${workspaceHref(did)}/projects`;
   return (
     <Suspense fallback={<ProfileTabs label="Projects and activities" tabs={tabs(base)} />}>
@@ -43,7 +45,8 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 }
 
 async function Action({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   return <NewWorkButton section={`${workspaceHref(did)}/projects`} />;
 }
 

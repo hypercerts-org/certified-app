@@ -12,6 +12,10 @@ export function isAtUri(value: string): boolean {
   );
 }
 
+export function isRkey(value: string): boolean {
+  return /^[A-Za-z0-9._:~-]{1,512}$/.test(value);
+}
+
 export function cursorParam(value: string | null): string | undefined {
   return value && value.length <= 512 ? value : undefined;
 }

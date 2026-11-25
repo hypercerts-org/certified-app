@@ -5,6 +5,8 @@
 // Location Protocol's "coordinate-decimal" format ("lat, lng" in WGS 84,
 // EPSG:4326), which pages read back (views.ts, toPlace).
 
+import { isAtUri } from "@/lib/validate";
+
 export type Point = { lat: number; lng: number };
 
 export type LocationChoice =
@@ -29,7 +31,9 @@ export function locationProblem(choice: unknown, repo: string): string | undefin
   const c = choice as LocationChoice | null;
   if (c === null) return undefined;
   if (c?.kind === "saved") {
-    return typeof c.uri === "string" && c.uri.startsWith(`at://${repo}/app.certified.location/`)
+    return typeof c.uri === "string" &&
+      isAtUri(c.uri) &&
+      c.uri.startsWith(`at://${repo}/app.certified.location/`)
       ? undefined
       : "Choose one of this account's locations.";
   }

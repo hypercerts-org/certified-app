@@ -75,8 +75,10 @@ export function Ledger({
   const forUnder = show("for") ? (show("to") ? "to" : "from") : null;
   return (
     <div className="stack">
-      <div className="ledger-scroll">
+      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard-scrollable overflow region */}
+      <section className="ledger-scroll" tabIndex={0} aria-label="Funding receipts">
         <table className="ledger">
+          <caption className="visually-hidden">Funding receipts</caption>
           <thead>
             <tr>
               <th scope="col">When</th>
@@ -143,7 +145,7 @@ export function Ledger({
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
       {error && <ErrorMessage live>{error}</ErrorMessage>}
       {hasMore && (
         <Button variant="secondary" loading={loading} onClick={loadMore}>

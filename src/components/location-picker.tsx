@@ -21,7 +21,7 @@ import {
   Text,
 } from "@hypercerts-org/ui-react";
 import { MapPin, Pencil, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { LocationMap } from "@/components/location-map";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
 import { LOCATION_NAME_MAX, type LocationChoice, type Point } from "@/lib/location-choice";
@@ -108,6 +108,7 @@ function LocationPicker({
   onClose: () => void;
   onPick: (choice: LocationChoice) => void;
 }) {
+  const formId = useId();
   const [mode, setMode] = useState<"saved" | "new">(
     saved.length > 0 && initial?.kind !== "new" ? "saved" : "new",
   );
@@ -142,13 +143,21 @@ function LocationPicker({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" disabled={!ready} onClick={use}>
+          <Button type="submit" form={formId} variant="primary" disabled={!ready}>
             Use this location
           </Button>
         </>
       }
     >
-      <div className="location-picker">
+      <form
+        id={formId}
+        className="location-picker"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (ready) use();
+        }}
+      >
         {saved.length > 0 && (
           <SegmentedControl
             label="Where the location comes from"
@@ -181,7 +190,7 @@ function LocationPicker({
         ) : (
           <NewPlace point={point} name={name} onPoint={setPoint} onName={setName} />
         )}
-      </div>
+      </form>
     </ResponsiveDialog>
   );
 }

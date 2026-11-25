@@ -14,8 +14,7 @@ import {
   Textarea,
 } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useId, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 
@@ -129,7 +128,7 @@ export function RevokeEndorsementButton({
 
 /** "Endorse someone": dialog to endorse an account by handle, DID, or profile link, with optional note. */
 export function EndorseSomeoneDialog({ repo }: { repo: string }) {
-  const router = useRouter();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
   const [note, setNote] = useState("");
@@ -172,7 +171,6 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
       setOpen(false);
       reset();
       toast("Endorsement sent");
-      router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -180,7 +178,14 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         <Plus size={16} aria-hidden />
         Endorse someone
       </Button>
@@ -194,13 +199,21 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
             <Button variant="secondary" disabled={submitting} onClick={close}>
               Cancel
             </Button>
-            <Button variant="primary" loading={submitting} onClick={submit}>
+            <Button type="submit" form={formId} variant="primary" loading={submitting}>
               Endorse
             </Button>
           </>
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -234,7 +247,7 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
               </>
             )}
           </Field>
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );

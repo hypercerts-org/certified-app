@@ -6,6 +6,7 @@ import { cache, type ReactNode, Suspense } from "react";
 import { SignInButton } from "@/components/sign-in-button";
 import { type Account, Destinations, HeaderAccountMenus } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
+import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/dal";
 import { getActor } from "@/lib/hypercerts/queries";
 import { logError } from "@/lib/log";
@@ -80,7 +81,7 @@ export async function SignedIn({ children }: { children: ReactNode }) {
  * navigation. Below 64rem the top bar has it.
  */
 export async function SignedOutBar() {
-  if (await getAccount()) return null;
+  if (await getNavigationIdentity()) return null;
   return (
     <Container className="signed-out-bar">
       <SignInButton variant="secondary" />
@@ -138,6 +139,8 @@ async function readAccount(): Promise<Account | null> {
     displayName: actor?.displayName ?? user.did,
     handle: actor?.handle ?? null,
     avatarUrl: actor?.avatarUrl ?? null,
+    isOrganization: actor?.isOrganization,
+    pdsDomain: new URL(CERTIFIED_PDS_URL).hostname,
     profile: actor?.profile ?? { displayName: "", description: "" },
     actingAs:
       actingAs && actingAs !== user.did

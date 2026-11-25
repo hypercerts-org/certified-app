@@ -8,19 +8,21 @@ import {
   Banner,
   Button,
   CharacterCount,
+  DatePicker,
   Field,
   FileDropzone,
   formatFileSize,
+  fromISODate,
   Input,
   ResponsiveDialog,
   SegmentedControl,
   Select,
   Text,
   Textarea,
+  toISODate,
 } from "@hypercerts-org/ui-react";
 import { Award, Plus, X } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import * as badgeActions from "@/lib/hypercerts/badge-actions";
 
@@ -103,7 +105,7 @@ export function BadgeResponseButtons({
 
 /** "New badge": creates an `app.certified.badge.definition` via the Hypercerts SDK. */
 export function NewBadgeDialog({ repo }: { repo: string }) {
-  const router = useRouter();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [preset, setPreset] = useState<string>("certification");
@@ -163,7 +165,6 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
       setOpen(false);
       reset();
       toast("Badge created");
-      router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -171,7 +172,15 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setError(null);
+          setIconError(null);
+          setOpen(true);
+        }}
+      >
         <Plus size={16} aria-hidden />
         New badge
       </Button>
@@ -185,13 +194,21 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
             <Button variant="secondary" disabled={submitting} onClick={close}>
               Cancel
             </Button>
-            <Button variant="primary" loading={submitting} onClick={submit}>
+            <Button type="submit" form={formId} variant="primary" loading={submitting}>
               Create badge
             </Button>
           </>
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -272,10 +289,10 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
                 </div>
               ) : (
                 <FileDropzone
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  accept="image/png,image/jpeg,image/webp"
                   maxSize={MAX_ICON_BYTES}
                   label="Choose an icon or drop one here"
-                  hint="PNG, JPEG, WebP, or SVG · up to 1 MB"
+                  hint="PNG, JPEG, or WebP · up to 1 MB"
                   onSelect={(files) => {
                     setIconError(null);
                     setIcon(files[0] ?? null);
@@ -285,7 +302,7 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
                     setIconError(
                       reason === "size"
                         ? "Icon must be 1 MB or smaller."
-                        : "Icon must be a PNG, JPEG, WebP, or SVG image.",
+                        : "Icon must be a PNG, JPEG, or WebP image.",
                     );
                   }}
                 />
@@ -301,7 +318,7 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
             value={issuerPolicy}
             onChange={(next) => setIssuerPolicy(next as "self" | "anyone")}
           />
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );
@@ -317,7 +334,7 @@ export function AwardBadgeDialog({
   definitionUri: string;
   badgeTitle: string;
 }) {
-  const router = useRouter();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [note, setNote] = useState("");
@@ -367,7 +384,6 @@ export function AwardBadgeDialog({
       setOpen(false);
       reset();
       toast(`Awarded "${badgeTitle}"`);
-      router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -375,7 +391,14 @@ export function AwardBadgeDialog({
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         <Award size={16} aria-hidden />
         Award
       </Button>
@@ -389,13 +412,21 @@ export function AwardBadgeDialog({
             <Button variant="secondary" disabled={submitting} onClick={close}>
               Cancel
             </Button>
-            <Button variant="primary" loading={submitting} onClick={submit}>
+            <Button type="submit" form={formId} variant="primary" loading={submitting}>
               Award badge
             </Button>
           </>
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -441,16 +472,30 @@ export function AwardBadgeDialog({
             )}
           </Field>
           <Field label="Valid until" description="Optional expiration date.">
-            {(field) => (
-              <Input
-                {...field}
-                type="date"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.currentTarget.value)}
-              />
+            {(wiring) => (
+              <div className="date-field">
+                <DatePicker
+                  id={wiring.id}
+                  aria-describedby={wiring["aria-describedby"]}
+                  invalid={wiring.invalid}
+                  label="Valid until"
+                  value={fromISODate(validUntil)}
+                  onChange={(date) => setValidUntil(toISODate(date))}
+                />
+                {validUntil && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Clear the expiration date"
+                    onClick={() => setValidUntil("")}
+                  >
+                    <X size={16} aria-hidden />
+                  </Button>
+                )}
+              </div>
             )}
           </Field>
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );

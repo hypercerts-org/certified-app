@@ -7,7 +7,6 @@
 
 import { createActivity } from "@hypercerts-org/sdk/activity";
 import { updateTag } from "next/cache";
-import { activityHref } from "@/components/cards";
 import {
   checkField,
   datesInOrder,
@@ -25,6 +24,7 @@ import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hype
 import { getDid } from "@/lib/identity";
 import { type ImageChoice, imageProblem, isImageChoice } from "@/lib/image-choice";
 import { type LocationChoice, locationProblem, newLocationRecord } from "@/lib/location-choice";
+import { activityHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
 
 export type ContributorDraft = { identity: string; role: string; share: string };
@@ -144,7 +144,7 @@ export async function publishActivity(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden");
+    if (!(await mayPublish(session, repo))) return fail("forbidden");
 
     const rows = await contributorRows(draft);
     if (!rows.ok) return fail("invalid", rows.fields);
@@ -155,7 +155,7 @@ export async function publishActivity(
     }));
 
     const created = await createActivity(
-      sdkContext(session),
+      await sdkContext(session),
       {
         title: draft.title.trim(),
         shortDescription: draft.shortDescription.trim(),

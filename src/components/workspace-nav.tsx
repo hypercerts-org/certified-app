@@ -4,6 +4,7 @@ import { Eyebrow } from "@hypercerts-org/ui-react";
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { HelpMenu } from "@/components/help-menu";
 import { LinkPending } from "@/components/link-pending";
 import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
@@ -16,16 +17,16 @@ import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 /** `overview` is the workspace's own address. */
 export function WorkspaceNav({
   overview,
-  unclaimedBadges = 0,
+  badgesBadge,
 }: {
   overview: string;
-  unclaimedBadges?: number;
+  badgesBadge?: ReactNode;
 }) {
   return (
     <WorkspaceNavView
       overview={overview}
       pathname={decodeURIComponent(usePathname())}
-      unclaimedBadges={unclaimedBadges}
+      badgesBadge={badgesBadge}
     />
   );
 }
@@ -34,11 +35,11 @@ export function WorkspaceNav({
 export function WorkspaceNavView({
   overview,
   pathname,
-  unclaimedBadges = 0,
+  badgesBadge,
 }: {
   overview: string;
   pathname?: string;
-  unclaimedBadges?: number;
+  badgesBadge?: ReactNode;
 }) {
   return (
     <nav aria-label="Workspace" className="workspace-nav">
@@ -61,17 +62,7 @@ export function WorkspaceNavView({
             >
               <Icon size={20} strokeWidth={1.5} aria-hidden />
               {label}
-              {path === "/badges" && unclaimedBadges > 0 && (
-                <>
-                  <span className="nav-badge" aria-hidden>
-                    {unclaimedBadges > 99 ? "99+" : unclaimedBadges}
-                  </span>
-                  <span className="visually-hidden">
-                    {" "}
-                    ({unclaimedBadges} unclaimed {unclaimedBadges === 1 ? "badge" : "badges"})
-                  </span>
-                </>
-              )}
+              {path === "/badges" && badgesBadge}
               <LinkPending />
             </Link>
           </li>
@@ -82,9 +73,10 @@ export function WorkspaceNavView({
           <HelpMenu className="workspace-nav-item" />
         </li>
         <li>
-          <Link href="/settings" className="workspace-nav-item">
+          <Link prefetch href="/settings" className="workspace-nav-item">
             <Settings size={20} strokeWidth={1.5} aria-hidden />
             Settings
+            <LinkPending />
           </Link>
         </li>
       </ul>

@@ -1,20 +1,31 @@
 import { Skeleton } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
+import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
 import { WorkspaceAccess } from "@/components/workspace-access";
-import { EndorsementRowsSkeleton } from "@/components/workspace-endorsements";
 import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
-import { getBadges } from "@/lib/hypercerts/queries";
 import { isDid } from "@/lib/validate";
 
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
-  const unclaimedBadges = isDid(did)
-    ? await getBadges(did)
-        .then((badges) => badges.awaiting.length)
-        .catch(() => 0)
-    : 0;
-  return <WorkspaceNav overview={workspaceHref(did)} unclaimedBadges={unclaimedBadges} />;
+  let did = "";
+  try {
+    did = decodeURIComponent((await params).actor);
+  } catch {
+    return <WorkspaceNavView overview="/workspace" />;
+  }
+  const overview = isDid(did) ? workspaceHref(did) : "/workspace";
+  return (
+    <WorkspaceNav
+      overview={overview}
+      badgesBadge={
+        isDid(did) ? (
+          <Suspense fallback={null}>
+            <UnclaimedBadgesPill did={did} />
+          </Suspense>
+        ) : null
+      }
+    />
+  );
 }
 
 /**
@@ -31,10 +42,10 @@ export default function WorkspaceLayout({ children, params }: LayoutProps<"/[act
       <div className="workspace-content">
         <Suspense
           fallback={
-            <>
+            <div className="stack" aria-hidden>
               <Skeleton variant="line" className="skeleton-heading" />
-              <EndorsementRowsSkeleton />
-            </>
+              <Skeleton variant="text" lines={3} />
+            </div>
           }
         >
           <WorkspaceAccess params={params}>{children}</WorkspaceAccess>

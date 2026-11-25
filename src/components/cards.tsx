@@ -1,64 +1,27 @@
-import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActorHandle, ActorLink, ActorRow, actorHref } from "@/components/actor";
 import { IntentLink } from "@/components/intent-link";
 import { activityMeta, projectMeta } from "@/components/records";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
+import { activityHref, projectHref } from "@/lib/routes";
 
 // Presentational cards. They render the same on the server (first page) and on
 // the client (pages loaded later), so they take only plain view models.
 
-// An account's profile address lives with the account components.
+// An account's profile address lives with the account components; pure route
+// helpers live in src/lib/routes.ts so Server Actions don't import UI modules.
 export { actorHref } from "@/components/actor";
-
-/** An account's workspace. */
-export function workspaceHref(did: string) {
-  return `/${did}/workspace`;
-}
-
-/** `/workspace`, and any account's workspace or profile editor; group 1 is the DID. */
-export const WORKSPACE_PATH = /^\/(?:workspace|(did:[^/]+)\/(?:workspace|edit))(?:\/|$)/;
-
-/** A workspace's Overview (or the profile editor, opened from it). */
-export const WORKSPACE_OVERVIEW_PATH = /^\/(?:workspace|did:[^/]+\/(?:workspace|edit))\/?$/;
-
-/** The section of a workspace a path is in ("/projects"), or "" for the Overview. */
-export function workspaceSection(pathname: string): string {
-  return pathname.match(/^\/did:[^/]+\/workspace(\/[^/]+)/)?.[1] ?? "";
-}
-
-export function projectHref(project: Pick<ProjectCard, "authorDid" | "rkey">) {
-  return `/${project.authorDid}/project/${project.rkey}`;
-}
-
-/** An activity's page: /{author}/activity/{rkey}. */
-export function activityHref(uri: string) {
-  const [, , did, , rkey] = uri.split("/");
-  return `/${did}/activity/${rkey}`;
-}
-
-/** A badge's page, under the account that defined it: /{issuer}/badge/{rkey}. */
-export function badgeHref(badge: { ownerDid: string; rkey: string }) {
-  return `/${badge.ownerDid}/badge/${badge.rkey}`;
-}
-
-export function ActorCardView({ actor }: { actor: ActorCard }) {
-  return (
-    <Card as="li" variant="panel" className="card">
-      <ActorRow
-        actor={actor}
-        href={actorHref(actor)}
-        secondary={actor.isOrganization ? "Organization" : "Person"}
-      />
-      {actor.description && (
-        <Text size="body-sm" tone="muted" className="clamp">
-          {actor.description}
-        </Text>
-      )}
-    </Card>
-  );
-}
+export {
+  activityHref,
+  badgeHref,
+  projectHref,
+  WORKSPACE_OVERVIEW_PATH,
+  WORKSPACE_PATH,
+  workspaceHref,
+  workspaceSection,
+} from "@/lib/routes";
 
 /**
  * A project as a card: its picture (or a folder), its title, its short
@@ -129,22 +92,6 @@ export function ProjectCardsSkeleton({
 
 /** Keys for n placeholders of a skeleton, which have no identity of their own. */
 export const skeletonSlots = (n: number) => Array.from({ length: n }, (_, i) => `slot-${i}`);
-
-/** Account cards on their way: each an avatar, a name and a line under it. */
-export function ActorCardsSkeleton({ count = 6 }: { count?: number }) {
-  return (
-    <div className="grid" aria-hidden>
-      {skeletonSlots(count).map((slot) => (
-        <Card key={slot} variant="panel" className="card">
-          <div className="skeleton-identity">
-            <Skeleton variant="box" className="skeleton-person-avatar" />
-            <Skeleton variant="text" lines={2} className="overview-row-text" />
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
 
 /**
  * An activity as a post, like a blog's: its title, the start of its text,

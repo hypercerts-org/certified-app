@@ -10,6 +10,7 @@ import { Client, type l, XrpcError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@hypercerts-org/certified-group-service";
 import { com } from "@/lexicons";
+import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { jsonStore } from "@/lib/auth/stores";
 import { logError } from "@/lib/log";
 
@@ -57,7 +58,7 @@ export class CgsAuthError extends Error {
 export async function cgsAuth(session: OAuthSession, method: { $lxm: l.NsidString }) {
   try {
     const { token } = await new Client(session).call(com.atproto.server.getServiceAuth, {
-      aud: CGS_DID,
+      aud: `${CGS_DID}#certified_group_service`,
       lxm: method.$lxm,
     });
     return { authorization: `Bearer ${token}` };
@@ -132,6 +133,15 @@ export async function forgetMemberships(did: string): Promise<void> {
 }
 
 /**
+ * Whether the session's user belongs to `did`: their own account, or any
+ * organization they are a member of on CGS (asked live, never cached).
+ */
+export async function isMember(session: OAuthSession, did: string): Promise<boolean> {
+  if (did === session.did) return true;
+  return (await listMemberships(session)).some((m) => m.groupDid === did);
+}
+
+/**
  * Whether the session's user may edit profile `did`: their own, or an
  * organization they manage.
  */
@@ -152,6 +162,7 @@ export async function registerGroup(
   session: OAuthSession,
   input: { handle: string; email?: string },
 ) {
+  assertWritesAllowed();
   const register = app.certified.group.register;
   return cgs.call(
     register,
@@ -199,6 +210,7 @@ export async function addGroupMember(
   memberDid: l.DidString,
   role: "member" | "admin",
 ) {
+  assertWritesAllowed();
   const add = app.certified.group.member.add;
   return cgs.call(
     add,
@@ -213,6 +225,7 @@ export async function removeGroupMember(
   groupDid: l.DidString,
   memberDid: l.DidString,
 ) {
+  assertWritesAllowed();
   const remove = app.certified.group.member.remove;
   await cgs.call(
     remove,
@@ -228,6 +241,7 @@ export async function setGroupMemberRole(
   memberDid: l.DidString,
   role: "member" | "admin",
 ) {
+  assertWritesAllowed();
   const setRole = app.certified.group.role.set;
   return cgs.call(
     setRole,

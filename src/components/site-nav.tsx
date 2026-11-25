@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { ActorAvatar, type ActorLike, ActorName } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { COMING_SOON } from "@/components/coming-soon";
+import { NewGroupDialog } from "@/components/group-dialogs";
+import { LinkPending } from "@/components/link-pending";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
@@ -45,6 +47,8 @@ export type Account = Identity & {
   profile: ProfileFields;
   /** The organization this browser acts as, or null for the account itself. */
   actingAs: Identity | null;
+  /** Default domain for new group handles created from the account menu. */
+  pdsDomain?: string;
 };
 
 // The app's destinations, in the order every navigation surface uses:
@@ -105,6 +109,7 @@ function DestinationLinks({
 }) {
   return items.map((destination) => (
     <Link
+      prefetch
       key={destination.key}
       href={destination.href}
       className={variant === "top" ? "nav-link" : "bottom-nav-item"}
@@ -112,6 +117,7 @@ function DestinationLinks({
     >
       <destination.icon size={variant === "top" ? 18 : 22} strokeWidth={1.5} aria-hidden />
       {destination.label}
+      <LinkPending />
     </Link>
   ));
 }
@@ -359,10 +365,12 @@ function ActAsList({
   account,
   onSwitch,
   onNavigate,
+  onNewGroup,
 }: {
   account: Account;
   onSwitch: (target: Identity) => void;
   onNavigate: () => void;
+  onNewGroup: () => void;
 }) {
   const labelId = useId();
   const organizations = useOrganizations();
@@ -404,10 +412,9 @@ function ActAsList({
           ))
         )}
         <li>
-          <button type="button" className="menu-row" disabled title={COMING_SOON}>
+          <button type="button" className="menu-row" onClick={onNewGroup}>
             <Plus size={16} aria-hidden />
             New group
-            <span className="visually-hidden"> (coming soon)</span>
           </button>
         </li>
       </ul>
@@ -419,10 +426,12 @@ function AccountMenuContent({
   account,
   onNavigate,
   onSwitch,
+  onNewGroup,
 }: {
   account: Account;
   onNavigate: () => void;
   onSwitch: (target: Identity) => void;
+  onNewGroup: () => void;
 }) {
   const youId = useId();
   // Your profile: the "Signed in as" part is about you, whoever you act as.
@@ -432,6 +441,10 @@ function AccountMenuContent({
       <ActAsList
         account={account}
         onNavigate={onNavigate}
+        onNewGroup={() => {
+          onNavigate();
+          onNewGroup();
+        }}
         onSwitch={(target) => {
           onNavigate();
           onSwitch(target);
@@ -501,29 +514,43 @@ function AccountAvatar({ identity }: { identity: Identity }) {
 
 function DesktopAccountMenu({ account }: { account: Account }) {
   const [open, setOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
   // Loaded with the header, so the menu opens complete.
   useOrganizations();
   // Here, not in the menu, which closes before the switch completes.
   const switchTo = useSwitchActingAs(account);
   const identity = current(account);
   return (
-    <Popover kind="navigation" open={open} onOpenChange={setOpen} className="desktop-only">
-      <PopoverTrigger className="account-button" aria-label={`${nameOf(identity)}, account menu`}>
-        <AccountAvatar identity={identity} />
-      </PopoverTrigger>
-      <PopoverContent label="Account" align="end" className="menu-panel">
-        <AccountMenuContent
-          account={account}
-          onNavigate={() => setOpen(false)}
-          onSwitch={switchTo}
-        />
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover kind="navigation" open={open} onOpenChange={setOpen} className="desktop-only">
+        <PopoverTrigger
+          className="account-button"
+          data-organization={identity.isOrganization || undefined}
+          aria-label={`${nameOf(identity)}, account menu`}
+        >
+          <AccountAvatar identity={identity} />
+        </PopoverTrigger>
+        <PopoverContent label="Account" align="end" className="menu-panel">
+          <AccountMenuContent
+            account={account}
+            onNavigate={() => setOpen(false)}
+            onSwitch={switchTo}
+            onNewGroup={() => setNewGroupOpen(true)}
+          />
+        </PopoverContent>
+      </Popover>
+      <NewGroupDialog
+        pdsDomain={account.pdsDomain}
+        open={newGroupOpen}
+        onOpenChange={setNewGroupOpen}
+      />
+    </>
   );
 }
 
 function PhoneAccountMenu({ account }: { account: Account }) {
   const [open, setOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
   useOrganizations();
   const switchTo = useSwitchActingAs(account);
   const identity = current(account);
@@ -532,6 +559,7 @@ function PhoneAccountMenu({ account }: { account: Account }) {
       <button
         type="button"
         className="account-button phone-only"
+        data-organization={identity.isOrganization || undefined}
         aria-label={`${nameOf(identity)}, account menu`}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -544,8 +572,14 @@ function PhoneAccountMenu({ account }: { account: Account }) {
           account={account}
           onNavigate={() => setOpen(false)}
           onSwitch={switchTo}
+          onNewGroup={() => setNewGroupOpen(true)}
         />
       </BottomSheet>
+      <NewGroupDialog
+        pdsDomain={account.pdsDomain}
+        open={newGroupOpen}
+        onOpenChange={setNewGroupOpen}
+      />
     </>
   );
 }
@@ -556,32 +590,44 @@ function PhoneAccountMenu({ account }: { account: Account }) {
  */
 export function SidebarAccountMenu({ account }: { account: Account }) {
   const [open, setOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
   useOrganizations();
   const switchTo = useSwitchActingAs(account);
   const identity = current(account);
   const subline = byline(account);
   return (
-    <Popover
-      kind="navigation"
-      open={open}
-      onOpenChange={setOpen}
-      className="sidebar-account-popover"
-    >
-      <PopoverTrigger className="sidebar-account" aria-label={`${nameOf(identity)}, account menu`}>
-        <ActorAvatar actor={identity} />
-        <span className="sidebar-account-text">
-          <ActorName actor={identity} className="sidebar-account-name" />
-          {subline && <span className="sidebar-account-handle">{subline}</span>}
-        </span>
-        <ChevronsUpDown size={16} aria-hidden className="sidebar-account-chevron" />
-      </PopoverTrigger>
-      <PopoverContent label="Account" align="start" className="menu-panel">
-        <AccountMenuContent
-          account={account}
-          onNavigate={() => setOpen(false)}
-          onSwitch={switchTo}
-        />
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover
+        kind="navigation"
+        open={open}
+        onOpenChange={setOpen}
+        className="sidebar-account-popover"
+      >
+        <PopoverTrigger
+          className="sidebar-account"
+          aria-label={`${nameOf(identity)}, account menu`}
+        >
+          <ActorAvatar actor={identity} />
+          <span className="sidebar-account-text">
+            <ActorName actor={identity} className="sidebar-account-name" />
+            {subline && <span className="sidebar-account-handle">{subline}</span>}
+          </span>
+          <ChevronsUpDown size={16} aria-hidden className="sidebar-account-chevron" />
+        </PopoverTrigger>
+        <PopoverContent label="Account" align="start" className="menu-panel">
+          <AccountMenuContent
+            account={account}
+            onNavigate={() => setOpen(false)}
+            onSwitch={switchTo}
+            onNewGroup={() => setNewGroupOpen(true)}
+          />
+        </PopoverContent>
+      </Popover>
+      <NewGroupDialog
+        pdsDomain={account.pdsDomain}
+        open={newGroupOpen}
+        onOpenChange={setNewGroupOpen}
+      />
+    </>
   );
 }

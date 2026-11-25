@@ -1,6 +1,6 @@
 import { Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/page-title";
 import { ProfileForm, ProfileFormSkeleton } from "@/components/profile-form";
@@ -39,6 +39,7 @@ async function Editor({ params }: Pick<PageProps<"/[actor]/edit">, "params">) {
     // The PDS's copy, not the index's: the form must start from the current version.
     return <ProfileForm did={did} current={await getProfile(repository)} />;
   } catch (err) {
+    unstable_rethrow(err);
     if (!(err instanceof SessionUnavailableError)) logError("[profile] read failed", err, { did });
     return (
       <Text tone="muted">This profile can't be loaded right now. Please try again shortly.</Text>

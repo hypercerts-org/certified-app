@@ -68,37 +68,38 @@ report what you could not check (signed-in pages need a sign-in).
   `components/landing/*` and `landing.css`.
 - `(site)/layout.tsx`: the chrome (sidebar from 64rem, top bar below).
   The account parts stream in through `getAccount()`.
-  - Public and cached: `/explore`, `/apps`, profiles `/{handle}` with
-    tabs (the `(profile)` group), `/{did}/project/{rkey}`.
+  - Public and cached: `/explore/*`, `/apps`, profiles `/{handle}` with
+    tabs (the `(profile)` group), `/{did}/project/{rkey}/*`,
+    `/{did}/activity/{rkey}/*`, `/{did}/badge/{rkey}`.
   - Per viewer: `/workspace`, `/{did}/workspace/**` (Overview,
-    `/projects`, `/endorsements/*`, `/lists/*`), `/{did}/edit`,
-    `/settings`, `/sign-in`.
+    `/projects/*`, `/badges/*`, `/endorsements/*`, `/followers/*`,
+    `/lists/*`), `/{did}/edit`, `/settings`, `/sign-in`.
   - `not-found.tsx`, `error.tsx`.
-- `/embed/*`: the only routes other sites may frame.
-- Route handlers: `/api/activities`, `/api/organizations` (public, CDN
-  cached), `/api/profiles/{did}`, `/api/me/organizations` (private),
-  `/oauth/*`, `/.well-known/*`.
+- Route handlers: `/api/activities`, `/api/explore`, `/api/followers`,
+  `/api/following`, `/api/lists/items`, `/api/badges/holders`,
+  `/api/receipts` (public, CDN cached), `/api/places` (private, rate-limited),
+  `/api/me/organizations` (private), `/oauth/*`, `/.well-known/*`.
 
 **Modules** (`src/lib`), each the only place for its job:
 
-| Module                               | Owns                                                               |
-| ------------------------------------ | ------------------------------------------------------------------ |
-| `hypercerts/queries.ts`              | Every read from the Hypercerts API                                 |
-| `hypercerts/views.ts`                | Mapping API views to plain view models; `safeUrl`                  |
-| `hypercerts/cache.ts`                | Cache tag names                                                    |
-| `hypercerts/writes.ts`, `actions.ts` | Every repository write; the Server Actions that call it            |
-| `cgs.ts`                             | The Certified Group Service: memberships, `canEdit`, org writes    |
-| `auth/dal.ts`                        | Who is signed in: `getUser`, `readOAuthSession`, `getOAuthSession` |
-| `memberships.ts`                     | Your memberships for display, `mayEditProfile`                     |
-| `acting-as.ts`                       | Whom you act as                                                    |
-| `identity.ts`                        | Handles ↔ DIDs, verified both ways                                 |
-| `validate.ts`                        | `isDid`, `returnPath`, `signInHref`                                |
+| Module                                           | Owns                                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `hypercerts/queries.ts`                          | Every read from the Hypercerts API                                                |
+| `hypercerts/views.ts`                            | Mapping API views to plain view models; `safeUrl`                                 |
+| `hypercerts/cache.ts`                            | Cache tag names                                                                   |
+| `hypercerts/sdk.ts`, `writes.ts`, `*-actions.ts` | Repository writes (SDK + CGS/PDS stopgaps) and Server Actions                     |
+| `cgs.ts`                                         | The Certified Group Service: memberships, `isMember`, `canEdit`, group/org writes |
+| `auth/dal.ts`                                    | Who is signed in: `getUser`, `readOAuthSession`, `getOAuthSession`                |
+| `memberships.ts`                                 | Your memberships for display, `mayEditAccount`                                    |
+| `acting-as.ts`                                   | Whom you act as (display only, never writes)                                      |
+| `identity.ts`                                    | Handles ↔ DIDs, verified both ways                                                |
+| `routes.ts`                                      | Pure href builders (`workspaceHref`, `projectHref`, `activityHref`, `badgeHref`)  |
+| `validate.ts`                                    | `isDid`, `isAtUri`, `isRkey`, `returnPath`, `signInHref`                          |
 
 Components to reuse rather than rewrite: `PageTitle`, `ComingSoonButton`,
 `IntentLink`, `LinkPending`, `ProfileTabs` (tabs as links), `PeopleList`,
-`TileSlot`, `OwnerOnly`/`VisitorOnly`, `WorkspaceAccess`/`workspaceDid`,
-`SignInButton`, and the href helpers `actorHref`, `workspaceHref`,
-`projectHref`.
+`TileSlot`, `WorkspaceAccess`/`workspaceDid`, `SignInButton`, and the href
+helpers in `src/lib/routes.ts` / `actorHref`.
 
 **Caching layers:** `'use cache'` + `cacheLife("public")` + `cacheTag` for
 public data (`queries.ts`); `'use cache: private'` for per-session data
@@ -143,12 +144,12 @@ cite file and line for each finding.
   session elsewhere.
 - B2. A display decision (show Edit, act as, open a workspace) uses the
   cached answers: `getUser`, `getMemberships`, `getActingAs`,
-  `mayEditProfile`, `workspaceAccess`. Never an OAuth restore
+  `mayEditAccount`, `workspaceAccess`. Never an OAuth restore
   (`readOAuthSession`) per component, never a new round trip per gate.
 - B3. A new helper that reads the session or memberships and can be asked
   more than once per render is wrapped in React `cache()`.
-- B4. Authorization for a write uses `canEdit` (CGS, live), never the
-  display memberships, `getActingAs` or a cookie.
+- B4. Authorization for a write uses `canEdit` or `isMember` / `mayPublish`
+  (CGS, live), never the display memberships, `getActingAs` or a cookie.
 - B5. Every Server Action and POST handler authenticates first and
   validates every argument (`isDid`, lengths): its arguments come from the
   browser.

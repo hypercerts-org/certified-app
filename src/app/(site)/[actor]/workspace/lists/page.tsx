@@ -43,7 +43,8 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
 }
 
 async function NewListAction({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   return <NewListDialog repo={did} />;
 }
 

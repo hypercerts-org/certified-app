@@ -1,11 +1,17 @@
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  addGroupMember,
   CgsAuthError,
   canEdit,
   forgetMemberships,
+  isMember,
+  listGroupMembers,
   listMemberships,
   listMembershipsForDisplay,
+  registerGroup,
+  removeGroupMember,
+  setGroupMemberRole,
 } from "./cgs";
 
 // Valkey, as an in-memory map that can be made to fail.
@@ -87,7 +93,9 @@ describe("CGS calls", () => {
       "/xrpc/com.atproto.server.getServiceAuth",
     ]);
     for (const url of minted) {
-      expect(url.searchParams.get("aud")).toBe("did:web:groups.certified.app");
+      expect(url.searchParams.get("aud")).toBe(
+        "did:web:groups.certified.app#certified_group_service",
+      );
       expect(url.searchParams.get("lxm")).toBe("app.certified.groups.membership.list");
     }
     expect(requests.map((r) => r.headers.get("authorization"))).toEqual([
@@ -98,6 +106,13 @@ describe("CGS calls", () => {
     expect(url.origin + url.pathname).toBe(
       "https://groups.certified.app/xrpc/app.certified.groups.membership.list",
     );
+  });
+
+  it("lets the account itself and any organization member pass isMember live against CGS", async () => {
+    expect(await isMember(fakeSession().session, user)).toBe(true);
+    expect(await isMember(fakeSession().session, org)).toBe(true);
+    expect(await isMember(fakeSession().session, memberOf)).toBe(true);
+    expect(await isMember(fakeSession().session, "did:plc:cccccccccccccccccccccccc")).toBe(false);
   });
 
   it("lets the account itself and an organization's admins edit, not its members", async () => {
@@ -149,6 +164,64 @@ describe("CGS calls", () => {
         valkey.data.set(key, [{ groupDid: memberOf, role: "owner" }]);
       }
       expect(await canEdit(fakeSession().session, memberOf)).toBe(false);
+    });
+  });
+
+  describe("group registration and member management", () => {
+    it("registers a group and manages members with per-method service-auth tokens", async () => {
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        const path = new URL(request.url).pathname;
+        if (path.endsWith("group.register")) {
+          return Response.json({
+            groupDid: org,
+            handle: "forest.certified.one",
+            accountPassword: "pw",
+          });
+        }
+        if (path.endsWith("member.list")) {
+          return Response.json({
+            members: [{ did: user, role: "owner", addedAt: "2026-11-01T00:00:00.000Z" }],
+          });
+        }
+        if (path.endsWith("member.add")) {
+          return Response.json({
+            memberDid: memberOf,
+            role: "admin",
+            addedBy: user,
+            addedAt: "2026-11-01T00:00:00.000Z",
+          });
+        }
+        if (path.endsWith("role.set")) {
+          return Response.json({
+            memberDid: memberOf,
+            role: "member",
+            updatedAt: "2026-11-01T00:00:00.000Z",
+          });
+        }
+        return Response.json({});
+      });
+
+      const { session, minted } = fakeSession();
+      expect(await registerGroup(session, { handle: "forest.certified.one" })).toMatchObject({
+        groupDid: org,
+        handle: "forest.certified.one",
+      });
+      expect(await listGroupMembers(session, org)).toEqual([
+        { did: user, role: "owner", addedBy: undefined, addedAt: "2026-11-01T00:00:00.000Z" },
+      ]);
+      await addGroupMember(session, org, memberOf, "admin");
+      await setGroupMemberRole(session, org, memberOf, "member");
+      await removeGroupMember(session, org, memberOf);
+
+      expect(minted.map((url) => url.searchParams.get("lxm"))).toEqual([
+        "app.certified.group.register",
+        "app.certified.group.member.list",
+        "app.certified.group.member.add",
+        "app.certified.group.role.set",
+        "app.certified.group.member.remove",
+      ]);
     });
   });
 });

@@ -12,7 +12,6 @@
 import type { l } from "@atproto/lex";
 import { awardBadge, respondToBadgeAward } from "@hypercerts-org/sdk/badge";
 import { updateTag } from "next/cache";
-import { getActingAs } from "@/lib/acting-as";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
@@ -38,6 +37,7 @@ import {
   repositoryFor,
   WriteError,
 } from "@/lib/hypercerts/writes";
+import { logError } from "@/lib/log";
 import { isAtUri, isDid } from "@/lib/validate";
 
 type EndorseFailure = "signed-out" | "forbidden" | "invalid" | "unknown" | "unavailable";
@@ -102,17 +102,27 @@ const failure = (reason: EndorseFailure, action: Action, w?: Partial<Writer>): E
   message: message(reason, action, w?.asOrganization ?? false),
 });
 
-/** The session, and the account it acts as, when that may endorse `subject`. */
-async function writer(subject: unknown, action: Action): Promise<Writer | EndorseFailed> {
-  if (typeof subject !== "string" || !isDid(subject)) return failure("invalid", action);
-  const [session, actor] = await Promise.all([getOAuthSession(), getActingAs()]);
-  if (!session || !actor) return failure("signed-out", action);
-  if (actor === subject) return failure("invalid", action);
+/** The session, and the explicit repository `repo`, when it may endorse `subject`. */
+async function writer(
+  repo: unknown,
+  subject: unknown,
+  action: Action,
+): Promise<Writer | EndorseFailed> {
+  if (typeof repo !== "string" || !isDid(repo) || typeof subject !== "string" || !isDid(subject)) {
+    return failure("invalid", action);
+  }
+  const session = await getOAuthSession();
+  if (!session) return failure("signed-out", action);
+  const asOrganization = repo !== session.did;
+  if (repo === subject) return failure("invalid", action, { asOrganization });
+  if (!(await mayPublish(session, repo))) {
+    return failure("forbidden", action, { asOrganization });
+  }
   return {
     session,
-    actor: actor as l.DidString,
+    actor: repo as l.DidString,
     subject: subject as l.DidString,
-    asOrganization: actor !== session.did,
+    asOrganization,
   };
 }
 
@@ -127,6 +137,7 @@ function awardRkey(uri: string, actor: string): string | null {
 
 /** Cache tags an endorsement of `subject` by `actor` changes. */
 function expire(actor: string, subject: string) {
+  updateTag(tags.badges(actor));
   for (const did of [actor, subject]) {
     updateTag(tags.endorsements(did));
     updateTag(tags.actor(did));
@@ -141,23 +152,26 @@ function failureReason(err: unknown, what: string): EndorseFailure {
 }
 
 /**
- * Endorses account `subject` as the account the user acts as. When the index
+ * Endorses account `subject` as explicit repository `repo`. When the index
  * already shows a plain endorsement (made in another tab, say), returns that
  * one rather than writing a duplicate.
  */
-export async function endorse(subject: string): Promise<EndorseResult> {
+export async function endorse(input: { repo: string; subject: string }): Promise<EndorseResult> {
   let w: Writer | EndorseFailed | undefined;
   try {
-    w = await writer(subject, "endorse");
+    w = await writer(input?.repo, input?.subject, "endorse");
     if ("ok" in w) return w;
     const { session, actor, subject: target } = w;
-    const existing = await getIndexedEndorsement(actor, target).catch(() => null);
+    const existing = await getIndexedEndorsement(actor, target).catch((err) => {
+      logError("[endorse] index check failed", err, { actor, target });
+      return null;
+    });
     if (existing) return { ok: true, endorsement: existing, indexed: true };
 
     const repo = await repositoryFor(session, actor);
     const definitionUri = await findEndorsementDefinition(repo);
     const made = await awardBadge(
-      sdkContext(session),
+      await sdkContext(session),
       {
         definition: definitionUri
           ? { uri: definitionUri }
@@ -177,17 +191,18 @@ export async function endorse(subject: string): Promise<EndorseResult> {
 }
 
 /**
- * Revokes plain endorsement(s) of `subject`: deletes the award records the
- * browser knows of (`uris`: one the index didn't show yet) and any the index
- * shows. Safe to repeat.
+ * Revokes plain endorsement(s) of `subject` from `repo`: deletes the award
+ * records the browser knows of (`uris`: one the index didn't show yet) and any
+ * the index shows. Safe to repeat.
  */
 export async function unendorse(input: {
+  repo: string;
   subject: string;
   uris: string[];
 }): Promise<UnendorseResult> {
   let w: Writer | EndorseFailed | undefined;
   try {
-    w = await writer(input?.subject, "unendorse");
+    w = await writer(input?.repo, input?.subject, "unendorse");
     if ("ok" in w) return w;
     const { session, actor, subject: target } = w;
     const known = Array.isArray(input.uris) ? input.uris : [];
@@ -197,7 +212,10 @@ export async function unendorse(input: {
     ) {
       return failure("invalid", "unendorse", w);
     }
-    const shown = await getIndexedEndorsements(actor, target).catch(() => []);
+    const shown = await getIndexedEndorsements(actor, target).catch((err) => {
+      logError("[unendorse] index check failed", err, { actor, target });
+      return [];
+    });
     const removed = [...new Set([...known, ...shown.map((award) => award.uri)])];
     const repo = await repositoryFor(session, actor);
     // One at a time: each is its own write, and a failure stops the rest.
@@ -239,7 +257,7 @@ export async function endorseFromWorkspace(
     const session = await getOAuthSession();
     if (!session) return failure("signed-out", "endorse");
     asOrganization = repo !== session.did;
-    if (!(await mayPublish(session.did, repo))) {
+    if (!(await mayPublish(session, repo))) {
       return failure("forbidden", "endorse", { asOrganization });
     }
     const target = await resolveAccountDid(input.target);
@@ -259,7 +277,10 @@ export async function endorseFromWorkspace(
           : "You can't endorse yourself.",
       };
     }
-    const existing = await getIndexedEndorsement(repo, target).catch(() => null);
+    const existing = await getIndexedEndorsement(repo, target).catch((err) => {
+      logError("[endorse] workspace index check failed", err, { repo, target });
+      return null;
+    });
     if (existing) {
       return { ok: false, reason: "invalid", message: "This account is already endorsed." };
     }
@@ -267,7 +288,7 @@ export async function endorseFromWorkspace(
     const repository = await repositoryFor(session, repo);
     const definitionUri = await findEndorsementDefinition(repository);
     const made = await awardBadge(
-      sdkContext(session),
+      await sdkContext(session),
       {
         definition: definitionUri
           ? { uri: definitionUri }
@@ -307,7 +328,7 @@ export async function revokeEndorsement(
     const session = await getOAuthSession();
     if (!session) return failure("signed-out", "unendorse");
     asOrganization = repo !== session.did;
-    if (!(await mayPublish(session.did, repo))) {
+    if (!(await mayPublish(session, repo))) {
       return failure("forbidden", "unendorse", { asOrganization });
     }
     const repository = await repositoryFor(session, repo);
@@ -352,7 +373,7 @@ export async function setEndorsementVisibility(
         message: "Your session has ended. Sign in again to update endorsements.",
       };
     }
-    if (!(await mayPublish(session.did, repo))) {
+    if (!(await mayPublish(session, repo))) {
       return {
         ok: false,
         reason: "forbidden",
@@ -360,7 +381,7 @@ export async function setEndorsementVisibility(
       };
     }
     await respondToBadgeAward(
-      sdkContext(session),
+      await sdkContext(session),
       { award: { uri: input.awardUri }, response },
       writeTo(session, repo),
     );

@@ -8,7 +8,6 @@
 
 import { createProject } from "@hypercerts-org/sdk/project";
 import { updateTag } from "next/cache";
-import { projectHref } from "@/components/cards";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { titleProblem } from "@/lib/form-rules";
 import { tags } from "@/lib/hypercerts/cache";
@@ -19,7 +18,8 @@ import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hype
 import { type ImageChoice, imageProblem, isImageChoice } from "@/lib/image-choice";
 import { type LocationChoice, locationProblem, newLocationRecord } from "@/lib/location-choice";
 import { bannerLimits, checkProjectField, shortDescriptionProblem } from "@/lib/project-rules";
-import { isDid } from "@/lib/validate";
+import { projectHref } from "@/lib/routes";
+import { isAtUri, isDid } from "@/lib/validate";
 
 /** The form's values. `activities`: URIs of the account's own activities to put in it. */
 export type ProjectDraft = {
@@ -80,7 +80,7 @@ function problems(repo: string, draft: ProjectDraft): Record<string, string> {
   add("description", checkProjectField.description({ value: draft.description.trim() }));
   // Only the account's own activities are offered.
   const own = `at://${repo}/org.hypercerts.claim.activity/`;
-  if (draft.activities.some((uri) => !uri.startsWith(own))) {
+  if (draft.activities.some((uri) => !isAtUri(uri) || !uri.startsWith(own))) {
     add("activities", "Choose from this account's activities.");
   }
   add("location", locationProblem(draft.location, repo));
@@ -104,11 +104,11 @@ export async function publishProject(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden");
+    if (!(await mayPublish(session, repo))) return fail("forbidden");
 
     const text = (value: string) => value.trim() || undefined;
     const created = await createProject(
-      sdkContext(session),
+      await sdkContext(session),
       {
         title: draft.title.trim(),
         shortDescription: text(draft.shortDescription),

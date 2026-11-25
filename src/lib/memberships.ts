@@ -1,15 +1,16 @@
 import { unstable_rethrow } from "next/navigation";
 import "server-only";
 
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
-import { getUser, readOAuthSession } from "@/lib/auth/dal";
+import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import {
   listMembershipsForDisplay,
   type Membership,
   manages,
   readCachedMemberships,
 } from "@/lib/cgs";
+import { tags } from "@/lib/hypercerts/cache";
 import { logError } from "@/lib/log";
 
 // The organizations the signed-in user belongs to, for deciding what pages
@@ -28,6 +29,7 @@ const NOT_CACHED = "memberships not cached";
 async function rememberedMemberships(did: string): Promise<Membership[]> {
   "use cache: private";
   cacheLife({ stale: 300, revalidate: 300, expire: 300 });
+  cacheTag(tags.memberships(did));
   const memberships = await readCachedMemberships(did);
   // Thrown, not returned, so the miss isn't remembered: errors aren't cached.
   if (!memberships) throw new Error(NOT_CACHED);
@@ -70,6 +72,9 @@ export const mayEditAccount = cache(async (did: string): Promise<boolean> => {
   if (user.did === did) return true;
   const memberships = await getMemberships().catch((err) => {
     unstable_rethrow(err);
+    if (!(err instanceof SessionUnavailableError)) {
+      logError("[memberships] mayEditAccount check failed", err, { did });
+    }
     return null;
   });
   return Array.isArray(memberships) && memberships.some((m) => m.groupDid === did && manages(m));

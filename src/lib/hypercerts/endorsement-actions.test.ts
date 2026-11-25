@@ -11,7 +11,6 @@ vi.mock("server-only", () => ({}));
 
 const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
-  getActingAs: vi.fn<() => Promise<string | null>>(),
   mayPublish: vi.fn<(...args: unknown[]) => Promise<boolean>>(),
   getIndexedEndorsement: vi.fn(),
   getIndexedEndorsements: vi.fn(),
@@ -32,7 +31,6 @@ vi.mock("@/lib/auth/dal", () => ({
   getOAuthSession: () => mocks.getOAuthSession(),
   SessionUnavailableError: class SessionUnavailableError extends Error {},
 }));
-vi.mock("@/lib/acting-as", () => ({ getActingAs: () => mocks.getActingAs() }));
 vi.mock("@/lib/hypercerts/publish-access", () => ({
   mayPublish: (...args: unknown[]) => mocks.mayPublish(...args),
 }));
@@ -78,7 +76,6 @@ const FAKE_REPO = { did: USER };
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
-  mocks.getActingAs.mockResolvedValue(USER);
   mocks.mayPublish.mockResolvedValue(true);
   mocks.resolveAccountDid.mockResolvedValue(SUBJECT);
   mocks.getIndexedEndorsement.mockResolvedValue(null);
@@ -104,7 +101,7 @@ beforeEach(() => {
 
 describe("endorse", () => {
   it("creates the Endorsement definition alongside the award on first endorsement", async () => {
-    const result = await endorse(SUBJECT);
+    const result = await endorse({ repo: USER, subject: SUBJECT });
 
     expect(result).toEqual({
       ok: true,
@@ -120,6 +117,7 @@ describe("endorse", () => {
       undefined,
     );
     expect(mocks.updateTag.mock.calls.flat()).toEqual([
+      `badges:${USER}`,
       `endorsements:${USER}`,
       `actor:${USER}`,
       `endorsements:${SUBJECT}`,
@@ -131,7 +129,7 @@ describe("endorse", () => {
     const existingDef = `at://${USER}/app.certified.badge.definition/existing1`;
     mocks.findEndorsementDefinition.mockResolvedValue(existingDef);
 
-    const result = await endorse(SUBJECT);
+    const result = await endorse({ repo: USER, subject: SUBJECT });
 
     expect(result.ok).toBe(true);
     expect(mocks.awardBadge).toHaveBeenCalledWith(
@@ -145,12 +143,12 @@ describe("endorse", () => {
   });
 
   it("routes organization endorsements through CGS using WriteOptions.repo", async () => {
-    mocks.getActingAs.mockResolvedValue(ORG);
     const orgDef = `at://${ORG}/app.certified.badge.definition/orgdef`;
     mocks.findEndorsementDefinition.mockResolvedValue(orgDef);
 
-    await endorse(SUBJECT);
+    await endorse({ repo: ORG, subject: SUBJECT });
 
+    expect(mocks.mayPublish).toHaveBeenCalledWith(FAKE_SESSION, ORG);
     expect(mocks.repositoryFor).toHaveBeenCalledWith(FAKE_SESSION, ORG);
     expect(mocks.awardBadge).toHaveBeenCalledWith(
       expect.anything(),
@@ -163,17 +161,26 @@ describe("endorse", () => {
     const existing = { uri: `at://${USER}/app.certified.badge.award/already`, cid: "bafyold" };
     mocks.getIndexedEndorsement.mockResolvedValue(existing);
 
-    const result = await endorse(SUBJECT);
+    const result = await endorse({ repo: USER, subject: SUBJECT });
 
     expect(result).toEqual({ ok: true, endorsement: existing, indexed: true });
     expect(mocks.awardBadge).not.toHaveBeenCalled();
   });
 
   it("refuses self-endorsement, invalid DIDs, and signed-out callers", async () => {
-    expect(await endorse(USER)).toMatchObject({ ok: false, reason: "invalid" });
-    expect(await endorse("not-a-did")).toMatchObject({ ok: false, reason: "invalid" });
+    expect(await endorse({ repo: USER, subject: USER })).toMatchObject({
+      ok: false,
+      reason: "invalid",
+    });
+    expect(await endorse({ repo: USER, subject: "not-a-did" })).toMatchObject({
+      ok: false,
+      reason: "invalid",
+    });
     mocks.getOAuthSession.mockResolvedValue(null);
-    expect(await endorse(SUBJECT)).toMatchObject({ ok: false, reason: "signed-out" });
+    expect(await endorse({ repo: USER, subject: SUBJECT })).toMatchObject({
+      ok: false,
+      reason: "signed-out",
+    });
     expect(mocks.awardBadge).not.toHaveBeenCalled();
   });
 
@@ -186,17 +193,26 @@ describe("endorse", () => {
         notAttempted: [],
       }),
     );
-    expect(await endorse(SUBJECT)).toMatchObject({ ok: false, reason: "unknown" });
+    expect(await endorse({ repo: USER, subject: SUBJECT })).toMatchObject({
+      ok: false,
+      reason: "unknown",
+    });
 
     mocks.awardBadge.mockRejectedValueOnce(
       new WriteOutcomeUnknownError("awardBadge", [], { cause: new Error("timeout") }),
     );
-    expect(await endorse(SUBJECT)).toMatchObject({ ok: false, reason: "unknown" });
+    expect(await endorse({ repo: USER, subject: SUBJECT })).toMatchObject({
+      ok: false,
+      reason: "unknown",
+    });
 
     mocks.awardBadge.mockRejectedValueOnce(
       new WriteRejectedError("awardBadge", [], { status: 403, code: "Forbidden" }),
     );
-    expect(await endorse(SUBJECT)).toMatchObject({ ok: false, reason: "forbidden" });
+    expect(await endorse({ repo: USER, subject: SUBJECT })).toMatchObject({
+      ok: false,
+      reason: "forbidden",
+    });
   });
 });
 
@@ -206,13 +222,14 @@ describe("unendorse", () => {
     const indexedUri = `at://${USER}/app.certified.badge.award/indexed2`;
     mocks.getIndexedEndorsements.mockResolvedValue([{ uri: indexedUri, cid: "bafy2" }]);
 
-    const result = await unendorse({ subject: SUBJECT, uris: [knownUri] });
+    const result = await unendorse({ repo: USER, subject: SUBJECT, uris: [knownUri] });
 
     expect(result).toEqual({ ok: true, endorsement: null, indexed: true });
     expect(mocks.deleteBadgeAward).toHaveBeenCalledTimes(2);
     expect(mocks.deleteBadgeAward).toHaveBeenNthCalledWith(1, FAKE_REPO, "known1");
     expect(mocks.deleteBadgeAward).toHaveBeenNthCalledWith(2, FAKE_REPO, "indexed2");
     expect(mocks.updateTag.mock.calls.flat()).toEqual([
+      `badges:${USER}`,
       `endorsements:${USER}`,
       `actor:${USER}`,
       `endorsements:${SUBJECT}`,
@@ -223,12 +240,14 @@ describe("unendorse", () => {
   it("rejects URIs belonging to another account or another collection", async () => {
     expect(
       await unendorse({
+        repo: USER,
         subject: SUBJECT,
         uris: [`at://${ORG}/app.certified.badge.award/other`],
       }),
     ).toMatchObject({ ok: false, reason: "invalid" });
     expect(
       await unendorse({
+        repo: USER,
         subject: SUBJECT,
         uris: [`at://${USER}/org.hypercerts.claim.activity/not-an-award`],
       }),
@@ -237,15 +256,14 @@ describe("unendorse", () => {
   });
 
   it("maps CGS forbidden and unknown delete errors accurately", async () => {
-    mocks.getActingAs.mockResolvedValue(ORG);
     const uri = `at://${ORG}/app.certified.badge.award/a1`;
     mocks.deleteBadgeAward.mockRejectedValueOnce(new WriteError("forbidden", "no"));
-    const forbidden = await unendorse({ subject: SUBJECT, uris: [uri] });
+    const forbidden = await unendorse({ repo: ORG, subject: SUBJECT, uris: [uri] });
     expect(forbidden).toMatchObject({ ok: false, reason: "forbidden" });
     if (!forbidden.ok) expect(forbidden.message).toContain("admins and owners");
 
     mocks.deleteBadgeAward.mockRejectedValueOnce(new WriteError("unknown", "502"));
-    expect(await unendorse({ subject: SUBJECT, uris: [uri] })).toMatchObject({
+    expect(await unendorse({ repo: ORG, subject: SUBJECT, uris: [uri] })).toMatchObject({
       ok: false,
       reason: "unknown",
     });

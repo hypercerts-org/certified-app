@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { workspaceDid } from "@/components/workspace-access";
 import { EndorseSomeone } from "@/components/workspace-endorsements";
 import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { getEndorsements, listLists } from "@/lib/hypercerts/queries";
@@ -20,7 +21,8 @@ function tabs(base: string, counts?: { received: string; given: string; lists: s
 }
 
 async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   const base = `${workspaceHref(did)}/endorsements`;
   return (
     <Suspense fallback={<ProfileTabs label="Endorsements" tabs={tabs(base)} />}>
@@ -48,7 +50,8 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 }
 
 async function EndorseSomeoneAction({ params }: { params: Promise<{ actor: string }> }) {
-  const did = decodeURIComponent((await params).actor);
+  const did = await workspaceDid(params);
+  if (!did) return null;
   return <EndorseSomeone repo={did} />;
 }
 

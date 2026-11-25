@@ -68,19 +68,6 @@ function BadgeTile({ badge }: { badge: BadgeCard }) {
   );
 }
 
-/** Badges as tiles, a few across. */
-export function BadgeTiles({ badges }: { badges: BadgeCard[] }) {
-  return (
-    <ul className="badge-tiles">
-      {badges.map((badge) => (
-        <li key={badge.uri}>
-          <BadgeTile badge={badge} />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** A record's badges (a project's, an activity's), as its Badges tab lists them. */
 export async function RecordBadgeList({ uri }: { uri: string }) {
   // The tab shows only with badges; an old link can still land here.
@@ -165,20 +152,6 @@ export function BadgeList({
   );
 }
 
-/** Badge tiles on their way. */
-export function BadgeTilesSkeleton({ count = 4 }: { count?: number }) {
-  return (
-    <div className="badge-tiles" aria-hidden>
-      {skeletonSlots(count).map((slot) => (
-        <div key={slot} className="badge-tile">
-          <Skeleton variant="box" className="badge-icon" />
-          <Skeleton variant="text" lines={2} className="badge-tile-text" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** Badge rows on their way. */
 export function BadgeListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
@@ -195,27 +168,6 @@ export function BadgeListSkeleton({ rows = 4 }: { rows?: number }) {
 
 const numberFormat = new Intl.NumberFormat("en");
 const holdersLabel = (n: number) => `${numberFormat.format(n)} ${n === 1 ? "holder" : "holders"}`;
-
-/** The badges an account defined, as tiles: icon, title, type and holders. */
-export function IssuedBadgeTiles({ badges }: { badges: IssuedBadge[] }) {
-  return (
-    <ul className="badge-tiles">
-      {badges.map((badge) => (
-        <li key={badge.uri} className="badge-tile">
-          <BadgeIcon badge={badge} />
-          <span className="badge-tile-text">
-            <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
-              {badge.title}
-            </IntentLink>
-            <span className="badge-meta">
-              {[badge.type, holdersLabel(badge.holders)].filter(Boolean).join(" · ")}
-            </span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /** The badges an account defined, as rows: with their description. */
 export function IssuedBadgeList({

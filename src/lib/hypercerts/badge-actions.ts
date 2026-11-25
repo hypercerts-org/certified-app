@@ -5,9 +5,9 @@
 // written with @hypercerts-org/sdk/badge (personal PDS, or CGS for an
 // organization). Each waits briefly for the index, then expires affected tags.
 
+import * as badgeDefinition from "@hypercerts-org/lexicon/app/certified/badge/definition";
 import { awardBadge, createBadgeDefinition, respondToBadgeAward } from "@hypercerts-org/sdk/badge";
 import { updateTag } from "next/cache";
-import { badgeHref } from "@/components/cards";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
@@ -20,6 +20,8 @@ import {
 import { resolveAwardSubject } from "@/lib/hypercerts/resolve-target";
 import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
 import { collectionOf, didOf, safeUrl } from "@/lib/hypercerts/views";
+import { fieldOf, lexiconValidator } from "@/lib/lexicon-fields";
+import { badgeHref } from "@/lib/routes";
 import { isAtUri, isDid } from "@/lib/validate";
 
 export type BadgeActionFailure = {
@@ -40,8 +42,48 @@ export type AwardBadgeActionResult =
   | { ok: true; uri: string; indexed: boolean }
   | BadgeActionFailure;
 
-const ALLOWED_ICON_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
+const ALLOWED_ICON_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_ICON_BYTES = 1_048_576; // 1 MiB, per app.certified.badge.definition lexicon
+
+const checkBadge = {
+  title: lexiconValidator(fieldOf(badgeDefinition.main.schema, "title")),
+  badgeType: lexiconValidator(fieldOf(badgeDefinition.main.schema, "badgeType")),
+  description: lexiconValidator(fieldOf(badgeDefinition.main.schema, "description")),
+};
+
+/** Sniffs PNG, JPEG, or WebP magic bytes so uploads don't trust client MIME headers alone. */
+function detectImageMime(bytes: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | null {
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
+}
 
 const MESSAGES: Record<
   "respond" | "create" | "award",
@@ -101,10 +143,10 @@ export async function respondToBadge(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("respond", "signed-out");
-    if (!(await mayPublish(session.did, repo))) return fail("respond", "forbidden");
+    if (!(await mayPublish(session, repo))) return fail("respond", "forbidden");
 
     await respondToBadgeAward(
-      sdkContext(session),
+      await sdkContext(session),
       { award: { uri: input.awardUri }, response: input.response },
       writeTo(session, repo),
     );
@@ -114,7 +156,11 @@ export async function respondToBadge(
     updateTag(tags.badges(repo));
     updateTag(tags.endorsements(repo));
     updateTag(tags.actor(repo));
-    if (input.badgeUri && isAtUri(input.badgeUri)) updateTag(tags.badge(input.badgeUri));
+    if (input.badgeUri && isAtUri(input.badgeUri)) {
+      updateTag(tags.badge(input.badgeUri));
+      const owner = didOf(input.badgeUri);
+      if (owner && owner !== repo) updateTag(tags.badges(owner));
+    }
     return { ok: true, response: input.response, indexed };
   } catch (err) {
     return fail("respond", writeFailure(err, "respond to badge"));
@@ -123,7 +169,9 @@ export async function respondToBadge(
 
 /** Creates a new `app.certified.badge.definition` in `repo`. */
 export async function createBadge(repo: string, formData: FormData): Promise<CreateBadgeResult> {
-  if (typeof repo !== "string" || !isDid(repo)) return fail("create", "invalid");
+  if (typeof repo !== "string" || !isDid(repo) || !(formData instanceof FormData)) {
+    return fail("create", "invalid");
+  }
 
   const title = String(formData.get("title") ?? "").trim();
   const badgeType = String(formData.get("badgeType") ?? "").trim();
@@ -132,34 +180,37 @@ export async function createBadge(repo: string, formData: FormData): Promise<Cre
   const iconEntry = formData.get("icon");
 
   if (!title) return fail("create", "invalid", "Add a title for the badge.");
-  if (title.length > 256)
-    return fail("create", "invalid", "Title must be 256 characters or fewer.");
+  const titleError = checkBadge.title({ value: title });
+  if (titleError) return fail("create", "invalid", titleError);
   if (!badgeType) return fail("create", "invalid", "Choose a badge type.");
-  if (badgeType.length > 100) {
-    return fail("create", "invalid", "Badge type must be 100 characters or fewer.");
-  }
-  if (description.length > 2000) {
-    return fail("create", "invalid", "Description is too long (500 characters max).");
-  }
+  const typeError = checkBadge.badgeType({ value: badgeType });
+  if (typeError) return fail("create", "invalid", typeError);
+  const descError = checkBadge.description({ value: description });
+  if (descError) return fail("create", "invalid", descError);
 
   let icon: Blob | undefined;
   if (iconEntry instanceof File && iconEntry.size > 0) {
     if (!ALLOWED_ICON_TYPES.has(iconEntry.type)) {
-      return fail("create", "invalid", "Icon must be a PNG, JPEG, WebP, or SVG image.");
+      return fail("create", "invalid", "Icon must be a PNG, JPEG, or WebP image.");
     }
     if (iconEntry.size > MAX_ICON_BYTES) {
       return fail("create", "invalid", "Icon must be 1 MB or smaller.");
     }
-    icon = iconEntry;
+    const bytes = new Uint8Array(await iconEntry.arrayBuffer());
+    const detected = detectImageMime(bytes);
+    if (!detected) {
+      return fail("create", "invalid", "Icon must be a valid PNG, JPEG, or WebP image.");
+    }
+    icon = new Blob([bytes], { type: detected });
   }
 
   try {
     const session = await getOAuthSession();
     if (!session) return fail("create", "signed-out");
-    if (!(await mayPublish(session.did, repo))) return fail("create", "forbidden");
+    if (!(await mayPublish(session, repo))) return fail("create", "forbidden");
 
     const created = await createBadgeDefinition(
-      sdkContext(session),
+      await sdkContext(session),
       {
         title,
         badgeType,
@@ -210,6 +261,7 @@ export async function awardBadgeToSubject(
   if (note.length > 500) return fail("award", "invalid", "Note must be 500 characters or fewer.");
 
   const rawUrl = (input.url ?? "").trim();
+  if (rawUrl.length > 2048) return fail("award", "invalid", "Link is too long.");
   const checkedUrl = rawUrl ? safeUrl(rawUrl) : null;
   if (rawUrl && !checkedUrl) {
     return fail("award", "invalid", "Link must start with https:// or http://.");
@@ -224,7 +276,7 @@ export async function awardBadgeToSubject(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("award", "signed-out");
-    if (!(await mayPublish(session.did, repo))) return fail("award", "forbidden");
+    if (!(await mayPublish(session, repo))) return fail("award", "forbidden");
 
     const subject = await resolveAwardSubject(input.subject);
     if (!subject) {
@@ -236,7 +288,7 @@ export async function awardBadgeToSubject(
     }
 
     const created = await awardBadge(
-      sdkContext(session),
+      await sdkContext(session),
       {
         definition: { uri: input.definitionUri },
         subject,
@@ -250,7 +302,12 @@ export async function awardBadgeToSubject(
 
     updateTag(tags.badge(input.definitionUri));
     updateTag(tags.badges(repo));
+    updateTag(tags.endorsements(repo));
     updateTag(tags.actor(repo));
+    const definitionOwner = didOf(input.definitionUri);
+    if (definitionOwner && definitionOwner !== repo) {
+      updateTag(tags.badges(definitionOwner));
+    }
     if ("did" in subject) {
       updateTag(tags.badges(subject.did));
       updateTag(tags.endorsements(subject.did));

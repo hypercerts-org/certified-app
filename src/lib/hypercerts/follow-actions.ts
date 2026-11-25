@@ -16,13 +16,14 @@ import {
   unfollowEntity,
 } from "@hypercerts-org/sdk/social";
 import { updateTag } from "next/cache";
-import { getActingAs } from "@/lib/acting-as";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
+import { mayPublish } from "@/lib/hypercerts/publish-access";
 import { getIndexedEntityFollow, getIndexedFollow } from "@/lib/hypercerts/queries";
 import { sdkContext, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
 import { collectionOf, didOf, type FollowRef } from "@/lib/hypercerts/views";
+import { logError } from "@/lib/log";
 import { isAtUri, isDid } from "@/lib/validate";
 
 type FollowFailure = "signed-out" | "forbidden" | "invalid" | "unknown" | "unavailable";
@@ -123,24 +124,32 @@ const failure = (reason: FollowFailure, action: Action, w?: Partial<Writer>): Fo
   message: message(reason, action, w?.kind ?? "account", w?.asOrganization ?? false),
 });
 
-/** The session, and the account it acts as, when that may follow `subject`. */
-async function writer(subject: unknown, action: Action): Promise<Writer | FollowFailed> {
+/** The session, and the explicit repository `repo`, when it may follow `subject`. */
+async function writer(
+  repo: unknown,
+  subject: unknown,
+  action: Action,
+): Promise<Writer | FollowFailed> {
   const kind = kindOf(subject);
-  if (!kind) return failure("invalid", action);
-  const [session, actor] = await Promise.all([getOAuthSession(), getActingAs()]);
-  if (!session || !actor) return failure("signed-out", action, { kind });
+  if (!kind || typeof repo !== "string" || !isDid(repo)) return failure("invalid", action);
+  const session = await getOAuthSession();
+  if (!session) return failure("signed-out", action, { kind });
   const target = subject as string;
+  const asOrganization = repo !== session.did;
   // Not yourself, nor your own project.
-  if (actor === (kind === "account" ? target : didOf(target))) {
-    return failure("invalid", action, { kind });
+  if (repo === (kind === "account" ? target : didOf(target))) {
+    return failure("invalid", action, { kind, asOrganization });
+  }
+  if (!(await mayPublish(session, repo))) {
+    return failure("forbidden", action, { kind, asOrganization });
   }
   return {
     session,
-    actor,
+    actor: repo,
     subject: target,
     kind,
-    repo: writeTo(session, actor),
-    asOrganization: actor !== session.did,
+    repo: writeTo(session, repo),
+    asOrganization,
   };
 }
 
@@ -149,20 +158,23 @@ function expire(tagged: string[]) {
 }
 
 /**
- * Follows `subject`: an account's DID, or a project's URI. When the index
- * already shows a follow (made in another tab, say), returns that one rather
- * than writing a duplicate.
+ * Follows `subject` as `repo`: an account's DID, or a project's URI. When the
+ * index already shows a follow (made in another tab, say), returns that one
+ * rather than writing a duplicate.
  */
-export async function follow(subject: string): Promise<FollowResult> {
+export async function follow(input: { repo: string; subject: string }): Promise<FollowResult> {
   let w: Writer | FollowFailed | undefined;
   try {
-    w = await writer(subject, "follow");
+    w = await writer(input?.repo, input?.subject, "follow");
     if ("ok" in w) return w;
     const { actor, subject: target } = w;
     const how = KINDS[w.kind];
-    const existing = await how.indexed(actor, target).catch(() => null);
+    const existing = await how.indexed(actor, target).catch((err) => {
+      logError("[follow] index check failed", err, { actor, target });
+      return null;
+    });
     if (existing) return { ok: true, follow: existing, indexed: true };
-    const made = await how.create(sdkContext(w.session), target, w.repo);
+    const made = await how.create(await sdkContext(w.session), target, w.repo);
     const indexed = await waitForIndex(async () => (await how.indexed(actor, target)) !== null);
     expire(how.expire(actor, target));
     return { ok: true, follow: { uri: made.uri, cid: made.cid }, indexed };
@@ -172,17 +184,18 @@ export async function follow(subject: string): Promise<FollowResult> {
 }
 
 /**
- * Unfollows `subject`: deletes the follow records the browser knows of
- * (`uris`: one the index didn't show yet) and the one the index shows.
+ * Unfollows `subject` as `repo`: deletes the follow records the browser knows
+ * of (`uris`: one the index didn't show yet) and the one the index shows.
  * Safe to repeat.
  */
 export async function unfollow(input: {
+  repo: string;
   subject: string;
   uris: string[];
 }): Promise<UnfollowResult> {
   let w: Writer | FollowFailed | undefined;
   try {
-    w = await writer(input?.subject, "unfollow");
+    w = await writer(input?.repo, input?.subject, "unfollow");
     if ("ok" in w) return w;
     const { actor, subject: target } = w;
     const how = KINDS[w.kind];
@@ -190,9 +203,12 @@ export async function unfollow(input: {
     if (known.length > 5 || known.some((uri) => typeof uri !== "string")) {
       return failure("invalid", "unfollow", w);
     }
-    const shown = await how.indexed(actor, target).catch(() => null);
+    const shown = await how.indexed(actor, target).catch((err) => {
+      logError("[unfollow] index check failed", err, { actor, target });
+      return null;
+    });
     const removed = [...new Set([...known, ...(shown ? [shown.uri] : [])])];
-    const context = sdkContext(w.session);
+    const context = await sdkContext(w.session);
     // One at a time: each is its own write, and a failure stops the rest.
     for (const uri of removed) await how.remove(context, uri, w.repo);
     // Done once the index shows none of them (a follow made since, elsewhere, may remain).

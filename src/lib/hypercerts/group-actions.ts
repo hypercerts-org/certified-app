@@ -8,7 +8,6 @@
 import { type l, XrpcError, XrpcResponseError } from "@atproto/lex";
 import { createOrganization } from "@hypercerts-org/sdk/organization";
 import { updateTag } from "next/cache";
-import { workspaceHref } from "@/components/cards";
 import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import {
@@ -23,6 +22,7 @@ import { tags } from "@/lib/hypercerts/cache";
 import { resolveAccountDid } from "@/lib/hypercerts/resolve-target";
 import { sdkContext } from "@/lib/hypercerts/sdk";
 import { logError } from "@/lib/log";
+import { workspaceHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
 
 const HANDLE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
@@ -122,7 +122,7 @@ export async function createGroup(input: {
     let profileNote: string | undefined;
     try {
       await createOrganization(
-        sdkContext(session),
+        await sdkContext(session),
         {
           organization: {},
           profileIfMissing: {
@@ -141,7 +141,8 @@ export async function createGroup(input: {
     }
 
     updateTag(tags.actor(registered.groupDid));
-    updateTag(tags.organizations());
+    updateTag(tags.explore());
+    updateTag(tags.memberships(session.did));
     return {
       ok: true,
       groupDid: registered.groupDid,
@@ -190,7 +191,10 @@ export async function addMember(
     }
 
     await addGroupMember(session, groupDid, memberDid, input.role);
-    await forgetMemberships(memberDid).catch(() => {});
+    await forgetMemberships(memberDid).catch((err) =>
+      logError("[groups] failed to clear membership cache", err, { memberDid }),
+    );
+    updateTag(tags.memberships(memberDid));
     return { ok: true };
   } catch (err) {
     return {
@@ -221,7 +225,10 @@ export async function removeMember(
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
     await removeGroupMember(session, groupDid as l.DidString, memberDid as l.DidString);
-    await forgetMemberships(memberDid).catch(() => {});
+    await forgetMemberships(memberDid).catch((err) =>
+      logError("[groups] failed to clear membership cache", err, { memberDid }),
+    );
+    updateTag(tags.memberships(memberDid));
     return { ok: true };
   } catch (err) {
     return {
@@ -259,7 +266,10 @@ export async function changeMemberRole(
       input.memberDid as l.DidString,
       input.role,
     );
-    await forgetMemberships(input.memberDid).catch(() => {});
+    await forgetMemberships(input.memberDid).catch((err) =>
+      logError("[groups] failed to clear membership cache", err, { memberDid: input.memberDid }),
+    );
+    updateTag(tags.memberships(input.memberDid));
     return { ok: true };
   } catch (err) {
     return {

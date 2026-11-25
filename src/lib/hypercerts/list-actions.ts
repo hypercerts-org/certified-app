@@ -8,8 +8,6 @@
 import type { l } from "@atproto/lex";
 import { createCollection } from "@hypercerts-org/sdk/collection";
 import { updateTag } from "next/cache";
-import { workspaceHref } from "@/components/cards";
-import type { ListKind } from "@/components/workspace-lists";
 import { getRecordSigner } from "@/lib/atproto/app-key";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
@@ -29,9 +27,11 @@ import {
   WriteError,
 } from "@/lib/hypercerts/writes";
 import { getDid } from "@/lib/identity";
-import { isAtUri, isDid } from "@/lib/validate";
+import type { ListKind } from "@/lib/lists";
+import { workspaceHref } from "@/lib/routes";
+import { isAtUri, isDid, isRkey } from "@/lib/validate";
 
-const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
+const MAX_DESCRIPTION_LENGTH = 10_000;
 
 const COLLECTION_TYPES: Record<ListKind["label"], string> = {
   Activities: "list:certs",
@@ -103,14 +103,17 @@ export async function createList(
   if (title.length > 256) {
     return fail("invalid", "create the list", "Name must be 256 characters or fewer.");
   }
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    return fail("invalid", "create the list", "Description is too long.");
+  }
 
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out", "create the list");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden", "create the list");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "create the list");
 
     const created = await createCollection(
-      sdkContext(session),
+      await sdkContext(session),
       {
         title,
         type: collectionType,
@@ -137,18 +140,21 @@ export async function editList(
 ): Promise<EditListResult> {
   const title = typeof input?.title === "string" ? input.title.trim() : "";
   const description = typeof input?.description === "string" ? input.description.trim() : "";
-  if (typeof repo !== "string" || !isDid(repo) || typeof rkey !== "string" || !RKEY.test(rkey)) {
+  if (typeof repo !== "string" || !isDid(repo) || typeof rkey !== "string" || !isRkey(rkey)) {
     return fail("invalid", "update the list");
   }
   if (!title) return fail("invalid", "update the list", "Add a name for the list.");
   if (title.length > 256) {
     return fail("invalid", "update the list", "Name must be 256 characters or fewer.");
   }
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    return fail("invalid", "update the list", "Description is too long.");
+  }
 
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out", "update the list");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden", "update the list");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "update the list");
 
     const repository = await repositoryFor(session, repo);
     const saved = await updateListDetails(
@@ -194,7 +200,7 @@ export async function addListItems(
     typeof repo !== "string" ||
     !isDid(repo) ||
     typeof rkey !== "string" ||
-    !RKEY.test(rkey) ||
+    !isRkey(rkey) ||
     !Array.isArray(rawLines) ||
     rawLines.length === 0 ||
     rawLines.length > 100 ||
@@ -206,7 +212,7 @@ export async function addListItems(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out", "add items");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden", "add items");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "add items");
 
     const cleaned = [...new Set(rawLines.map((line) => line.trim()).filter(Boolean))];
     if (cleaned.length === 0) return fail("invalid", "add items", "Paste at least one item.");
@@ -258,7 +264,7 @@ export async function removeListItems(
     typeof repo !== "string" ||
     !isDid(repo) ||
     typeof rkey !== "string" ||
-    !RKEY.test(rkey) ||
+    !isRkey(rkey) ||
     !Array.isArray(uris) ||
     uris.length === 0 ||
     uris.length > 500 ||
@@ -270,7 +276,7 @@ export async function removeListItems(
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out", "remove items");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden", "remove items");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "remove items");
 
     const repository = await repositoryFor(session, repo);
     const { stored, removed } = await removeItemsFromList(
@@ -297,14 +303,14 @@ export async function removeListItems(
 
 /** Deletes a list record from `repo`. The items themselves are untouched. */
 export async function deleteList(repo: string, rkey: string): Promise<DeleteListResult> {
-  if (typeof repo !== "string" || !isDid(repo) || typeof rkey !== "string" || !RKEY.test(rkey)) {
+  if (typeof repo !== "string" || !isDid(repo) || typeof rkey !== "string" || !isRkey(rkey)) {
     return fail("invalid", "delete the list");
   }
 
   try {
     const session = await getOAuthSession();
     if (!session) return fail("signed-out", "delete the list");
-    if (!(await mayPublish(session.did, repo))) return fail("forbidden", "delete the list");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "delete the list");
 
     const repository = await repositoryFor(session, repo);
     await deleteCollectionRecord(repository, rkey);

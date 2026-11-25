@@ -198,6 +198,10 @@ p + p {
   cursor: pointer;
 }
 
+.account-button[data-organization] {
+  border-radius: var(--hc-radius-control);
+}
+
 /* The avatar of whom you act as, with a marker that it opens a menu. */
 .account-avatar {
   position: relative;
@@ -1273,23 +1277,6 @@ a.post-amount:hover {
   gap: var(--rhythm-block);
 }
 
-.profile-section-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.see-all {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-0-5);
-  color: var(--hc-text-ink);
-  font-size: var(--hc-type-body-sm);
-  text-decoration: none;
-  text-underline-offset: 0.2em;
-}
-
 /* The Overview's side column: its cards, 1rem apart. */
 .page-rail {
   display: flex;
@@ -1870,7 +1857,7 @@ button.workspace-nav-item:hover,
   inset-inline-end: 0.5rem;
   padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--hc-line-hairline);
-  border-radius: 0.25rem;
+  border-radius: var(--space-1);
   color: var(--hc-text-muted);
   font-family: inherit;
   font-size: var(--hc-type-label);
@@ -2026,26 +2013,6 @@ button.sidebar-item:hover,
   font-weight: var(--hc-weight-body);
 }
 
-.see-all:hover {
-  text-decoration: underline;
-}
-
-/* An empty section on the account's own profile: what goes here, then the
-   action that fills it. */
-.profile-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.profile-nothing {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* "Endorses N" and "Follows N": accounts in columns, avatar and name. */
 /* Lists (src/components/profile-lists.tsx, list-items.tsx): a profile's
    lists grouped by kind, as rows, and a list's items as rows, after staging. */
 .list-groups {
@@ -2136,25 +2103,6 @@ a.explore-account-link:hover .list-item-title {
   white-space: nowrap;
 }
 
-.list-item-thumb {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  inline-size: 2.5rem;
-  block-size: 2.5rem;
-  overflow: hidden;
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-tint);
-  color: var(--hc-text-muted);
-}
-
-.list-item-thumb img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
 /* The author (or endorser) beside an item: avatar and name, quiet. */
 /* An account link (actor.tsx) as a list's author column. */
 .list-item-who {
@@ -2230,17 +2178,6 @@ a.explore-account-link:hover .list-item-title {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-}
-
-/* A card's title as a link: the card's text, underlined on hover. */
-.card-title-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.card-title-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 
 /* A list's page: back to the lists, its title and count. */
@@ -2456,10 +2393,6 @@ a.explore-account-link:hover .list-item-title {
 .ledger-anonymous {
   color: var(--hc-text-muted);
   font-style: italic;
-}
-
-.ledger-muted {
-  color: var(--hc-text-muted);
 }
 
 /* What it was for: one line, cut short. */
@@ -2975,15 +2908,6 @@ a.badge-title:hover {
   font-size: var(--hc-type-body-sm);
 }
 
-.badge-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
-  gap: var(--space-3) var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .badge-tile {
   display: flex;
   align-items: center;
@@ -3064,41 +2988,6 @@ a.badge-title:hover {
   overflow-wrap: anywhere;
 }
 
-.account-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
-  gap: var(--space-2) var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.account-grid-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-block-size: 3rem;
-  padding: var(--space-1);
-  border-radius: var(--hc-radius-control);
-  color: var(--hc-text-ink);
-  text-decoration: none;
-}
-
-.account-grid-link:hover {
-  background: var(--hc-fill-subtle);
-}
-
-.account-grid-link:focus-visible {
-  outline: 2px solid var(--hc-focus-ring);
-  outline-offset: 2px;
-}
-
-.account-grid-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Skeletons shaped like what they stand for (profile header, sections,
    cards, the rail), so nothing jumps when the content arrives. */
 .profile-header-skeleton {
@@ -3133,11 +3022,6 @@ a.badge-title:hover {
 
 .skeleton-lead {
   max-inline-size: 36rem;
-}
-
-.skeleton-tabs {
-  inline-size: min(24rem, 100%);
-  block-size: 2.5rem;
 }
 
 .skeleton-heading {
@@ -3413,11 +3297,6 @@ a.badge-title:hover {
   :is(.sidebar-item, .workspace-nav-item)[aria-current="page"] {
   background: none;
   font-weight: inherit;
-}
-
-/* Workspace → Lists (src/components/workspace-lists.tsx): a list card's shape. */
-.skeleton-list-card {
-  block-size: 7rem;
 }
 
 /* Workspace overview: a section's title with its action on the right, the
@@ -3715,14 +3594,10 @@ a.badge-title:hover {
   align-items: center;
 }
 
-/* The date picker is inline-block; as wide as the column, like the other fields. */
+/* DatePicker width bridge lives in Toolkit bridges below. */
 .date-field > :first-child {
   flex: 1;
   min-inline-size: 0;
-}
-
-.date-field > :first-child > * {
-  inline-size: 100%;
 }
 
 .record-form-image {
@@ -3884,6 +3759,36 @@ a.badge-title:hover {
   aspect-ratio: 16 / 9;
 }
 
+/* A record page's actions beside its title: Follow, and for whoever may
+   change it the three-dot menu (record-menu). */
+.record-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* An activity's title block and its actions, side by side above the picture. */
+.activity-head-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-8);
+}
+
+.activity-head-top > .stack {
+  flex: 1 1 32rem;
+  min-inline-size: 0;
+}
+
+/* A stored value an edit form keeps as it is (record-form, KeptField). */
+.record-form-kept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 /* Toolkit bridges. Each rule restyles a toolkit component in a way the
    toolkit doesn't offer yet; each goes when its prop exists (listed in
    docs/toolkit-gaps.md). Nowhere else may app CSS reach into a toolkit
@@ -3969,10 +3874,6 @@ a.actor-row-main:hover .actor-row-name {
   z-index: 1;
 }
 
-.overview-rows .text-hc-micro {
-  font-size: var(--hc-type-body-sm);
-}
-
 /* Sonner's toasts in the Certified theme (its own variables). */
 [data-sonner-toaster] {
   --normal-bg: var(--hc-surface-panel);
@@ -4015,32 +3916,17 @@ input[type="search"]::-webkit-search-cancel-button {
   appearance: none;
 }
 
-/* A record page's actions beside its title: Follow, and for whoever may
-   change it the three-dot menu (record-menu). */
-.record-head-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+/* DatePicker renders inline-block; stretch it to the column's width (gap:
+   DatePicker fullWidth prop, docs/toolkit-gaps.md). */
+.date-field > :first-child > * {
+  inline-size: 100%;
 }
 
-/* An activity's title block and its actions, side by side above the picture. */
-.activity-head-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4) var(--space-8);
-}
-
-.activity-head-top > .stack {
-  flex: 1 1 32rem;
-  min-inline-size: 0;
-}
-
-/* A stored value an edit form keeps as it is (record-form, KeptField). */
-.record-form-kept {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+/* Touch screens: our compact 14px --hc-type-body overrides the toolkit's
+   16px pointer-coarse safeguard, so keep text controls at 16px on coarse
+   pointers to prevent iOS Safari focus auto-zoom (docs/toolkit-gaps.md). */
+@media (pointer: coarse) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select) {
+    font-size: 1rem;
+  }
 }

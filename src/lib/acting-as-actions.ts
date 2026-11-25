@@ -5,6 +5,7 @@ import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
 import { setActingAs } from "@/lib/auth/session";
 import { logError } from "@/lib/log";
 import { getMemberships } from "@/lib/memberships";
+import { isDid } from "@/lib/validate";
 
 /** `previous`: whom the user acted as before, for Undo. */
 export type SwitchResult = { ok: true; previous: string } | { ok: false };
@@ -18,6 +19,7 @@ export type SwitchResult = { ok: true; previous: string } | { ok: false };
  * same round trip.
  */
 export async function switchActingAs(did: string): Promise<SwitchResult> {
+  if (typeof did !== "string" || !isDid(did)) return { ok: false };
   try {
     const user = await getUser();
     if (!user) return { ok: false };

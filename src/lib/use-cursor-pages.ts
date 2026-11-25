@@ -16,9 +16,10 @@ export function useCursorPages<T>(
   initial: Page<T>,
   pageUrl: (cursor: string) => string,
   keyOf: (item: T) => string,
+  revision?: string,
 ) {
   const query = useInfiniteQuery({
-    queryKey: ["pages", pageUrl(""), initial.cursor],
+    queryKey: ["pages", pageUrl(""), initial.cursor, revision ?? null],
     queryFn: async ({ pageParam, signal }) => {
       const response = await fetch(pageUrl(pageParam), { signal });
       if (!response.ok) throw new Error(`Request failed (${response.status})`);

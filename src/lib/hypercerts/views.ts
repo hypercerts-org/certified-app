@@ -1151,7 +1151,13 @@ export function fileLinks(items: unknown, did: string, blobBase: string | null):
     const uri = safeUrl(typeof entry === "string" ? entry : item?.uri);
     if (uri) {
       const { hostname, pathname } = new URL(uri);
-      const file = decodeURIComponent(pathname.split("/").filter(Boolean).at(-1) ?? "");
+      const rawSegment = pathname.split("/").filter(Boolean).at(-1) ?? "";
+      let file = rawSegment;
+      try {
+        file = decodeURIComponent(rawSegment);
+      } catch {
+        // Malformed percent-encoding: keep the raw segment for extension matching.
+      }
       const label = /\.[a-z0-9]{2,5}$/i.test(file) ? file : hostname.replace(/^www\./, "");
       // A picture on the web loads only over https (no mixed content).
       const picture = /\.(jpe?g|png|webp|gif)$/i.test(file) ? safeUrl(uri, true) : null;

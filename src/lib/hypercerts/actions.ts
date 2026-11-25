@@ -86,6 +86,7 @@ export async function saveProfile(input: {
       async () => (await getIndexedProfile(repo))?.cid === saved.cid,
     );
     updateTag(tags.actor(repo));
+    updateTag(tags.explore());
     return { ok: true, saved, indexed };
   } catch (err) {
     if (err instanceof WriteError) {

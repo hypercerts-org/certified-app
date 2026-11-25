@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { LinkPending } from "@/components/link-pending";
+import { ProfileTabsSkeleton } from "@/components/profile-actions";
 import {
   type ExploreKind,
   type ExploreState,
@@ -63,15 +64,7 @@ export function ExploreTabs() {
 
 /** The tabs while the address is read: the same row, without links yet. */
 export function ExploreTabsSkeleton() {
-  return (
-    <div className="profile-tabs" aria-hidden>
-      {TABS.map((tab) => (
-        <span key={tab.kind} className="profile-tab">
-          {tab.label}
-        </span>
-      ))}
-    </div>
-  );
+  return <ProfileTabsSkeleton labels={TABS.map((tab) => tab.label)} />;
 }
 
 const PLACEHOLDER: Record<ExploreKind | "all", string> = {

@@ -1,5 +1,9 @@
 import type { OAuthSession } from "@atproto/oauth-client-node";
-import { WriteOutcomeUnknownError, WriteRejectedError } from "@hypercerts-org/sdk/badge";
+import {
+  WriteOutcomeUnknownError,
+  WriteRejectedError,
+  WriteResultMismatchError,
+} from "@hypercerts-org/sdk/badge";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -105,9 +109,16 @@ describe("respondToBadge", () => {
     );
   });
 
-  it("reports WriteOutcomeUnknownError as unknown", async () => {
+  it("reports WriteOutcomeUnknownError and WriteResultMismatchError as unknown", async () => {
     mocks.respondToBadgeAward.mockRejectedValueOnce(
       new WriteOutcomeUnknownError("respondToBadgeAward", []),
+    );
+    expect(await respondToBadge(USER, { awardUri: AWARD_URI, response: "accepted" })).toMatchObject(
+      { ok: false, reason: "unknown" },
+    );
+
+    mocks.respondToBadgeAward.mockRejectedValueOnce(
+      new WriteResultMismatchError("respondToBadgeAward", [], []),
     );
     expect(await respondToBadge(USER, { awardUri: AWARD_URI, response: "accepted" })).toMatchObject(
       { ok: false, reason: "unknown" },
@@ -146,12 +157,18 @@ describe("createBadge", () => {
     );
   });
 
-  it("rejects unsupported icon MIME types and oversized icons before calling SDK", async () => {
-    const badMime = new FormData();
-    badMime.set("title", "Test");
-    badMime.set("badgeType", "recognition");
-    badMime.set("icon", new File(["hello"], "bad.txt", { type: "text/plain" }));
-    expect(await createBadge(USER, badMime)).toMatchObject({ ok: false, reason: "invalid" });
+  it("rejects SVG, spoofed MIME headers, and oversized icons before calling SDK", async () => {
+    const svg = new FormData();
+    svg.set("title", "Test");
+    svg.set("badgeType", "recognition");
+    svg.set("icon", new File(["<svg></svg>"], "bad.svg", { type: "image/svg+xml" }));
+    expect(await createBadge(USER, svg)).toMatchObject({ ok: false, reason: "invalid" });
+
+    const spoofed = new FormData();
+    spoofed.set("title", "Test");
+    spoofed.set("badgeType", "recognition");
+    spoofed.set("icon", new File(["not really a png"], "fake.png", { type: "image/png" }));
+    expect(await createBadge(USER, spoofed)).toMatchObject({ ok: false, reason: "invalid" });
 
     const tooBig = new FormData();
     tooBig.set("title", "Test");
@@ -159,6 +176,21 @@ describe("createBadge", () => {
     tooBig.set("icon", new File([new Uint8Array(1_048_577)], "big.png", { type: "image/png" }));
     expect(await createBadge(USER, tooBig)).toMatchObject({ ok: false, reason: "invalid" });
     expect(mocks.createBadgeDefinition).not.toHaveBeenCalled();
+  });
+
+  it("accepts a real PNG icon after magic-byte verification", async () => {
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const form = new FormData();
+    form.set("title", "Verified");
+    form.set("badgeType", "verification");
+    form.set("icon", new File([pngBytes], "badge.png", { type: "image/png" }));
+    const res = await createBadge(USER, form);
+    expect(res).toMatchObject({ ok: true, uri: DEF_URI });
+    expect(mocks.createBadgeDefinition).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ icon: expect.any(Blob) }),
+      undefined,
+    );
   });
 });
 

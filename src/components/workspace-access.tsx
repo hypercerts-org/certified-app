@@ -41,7 +41,12 @@ const workspaceAccess = cache(async (did: string): Promise<Access> => {
 });
 
 function didOf(param: string): string {
-  const did = decodeURIComponent(param);
+  let did: string;
+  try {
+    did = decodeURIComponent(param);
+  } catch {
+    notFound();
+  }
   if (!isDid(did)) notFound();
   return did;
 }

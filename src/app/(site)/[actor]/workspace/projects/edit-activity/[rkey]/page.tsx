@@ -10,6 +10,7 @@ import { workspaceDid } from "@/components/workspace-access";
 import { getActor, listSavedPlaces } from "@/lib/hypercerts/queries";
 import { activityForEditing } from "@/lib/hypercerts/record-drafts";
 import { nameOf } from "@/lib/hypercerts/views";
+import { isRkey } from "@/lib/validate";
 
 export const metadata: Metadata = { title: "Edit activity", robots: { index: false } };
 
@@ -21,6 +22,7 @@ async function EditActivity({ params }: { params: Promise<{ actor: string; rkey:
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
   const { rkey } = await params;
+  if (!isRkey(rkey)) notFound();
   return (
     <RecordEditor
       did={did}

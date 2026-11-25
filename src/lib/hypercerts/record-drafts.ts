@@ -14,12 +14,15 @@ import type { LexMap, l } from "@atproto/lex";
 import * as activity from "@hypercerts-org/lexicon/org/hypercerts/claim/activity";
 import * as collection from "@hypercerts-org/lexicon/org/hypercerts/collection";
 import * as defs from "@hypercerts-org/lexicon/org/hypercerts/defs";
+import { unstable_rethrow } from "next/navigation";
 import type { ActivityDraft } from "@/lib/hypercerts/activity-actions";
 import type { ProjectDraft } from "@/lib/hypercerts/project-actions";
-import { getActor, getPlace } from "@/lib/hypercerts/queries";
+import { getPlace } from "@/lib/hypercerts/queries";
 import { imageUrl } from "@/lib/hypercerts/views";
 import type { Repository } from "@/lib/hypercerts/writes";
+import { getHandle } from "@/lib/identity";
 import type { LocationChoice } from "@/lib/location-choice";
+import { logError } from "@/lib/log";
 
 const ACTIVITY = activity.main.$type;
 const COLLECTION = collection.main.$type;
@@ -169,7 +172,11 @@ export function projectFields(value: LexMap) {
 /** A location record as the picker's chosen place, named as the index reads it. */
 async function chosenPlace(uri: string | null): Promise<LocationChoice | null> {
   if (!uri) return null;
-  const place = await getPlace(uri).catch(() => null);
+  const place = await getPlace(uri).catch((err) => {
+    unstable_rethrow(err);
+    logError("[drafts] saved place lookup failed", err, { uri });
+    return null;
+  });
   return {
     kind: "saved",
     uri,
@@ -190,8 +197,12 @@ export async function activityForEditing(repo: Repository, rkey: string) {
   const contributors = await Promise.all(
     fields.contributors.map(async (row) => {
       if (!row.identity.startsWith("did:")) return row;
-      const actor = await getActor(row.identity).catch(() => null);
-      return { ...row, identity: actor?.handle ?? row.identity };
+      const handle = await getHandle(row.identity).catch((err) => {
+        unstable_rethrow(err);
+        logError("[drafts] contributor handle lookup failed", err, { did: row.identity });
+        return null;
+      });
+      return { ...row, identity: handle ?? row.identity };
     }),
   );
   const picture = imageUrl(repo.did, stored.value.image, "card");

@@ -9,14 +9,20 @@ import {
   PartialWriteError,
   WriteOutcomeUnknownError,
   WriteRejectedError,
+  WriteResultMismatchError,
 } from "@hypercerts-org/sdk/social";
+import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { SessionUnavailableError } from "@/lib/auth/dal";
+import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { CGS_DID, CGS_URL } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 
-export function sdkContext(session: OAuthSession): SDKContext {
+export async function sdkContext(session: OAuthSession): Promise<SDKContext> {
+  assertWritesAllowed();
+  const oauthClient = await getOAuthClient();
   return createSDKContext({
     client: new Client(session),
+    didResolver: oauthClient.identityResolver,
     cgs: { url: CGS_URL.href, did: CGS_DID as l.DidString },
   });
 }
@@ -29,16 +35,27 @@ export function writeTo(session: OAuthSession, actor: string): WriteOptions | un
 /**
  * Why an SDK write failed. "unknown": it was sent but no answer came back, or
  * only some of its records were written (organizations' writes go one record
- * at a time); reading is the only way to tell. Every other reason means
- * nothing was written.
+ * at a time), or the PDS returned a mismatched URI/CID after applying it;
+ * reading is the only way to tell. Every other reason means nothing was written.
  */
 export type WriteFailure = "forbidden" | "invalid" | "unknown" | "unavailable";
 
 /** Sorts a failed SDK write; logs what isn't the user's to fix. */
 export function writeFailure(err: unknown, what: string): WriteFailure {
-  if (err instanceof WriteOutcomeUnknownError || err instanceof PartialWriteError) return "unknown";
+  if (
+    err instanceof WriteOutcomeUnknownError ||
+    err instanceof PartialWriteError ||
+    err instanceof WriteResultMismatchError
+  ) {
+    logError(`[write] ${what} outcome unknown`, err);
+    return "unknown";
+  }
   if (err instanceof WriteRejectedError) {
-    return err.status === 401 || err.status === 403 ? "forbidden" : "invalid";
+    if (err.status === 401 || err.status === 403) return "forbidden";
+    if (err.status === 408 || err.status === 429 || err.code === "InvalidSwap") {
+      return "unavailable";
+    }
+    return "invalid";
   }
   if (err instanceof TypeError) return "invalid";
   // Errors can carry upstream requests and tokens: only logError strips them.

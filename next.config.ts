@@ -27,9 +27,16 @@ const nextConfig: NextConfig = {
   // JavaScript (nothing opens, nothing switches). More, for example over
   // Tailscale: ALLOWED_DEV_ORIGINS=myhost.tailnet.ts.net,100.64.0.1 pnpm dev
   allowedDevOrigins: ["127.0.0.1", ...(process.env.ALLOWED_DEV_ORIGINS?.split(",") ?? [])],
-  // Your organizations are listed in your workspace now.
+  // Permanent route redirects (kept out of page components so static shells stay clean).
   async redirects() {
-    return [{ source: "/settings/organizations", destination: "/workspace", permanent: true }];
+    return [
+      { source: "/settings/organizations", destination: "/workspace", permanent: true },
+      {
+        source: "/:actor/project/:rkey/updates",
+        destination: "/:actor/project/:rkey",
+        permanent: true,
+      },
+    ];
   },
   // No page may be framed by other sites (clickjacking).
   async headers() {

@@ -17,7 +17,7 @@ import {
 } from "@hypercerts-org/ui-react";
 import { ListPlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { toast } from "sonner";
 import { LIST_KINDS, type ListKind } from "@/components/workspace-lists";
 import * as listActions from "@/lib/hypercerts/list-actions";
@@ -64,6 +64,7 @@ function Opener({
 
 /** "New list": what it holds, then its name and description. */
 export function NewListDialog({ repo }: { repo: string }) {
+  const formId = useId();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<ListKind["label"]>(LIST_KINDS[0].label);
@@ -118,7 +119,14 @@ export function NewListDialog({ repo }: { repo: string }) {
 
   return (
     <>
-      <Opener icon={<Plus size={16} aria-hidden />} label="New list" onOpen={() => setOpen(true)} />
+      <Opener
+        icon={<Plus size={16} aria-hidden />}
+        label="New list"
+        onOpen={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      />
       <ResponsiveDialog
         open={open}
         onClose={close}
@@ -129,14 +137,22 @@ export function NewListDialog({ repo }: { repo: string }) {
             onCancel={close}
             disabled={submitting}
             action={
-              <Button variant="primary" loading={submitting} onClick={submit}>
+              <Button type="submit" form={formId} variant="primary" loading={submitting}>
                 Create list
               </Button>
             }
           />
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -171,7 +187,7 @@ export function NewListDialog({ repo }: { repo: string }) {
               />
             )}
           </Field>
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );
@@ -189,7 +205,7 @@ export function EditListDialog({
   title: string;
   description: string;
 }) {
-  const router = useRouter();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -229,7 +245,6 @@ export function EditListDialog({
       }
       setOpen(false);
       toast("List updated");
-      router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -247,14 +262,22 @@ export function EditListDialog({
             onCancel={close}
             disabled={submitting}
             action={
-              <Button variant="primary" loading={submitting} onClick={submit}>
+              <Button type="submit" form={formId} variant="primary" loading={submitting}>
                 Save
               </Button>
             }
           />
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -283,7 +306,7 @@ export function EditListDialog({
               />
             )}
           </Field>
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );
@@ -298,7 +321,7 @@ const lines = (text: string) =>
 
 /** "Add items": one or many, pasted one per line. */
 export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: string; noun: string }) {
-  const router = useRouter();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -347,7 +370,6 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
         setText("");
         setOpen(false);
       }
-      if (result.added > 0) router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -375,10 +397,11 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
             disabled={submitting}
             action={
               <Button
+                type="submit"
+                form={formId}
                 variant="primary"
                 loading={submitting}
                 disabled={count === 0}
-                onClick={submit}
               >
                 {count > 1 ? `Add ${count} items` : "Add"}
               </Button>
@@ -386,7 +409,15 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
           />
         }
       >
-        <div className="stack">
+        <form
+          id={formId}
+          className="stack"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
           {error && (
             <Banner tone="danger" role="alert">
               {error}
@@ -413,7 +444,7 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
               ? "Nothing pasted yet."
               : `${count} ${count === 1 ? "line" : "lines"} to add.`}
           </Text>
-        </div>
+        </form>
       </ResponsiveDialog>
     </>
   );
