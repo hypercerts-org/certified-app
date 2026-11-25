@@ -102,6 +102,7 @@ export async function listMemberships(session: OAuthSession): Promise<Membership
 // read it: canEdit asks CGS, and CGS checks the role again on every write. A
 // change made elsewhere shows within five minutes; signing out clears it.
 const membershipCache = jsonStore<Membership[]>("cgs:memberships:", 5 * 60);
+const groupMembersCache = jsonStore<GroupMember[]>("cgs:group-members:", 5 * 60);
 
 /**
  * The memberships cached for `did`, without asking CGS (no OAuth session
@@ -201,6 +202,33 @@ export async function listGroupMembers(
     cursor = result.cursor;
   }
   return members;
+}
+
+/** Cached member list for `groupDid` (without asking CGS), or undefined on miss. */
+export async function readCachedGroupMembers(groupDid: string): Promise<GroupMember[] | undefined> {
+  return groupMembersCache.get(groupDid);
+}
+
+/** A group's member list for display: cached in Valkey for five minutes. */
+export async function listGroupMembersForDisplay(
+  session: OAuthSession,
+  groupDid: l.DidString,
+): Promise<GroupMember[]> {
+  const cached = await groupMembersCache.get(groupDid).catch((err) => {
+    logError("[cgs] group members cache read failed", err, { groupDid });
+    return undefined;
+  });
+  if (cached) return cached;
+  const members = await listGroupMembers(session, groupDid);
+  await groupMembersCache
+    .set(groupDid, members)
+    .catch((err) => logError("[cgs] group members cache write failed", err, { groupDid }));
+  return members;
+}
+
+/** Drops the cached member list for `groupDid` after a membership change. */
+export async function forgetGroupMembers(groupDid: string): Promise<void> {
+  await groupMembersCache.del(groupDid);
 }
 
 /** Adds `memberDid` to group `groupDid` with `role` (requires admin or owner). */

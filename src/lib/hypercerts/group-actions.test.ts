@@ -7,6 +7,7 @@ const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
   registerGroup: vi.fn(),
   forgetMemberships: vi.fn(),
+  forgetGroupMembers: vi.fn(),
   addGroupMember: vi.fn(),
   removeGroupMember: vi.fn(),
   setGroupMemberRole: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@/lib/cgs", async (importOriginal) => {
     ...actual,
     registerGroup: (...args: unknown[]) => mocks.registerGroup(...args),
     forgetMemberships: (...args: unknown[]) => mocks.forgetMemberships(...args),
+    forgetGroupMembers: (...args: unknown[]) => mocks.forgetGroupMembers(...args),
     addGroupMember: (...args: unknown[]) => mocks.addGroupMember(...args),
     removeGroupMember: (...args: unknown[]) => mocks.removeGroupMember(...args),
     setGroupMemberRole: (...args: unknown[]) => mocks.setGroupMemberRole(...args),
@@ -53,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
   mocks.forgetMemberships.mockResolvedValue(undefined);
+  mocks.forgetGroupMembers.mockResolvedValue(undefined);
   mocks.registerGroup.mockResolvedValue({
     groupDid: ORG,
     handle: "forest-co.certified.one",

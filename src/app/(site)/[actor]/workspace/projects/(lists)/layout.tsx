@@ -14,12 +14,12 @@ import { getWork } from "@/lib/hypercerts/queries";
 
 const LABELS = ["Projects", "Activities"];
 
-function tabs(base: string, counts?: number[]) {
+function tabs(base: string, counts?: (string | undefined)[]) {
   const paths = ["", "/activities"];
   return LABELS.map((label, i) => ({
     label,
     href: `${base}${paths[i]}`,
-    count: counts && counts[i] > 0 ? String(counts[i]) : undefined,
+    count: counts?.[i],
   }));
 }
 
@@ -36,10 +36,12 @@ async function Tabs({ params }: { params: Promise<{ actor: string }> }) {
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
   const work = await getWork(did);
+  const plus = work.truncated ? "+" : "";
+  const count = (n: number) => (n > 0 ? `${n}${plus}` : undefined);
   return (
     <ProfileTabs
       label="Projects and activities"
-      tabs={tabs(base, [work.projects.length, work.activities.length])}
+      tabs={tabs(base, [count(work.projects.length), count(work.activities.length)])}
     />
   );
 }

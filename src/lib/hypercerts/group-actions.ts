@@ -13,6 +13,7 @@ import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import {
   addGroupMember,
   CgsAuthError,
+  forgetGroupMembers,
   forgetMemberships,
   registerGroup,
   removeGroupMember,
@@ -191,10 +192,16 @@ export async function addMember(
     }
 
     await addGroupMember(session, groupDid, memberDid, input.role);
-    await forgetMemberships(memberDid).catch((err) =>
-      logError("[groups] failed to clear membership cache", err, { memberDid }),
-    );
+    await Promise.all([
+      forgetMemberships(memberDid).catch((err) =>
+        logError("[groups] failed to clear membership cache", err, { memberDid }),
+      ),
+      forgetGroupMembers(groupDid).catch((err) =>
+        logError("[groups] failed to clear group members cache", err, { groupDid }),
+      ),
+    ]);
     updateTag(tags.memberships(memberDid));
+    updateTag(tags.groupMembers(groupDid));
     return { ok: true };
   } catch (err) {
     return {
@@ -225,10 +232,16 @@ export async function removeMember(
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
     await removeGroupMember(session, groupDid as l.DidString, memberDid as l.DidString);
-    await forgetMemberships(memberDid).catch((err) =>
-      logError("[groups] failed to clear membership cache", err, { memberDid }),
-    );
+    await Promise.all([
+      forgetMemberships(memberDid).catch((err) =>
+        logError("[groups] failed to clear membership cache", err, { memberDid }),
+      ),
+      forgetGroupMembers(groupDid).catch((err) =>
+        logError("[groups] failed to clear group members cache", err, { groupDid }),
+      ),
+    ]);
     updateTag(tags.memberships(memberDid));
+    updateTag(tags.groupMembers(groupDid));
     return { ok: true };
   } catch (err) {
     return {
@@ -266,10 +279,16 @@ export async function changeMemberRole(
       input.memberDid as l.DidString,
       input.role,
     );
-    await forgetMemberships(input.memberDid).catch((err) =>
-      logError("[groups] failed to clear membership cache", err, { memberDid: input.memberDid }),
-    );
+    await Promise.all([
+      forgetMemberships(input.memberDid).catch((err) =>
+        logError("[groups] failed to clear membership cache", err, { memberDid: input.memberDid }),
+      ),
+      forgetGroupMembers(groupDid).catch((err) =>
+        logError("[groups] failed to clear group members cache", err, { groupDid }),
+      ),
+    ]);
     updateTag(tags.memberships(input.memberDid));
+    updateTag(tags.groupMembers(groupDid));
     return { ok: true };
   } catch (err) {
     return {

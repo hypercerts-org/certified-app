@@ -10,6 +10,8 @@ export const tags = {
   explore: () => "explore",
   /** Per-user CGS memberships cached privately for display. */
   memberships: (did: string) => `memberships:${did}`,
+  /** Per-group CGS member list cached privately for display. */
+  groupMembers: (did: string) => `group-members:${did}`,
   endorsements: (did: string) => `endorsements:${did}`,
   badges: (did: string) => `badges:${did}`,
   badge: (uri: string) => `badge:${uri}`,

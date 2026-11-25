@@ -4,9 +4,11 @@ import {
   addGroupMember,
   CgsAuthError,
   canEdit,
+  forgetGroupMembers,
   forgetMemberships,
   isMember,
   listGroupMembers,
+  listGroupMembersForDisplay,
   listMemberships,
   listMembershipsForDisplay,
   registerGroup,
@@ -222,6 +224,24 @@ describe("CGS calls", () => {
         "app.certified.group.role.set",
         "app.certified.group.member.remove",
       ]);
+    });
+
+    it("caches group members for display and refreshes after forgetGroupMembers", async () => {
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(new Request(input, init));
+        return Response.json({
+          members: [{ did: user, role: "owner", addedAt: "2026-11-01T00:00:00.000Z" }],
+        });
+      });
+
+      const { session, minted } = fakeSession();
+      const first = await listGroupMembersForDisplay(session, org);
+      expect(await listGroupMembersForDisplay(session, org)).toEqual(first);
+      expect(minted).toHaveLength(1);
+
+      await forgetGroupMembers(org);
+      await listGroupMembersForDisplay(session, org);
+      expect(minted).toHaveLength(2);
     });
   });
 });

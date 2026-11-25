@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ProfileRailSkeleton } from "@/components/profile-rail";
 import {
   ProjectHeader,
   ProjectHeaderSkeleton,
@@ -40,7 +41,7 @@ export default function ProjectLayout({
           {children}
         </div>
         <aside className="page-rail" aria-label="About this project">
-          <Suspense fallback={null}>
+          <Suspense fallback={<ProfileRailSkeleton />}>
             <ProjectRail params={params} />
           </Suspense>
         </aside>

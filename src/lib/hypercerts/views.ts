@@ -1192,7 +1192,7 @@ function subjectsOf(value: unknown): string[] {
 }
 
 export function toEvaluation(view: EvaluationRecordView, blobBase: string | null): Evaluation {
-  const record = view.record as unknown as UnknownRecord;
+  const record = asRecord(view.record) ?? {};
   const evaluators = (Array.isArray(record.evaluators) ? record.evaluators : []).flatMap(
     (entry) => {
       const did = asString(asRecord(entry)?.did) ?? asString(entry);
@@ -1215,7 +1215,7 @@ export function toEvaluation(view: EvaluationRecordView, blobBase: string | null
 }
 
 export function toMeasurement(view: MeasurementRecordView): Measurement {
-  const record = view.record as unknown as UnknownRecord;
+  const record = asRecord(view.record) ?? {};
   const from = formatDate(record.startDate);
   const to = formatDate(record.endDate);
   return {
@@ -1244,7 +1244,7 @@ export function toMeasurement(view: MeasurementRecordView): Measurement {
 }
 
 export function toAttachment(view: AttachmentRecordView, blobBase: string | null): Attachment {
-  const record = view.record as unknown as UnknownRecord;
+  const record = asRecord(view.record) ?? {};
   const short = asString(record.shortDescription)?.trim();
   return {
     uri: view.uri,

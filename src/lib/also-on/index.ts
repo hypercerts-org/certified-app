@@ -85,16 +85,22 @@ async function gainforestPages(): Promise<{ projects: string[]; accounts: string
     return response.text();
   };
   const index = await read(`${GAINFOREST}/sitemap.xml`);
-  const maps = [...index.matchAll(/<loc>([^<]+\/(?:projects|organizations)-\d+\.xml)<\/loc>/g)].map(
-    (m) => m[1],
-  );
+  const maps = [...index.matchAll(/<loc>([^<]+\/(?:projects|organizations)-\d+\.xml)<\/loc>/g)]
+    .map((m) => m[1])
+    .filter((url) => url.startsWith(`${GAINFOREST}/`));
   const projects = new Set<string>();
   const accounts = new Set<string>();
   for (const xml of await Promise.all(maps.map(read))) {
     for (const [, path] of xml.matchAll(
       /<loc>https:\/\/www\.gainforest\.app\/en\/([^<]+)<\/loc>/g,
     )) {
-      const [kind, ...rest] = decodeURIComponent(path).split("/");
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(path);
+      } catch {
+        continue;
+      }
+      const [kind, ...rest] = decoded.split("/");
       if (kind === "projects" && rest.length === 2) projects.add(rest.join("/"));
       if (kind === "account" && rest.length === 1) accounts.add(rest[0]);
     }

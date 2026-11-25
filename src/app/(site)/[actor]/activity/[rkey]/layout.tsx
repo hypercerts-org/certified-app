@@ -8,6 +8,7 @@ import {
   ActivityTabsSkeleton,
   activityFrom,
 } from "@/components/activity-page";
+import { ProfileRailSkeleton } from "@/components/profile-rail";
 
 // An activity: its header across the top, then (as on a project) the tabs
 // and the open tab on the left, and the side column on the right.
@@ -36,7 +37,7 @@ export default function ActivityLayout({
           {children}
         </div>
         <aside className="page-rail" aria-label="About this activity">
-          <Suspense fallback={null}>
+          <Suspense fallback={<ProfileRailSkeleton />}>
             <ActivityRail params={params} />
           </Suspense>
         </aside>

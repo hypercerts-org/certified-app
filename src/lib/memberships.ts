@@ -1,13 +1,17 @@
 import { unstable_rethrow } from "next/navigation";
 import "server-only";
 
+import type { l } from "@atproto/lex";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import {
+  type GroupMember,
+  listGroupMembersForDisplay,
   listMembershipsForDisplay,
   type Membership,
   manages,
+  readCachedGroupMembers,
   readCachedMemberships,
 } from "@/lib/cgs";
 import { tags } from "@/lib/hypercerts/cache";
@@ -23,7 +27,13 @@ import { logError } from "@/lib/log";
 // a page that depends on them prefetch it. Only when Valkey has none does a
 // request restore the OAuth session and ask CGS, which fills Valkey again.
 
-const NOT_CACHED = "memberships not cached";
+/** Thrown inside `"use cache: private"` helpers so cache misses aren't cached. */
+class CacheMissError extends Error {
+  constructor(what: string) {
+    super(`${what} not cached`);
+    this.name = "CacheMissError";
+  }
+}
 
 /** Five minutes, as in Valkey; at least five minutes keeps it in the prefetched shell. */
 async function rememberedMemberships(did: string): Promise<Membership[]> {
@@ -32,7 +42,7 @@ async function rememberedMemberships(did: string): Promise<Membership[]> {
   cacheTag(tags.memberships(did));
   const memberships = await readCachedMemberships(did);
   // Thrown, not returned, so the miss isn't remembered: errors aren't cached.
-  if (!memberships) throw new Error(NOT_CACHED);
+  if (!memberships) throw new CacheMissError("memberships");
   return memberships;
 }
 
@@ -50,14 +60,46 @@ export const getMemberships = cache(async (): Promise<Membership[] | "expired" |
     return await rememberedMemberships(user.did);
   } catch (err) {
     unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
-    if (!(err instanceof Error && err.message === NOT_CACHED))
-      logError("[memberships] cache read failed", err);
+    if (!(err instanceof CacheMissError)) logError("[memberships] cache read failed", err);
   }
   const session = await readOAuthSession();
   if (session === null) return null;
   if (session === "expired") return "expired";
   return listMembershipsForDisplay(session);
 });
+
+async function rememberedGroupMembers(groupDid: string): Promise<GroupMember[]> {
+  "use cache: private";
+  cacheLife({ stale: 300, revalidate: 300, expire: 300 });
+  cacheTag(tags.groupMembers(groupDid));
+  const members = await readCachedGroupMembers(groupDid);
+  if (!members) throw new CacheMissError("group members");
+  return members;
+}
+
+/**
+ * A group's member list for display on its Workspace Overview (up to five
+ * minutes old, invalidated on add/remove/role changes). Reads Valkey without
+ * restoring OAuth on cache hits so workspace prefetches stay cheap.
+ */
+export const getGroupMembers = cache(
+  async (groupDid: l.DidString): Promise<GroupMember[] | "expired" | null> => {
+    const user = await getUser();
+    if (!user) return null;
+    try {
+      return await rememberedGroupMembers(groupDid);
+    } catch (err) {
+      unstable_rethrow(err);
+      if (!(err instanceof CacheMissError)) {
+        logError("[memberships] group members cache read failed", err, { groupDid });
+      }
+    }
+    const session = await readOAuthSession();
+    if (session === null) return null;
+    if (session === "expired") return "expired";
+    return listGroupMembersForDisplay(session, groupDid);
+  },
+);
 
 /**
  * Whether the signed-in user may edit account `did`'s profile and records,

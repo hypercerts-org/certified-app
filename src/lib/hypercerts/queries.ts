@@ -601,15 +601,12 @@ export async function getWork(did: string): Promise<Work> {
   const foreign = [...new Set(projects.items.flatMap((project) => project.activityUris))].filter(
     (uri) => !own.has(uri) && didOf(uri) !== did,
   );
-  const others: ActivityCard[] = [];
-  for (const batch of chunks(foreign)) {
-    const page = await api.call(
-      org.hypercerts.claim.listActivities,
-      { uris: batch as AtUri[], limit: 100 },
-      read(),
-    );
-    others.push(...page.activities.map(toActivityCard));
-  }
+  const pages = await Promise.all(
+    chunks(foreign).map((batch) =>
+      api.call(org.hypercerts.claim.listActivities, { uris: batch as AtUri[], limit: 100 }, read()),
+    ),
+  );
+  const others = pages.flatMap((page) => page.activities.map(toActivityCard));
 
   return {
     projects: projects.items,
@@ -1762,7 +1759,8 @@ export async function getActivity(uri: string): Promise<ActivityDetail | null> {
 /** The address files are served from on an account's server, or null if it can't be found. */
 async function blobBase(did: string): Promise<string | null> {
   try {
-    return new URL("/xrpc/com.atproto.sync.getBlob", await getPdsUrl(did)).href;
+    const url = new URL("/xrpc/com.atproto.sync.getBlob", await getPdsUrl(did));
+    return url.protocol === "https:" ? url.href : null;
   } catch (err) {
     unstable_rethrow(err);
     return null;

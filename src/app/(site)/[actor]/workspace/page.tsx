@@ -12,11 +12,10 @@ import {
   WorkspaceOverview,
 } from "@/components/workspace-overview";
 import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
-import { readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
-import { listGroupMembers } from "@/lib/cgs";
+import { getUser, SessionUnavailableError } from "@/lib/auth/dal";
 import { getActorCards } from "@/lib/hypercerts/queries";
 import { logError } from "@/lib/log";
-import { getMemberships } from "@/lib/memberships";
+import { getGroupMembers, getMemberships } from "@/lib/memberships";
 import { toOrganizations } from "@/lib/organizations";
 
 export const metadata: Metadata = { title: "Workspace", robots: { index: false } };
@@ -50,19 +49,20 @@ async function YourOrganizations() {
   );
 }
 
-/** An organization's members from CGS, with admin/owner management controls. */
+/** An organization's members from CGS (cached per session/Valkey), with admin/owner controls. */
 async function GroupMembers({ did }: { did: string }) {
   try {
-    const session = await readOAuthSession();
-    if (!session) return null;
-    if (session === "expired") {
+    const user = await getUser();
+    if (!user) return null;
+    const raw = await getGroupMembers(did as l.DidString);
+    if (!raw) return null;
+    if (raw === "expired") {
       return <GroupMembersSection groupDid={did} members="expired" viewerRole={null} />;
     }
-    const raw = await listGroupMembers(session, did as l.DidString);
     const cards = new Map(
       (await getActorCards(raw.map((member) => member.did))).map((card) => [card.did, card]),
     );
-    const viewerRole = raw.find((member) => member.did === session.did)?.role ?? null;
+    const viewerRole = raw.find((member) => member.did === user.did)?.role ?? null;
     const members: GroupMemberView[] = raw
       .map((member) => ({
         actor: cards.get(member.did) ?? {
