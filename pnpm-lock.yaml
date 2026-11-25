@@ -190,6 +190,9 @@ importers:
       '@hypercerts-org/api':
         specifier: 0.4.0
         version: 0.4.0(@atproto/lex@0.4.4)(@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.4))
+      '@hypercerts-org/certified-group-service':
+        specifier: 0.1.0
+        version: 0.1.0(@atproto/lex@0.4.4)
       '@hypercerts-org/lexicon':
         specifier: 2.0.1
         version: 2.0.1(@atproto/lex@0.4.4)
@@ -577,6 +580,12 @@ packages:
     peerDependencies:
       '@atproto/lex': ^0.4.2
       '@hypercerts-org/lexicon': ^2.0.0
+
+  '@hypercerts-org/certified-group-service@0.1.0':
+    resolution: {integrity: sha512-5H7e7qwwIl5cKoLoYAsSJnvcntTDNUi66+dt6fTOL/AU3kMV2SHJh4AV/+GGYN+e/JFh3ha7HDmixm+jvrdROQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@atproto/lex': ^0.4.2
 
   '@hypercerts-org/lexicon@2.0.1':
     resolution: {integrity: sha512-o0k1eNzc3Eta4FGYN6+8xngSu82yig8sYAT3QBqRtBO4wIQPfqkAWteAZDnz9hHtowj8wG5uZ4kvGvWhnjRiVw==}
@@ -2422,6 +2431,10 @@ snapshots:
     dependencies:
       '@atproto/lex': 0.4.4
       '@hypercerts-org/lexicon': 2.0.1(@atproto/lex@0.4.4)
+
+  '@hypercerts-org/certified-group-service@0.1.0(@atproto/lex@0.4.4)':
+    dependencies:
+      '@atproto/lex': 0.4.4
 
   '@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.4)':
     dependencies:

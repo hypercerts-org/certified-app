@@ -8,7 +8,8 @@ import "server-only";
 
 import { Client, type l, XrpcError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
-import { app, com } from "@/lexicons";
+import { app } from "@hypercerts-org/certified-group-service";
+import { com } from "@/lexicons";
 import { jsonStore } from "@/lib/auth/stores";
 import { logError } from "@/lib/log";
 

@@ -15,7 +15,7 @@ import {
 import { cidForLex } from "@atproto/lex-cbor";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@hypercerts-org/lexicon";
-import { app as cgsLexicons } from "@/lexicons";
+import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
