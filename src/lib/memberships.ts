@@ -58,12 +58,13 @@ export const getMemberships = cache(async (): Promise<Membership[] | "expired" |
 });
 
 /**
- * Whether the signed-in user may edit `did`'s profile, for showing "Edit
- * profile": their own, or an organization where they're an admin or owner.
- * Acting as an organization doesn't by itself make a member an editor. The
- * edit itself is checked again on CGS (canEdit).
+ * Whether the signed-in user may edit account `did`'s profile and records,
+ * for showing "Edit profile" and a record's menu: their own, or an
+ * organization where they're an admin or owner. Acting as an organization
+ * doesn't by itself make a member an editor. An edit itself is checked again
+ * on CGS (canEdit).
  */
-export const mayEditProfile = cache(async (did: string): Promise<boolean> => {
+export const mayEditAccount = cache(async (did: string): Promise<boolean> => {
   const user = await getUser();
   if (!user) return false;
   if (user.did === did) return true;

@@ -4099,3 +4099,33 @@ button[aria-pressed="true"] {
 input[type="search"]::-webkit-search-cancel-button {
   appearance: none;
 }
+
+/* A record page's actions beside its title: Follow, and for whoever may
+   change it the three-dot menu (record-menu). */
+.record-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* An activity's title block and its actions, side by side above the picture. */
+.activity-head-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-8);
+}
+
+.activity-head-top > .stack {
+  flex: 1 1 32rem;
+  min-inline-size: 0;
+}
+
+/* A stored value an edit form keeps as it is (record-form, KeptField). */
+.record-form-kept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

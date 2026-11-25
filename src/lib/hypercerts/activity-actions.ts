@@ -23,6 +23,8 @@ import { mayPublish } from "@/lib/hypercerts/publish-access";
 import { activityIndexed } from "@/lib/hypercerts/queries";
 import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
 import { getDid } from "@/lib/identity";
+import { type ImageChoice, imageProblem, isImageChoice } from "@/lib/image-choice";
+import { type LocationChoice, locationProblem, newLocationRecord } from "@/lib/location-choice";
 import { isDid } from "@/lib/validate";
 
 export type ContributorDraft = { identity: string; role: string; share: string };
@@ -36,8 +38,10 @@ export type ActivityDraft = {
   endDate: string;
   workScope: string;
   contributors: ContributorDraft[];
-  /** A File in the browser; it may reach the server as a plain Blob. */
-  image: Blob | null;
+  /** A new picture, the current one kept (editing), or none. */
+  image: ImageChoice;
+  /** Where the work happened: one of the account's places, or a new one; or none. */
+  location: LocationChoice | null;
 };
 
 /** `fields`: messages for the fields at fault, by the form's field names. */
@@ -67,7 +71,7 @@ const fail = (reason: keyof typeof MESSAGES, fields?: Record<string, string>) =>
 const isText = (value: unknown): value is string => typeof value === "string";
 
 /** What is wrong with the draft, by field, before anything is written. */
-function problems(draft: ActivityDraft): Record<string, string> {
+function problems(repo: string, draft: ActivityDraft): Record<string, string> {
   const fields: Record<string, string> = {};
   const add = (name: string, message: string | undefined) => {
     if (message && !fields[name]) fields[name] = message;
@@ -97,12 +101,8 @@ function problems(draft: ActivityDraft): Record<string, string> {
       share && !isShare(share) ? "Use a number above 0." : check.share({ value: share }),
     );
   });
-  if (draft.image) {
-    if (image.accept.length > 0 && !image.accept.includes(draft.image.type))
-      add("image", "Use a JPEG, PNG or WebP image.");
-    else if (image.maxSize !== null && draft.image.size > image.maxSize)
-      add("image", "The image is too large.");
-  }
+  add("location", locationProblem(draft.location, repo));
+  add("image", imageProblem(draft.image, image));
   return fields;
 }
 
@@ -116,7 +116,8 @@ function wellFormed(draft: unknown): draft is ActivityDraft {
     Array.isArray(d.contributors) &&
     d.contributors.length <= 100 &&
     d.contributors.every((c) => c && isText(c.identity) && isText(c.role) && isText(c.share)) &&
-    (d.image === null || d.image instanceof Blob) &&
+    isImageChoice(d.image) &&
+    (d.location === null || typeof d.location === "object") &&
     [d.startDate, d.endDate].every((date) => date === "" || /^\d{4}-\d{2}-\d{2}$/.test(date))
   );
 }
@@ -137,7 +138,7 @@ export async function publishActivity(
   draft: ActivityDraft,
 ): Promise<PublishActivityResult> {
   if (!isText(repo) || !isDid(repo) || !wellFormed(draft)) return fail("invalid");
-  const fields = problems(draft);
+  const fields = problems(repo, draft);
   if (Object.keys(fields).length > 0) return fail("invalid", fields);
 
   try {
@@ -145,23 +146,14 @@ export async function publishActivity(
     if (!session) return fail("signed-out");
     if (!(await mayPublish(session.did, repo))) return fail("forbidden");
 
-    const contributors = [];
-    for (const [i, row] of draft.contributors.entries()) {
-      const identity = await identityOf(row.identity.trim());
-      if (!identity) {
-        return fail("invalid", { [`contributors[${i}].identity`]: "No account has this handle." });
-      }
-      const role = row.role.trim();
-      const share = row.share.trim();
-      contributors.push({
-        identity: { inline: identity },
-        ...(role && { details: { inline: role } }),
-        ...(share && { weight: share }),
-      });
-    }
+    const rows = await contributorRows(draft);
+    if (!rows.ok) return fail("invalid", rows.fields);
+    const contributors = rows.rows.map(({ identity, role, share }) => ({
+      identity: { inline: identity },
+      ...(role && { details: { inline: role } }),
+      ...(share && { weight: share }),
+    }));
 
-    const text = (value: string) => value.trim() || undefined;
-    const date = (value: string) => (value ? `${value}T00:00:00Z` : undefined);
     const created = await createActivity(
       sdkContext(session),
       {
@@ -171,8 +163,15 @@ export async function publishActivity(
         workScope: text(draft.workScope),
         startDate: date(draft.startDate),
         endDate: date(draft.endDate),
-        image: draft.image ?? undefined,
+        image: draft.image instanceof Blob ? draft.image : undefined,
         contributors: contributors.length > 0 ? contributors : undefined,
+        locations: !draft.location
+          ? undefined
+          : [
+              draft.location.kind === "saved"
+                ? { uri: draft.location.uri }
+                : newLocationRecord(draft.location),
+            ],
       },
       writeTo(session, repo),
     );
@@ -182,8 +181,28 @@ export async function publishActivity(
     updateTag(tags.activities(repo));
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
+    if (draft.location?.kind === "new") updateTag(tags.locations(repo));
     return { ok: true, href: activityHref(created.uri), indexed };
   } catch (err) {
     return fail(writeFailure(err, "publish activity"));
   }
+}
+
+const text = (value: string) => value.trim() || undefined;
+const date = (value: string) => (value ? `${value}T00:00:00Z` : undefined);
+
+/** The contributor rows as stored (DIDs resolved from handles), or the rows at fault. */
+async function contributorRows(draft: ActivityDraft) {
+  const rows = [];
+  for (const [i, row] of draft.contributors.entries()) {
+    const identity = await identityOf(row.identity.trim());
+    if (!identity) {
+      return {
+        ok: false as const,
+        fields: { [`contributors[${i}].identity`]: "No account has this handle." },
+      };
+    }
+    rows.push({ identity, role: row.role.trim(), share: row.share.trim() });
+  }
+  return { ok: true as const, rows };
 }

@@ -7,10 +7,12 @@
 
 import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { ActorLink, ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { RecordActions } from "@/components/record-actions";
 import { PartOf } from "@/components/record-context";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { TileSlot } from "@/components/tile-slot";
@@ -89,25 +91,32 @@ export async function ActivityRail({ params }: { params: ActivityParams }) {
 
 /** Title, by whom, when and in what scope; its picture beside, as a blog post's hero. */
 export async function ActivityHeader({ params }: { params: ActivityParams }) {
-  const { activity } = await activityFrom(params);
+  const { activity, uri } = await activityFrom(params);
   // When, then the work scope, as Explore's rows say them.
   const meta = [activity.period ?? activity.createdAt, activity.scope].filter(Boolean).join(" · ");
   return (
     <header className="activity-head">
-      <div className="stack">
-        <Eyebrow>Activity</Eyebrow>
-        <PageTitle>
-          <span dir="auto">{activity.title}</span>
-        </PageTitle>
-        <div className="project-meta">
-          <Text as="span" size="body-sm">
-            <ActorLink actor={activity.author} />
-          </Text>
-          {meta && (
-            <Text as="span" size="body-sm" tone="muted">
-              {meta}
+      <div className="activity-head-top">
+        <div className="stack">
+          <Eyebrow>Activity</Eyebrow>
+          <PageTitle>
+            <span dir="auto">{activity.title}</span>
+          </PageTitle>
+          <div className="project-meta">
+            <Text as="span" size="body-sm">
+              <ActorLink actor={activity.author} />
             </Text>
-          )}
+            {meta && (
+              <Text as="span" size="body-sm" tone="muted">
+                {meta}
+              </Text>
+            )}
+          </div>
+        </div>
+        <div className="record-head-actions">
+          <Suspense fallback={null}>
+            <RecordActions uri={uri} title={activity.title} />
+          </Suspense>
         </div>
       </div>
       {activity.imageUrl && (

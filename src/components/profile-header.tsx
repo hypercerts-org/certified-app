@@ -18,7 +18,7 @@ import { getActingAs } from "@/lib/acting-as";
 import { getAlsoOn } from "@/lib/also-on";
 import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
-import { mayEditProfile } from "@/lib/memberships";
+import { mayEditAccount } from "@/lib/memberships";
 
 /** One of the header's links: Bluesky as its icon, an email as itself, the rest by label. */
 function ProfileLink({ link }: { link: AccountLink }) {
@@ -241,7 +241,7 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
     // Acting as an organization, only its admins and owners may edit it.
     return (
       <OwnerActions
-        editHref={(await mayEditProfile(actor.did)) ? `${actorHref(actor.did)}/edit` : null}
+        editHref={(await mayEditAccount(actor.did)) ? `${actorHref(actor.did)}/edit` : null}
         path={base}
         title={nameOf(actor)}
       />

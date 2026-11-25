@@ -1,6 +1,6 @@
 "use client";
 
-// What the forms that publish a record share (New activity, New project), on
+// What the forms that publish or edit a record share (activities, projects), on
 // TanStack Form's composition API: field components that show a field's label,
 // hint and error (once the field has been left, or after Publish, then as you
 // type), and the publish flow: Cancel and Publish, a summary of what to fix,
@@ -21,6 +21,7 @@ import {
   fromISODate,
   Input,
   Skeleton,
+  Text,
   Textarea,
   toISODate,
 } from "@hypercerts-org/ui-react";
@@ -33,6 +34,8 @@ import {
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ComingSoonButton } from "@/components/coming-soon";
+import { type ImageChoice, isKept } from "@/lib/image-choice";
 
 const { fieldContext, useFieldContext, formContext, useFormContext } = createFormHookContexts();
 
@@ -100,7 +103,7 @@ function TextField({
   );
 }
 
-/** An image: a drop zone, or the chosen picture with Remove. */
+/** An image: a drop zone, or the chosen (or, editing, current) picture with Remove. */
 function ImageField({
   label,
   limits,
@@ -108,13 +111,15 @@ function ImageField({
   label: string;
   limits: { accept: string[]; maxSize: number | null };
 }) {
-  const field = useFieldContext<Blob | null>();
-  const file = field.state.value;
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
-  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
+  const field = useFieldContext<ImageChoice>();
+  const value = field.state.value;
+  const file = value instanceof Blob ? value : null;
+  const local = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => void (local && URL.revokeObjectURL(local)), [local]);
+  const preview = isKept(value) ? value.kept : local;
   const [rejected, setRejected] = useState<string | null>(null);
   const message = useShownError() ?? rejected ?? undefined;
-  const choose = (next: Blob | null) => {
+  const choose = (next: ImageChoice) => {
     setRejected(null);
     field.handleChange(next);
     field.handleBlur();
@@ -126,7 +131,7 @@ function ImageField({
       <span className="record-form-legend">{label}</span>
       {preview ? (
         <div className="record-form-image-preview">
-          {/* biome-ignore lint/performance/noImgElement: a local preview (object URL) */}
+          {/* biome-ignore lint/performance/noImgElement: a local preview (object URL), or the record's own picture */}
           <img src={preview} alt="" />
           <Button
             variant="secondary"
@@ -195,16 +200,20 @@ function DateField({ label }: { label: string }) {
 
 /**
  * The form's foot: what went wrong, if anything, then Cancel and Publish.
- * Cancel asks before a changed draft is discarded, as does closing the tab.
+ * `editing` an existing record, Save stands in its place, disabled until the
+ * Hypercerts SDK can edit records (TECH-956). Cancel asks before changes are
+ * discarded, as does closing the tab.
  */
 function PublishBar({
   label,
   cancelHref,
   failure,
+  editing = false,
 }: {
   label: string;
   cancelHref: string;
   failure: string | null;
+  editing?: boolean;
 }) {
   const form = useFormContext();
   const router = useRouter();
@@ -232,14 +241,24 @@ function PublishBar({
         >
           Cancel
         </Button>
-        <Button type="submit" variant="primary" loading={submitting}>
-          {label}
-        </Button>
+        {editing ? (
+          <ComingSoonButton variant="primary" size="md">
+            {label}
+          </ComingSoonButton>
+        ) : (
+          <Button type="submit" variant="primary" loading={submitting}>
+            {label}
+          </Button>
+        )}
       </div>
       <ConfirmDialog
         open={confirmLeave}
-        title="Discard this draft?"
-        description="It hasn't been published. What you entered will be lost."
+        title={editing ? "Discard your changes?" : "Discard this draft?"}
+        description={
+          editing
+            ? "The published version stays as it is."
+            : "It hasn't been published. What you entered will be lost."
+        }
         confirmLabel="Discard"
         cancelLabel="Keep editing"
         destructive
@@ -261,14 +280,14 @@ const { useAppForm } = createFormHook({
   formComponents: { PublishBar },
 });
 
-/** What publishing returns: where the new record is, or what is wrong (by field name). */
+/** What publishing (or saving) returns: where the record is, or what is wrong (by field name). */
 export type PublishResult =
   | { ok: true; href: string }
   | { ok: false; message: string; fields?: Record<string, string> };
 
 /**
- * A form that publishes a record: `publish` sends the values to the server;
- * on success the browser goes to the new record's page. `labelOf` names a
+ * A form that publishes (or saves) a record: `publish` sends the values to
+ * the server; on success the browser goes to the record's page. `labelOf` names a
  * field (by its form name) in the summary of what to fix; `lost` is the
  * message when the server's answer never arrives.
  */
@@ -320,7 +339,7 @@ export function useRecordForm<T extends object>({
       const names = Object.entries(meta)
         .filter(([, field]) => field && field.errors.length > 0)
         .map(([name]) => labelOf(name));
-      setFailure(`Before publishing, check: ${[...new Set(names)].join(", ")}.`);
+      setFailure(`Check these first: ${[...new Set(names)].join(", ")}.`);
       focusFirstProblem();
     },
   });
@@ -335,6 +354,21 @@ export function useRecordForm<T extends object>({
     },
   };
   return { form, formProps, failure };
+}
+
+/**
+ * A stored value the form can't edit (written by another app in a shape it
+ * doesn't show): its label, and that it stays as it is.
+ */
+export function KeptField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="record-form-kept">
+      <span className="record-form-legend">{label}</span>
+      <Text size="body-sm" tone="muted">
+        {children}
+      </Text>
+    </div>
+  );
 }
 
 /** A record form on its way: its two columns' worth of fields. */

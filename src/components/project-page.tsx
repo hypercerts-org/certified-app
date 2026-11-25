@@ -12,6 +12,7 @@ import { AlsoOn } from "@/components/also-on";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { RecordActions } from "@/components/record-actions";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { RichText } from "@/components/rich-text";
 import { TileSlot } from "@/components/tile-slot";
@@ -185,9 +186,14 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
             </ExpandableText>
           )}
         </div>
-        <Suspense fallback={null}>
-          <ProjectFollow uri={uri} author={actor.did} path={base} />
-        </Suspense>
+        <div className="record-head-actions">
+          <Suspense fallback={null}>
+            <ProjectFollow uri={uri} author={actor.did} path={base} />
+          </Suspense>
+          <Suspense fallback={null}>
+            <RecordActions uri={uri} title={project.title} />
+          </Suspense>
+        </div>
       </div>
     </>
   );

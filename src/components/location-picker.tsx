@@ -38,6 +38,7 @@ export function LocationField({
   onChange,
   saved,
   error,
+  note,
 }: {
   label: string;
   value: LocationChoice | null;
@@ -45,6 +46,8 @@ export function LocationField({
   /** The account's published places, for "My locations". */
   saved: SavedPlace[];
   error?: string;
+  /** A line under it, such as what else is kept. */
+  note?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -72,6 +75,11 @@ export function LocationField({
           <MapPin size={16} aria-hidden />
           Add location
         </Button>
+      )}
+      {note && (
+        <Text size="body-sm" tone="muted">
+          {note}
+        </Text>
       )}
       {error && <ErrorMessage live>{error}</ErrorMessage>}
       {open && (

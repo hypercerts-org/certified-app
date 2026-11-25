@@ -1,20 +1,22 @@
 "use client";
 
-// The new-project form. A project groups activities, like a folder; it is an
-// org.hypercerts.collection of type "project". Its fields are validated with
-// their schemas from the lexicon and the rules shared with the server
-// (lib/project-rules, lib/form-rules), on the fields and publish flow New
-// activity uses (record-form). Without activities chosen, the project starts
-// with one activity made from it (the SDK's rule), so its short description
-// is then required.
+// The project form, for a new project or (`editing`) an existing one. A
+// project groups activities, like a folder; it is an org.hypercerts.collection
+// of type "project". Its fields are validated with their schemas from the
+// lexicon and the rules shared with the server (lib/project-rules,
+// lib/form-rules), on the fields and publish flow the activity form uses
+// (record-form). A new project without activities chosen starts with one
+// activity made from it (the SDK's rule), so its short description is then
+// required.
 
 import { Checkbox, ErrorMessage, Heading, SearchInput, Text } from "@hypercerts-org/ui-react";
 import { useState } from "react";
 import { LocationField } from "@/components/location-picker";
-import { useRecordForm } from "@/components/record-form";
+import { KeptField, useRecordForm } from "@/components/record-form";
 import { TITLE_MIN, titleProblem } from "@/lib/form-rules";
 import { type ProjectDraft, publishProject } from "@/lib/hypercerts/project-actions";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
+import { imageProblem } from "@/lib/image-choice";
 import { textLimit } from "@/lib/lexicon-fields";
 import { locationProblem } from "@/lib/location-choice";
 import {
@@ -46,6 +48,15 @@ const LABELS: Record<string, string> = {
 };
 const labelOf = (name: string) => LABELS[name] ?? name;
 
+/** An existing project to edit: its record, the version read, and its values. */
+export type ProjectEditing = {
+  uri: string;
+  cid: string;
+  initial: ProjectDraft;
+  /** The description is in another app's format, kept as stored. */
+  keptDescription: boolean;
+};
+
 /** One of the account's activities, as the picker lists it. */
 export type ActivityChoice = { uri: string; title: string; meta: string };
 
@@ -54,27 +65,35 @@ const SEARCH_FROM = 8;
 
 /**
  * A new project for account `repo` (the workspace's): the user's own, or an
- * organization's. `activities` are the account's own, to choose from;
- * `cancelHref` is where Cancel leads.
+ * organization's; or, with `editing`, one of its projects. `activities` are
+ * the account's own, to choose from; `cancelHref` is where Cancel leads.
  */
 export function ProjectForm({
   repo,
   activities,
   places,
   cancelHref,
+  editing,
 }: {
   repo: string;
   activities: ActivityChoice[];
   /** The account's published places, to pick again. */
   places: SavedPlace[];
   cancelHref: string;
+  editing?: ProjectEditing;
 }) {
   const { form, formProps, failure } = useRecordForm({
-    defaultValues: EMPTY,
-    publish: (values) => publishProject(repo, values),
+    defaultValues: editing?.initial ?? EMPTY,
+    // Editing can't save yet (its Save is disabled): Enter in a field lands here.
+    publish: (values) =>
+      editing
+        ? Promise.resolve({ ok: false as const, message: "Saving changes is coming soon." })
+        : publishProject(repo, values),
     labelOf,
     lost: "We couldn't confirm whether the project was published. Check your workspace before trying again.",
   });
+  // An existing project gets no default activity: its short description stays optional.
+  const activityCount = (chosen: number) => (editing ? 1 : chosen);
 
   return (
     <form {...formProps} className="record-form">
@@ -102,7 +121,10 @@ export function ProjectForm({
               validators={{
                 onChangeListenTo: ["activities"],
                 onDynamic: ({ value, fieldApi }) =>
-                  shortDescriptionProblem(value, fieldApi.form.getFieldValue("activities").length),
+                  shortDescriptionProblem(
+                    value,
+                    activityCount(fieldApi.form.getFieldValue("activities").length),
+                  ),
               }}
             >
               {(field) => (
@@ -115,20 +137,26 @@ export function ProjectForm({
               )}
             </form.AppField>
 
-            <form.AppField
-              name="description"
-              validators={{
-                onDynamic: ({ value }) => checkProjectField.description({ value: value.trim() }),
-              }}
-            >
-              {(field) => (
-                <field.TextField
-                  label="Description (optional)"
-                  description="Its goals, who is involved, where it stands."
-                  rows={10}
-                />
-              )}
-            </form.AppField>
+            {editing?.keptDescription ? (
+              <KeptField label="Description">
+                Written in another app's format, so it can't be changed here. It stays as it is.
+              </KeptField>
+            ) : (
+              <form.AppField
+                name="description"
+                validators={{
+                  onDynamic: ({ value }) => checkProjectField.description({ value: value.trim() }),
+                }}
+              >
+                {(field) => (
+                  <field.TextField
+                    label="Description (optional)"
+                    description="Its goals, who is involved, where it stands."
+                    rows={10}
+                  />
+                )}
+              </form.AppField>
+            )}
 
             <form.AppField name="activities">
               {(field) => (
@@ -137,6 +165,7 @@ export function ProjectForm({
                   chosen={field.state.value}
                   onChange={(next) => field.handleChange(next)}
                   error={field.state.meta.errors.find(Boolean) as string | undefined}
+                  editing={Boolean(editing)}
                 />
               )}
             </form.AppField>
@@ -145,18 +174,7 @@ export function ProjectForm({
           <aside className="record-form-details" aria-label="Details">
             <form.AppField
               name="banner"
-              validators={{
-                onDynamic: ({ value }) => {
-                  if (!value) return undefined;
-                  if (bannerLimits.accept.length > 0 && !bannerLimits.accept.includes(value.type)) {
-                    return "Use a JPEG, PNG or WebP image.";
-                  }
-                  if (bannerLimits.maxSize !== null && value.size > bannerLimits.maxSize) {
-                    return "The image is too large.";
-                  }
-                  return undefined;
-                },
-              }}
+              validators={{ onDynamic: ({ value }) => imageProblem(value, bannerLimits) }}
             >
               {(field) => <field.ImageField label="Banner (optional)" limits={bannerLimits} />}
             </form.AppField>
@@ -178,7 +196,12 @@ export function ProjectForm({
           </aside>
         </div>
 
-        <form.PublishBar label="Publish project" cancelHref={cancelHref} failure={failure} />
+        <form.PublishBar
+          label={editing ? "Save changes" : "Publish project"}
+          cancelHref={cancelHref}
+          failure={failure}
+          editing={Boolean(editing)}
+        />
       </form.AppForm>
     </form>
   );
@@ -186,18 +209,21 @@ export function ProjectForm({
 
 /**
  * The account's activities to put in the project, as checkboxes; with many,
- * a search narrows them. With none chosen, the project gets one made from it.
+ * a search narrows them. With none chosen, a new project gets one made from
+ * it (`editing`: an existing one simply holds none).
  */
 function ActivityPicker({
   choices,
   chosen,
   onChange,
   error,
+  editing,
 }: {
   choices: ActivityChoice[];
   chosen: string[];
   onChange: (next: string[]) => void;
   error: string | undefined;
+  editing: boolean;
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -213,9 +239,11 @@ function ActivityPicker({
           {chosen.length > 0 && <span className="profile-section-count"> {chosen.length}</span>}
         </Heading>
         <Text tone="muted">
-          {choices.length > 0
-            ? "The work the project holds. Choose none, and it starts with one activity made from the project."
-            : "The project starts with one activity made from it. Add more later."}
+          {editing
+            ? "The work the project holds."
+            : choices.length > 0
+              ? "The work the project holds. Choose none, and it starts with one activity made from the project."
+              : "The project starts with one activity made from it. Add more later."}
         </Text>
       </div>
       {choices.length > SEARCH_FROM && (
