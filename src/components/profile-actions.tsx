@@ -2,8 +2,8 @@
 
 // The profile header's actions and tabs: the client-side pieces.
 //
-// Endorse and Add to list are placeholders until the Hypercerts SDK ships
-// those writes: shown, so the page has its final shape, but disabled.
+// Add to list is a placeholder until the Hypercerts SDK ships list writes:
+// shown, so the page has its final shape, but disabled.
 
 import {
   Button,
@@ -18,10 +18,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { COMING_SOON, ComingSoonButton } from "@/components/coming-soon";
+import { COMING_SOON } from "@/components/coming-soon";
 import { LinkPending } from "@/components/link-pending";
+import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import * as followActions from "@/lib/hypercerts/follow-actions";
-import type { FollowRef } from "@/lib/hypercerts/views";
+import type { EndorsementRef, FollowRef } from "@/lib/hypercerts/views";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
 async function copy(text: string, what: string) {
@@ -59,8 +60,14 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
 }
 
 /** The action's answer was lost: the change may or may not have been made. */
-const lost = (action: "follow" | "unfollow") =>
-  ({ ok: false, message: `We couldn't confirm the ${action}. Reload to check.` }) as const;
+const lost = (action: "follow" | "unfollow" | "endorse" | "unendorse") =>
+  ({
+    ok: false,
+    message:
+      action === "unendorse"
+        ? "We couldn't confirm revoking the endorsement. Reload to check."
+        : `We couldn't confirm the ${action === "endorse" ? "endorsement" : action}. Reload to check.`,
+  }) as const;
 
 /**
  * Follow, or Following (a click unfollows), as the account you act as:
@@ -143,9 +150,92 @@ export function FollowControl({
 }
 
 /**
- * A visitor's actions: Follow (signed out, it leads to signing in), Endorse,
- * Share and More. `actor` is the account the visitor acts as, `follow` its
- * follow of this one, if any.
+ * Endorse, or Endorsed (a click revokes), as the account you act as. Mirrors
+ * FollowButton: optimistic on click, refreshed from the index on return, and
+ * holds what was written if the index is slower than the action's wait.
+ */
+function EndorseButton({
+  subject,
+  rendered,
+}: {
+  subject: string;
+  rendered: EndorsementRef | null;
+}) {
+  const [written, setWritten] = useState<{
+    endorsement: EndorsementRef | null;
+    over: EndorsementRef | null;
+  } | null>(null);
+  // Kept only while the page still shows what it showed when it was written.
+  const current = written && written.over?.uri === rendered?.uri ? written.endorsement : rendered;
+  const [endorsed, setEndorsed] = useOptimistic(current !== null);
+  const [pending, startTransition] = useTransition();
+
+  const toggle = () => {
+    if (pending) return;
+    const next = !endorsed;
+    startTransition(async () => {
+      setEndorsed(next);
+      const result = next
+        ? await endorsementActions.endorse(subject).catch(() => lost("endorse"))
+        : await endorsementActions
+            .unendorse({ subject, uris: current ? [current.uri] : [] })
+            .catch(() => lost("unendorse"));
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      if (!result.indexed) {
+        startTransition(() => setWritten({ endorsement: result.endorsement, over: rendered }));
+      }
+    });
+  };
+
+  return endorsed ? (
+    <Button variant="secondary" size="sm" pressed onClick={toggle} title="Revoke endorsement">
+      <Check size={16} aria-hidden />
+      Endorsed
+    </Button>
+  ) : (
+    <Button variant="secondary" size="sm" onClick={toggle}>
+      <ThumbsUp size={16} aria-hidden />
+      Endorse
+    </Button>
+  );
+}
+
+/**
+ * Endorse for whoever visits: as `actor`, the account they act as, with its
+ * plain `endorsement` of `subject` if any; signed out (`actor` null), it leads
+ * to signing in and back to `path`.
+ */
+export function EndorseControl({
+  subject,
+  path,
+  actor,
+  endorsement,
+}: {
+  subject: string;
+  path: string;
+  actor: string | null;
+  endorsement: EndorsementRef | null;
+}) {
+  if (actor) return <EndorseButton key={actor} subject={subject} rendered={endorsement} />;
+  return (
+    <Button
+      href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
+      variant="secondary"
+      size="sm"
+    >
+      <ThumbsUp size={16} aria-hidden />
+      Endorse
+    </Button>
+  );
+}
+
+/**
+ * A visitor's actions: Follow and Endorse (signed out, each leads to signing
+ * in), Share and More. `actor` is the account the visitor acts as, `follow`
+ * and `endorsement` its records for this account, if any.
  */
 export function VisitorActions({
   did,
@@ -153,20 +243,19 @@ export function VisitorActions({
   title,
   actor,
   follow,
+  endorsement,
 }: {
   did: string;
   path: string;
   title: string;
   actor: string | null;
   follow: FollowRef | null;
+  endorsement: EndorsementRef | null;
 }) {
   return (
     <>
       <FollowControl subject={did} path={path} actor={actor} follow={follow} />
-      <ComingSoonButton>
-        <ThumbsUp size={16} aria-hidden />
-        Endorse
-      </ComingSoonButton>
+      <EndorseControl subject={did} path={path} actor={actor} endorsement={endorsement} />
       <ShareButton path={path} title={title} />
       <Menu>
         <MenuTrigger asChild>

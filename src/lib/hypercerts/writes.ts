@@ -20,9 +20,17 @@ import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
 import { logError } from "@/lib/log";
-import { type ProfileFields, type ProfileVersion, profileUri } from "./views";
+import {
+  ENDORSEMENT_BADGE_TYPE,
+  PLAIN_ENDORSEMENT,
+  type ProfileFields,
+  type ProfileVersion,
+  profileUri,
+} from "./views";
 
 const profile = app.certified.actor.profile;
+const badgeDefinition = app.certified.badge.definition;
+const badgeAward = app.certified.badge.award;
 
 /**
  * Why a write failed. "unknown": it was sent but no answer came back
@@ -56,6 +64,10 @@ type StoredRecord = { uri: string; cid: string };
 export type Repository = {
   did: l.DidString;
   getRecord(collection: l.NsidString, rkey: string): Promise<{ cid: string; value: LexMap } | null>;
+  listRecords(
+    collection: l.NsidString,
+    options?: { limit?: number; cursor?: string },
+  ): Promise<{ records: { uri: string; cid: string; value: LexMap }[]; cursor?: string }>;
   /**
    * Replaces the record if it is still version `swapRecord`, where the
    * repository can check that (CGS can't yet: its putRecord has no swapRecord).
@@ -63,6 +75,8 @@ export type Repository = {
   putRecord(record: TypedRecord, rkey: string, swapRecord: string): Promise<StoredRecord>;
   /** Creates the record; fails if one exists. */
   createRecord(record: TypedRecord, rkey: string): Promise<StoredRecord>;
+  /** Deletes the record, optionally checking `swapRecord`. */
+  deleteRecord(collection: l.NsidString, rkey: string, swapRecord?: string): Promise<void>;
 };
 
 async function getRecordFrom(
@@ -82,15 +96,29 @@ async function getRecordFrom(
   }
 }
 
+async function listRecordsFrom(
+  client: Client,
+  repo: l.DidString,
+  collection: l.NsidString,
+  options?: { limit?: number; cursor?: string },
+) {
+  const { body } = await client.listRecords(collection, { repo, ...options });
+  return { records: body.records, cursor: body.cursor };
+}
+
 /** The session user's own repository, on their PDS. */
 export function ownRepository(session: OAuthSession): Repository {
   const client = new Client(session);
   return {
     did: session.did,
     getRecord: (collection, rkey) => getRecordFrom(client, session.did, collection, rkey),
+    listRecords: (collection, options) => listRecordsFrom(client, session.did, collection, options),
     putRecord: async (record, rkey, swapRecord) =>
       (await client.putRecord(record, rkey, { swapRecord })).body,
     createRecord: async (record, rkey) => (await client.createRecord(record, rkey)).body,
+    deleteRecord: async (collection, rkey, swapRecord) => {
+      await client.deleteRecord(collection, rkey, swapRecord ? { swapRecord } : undefined);
+    },
   };
 }
 
@@ -107,10 +135,11 @@ export async function organizationRepository(
   const oauthClient = await getOAuthClient();
   const { didDoc } = await oauthClient.identityResolver.resolve(did);
   const pds = new Client({ service: extractPdsUrl(didDoc), fetch: oauthClient.fetch });
-  const { createRecord, putRecord } = cgsLexicons.certified.group.repo;
+  const { createRecord, deleteRecord, putRecord } = cgsLexicons.certified.group.repo;
   return {
     did,
     getRecord: (collection, rkey) => getRecordFrom(pds, did, collection, rkey),
+    listRecords: (collection, options) => listRecordsFrom(pds, did, collection, options),
     // No swapRecord (see Repository): the version is checked when the record
     // is read, just before the write.
     putRecord: async (record, rkey) =>
@@ -125,7 +154,19 @@ export async function organizationRepository(
         { repo: did, collection: record.$type, rkey, record },
         { headers: await cgsAuth(session, createRecord) },
       ),
+    deleteRecord: async (collection, rkey, swapRecord) => {
+      await cgs.call(
+        deleteRecord,
+        { repo: did, collection, rkey, ...(swapRecord && { swapRecord }) },
+        { headers: await cgsAuth(session, deleteRecord) },
+      );
+    },
   };
+}
+
+/** The repository `did`: the user's own, or an organization's through CGS. */
+export async function repositoryFor(session: OAuthSession, did: l.DidString): Promise<Repository> {
+  return did === session.did ? ownRepository(session) : organizationRepository(session, did);
 }
 
 /**
@@ -168,7 +209,9 @@ function writeFailure(err: unknown): unknown {
     return new WriteError("unknown", "The write's outcome is unknown");
   }
   if (err.error === "InvalidSwap") return conflict();
-  if (err.status === 403) return new WriteError("forbidden", "Not allowed to write this record");
+  if (err.status === 401 || err.status === 403) {
+    return new WriteError("forbidden", "Not allowed to write this record");
+  }
   return err;
 }
 
@@ -228,4 +271,53 @@ export async function updateProfile(
   }
   // The version the PDS stored, which a later index read must show.
   return { uri: stored.uri, cid: stored.cid, ...profileFields(signed) };
+}
+
+/** More badge definitions than an account plausibly keeps; guards against looping cursors. */
+const MAX_DEFINITION_PAGES = 10;
+
+/**
+ * Finds the account's plain endorsement badge definition on its PDS: a valid
+ * `app.certified.badge.definition` with `badgeType === "endorsement"`, title
+ * `"Endorsement"`, and that allows `repo.did` to issue it. Reading the PDS
+ * directly avoids creating a duplicate definition while the index catches up.
+ * If several match, picks the oldest by `createdAt` so repeated calls agree.
+ */
+export async function findEndorsementDefinition(repo: Repository): Promise<string | null> {
+  const matches: { uri: string; createdAt: string }[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_DEFINITION_PAGES; page++) {
+    const out = await repo.listRecords(badgeDefinition.$type, { limit: 100, cursor });
+    for (const record of out.records) {
+      const checked = badgeDefinition.$safeValidate(record.value);
+      if (!checked.success) continue;
+      const def = checked.value;
+      if (def.badgeType !== ENDORSEMENT_BADGE_TYPE || def.title.trim() !== PLAIN_ENDORSEMENT) {
+        continue;
+      }
+      if (def.allowedIssuers && !def.allowedIssuers.some((issuer) => issuer.did === repo.did)) {
+        continue;
+      }
+      matches.push({ uri: record.uri, createdAt: def.createdAt });
+    }
+    if (!out.cursor || out.cursor === cursor) break;
+    cursor = out.cursor;
+  }
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return matches[0].uri;
+}
+
+/**
+ * Deletes a badge award (`app.certified.badge.award`) from `repo`. A stopgap
+ * until the Hypercerts SDK supports deleting awards; safe to repeat if the
+ * record is already gone.
+ */
+export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<void> {
+  try {
+    await repo.deleteRecord(badgeAward.$type, rkey);
+  } catch (err) {
+    if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
+    throw writeFailure(err);
+  }
 }

@@ -14,6 +14,9 @@ export { safeUrl };
 /** A follow record: what unfollowing deletes. */
 export type FollowRef = { uri: string; cid: string };
 
+/** An endorsement award record: what revoking deletes. */
+export type EndorsementRef = { uri: string; cid: string };
+
 type ActivityView = org.hypercerts.claim.getActivity.ActivityView;
 type ActorView = org.hypercerts.api.defs.ActorView;
 type BadgeAwardView = app.certified.badge.getBadgeAward.BadgeAwardView;
@@ -563,8 +566,9 @@ export type BadgeCard = {
   time: number;
 };
 
-/** The definition the per-account endorsements use, which the profile shows apart. */
-const PLAIN_ENDORSEMENT = "Endorsement";
+/** The definition title and type the per-account endorsements use, which the profile shows apart. */
+export const PLAIN_ENDORSEMENT = "Endorsement";
+export const ENDORSEMENT_BADGE_TYPE = "endorsement";
 
 /**
  * An award as a badge card, or null when it isn't shown as a badge:
@@ -584,7 +588,7 @@ export function toBadgeCard(
   const definition = award.badge.record;
   const title = asString(definition.title)?.trim();
   if (!title) return null;
-  if (definition.badgeType === "endorsement" && title === PLAIN_ENDORSEMENT) return null;
+  if (definition.badgeType === ENDORSEMENT_BADGE_TYPE && title === PLAIN_ENDORSEMENT) return null;
   const allowed = (definition.allowedIssuers ?? []).map((issuer) =>
     asString(asRecord(issuer)?.did),
   );
