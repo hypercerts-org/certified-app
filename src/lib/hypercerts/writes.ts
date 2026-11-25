@@ -15,7 +15,7 @@ import {
 import { cidForLex } from "@atproto/lex-cbor";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
-import { app } from "@hypercerts-org/lexicon";
+import { app, org } from "@hypercerts-org/lexicon";
 import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
@@ -31,6 +31,8 @@ import {
 const profile = app.certified.actor.profile;
 const badgeDefinition = app.certified.badge.definition;
 const badgeAward = app.certified.badge.award;
+const collection = org.hypercerts.collection;
+const descriptionString = org.hypercerts.defs.descriptionString;
 
 /**
  * Why a write failed. "unknown": it was sent but no answer came back
@@ -316,6 +318,170 @@ export async function findEndorsementDefinition(repo: Repository): Promise<strin
 export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<void> {
   try {
     await repo.deleteRecord(badgeAward.$type, rkey);
+  } catch (err) {
+    if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
+    throw writeFailure(err);
+  }
+}
+
+/**
+ * Resolves a public record at `at://<did>/<collection>/<rkey>` to its current
+ * strong reference `{ uri, cid }` by reading its owner's PDS through the OAuth
+ * client's SSRF-safe resolver. Returns null when the record doesn't exist.
+ */
+export async function resolvePublicRecordRef(uri: string): Promise<StoredRecord | null> {
+  const parts = uri.slice("at://".length).split("/");
+  if (parts.length !== 3) return null;
+  const [did, collectionNsid, rkey] = parts;
+  if (!did || !collectionNsid || !rkey) return null;
+  try {
+    const oauthClient = await getOAuthClient();
+    const { didDoc } = await oauthClient.identityResolver.resolve(did);
+    const pds = new Client({ service: extractPdsUrl(didDoc), fetch: oauthClient.fetch });
+    const found = await getRecordFrom(
+      pds,
+      did as l.DidString,
+      collectionNsid as l.NsidString,
+      rkey,
+    );
+    return found ? { uri, cid: found.cid } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolves an account's profile record strong reference for `list:accounts`:
+ * tries `app.certified.actor.profile/self`, falling back to
+ * `app.bsky.actor.profile/self`.
+ */
+export async function resolveAccountProfileRef(did: l.DidString): Promise<StoredRecord | null> {
+  const certified = await resolvePublicRecordRef(`at://${did}/app.certified.actor.profile/self`);
+  if (certified) return certified;
+  return resolvePublicRecordRef(`at://${did}/app.bsky.actor.profile/self`);
+}
+
+async function putCollectionRecord(
+  repo: Repository,
+  rkey: string,
+  record: LexMap,
+  swapRecord: string,
+  sign: RecordSigner,
+): Promise<StoredRecord> {
+  const checked = collection.$safeValidate({ ...record, $type: collection.$type });
+  if (!checked.success) throw new WriteError("invalid", checked.reason.message);
+  const signed = await sign(checked.value, { repositoryDid: repo.did });
+  try {
+    const stored = await repo.putRecord(signed, rkey, swapRecord);
+    const expected = (await cidForLex(signed)).toString();
+    if (expected !== stored.cid) {
+      logError("[writes] stored CID differs from the signed collection's", null, {
+        uri: stored.uri,
+        stored: stored.cid,
+        signed: expected,
+      });
+    }
+    return stored;
+  } catch (err) {
+    throw writeFailure(err);
+  }
+}
+
+/** Updates a list's title and description, keeping its type, items, and other fields intact. */
+export async function updateListDetails(
+  repo: Repository,
+  rkey: string,
+  fields: { title: string; description: string },
+  sign: RecordSigner,
+): Promise<StoredRecord> {
+  const current = await repo.getRecord(collection.$type, rkey);
+  if (!current) throw new WriteError("invalid", "This list no longer exists.");
+
+  const record: LexMap = { ...current.value, title: fields.title };
+  if (fields.description) {
+    record.description = { $type: descriptionString.$type, value: fields.description };
+  } else {
+    delete record.description;
+    delete record.shortDescription;
+  }
+  return putCollectionRecord(repo, rkey, record, current.cid, sign);
+}
+
+const MAX_LIST_ITEMS = 1000;
+
+/** Appends deduplicated item strongRefs to a list, keeping existing items and weights intact. */
+export async function addItemsToList(
+  repo: Repository,
+  rkey: string,
+  refs: StoredRecord[],
+  sign: RecordSigner,
+): Promise<{ stored: StoredRecord; added: number; skipped: number }> {
+  const current = await repo.getRecord(collection.$type, rkey);
+  if (!current) throw new WriteError("invalid", "This list no longer exists.");
+  const uri = `at://${repo.did}/${collection.$type}/${rkey}`;
+
+  const existingItems = Array.isArray(current.value.items) ? current.value.items : [];
+  const existingUris = new Set<string>();
+  for (const item of existingItems) {
+    const itemUri = (item as { itemIdentifier?: { uri?: unknown } })?.itemIdentifier?.uri;
+    if (typeof itemUri === "string") existingUris.add(itemUri);
+  }
+
+  const toAdd: LexMap[] = [];
+  let skipped = 0;
+  for (const ref of refs) {
+    if (existingUris.has(ref.uri)) {
+      skipped++;
+      continue;
+    }
+    existingUris.add(ref.uri);
+    toAdd.push({ itemIdentifier: { uri: ref.uri, cid: ref.cid } });
+  }
+
+  if (toAdd.length === 0) {
+    return { stored: { uri, cid: current.cid }, added: 0, skipped };
+  }
+  if (existingItems.length + toAdd.length > MAX_LIST_ITEMS) {
+    throw new WriteError("invalid", `A list can hold at most ${MAX_LIST_ITEMS} items.`);
+  }
+
+  const record: LexMap = { ...current.value, items: [...existingItems, ...toAdd] };
+  const stored = await putCollectionRecord(repo, rkey, record, current.cid, sign);
+  return { stored, added: toAdd.length, skipped };
+}
+
+/** Removes items matching `urisToRemove` from a list, keeping every other item intact. */
+export async function removeItemsFromList(
+  repo: Repository,
+  rkey: string,
+  urisToRemove: ReadonlySet<string>,
+  sign: RecordSigner,
+): Promise<{ stored: StoredRecord; removed: number }> {
+  const current = await repo.getRecord(collection.$type, rkey);
+  if (!current) throw new WriteError("invalid", "This list no longer exists.");
+  const uri = `at://${repo.did}/${collection.$type}/${rkey}`;
+
+  const existingItems = Array.isArray(current.value.items) ? current.value.items : [];
+  const nextItems = existingItems.filter((item) => {
+    const itemUri = (item as { itemIdentifier?: { uri?: unknown } })?.itemIdentifier?.uri;
+    return typeof itemUri !== "string" || !urisToRemove.has(itemUri);
+  });
+  const removed = existingItems.length - nextItems.length;
+  if (removed === 0) {
+    return { stored: { uri, cid: current.cid }, removed: 0 };
+  }
+
+  const record: LexMap = { ...current.value };
+  if (nextItems.length > 0) record.items = nextItems;
+  else delete record.items;
+  const stored = await putCollectionRecord(repo, rkey, record, current.cid, sign);
+  return { stored, removed };
+}
+
+/** Deletes a collection record (`org.hypercerts.collection`) from `repo`. */
+export async function deleteCollectionRecord(repo: Repository, rkey: string): Promise<void> {
+  try {
+    await repo.deleteRecord(collection.$type, rkey);
   } catch (err) {
     if (err instanceof XrpcResponseError && err.error === "RecordNotFound") return;
     throw writeFailure(err);

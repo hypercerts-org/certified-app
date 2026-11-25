@@ -1,11 +1,10 @@
 // Workspace → Badges: the badges awarded to the account, by its response
-// (awaiting, accepted, rejected), each with the response it can give, and
-// the badges it defined for others. Responding comes with the Hypercerts
-// SDK's writes: until then Accept and Reject are placeholders.
+// (awaiting, accepted, rejected), each with Accept/Reject actions, and the
+// badges it defined for others, each with an Award action.
 
-import { Plus } from "lucide-react";
-import { BadgeList } from "@/components/badges";
-import { ComingSoonButton } from "@/components/coming-soon";
+import { AwardBadgeDialog, BadgeResponseButtons, NewBadgeDialog } from "@/components/badge-dialogs";
+import { BadgeList, IssuedBadgeList } from "@/components/badges";
+import type { IssuedBadge } from "@/lib/hypercerts/queries";
 import type { BadgeCard } from "@/lib/hypercerts/views";
 
 export type ReceivedKind = "awaiting" | "accepted" | "rejected";
@@ -30,28 +29,45 @@ const EMPTY: Record<ReceivedKind, { title: string; description: string }> = {
  * response; reject an accepted one (it leaves the profile); accept a
  * rejected one again.
  */
-export function ReceivedBadges({ kind, badges }: { kind: ReceivedKind; badges: BadgeCard[] }) {
+export function ReceivedBadges({
+  repo,
+  kind,
+  badges,
+}: {
+  repo: string;
+  kind: ReceivedKind;
+  badges: BadgeCard[];
+}) {
   return (
     <BadgeList
       badges={badges}
       empty={EMPTY[kind].title}
       emptyDescription={EMPTY[kind].description}
-      actions={() => (
-        <>
-          {kind !== "accepted" && <ComingSoonButton variant="primary">Accept</ComingSoonButton>}
-          {kind !== "rejected" && <ComingSoonButton>Reject</ComingSoonButton>}
-        </>
+      actions={(badge) => (
+        <BadgeResponseButtons
+          repo={repo}
+          awardUri={badge.uri}
+          badgeUri={`at://${badge.ownerDid}/app.certified.badge.definition/${badge.rkey}`}
+          kind={kind}
+        />
       )}
     />
   );
 }
 
-/** "New badge": a placeholder until the SDK can write badge definitions. */
-export function NewBadge() {
+/** Badges the workspace account defined, each with an Award action. */
+export function IssuedBadges({ repo, badges }: { repo: string; badges: IssuedBadge[] }) {
   return (
-    <ComingSoonButton>
-      <Plus size={16} aria-hidden />
-      New badge
-    </ComingSoonButton>
+    <IssuedBadgeList
+      badges={badges}
+      actions={(badge) => (
+        <AwardBadgeDialog repo={repo} definitionUri={badge.uri} badgeTitle={badge.title} />
+      )}
+    />
   );
+}
+
+/** "New badge": opens a dialog to define a new badge in `repo`. */
+export function NewBadge({ repo }: { repo: string }) {
+  return <NewBadgeDialog repo={repo} />;
 }

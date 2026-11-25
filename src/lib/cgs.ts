@@ -139,3 +139,99 @@ export async function canEdit(session: OAuthSession, did: string): Promise<boole
   if (did === session.did) return true;
   return (await listMemberships(session)).some((m) => m.groupDid === did && manages(m));
 }
+
+export type GroupMember = {
+  did: string;
+  role: "member" | "admin" | "owner" | string;
+  addedBy?: string;
+  addedAt: string;
+};
+
+/** Registers a new group account on CGS with the signed-in user as owner. */
+export async function registerGroup(
+  session: OAuthSession,
+  input: { handle: string; email?: string },
+) {
+  const register = app.certified.group.register;
+  return cgs.call(
+    register,
+    {
+      handle: input.handle,
+      ownerDid: session.did,
+      ...(input.email && { email: input.email }),
+    },
+    { headers: await cgsAuth(session, register) },
+  );
+}
+
+/** Lists every member of group `groupDid` (requires membership). */
+export async function listGroupMembers(
+  session: OAuthSession,
+  groupDid: l.DidString,
+): Promise<GroupMember[]> {
+  const list = app.certified.group.member.list;
+  const members: GroupMember[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const result = await cgs.call(
+      list,
+      { repo: groupDid, limit: 100, cursor },
+      { headers: await cgsAuth(session, list) },
+    );
+    members.push(
+      ...result.members.map(({ did, role, addedBy, addedAt }) => ({
+        did,
+        role,
+        addedBy,
+        addedAt,
+      })),
+    );
+    if (!result.cursor || result.cursor === cursor) break;
+    cursor = result.cursor;
+  }
+  return members;
+}
+
+/** Adds `memberDid` to group `groupDid` with `role` (requires admin or owner). */
+export async function addGroupMember(
+  session: OAuthSession,
+  groupDid: l.DidString,
+  memberDid: l.DidString,
+  role: "member" | "admin",
+) {
+  const add = app.certified.group.member.add;
+  return cgs.call(
+    add,
+    { repo: groupDid, memberDid, role },
+    { headers: await cgsAuth(session, add) },
+  );
+}
+
+/** Removes `memberDid` from group `groupDid` (requires admin or owner). */
+export async function removeGroupMember(
+  session: OAuthSession,
+  groupDid: l.DidString,
+  memberDid: l.DidString,
+) {
+  const remove = app.certified.group.member.remove;
+  await cgs.call(
+    remove,
+    { repo: groupDid, memberDid },
+    { headers: await cgsAuth(session, remove) },
+  );
+}
+
+/** Changes `memberDid`'s role in group `groupDid` (owner only). */
+export async function setGroupMemberRole(
+  session: OAuthSession,
+  groupDid: l.DidString,
+  memberDid: l.DidString,
+  role: "member" | "admin",
+) {
+  const setRole = app.certified.group.role.set;
+  return cgs.call(
+    setRole,
+    { repo: groupDid, memberDid, role },
+    { headers: await cgsAuth(session, setRole) },
+  );
+}

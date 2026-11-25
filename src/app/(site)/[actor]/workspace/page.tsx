@@ -1,29 +1,28 @@
+import type { l } from "@atproto/lex";
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { isOwnWorkspace, workspaceDid } from "@/components/workspace-access";
 import {
+  GroupMembersSection,
+  type GroupMemberView,
   OrganizationsSection,
   OrganizationsSkeleton,
   OverviewSkeleton,
   WorkspaceOverview,
 } from "@/components/workspace-overview";
-import { SessionUnavailableError } from "@/lib/auth/dal";
+import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
+import { readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
+import { listGroupMembers } from "@/lib/cgs";
+import { getActorCards } from "@/lib/hypercerts/queries";
 import { logError } from "@/lib/log";
 import { getMemberships } from "@/lib/memberships";
 import { toOrganizations } from "@/lib/organizations";
 
 export const metadata: Metadata = { title: "Workspace", robots: { index: false } };
 
-// A workspace is what one account holds and what you manage for it: your own,
-// or that of an organization you belong to. The URL names which; `/workspace`
-// opens the one you act as.
-//
-// Most of the overview is public data about the account, cached and shared
-// (its records, endorsements, followers, profile), so a link prefetches it and
-// the page shows at once. Your organizations come from your memberships,
-// remembered per session (memberships.ts). Who may open the workspace is
-// checked by its layout (workspace-access.tsx).
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", admin: "Admin", member: "Member" };
+const ROLE_ORDER: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
 /**
  * Your organizations, from your memberships, remembered per session
@@ -31,16 +30,61 @@ export const metadata: Metadata = { title: "Workspace", robots: { index: false }
  * shown as "none".
  */
 async function YourOrganizations() {
+  const pdsDomain = new URL(CERTIFIED_PDS_URL).hostname;
   let memberships: Awaited<ReturnType<typeof getMemberships>>;
   try {
     memberships = await getMemberships();
   } catch (err) {
     unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
     if (!(err instanceof SessionUnavailableError)) logError("[workspace] memberships failed", err);
-    return <OrganizationsSection organizations="unavailable" />;
+    return <OrganizationsSection organizations="unavailable" pdsDomain={pdsDomain} />;
   }
-  if (memberships === "expired") return <OrganizationsSection organizations="expired" />;
-  return <OrganizationsSection organizations={await toOrganizations(memberships ?? [])} />;
+  if (memberships === "expired") {
+    return <OrganizationsSection organizations="expired" pdsDomain={pdsDomain} />;
+  }
+  return (
+    <OrganizationsSection
+      organizations={await toOrganizations(memberships ?? [])}
+      pdsDomain={pdsDomain}
+    />
+  );
+}
+
+/** An organization's members from CGS, with admin/owner management controls. */
+async function GroupMembers({ did }: { did: string }) {
+  try {
+    const session = await readOAuthSession();
+    if (!session) return null;
+    if (session === "expired") {
+      return <GroupMembersSection groupDid={did} members="expired" viewerRole={null} />;
+    }
+    const raw = await listGroupMembers(session, did as l.DidString);
+    const cards = new Map(
+      (await getActorCards(raw.map((member) => member.did))).map((card) => [card.did, card]),
+    );
+    const viewerRole = raw.find((member) => member.did === session.did)?.role ?? null;
+    const members: GroupMemberView[] = raw
+      .map((member) => ({
+        actor: cards.get(member.did) ?? {
+          did: member.did,
+          handle: null,
+          displayName: member.did,
+          description: null,
+          avatarUrl: null,
+          isOrganization: false,
+        },
+        role: member.role,
+        roleLabel: ROLE_LABEL[member.role] ?? member.role,
+      }))
+      .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9));
+    return <GroupMembersSection groupDid={did} members={members} viewerRole={viewerRole} />;
+  } catch (err) {
+    unstable_rethrow(err);
+    if (!(err instanceof SessionUnavailableError)) {
+      logError("[workspace] group members failed", err, { did });
+    }
+    return <GroupMembersSection groupDid={did} members="unavailable" viewerRole={null} />;
+  }
 }
 
 async function Overview({ params }: { params: Promise<{ actor: string }> }) {
@@ -51,11 +95,9 @@ async function Overview({ params }: { params: Promise<{ actor: string }> }) {
     <WorkspaceOverview
       did={did}
       organizations={
-        own ? (
-          <Suspense fallback={<OrganizationsSkeleton />}>
-            <YourOrganizations />
-          </Suspense>
-        ) : null
+        <Suspense fallback={<OrganizationsSkeleton />}>
+          {own ? <YourOrganizations /> : <GroupMembers did={did} />}
+        </Suspense>
       }
     />
   );

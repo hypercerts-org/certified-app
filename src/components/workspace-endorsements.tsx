@@ -1,20 +1,22 @@
 // A workspace's endorsements, after the staging redesign's Workspace →
-// Endorsements: received (hidden ones included, tagged, since this is where
-// they can be shown again), given, and the endorsement lists the account
-// keeps. Hiding, showing, revoking and endorsing someone come with the
-// Hypercerts SDK's writes: until then their buttons are placeholders.
+// Endorsements: received (hidden ones included, tagged, with Hide/Show
+// actions), given (with Revoke), and the endorsement lists the account keeps.
 
 import { Badge, Button, Text } from "@hypercerts-org/ui-react";
-import { ListChecks, Plus, ThumbsUp } from "lucide-react";
+import { ListChecks, ThumbsUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
-import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
+import {
+  EndorsementVisibilityButton,
+  EndorseSomeoneDialog,
+  RevokeEndorsementButton,
+} from "@/components/endorsement-controls";
 import { PeopleListSkeleton } from "@/components/people-list";
 import { ListGroups } from "@/components/profile-lists";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
-import { endorsementLine, type ListCard, type PersonRow } from "@/lib/hypercerts/views";
+import { endorsementLine, type ListCard, nameOf, type PersonRow } from "@/lib/hypercerts/views";
 
 function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   const { actor } = row;
@@ -34,13 +36,6 @@ function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   );
 }
 
-/** A write that isn't available yet; the exception (a hidden one) gets the filled button. */
-function Placeholder({ children, primary = false }: { children: ReactNode; primary?: boolean }) {
-  return (
-    <ComingSoonButton variant={primary ? "primary" : "secondary"}>{children}</ComingSoonButton>
-  );
-}
-
 function More({ page }: { page: PeoplePage }) {
   return page.more ? (
     <Text size="body-sm" tone="muted">
@@ -50,7 +45,15 @@ function More({ page }: { page: PeoplePage }) {
 }
 
 /** Endorsements others gave the account, hidden ones tagged. */
-export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; profile: string }) {
+export function ReceivedEndorsements({
+  repo,
+  page,
+  profile,
+}: {
+  repo: string;
+  page: PeoplePage;
+  profile: string;
+}) {
   if (page.rows.length === 0) {
     return (
       <Empty
@@ -72,11 +75,12 @@ export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; prof
           <Row
             key={row.uri}
             row={row}
-            // The exception (a hidden one) gets the filled button, as on staging.
             action={
-              <Placeholder primary={row.hidden}>
-                {row.hidden ? "Show on profile" : "Hide from profile"}
-              </Placeholder>
+              <EndorsementVisibilityButton
+                repo={repo}
+                awardUri={row.uri}
+                renderedHidden={Boolean(row.hidden)}
+              />
             }
           />
         ))}
@@ -87,7 +91,7 @@ export function ReceivedEndorsements({ page, profile }: { page: PeoplePage; prof
 }
 
 /** Endorsements the account gave. */
-export function GivenEndorsements({ page }: { page: PeoplePage }) {
+export function GivenEndorsements({ repo, page }: { repo: string; page: PeoplePage }) {
   if (page.rows.length === 0) {
     return (
       <Empty
@@ -101,7 +105,18 @@ export function GivenEndorsements({ page }: { page: PeoplePage }) {
     <>
       <ul className="people-list divided">
         {page.rows.map((row) => (
-          <Row key={row.uri} row={row} action={<Placeholder>Revoke</Placeholder>} />
+          <Row
+            key={row.uri}
+            row={row}
+            action={
+              <RevokeEndorsementButton
+                repo={repo}
+                awardUri={row.uri}
+                subjectDid={row.actor.did}
+                subjectName={nameOf(row.actor)}
+              />
+            }
+          />
         ))}
       </ul>
       <More page={page} />
@@ -127,12 +142,7 @@ export function EndorsementRowsSkeleton() {
   return <PeopleListSkeleton rows={4} />;
 }
 
-/** "Endorse someone": a placeholder until the SDK can write endorsements. */
-export function EndorseSomeone() {
-  return (
-    <Placeholder>
-      <Plus size={16} aria-hidden />
-      Endorse someone
-    </Placeholder>
-  );
+/** "Endorse someone": opens a dialog to endorse an account from `repo`. */
+export function EndorseSomeone({ repo }: { repo: string }) {
+  return <EndorseSomeoneDialog repo={repo} />;
 }

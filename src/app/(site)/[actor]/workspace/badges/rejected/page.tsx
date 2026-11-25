@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Rejected badges", robots: { index: f
 async function Content({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
-  return <ReceivedBadges kind="rejected" badges={await getRejectedBadges(did)} />;
+  return <ReceivedBadges repo={did} kind="rejected" badges={await getRejectedBadges(did)} />;
 }
 
 /** The badges the workspace's account rejected: never on its profile. */

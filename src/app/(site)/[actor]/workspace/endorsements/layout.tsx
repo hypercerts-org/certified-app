@@ -47,6 +47,11 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
   );
 }
 
+async function EndorseSomeoneAction({ params }: { params: Promise<{ actor: string }> }) {
+  const did = decodeURIComponent((await params).actor);
+  return <EndorseSomeone repo={did} />;
+}
+
 export default function EndorsementsLayout({
   children,
   params,
@@ -62,7 +67,11 @@ export default function EndorsementsLayout({
             <Tabs params={params} />
           </Suspense>
         }
-        action={<EndorseSomeone />}
+        action={
+          <Suspense fallback={null}>
+            <EndorseSomeoneAction params={params} />
+          </Suspense>
+        }
       />
       {/* Each page shows its own skeleton while it loads, so a tab switches at once. */}
       {children}

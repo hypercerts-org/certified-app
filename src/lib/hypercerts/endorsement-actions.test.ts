@@ -12,9 +12,14 @@ vi.mock("server-only", () => ({}));
 const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
   getActingAs: vi.fn<() => Promise<string | null>>(),
+  mayPublish: vi.fn<(...args: unknown[]) => Promise<boolean>>(),
   getIndexedEndorsement: vi.fn(),
   getIndexedEndorsements: vi.fn(),
+  badgeAwardIndexed: vi.fn(),
+  getIndexedBadgeAwardResponse: vi.fn(),
+  resolveAccountDid: vi.fn(),
   awardBadge: vi.fn(),
+  respondToBadgeAward: vi.fn(),
   findEndorsementDefinition: vi.fn(),
   deleteBadgeAward: vi.fn(),
   repositoryFor: vi.fn(),
@@ -28,16 +33,28 @@ vi.mock("@/lib/auth/dal", () => ({
   SessionUnavailableError: class SessionUnavailableError extends Error {},
 }));
 vi.mock("@/lib/acting-as", () => ({ getActingAs: () => mocks.getActingAs() }));
+vi.mock("@/lib/hypercerts/publish-access", () => ({
+  mayPublish: (...args: unknown[]) => mocks.mayPublish(...args),
+}));
 vi.mock("@/lib/hypercerts/index-wait", () => ({
   waitForIndex: (check: () => Promise<boolean>) => mocks.waitForIndex(check),
 }));
 vi.mock("@/lib/hypercerts/queries", () => ({
   getIndexedEndorsement: (...args: unknown[]) => mocks.getIndexedEndorsement(...args),
   getIndexedEndorsements: (...args: unknown[]) => mocks.getIndexedEndorsements(...args),
+  badgeAwardIndexed: (...args: unknown[]) => mocks.badgeAwardIndexed(...args),
+  getIndexedBadgeAwardResponse: (...args: unknown[]) => mocks.getIndexedBadgeAwardResponse(...args),
+}));
+vi.mock("@/lib/hypercerts/resolve-target", () => ({
+  resolveAccountDid: (...args: unknown[]) => mocks.resolveAccountDid(...args),
 }));
 vi.mock("@hypercerts-org/sdk/badge", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@hypercerts-org/sdk/badge")>();
-  return { ...actual, awardBadge: (...args: unknown[]) => mocks.awardBadge(...args) };
+  return {
+    ...actual,
+    awardBadge: (...args: unknown[]) => mocks.awardBadge(...args),
+    respondToBadgeAward: (...args: unknown[]) => mocks.respondToBadgeAward(...args),
+  };
 });
 vi.mock("@/lib/hypercerts/writes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/hypercerts/writes")>();
@@ -49,7 +66,8 @@ vi.mock("@/lib/hypercerts/writes", async (importOriginal) => {
   };
 });
 
-const { endorse, unendorse } = await import("./endorsement-actions");
+const { endorse, unendorse, endorseFromWorkspace, revokeEndorsement, setEndorsementVisibility } =
+  await import("./endorsement-actions");
 
 const USER = "did:plc:user11111111111111111111";
 const ORG = "did:plc:org111111111111111111111";
@@ -61,6 +79,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
   mocks.getActingAs.mockResolvedValue(USER);
+  mocks.mayPublish.mockResolvedValue(true);
+  mocks.resolveAccountDid.mockResolvedValue(SUBJECT);
   mocks.getIndexedEndorsement.mockResolvedValue(null);
   mocks.getIndexedEndorsements.mockResolvedValue([]);
   mocks.repositoryFor.mockResolvedValue(FAKE_REPO);
@@ -73,6 +93,10 @@ beforeEach(() => {
       cid: "bafydef",
       created: true,
     },
+  });
+  mocks.respondToBadgeAward.mockResolvedValue({
+    uri: `at://${USER}/app.certified.badge.response/r1`,
+    cid: "bafyr",
   });
   mocks.deleteBadgeAward.mockResolvedValue(undefined);
   mocks.waitForIndex.mockImplementation(async () => true);
@@ -225,5 +249,65 @@ describe("unendorse", () => {
       ok: false,
       reason: "unknown",
     });
+  });
+});
+
+describe("workspace endorsement actions", () => {
+  it("endorses from workspace with an optional note and rejects duplicates", async () => {
+    const res = await endorseFromWorkspace(USER, {
+      target: "@alice.bsky.social",
+      note: "Trusted collaborator",
+    });
+    expect(res.ok).toBe(true);
+    expect(mocks.awardBadge).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        definition: { title: "Endorsement", badgeType: "endorsement" },
+        subject: { did: SUBJECT },
+        note: "Trusted collaborator",
+      },
+      undefined,
+    );
+
+    mocks.getIndexedEndorsement.mockResolvedValueOnce({
+      uri: `at://${USER}/app.certified.badge.award/dup`,
+      cid: "bafydup",
+    });
+    expect(await endorseFromWorkspace(USER, { target: "@alice.bsky.social" })).toMatchObject({
+      ok: false,
+      reason: "invalid",
+    });
+  });
+
+  it("revokes a specific given endorsement award", async () => {
+    const awardUri = `at://${USER}/app.certified.badge.award/awd9`;
+    const res = await revokeEndorsement(USER, { awardUri, subjectDid: SUBJECT });
+    expect(res).toEqual({ ok: true, endorsement: null, indexed: true });
+    expect(mocks.deleteBadgeAward).toHaveBeenCalledWith(FAKE_REPO, "awd9");
+  });
+
+  it("hides and shows received endorsements via respondToBadgeAward", async () => {
+    const awardUri = `at://${SUBJECT}/app.certified.badge.award/in1`;
+    expect(await setEndorsementVisibility(USER, { awardUri, hidden: true })).toEqual({
+      ok: true,
+      hidden: true,
+      indexed: true,
+    });
+    expect(mocks.respondToBadgeAward).toHaveBeenCalledWith(
+      expect.anything(),
+      { award: { uri: awardUri }, response: "rejected" },
+      undefined,
+    );
+
+    expect(await setEndorsementVisibility(ORG, { awardUri, hidden: false })).toEqual({
+      ok: true,
+      hidden: false,
+      indexed: true,
+    });
+    expect(mocks.respondToBadgeAward).toHaveBeenLastCalledWith(
+      expect.anything(),
+      { award: { uri: awardUri }, response: "accepted" },
+      { repo: ORG },
+    );
   });
 });

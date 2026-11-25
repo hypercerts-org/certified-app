@@ -33,8 +33,8 @@ import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
 import { ActorAvatar, ActorHandle, ActorLink, ActorRow } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
-import { ComingSoonButton } from "@/components/coming-soon";
 import { Empty } from "@/components/empty";
+import { AddMemberDialog, MemberActions, NewGroupDialog } from "@/components/group-dialogs";
 import { PageTitle } from "@/components/page-title";
 import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
 import { StatRow } from "@/components/stat-row";
@@ -46,7 +46,7 @@ import {
   getRecordCounts,
   listLatestRecords,
 } from "@/lib/hypercerts/queries";
-import { type ActorDetail, endorsementLine } from "@/lib/hypercerts/views";
+import { type ActorCard, type ActorDetail, endorsementLine, nameOf } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
 
 const LATEST_RECORDS = 4;
@@ -454,12 +454,14 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
 /** Your groups (organizations on CGS), as staging names them, with New group. */
 export function OrganizationsSection({
   organizations,
+  pdsDomain,
 }: {
   /** Or why they can't be shown: memberships unreadable, or the sign-in expired. */
   organizations: Organization[] | "unavailable" | "expired";
+  pdsDomain: string;
 }) {
   return (
-    <Section title="Your groups" action={<NewGroup />}>
+    <Section title="Your groups" action={<NewGroupDialog pdsDomain={pdsDomain} />}>
       {organizations === "unavailable" || organizations === "expired" ? (
         <Text size="body-sm" tone="muted">
           {organizations === "expired"
@@ -492,13 +494,62 @@ export function OrganizationsSection({
   );
 }
 
-/** New group: a quiet placeholder until groups can be created here. */
-function NewGroup() {
+export type GroupMemberView = {
+  actor: ActorCard;
+  role: string;
+  roleLabel: string;
+};
+
+/** Members of an organization workspace, with CGS team management for admins & owners. */
+export function GroupMembersSection({
+  groupDid,
+  members,
+  viewerRole,
+}: {
+  groupDid: string;
+  members: GroupMemberView[] | "unavailable" | "expired";
+  viewerRole: string | null;
+}) {
+  const isAdmin = viewerRole === "admin" || viewerRole === "owner";
+  const isOwner = viewerRole === "owner";
   return (
-    <ComingSoonButton variant="ghost">
-      <Plus size={16} aria-hidden />
-      New group
-    </ComingSoonButton>
+    <Section title="Members" action={isAdmin ? <AddMemberDialog groupDid={groupDid} /> : undefined}>
+      {members === "unavailable" || members === "expired" ? (
+        <Text size="body-sm" tone="muted">
+          {members === "expired"
+            ? "Sign in again to see this group's members."
+            : "Members can't be loaded right now."}
+        </Text>
+      ) : members.length === 0 ? (
+        <Text size="body-sm" tone="muted">
+          No members listed.
+        </Text>
+      ) : (
+        <ul className="overview-rows divided">
+          {members.map((member) => (
+            <li key={member.actor.did} className="overview-row-dated">
+              <ActorRow
+                actor={member.actor}
+                href={actorHref(member.actor)}
+                secondary={[member.roleLabel, member.actor.handle && `@${member.actor.handle}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+              {member.role !== "owner" && (
+                <MemberActions
+                  groupDid={groupDid}
+                  memberDid={member.actor.did}
+                  memberName={nameOf(member.actor)}
+                  role={member.role}
+                  canChangeRole={isOwner}
+                  canRemove={isAdmin}
+                />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

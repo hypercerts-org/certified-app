@@ -26,7 +26,7 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
         icon={ListChecks}
         title="No lists yet"
         description="A list gathers activities, projects, accounts or endorsements to show together on the profile, like a funding round's applicants."
-        action={<NewListDialog />}
+        action={<NewListDialog repo={did} />}
       />
     );
   }
@@ -42,13 +42,20 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
   );
 }
 
+async function NewListAction({ params }: { params: Promise<{ actor: string }> }) {
+  const did = decodeURIComponent((await params).actor);
+  return <NewListDialog repo={did} />;
+}
+
 /** The workspace account's lists, to open and manage. */
 export default function ListsPage({ params }: PageProps<"/[actor]/workspace/lists">) {
   return (
     <div className="workspace-lists">
       <div className="workspace-heading">
         <PageTitle className="workspace-title">Lists</PageTitle>
-        <NewListDialog />
+        <Suspense fallback={null}>
+          <NewListAction params={params} />
+        </Suspense>
       </div>
       <Suspense fallback={<ListGroupsSkeleton />}>
         <Lists params={params} />

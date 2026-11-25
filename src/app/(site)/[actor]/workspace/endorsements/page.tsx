@@ -12,7 +12,11 @@ async function Received({ params }: { params: Promise<{ actor: string }> }) {
   if (!did) return null; // no access: the workspace layout says why
   const [page, actor] = await Promise.all([listEndorsements(did, "received", true), getActor(did)]);
   return (
-    <ReceivedEndorsements page={page} profile={actorHref({ did, handle: actor?.handle ?? null })} />
+    <ReceivedEndorsements
+      repo={did}
+      page={page}
+      profile={actorHref({ did, handle: actor?.handle ?? null })}
+    />
   );
 }
 

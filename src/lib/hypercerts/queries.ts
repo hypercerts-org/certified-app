@@ -1158,6 +1158,41 @@ export async function getBadge(uri: string): Promise<BadgeDetail | null> {
   throw result;
 }
 
+/** Whether badge definition `uri` is in the index. Never cached (waitForIndex). */
+export async function badgeDefinitionIndexed(uri: string): Promise<boolean> {
+  const result = await api.xrpcSafe(app.certified.badge.getBadgeDefinition, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  return result.success;
+}
+
+/** Whether badge award `uri` is in the index. Never cached (waitForIndex). */
+export async function badgeAwardIndexed(uri: string): Promise<boolean> {
+  const result = await api.xrpcSafe(app.certified.badge.getBadgeAward, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  return result.success;
+}
+
+/**
+ * The indexed response status of badge award `uri` ("accepted", "rejected",
+ * or "unanswered"), or null when the award isn't in the index. Never cached.
+ */
+export async function getIndexedBadgeAwardResponse(
+  uri: string,
+): Promise<"accepted" | "rejected" | "unanswered" | null> {
+  const result = await api.xrpcSafe(app.certified.badge.getBadgeAward, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (!result.success) return null;
+  const status = result.body.badgeAward.responseStatus;
+  if (status === "accepted" || status === "rejected" || status === "unanswered") return status;
+  return null;
+}
+
 /**
  * A badge's holder: an account (a person row, with the award's note), or a
  * record the badge went to, a project or an activity (as a list item,
@@ -1345,6 +1380,23 @@ export async function getList(did: string, rkey: string): Promise<ListDetail | n
     description: plainText(record.description),
     itemUris,
   };
+}
+
+/**
+ * The index's current CID and item URIs for collection `uri`, or null when
+ * absent. Never cached: list actions wait on it before expiring cache tags.
+ */
+export async function getIndexedList(
+  uri: string,
+): Promise<{ cid: string; itemUris: string[] } | null> {
+  const result = await api.xrpcSafe(org.hypercerts.collection.getCollection, {
+    params: { uri: uri as AtUri },
+    ...read(),
+  });
+  if (!result.success) return null;
+  const { cid, record } = result.body.collection;
+  const itemUris = (record.items ?? []).flatMap((item) => item.itemIdentifier?.uri ?? []);
+  return { cid, itemUris };
 }
 
 const collectionOf = (uri: string) => uri.split("/")[3] ?? "";

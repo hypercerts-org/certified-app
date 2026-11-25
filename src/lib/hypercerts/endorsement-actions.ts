@@ -10,13 +10,20 @@
 // page it affects.
 
 import type { l } from "@atproto/lex";
-import { awardBadge } from "@hypercerts-org/sdk/badge";
+import { awardBadge, respondToBadgeAward } from "@hypercerts-org/sdk/badge";
 import { updateTag } from "next/cache";
 import { getActingAs } from "@/lib/acting-as";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
-import { getIndexedEndorsement, getIndexedEndorsements } from "@/lib/hypercerts/queries";
+import { mayPublish } from "@/lib/hypercerts/publish-access";
+import {
+  badgeAwardIndexed,
+  getIndexedBadgeAwardResponse,
+  getIndexedEndorsement,
+  getIndexedEndorsements,
+} from "@/lib/hypercerts/queries";
+import { resolveAccountDid } from "@/lib/hypercerts/resolve-target";
 import { sdkContext, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
 import {
   collectionOf,
@@ -208,5 +215,173 @@ export async function unendorse(input: {
     return { ok: true, endorsement: null, indexed };
   } catch (err) {
     return failure(failureReason(err, "unendorse"), "unendorse", w && !("ok" in w) ? w : undefined);
+  }
+}
+
+/**
+ * Endorses an account (by handle, DID, or Certified profile URL) from a
+ * workspace, with an optional note (up to 500 characters). Reuses or creates
+ * `repo`'s canonical "Endorsement" definition.
+ */
+export async function endorseFromWorkspace(
+  repo: string,
+  input: { target: string; note?: string },
+): Promise<EndorseResult> {
+  if (typeof repo !== "string" || !isDid(repo) || typeof input?.target !== "string") {
+    return failure("invalid", "endorse");
+  }
+  const note = (input.note ?? "").trim();
+  if (note.length > 500) {
+    return { ok: false, reason: "invalid", message: "Note must be 500 characters or fewer." };
+  }
+  let asOrganization = false;
+  try {
+    const session = await getOAuthSession();
+    if (!session) return failure("signed-out", "endorse");
+    asOrganization = repo !== session.did;
+    if (!(await mayPublish(session.did, repo))) {
+      return failure("forbidden", "endorse", { asOrganization });
+    }
+    const target = await resolveAccountDid(input.target);
+    if (!target) {
+      return {
+        ok: false,
+        reason: "invalid",
+        message: "Couldn't find that account. Enter a handle, DID, or Certified profile link.",
+      };
+    }
+    if (target === repo) {
+      return {
+        ok: false,
+        reason: "invalid",
+        message: asOrganization
+          ? "An organization can't endorse itself."
+          : "You can't endorse yourself.",
+      };
+    }
+    const existing = await getIndexedEndorsement(repo, target).catch(() => null);
+    if (existing) {
+      return { ok: false, reason: "invalid", message: "This account is already endorsed." };
+    }
+
+    const repository = await repositoryFor(session, repo);
+    const definitionUri = await findEndorsementDefinition(repository);
+    const made = await awardBadge(
+      sdkContext(session),
+      {
+        definition: definitionUri
+          ? { uri: definitionUri }
+          : { title: PLAIN_ENDORSEMENT, badgeType: ENDORSEMENT_BADGE_TYPE },
+        subject: { did: target },
+        note: note || undefined,
+      },
+      writeTo(session, repo),
+    );
+    const indexed = await waitForIndex(() => badgeAwardIndexed(made.uri));
+    expire(repo, target);
+    return { ok: true, endorsement: { uri: made.uri, cid: made.cid }, indexed };
+  } catch (err) {
+    return failure(failureReason(err, "endorse"), "endorse", { asOrganization });
+  }
+}
+
+/** Revokes a specific endorsement award from `repo`'s Workspace → Endorsements → Given tab. */
+export async function revokeEndorsement(
+  repo: string,
+  input: { awardUri: string; subjectDid: string },
+): Promise<UnendorseResult> {
+  if (
+    typeof repo !== "string" ||
+    !isDid(repo) ||
+    typeof input?.awardUri !== "string" ||
+    typeof input?.subjectDid !== "string" ||
+    !isDid(input.subjectDid)
+  ) {
+    return failure("invalid", "unendorse");
+  }
+  const rkey = awardRkey(input.awardUri, repo);
+  if (!rkey) return failure("invalid", "unendorse");
+
+  let asOrganization = false;
+  try {
+    const session = await getOAuthSession();
+    if (!session) return failure("signed-out", "unendorse");
+    asOrganization = repo !== session.did;
+    if (!(await mayPublish(session.did, repo))) {
+      return failure("forbidden", "unendorse", { asOrganization });
+    }
+    const repository = await repositoryFor(session, repo);
+    await deleteBadgeAward(repository, rkey);
+    const indexed = await waitForIndex(async () => !(await badgeAwardIndexed(input.awardUri)));
+    expire(repo, input.subjectDid);
+    return { ok: true, endorsement: null, indexed };
+  } catch (err) {
+    return failure(failureReason(err, "unendorse"), "unendorse", { asOrganization });
+  }
+}
+
+export type EndorsementVisibilityResult =
+  | { ok: true; hidden: boolean; indexed: boolean }
+  | EndorseFailed;
+
+/**
+ * Hides (`hidden: true`, "rejected" response) or shows (`hidden: false`,
+ * "accepted" response) a received endorsement on `repo`'s public profile.
+ */
+export async function setEndorsementVisibility(
+  repo: string,
+  input: { awardUri: string; hidden: boolean },
+): Promise<EndorsementVisibilityResult> {
+  if (
+    typeof repo !== "string" ||
+    !isDid(repo) ||
+    typeof input?.awardUri !== "string" ||
+    !isAtUri(input.awardUri) ||
+    collectionOf(input.awardUri) !== AWARD_COLLECTION ||
+    typeof input.hidden !== "boolean"
+  ) {
+    return { ok: false, reason: "invalid", message: "Couldn't update that endorsement." };
+  }
+  const response = input.hidden ? "rejected" : "accepted";
+  try {
+    const session = await getOAuthSession();
+    if (!session) {
+      return {
+        ok: false,
+        reason: "signed-out",
+        message: "Your session has ended. Sign in again to update endorsements.",
+      };
+    }
+    if (!(await mayPublish(session.did, repo))) {
+      return {
+        ok: false,
+        reason: "forbidden",
+        message: "You can't change endorsements for this account.",
+      };
+    }
+    await respondToBadgeAward(
+      sdkContext(session),
+      { award: { uri: input.awardUri }, response },
+      writeTo(session, repo),
+    );
+    const indexed = await waitForIndex(
+      async () => (await getIndexedBadgeAwardResponse(input.awardUri)) === response,
+    );
+    updateTag(tags.endorsements(repo));
+    updateTag(tags.badges(repo));
+    updateTag(tags.actor(repo));
+    return { ok: true, hidden: input.hidden, indexed };
+  } catch (err) {
+    const reason = failureReason(err, "endorsement visibility");
+    return {
+      ok: false,
+      reason,
+      message:
+        reason === "unknown"
+          ? "We couldn't confirm whether the change was saved. Reload to check."
+          : reason === "forbidden"
+            ? "You can't change endorsements for this account."
+            : "Couldn't update the endorsement right now. Please try again.",
+    };
   }
 }

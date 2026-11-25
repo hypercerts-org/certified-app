@@ -1,11 +1,12 @@
 "use client";
 
 // Managing a list, in the workspace: create one, edit its details, add items
-// (one or many, pasted), delete it. Each opens a dialog that asks what it
-// needs; saving comes with the Hypercerts SDK's writes, so until then the
-// dialog's own action is a placeholder (disabled, and says so).
+// (one or many, pasted), delete it. Each opens a dialog backed by
+// list-actions.ts (SDK createCollection for new lists; signed writes for
+// updates and deletes).
 
 import {
+  Banner,
   Button,
   Field,
   Input,
@@ -15,15 +16,25 @@ import {
   Textarea,
 } from "@hypercerts-org/ui-react";
 import { ListPlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
-import { ComingSoonButton } from "@/components/coming-soon";
-import { LIST_KINDS } from "@/components/workspace-lists";
+import { toast } from "sonner";
+import { LIST_KINDS, type ListKind } from "@/components/workspace-lists";
+import * as listActions from "@/lib/hypercerts/list-actions";
 
-/** A dialog's two buttons: Cancel, and its action (a placeholder for now). */
-function Footer({ onCancel, action }: { onCancel: () => void; action: ReactNode }) {
+/** A dialog's two buttons: Cancel, and its primary/destructive action. */
+function Footer({
+  onCancel,
+  disabled,
+  action,
+}: {
+  onCancel: () => void;
+  disabled?: boolean;
+  action: ReactNode;
+}) {
   return (
     <>
-      <Button variant="secondary" onClick={onCancel}>
+      <Button variant="secondary" disabled={disabled} onClick={onCancel}>
         Cancel
       </Button>
       {action}
@@ -51,25 +62,60 @@ function Opener({
   );
 }
 
-/** A list's name and description, as the create and edit dialogs ask them. */
-function DetailsFields({ title, description }: { title?: string; description?: string }) {
-  return (
-    <div className="stack">
-      <Field label="Name">
-        {(field) => <Input {...field} name="title" defaultValue={title} maxLength={256} required />}
-      </Field>
-      <Field label="Description" description="Optional. Shown under the name on the profile.">
-        {(field) => <Textarea {...field} name="description" defaultValue={description} rows={4} />}
-      </Field>
-    </div>
-  );
-}
-
 /** "New list": what it holds, then its name and description. */
-export function NewListDialog() {
+export function NewListDialog({ repo }: { repo: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState(LIST_KINDS[0].label);
-  const close = () => setOpen(false);
+  const [kind, setKind] = useState<ListKind["label"]>(LIST_KINDS[0].label);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const reset = () => {
+    setKind(LIST_KINDS[0].label);
+    setTitle("");
+    setDescription("");
+    setError(null);
+  };
+
+  const close = () => {
+    if (submitting) return;
+    setOpen(false);
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    if (!title.trim()) {
+      setError("Add a name for the list.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await listActions
+        .createList(repo, {
+          kind,
+          title: title.trim(),
+          description: description.trim() || undefined,
+        })
+        .catch(() => ({
+          ok: false as const,
+          message: "We couldn't confirm whether the list was created. Reload to check.",
+        }));
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setOpen(false);
+      reset();
+      toast("List created");
+      router.push(result.href);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
       <Opener icon={<Plus size={16} aria-hidden />} label="New list" onOpen={() => setOpen(true)} />
@@ -81,18 +127,50 @@ export function NewListDialog() {
         footer={
           <Footer
             onCancel={close}
-            action={<ComingSoonButton variant="primary">Create list</ComingSoonButton>}
+            disabled={submitting}
+            action={
+              <Button variant="primary" loading={submitting} onClick={submit}>
+                Create list
+              </Button>
+            }
           />
         }
       >
         <div className="stack">
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
           <SegmentedControl
             label="What the list holds"
             options={LIST_KINDS.map((k) => ({ value: k.label, label: k.label }))}
             value={kind}
-            onChange={(next) => setKind(next as typeof kind)}
+            onChange={(next) => setKind(next as ListKind["label"])}
           />
-          <DetailsFields />
+          <Field label="Name">
+            {(field) => (
+              <Input
+                {...field}
+                name="title"
+                value={title}
+                onChange={(e) => setTitle(e.currentTarget.value)}
+                maxLength={256}
+                required
+              />
+            )}
+          </Field>
+          <Field label="Description" description="Optional. Shown under the name on the profile.">
+            {(field) => (
+              <Textarea
+                {...field}
+                name="description"
+                value={description}
+                onChange={(e) => setDescription(e.currentTarget.value)}
+                rows={4}
+              />
+            )}
+          </Field>
         </div>
       </ResponsiveDialog>
     </>
@@ -100,16 +178,66 @@ export function NewListDialog() {
 }
 
 /** "Edit details": the list's name and description, as they are. */
-export function EditListDialog({ title, description }: { title: string; description: string }) {
+export function EditListDialog({
+  repo,
+  rkey,
+  title: initialTitle,
+  description: initialDescription,
+}: {
+  repo: string;
+  rkey: string;
+  title: string;
+  description: string;
+}) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const openDialog = () => {
+    setTitle(initialTitle);
+    setDescription(initialDescription);
+    setError(null);
+    setOpen(true);
+  };
+
+  const close = () => {
+    if (submitting) return;
+    setOpen(false);
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    if (!title.trim()) {
+      setError("Add a name for the list.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await listActions
+        .editList(repo, rkey, { title: title.trim(), description: description.trim() })
+        .catch(() => ({
+          ok: false as const,
+          message: "We couldn't confirm whether the changes were saved. Reload to check.",
+        }));
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setOpen(false);
+      toast("List updated");
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
-      <Opener
-        icon={<Pencil size={16} aria-hidden />}
-        label="Edit details"
-        onOpen={() => setOpen(true)}
-      />
+      <Opener icon={<Pencil size={16} aria-hidden />} label="Edit details" onOpen={openDialog} />
       <ResponsiveDialog
         open={open}
         onClose={close}
@@ -117,11 +245,45 @@ export function EditListDialog({ title, description }: { title: string; descript
         footer={
           <Footer
             onCancel={close}
-            action={<ComingSoonButton variant="primary">Save</ComingSoonButton>}
+            disabled={submitting}
+            action={
+              <Button variant="primary" loading={submitting} onClick={submit}>
+                Save
+              </Button>
+            }
           />
         }
       >
-        <DetailsFields title={title} description={description} />
+        <div className="stack">
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
+          <Field label="Name">
+            {(field) => (
+              <Input
+                {...field}
+                name="title"
+                value={title}
+                onChange={(e) => setTitle(e.currentTarget.value)}
+                maxLength={256}
+                required
+              />
+            )}
+          </Field>
+          <Field label="Description" description="Optional. Shown under the name on the profile.">
+            {(field) => (
+              <Textarea
+                {...field}
+                name="description"
+                value={description}
+                onChange={(e) => setDescription(e.currentTarget.value)}
+                rows={4}
+              />
+            )}
+          </Field>
+        </div>
       </ResponsiveDialog>
     </>
   );
@@ -135,18 +297,72 @@ const lines = (text: string) =>
     .filter(Boolean);
 
 /** "Add items": one or many, pasted one per line. */
-export function AddItemsDialog({ noun }: { noun: string }) {
+export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: string; noun: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const close = () => setOpen(false);
-  const count = lines(text).length;
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const entries = lines(text);
+  const count = entries.length;
+
+  const close = () => {
+    if (submitting) return;
+    setOpen(false);
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    if (count === 0) {
+      setError("Paste at least one item to add.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await listActions.addListItems(repo, rkey, entries).catch(() => ({
+        ok: false as const,
+        message: "We couldn't confirm whether items were added. Reload to check.",
+      }));
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      const parts: string[] = [];
+      if (result.added > 0) {
+        parts.push(`Added ${result.added} ${result.added === 1 ? "item" : "items"}`);
+      }
+      if (result.skipped > 0) parts.push(`${result.skipped} already in list`);
+      if (result.unresolved.length > 0) parts.push(`${result.unresolved.length} not found`);
+      toast(parts.join(" · ") || "No new items added");
+
+      if (result.unresolved.length > 0) {
+        // Keep unresolved lines so the user can fix typos without re-pasting.
+        setText(result.unresolved.join("\n"));
+        setError(
+          `Couldn't resolve ${result.unresolved.length === 1 ? "this entry" : "these entries"}. Check and try again.`,
+        );
+      } else {
+        setText("");
+        setOpen(false);
+      }
+      if (result.added > 0) router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
       <Opener
         icon={<ListPlus size={16} aria-hidden />}
         label="Add items"
         primary
-        onOpen={() => setOpen(true)}
+        onOpen={() => {
+          setError(null);
+          setOpen(true);
+        }}
       />
       <ResponsiveDialog
         open={open}
@@ -156,15 +372,26 @@ export function AddItemsDialog({ noun }: { noun: string }) {
         footer={
           <Footer
             onCancel={close}
+            disabled={submitting}
             action={
-              <ComingSoonButton variant="primary">
+              <Button
+                variant="primary"
+                loading={submitting}
+                disabled={count === 0}
+                onClick={submit}
+              >
                 {count > 1 ? `Add ${count} items` : "Add"}
-              </ComingSoonButton>
+              </Button>
             }
           />
         }
       >
         <div className="stack">
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
           <Field label="Items">
             {(field) => (
               <Textarea
@@ -193,15 +420,57 @@ export function AddItemsDialog({ noun }: { noun: string }) {
 }
 
 /** "Delete list": says what goes, and that the items themselves stay. */
-export function DeleteListDialog({ title, itemCount }: { title: string; itemCount: number }) {
+export function DeleteListDialog({
+  repo,
+  rkey,
+  title,
+  itemCount,
+}: {
+  repo: string;
+  rkey: string;
+  title: string;
+  itemCount: number;
+}) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const close = () => {
+    if (submitting) return;
+    setOpen(false);
+  };
+
+  const confirm = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await listActions.deleteList(repo, rkey).catch(() => ({
+        ok: false as const,
+        message: "We couldn't confirm whether the list was deleted. Reload to check.",
+      }));
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setOpen(false);
+      toast(`Deleted "${title}"`);
+      router.push(result.href);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
       <Opener
         icon={<Trash2 size={16} aria-hidden />}
         label="Delete list"
-        onOpen={() => setOpen(true)}
+        onOpen={() => {
+          setError(null);
+          setOpen(true);
+        }}
       />
       <ResponsiveDialog
         open={open}
@@ -211,14 +480,26 @@ export function DeleteListDialog({ title, itemCount }: { title: string; itemCoun
         footer={
           <Footer
             onCancel={close}
-            action={<ComingSoonButton variant="primary">Delete list</ComingSoonButton>}
+            disabled={submitting}
+            action={
+              <Button variant="destructive" loading={submitting} onClick={confirm}>
+                Delete list
+              </Button>
+            }
           />
         }
       >
-        <Text>
-          The list and its {itemCount === 1 ? "one item" : `${itemCount} items`} leave the profile.
-          The accounts and records it lists aren't touched. This can't be undone.
-        </Text>
+        <div className="stack">
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
+          <Text>
+            The list and its {itemCount === 1 ? "one item" : `${itemCount} items`} leave the
+            profile. The accounts and records it lists aren't touched. This can't be undone.
+          </Text>
+        </div>
       </ResponsiveDialog>
     </>
   );

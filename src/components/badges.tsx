@@ -218,7 +218,14 @@ export function IssuedBadgeTiles({ badges }: { badges: IssuedBadge[] }) {
 }
 
 /** The badges an account defined, as rows: with their description. */
-export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
+export function IssuedBadgeList({
+  badges,
+  actions,
+}: {
+  badges: IssuedBadge[];
+  /** Buttons at a row's end (such as Award in the workspace). */
+  actions?: (badge: IssuedBadge) => ReactNode;
+}) {
   if (badges.length === 0) return <Empty icon={Award} title="No badges issued yet" />;
   return (
     <ul className="badge-list divided">
@@ -239,6 +246,7 @@ export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
               </p>
             )}
           </div>
+          {actions && <div className="badge-row-actions">{actions(badge)}</div>}
         </li>
       ))}
     </ul>

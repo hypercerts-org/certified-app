@@ -50,11 +50,16 @@ async function Content({ params }: { params: Promise<{ actor: string; rkey: stri
         </Text>
       )}
       <div className="manage-list-actions">
-        <AddItemsDialog noun={kind.noun} />
-        <EditListDialog title={list.title} description={list.description ?? list.summary ?? ""} />
-        <DeleteListDialog title={list.title} itemCount={list.itemCount} />
+        <AddItemsDialog repo={did} rkey={rkey} noun={kind.noun} />
+        <EditListDialog
+          repo={did}
+          rkey={rkey}
+          title={list.title}
+          description={list.description ?? list.summary ?? ""}
+        />
+        <DeleteListDialog repo={did} rkey={rkey} title={list.title} itemCount={list.itemCount} />
       </div>
-      <ManageListItems list={list.uri} initial={first} />
+      <ManageListItems repo={did} rkey={rkey} list={list.uri} initial={first} />
     </div>
   );
 }

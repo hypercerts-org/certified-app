@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Badges awaiting response", robots: {
 async function Content({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
-  return <ReceivedBadges kind="awaiting" badges={(await getBadges(did)).awaiting} />;
+  return <ReceivedBadges repo={did} kind="awaiting" badges={(await getBadges(did)).awaiting} />;
 }
 
 /** Badges awarded to the workspace's account that await its response. */

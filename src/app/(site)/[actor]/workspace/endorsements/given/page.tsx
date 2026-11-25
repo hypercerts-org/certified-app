@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Endorsements given", robots: { index
 async function Given({ params }: { params: Promise<{ actor: string }> }) {
   const did = await workspaceDid(params);
   if (!did) return null; // no access: the workspace layout says why
-  return <GivenEndorsements page={await listEndorsements(did, "given")} />;
+  return <GivenEndorsements repo={did} page={await listEndorsements(did, "given")} />;
 }
 
 /** Endorsements the workspace's account gave. */

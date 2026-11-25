@@ -45,6 +45,11 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
   return <ProfileTabs label="Badges" tabs={tabs(base, counts)} />;
 }
 
+async function NewBadgeAction({ params }: { params: Promise<{ actor: string }> }) {
+  const did = decodeURIComponent((await params).actor);
+  return <NewBadge repo={did} />;
+}
+
 export default function BadgesLayout({
   children,
   params,
@@ -58,7 +63,11 @@ export default function BadgesLayout({
             <Tabs params={params} />
           </Suspense>
         }
-        action={<NewBadge />}
+        action={
+          <Suspense fallback={null}>
+            <NewBadgeAction params={params} />
+          </Suspense>
+        }
       />
       {/* Each page shows its own skeleton while it loads, so a tab switches at once. */}
       {children}
