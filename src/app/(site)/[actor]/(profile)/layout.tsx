@@ -10,6 +10,7 @@ import {
   getEndorsements,
   getFollowCounts,
   getIssuedBadges,
+  getProjectBadges,
   getRecordCounts,
   hasFunding,
 } from "@/lib/hypercerts/queries";
@@ -67,6 +68,8 @@ type TabCounts = {
   badgesAccepted: number;
   badgesAwaiting: number;
   badgesIssued: number;
+  /** Badges the account's projects received. */
+  badgesForProjects: number;
   /** Whether the account received or gave any funding. */
   funding: boolean;
 };
@@ -120,8 +123,13 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
           "Badges",
           "/badges",
           counts?.badgesAccepted,
-          ["/badges/awaiting", "/badges/issued"],
-          !counts || counts.badgesAccepted + counts.badgesAwaiting + counts.badgesIssued === 0,
+          ["/badges/awaiting", "/badges/projects", "/badges/issued"],
+          !counts ||
+            counts.badgesAccepted +
+              counts.badgesAwaiting +
+              counts.badgesForProjects +
+              counts.badgesIssued ===
+              0,
         ),
         { ...tab("Lists", "/lists", counts?.lists), nested: true },
         // No count: totals are in several currencies (the tab shows them).
@@ -137,14 +145,16 @@ function Tabs({ base, counts }: { base: string; counts?: TabCounts }) {
 }
 
 async function TabsWithCounts({ did, base }: { did: string; base: string }) {
-  const [records, endorsements, follows, badges, issued, funding] = await Promise.all([
-    getRecordCounts(did),
-    getEndorsements(did),
-    getFollowCounts(did),
-    getBadges(did),
-    getIssuedBadges(did),
-    hasFunding(did),
-  ]);
+  const [records, endorsements, follows, badges, issued, projectBadges, funding] =
+    await Promise.all([
+      getRecordCounts(did),
+      getEndorsements(did),
+      getFollowCounts(did),
+      getBadges(did),
+      getIssuedBadges(did),
+      getProjectBadges(did),
+      hasFunding(did),
+    ]);
   return (
     <Tabs
       base={base}
@@ -159,6 +169,7 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
         badgesAccepted: badges.accepted.length,
         badgesAwaiting: badges.awaiting.length,
         badgesIssued: issued.badges.length,
+        badgesForProjects: projectBadges.badges.length,
         funding: funding.received || funding.given || funding.confirmed,
       }}
     />

@@ -124,7 +124,7 @@ async function AllSections({ searchParams }: { searchParams: SearchParams }) {
       {!state.query && (
         <Section
           title="Featured"
-          description="Activities picked by Ma Earth."
+          description="Activities from projects in Ma Earth Funding Round 3."
           more="All featured"
           moreHref={exploreHref("activities", "?list=featured")}
         >
@@ -184,7 +184,7 @@ export function ExploreAll({ searchParams }: { searchParams: SearchParams }) {
 function FeaturedNote({ kind, state }: { kind: ExploreKind; state: ExploreState }) {
   return (
     <div className="explore-note">
-      <Text>Showing featured picks from Ma Earth.</Text>
+      <Text>Showing Ma Earth Funding Round 3.</Text>
       <Link
         href={exploreHref(kind, exploreSearch(state, { featured: false }))}
         className="explore-more"

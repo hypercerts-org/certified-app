@@ -7,6 +7,30 @@ import { Empty } from "@/components/empty";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
 import { endorsementLine, type PersonRow } from "@/lib/hypercerts/views";
 
+/** One account's row: avatar, name and a line under it; its date and `action` at the end. */
+export function PersonRowItem({ row, action }: { row: PersonRow; action?: ReactNode }) {
+  return (
+    <li className="people-row">
+      <ActorRow actor={row.actor} href={actorHref(row.actor)} secondary={endorsementLine(row)} />
+      {(row.date || action) && (
+        <span className="people-row-end">
+          {row.date && <RowDate date={row.date} />}
+          {action}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** A row's date, at its end. */
+export function RowDate({ date }: { date: string }) {
+  return (
+    <Text as="span" size="body-sm" tone="muted" className="people-date">
+      {date}
+    </Text>
+  );
+}
+
 /**
  * The rows themselves: also rendered in the browser, for lists that load
  * more (badge-holders.tsx), so they take only plain view models.
@@ -22,23 +46,7 @@ export function PeopleRows({
   return (
     <ul className="people-list">
       {rows.map((row) => (
-        <li key={row.uri} className="people-row">
-          <ActorRow
-            actor={row.actor}
-            href={actorHref(row.actor)}
-            secondary={endorsementLine(row)}
-          />
-          {(row.date || action) && (
-            <span className="people-row-end">
-              {row.date && (
-                <Text as="span" size="body-sm" tone="muted" className="people-date">
-                  {row.date}
-                </Text>
-              )}
-              {action?.(row)}
-            </span>
-          )}
-        </li>
+        <PersonRowItem key={row.uri} row={row} action={action?.(row)} />
       ))}
     </ul>
   );

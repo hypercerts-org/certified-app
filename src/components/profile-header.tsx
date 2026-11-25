@@ -8,12 +8,14 @@ import { ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
-import { ActorAvatar, ActorName } from "@/components/actor";
+import { ActorAvatar, ActorName, ActorStack } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
+import { AccountPlatformLinks } from "@/components/platform-links";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
+import { hasMaEarthPage } from "@/lib/hypercerts/platform-links";
 import { getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditProfile } from "@/lib/memberships";
@@ -90,6 +92,8 @@ function links(actor: ActorDetail): AccountLink[] {
   for (const { url, label } of entries) {
     const address = shortAddress(url); // http(s) only, checked when mapped (safeUrl)
     if (seen.has(address)) continue;
+    // Its Ma Earth page shows in "Also on", with the app's icon.
+    if (/^maearth\.com(\/|$)/.test(address) && hasMaEarthPage(actor.did)) continue;
     seen.add(address);
     const bluesky = /^(bsky\.app|bsky\.social)(\/|$)/.test(address);
     out.push({
@@ -171,6 +175,9 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
               )}
             </ExpandableText>
           )}
+          <Suspense fallback={null}>
+            <AccountPlatformLinks did={actor.did} organization={actor.isOrganization} />
+          </Suspense>
           {accountLinks.length > 0 && (
             <ul className="profile-links" aria-label="Links">
               {accountLinks.map((link) => (
@@ -241,7 +248,6 @@ function BlueskyIcon() {
 }
 
 const NAMED = 2;
-const FACES = 3;
 const numberFormat = new Intl.NumberFormat("en");
 
 /** "A", "A and B", "A, B and 3 others" (or "and others" past the latest page). */
@@ -282,11 +288,7 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
       {/* Endorsements and follows only when there are some: an absence says nothing here. */}
       {endorsers.length > 0 && (
         <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
-          <span className="trust-faces" aria-hidden>
-            {endorsers.slice(0, FACES).map((actor) => (
-              <ActorAvatar key={actor.did} actor={actor} size="sm" />
-            ))}
-          </span>
+          <ActorStack actors={endorsers} total={endorsers.length + (more ? 1 : 0)} />
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
       )}

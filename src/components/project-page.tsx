@@ -1,8 +1,8 @@
-// A project's page, like a profile: its banner and header (what it is, by
-// whom, how many follow it, Follow), then two columns: its pages as tabs,
-// each its own URL (Activities, the default; Updates, when it has any;
-// Funding; Followers), and beside them where it is, what was measured and
-// its attachments.
+// A project's page, laid out like a profile: its banner and header (what it
+// is, by whom, how many follow it, Follow), then two columns. On the left its
+// pages as tabs, each its own URL: Overview (the default, a timeline of what
+// happened in it), Activities, Followers, Badges, Funding. On the right what
+// stays put: its figures, where it is, and its identifiers.
 
 import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
@@ -10,8 +10,9 @@ import { Suspense } from "react";
 import { ActorLink } from "@/components/actor";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
+import { ProjectPlatformLinks } from "@/components/platform-links";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
-import { Attachments, hasUpdates, Measurements } from "@/components/record-context";
+import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { RichText } from "@/components/rich-text";
 import { TileSlot } from "@/components/tile-slot";
 import { getActingAs } from "@/lib/acting-as";
@@ -21,6 +22,7 @@ import {
   getPlace,
   getProject,
   getProjectFollowers,
+  getRecordBadges,
 } from "@/lib/hypercerts/queries";
 import { leadOf } from "@/lib/rich-text";
 
@@ -70,37 +72,38 @@ async function ProjectFollow({ uri, author, path }: { uri: string; author: strin
 }
 
 const TABS = [
-  { label: "Activities", path: "" },
-  { label: "Updates", path: "/updates" },
-  { label: "Funding", path: "/funding" },
+  { label: "Overview", path: "" },
+  { label: "Activities", path: "/activities" },
   { label: "Followers", path: "/followers" },
+  { label: "Badges", path: "/badges" },
+  { label: "Funding", path: "/funding" },
 ] as const;
 
 /**
- * The tabs carry no numbers: the header already says how many follow.
- * Updates shows only when the project has some.
+ * The tabs carry no numbers (the figures beside them do). Activities and
+ * Badges show only when the project has some.
  */
 export async function ProjectTabs({ params }: { params: ProjectParams }) {
-  const { uri, base } = await projectFrom(params);
-  const updates = await hasUpdates(uri);
+  const { project, uri, base } = await projectFrom(params);
+  const badges = await getRecordBadges(uri);
+  const empty: Record<string, boolean> = {
+    "/activities": project.activityCount === 0,
+    "/badges": badges.length === 0,
+  };
   return (
     <ProfileTabs
       label="Project"
       tabs={TABS.map((tab) => ({
         label: tab.label,
         href: `${base}${tab.path}`,
-        empty: tab.path === "/updates" && !updates,
+        empty: empty[tab.path] ?? false,
       }))}
     />
   );
 }
 
 export function ProjectTabsSkeleton() {
-  return (
-    <ProfileTabsSkeleton
-      labels={TABS.filter((tab) => tab.path !== "/updates").map((tab) => tab.label)}
-    />
-  );
+  return <ProfileTabsSkeleton labels={["Overview"]} />;
 }
 
 /** Where the project is, as a map with its name, when it says. */
@@ -119,10 +122,14 @@ async function ProjectLocation({
 }
 
 /** The side column: where, what was measured, attachments; each only when there is one. */
+/** The column beside every tab: figures, where it is, and what identifies it. */
 export async function ProjectRail({ params }: { params: ProjectParams }) {
-  const { actor, project, uri } = await projectFrom(params);
+  const { actor, project, uri, base } = await projectFrom(params);
   return (
     <>
+      <TileSlot title="In numbers" skeleton={null}>
+        <RecordFigures uri={uri} base={base} activities={project.activityCount} />
+      </TileSlot>
       {project.locationUri && (
         <TileSlot title="Location" skeleton={null}>
           <ProjectLocation
@@ -132,12 +139,7 @@ export async function ProjectRail({ params }: { params: ProjectParams }) {
           />
         </TileSlot>
       )}
-      <TileSlot title="Measured" skeleton={null}>
-        <Measurements uri={uri} />
-      </TileSlot>
-      <TileSlot title="Attachments" skeleton={null}>
-        <Attachments uri={uri} />
-      </TileSlot>
+      <RecordFacts title="Project" uri={uri} facts={[["Created", project.createdAt]]} />
     </>
   );
 }
@@ -167,6 +169,9 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
               <FollowerCount uri={uri} />
             </Suspense>
           </div>
+          <Suspense fallback={null}>
+            <ProjectPlatformLinks uri={uri} />
+          </Suspense>
           {/* The short description leads; the long one fades out above Read
               more, as a profile's does. */}
           {lead && (

@@ -1,7 +1,7 @@
 // A badge's own page, under the account that defined it
 // (/{issuer}/badge/{rkey}): what the badge is, then who holds it, by the
-// holder's response: Accepted, or Awaiting response. Every badge on a
-// profile links here, so a badge can be followed to everyone else who holds
+// holder's response: Accepted, or Awaiting response. A holder is an account
+// or a record (a project, an activity). Every badge on a profile links here, so a badge can be followed to everyone else who holds
 // it.
 
 import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
@@ -78,13 +78,6 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
           initial={{ items: shown.items, cursor: shown.cursor }}
           empty={which === "accepted" ? "No holders yet" : "No holders awaiting a response"}
         />
-        {shown.records > 0 && (
-          <Text size="body-sm" tone="muted">
-            {shown.records} {shown.records === 1 ? "award" : "awards"} on the first page{" "}
-            {shown.records === 1 ? "goes" : "go"} to a record (a project or an activity), not an
-            account.
-          </Text>
-        )}
       </div>
     </>
   );

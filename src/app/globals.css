@@ -1230,30 +1230,6 @@ button.menu-row:disabled:not([aria-current]) {
 }
 
 /* Gift posts: the projects', activities' and accounts' pictures, small. */
-.post-targets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.post-target-thumb {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: var(--space-8);
-  block-size: var(--space-8);
-  overflow: hidden;
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-tint);
-  color: var(--hc-text-muted);
-}
-
-.post-target-thumb img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
 /* A wallet address, in the identifiers' type. */
 .post-wallet {
   font-family: var(--hc-font-mono, ui-monospace, monospace);
@@ -1476,19 +1452,57 @@ a.post-amount:hover {
 }
 
 /* Faces overlap a little, each ringed in the page colour. */
-.trust-faces {
+/* Several small pictures at once (AvatarStack, src/components/actor.tsx):
+   overlapping, each ringed in the background it sits on, the rest marked
+   with "…". A card sets the ring to its own surface. */
+.avatar-stack {
+  --avatar-stack-ring: var(--hc-surface-page);
   display: inline-flex;
   flex: none;
+  align-items: center;
 }
 
-.trust-faces > * {
-  box-shadow: 0 0 0 2px var(--hc-surface-page);
-  border-radius: 50%;
+.post-card .avatar-stack,
+.tile .avatar-stack {
+  --avatar-stack-ring: var(--hc-surface-panel);
 }
 
-.trust-faces > * + * {
-  /* Optical alignment: the icon's side bearing, pulled back to the text edge. */
+.avatar-stack :where(.actor-avatar),
+.avatar-stack-thumb,
+.avatar-stack-more {
+  box-shadow: 0 0 0 2px var(--avatar-stack-ring);
+}
+
+.avatar-stack > * + * {
   margin-inline-start: -0.375rem;
+}
+
+/* A record among them (a project a gift went to): a small rounded square. */
+.avatar-stack-thumb,
+.avatar-stack-more {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  overflow: hidden;
+  background: var(--hc-surface-tint);
+  color: var(--hc-text-muted);
+}
+
+.avatar-stack > .avatar-stack-thumb {
+  border-radius: var(--hc-radius-tag);
+}
+
+.avatar-stack-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.avatar-stack-more {
+  border-radius: 50%;
+  font-size: var(--hc-type-micro);
+  line-height: 1;
 }
 
 .trust-counts {
@@ -1512,9 +1526,13 @@ a.post-amount:hover {
 }
 
 /* Two lists within one tab (Followers / Following): a segmented switch. */
+/* More segments than fit (a narrow screen) go on a second line, never off
+   the side. */
 .segmented-links {
   display: inline-flex;
+  flex-wrap: wrap;
   align-self: flex-start;
+  max-inline-size: 100%;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--hc-radius-control);
@@ -1530,6 +1548,7 @@ a.post-amount:hover {
   border-radius: var(--hc-radius-control);
   color: var(--hc-text-muted);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .segmented-link:hover {
@@ -2658,49 +2677,15 @@ a.explore-account-link:hover .list-item-title {
   block-size: 2.5rem;
 }
 
-/* Evaluations: who evaluated and when, the score at the right, then the
-   summary (long ones fold) and the report's links. */
-.evaluations,
-.updates,
-.measurements,
-.attachments {
+/* What others add to a record, in its timeline's posts (record-context):
+   an evaluation (its score, then the summary and the report's links); an
+   update (its title, then the text); a measurement (a figure over what it
+   measured); an attachment (an icon by kind beside the title). */
+.evaluation {
   display: flex;
   flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.evaluation,
-.update {
-  display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-3);
-  padding-block: var(--space-5);
-  border-block-start: 1px solid var(--hc-line-hairline);
-}
-
-.evaluation-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.evaluation-faces {
-  flex: none;
-}
-
-.evaluation-by {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-inline-size: 0;
-  color: var(--hc-text-ink);
-  font-size: var(--hc-type-body-sm);
-}
-
-.evaluation-date {
-  color: var(--hc-text-muted);
 }
 
 /* The score as a figure: the value large, its scale beside it. */
@@ -2723,18 +2708,7 @@ a.explore-account-link:hover .list-item-title {
   font-weight: var(--hc-weight-strong);
 }
 
-/* Updates: the date over the title, then the text. */
-.update-meta {
-  margin: 0;
-  color: var(--hc-text-muted);
-  font-size: var(--hc-type-body-sm);
-}
-
-.update-title {
-  margin-block-start: calc(-1 * var(--space-2));
-}
-
-/* "Show all N updates": a quiet link-like toggle under the latest few. */
+/* "Show N older": a quiet link-like toggle under a timeline's latest posts. */
 .updates-more > summary {
   inline-size: fit-content;
   padding-block: var(--space-3);
@@ -2752,11 +2726,6 @@ a.explore-account-link:hover .list-item-title {
 
 .updates-more[open] > summary {
   display: none;
-}
-
-/* Measurements in the side column: each a figure over what it measured. */
-.measurements {
-  gap: var(--space-5);
 }
 
 .measurement {
@@ -2783,12 +2752,6 @@ a.explore-account-link:hover .list-item-title {
 .measurement-comment {
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
-}
-
-/* Attachments in the side column: an icon by kind, the title linking to the
-   file, what it is and when. */
-.attachments {
-  gap: var(--space-4);
 }
 
 .attachment {
@@ -2820,6 +2783,80 @@ a.attachment-title:hover {
 .attachment-meta {
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
+}
+
+/* "Also on" (src/components/platform-links.tsx): the other apps that show
+   a project or an account, as quiet links with each app's icon, in a row
+   that wraps. Its label sits on the same line as the links. */
+.platform-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.platform-links-label {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-body-sm);
+}
+
+.platform-links ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.platform-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 2rem;
+  padding-inline: var(--space-1) var(--space-2);
+  border: 1px solid var(--hc-line-hairline);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-panel);
+  color: var(--hc-text-ink);
+  font-size: var(--hc-type-body-sm);
+  font-weight: var(--hc-weight-medium);
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.platform-link:hover {
+  border-color: var(--hc-text-muted);
+  background: var(--hc-fill-subtle);
+}
+
+/* Each app's own icon, as an app tile: rounded, with a hairline so a light
+   icon keeps its edge on a light panel. */
+.platform-link-icon {
+  flex: none;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: calc(var(--hc-radius-control) - 2px);
+  outline: 1px solid var(--hc-line-hairline);
+  outline-offset: -1px;
+  object-fit: cover;
+}
+
+.platform-link-note {
+  color: var(--hc-text-muted);
+  font-weight: var(--hc-weight-body);
+}
+
+.platform-link-arrow {
+  color: var(--hc-text-muted);
+  transition: translate 150ms ease;
+}
+
+.platform-link:hover .platform-link-arrow {
+  color: var(--hc-text-ink);
+  translate: 1px -1px;
 }
 
 /* A project's page: its details, with Follow at the top right. */
@@ -3187,6 +3224,19 @@ a.badge-title:hover {
 .record-row-meta {
   color: var(--hc-text-muted);
   font-size: var(--hc-type-body-sm);
+}
+
+/* A project with a badge it received (badges.tsx): where the row is narrow,
+   the badge goes under the project, in line with its title. */
+@container page (max-width: 36rem) {
+  .project-badge-row {
+    flex-wrap: wrap;
+  }
+
+  .project-badge-row .record-row-end {
+    flex-basis: 100%;
+    padding-inline-start: calc(2.5rem + var(--space-3));
+  }
 }
 
 .record-row-end {

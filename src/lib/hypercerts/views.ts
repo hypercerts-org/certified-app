@@ -615,7 +615,7 @@ export function toBadgeCard(
 }
 
 /** Badges in force first, by the recipient's weight, then newest; expired ones last. */
-export function sortBadges(cards: BadgeCard[]): BadgeCard[] {
+export function sortBadges<T extends BadgeCard>(cards: T[]): T[] {
   return [...cards].sort(
     (a, b) => Number(a.expired) - Number(b.expired) || b.weight - a.weight || b.time - a.time,
   );
@@ -1034,12 +1034,16 @@ export type FileLink = { href: string; label: string; thumbnail?: string; audio?
 /** An evaluation of the work: by whom, its verdict, and its score if it gives one. */
 export type Evaluation = {
   uri: string;
+  /** The records it evaluates (a project, an activity). */
+  subjects: string[];
   /** The evaluators' DIDs, in the record's order (the query turns them into cards). */
   evaluatorDids: string[];
   summary: string;
   /** "8", out of "10" (from "1"). */
   score: { value: string; min: string; max: string } | null;
   date: string | null;
+  /** When it was made, for ordering a timeline (0 when unknown). */
+  time: number;
   /** Its reports and data, where they are links. */
   files: FileLink[];
 };
@@ -1047,6 +1051,11 @@ export type Evaluation = {
 /** A measured result: "25 hectares", what was measured, when and how. */
 export type Measurement = {
   uri: string;
+  /** The records it measures (a project, an activity). */
+  subjects: string[];
+  author: ActorCard;
+  /** When it was recorded, for ordering a timeline (0 when unknown). */
+  time: number;
   /** "Forest area restored". */
   metric: string;
   /** The value as written, numbers grouped: "1,250", "30000 records". */
@@ -1064,7 +1073,11 @@ export type Measurement = {
 /** An attachment: an update, a report, a recording, a photo. */
 export type Attachment = {
   uri: string;
+  /** The records it is about (a project, an activity). */
+  subjects: string[];
   author: ActorCard;
+  /** When it was captured or made, for ordering a timeline (0 when unknown). */
+  time: number;
   /** The record's own type ("update", "report", "audio"), as written. */
   kind: string;
   title: string;
@@ -1137,6 +1150,19 @@ export function fileLinks(items: unknown, did: string, blobBase: string | null):
   });
 }
 
+/** A date as milliseconds, for ordering; 0 when it isn't one. */
+function timeOf(value: unknown): number {
+  const time = new Date(asString(value) ?? "").getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+/** A context record's subjects (a strong ref, or a list of them), as URIs. */
+function subjectsOf(value: unknown): string[] {
+  return (Array.isArray(value) ? value : [value]).flatMap(
+    (entry) => asString(asRecord(entry)?.uri) ?? asString(entry) ?? [],
+  );
+}
+
 export function toEvaluation(view: EvaluationRecordView, blobBase: string | null): Evaluation {
   const record = view.record as unknown as UnknownRecord;
   const evaluators = (Array.isArray(record.evaluators) ? record.evaluators : []).flatMap(
@@ -1154,6 +1180,8 @@ export function toEvaluation(view: EvaluationRecordView, blobBase: string | null
     summary: asString(record.summary)?.trim() ?? "",
     score: value && max ? { value, min: asString(score?.min) ?? "0", max } : null,
     date: formatDate(record.createdAt),
+    time: timeOf(record.createdAt),
+    subjects: subjectsOf(record.subject ?? record.subjects),
     files: fileLinks(record.content, view.did, blobBase),
   };
 }
@@ -1164,6 +1192,9 @@ export function toMeasurement(view: MeasurementRecordView): Measurement {
   const to = formatDate(record.endDate);
   return {
     uri: view.uri,
+    subjects: subjectsOf(record.subjects ?? record.subject),
+    author: toActorCard(view.author),
+    time: timeOf(record.createdAt),
     metric: humanize(asString(record.metric) ?? ""),
     value: formatValue(asString(record.value) ?? ""),
     unit: asString(record.unit)?.trim() ?? "",
@@ -1189,7 +1220,9 @@ export function toAttachment(view: AttachmentRecordView, blobBase: string | null
   const short = asString(record.shortDescription)?.trim();
   return {
     uri: view.uri,
+    subjects: subjectsOf(record.subjects ?? record.subject),
     author: toActorCard(view.author),
+    time: timeOf(record.capturedAt ?? record.createdAt),
     kind: asString(record.contentType)?.trim().toLowerCase() || "attachment",
     title: asString(record.title)?.trim() || "Untitled",
     date: formatDate(record.capturedAt ?? record.createdAt),

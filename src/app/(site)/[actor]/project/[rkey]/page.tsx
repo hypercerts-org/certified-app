@@ -1,20 +1,18 @@
 import { Suspense } from "react";
-import { ActivityList } from "@/components/activity-list";
-import { ActivityPostsSkeleton } from "@/components/cards";
+import { ProfileFeedSkeleton } from "@/components/profile-feed";
 import { projectFrom } from "@/components/project-page";
-import { listProjectActivitiesPage } from "@/lib/hypercerts/queries";
+import { RecordTimeline } from "@/components/record-timeline";
 
-async function Activities({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "params">) {
-  const { actor, uri } = await projectFrom(params);
-  const page = await listProjectActivitiesPage({ project: uri });
-  return <ActivityList initial={page} source={{ kind: "project", uri }} ownerDid={actor.did} />;
+async function Overview({ params }: Pick<PageProps<"/[actor]/project/[rkey]">, "params">) {
+  const { actor, uri, base } = await projectFrom(params);
+  return <RecordTimeline uri={uri} owner={actor} href={base} noun="project" />;
 }
 
-/** A project's activities, newest first, as posts: its default tab. */
-export default function ProjectActivitiesPage(props: PageProps<"/[actor]/project/[rkey]">) {
+/** What happened in the project, newest first: its default tab. */
+export default function ProjectOverviewPage(props: PageProps<"/[actor]/project/[rkey]">) {
   return (
-    <Suspense fallback={<ActivityPostsSkeleton />}>
-      <Activities params={props.params} />
+    <Suspense fallback={<ProfileFeedSkeleton />}>
+      <Overview params={props.params} />
     </Suspense>
   );
 }

@@ -3,7 +3,8 @@
 // a sentence), or a row (ActorRow). Every account goes through
 // these, so an account reads and looks the same everywhere: its profile name,
 // else its handle, else its DID (nameOf); its picture, else the initials of
-// that name on an opaque disc; a square for an organization.
+// that name on an opaque disc; a square for an organization. Several at once
+// are a stack (AvatarStack, ActorStack).
 
 import { Avatar } from "@hypercerts-org/ui-react";
 import type { ComponentProps, ReactNode } from "react";
@@ -68,6 +69,56 @@ export function ActorAvatar({
         .filter(Boolean)
         .join(" ")}
     />
+  );
+}
+
+/** A stack shows at most this many pictures; more are marked, not shown. */
+const STACK_MAX = 4;
+
+/**
+ * Several small pictures in a row, overlapping, wherever the app shows a
+ * group at once: who endorsed, followed or gave, evaluators, what gifts went
+ * to. At most `max` show; when there are more (`total`, or more children than
+ * fit), an "…" marks the rest. The sentence beside it names and counts them,
+ * so the stack itself is decoration.
+ */
+export function AvatarStack({
+  children,
+  total,
+  max = STACK_MAX,
+}: {
+  /** The pictures, small (ActorAvatar size "sm", or a record's thumbnail). */
+  children: ReactNode[];
+  /** How many there are in all, when that is more than the pictures given. */
+  total?: number;
+  max?: number;
+}) {
+  const shown = children.slice(0, max);
+  const more = Math.max(total ?? 0, children.length) > shown.length;
+  return (
+    <span className="avatar-stack" aria-hidden>
+      {shown}
+      {more && <span className="avatar-stack-more">…</span>}
+    </span>
+  );
+}
+
+/** Accounts as a stack: their pictures, overlapping, the rest marked. */
+export function ActorStack({
+  actors,
+  total,
+  max,
+}: {
+  actors: ActorLike[];
+  total?: number;
+  max?: number;
+}) {
+  return (
+    <AvatarStack total={total} max={max}>
+      {actors.map((actor, i) => (
+        <ActorAvatar key={actor.did ?? i} actor={actor} size="sm" />
+      ))}
+    </AvatarStack>
   );
 }
 

@@ -11,7 +11,7 @@
 import { Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder, SquareCheckBig } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
-import { ActorAvatar, ActorLink } from "@/components/actor";
+import { ActorAvatar, ActorLink, ActorStack, AvatarStack } from "@/components/actor";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -23,11 +23,11 @@ const numberFormat = new Intl.NumberFormat("en");
 const plural = (n: number, one: string, many: string) =>
   `${numberFormat.format(n)} ${n === 1 ? one : many}`;
 
-function Name({ actor }: { actor: ActorCard }) {
+export function Name({ actor }: { actor: ActorCard }) {
   return <ActorLink actor={actor} avatar={false} className="post-name" />;
 }
 
-function PageLink({ link }: { link: FeedLink }) {
+export function PageLink({ link }: { link: FeedLink }) {
   return (
     <IntentLink href={link.href} className="post-name" dir="auto">
       {link.title}
@@ -63,16 +63,6 @@ function Names({
 
 function Face({ actor, size = "md" }: { actor: ActorCard; size?: "sm" | "md" }) {
   return <ActorAvatar actor={actor} size={size} />;
-}
-
-function Faces({ actors }: { actors: ActorCard[] }) {
-  return (
-    <span className="trust-faces">
-      {actors.map((actor) => (
-        <Face key={actor.did} actor={actor} size="sm" />
-      ))}
-    </span>
-  );
 }
 
 /** A record the post is about: its title, a line under it and its summary. */
@@ -179,38 +169,32 @@ function TargetName({ target }: { target: FeedTarget }) {
   );
 }
 
-/** The accounts' faces and the records' pictures, small, in a row. */
-function TargetFaces({ targets }: { targets: FeedTarget[] }) {
+/**
+ * The accounts' faces and the records' pictures, as a stack; `total`: how
+ * many in all. Pictures only: the sentence above names and links them.
+ */
+function TargetFaces({ targets, total }: { targets: FeedTarget[]; total: number }) {
   return (
-    <span className="post-targets">
-      {targets.map((target) =>
-        target.kind === "wallet" ? null : target.kind === "account" ? (
-          <IntentLink
-            key={targetKey(target)}
-            href={actorHref(target.actor)}
-            tabIndex={-1}
-            aria-hidden
-          >
-            <Face actor={target.actor} size="sm" />
-          </IntentLink>
-        ) : (
-          <IntentLink
-            key={targetKey(target)}
-            href={target.href}
-            className="post-target-thumb"
-            tabIndex={-1}
-            aria-hidden
-          >
-            {target.imageUrl ? (
-              // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
-              <img src={target.imageUrl} alt="" loading="lazy" />
-            ) : (
-              <Folder size={16} aria-hidden />
-            )}
-          </IntentLink>
-        ),
+    <AvatarStack total={total}>
+      {targets.flatMap((target) =>
+        target.kind === "wallet"
+          ? []
+          : [
+              target.kind === "account" ? (
+                <Face key={targetKey(target)} actor={target.actor} size="sm" />
+              ) : (
+                <span key={targetKey(target)} className="avatar-stack-thumb">
+                  {target.imageUrl ? (
+                    // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
+                    <img src={target.imageUrl} alt="" loading="lazy" />
+                  ) : (
+                    <Folder size={12} aria-hidden />
+                  )}
+                </span>
+              ),
+            ],
       )}
-    </span>
+    </AvatarStack>
   );
 }
 
@@ -222,9 +206,16 @@ const GIFTS: Record<"received" | "given" | "recorded", string> = {
 
 type Parts = { who: ActorCard; line: ReactNode; body?: ReactNode; media?: ReactNode };
 
+/**
+ * What a post is about when that isn't the owner's account: a project, on
+ * its timeline. Its posts name it ("This project received 3 gifts") and lead
+ * to its own tabs.
+ */
+export type FeedSubject = { label: string; href: string };
+
 /** Who acted, what they did, and what it was about. */
-function parts(row: FeedRow, owner: ActorCard): Parts {
-  const me = <Name actor={owner} />;
+function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
+  const me = subject ? subject.label : <Name actor={owner} />;
   switch (row.kind) {
     case "activity": {
       const href = activityHref(row.activity.uri);
@@ -275,7 +266,12 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
             <Kind badge={row.badge} />
           </>
         ),
-        body: row.count > 1 ? <Faces actors={row.subjects} /> : <Note note={row.note} />,
+        body:
+          row.count > 1 ? (
+            <ActorStack actors={row.subjects} total={row.count} />
+          ) : (
+            <Note note={row.note} />
+          ),
       };
     case "endorsedBy":
       return {
@@ -318,7 +314,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
         ),
         body:
           row.count > 1 && row.recipients.length > 1 ? (
-            <Faces actors={row.recipients} />
+            <ActorStack actors={row.recipients} total={row.count} />
           ) : undefined,
       };
     case "followers":
@@ -333,7 +329,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
             followed {me}
           </>
         ),
-        body: row.count > 1 ? <Faces actors={row.actors} /> : undefined,
+        body: row.count > 1 ? <ActorStack actors={row.actors} total={row.count} /> : undefined,
       };
     case "following":
       return {
@@ -347,7 +343,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
             />
           </>
         ),
-        body: row.count > 1 ? <Faces actors={row.actors} /> : undefined,
+        body: row.count > 1 ? <ActorStack actors={row.actors} total={row.count} /> : undefined,
       };
     case "projectsFollowed":
       return {
@@ -364,7 +360,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
       };
     case "gifts": {
       const [main, ...others] = row.totals;
-      const tab = `${actorHref(owner)}/funding${FUNDING_TAB[row.direction]}`;
+      const tab = `${subject?.href ?? actorHref(owner)}/funding${FUNDING_TAB[row.direction]}`;
       const targets = row.targets.map((target) => (
         <TargetName key={targetKey(target)} target={target} />
       ));
@@ -387,7 +383,7 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
         body: (
           <>
             {row.targets.filter((target) => target.kind !== "wallet").length > 1 && (
-              <TargetFaces targets={row.targets} />
+              <TargetFaces targets={row.targets} total={row.targetCount} />
             )}
             {main && (
               <IntentLink href={tab} className="post-amount">
@@ -411,8 +407,12 @@ function parts(row: FeedRow, owner: ActorCard): Parts {
   }
 }
 
-export function FeedPost({ row, owner }: { row: FeedRow; owner: ActorCard }) {
-  const { who, line, body, media } = parts(row, owner);
+/**
+ * One post: whoever acted (their avatar), a sentence saying what happened,
+ * the date under it, then what it was about. The account feed's posts and a
+ * project's timeline are all this.
+ */
+export function Post({ who, line, date, body, media }: Parts & { date: string | null }) {
   return (
     <li className="post-card">
       <div className="post-main">
@@ -422,7 +422,7 @@ export function FeedPost({ row, owner }: { row: FeedRow; owner: ActorCard }) {
           </IntentLink>
           <div className="post-byline">
             <p className="post-line">{line}</p>
-            {row.date && <span className="post-date">{row.date}</span>}
+            {date && <span className="post-date">{date}</span>}
           </div>
         </div>
         {body}
@@ -430,6 +430,18 @@ export function FeedPost({ row, owner }: { row: FeedRow; owner: ActorCard }) {
       {media}
     </li>
   );
+}
+
+export function FeedPost({
+  row,
+  owner,
+  subject,
+}: {
+  row: FeedRow;
+  owner: ActorCard;
+  subject?: FeedSubject;
+}) {
+  return <Post {...parts(row, owner, subject)} date={row.date} />;
 }
 
 /** The feed, with Load more. */

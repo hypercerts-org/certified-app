@@ -33,6 +33,7 @@ import {
   type ExploreActivity,
   type ExploreProject,
   type FeedEvent,
+  type FeedLink,
   type FeedRow,
   type FeedTarget,
   type FollowRef,
@@ -51,6 +52,7 @@ import {
   type ProjectDetail,
   plainText,
   type Receipt,
+  safeUrl,
   sortBadges,
   toActivityCard,
   toActorCard,
@@ -961,6 +963,77 @@ export async function getRejectedBadges(did: string): Promise<BadgeCard[]> {
   );
 }
 
+/** The badges awarded to record `uri` (a project, an activity), not rejected: in force first, then newest. */
+export async function getRecordBadges(uri: string): Promise<BadgeCard[]> {
+  "use cache";
+  publicData(tags.badges(uri));
+
+  const { badgeAwards } = await api.call(
+    app.certified.badge.listBadgeAwards,
+    { subjects: [uri], responses: ["accepted", "unanswered"], limit: 100 },
+    read(),
+  );
+  return sortBadges(
+    await withHandlesIn(
+      badgeAwards.flatMap((award) => toBadgeCard(award) ?? []),
+      "issuer",
+    ),
+  );
+}
+
+/** A badge awarded to one of an account's projects, with that project. */
+export type ProjectBadge = BadgeCard & { project: ProjectCard };
+
+/** Pages of an account's projects read for their badges, a hundred each. */
+const PROJECT_BADGE_PAGES = 3;
+
+/**
+ * The badges awarded to `did`'s projects (not rejected), in force first, then
+ * newest: its projects a hundred a call, then their awards a hundred
+ * projects a call.
+ */
+export async function getProjectBadges(
+  did: string,
+): Promise<{ badges: ProjectBadge[]; more: boolean }> {
+  "use cache";
+  publicData(tags.badges(did));
+  cacheTag(tags.projects(did));
+
+  const projects = new Map<string, ProjectCard>();
+  let cursor: string | undefined;
+  let more = false;
+  for (let page = 0; page < PROJECT_BADGE_PAGES; page++) {
+    const out = await api.call(
+      org.hypercerts.collection.listCollections,
+      { authors: [did as Did], types: ["project"], limit: 100, cursor },
+      read(),
+    );
+    for (const view of out.collections) projects.set(view.uri, toProjectCard(view));
+    cursor = out.cursor;
+    more = Boolean(cursor);
+    if (!cursor) break;
+  }
+  const awards = (
+    await Promise.all(
+      chunks([...projects.keys()]).map(async (batch) => {
+        const out = await api.call(
+          app.certified.badge.listBadgeAwards,
+          { subjects: batch, responses: ["accepted", "unanswered"], limit: 100 },
+          read(),
+        );
+        if (out.cursor) more = true;
+        return out.badgeAwards;
+      }),
+    )
+  ).flat();
+  const badges = awards.flatMap((award): ProjectBadge[] => {
+    const card = toBadgeCard(award);
+    const project = projects.get(awardSubject(award.record.subject) ?? "");
+    return card && project ? [{ ...card, project }] : [];
+  });
+  return { badges: sortBadges(await withHandlesIn(badges, "issuer")), more };
+}
+
 /** A badge an account defined, with how many hold it. */
 export type IssuedBadge = BadgeDetail & {
   /** Awards accepted or awaiting a response (not rejected). */
@@ -1029,12 +1102,24 @@ export async function getBadge(uri: string): Promise<BadgeDetail | null> {
   throw result;
 }
 
+/**
+ * A badge's holder: an account (a person row, with the award's note), or a
+ * record the badge went to, a project or an activity (as a list item,
+ * resolveListItems), with the award's date.
+ */
+export type BadgeHolder =
+  | { kind: "account"; uri: string; row: PersonRow }
+  | {
+      kind: "record";
+      uri: string;
+      item: Extract<ListItem, { kind: "project" | "activity" }>;
+      date: string | null;
+    };
+
 /** One page of a badge's holders, newest award first. */
-export type BadgeHolders = Page<PersonRow> & {
+export type BadgeHolders = Page<BadgeHolder> & {
   /** Every award with this response, as the API counts them. */
   total: number;
-  /** Awards on this page given to a record (a project, an activity), not an account. */
-  records: number;
 };
 
 /**
@@ -1066,33 +1151,46 @@ export async function listBadgeHolders(
   const awards = badgeAwards.filter(
     (award) => allowedIssuers.length === 0 || allowedIssuers.includes(award.author.did),
   );
-  const subjectOf = (award: BadgeAwardView) => awardSubject(award.record.subject);
-  const dids = [
-    ...new Set(
-      awards
-        .map(subjectOf)
-        .filter((subject): subject is string => Boolean(subject?.startsWith("did:"))),
-    ),
-  ];
-  const cards = await actorCards(dids);
-  const rows: PersonRow[] = [];
-  let records = 0;
+  const subjects = awards.flatMap((award) => awardSubject(award.record.subject) ?? []);
+  const dids = [...new Set(subjects.filter((subject) => subject.startsWith("did:")))];
+  const recordUris = [...new Set(subjects.filter((subject) => subject.startsWith("at://")))];
+  const [cards, records] = await Promise.all([
+    actorCards(dids),
+    recordUris.length > 0 ? resolveListItems(recordUris) : [],
+  ]);
+  const recordsByUri = new Map(records.map((item) => [item.uri, item]));
+  const holders: BadgeHolder[] = [];
   for (const award of awards) {
-    const subject = subjectOf(award);
-    if (!subject?.startsWith("did:")) {
-      records += 1;
+    const subject = awardSubject(award.record.subject);
+    if (!subject) continue;
+    const { note, createdAt } = toEndorsementCard(award); // an award's note and date
+    const actor = cards.get(subject);
+    if (actor) {
+      holders.push({
+        kind: "account",
+        uri: award.uri,
+        row: { uri: award.uri, actor, note, date: createdAt },
+      });
       continue;
     }
-    const actor = cards.get(subject);
-    if (!actor) continue;
-    const { note, createdAt } = toEndorsementCard(award); // an award's note and date
-    rows.push({ uri: award.uri, actor, note, date: createdAt });
+    const item = recordsByUri.get(subject);
+    if (item?.kind === "project" || item?.kind === "activity") {
+      holders.push({ kind: "record", uri: award.uri, item, date: createdAt });
+    }
   }
+  const people = await withHandlesIn(
+    holders.flatMap((holder) => (holder.kind === "account" ? [holder.row] : [])),
+    "actor",
+  );
+  const withHandle = new Map(people.map((row) => [row.uri, row]));
   return {
-    items: await withHandlesIn(rows, "actor"),
+    items: holders.map((holder) =>
+      holder.kind === "account"
+        ? { ...holder, row: withHandle.get(holder.uri) ?? holder.row }
+        : holder,
+    ),
     cursor: out.cursor ?? null,
-    total: totalCount ?? rows.length,
-    records,
+    total: totalCount ?? holders.length,
   };
 }
 
@@ -1561,14 +1659,24 @@ async function blobBases(dids: string[]): Promise<Map<string, string | null>> {
 /** An evaluation, with its evaluators' cards (those the API knows). */
 export type EvaluationWithEvaluators = Evaluation & { evaluators: ActorCard[] };
 
-/** The evaluations of record `uri`, newest first. */
-export async function getEvaluations(uri: string): Promise<EvaluationWithEvaluators[]> {
+/** Context records are read for up to this many records at once (the API's limit). */
+const SUBJECTS = 100;
+
+/** One record's URI, or several's (a project and its activities), as the API's subjects. */
+function subjectsFor(uri: string | string[]): AtUri[] {
+  const uris = (Array.isArray(uri) ? uri : [uri]).slice(0, SUBJECTS);
+  for (const subject of uris) cacheTag(tags.context(subject));
+  return uris as AtUri[];
+}
+
+/** The evaluations of record `uri` (or of several records), newest first. */
+export async function getEvaluations(uri: string | string[]): Promise<EvaluationWithEvaluators[]> {
   "use cache";
-  publicData(tags.context(uri));
+  cacheLife("public");
 
   const { evaluations } = await api.call(
     org.hypercerts.context.listEvaluations,
-    { subjects: [uri as AtUri], sortDirection: "desc", limit: 50 },
+    { subjects: subjectsFor(uri), sortDirection: "desc", limit: 50 },
     read(),
   );
   const bases = await blobBases(evaluations.map((view) => view.did));
@@ -1585,29 +1693,35 @@ export async function getEvaluations(uri: string): Promise<EvaluationWithEvaluat
   }));
 }
 
-/** The measurements of record `uri`, newest first. */
-export async function getMeasurements(uri: string): Promise<Measurement[]> {
+/** The measurements of record `uri` (or of several records), newest first. */
+export async function getMeasurements(uri: string | string[]): Promise<Measurement[]> {
   "use cache";
-  publicData(tags.context(uri));
+  cacheLife("public");
 
   const { measurements } = await api.call(
     org.hypercerts.context.listMeasurements,
-    { subjects: [uri as AtUri], sortDirection: "desc", limit: 50 },
+    { subjects: subjectsFor(uri), sortDirection: "desc", limit: 50 },
     read(),
   );
-  return measurements.map(toMeasurement).filter((m) => m.metric && m.value);
+  return withHandlesIn(
+    measurements.map(toMeasurement).filter((m) => m.metric && m.value),
+    "author",
+  );
 }
 
-/** Record `uri`'s attachments: its updates (newest first), and the rest. Comments are left out. */
+/**
+ * Record `uri`'s attachments (or several records'): its updates (newest
+ * first), and the rest. Comments are left out.
+ */
 export async function getAttachments(
-  uri: string,
+  uri: string | string[],
 ): Promise<{ updates: Attachment[]; files: Attachment[] }> {
   "use cache";
-  publicData(tags.context(uri));
+  cacheLife("public");
 
   const { attachments } = await api.call(
     org.hypercerts.context.listAttachments,
-    { subjects: [uri as AtUri], sortDirection: "desc", limit: 100 },
+    { subjects: subjectsFor(uri), sortDirection: "desc", limit: 100 },
     read(),
   );
   const bases = await blobBases(attachments.map((view) => view.did));
@@ -1619,6 +1733,165 @@ export async function getAttachments(
     updates: items.filter((item) => item.kind === "update"),
     files: items.filter((item) => item.kind !== "update" && item.kind !== "comment"),
   };
+}
+
+// Timeline
+//
+// What happened in a project or an activity, newest first: a project's
+// activities as they were published; what was added to the record (and to a
+// project's activities): updates, other attachments, evaluations,
+// measurements, badges; and the gifts it received, a day's together, as an
+// account's feed groups them. Each kind is read once for the record and its
+// activities together.
+
+/** The activity a timeline item is about, when it isn't the project itself. */
+export type TimelineOn = FeedLink | null;
+
+export type TimelineItem = { key: string; time: number } & (
+  | { kind: "activity"; activity: ActivityCard }
+  | { kind: "update"; update: Attachment; on: TimelineOn }
+  | { kind: "attachment"; attachment: Attachment; on: TimelineOn }
+  | { kind: "evaluation"; evaluation: EvaluationWithEvaluators; on: TimelineOn }
+  | { kind: "measurement"; measurement: Measurement; on: TimelineOn }
+  | { kind: "badge"; badge: BadgeCard; on: TimelineOn }
+  | { kind: "gifts"; row: Extract<FeedRow, { kind: "gifts" }> }
+);
+
+/** A project's or an activity's timeline, newest first. */
+export async function getTimeline(uri: string): Promise<TimelineItem[]> {
+  "use cache";
+  publicData(tags.project(uri));
+  cacheTag(tags.badges(uri));
+  cacheTag(tags.activities(didOf(uri)));
+
+  const isProject = collectionOf(uri) === "org.hypercerts.collection";
+  const project = isProject ? await getProject(uri) : null;
+  if (isProject && !project) return [];
+  const activityUris = project?.activityUris ?? [];
+  const subjects = [uri, ...activityUris].slice(0, SUBJECTS) as AtUri[];
+
+  const [activityViews, evaluations, measurements, attachments, awards, receipts] =
+    await Promise.all([
+      Promise.all(
+        chunks(activityUris).map(
+          async (batch) =>
+            (
+              await api.call(
+                org.hypercerts.claim.listActivities,
+                { uris: batch as AtUri[], limit: 100 },
+                read(),
+              )
+            ).activities,
+        ),
+      ).then((pages) => pages.flat()),
+      getEvaluations(subjects),
+      getMeasurements(subjects),
+      getAttachments(subjects),
+      api
+        .call(
+          app.certified.badge.listBadgeAwards,
+          { subjects, responses: ["accepted", "unanswered"], limit: 100 },
+          read(),
+        )
+        .then((out) => out.badgeAwards),
+      api
+        .call(org.hypercerts.funding.listReceipts, { forUris: [uri as AtUri], limit: 100 }, read())
+        .then((out) => out.receipts),
+    ]);
+  cacheTag(tags.funding(uri));
+
+  // Gifts as the account feed shows them: a day's in one post, naming donors.
+  const gifts = receipts.map((view) => giftEvent(view, "received"));
+  const donors = new Map(
+    (
+      await getActorCards([
+        ...new Set(gifts.flatMap((gift) => (gift.counterpart ? [gift.counterpart] : []))),
+      ])
+    ).map((card) => [card.did, card]),
+  );
+  const giftTimes = new Map(gifts.map((gift) => [gift.key, gift.time]));
+  const giftRows = (await withFeedHandles(groupFeed(gifts, donors, new Map()))).flatMap((row) =>
+    row.kind === "gifts" ? [row] : [],
+  );
+
+  const activities = await withHandlesIn(activityViews.map(toActivityCard), "author");
+  const activityLinks = new Map(
+    activities.map((activity) => [
+      activity.uri,
+      { title: activity.title, href: activityHrefOf(activity.uri) },
+    ]),
+  );
+  // The activity it is about, unless it is (also) about the project.
+  const on = (about: string[]): TimelineOn =>
+    about.includes(uri)
+      ? null
+      : (about.map((subject) => activityLinks.get(subject)).find(Boolean) ?? null);
+  const created = new Map<string, number>(
+    activityViews.map((view) => [
+      view.uri,
+      new Date(String(view.record.createdAt ?? "")).getTime(),
+    ]),
+  );
+
+  const badges = await withHandlesIn(
+    awards.flatMap((award) => {
+      const card = toBadgeCard(award);
+      const subject = awardSubject(award.record.subject);
+      return card && subject ? [{ ...card, subject }] : [];
+    }),
+    "issuer",
+  );
+
+  const items: TimelineItem[] = [
+    ...activities.map((activity) => ({
+      kind: "activity" as const,
+      key: activity.uri,
+      time: created.get(activity.uri) || 0,
+      activity,
+    })),
+    ...attachments.updates.map((update) => ({
+      kind: "update" as const,
+      key: update.uri,
+      time: update.time,
+      update,
+      on: on(update.subjects),
+    })),
+    ...attachments.files.map((attachment) => ({
+      kind: "attachment" as const,
+      key: attachment.uri,
+      time: attachment.time,
+      attachment,
+      on: on(attachment.subjects),
+    })),
+    ...evaluations.map((evaluation) => ({
+      kind: "evaluation" as const,
+      key: evaluation.uri,
+      time: evaluation.time,
+      evaluation,
+      on: on(evaluation.subjects),
+    })),
+    ...measurements.map((measurement) => ({
+      kind: "measurement" as const,
+      key: measurement.uri,
+      time: measurement.time,
+      measurement,
+      on: on(measurement.subjects),
+    })),
+    ...giftRows.map((row) => ({
+      kind: "gifts" as const,
+      key: row.key,
+      time: giftTimes.get(row.key) ?? 0,
+      row,
+    })),
+    ...badges.map(({ subject, ...badge }) => ({
+      kind: "badge" as const,
+      key: badge.uri,
+      time: badge.time,
+      badge,
+      on: on([subject]),
+    })),
+  ];
+  return items.sort((a, b) => b.time - a.time);
 }
 
 /** The projects holding activity `uri`, any author's. */
@@ -1651,10 +1924,35 @@ export async function getPlace(uri: string): Promise<Place | null> {
   return placeOf(result.body.location.record, didOf(uri));
 }
 
+// Badges from one issuer
+
+/**
+ * The badges `issuer` awarded `subject` (an account's DID or a record's URI):
+ * each badge's title and, when the award carries one, its page address (Good
+ * Market puts the account's page there).
+ */
+export async function getAwardsFrom(
+  issuer: string,
+  subject: string,
+): Promise<{ title: string; url: string | null }[]> {
+  "use cache";
+  publicData(tags.badges(subject));
+
+  const { badgeAwards } = await api.call(
+    app.certified.badge.listBadgeAwards,
+    { authors: [issuer as Did], subjects: [subject], limit: 20 },
+    read(),
+  );
+  return badgeAwards.map((award) => ({
+    title: String(award.badge?.record.title ?? "").trim(),
+    url: safeUrl((award.record as { url?: unknown }).url),
+  }));
+}
+
 // Explore
 //
 // The network's activities, projects and accounts, newest or oldest first,
-// listed or searched; and Featured, the picks Ma Earth curates as lists.
+// listed or searched; and Featured, the projects in Ma Earth's Funding Round 3.
 
 export type ExploreSort = "newest" | "oldest";
 export type AccountType = "all" | "people" | "organizations";
@@ -1837,74 +2135,99 @@ export async function exploreAccounts(options: {
 export type FeaturedKind = "activities" | "projects" | "accounts";
 
 /**
- * Featured: Ma Earth's funding rounds, kept as lists on the hypercerts.org
- * account (as on staging), latest round first.
+ * Featured: the projects in Ma Earth's Funding Round 3, as Ma Earth's own
+ * account marked them (its "Ma Earth Round 3" badge, awarded to each project),
+ * with their activities and the organizations behind them.
  */
-const FEATURED_LISTS: Record<FeaturedKind, string[]> = {
-  activities: ["3mmrtsu7thf2j", "3mmrvaih43w2j", "3mmrr5xafi42z"],
-  projects: ["3mmrtyyadrc2s", "3mmrtpxcmfs2z", "3mmrravn7kl2s"],
-  accounts: ["3mmrt4snnh72t", "3mmrtqoixzv2z", "3mmrvar2ofs24"],
-};
-const FEATURED_CURATOR = "did:plc:s4puetfspot742ai7y4otuel";
-const FEATURED_RECORDS: Record<FeaturedKind, string> = {
-  activities: "org.hypercerts.claim.activity",
-  projects: "org.hypercerts.collection",
-  accounts: "app.certified.actor.profile",
-};
+const FEATURED_BADGE =
+  "at://did:plc:7ffezlhobzihdt3nbazysgvr/app.certified.badge.definition/3mxttbmcbgc2e";
+/** Pages of awards read, a hundred each: the round has about 200. */
+const FEATURED_PAGES = 5;
+
+/** The projects the featured badge was awarded to (not rejected), each once. */
+async function featuredProjectUris(): Promise<string[]> {
+  const uris = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < FEATURED_PAGES; page++) {
+    const out = await api.call(
+      app.certified.badge.listBadgeAwards,
+      {
+        badgeUris: [FEATURED_BADGE as AtUri],
+        authors: [didOf(FEATURED_BADGE) as Did],
+        responses: ["accepted", "unanswered"],
+        limit: 100,
+        cursor,
+      },
+      read(),
+    );
+    for (const award of out.badgeAwards) {
+      const subject = awardSubject(award.record.subject);
+      if (subject && collectionOf(subject) === "org.hypercerts.collection") uris.add(subject);
+    }
+    cursor = out.cursor;
+    if (!cursor) break;
+  }
+  return [...uris];
+}
+
+const byCreated = <T extends { uri: string; record: { createdAt?: unknown } }>(views: T[]) =>
+  [...views]
+    .sort((a, b) =>
+      String(b.record.createdAt ?? "").localeCompare(String(a.record.createdAt ?? "")),
+    )
+    .map((view) => view.uri);
 
 /**
- * The featured records of one kind, by URI, each once: activities and
- * projects newest first; accounts in the lists' order (latest round first).
+ * The featured records of one kind, by URI (accounts by DID), each once and
+ * newest first: projects and activities by their own createdAt, accounts by
+ * their newest featured project.
  */
 async function featuredUris(kind: FeaturedKind): Promise<string[]> {
   "use cache";
   cacheLife("hours");
-  const uris = FEATURED_LISTS[kind].map(
-    (rkey) => `at://${FEATURED_CURATOR}/org.hypercerts.collection/${rkey}`,
-  );
-  for (const uri of uris) cacheTag(tags.list(uri));
-  const { collections } = await api.call(
-    org.hypercerts.collection.listCollections,
-    { uris: uris as AtUri[], limit: uris.length },
-    read(),
-  );
-  const byUri = new Map<string, (typeof collections)[number]>(
-    collections.map((collection) => [collection.uri, collection]),
-  );
-  const items = uris.flatMap((uri) =>
-    (byUri.get(uri)?.record.items ?? []).map((item) => item.itemIdentifier.uri),
-  );
-  const featured = [
-    ...new Set(items.filter((uri) => collectionOf(uri) === FEATURED_RECORDS[kind])),
+  cacheTag(tags.badge(FEATURED_BADGE));
+  const projectUris = await featuredProjectUris();
+  const projects = (
+    await Promise.all(
+      chunks(projectUris).map(
+        async (batch) =>
+          (
+            await api.call(
+              org.hypercerts.collection.listCollections,
+              { uris: batch as AtUri[], limit: 100 },
+              read(),
+            )
+          ).collections,
+      ),
+    )
+  ).flat();
+  const newestProjects = byCreated(projects);
+  if (kind === "projects") return newestProjects;
+  if (kind === "accounts") return [...new Set(newestProjects.map(didOf))];
+  const activityUris = [
+    ...new Set(
+      projects.flatMap((project) =>
+        (project.record.items ?? [])
+          .map((item) => item.itemIdentifier.uri)
+          .filter((uri) => collectionOf(uri) === "org.hypercerts.claim.activity"),
+      ),
+    ),
   ];
-  if (kind === "accounts") return featured;
-  // Activities and projects newest first, by their own createdAt: read their
-  // records a hundred at a time (cached with the list, for hours).
-  const created = new Map<string, string>();
-  await Promise.all(
-    chunks(featured).map(async (batch) => {
-      const page =
-        kind === "activities"
-          ? (
-              await api.call(
-                org.hypercerts.claim.listActivities,
-                { uris: batch as AtUri[], limit: 100 },
-                read(),
-              )
-            ).activities
-          : (
-              await api.call(
-                org.hypercerts.collection.listCollections,
-                { uris: batch as AtUri[], limit: 100 },
-                read(),
-              )
-            ).collections;
-      for (const view of page) created.set(view.uri, String(view.record.createdAt ?? ""));
-    }),
-  );
-  return featured
-    .filter((uri) => created.has(uri))
-    .sort((a, b) => (created.get(b) ?? "").localeCompare(created.get(a) ?? ""));
+  const activities = (
+    await Promise.all(
+      chunks(activityUris).map(
+        async (batch) =>
+          (
+            await api.call(
+              org.hypercerts.claim.listActivities,
+              { uris: batch as AtUri[], limit: 100 },
+              read(),
+            )
+          ).activities,
+      ),
+    )
+  ).flat();
+  return byCreated(activities);
 }
 
 /** A page of Featured, from `offset` (its cursor), newest or oldest first. */
@@ -1927,7 +2250,7 @@ export async function exploreFeatured<K extends FeaturedKind>(
   };
 
   if (kind === "accounts") {
-    const cards = await getActorCards(uris.map(didOf));
+    const cards = await getActorCards(uris);
     const items = cards.map((card) => ({ ...card, age: null }));
     return { items: items as ExploreItem<K>[], cursor };
   }
@@ -2164,38 +2487,50 @@ async function feedSourcePage(
       const direction =
         source === "giftsReceived" ? "received" : source === "giftsGiven" ? "given" : "recorded";
       return {
-        events: out.receipts.map((view) => {
-          const receipt = toReceipt(view);
-          const from = receipt.from;
-          const to = receipt.to;
-          const counterpart =
-            direction === "received"
-              ? from.kind === "account"
-                ? from.did
-                : null
-              : (receipt.forUri ?? (to.kind === "account" ? to.did : null));
-          return {
-            kind: "gift",
-            key: view.uri,
-            time: timeOf(view.record.createdAt),
-            direction,
-            value: receipt.value,
-            currency: receipt.currency,
-            donor: from.kind === "account" ? from.did : from.kind === "text" ? from.value : null,
-            counterpart,
-            // Given or recorded to a bare address: the address is what there is to name.
-            wallet:
-              direction !== "received" && !counterpart && to.kind === "text"
-                ? toWalletTarget(to.value, asNetwork(view.record.paymentNetwork))
-                : null,
-          };
-        }),
+        events: out.receipts.map((view) => giftEvent(view, direction)),
         cursor: out.cursor ?? null,
       };
     }
   }
 }
 type CollectionViewLike = Record<string, unknown>;
+
+type ReceiptView = org.hypercerts.funding.listReceipts.$OutputBody["receipts"][number];
+
+/**
+ * A receipt as a feed event: for gifts received, it names the donor; for
+ * gifts given or recorded, what it was for (else the receiving account, else
+ * the bare address it went to).
+ */
+function giftEvent(
+  view: ReceiptView,
+  direction: "received" | "given" | "recorded",
+): Extract<FeedEvent, { kind: "gift" }> {
+  const receipt = toReceipt(view);
+  const from = receipt.from;
+  const to = receipt.to;
+  const counterpart =
+    direction === "received"
+      ? from.kind === "account"
+        ? from.did
+        : null
+      : (receipt.forUri ?? (to.kind === "account" ? to.did : null));
+  return {
+    kind: "gift",
+    key: view.uri,
+    time: timeOf(view.record.createdAt),
+    direction,
+    value: receipt.value,
+    currency: receipt.currency,
+    donor: from.kind === "account" ? from.did : from.kind === "text" ? from.value : null,
+    counterpart,
+    // Given or recorded to a bare address: the address is what there is to name.
+    wallet:
+      direction !== "received" && !counterpart && to.kind === "text"
+        ? toWalletTarget(to.value, asNetwork(view.record.paymentNetwork))
+        : null,
+  };
+}
 
 /** Where each kind stopped: the page it is reading (null: the first) and how far into it. */
 type FeedState = Partial<Record<FeedSource, { c: string | null; o: number } | "done">>;

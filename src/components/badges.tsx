@@ -1,5 +1,7 @@
-// Badges awarded to an account (queries.ts, getBadges): as tiles on the
-// profile's Overview, and as rows with every detail on its Badges tab. A
+// Badges awarded to an account (queries.ts, getBadges) as rows with every
+// detail on its profile's Badges tab; badges awarded to a record (a project,
+// an activity) on its Badges tab; and an organization's projects' badges
+// as the projects' rows, each with its badge's tile at the end. A
 // badge shows as its issuer defined it (icon, title, type) and as awarded
 // (who, when, until when, the note). An expired badge stays, marked and
 // dimmed, after the ones in force.
@@ -12,7 +14,15 @@ import { badgeHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import { ProfileTabs, SegmentedLinksSkeleton } from "@/components/profile-actions";
-import { getBadges, getIssuedBadges, type IssuedBadge } from "@/lib/hypercerts/queries";
+import { ProjectRow, RecordRowSkeleton } from "@/components/records";
+import {
+  getBadges,
+  getIssuedBadges,
+  getProjectBadges,
+  getRecordBadges,
+  type IssuedBadge,
+  type ProjectBadge,
+} from "@/lib/hypercerts/queries";
 import type { BadgeCard } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
 
@@ -40,22 +50,58 @@ function Issuer({ badge }: { badge: BadgeCard }) {
   return <ActorLink actor={badge.issuer} avatar={false} />;
 }
 
-/** The Overview's badges: icon, title and issuer, a few across. */
+/** One badge as a tile: icon, title, and who issued it. */
+function BadgeTile({ badge }: { badge: BadgeCard }) {
+  return (
+    <span className="badge-tile" data-expired={badge.expired || undefined}>
+      <BadgeIcon badge={badge} />
+      <span className="badge-tile-text">
+        <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
+          {badge.title}
+        </IntentLink>
+        <span className="badge-meta">
+          {badge.expired ? "Expired · " : ""}
+          <Issuer badge={badge} />
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** Badges as tiles, a few across. */
 export function BadgeTiles({ badges }: { badges: BadgeCard[] }) {
   return (
     <ul className="badge-tiles">
       {badges.map((badge) => (
-        <li key={badge.uri} className="badge-tile" data-expired={badge.expired || undefined}>
-          <BadgeIcon badge={badge} />
-          <span className="badge-tile-text">
-            <IntentLink href={badgeHref(badge)} className="badge-title" dir="auto">
-              {badge.title}
-            </IntentLink>
-            <span className="badge-meta">
-              {badge.expired ? "Expired · " : ""}
-              <Issuer badge={badge} />
-            </span>
-          </span>
+        <li key={badge.uri}>
+          <BadgeTile badge={badge} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A record's badges (a project's, an activity's), as its Badges tab lists them. */
+export async function RecordBadgeList({ uri }: { uri: string }) {
+  // The tab shows only with badges; an old link can still land here.
+  return <BadgeList badges={await getRecordBadges(uri)} empty="No badges yet" />;
+}
+
+/**
+ * The badges an organization's projects received: each the project's row
+ * (the whole row leads to the project), with the badge's tile at its end.
+ */
+export function ProjectBadgeList({ badges }: { badges: ProjectBadge[] }) {
+  if (badges.length === 0) return <Empty icon={Award} title="No badges for projects yet" />;
+  return (
+    <ul className="list-items">
+      {badges.map((badge) => (
+        <li key={badge.uri} className="list-item">
+          <ProjectRow
+            project={badge.project}
+            className="project-badge-row"
+            end={<BadgeTile badge={badge} />}
+          />
         </li>
       ))}
     </ul>
@@ -199,17 +245,19 @@ export function IssuedBadgeList({ badges }: { badges: IssuedBadge[] }) {
   );
 }
 
-type Which = "accepted" | "awaiting" | "issued";
+type Which = "accepted" | "awaiting" | "projects" | "issued";
 
 const BADGE_TABS: Record<Which, { label: string; path: string }> = {
   accepted: { label: "Accepted", path: "/badges" },
   awaiting: { label: "Awaiting response", path: "/badges/awaiting" },
+  projects: { label: "For projects", path: "/badges/projects" },
   issued: { label: "Issued", path: "/badges/issued" },
 };
 
 /**
- * A profile's Badges tab, `which` of its three lists: the badges the account
- * accepted, those awaiting its response, and those it defined for others.
+ * A profile's Badges tab, `which` of its lists: the badges the account
+ * accepted, those awaiting its response, those its projects received, and
+ * those it defined for others.
  */
 export async function ProfileBadges({
   params,
@@ -219,18 +267,29 @@ export async function ProfileBadges({
   which: Which;
 }) {
   const { actor, base } = await profileActor(params, BADGE_TABS[which].path);
-  const [received, issued] = await Promise.all([getBadges(actor.did), getIssuedBadges(actor.did)]);
+  const [received, issued, projects] = await Promise.all([
+    getBadges(actor.did),
+    getIssuedBadges(actor.did),
+    getProjectBadges(actor.did),
+  ]);
   const counts: Record<Which, number> = {
     accepted: received.accepted.length,
     awaiting: received.awaiting.length,
+    projects: projects.badges.length,
     issued: issued.badges.length,
   };
+  // "For projects" only for an account whose projects hold a badge.
+  const shown = (Object.keys(BADGE_TABS) as Which[]).filter(
+    (key) => key !== "projects" || which === "projects" || counts.projects > 0,
+  );
+  const more =
+    which === "issued" ? issued.more : which === "projects" ? projects.more : received.more;
   return (
     <div className="profile-list-page">
       <ProfileTabs
         label="Badges"
         variant="segmented"
-        tabs={(Object.keys(BADGE_TABS) as Which[]).map((key) => ({
+        tabs={shown.map((key) => ({
           label: BADGE_TABS[key].label,
           href: `${base}${BADGE_TABS[key].path}`,
           count: counts[key] > 0 ? String(counts[key]) : undefined,
@@ -238,15 +297,17 @@ export async function ProfileBadges({
       />
       {which === "issued" ? (
         <IssuedBadgeList badges={issued.badges} />
+      ) : which === "projects" ? (
+        <ProjectBadgeList badges={projects.badges} />
       ) : (
         <BadgeList
           badges={received[which]}
           empty={which === "accepted" ? "No badges accepted yet" : "No badges awaiting a response"}
         />
       )}
-      {(which === "issued" ? issued.more : received.more) && (
+      {more && (
         <Text size="body-sm" tone="muted">
-          Showing the latest {which === "issued" ? issued.badges.length : received[which].length}.
+          Showing the latest {counts[which]}.
         </Text>
       )}
     </div>
@@ -258,10 +319,25 @@ export function ProfileBadgesSkeleton({ which }: { which: Which }) {
   return (
     <div className="profile-list-page">
       <SegmentedLinksSkeleton
-        labels={Object.values(BADGE_TABS).map((tab) => tab.label)}
+        labels={(Object.keys(BADGE_TABS) as Which[])
+          .filter((key) => key !== "projects" || which === "projects")
+          .map((key) => BADGE_TABS[key].label)}
         current={BADGE_TABS[which].label}
       />
-      <BadgeListSkeleton />
+      {which === "projects" ? <ProjectBadgeListSkeleton /> : <BadgeListSkeleton />}
+    </div>
+  );
+}
+
+/** Project badge rows on their way. */
+function ProjectBadgeListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="list-items" aria-hidden>
+      {skeletonSlots(rows).map((slot) => (
+        <div key={slot} className="list-item">
+          <RecordRowSkeleton />
+        </div>
+      ))}
     </div>
   );
 }
