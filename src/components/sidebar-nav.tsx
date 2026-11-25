@@ -33,12 +33,14 @@ type Item = {
   /** Where it leads, or null while the page isn't built. */
   href: string | null;
   isActive?: (pathname: string) => boolean;
+  /** Unclaimed items awaiting action, shown as a red notification count. */
+  badge?: number;
 };
 
 const under = (base: string) => (pathname: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
 
-function workspaceItems(overview: string): Item[] {
+function workspaceItems(overview: string, unclaimedBadges = 0): Item[] {
   return WORKSPACE_SECTIONS.map(({ label, icon, path }) => ({
     label,
     icon,
@@ -47,6 +49,7 @@ function workspaceItems(overview: string): Item[] {
       path === ""
         ? (pathname: string) => WORKSPACE_OVERVIEW_PATH.test(pathname)
         : under(`${overview}${path}`),
+    badge: path === "/badges" && unclaimedBadges > 0 ? unclaimedBadges : undefined,
   }));
 }
 
@@ -84,6 +87,17 @@ function Row({ item, pathname }: { item: Item; pathname: string | null }) {
     <Link prefetch href={href} className="sidebar-item" aria-current={active ? "page" : undefined}>
       <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden />
       {label}
+      {item.badge !== undefined && (
+        <>
+          <span className="nav-badge" aria-hidden>
+            {item.badge > 99 ? "99+" : item.badge}
+          </span>
+          <span className="visually-hidden">
+            {" "}
+            ({item.badge} unclaimed {item.badge === 1 ? "badge" : "badges"})
+          </span>
+        </>
+      )}
       <LinkPending />
     </Link>
   );
@@ -108,11 +122,11 @@ function RowsHere({ items }: { items: readonly Item[] }) {
 export function SidebarRows(
   props:
     | { group: "network" | "feed" | "ecosystem" | "settings" }
-    | { group: "workspace"; overview: string },
+    | { group: "workspace"; overview: string; unclaimedBadges?: number },
 ) {
   const items =
     props.group === "workspace"
-      ? workspaceItems(props.overview)
+      ? workspaceItems(props.overview, props.unclaimedBadges)
       : { network: NETWORK, feed: FEED, ecosystem: ECOSYSTEM, settings: SETTINGS }[props.group];
   return (
     <Suspense fallback={<RowsView items={items} pathname={null} />}>

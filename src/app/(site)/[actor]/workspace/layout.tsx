@@ -4,9 +4,17 @@ import { workspaceHref } from "@/components/cards";
 import { WorkspaceAccess } from "@/components/workspace-access";
 import { EndorsementRowsSkeleton } from "@/components/workspace-endorsements";
 import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
+import { getBadges } from "@/lib/hypercerts/queries";
+import { isDid } from "@/lib/validate";
 
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
-  return <WorkspaceNav overview={workspaceHref(decodeURIComponent((await params).actor))} />;
+  const did = decodeURIComponent((await params).actor);
+  const unclaimedBadges = isDid(did)
+    ? await getBadges(did)
+        .then((badges) => badges.awaiting.length)
+        .catch(() => 0)
+    : 0;
+  return <WorkspaceNav overview={workspaceHref(did)} unclaimedBadges={unclaimedBadges} />;
 }
 
 /**

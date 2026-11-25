@@ -14,12 +14,32 @@ import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 // list has its final shape without leading anywhere empty.
 
 /** `overview` is the workspace's own address. */
-export function WorkspaceNav({ overview }: { overview: string }) {
-  return <WorkspaceNavView overview={overview} pathname={decodeURIComponent(usePathname())} />;
+export function WorkspaceNav({
+  overview,
+  unclaimedBadges = 0,
+}: {
+  overview: string;
+  unclaimedBadges?: number;
+}) {
+  return (
+    <WorkspaceNavView
+      overview={overview}
+      pathname={decodeURIComponent(usePathname())}
+      unclaimedBadges={unclaimedBadges}
+    />
+  );
 }
 
 /** The nav for a known path; with no path (before the URL is read), nothing is marked current. */
-export function WorkspaceNavView({ overview, pathname }: { overview: string; pathname?: string }) {
+export function WorkspaceNavView({
+  overview,
+  pathname,
+  unclaimedBadges = 0,
+}: {
+  overview: string;
+  pathname?: string;
+  unclaimedBadges?: number;
+}) {
   return (
     <nav aria-label="Workspace" className="workspace-nav">
       <Eyebrow as="p" className="workspace-nav-label">
@@ -41,6 +61,17 @@ export function WorkspaceNavView({ overview, pathname }: { overview: string; pat
             >
               <Icon size={20} strokeWidth={1.5} aria-hidden />
               {label}
+              {path === "/badges" && unclaimedBadges > 0 && (
+                <>
+                  <span className="nav-badge" aria-hidden>
+                    {unclaimedBadges > 99 ? "99+" : unclaimedBadges}
+                  </span>
+                  <span className="visually-hidden">
+                    {" "}
+                    ({unclaimedBadges} unclaimed {unclaimedBadges === 1 ? "badge" : "badges"})
+                  </span>
+                </>
+              )}
               <LinkPending />
             </Link>
           </li>

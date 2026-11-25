@@ -1947,6 +1947,27 @@ button.sidebar-item:hover,
   cursor: default;
 }
 
+/* Unclaimed-items notification dot with count on Workspace → Badges. */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 1.125rem; /* aligns with the 18px sidebar icon */
+  block-size: 1.125rem;
+  padding-inline: var(--space-1);
+  border-radius: var(--hc-radius-pill);
+  background: var(--hc-status-danger-text);
+  color: var(--hc-text-on-fill);
+  font-size: var(--hc-type-micro);
+  font-weight: var(--hc-weight-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sidebar-item .nav-badge {
+  margin-inline-start: auto;
+}
+
 .sidebar-foot {
   padding-block-start: var(--space-2);
   border-block-start: var(--divider);
@@ -3849,8 +3870,6 @@ a.badge-title:hover {
 .activity-choices > li {
   padding-block: var(--space-3);
 }
-
-
 
 /* Cancel and Publish, on the right. */
 .form-action-bar {
