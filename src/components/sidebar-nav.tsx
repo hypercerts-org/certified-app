@@ -9,14 +9,13 @@ import {
   MapIcon,
   Network,
   Newspaper,
-  Search,
   Settings,
 } from "lucide-react";
-import Form from "next/form";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, Suspense, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, Suspense, useId } from "react";
 import { WORKSPACE_OVERVIEW_PATH } from "@/components/cards";
+import { GlobalSidebarSearch } from "@/components/global-search";
 import { LinkPending } from "@/components/link-pending";
 import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 
@@ -145,47 +144,9 @@ export function SidebarGroup({ label, children }: { label: string; children: Rea
 }
 
 /**
- * Search, under the account control: Explore's search, from any page.
- * Ctrl K (⌘K on Apple devices) puts the cursor in it.
+ * Search, under the account control: live global search across accounts,
+ * projects and activities, with Ctrl K (⌘K on Apple devices) shortcut.
  */
 export function SidebarSearch() {
-  const input = useRef<HTMLInputElement>(null);
-  // The server can't know the platform, so the hint appears once mounted.
-  const [shortcut, setShortcut] = useState<string | null>(null);
-
-  useEffect(() => {
-    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
-    const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent;
-    setShortcut(/mac|iphone|ipad|ipod/i.test(platform) ? "⌘K" : "Ctrl K");
-
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        input.current?.focus();
-        input.current?.select();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  return (
-    <Form action="/explore" role="search" className="sidebar-search">
-      <Search size={16} aria-hidden className="sidebar-search-icon" />
-      <input
-        ref={input}
-        type="search"
-        name="q"
-        placeholder="Search"
-        aria-label="Search Certified"
-        enterKeyHint="search"
-        autoComplete="off"
-      />
-      {shortcut && (
-        <kbd className="sidebar-search-kbd" aria-hidden>
-          {shortcut}
-        </kbd>
-      )}
-    </Form>
-  );
+  return <GlobalSidebarSearch />;
 }

@@ -1,13 +1,14 @@
 import { Card, Heading, Text } from "@hypercerts-org/ui-react";
-import type { Metadata } from "next";
 import Image from "next/image";
 import { PageHeader } from "@/components/page-title";
 import { APPS } from "@/lib/apps";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Apps",
   description: "Apps you can sign in to with your Certified account.",
-};
+  path: "/apps",
+});
 
 export default function AppsPage() {
   return (

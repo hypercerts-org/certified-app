@@ -76,7 +76,7 @@ API and record types come from `@hypercerts-org/api` and `@hypercerts-org/lexico
 
 Ask who is signed in only through `src/lib/auth/dal.ts` (`getUser()`; `getOAuthSession()` in Server Actions and Route Handlers; `readOAuthSession()` in Server Components), and keep calls that read the session inside a Suspense boundary so public pages stay cached. Sign-in needs Valkey; see the README's "Signing in locally".
 
-Write to repositories only through `src/lib/hypercerts/writes.ts` (an organization's through CGS, `src/lib/cgs.ts`), from Server Actions that authenticate first, and sign every record with the app's `createdVia` signer (`getRecordSigner()`). Writes must report an unknown outcome as unknown, never as a failure, and are never retried automatically.
+Write to repositories only through `src/lib/hypercerts/sdk.ts` or `src/lib/hypercerts/writes.ts` (an organization's through CGS, `src/lib/cgs.ts`), from Server Actions that authenticate first. Writes must report an unknown outcome as unknown, never as a failure, and are never retried automatically.
 
 The block below is maintained by `next dev`. Leave it in place; edit only outside the markers.
 

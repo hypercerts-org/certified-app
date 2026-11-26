@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { cache, type ReactNode, Suspense } from "react";
+import { MobileSearchButton } from "@/components/global-search";
 import { SignInButton } from "@/components/sign-in-button";
 import { type Account, Destinations, HeaderAccountMenus } from "@/components/site-nav";
 import { getActingAs } from "@/lib/acting-as";
@@ -38,6 +39,7 @@ export function SiteHeader() {
           <Destinations variant="top" only={["network", "apps"]} />
         </nav>
         <div className="site-header-actions">
+          <MobileSearchButton />
           <Suspense fallback={null}>
             <HeaderAccount />
           </Suspense>

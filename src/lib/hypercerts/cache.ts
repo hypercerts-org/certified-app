@@ -26,4 +26,8 @@ export const tags = {
   locations: (did: string) => `locations:${did}`,
   /** What others add to a record: evaluations, measurements, attachments. */
   context: (uri: string) => `context:${uri}`,
+  /** Like counts for a subject record AT-URI. */
+  likes: (uri: string) => `likes:${uri}`,
+  /** Likes authored by an actor DID. */
+  actorLikes: (did: string) => `actor-likes:${did}`,
 };

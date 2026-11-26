@@ -7,8 +7,9 @@
 // (lib/activity-rules, lib/form-rules). The fields and the publish flow are
 // the ones the project form uses (record-form).
 
-import { Button, Heading, Text } from "@hypercerts-org/ui-react";
+import { Button, Field, Heading, Text } from "@hypercerts-org/ui-react";
 import { Plus, Trash2, UserPlus } from "lucide-react";
+import { ActorPicker } from "@/components/actor-picker";
 import { LocationField } from "@/components/location-picker";
 import { KeptField, useRecordForm } from "@/components/record-form";
 import { checkField, datesInOrder, fieldSchemas, imageLimits, isShare } from "@/lib/activity-rules";
@@ -179,7 +180,24 @@ export function ActivityForm({
                                   : "Name the contributor, or remove the row.",
                             }}
                           >
-                            {(field) => <field.TextField label="Contributor" />}
+                            {(field) => {
+                              const err = field.state.meta.errors.find(Boolean) as
+                                | string
+                                | undefined;
+                              return (
+                                <Field label="Contributor" error={err}>
+                                  {(wiring) => (
+                                    <ActorPicker
+                                      {...wiring}
+                                      value={field.state.value}
+                                      onChange={(next) => field.handleChange(next)}
+                                      onBlur={field.handleBlur}
+                                      placeholder="@handle or full name"
+                                    />
+                                  )}
+                                </Field>
+                              );
+                            }}
                           </form.AppField>
                           <form.AppField
                             name={`contributors[${i}].role`}

@@ -1,7 +1,6 @@
 import { type LexMap, parseCid, type TypedBlobRef } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RecordSigner } from "@/lib/atproto/created-via";
 import { CgsAuthError } from "@/lib/cgs";
 import {
   addItemsToList,
@@ -63,9 +62,6 @@ function fakeSession(respond?: (url: URL, init?: RequestInit) => Response) {
   } as unknown as OAuthSession;
 }
 
-// Marks the record instead of signing it: what is checked here is the request.
-const sign = (async (record) => ({ ...record, signatures: [] })) as RecordSigner;
-
 const failureOf = (promise: Promise<unknown>) =>
   promise.then(
     () => undefined,
@@ -95,7 +91,7 @@ describe("organization writes through CGS", () => {
       return Response.json({ token: "token" });
     });
     const repo = await organizationRepository(session, org);
-    expect(await updateProfile(repo, NEW, CURRENT_CID, sign)).toMatchObject({
+    expect(await updateProfile(repo, NEW, CURRENT_CID)).toMatchObject({
       cid: "bafynew",
       displayName: "New",
     });
@@ -113,13 +109,13 @@ describe("organization writes through CGS", () => {
       collection: "app.certified.actor.profile",
       rkey: "self",
       swapRecord: CURRENT_CID,
-      record: { displayName: "New", createdAt: "2026-01-01T00:00:00.000Z", signatures: [] },
+      record: { displayName: "New", createdAt: "2026-01-01T00:00:00.000Z" },
     });
   });
 
   it("refuses to write when the profile changed since it was loaded", async () => {
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, "bafyolder", sign));
+    const err = await failureOf(updateProfile(repo, NEW, "bafyolder"));
     expect(err).toMatchObject({ name: "WriteError", reason: "conflict" });
     expect(requests).toHaveLength(1);
   });
@@ -127,35 +123,35 @@ describe("organization writes through CGS", () => {
   it("reports CGS refusing the user's role as forbidden", async () => {
     cgsAnswer = () => Response.json({ error: "Forbidden", message: "No" }, { status: 403 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "forbidden" });
   });
 
   it("reports a 5xx from CGS as an unknown outcome, never as a refusal", async () => {
     cgsAnswer = () => Response.json({ error: "UpstreamFailure" }, { status: 502 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a write that got no answer as an unknown outcome", async () => {
     cgsAnswer = () => Promise.reject(new TypeError("fetch failed"));
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a success answer it can't read as an unknown outcome", async () => {
     cgsAnswer = () => new Response("<html>gateway</html>", { status: 200 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a token the PDS wouldn't mint as never sent, not as unknown", async () => {
     const session = fakeSession(() => Response.json({ error: "AuthRequired" }, { status: 401 }));
     const repo = await organizationRepository(session, org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID, sign));
+    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
     expect(err).toBeInstanceOf(CgsAuthError);
     expect(requests.some((r) => r.url.includes("groups.certified.app"))).toBe(false);
   });
@@ -172,7 +168,7 @@ describe("own-repository writes", () => {
       }
       return Response.json({ error: "InvalidRequest", message: "exists" }, { status: 400 });
     });
-    const err = await failureOf(updateProfile(ownRepository(session), NEW, null, sign));
+    const err = await failureOf(updateProfile(ownRepository(session), NEW, null));
     expect(err).toBeInstanceOf(WriteError);
     expect(err).toMatchObject({ reason: "conflict" });
   });
@@ -374,12 +370,10 @@ describe("list record mutations", () => {
 
   it("updates title and description with compare-and-swap CID", async () => {
     const { repo, putRecord } = mockRepo(existingCollection());
-    const saved = await updateListDetails(
-      repo,
-      "list1",
-      { title: "Renamed", description: "New notes" },
-      sign,
-    );
+    const saved = await updateListDetails(repo, "list1", {
+      title: "Renamed",
+      description: "New notes",
+    });
     expect(saved.cid).toBe("bafyupdated");
     expect(putRecord).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -397,7 +391,7 @@ describe("list record mutations", () => {
     const a2 = { uri: `at://${user}/org.hypercerts.claim.activity/a2`, cid: CURRENT_CID };
     const { repo, putRecord } = mockRepo(existingCollection([{ itemIdentifier: a1 }]));
 
-    const added = await addItemsToList(repo, "list1", [a1, a2], sign);
+    const added = await addItemsToList(repo, "list1", [a1, a2]);
     expect(added).toMatchObject({ added: 1, skipped: 1 });
     expect(putRecord).toHaveBeenCalledWith(
       expect.objectContaining({ items: [{ itemIdentifier: a1 }, { itemIdentifier: a2 }] }),
@@ -408,7 +402,7 @@ describe("list record mutations", () => {
     const { repo: repo2, putRecord: put2 } = mockRepo(
       existingCollection([{ itemIdentifier: a1 }, { itemIdentifier: a2 }]),
     );
-    const removed = await removeItemsFromList(repo2, "list1", new Set([a1.uri]), sign);
+    const removed = await removeItemsFromList(repo2, "list1", new Set([a1.uri]));
     expect(removed).toMatchObject({ removed: 1 });
     expect(put2).toHaveBeenCalledWith(
       expect.objectContaining({ items: [{ itemIdentifier: a2 }] }),
@@ -461,7 +455,6 @@ describe("patchProfile and patchOrganization", () => {
       repo,
       { website: "https://example.org", langs: ["en", "sv"], avatar: BLOB_REF },
       CURRENT_CID,
-      sign,
     );
 
     expect(saved.cid).toBe("bafypatched");
@@ -490,7 +483,7 @@ describe("patchProfile and patchOrganization", () => {
       cid: CURRENT_CID,
       value: { $type: "app.certified.actor.profile", createdAt: "2026-01-01T00:00:00.000Z" },
     });
-    const err = await failureOf(patchProfile(repo, { pronouns: "she/her" }, "bafystale", sign));
+    const err = await failureOf(patchProfile(repo, { pronouns: "she/her" }, "bafystale"));
     expect(err).toMatchObject({ name: "WriteError", reason: "conflict" });
     expect(putRecord).not.toHaveBeenCalled();
   });
@@ -511,7 +504,6 @@ describe("patchProfile and patchOrganization", () => {
         logo: BLOB_REF,
       },
       null,
-      sign,
     );
 
     expect(saved).toMatchObject({

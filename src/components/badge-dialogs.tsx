@@ -26,6 +26,7 @@ import { Award, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ActorPicker } from "@/components/actor-picker";
 import { ROW_ACTION, SECTION_ACTION } from "@/lib/button-roles";
 import * as badgeActions from "@/lib/hypercerts/badge-actions";
 import { workspaceHref } from "@/lib/routes";
@@ -438,13 +439,13 @@ export function AwardBadgeDialog({
           )}
           <Field
             label="Recipient"
-            description="A handle (@name.bsky.social), DID, Certified link, or AT-URI."
+            description="Search by name or handle, or paste a DID, Certified link, or AT-URI."
           >
             {(field) => (
-              <Input
+              <ActorPicker
                 {...field}
                 value={subject}
-                onChange={(e) => setSubject(e.currentTarget.value)}
+                onChange={setSubject}
                 placeholder="@hypercerts.org or https://certified.app/…"
                 required
               />

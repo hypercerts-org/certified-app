@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { badgeHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
+import { LikeScope, PostLikeButton } from "@/components/like-button";
 import { FeedPost, Name, PageLink, Post } from "@/components/profile-feed";
 import {
   AttachmentBody,
@@ -86,6 +87,7 @@ function TimelinePost({
           }
           date={item.update.date}
           body={<UpdateBody update={item.update} />}
+          actions={<PostLikeButton subject={item.update.uri} />}
         />
       );
     case "attachment":
@@ -100,6 +102,7 @@ function TimelinePost({
           }
           date={item.attachment.date}
           body={<AttachmentBody attachment={item.attachment} />}
+          actions={<PostLikeButton subject={item.attachment.uri} />}
         />
       );
     case "evaluation": {
@@ -116,6 +119,7 @@ function TimelinePost({
           }
           date={item.evaluation.date}
           body={<EvaluationBody evaluation={item.evaluation} />}
+          actions={<PostLikeButton subject={item.evaluation.uri} />}
         />
       );
     }
@@ -131,6 +135,7 @@ function TimelinePost({
           }
           date={item.measurement.period}
           body={<MeasurementBody measurement={item.measurement} />}
+          actions={<PostLikeButton subject={item.measurement.uri} />}
         />
       );
     case "badge":
@@ -149,6 +154,23 @@ function TimelinePost({
           date={item.badge.awarded}
         />
       );
+  }
+}
+
+function timelineLikeSubject(item: TimelineItem): string | null {
+  switch (item.kind) {
+    case "activity":
+      return item.activity.uri;
+    case "update":
+      return item.update.uri;
+    case "attachment":
+      return item.attachment.uri;
+    case "evaluation":
+      return item.evaluation.uri;
+    case "measurement":
+      return item.measurement.uri;
+    default:
+      return null;
   }
 }
 
@@ -177,26 +199,32 @@ export async function RecordTimeline({
       />
     );
   }
+  const likeSubjects = items.flatMap((item) => {
+    const subject = timelineLikeSubject(item);
+    return subject ? [subject] : [];
+  });
   const shown = items.slice(0, SHOWN);
   const rest = items.slice(SHOWN);
   return (
-    <div className="stack">
-      <ul className="post-feed">
-        {shown.map((item) => (
-          <TimelinePost key={item.key} item={item} owner={owner} href={href} noun={noun} />
-        ))}
-      </ul>
-      {rest.length > 0 && (
-        // A disclosure: opens without JavaScript, and its posts stay in the page for find.
-        <details className="updates-more">
-          <summary>Show {rest.length} older</summary>
-          <ul className="post-feed">
-            {rest.map((item) => (
-              <TimelinePost key={item.key} item={item} owner={owner} href={href} noun={noun} />
-            ))}
-          </ul>
-        </details>
-      )}
-    </div>
+    <LikeScope subjects={likeSubjects}>
+      <div className="stack">
+        <ul className="post-feed">
+          {shown.map((item) => (
+            <TimelinePost key={item.key} item={item} owner={owner} href={href} noun={noun} />
+          ))}
+        </ul>
+        {rest.length > 0 && (
+          // A disclosure: opens without JavaScript, and its posts stay in the page for find.
+          <details className="updates-more">
+            <summary>Show {rest.length} older</summary>
+            <ul className="post-feed">
+              {rest.map((item) => (
+                <TimelinePost key={item.key} item={item} owner={owner} href={href} noun={noun} />
+              ))}
+            </ul>
+          </details>
+        )}
+      </div>
+    </LikeScope>
   );
 }

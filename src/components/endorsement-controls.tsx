@@ -9,7 +9,6 @@ import {
   Button,
   CharacterCount,
   Field,
-  Input,
   ResponsiveDialog,
   Textarea,
 } from "@hypercerts-org/ui-react";
@@ -25,6 +24,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "sonner";
+import { ActorPicker } from "@/components/actor-picker";
 import { ROW_ACTION, SECTION_ACTION } from "@/lib/button-roles";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import { workspaceHref } from "@/lib/routes";
@@ -260,13 +260,13 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
           )}
           <Field
             label="Account"
-            description="A handle (@name.bsky.social), DID, or Certified link."
+            description="Search by name or handle, or paste a DID or Certified link."
           >
             {(field) => (
-              <Input
+              <ActorPicker
                 {...field}
                 value={target}
-                onChange={(e) => setTarget(e.currentTarget.value)}
+                onChange={setTarget}
                 placeholder="@hypercerts.org or https://certified.app/maearth.com"
                 required
               />

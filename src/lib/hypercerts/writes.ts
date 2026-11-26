@@ -1,6 +1,6 @@
 // Every write the app makes, the counterpart of ./queries for reads. Callers
-// authenticate and pass a Repository and the app's record signer. When the
-// Hypercerts SDK ships its write layer, only these bodies should change.
+// authenticate and pass a Repository. When the Hypercerts SDK ships its full
+// update/delete layer, these bodies will be replaced by SDK calls.
 import "server-only";
 
 import { extractPdsUrl } from "@atproto/did";
@@ -18,7 +18,6 @@ import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
 import { app, org } from "@hypercerts-org/lexicon";
 import { assertWritesAllowed } from "@/lib/atproto/app-key";
-import type { RecordSigner } from "@/lib/atproto/created-via";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
 import { logError } from "@/lib/log";
@@ -232,15 +231,14 @@ function writeFailure(err: unknown): unknown {
 
 /**
  * Sets the profile's display name and description, keeping every other field
- * as stored, and signs the result. `expectedCid` is the version the user
- * edited (null: no profile yet); if the profile changed since, this throws a
- * WriteError with reason "conflict" instead of overwriting.
+ * as stored. `expectedCid` is the version the user edited (null: no profile
+ * yet); if the profile changed since, this throws a WriteError with reason
+ * "conflict" instead of overwriting.
  */
 export async function updateProfile(
   repo: Repository,
   fields: ProfileFields,
   expectedCid: string | null,
-  sign: RecordSigner,
 ): Promise<ProfileVersion> {
   const current = await repo.getRecord(profile.$type, "self");
   if ((current?.cid ?? null) !== expectedCid) throw conflict();
@@ -257,14 +255,13 @@ export async function updateProfile(
   const checked = profile.$safeValidate(record);
   if (!checked.success) throw new WriteError("invalid", checked.reason.message);
 
-  const signed = await sign(checked.value, { repositoryDid: repo.did });
   let stored: StoredRecord;
   try {
     // A first profile is created instead, which fails rather than overwrites
     // if one appeared meanwhile.
     stored = current
-      ? await repo.putRecord(signed, "self", current.cid)
-      : await repo.createRecord(signed, "self");
+      ? await repo.putRecord(checked.value, "self", current.cid)
+      : await repo.createRecord(checked.value, "self");
   } catch (err) {
     const failure = writeFailure(err);
     if (!current && failure instanceof XrpcResponseError) {
@@ -274,18 +271,16 @@ export async function updateProfile(
     throw failure;
   }
 
-  // The PDS stores exactly what was signed, so their CIDs match; if not, the
-  // signature won't verify and the encoding assumption is broken.
-  const expected = (await cidForLex(signed)).toString();
+  const expected = (await cidForLex(checked.value)).toString();
   if (expected !== stored.cid) {
-    logError("[writes] stored CID differs from the signed record's", null, {
+    logError("[writes] stored CID differs from the written record's", null, {
       uri: stored.uri,
       stored: stored.cid,
-      signed: expected,
+      expected,
     });
   }
   // The version the PDS stored, which a later index read must show.
-  return { uri: stored.uri, cid: stored.cid, ...profileFields(signed) };
+  return { uri: stored.uri, cid: stored.cid, ...profileFields(checked.value) };
 }
 
 // ---------------------------------------------------------------------------
@@ -344,14 +339,13 @@ export async function getProfileDetails(repo: Repository): Promise<ProfileDetail
 
 /**
  * Patches selected fields on `app.certified.actor.profile/self`, keeping all
- * untouched fields intact, validating against the lexicon, and signing with
- * `createdVia`. Enforces compare-and-swap via `expectedCid`.
+ * untouched fields intact and validating against the lexicon. Enforces
+ * compare-and-swap via `expectedCid`.
  */
 export async function patchProfile(
   repo: Repository,
   patch: ProfilePatch,
   expectedCid: string | null,
-  sign: RecordSigner,
 ): Promise<ProfileDetails> {
   const current = await repo.getRecord(profile.$type, "self");
   if ((current?.cid ?? null) !== expectedCid) throw conflict();
@@ -386,12 +380,11 @@ export async function patchProfile(
   const checked = profile.$safeValidate(record);
   if (!checked.success) throw new WriteError("invalid", checked.reason.message);
 
-  const signed = await sign(checked.value, { repositoryDid: repo.did });
   let stored: StoredRecord;
   try {
     stored = current
-      ? await repo.putRecord(signed, "self", current.cid)
-      : await repo.createRecord(signed, "self");
+      ? await repo.putRecord(checked.value, "self", current.cid)
+      : await repo.createRecord(checked.value, "self");
   } catch (err) {
     const failure = writeFailure(err);
     if (!current && failure instanceof XrpcResponseError) {
@@ -400,15 +393,15 @@ export async function patchProfile(
     throw failure;
   }
 
-  const expected = (await cidForLex(signed)).toString();
+  const expected = (await cidForLex(checked.value)).toString();
   if (expected !== stored.cid) {
-    logError("[writes] stored CID differs from the signed profile's", null, {
+    logError("[writes] stored CID differs from the written profile's", null, {
       uri: stored.uri,
       stored: stored.cid,
-      signed: expected,
+      expected,
     });
   }
-  return toProfileDetails(repo.did, stored.cid, signed);
+  return toProfileDetails(repo.did, stored.cid, checked.value);
 }
 
 export type OrganizationUrlItem = { url: string; label: string };
@@ -506,14 +499,12 @@ export async function getOrganizationDetails(repo: Repository): Promise<Organiza
 
 /**
  * Patches selected fields on `app.certified.actor.organization/self`, keeping
- * untouched fields intact, validating against the lexicon, and signing with
- * `createdVia`.
+ * untouched fields intact and validating against the lexicon.
  */
 export async function patchOrganization(
   repo: Repository,
   patch: OrganizationPatch,
   expectedCid: string | null,
-  sign: RecordSigner,
 ): Promise<OrganizationDetails> {
   const current = await repo.getRecord(organization.$type, "self");
   if ((current?.cid ?? null) !== expectedCid) throw conflict();
@@ -579,12 +570,11 @@ export async function patchOrganization(
   const checked = organization.$safeValidate(record);
   if (!checked.success) throw new WriteError("invalid", checked.reason.message);
 
-  const signed = await sign(checked.value, { repositoryDid: repo.did });
   let stored: StoredRecord;
   try {
     stored = current
-      ? await repo.putRecord(signed, "self", current.cid)
-      : await repo.createRecord(signed, "self");
+      ? await repo.putRecord(checked.value, "self", current.cid)
+      : await repo.createRecord(checked.value, "self");
   } catch (err) {
     const failure = writeFailure(err);
     if (!current && failure instanceof XrpcResponseError) {
@@ -593,15 +583,15 @@ export async function patchOrganization(
     throw failure;
   }
 
-  const expected = (await cidForLex(signed)).toString();
+  const expected = (await cidForLex(checked.value)).toString();
   if (expected !== stored.cid) {
-    logError("[writes] stored CID differs from the signed organization's", null, {
+    logError("[writes] stored CID differs from the written organization's", null, {
       uri: stored.uri,
       stored: stored.cid,
-      signed: expected,
+      expected,
     });
   }
-  return toOrganizationDetails(repo.did, stored.cid, signed);
+  return toOrganizationDetails(repo.did, stored.cid, checked.value);
 }
 
 /** More badge definitions than an account plausibly keeps; guards against looping cursors. */
@@ -727,19 +717,17 @@ async function putCollectionRecord(
   rkey: string,
   record: LexMap,
   swapRecord: string,
-  sign: RecordSigner,
 ): Promise<StoredRecord> {
   const checked = collection.$safeValidate({ ...record, $type: collection.$type });
   if (!checked.success) throw new WriteError("invalid", checked.reason.message);
-  const signed = await sign(checked.value, { repositoryDid: repo.did });
   try {
-    const stored = await repo.putRecord(signed, rkey, swapRecord);
-    const expected = (await cidForLex(signed)).toString();
+    const stored = await repo.putRecord(checked.value, rkey, swapRecord);
+    const expected = (await cidForLex(checked.value)).toString();
     if (expected !== stored.cid) {
-      logError("[writes] stored CID differs from the signed collection's", null, {
+      logError("[writes] stored CID differs from the written collection's", null, {
         uri: stored.uri,
         stored: stored.cid,
-        signed: expected,
+        expected,
       });
     }
     return stored;
@@ -753,7 +741,6 @@ export async function updateListDetails(
   repo: Repository,
   rkey: string,
   fields: { title: string; description: string },
-  sign: RecordSigner,
 ): Promise<StoredRecord> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
@@ -765,7 +752,7 @@ export async function updateListDetails(
     delete record.description;
     delete record.shortDescription;
   }
-  return putCollectionRecord(repo, rkey, record, current.cid, sign);
+  return putCollectionRecord(repo, rkey, record, current.cid);
 }
 
 const MAX_LIST_ITEMS = 1000;
@@ -775,7 +762,6 @@ export async function addItemsToList(
   repo: Repository,
   rkey: string,
   refs: StoredRecord[],
-  sign: RecordSigner,
 ): Promise<{ stored: StoredRecord; added: number; skipped: number }> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
@@ -807,7 +793,7 @@ export async function addItemsToList(
   }
 
   const record: LexMap = { ...current.value, items: [...existingItems, ...toAdd] };
-  const stored = await putCollectionRecord(repo, rkey, record, current.cid, sign);
+  const stored = await putCollectionRecord(repo, rkey, record, current.cid);
   return { stored, added: toAdd.length, skipped };
 }
 
@@ -816,7 +802,6 @@ export async function removeItemsFromList(
   repo: Repository,
   rkey: string,
   urisToRemove: ReadonlySet<string>,
-  sign: RecordSigner,
 ): Promise<{ stored: StoredRecord; removed: number }> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
@@ -835,7 +820,7 @@ export async function removeItemsFromList(
   const record: LexMap = { ...current.value };
   if (nextItems.length > 0) record.items = nextItems;
   else delete record.items;
-  const stored = await putCollectionRecord(repo, rkey, record, current.cid, sign);
+  const stored = await putCollectionRecord(repo, rkey, record, current.cid);
   return { stored, removed };
 }
 

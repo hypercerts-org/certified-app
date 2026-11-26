@@ -6,7 +6,6 @@ vi.mock("server-only", () => ({}));
 
 const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
-  getRecordSigner: vi.fn(),
   editableRepository: vi.fn(),
   updateProfile: vi.fn(),
   getIndexedProfile: vi.fn(),
@@ -15,7 +14,6 @@ const mocks = {
 };
 
 vi.mock("next/cache", () => ({ updateTag: (...args: unknown[]) => mocks.updateTag(...args) }));
-vi.mock("@/lib/atproto/app-key", () => ({ getRecordSigner: () => mocks.getRecordSigner() }));
 vi.mock("@/lib/auth/dal", () => ({
   getOAuthSession: () => mocks.getOAuthSession(),
   SessionUnavailableError: class SessionUnavailableError extends Error {},
@@ -50,7 +48,6 @@ const SAVED = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
-  mocks.getRecordSigner.mockResolvedValue(vi.fn());
   mocks.editableRepository.mockResolvedValue(FAKE_REPO);
   mocks.updateProfile.mockResolvedValue(SAVED);
   mocks.waitForIndex.mockResolvedValue(true);
@@ -86,7 +83,6 @@ describe("saveProfile", () => {
       FAKE_REPO,
       { displayName: "Alice", description: "Steward" },
       "bafyprev",
-      expect.anything(),
     );
     expect(mocks.updateTag.mock.calls.flat()).toEqual([`actor:${USER}`, "explore"]);
   });

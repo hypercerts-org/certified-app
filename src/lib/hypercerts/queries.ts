@@ -1483,6 +1483,123 @@ export async function getIndexedList(
   return { cid, itemUris };
 }
 
+const REACTION_BATCH = 50;
+
+/**
+ * Cached like counts for up to many record AT-URIs, batched via
+ * `app.certified.feed.getReactionCounts`. Degrades to empty counts on outage
+ * so reaction reads never break a page.
+ */
+export async function getLikeCounts(subjects: string[]): Promise<Record<string, number>> {
+  "use cache";
+  cacheLife("public");
+  const unique = [...new Set(subjects)].filter(Boolean).sort();
+  if (unique.length === 0) return {};
+  for (const uri of unique) cacheTag(tags.likes(uri));
+
+  const counts: Record<string, number> = {};
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += REACTION_BATCH) {
+    batches.push(unique.slice(i, i + REACTION_BATCH));
+  }
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await api.call(
+          app.certified.feed.getReactionCounts,
+          { subjects: batch as AtUri[] },
+          read(),
+        );
+        for (const item of res.counts) {
+          counts[item.subject] = item.likeCount;
+        }
+      } catch (err) {
+        logError("[likes] getReactionCounts failed", err, { count: batch.length });
+      }
+    }),
+  );
+  return counts;
+}
+
+/**
+ * Cached check of which `subjects` `actor` has liked, returning a map of
+ * subject AT-URI -> like record AT-URI (or null).
+ */
+export async function getActorLikesForSubjects(
+  actor: string,
+  subjects: string[],
+): Promise<Record<string, string | null>> {
+  "use cache";
+  cacheLife("public");
+  cacheTag(tags.actorLikes(actor));
+  const unique = [...new Set(subjects)].filter(Boolean).sort();
+  if (unique.length === 0) return {};
+
+  const likes: Record<string, string | null> = {};
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += REACTION_BATCH) {
+    batches.push(unique.slice(i, i + REACTION_BATCH));
+  }
+  await Promise.all(
+    batches.map(async (batch) => {
+      try {
+        const res = await api.call(
+          app.certified.feed.getActorReactions,
+          { actor: actor as Did, subjects: batch as AtUri[] },
+          read(),
+        );
+        for (const row of res.results) {
+          likes[row.subject] = row.like?.uri ?? null;
+        }
+      } catch (err) {
+        logError("[likes] getActorReactions failed", err, { actor, count: batch.length });
+      }
+    }),
+  );
+  return likes;
+}
+
+/** Uncached check of whether `actor` currently likes `subject` in the index. */
+export async function getIndexedActorLike(
+  actor: string,
+  subject: string,
+): Promise<{ uri: string; cid: string } | null> {
+  const result = await api.xrpcSafe(app.certified.feed.getActorReactions, {
+    params: { actor: actor as Did, subjects: [subject as AtUri] },
+    ...read(),
+  });
+  if (!result.success) return null;
+  const hit = result.body.results[0]?.like;
+  return hit ? { uri: hit.uri, cid: hit.cid } : null;
+}
+
+/**
+ * Uncached read of `did`'s lists of collection `type` (e.g. `list:accounts`),
+ * with each list's item URIs, for the Add-to-list modal.
+ */
+export async function getIndexedListsByType(
+  did: string,
+  type: string,
+): Promise<{ uri: string; rkey: string; title: string; itemCount: number; itemUris: string[] }[]> {
+  const { collections } = await api.call(
+    org.hypercerts.collection.listCollections,
+    { authors: [did as Did], types: [type], limit: PEOPLE_PAGE },
+    read(),
+  );
+  return collections.map((collection) => {
+    const itemUris = (collection.record.items ?? []).flatMap(
+      (item) => item.itemIdentifier?.uri ?? [],
+    );
+    return {
+      uri: collection.uri,
+      rkey: collection.uri.split("/").pop() ?? "",
+      title: collection.record.title || "Untitled list",
+      itemCount: itemUris.length,
+      itemUris,
+    };
+  });
+}
+
 const collectionOf = (uri: string) => uri.split("/")[3] ?? "";
 
 /**

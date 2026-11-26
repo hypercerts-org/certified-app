@@ -3,6 +3,7 @@ import { Inter, Noto_Serif } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Providers } from "@/components/providers";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
@@ -18,9 +19,26 @@ const notoSerif = Noto_Serif({
   display: "swap",
 });
 
+const DEFAULT_DESCRIPTION =
+  "Your profile, your work, and your supporters in one portable AT Protocol account — recognized across the Hypercerts network.";
+
 export const metadata: Metadata = {
-  title: { default: "Certified", template: "%s | Certified" },
-  description: "Organizations, projects and activities on the Hypercerts protocol.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+    siteName: SITE_NAME,
+    type: "website",
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE.url],
+  },
 };
 
 // Root layout: theme, design system and providers only. Site chrome lives

@@ -10,7 +10,6 @@ import type { l } from "@atproto/lex";
 import { uploadBlob } from "@hypercerts-org/sdk/blob";
 import { createLocation } from "@hypercerts-org/sdk/location";
 import { updateTag } from "next/cache";
-import { getRecordSigner } from "@/lib/atproto/app-key";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
@@ -160,7 +159,7 @@ export async function saveProfileField(input: {
       };
     }
 
-    const saved = await patchProfile(repository, patch, expectedCid, await getRecordSigner());
+    const saved = await patchProfile(repository, patch, expectedCid);
     await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid, 5_000);
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
@@ -237,13 +236,11 @@ export async function saveProfileMedia(
       });
     }
 
-    const signer = await getRecordSigner();
     if (slot === "logo") {
       const saved = await patchOrganization(
         repository,
         { logo: remove ? null : uploadedRef },
         expectedCid,
-        signer,
       );
       updateTag(tags.actor(repo));
       updateTag(tags.explore());
@@ -256,7 +253,6 @@ export async function saveProfileMedia(
         ? { avatar: remove ? null : uploadedRef }
         : { banner: remove ? null : uploadedRef },
       expectedCid,
-      signer,
     );
     await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid, 5_000);
     updateTag(tags.actor(repo));
@@ -379,12 +375,7 @@ export async function saveOrganizationField(input: {
       }
     }
 
-    const saved = await patchOrganization(
-      repository,
-      orgPatch,
-      expectedCid,
-      await getRecordSigner(),
-    );
+    const saved = await patchOrganization(repository, orgPatch, expectedCid);
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
     if (createdNewLocation) updateTag(tags.locations(repo));
