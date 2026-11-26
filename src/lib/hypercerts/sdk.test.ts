@@ -5,7 +5,6 @@ import {
   WriteResultMismatchError,
 } from "@hypercerts-org/sdk/social";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { SessionUnavailableError } from "@/lib/auth/dal";
 import { writeFailure } from "./sdk";
 
@@ -66,25 +65,5 @@ describe("writeFailure", () => {
 
     expect(writeFailure(new Error("unexpected"), "op")).toBe("unavailable");
     expect(logError).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("assertWritesAllowed", () => {
-  it("blocks writes on Vercel preview deployments and *.vercel.app hosts", () => {
-    vi.stubEnv("VERCEL_ENV", "preview");
-    expect(() => assertWritesAllowed()).toThrow(/Preview deployments/);
-
-    vi.stubEnv("VERCEL_ENV", "production");
-    vi.stubEnv("PUBLIC_URL", "https://certified-app-git-v2.vercel.app");
-    expect(() => assertWritesAllowed()).toThrow(/preview host/);
-  });
-
-  it("allows loopback development and canonical https PUBLIC_URL", () => {
-    vi.stubEnv("VERCEL_ENV", "");
-    vi.stubEnv("PUBLIC_URL", "");
-    expect(() => assertWritesAllowed()).not.toThrow();
-
-    vi.stubEnv("PUBLIC_URL", "https://certified.app");
-    expect(() => assertWritesAllowed()).not.toThrow();
   });
 });

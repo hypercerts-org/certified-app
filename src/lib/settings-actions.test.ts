@@ -9,7 +9,6 @@ import {
 
 const mocks = vi.hoisted(() => ({
   getOAuthSession: vi.fn(),
-  assertWritesAllowed: vi.fn(),
   establishElevatedSession: vi.fn(),
   endElevatedSession: vi.fn(async () => {}),
   callElevatedPds: vi.fn(),
@@ -27,7 +26,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/cache", () => ({ updateTag: mocks.updateTag }));
-vi.mock("@/lib/atproto/app-key", () => ({ assertWritesAllowed: mocks.assertWritesAllowed }));
 vi.mock("@/lib/auth/dal", () => ({
   getOAuthSession: mocks.getOAuthSession,
   SessionUnavailableError: class SessionUnavailableError extends Error {},

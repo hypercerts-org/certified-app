@@ -10,7 +10,6 @@ import { Client, type l, XrpcError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app } from "@hypercerts-org/certified-group-service";
 import { com } from "@/lexicons";
-import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { jsonStore } from "@/lib/auth/stores";
 import { logError } from "@/lib/log";
 
@@ -166,7 +165,6 @@ export async function registerGroup(
   session: OAuthSession,
   input: { handle: string; email?: string },
 ) {
-  assertWritesAllowed();
   const register = app.certified.group.register;
   return cgs.call(
     register,
@@ -241,7 +239,6 @@ export async function addGroupMember(
   memberDid: l.DidString,
   role: "member" | "admin",
 ) {
-  assertWritesAllowed();
   const add = app.certified.group.member.add;
   return cgs.call(
     add,
@@ -256,7 +253,6 @@ export async function removeGroupMember(
   groupDid: l.DidString,
   memberDid: l.DidString,
 ) {
-  assertWritesAllowed();
   const remove = app.certified.group.member.remove;
   await cgs.call(
     remove,
@@ -272,7 +268,6 @@ export async function setGroupMemberRole(
   memberDid: l.DidString,
   role: "member" | "admin",
 ) {
-  assertWritesAllowed();
   const setRole = app.certified.group.role.set;
   return cgs.call(
     setRole,
@@ -311,7 +306,6 @@ export async function importGroup(
   session: OAuthSession,
   input: { appPassword: string; ownerDid?: l.DidString },
 ) {
-  assertWritesAllowed();
   const method = app.certified.group.import;
   return cgs.call(
     method,
@@ -326,7 +320,6 @@ export async function importGroup(
 
 /** Removes a group from CGS (owner only). The underlying PDS account stays intact. */
 export async function destroyGroup(session: OAuthSession, groupDid: l.DidString) {
-  assertWritesAllowed();
   const method = app.certified.group.destroy;
   return cgs.call(method, undefined, {
     params: { repo: groupDid },
@@ -393,7 +386,6 @@ export async function proposeOwnershipTransfer(
   groupDid: l.DidString,
   newOwner: l.DidString,
 ) {
-  assertWritesAllowed();
   const propose = app.certified.group.ownershipTransfer.propose;
   return cgs.call(
     propose,
@@ -404,14 +396,12 @@ export async function proposeOwnershipTransfer(
 
 /** Accepts a pending ownership transfer (proposed owner only). */
 export async function acceptOwnershipTransfer(session: OAuthSession, groupDid: l.DidString) {
-  assertWritesAllowed();
   const accept = app.certified.group.ownershipTransfer.accept;
   return cgs.call(accept, { repo: groupDid }, { headers: await cgsAuth(session, accept) });
 }
 
 /** Cancels or declines a pending ownership transfer (owner or proposed owner). */
 export async function cancelOwnershipTransfer(session: OAuthSession, groupDid: l.DidString) {
-  assertWritesAllowed();
   const cancel = app.certified.group.ownershipTransfer.cancel;
   return cgs.call(cancel, { repo: groupDid }, { headers: await cgsAuth(session, cancel) });
 }

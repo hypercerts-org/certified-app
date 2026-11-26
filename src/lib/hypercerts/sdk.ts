@@ -11,14 +11,12 @@ import {
   WriteRejectedError,
   WriteResultMismatchError,
 } from "@hypercerts-org/sdk/social";
-import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { SessionUnavailableError } from "@/lib/auth/dal";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { CGS_DID, CGS_URL } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 
 export async function sdkContext(session: OAuthSession): Promise<SDKContext> {
-  assertWritesAllowed();
   const oauthClient = await getOAuthClient();
   return createSDKContext({
     client: new Client(session),

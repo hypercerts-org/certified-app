@@ -26,9 +26,6 @@ vi.mock("@/lib/auth/dal", () => ({
   getOAuthSession: () => mocks.getOAuthSession(),
   SessionUnavailableError: class SessionUnavailableError extends Error {},
 }));
-vi.mock("@/lib/atproto/app-key", () => ({
-  assertWritesAllowed: () => {},
-}));
 vi.mock("@/lib/hypercerts/publish-access", () => ({
   mayPublish: (...args: unknown[]) => mocks.mayPublish(...args),
 }));

@@ -13,7 +13,6 @@ import { currentDatetimeString, type l, XrpcError, XrpcResponseError } from "@at
 import { createOrganization } from "@hypercerts-org/sdk/organization";
 import { followAccount } from "@hypercerts-org/sdk/social";
 import { updateTag } from "next/cache";
-import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import {
   callElevatedPds,
@@ -131,7 +130,6 @@ export async function updateOwnHandle(rawHandle: string): Promise<SimpleResult> 
   const handle = cleanHandle(rawHandle);
   if (!handle) return { ok: false, message: "Enter a valid handle or domain name." };
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
@@ -171,7 +169,6 @@ export async function requestOwnPasswordReset(rawEmail: string): Promise<SimpleR
   const email = cleanEmail(rawEmail);
   if (!email) return { ok: false, message: "Enter a valid email address." };
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
@@ -200,7 +197,6 @@ export async function confirmOwnPasswordReset(input: {
     return { ok: false, message: "Password must be at least 8 characters." };
   }
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
@@ -276,7 +272,6 @@ export async function requestPersonalEmailUpdate(): Promise<
   { ok: true; tokenRequired: boolean } | ActionFailure
 > {
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.requestEmailUpdate", {
@@ -306,7 +301,6 @@ export async function updatePersonalEmail(input: {
   if (!email) return { ok: false, message: "Enter a valid email address." };
   const token = typeof input?.token === "string" ? input.token.trim() : "";
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.updateEmail", {
@@ -330,7 +324,6 @@ export async function updatePersonalEmail(input: {
 /** Sends a confirmation code to the signed-in account's current email address. */
 export async function requestPersonalEmailConfirmation(): Promise<SimpleResult> {
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.requestEmailConfirmation", {
@@ -359,7 +352,6 @@ export async function confirmPersonalEmail(input: {
   const token = typeof input?.token === "string" ? input.token.trim() : "";
   if (!email || !token) return { ok: false, message: "Enter your email and confirmation code." };
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.confirmEmail", {
@@ -412,7 +404,6 @@ export async function createPersonalAppPassword(
     return { ok: false, message: "Enter a name between 1 and 100 characters." };
   }
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.createAppPassword", {
@@ -441,7 +432,6 @@ export async function revokePersonalAppPassword(rawName: string): Promise<Simple
     return { ok: false, message: "Invalid app password name." };
   }
   try {
-    assertWritesAllowed();
     const s = await personalScope();
     if (!s.ok) return s;
     const r = await callElevatedPds(s.scope, "com.atproto.server.revokeAppPassword", {
@@ -494,7 +484,6 @@ export async function promotePersonalAccountToGroup(input: {
   if (!password) return { ok: false, message: "Enter your account password." };
 
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 
@@ -712,7 +701,6 @@ export async function updateGroupAccountHandle(
   const handle = cleanHandle(rawHandle);
   if (!handle) return { ok: false, message: "Enter a valid handle or domain name." };
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const r = await callElevatedPds(g.scope, "com.atproto.identity.updateHandle", {
@@ -742,7 +730,6 @@ export async function requestGroupAccountEmailUpdate(
   groupDid: string,
 ): Promise<{ ok: true; tokenRequired: boolean } | ActionFailure> {
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const r = await callElevatedPds(g.scope, "com.atproto.server.requestEmailUpdate", {
@@ -772,7 +759,6 @@ export async function updateGroupAccountEmail(
   if (!email) return { ok: false, message: "Enter a valid email address." };
   const token = typeof input?.token === "string" ? input.token.trim() : "";
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const r = await callElevatedPds(g.scope, "com.atproto.server.updateEmail", {
@@ -798,7 +784,6 @@ export async function requestGroupAccountEmailConfirmation(
   groupDid: string,
 ): Promise<SimpleResult> {
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const r = await callElevatedPds(g.scope, "com.atproto.server.requestEmailConfirmation", {
@@ -827,7 +812,6 @@ export async function confirmGroupAccountEmail(
   const token = typeof input?.token === "string" ? input.token.trim() : "";
   if (!email || !token) return { ok: false, message: "Enter the email and confirmation code." };
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const r = await callElevatedPds(g.scope, "com.atproto.server.confirmEmail", {
@@ -856,7 +840,6 @@ export async function requestGroupAccountPasswordReset(
   const email = cleanEmail(rawEmail);
   if (!email) return { ok: false, message: "Enter a valid email address." };
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
     const res = await callPublicPds(groupDid, "com.atproto.server.requestPasswordReset", { email });
@@ -886,7 +869,6 @@ export async function confirmGroupAccountPasswordReset(
     return { ok: false, message: "Password must be at least 8 characters." };
   }
   try {
-    assertWritesAllowed();
     const g = await groupAdminScope(groupDid);
     if (!g.ok) return g;
 
@@ -1061,7 +1043,6 @@ export async function importBlueskyFollows(
   }
 
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
     if (!(await isMember(session, repoDid))) {
@@ -1107,7 +1088,6 @@ export async function exportCertifiedFollowsToBluesky(
     return { ok: false, message: "Invalid sync request." };
   }
   try {
-    assertWritesAllowed();
     const session = await getOAuthSession();
     if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
 

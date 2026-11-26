@@ -17,7 +17,6 @@ import { cidForLex } from "@atproto/lex-cbor";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
 import { app, org } from "@hypercerts-org/lexicon";
-import { assertWritesAllowed } from "@/lib/atproto/app-key";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
 import { logError } from "@/lib/log";
@@ -119,15 +118,12 @@ export function ownRepository(session: OAuthSession): Repository {
     getRecord: (collection, rkey) => getRecordFrom(client, session.did, collection, rkey),
     listRecords: (collection, options) => listRecordsFrom(client, session.did, collection, options),
     putRecord: async (record, rkey, swapRecord) => {
-      assertWritesAllowed();
       return (await client.putRecord(record, rkey, { swapRecord })).body;
     },
     createRecord: async (record, rkey) => {
-      assertWritesAllowed();
       return (await client.createRecord(record, rkey)).body;
     },
     deleteRecord: async (collection, rkey, swapRecord) => {
-      assertWritesAllowed();
       await client.deleteRecord(collection, rkey, swapRecord ? { swapRecord } : undefined);
     },
   };
@@ -152,7 +148,6 @@ export async function organizationRepository(
     getRecord: (collection, rkey) => getRecordFrom(pds, did, collection, rkey),
     listRecords: (collection, options) => listRecordsFrom(pds, did, collection, options),
     putRecord: async (record, rkey, swapRecord) => {
-      assertWritesAllowed();
       return cgs.call(
         putRecord,
         { repo: did, collection: record.$type, rkey, record, ...(swapRecord && { swapRecord }) },
@@ -160,7 +155,6 @@ export async function organizationRepository(
       );
     },
     createRecord: async (record, rkey) => {
-      assertWritesAllowed();
       return cgs.call(
         createRecord,
         { repo: did, collection: record.$type, rkey, record },
@@ -168,7 +162,6 @@ export async function organizationRepository(
       );
     },
     deleteRecord: async (collection, rkey, swapRecord) => {
-      assertWritesAllowed();
       await cgs.call(
         deleteRecord,
         { repo: did, collection, rkey, ...(swapRecord && { swapRecord }) },
