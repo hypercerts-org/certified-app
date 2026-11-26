@@ -1,7 +1,7 @@
-import { Skeleton, Text } from "@hypercerts-org/ui-react";
+import { IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { type LucideIcon, Users } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorRow } from "@/components/actor";
+import { identityOf } from "@/components/actor";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import type { PeoplePage } from "@/lib/hypercerts/queries";
@@ -11,7 +11,11 @@ import { endorsementLine, type PersonRow } from "@/lib/hypercerts/views";
 export function PersonRowItem({ row, action }: { row: PersonRow; action?: ReactNode }) {
   return (
     <li className="people-row">
-      <ActorRow actor={row.actor} href={actorHref(row.actor)} secondary={endorsementLine(row)} />
+      <IdentityRow
+        {...identityOf(row.actor)}
+        href={actorHref(row.actor)}
+        secondary={endorsementLine(row)}
+      />
       {(row.date || action) && (
         <span className="people-row-end">
           {row.date && <RowDate date={row.date} />}

@@ -4,10 +4,10 @@
 // happened in it), Activities, Followers, Badges, Funding. On the right what
 // stays put: its figures, where it is, and its identifiers.
 
-import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ExpandableText, Eyebrow, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { AlsoOn } from "@/components/also-on";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
@@ -164,7 +164,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           </PageTitle>
           <div className="project-meta">
             <Text as="span" size="body-sm">
-              <ActorLink actor={actor} />
+              <IdentityLink {...identityOf(actor)} href={actorHref(actor)} />
             </Text>
             <Suspense fallback={null}>
               <FollowerCount uri={uri} />

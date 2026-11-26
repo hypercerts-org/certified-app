@@ -1,8 +1,8 @@
-import { Badge, Text } from "@hypercerts-org/ui-react";
+import { Badge, IdentityRow, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { ActorRow } from "@/components/actor";
+import { identityOf } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
 import { ImportAsGroupSection } from "@/components/settings/import-as-group-section";
 import {
@@ -70,8 +70,8 @@ async function PersonalGroups() {
           <ul className="divided settings-list">
             {groups.map((group) => (
               <li key={group.did} className="settings-list-row">
-                <ActorRow
-                  actor={group}
+                <IdentityRow
+                  {...identityOf(group)}
                   href={actorHref(group)}
                   secondary={[group.roleLabel, group.handle && `@${group.handle}`]
                     .filter(Boolean)

@@ -3,7 +3,7 @@
 // attachment, each with its files; and, for an activity's side column, the
 // projects it is part of.
 
-import { Card, ExpandableText, Heading, Text } from "@hypercerts-org/ui-react";
+import { Card, ExpandableText, Heading, IdentityLink, Text } from "@hypercerts-org/ui-react";
 import {
   AudioLines,
   ExternalLink,
@@ -13,7 +13,7 @@ import {
   Newspaper,
   Paperclip,
 } from "lucide-react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { ProjectRow } from "@/components/records";
 import { RichText } from "@/components/rich-text";
 import { type EvaluationWithEvaluators, getProjectsWith } from "@/lib/hypercerts/queries";
@@ -108,11 +108,11 @@ export function EvaluatorNames({
   if (!first) return <span>An evaluator</span>;
   return (
     <span>
-      <ActorLink actor={first} avatar={false} />
+      <IdentityLink {...identityOf(first)} href={actorHref(first)} avatar={false} />
       {second && rest.length === 0 && (
         <>
           {" and "}
-          <ActorLink actor={second} avatar={false} />
+          <IdentityLink {...identityOf(second)} href={actorHref(second)} avatar={false} />
         </>
       )}
       {second && rest.length > 0 && ` and ${rest.length + 1} others`}

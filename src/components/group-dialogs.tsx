@@ -23,7 +23,6 @@ import { Plus, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { HandleId, PermanentId } from "@/components/account-ids";
 import { ActorPicker } from "@/components/actor-picker";
 import { notifyActingAsChanged } from "@/components/like-button";
 import { switchActingAs } from "@/lib/acting-as-actions";
@@ -183,25 +182,25 @@ export function NewGroupDialog({
               <div className="fact">
                 <dt>Handle</dt>
                 <dd>
-                  <HandleId handle={created.handle} label="Group handle" />
+                  <CopyableId
+                    value={created.handle}
+                    displayValue={`@${created.handle}`}
+                    label="Group handle"
+                    wrap
+                  />
                 </dd>
               </div>
               <div className="fact">
                 <dt>Permanent ID</dt>
                 <dd>
-                  <PermanentId value={created.groupDid} label="Group permanent ID" />
+                  <CopyableId value={created.groupDid} label="Group permanent ID" wrap />
                 </dd>
               </div>
               {created.accountPassword && (
                 <div className="fact">
                   <dt>Account password</dt>
                   <dd>
-                    <CopyableId
-                      value={created.accountPassword}
-                      displayValue={created.accountPassword}
-                      label="Account password"
-                      wrap
-                    />
+                    <CopyableId value={created.accountPassword} label="Account password" wrap />
                   </dd>
                 </div>
               )}

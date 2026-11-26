@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Avatar,
   BottomSheet,
   Button,
   Eyebrow,
@@ -32,7 +33,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useId, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ActorAvatar, type ActorLike, ActorName } from "@/components/actor";
+import { type ActorLike, ActorName, avatarOf } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { NewGroupDialog } from "@/components/group-dialogs";
 import { notifyActingAsChanged } from "@/components/like-button";
@@ -282,7 +283,7 @@ function SwitchedToast({
         </button>
       </div>
       <div className="switch-toast-body">
-        <ActorAvatar actor={identity} />
+        <Avatar {...avatarOf(identity)} />
         <Text as="span" size="body-sm">
           {self ? "You're now acting as yourself." : `You're now acting as ${nameOf(identity)}.`}
         </Text>
@@ -335,7 +336,7 @@ function ActAsRow({
         disabled={active}
         onClick={() => onSwitch(identity)}
       >
-        <ActorAvatar actor={identity} />
+        <Avatar {...avatarOf(identity)} />
         <span className="menu-row-text">
           <Text as="span" tone="ink">
             <ActorName actor={identity} />
@@ -508,7 +509,7 @@ function AccountMenuContent({
 function AccountAvatar({ identity }: { identity: Identity }) {
   return (
     <span className="account-avatar">
-      <ActorAvatar actor={identity} />
+      <Avatar {...avatarOf(identity)} />
       <span className="account-avatar-marker" aria-hidden>
         <ChevronDown size={12} strokeWidth={2.5} />
       </span>
@@ -611,7 +612,7 @@ export function SidebarAccountMenu({ account }: { account: Account }) {
           className="sidebar-account"
           aria-label={`${nameOf(identity)}, account menu`}
         >
-          <ActorAvatar actor={identity} />
+          <Avatar {...avatarOf(identity)} />
           <span className="sidebar-account-text">
             <ActorName actor={identity} className="sidebar-account-name" />
             {subline && <span className="sidebar-account-handle">{subline}</span>}

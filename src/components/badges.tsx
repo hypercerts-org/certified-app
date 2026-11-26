@@ -6,10 +6,10 @@
 // (who, when, until when, the note). An expired badge stays, marked and
 // dimmed, after the ones in force.
 
-import { Badge, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Badge, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Award, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { badgeHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -47,7 +47,9 @@ export function BadgeIcon({
 }
 
 function Issuer({ badge }: { badge: BadgeCard }) {
-  return <ActorLink actor={badge.issuer} avatar={false} />;
+  return (
+    <IdentityLink {...identityOf(badge.issuer)} href={actorHref(badge.issuer)} avatar={false} />
+  );
 }
 
 /** One badge as a tile: icon, title, and who issued it. */

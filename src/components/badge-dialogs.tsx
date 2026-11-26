@@ -481,6 +481,8 @@ export function AwardBadgeDialog({
             {(wiring) => (
               <div className="date-field">
                 <DatePicker
+                  fullWidth
+                  className="date-field-picker"
                   id={wiring.id}
                   aria-describedby={wiring["aria-describedby"]}
                   invalid={wiring.invalid}

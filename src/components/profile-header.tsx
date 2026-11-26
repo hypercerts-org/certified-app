@@ -4,11 +4,11 @@
 // description, cut to three lines with Read more); the links; and the viewer's
 // actions. The tabs follow it (see the profile layout).
 
-import { ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Avatar, AvatarStack, ExpandableText, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Eye, Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
-import { ActorAvatar, ActorName, ActorStack } from "@/components/actor";
+import { ActorName, avatarOf } from "@/components/actor";
 import { AlsoOnRow } from "@/components/also-on";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
@@ -180,7 +180,7 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
         </div>
       )}
       <div className="profile-head">
-        <ActorAvatar actor={actor} size="lg" className="profile-avatar" />
+        <Avatar {...avatarOf(actor)} size="lg" className="profile-avatar" />
         <div className="profile-identity">
           <PageTitle className="profile-name">
             <span dir="auto">
@@ -325,7 +325,10 @@ async function TrustLine({ did, base }: { did: string; base: string }) {
       {/* Endorsements and follows only when there are some: an absence says nothing here. */}
       {endorsers.length > 0 && (
         <Link prefetch href={`${base}/endorsements`} className="trust-endorsed">
-          <ActorStack actors={endorsers} total={endorsers.length + (more ? 1 : 0)} />
+          <AvatarStack
+            avatars={endorsers.map(avatarOf)}
+            total={endorsers.length + (more ? 1 : 0)}
+          />
           <span>Endorsed by {endorserNames(endorsers, more)}</span>
         </Link>
       )}

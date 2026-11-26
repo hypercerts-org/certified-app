@@ -5,10 +5,10 @@
 // and Badges (when it has any), Funding. On the right what stays put: its
 // figures, the projects it is part of, and its identifiers.
 
-import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Eyebrow, IdentityLink, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ActorLink, ActorRow } from "@/components/actor";
+import { identityOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
@@ -104,7 +104,7 @@ export async function ActivityHeader({ params }: { params: ActivityParams }) {
           </PageTitle>
           <div className="project-meta">
             <Text as="span" size="body-sm">
-              <ActorLink actor={activity.author} />
+              <IdentityLink {...identityOf(activity.author)} href={actorHref(activity.author)} />
             </Text>
             {meta && (
               <Text as="span" size="body-sm" tone="muted">
@@ -146,9 +146,11 @@ export function Contributors({ contributors }: { contributors: Contributor[] }) 
     <ul className="people-list divided">
       {contributors.map((c) => (
         <li key={c.key} className="people-row">
-          <ActorRow
-            actor={c.actor ?? { handle: null, displayName: c.name, avatarUrl: c.avatarUrl }}
-            href={c.actor ? actorHref(c.actor) : null}
+          <IdentityRow
+            {...identityOf(
+              c.actor ?? { handle: null, displayName: c.name, avatarUrl: c.avatarUrl },
+            )}
+            href={c.actor ? actorHref(c.actor) : undefined}
             secondary={c.role}
           />
           {c.share && (

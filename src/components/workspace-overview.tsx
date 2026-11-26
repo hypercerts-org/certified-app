@@ -18,13 +18,23 @@
 // skeleton shaped like it. All but the organizations are cached public data
 // about the account, so a prefetching link brings them along.
 
-import { Button, Card, Eyebrow, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import {
+  Avatar,
+  Button,
+  Card,
+  CopyableId,
+  Eyebrow,
+  Heading,
+  IdentityLink,
+  IdentityRow,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react";
 import { ArrowUpRight, FileBadge, Link2, Plus, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
-import { HandleId, PermanentId } from "@/components/account-ids";
-import { ActorAvatar, ActorHandle, ActorLink, ActorRow } from "@/components/actor";
+import { ActorHandle, avatarOf, identityOf } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { AddMemberDialog, MemberActions, NewGroupDialog } from "@/components/group-dialogs";
@@ -328,8 +338,8 @@ async function EndorsementsSection({ did }: { did: string }) {
           <ul className="overview-rows divided">
             {endorsements.latestReceived.map((endorsement) => (
               <li key={endorsement.uri} className="overview-row-dated">
-                <ActorRow
-                  actor={endorsement.issuer}
+                <IdentityRow
+                  {...identityOf(endorsement.issuer)}
                   href={actorHref(endorsement.issuer)}
                   secondary={endorsementLine(endorsement)}
                 />
@@ -371,10 +381,10 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
   return (
     <>
       <div className="overview-identity">
-        <ActorAvatar actor={account} size="lg" className="overview-avatar" />
+        <Avatar {...avatarOf(account)} size="lg" className="overview-avatar" />
         <div className="overview-identity-text">
           <Heading level={2} size="heading">
-            <ActorLink actor={account} avatar={false} />
+            <IdentityLink {...identityOf(account)} href={actorHref(account)} avatar={false} />
           </Heading>
           {bio ? (
             <Text size="body-sm" tone="muted" className="overview-bio" dir="auto">
@@ -404,14 +414,14 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
           <div className="fact">
             <dt>Handle</dt>
             <dd>
-              <HandleId handle={handle} />
+              <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
             </dd>
           </div>
         )}
         <div className="fact">
           <dt>Permanent ID</dt>
           <dd>
-            <PermanentId value={did} />
+            <CopyableId value={did} label="Permanent ID" wrap />
           </dd>
         </div>
       </dl>
@@ -446,8 +456,8 @@ export function OrganizationsSection({
         <ul className="overview-rows divided">
           {organizations.map((organization) => (
             <li key={organization.did}>
-              <ActorRow
-                actor={organization}
+              <IdentityRow
+                {...identityOf(organization)}
                 href={actorHref(organization)}
                 secondary={[
                   organization.roleLabel,
@@ -506,8 +516,8 @@ export function GroupMembersSection({
               (isOwner || (isAdmin && member.role === "member"));
             return (
               <li key={member.actor.did} className="overview-row-dated">
-                <ActorRow
-                  actor={member.actor}
+                <IdentityRow
+                  {...identityOf(member.actor)}
                   href={actorHref(member.actor)}
                   secondary={[member.roleLabel, member.actor.handle && `@${member.actor.handle}`]
                     .filter(Boolean)

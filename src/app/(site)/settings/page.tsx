@@ -1,6 +1,5 @@
-import { Text } from "@hypercerts-org/ui-react";
+import { CopyableId, Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
-import { PermanentId } from "@/components/account-ids";
 import { AppPasswordsRow } from "@/components/settings/app-passwords-row";
 import { EmailRow } from "@/components/settings/email-row";
 import { HandleRow } from "@/components/settings/handle-row";
@@ -30,7 +29,7 @@ async function AccountSettings() {
           label="Permanent ID"
           description="Your account's DID. Unlike your handle, it never changes."
         >
-          <PermanentId value={user.did} />
+          <CopyableId value={user.did} label="Permanent ID" wrap />
         </SettingsRow>
 
         <HandleRow did={user.did} initialHandle={handle} pdsDomain={pdsDomain} />

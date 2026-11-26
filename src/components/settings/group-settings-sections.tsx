@@ -3,8 +3,8 @@
 // member it is offered to), and its group status (the owner only). They were
 // tabs of their own; on one page, a group's settings are read top to bottom.
 
-import { Badge } from "@hypercerts-org/ui-react";
-import { ActorRow } from "@/components/actor";
+import { Badge, IdentityRow } from "@hypercerts-org/ui-react";
+import { identityOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { AddMemberDialog, MemberActions } from "@/components/group-dialogs";
 import { GroupOwnershipSection, GroupStatusSection } from "@/components/settings/group-sections";
@@ -44,8 +44,8 @@ export async function GroupMembersGroup({ access }: { access: Access }) {
             (access.isOwner || (access.isAdmin && role === "member"));
           return (
             <li key={actor.did} className="settings-list-row">
-              <ActorRow
-                actor={actor}
+              <IdentityRow
+                {...identityOf(actor)}
                 href={actorHref(actor)}
                 secondary={actor.handle ? `@${actor.handle}` : undefined}
               />

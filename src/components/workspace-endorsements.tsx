@@ -2,10 +2,10 @@
 // Endorsements: received (hidden ones included, tagged, with Hide/Show
 // actions), given (with Revoke), and the endorsement lists the account keeps.
 
-import { Badge, Button, Text } from "@hypercerts-org/ui-react";
+import { Badge, Button, IdentityRow, Text } from "@hypercerts-org/ui-react";
 import { ListChecks, ThumbsUp } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorRow } from "@/components/actor";
+import { identityOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import {
@@ -23,7 +23,11 @@ function Row({ row, action }: { row: PersonRow; action: ReactNode }) {
   const { actor } = row;
   return (
     <li className="people-row endorsement-row">
-      <ActorRow actor={actor} href={actorHref(actor)} secondary={endorsementLine(row)} />
+      <IdentityRow
+        {...identityOf(actor)}
+        href={actorHref(actor)}
+        secondary={endorsementLine(row)}
+      />
       <span className="endorsement-row-end">
         {row.hidden && <Badge variant="tag">Hidden</Badge>}
         {row.date && (

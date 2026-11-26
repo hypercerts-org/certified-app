@@ -16,7 +16,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { HandleId } from "@/components/account-ids";
 import { updateOwnHandle } from "@/lib/settings/account-actions";
 import type { SimpleResult } from "@/lib/settings/types";
 import { isHandle, isHandleLabel } from "@/lib/validate";
@@ -215,7 +214,7 @@ export function HandleRow({
             </div>
           </form>
         ) : handle ? (
-          <HandleId handle={handle} />
+          <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
         ) : (
           <Text size="body-sm" tone="muted">
             No handle verified
@@ -312,13 +311,13 @@ export function HandleRow({
               <div className="fact">
                 <dt>Host</dt>
                 <dd>
-                  <CopyableId value={dnsHost} displayValue={dnsHost} label="DNS host" wrap />
+                  <CopyableId value={dnsHost} label="DNS host" wrap />
                 </dd>
               </div>
               <div className="fact">
                 <dt>Value</dt>
                 <dd>
-                  <CopyableId value={dnsValue} displayValue={dnsValue} label="DNS value" wrap />
+                  <CopyableId value={dnsValue} label="DNS value" wrap />
                 </dd>
               </div>
             </dl>

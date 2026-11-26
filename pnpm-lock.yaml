@@ -197,8 +197,8 @@ importers:
         specifier: file:vendor/hypercerts-org-sdk-0.0.0.tgz
         version: file:vendor/hypercerts-org-sdk-0.0.0.tgz(@atproto/lex@0.4.4)(@hypercerts-org/lexicon@2.0.1(@atproto/lex@0.4.4))
       '@hypercerts-org/ui-react':
-        specifier: 0.3.3
-        version: 0.3.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.3.4
+        version: 0.3.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-form':
         specifier: 1.33.5
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -588,8 +588,8 @@ packages:
       '@atproto/lex': ^0.4.4
       '@hypercerts-org/lexicon': ^2.0.1
 
-  '@hypercerts-org/ui-react@0.3.3':
-    resolution: {integrity: sha512-MT5lkWTj2/VSAOgoq9Flge9v0EzY8ohTArwxTNfYXU0s1VvAkAKgM6L/kOe/nUgb/T/pMFQuNNN//DDtheHRNQ==}
+  '@hypercerts-org/ui-react@0.3.4':
+    resolution: {integrity: sha512-OlU/PUhHigcCRib1i+5bdOLmmakoPrbPUhlqQEViW6BXkk0Rm/cZBu/0IfBBpw1vmVoLW/eClgZjxmByM72tMw==}
     engines: {node: '>=20.12.0'}
     peerDependencies:
       react: ^19.0.0
@@ -2420,7 +2420,7 @@ snapshots:
       '@atproto/lex-cbor': 0.1.7
       '@hypercerts-org/lexicon': 2.0.1(@atproto/lex@0.4.4)
 
-  '@hypercerts-org/ui-react@0.3.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@hypercerts-org/ui-react@0.3.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       lucide-react: 0.468.0(react@19.3.1)
       react: 19.3.1

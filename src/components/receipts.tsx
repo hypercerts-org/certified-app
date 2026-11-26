@@ -7,10 +7,10 @@
 // it. Columns every row would repeat are left out (`omit`). An onchain
 // payment links to its transaction. A page loads at a time ("Load more").
 
-import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage, IdentityLink } from "@hypercerts-org/ui-react";
 import { ExternalLink, HandCoins } from "lucide-react";
 import { useCallback } from "react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
 import type { ReceiptFilter, ReceiptRow } from "@/lib/hypercerts/queries";
@@ -36,7 +36,10 @@ function For({ row }: { row: ReceiptRow }) {
 }
 
 function Party({ party, actor }: { party: ReceiptParty; actor: ActorCard | null }) {
-  if (actor) return <ActorLink actor={actor} className="ledger-account" />;
+  if (actor)
+    return (
+      <IdentityLink {...identityOf(actor)} href={actorHref(actor)} className="ledger-account" />
+    );
   if (party.kind === "anonymous") return <span className="ledger-anonymous">Anonymous</span>;
   if (party.kind === "text") {
     // A wallet address, shortened the way wallets show them.
@@ -118,7 +121,11 @@ export function Ledger({
                     {show("by") && (
                       <span>
                         {row.type ? "via " : "Via "}
-                        <ActorLink actor={row.recorder} avatar={false} />
+                        <IdentityLink
+                          {...identityOf(row.recorder)}
+                          href={actorHref(row.recorder)}
+                          avatar={false}
+                        />
                       </span>
                     )}
                     {row.transaction &&

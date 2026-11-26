@@ -4,9 +4,9 @@
 // or a record (a project, an activity). Every badge on a profile links here, so a badge can be followed to everyone else who holds
 // it.
 
-import { Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Eyebrow, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { BadgeHolderList } from "@/components/badge-holders";
 import { BadgeIcon } from "@/components/badges";
 import { PageTitle } from "@/components/page-title";
@@ -52,7 +52,7 @@ export async function BadgePage({ params, which }: { params: BadgeParams; which:
             <span dir="auto">{badge.title}</span>
           </PageTitle>
           <Text as="span" size="body-sm">
-            Issued by <ActorLink actor={badge.issuer} />
+            Issued by <IdentityLink {...identityOf(badge.issuer)} href={actorHref(badge.issuer)} />
           </Text>
           {badge.description && (
             <Text relaxed className="prewrap" dir="auto">

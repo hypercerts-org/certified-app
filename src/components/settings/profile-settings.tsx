@@ -1,11 +1,11 @@
 "use client";
 
-import { Badge, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
+import { Avatar, Badge, Button, Field, Input, Text, Textarea } from "@hypercerts-org/ui-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ActorAvatar } from "@/components/actor";
+import { avatarOf } from "@/components/actor";
 import { saveProfileField } from "@/lib/hypercerts/profile-actions";
 import type { SavedPlace } from "@/lib/hypercerts/queries";
 import type { OrganizationDetails, ProfileDetails } from "@/lib/hypercerts/writes";
@@ -138,14 +138,14 @@ export function ProfileSettings({
               data-organization={isOrgShape ? "" : undefined}
             />
           ) : (
-            <ActorAvatar
-              actor={{
+            <Avatar
+              {...avatarOf({
                 did: repo,
                 handle,
                 displayName: profile.displayName,
                 avatarUrl: null,
                 isOrganization: isOrgShape,
-              }}
+              })}
               size="lg"
             />
           )}

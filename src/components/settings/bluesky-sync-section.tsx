@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Avatar,
   Banner,
   Button,
   Checkbox,
@@ -11,7 +12,7 @@ import {
 import { Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ActorAvatar, ActorName } from "@/components/actor";
+import { ActorName, avatarOf } from "@/components/actor";
 import { StatRow } from "@/components/stat-row";
 import { type ActorCard, nameOf } from "@/lib/hypercerts/views";
 import {
@@ -350,7 +351,7 @@ export function BlueskySyncSection({
                     disabled={syncing}
                     label={
                       <span className="settings-sync-actor">
-                        <ActorAvatar actor={actor} size="sm" />
+                        <Avatar {...avatarOf(actor)} size="sm" />
                         <span className="settings-sync-actor-text">
                           <ActorName actor={actor} />
                           {actor.handle && (

@@ -4,9 +4,9 @@
 // that is the workspace's), each row has the Following button, which
 // unfollows.
 
-import { Heading } from "@hypercerts-org/ui-react";
+import { Heading, IdentityLink } from "@hypercerts-org/ui-react";
 import { Users } from "lucide-react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { Empty } from "@/components/empty";
 import { PeopleList, PeopleRows } from "@/components/people-list";
 import { FollowControl } from "@/components/profile-actions";
@@ -31,7 +31,11 @@ export function FollowedProjects({
             project={row.project}
             end={
               <>
-                <ActorLink actor={row.author} className="list-item-who" />
+                <IdentityLink
+                  {...identityOf(row.author)}
+                  href={actorHref(row.author)}
+                  className="list-item-who"
+                />
                 {actingAs && (
                   <FollowControl
                     subject={row.project.uri}

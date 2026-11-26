@@ -5,10 +5,10 @@
 // account, or a record the badge went to (a project, an activity), each as
 // the app shows it everywhere, with the award's date at the end.
 
-import { Button, ErrorMessage } from "@hypercerts-org/ui-react";
+import { Button, ErrorMessage, IdentityLink } from "@hypercerts-org/ui-react";
 import { Award } from "lucide-react";
 import { useCallback } from "react";
-import { ActorLink } from "@/components/actor";
+import { actorHref, identityOf } from "@/components/actor";
 import { Empty } from "@/components/empty";
 import { PersonRowItem, RowDate } from "@/components/people-list";
 import { ActivityRow, ProjectRow } from "@/components/records";
@@ -24,7 +24,9 @@ function HolderRow({ holder }: { holder: BadgeHolder }) {
   const author = item.kind === "project" ? item.author : item.activity.author;
   const end = (
     <>
-      {author && <ActorLink actor={author} className="list-item-who" />}
+      {author && (
+        <IdentityLink {...identityOf(author)} href={actorHref(author)} className="list-item-who" />
+      )}
       {date && <RowDate date={date} />}
     </>
   );

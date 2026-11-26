@@ -11,12 +11,18 @@
 // The toolkit's Combobox does the typeahead's keyboard and ARIA; this keeps
 // the fetch, the groups and the rows, after staging's global search.
 
-import { Button, Combobox, ComboboxOption, ResponsiveDialog } from "@hypercerts-org/ui-react";
+import {
+  Avatar,
+  Button,
+  Combobox,
+  ComboboxOption,
+  ResponsiveDialog,
+} from "@hypercerts-org/ui-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRight, Folder, Search, SquareCheckBig } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ActorAvatar } from "@/components/actor";
+import { avatarOf } from "@/components/actor";
 import type { SearchResults, SearchRow } from "@/lib/search";
 import { useSettled } from "@/lib/use-settled";
 
@@ -42,8 +48,8 @@ function RowPicture({ item }: { item: Item }) {
   if (item.kind === "go") return <ArrowRight size={16} aria-hidden className="search-row-icon" />;
   if (item.kind === "account") {
     return (
-      <ActorAvatar
-        actor={{ handle: null, displayName: item.title, avatarUrl: item.imageUrl }}
+      <Avatar
+        {...avatarOf({ handle: null, displayName: item.title, avatarUrl: item.imageUrl })}
         size="sm"
       />
     );

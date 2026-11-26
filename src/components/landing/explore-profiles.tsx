@@ -1,6 +1,7 @@
+import { Avatar } from "@hypercerts-org/ui-react";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { ActorAvatar, ActorName } from "@/components/actor";
+import { ActorName, avatarOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import LpArrow from "@/components/landing/lp-arrow";
 import { getActor } from "@/lib/hypercerts/queries";
@@ -74,7 +75,7 @@ export default async function ExploreProfiles() {
                 href={actor ? actorHref(actor) : actorHref(featured.did)}
                 className="lp-explore__row"
               >
-                <ActorAvatar actor={account} className="lp-explore__avatar" />
+                <Avatar {...avatarOf(account)} className="lp-explore__avatar" />
                 <span className="lp-explore__text">
                   <ActorName actor={account} className="lp-explore__name" />
                   <span className="lp-explore__bio">{actor?.description || featured.tagline}</span>

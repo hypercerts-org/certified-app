@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarStack,
   Button,
   Card,
   Checkbox,
   ErrorMessage,
   Eyebrow,
+  IdentityLink,
   LoadMoreSentinel,
   ResponsiveDialog,
   Skeleton,
@@ -14,7 +17,7 @@ import {
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { AlertCircle, Filter, Inbox, Newspaper, RotateCcw } from "lucide-react";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActorAvatar, ActorLink, ActorStack } from "@/components/actor";
+import { actorHref, avatarOf, identityOf } from "@/components/actor";
 import { skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { LikeScope, PostLikeButton } from "@/components/like-button";
@@ -97,7 +100,13 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
             />
           </>
         }
-        body={<ActorStack actors={item.subjects} total={item.subjects.length} />}
+        body={
+          <AvatarStack
+            avatars={item.subjects.map(avatarOf)}
+            total={item.subjects.length}
+            ring="panel"
+          />
+        }
       />
     );
   }
@@ -302,7 +311,7 @@ function EvaluatorRow({
         onChange={onToggle}
         label={
           <span className="feed-evaluator-label">
-            <ActorAvatar actor={evaluator} size="sm" />
+            <Avatar {...avatarOf(evaluator)} size="sm" />
             <span className="feed-evaluator-text">
               <span className="ellipsis" dir="auto">
                 {name}
@@ -314,7 +323,12 @@ function EvaluatorRow({
           </span>
         }
       />
-      <ActorLink actor={evaluator} avatar={false} className="visually-hidden" />
+      <IdentityLink
+        {...identityOf(evaluator)}
+        href={actorHref(evaluator)}
+        avatar={false}
+        className="visually-hidden"
+      />
     </li>
   );
 }

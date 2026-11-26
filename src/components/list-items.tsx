@@ -3,10 +3,10 @@
 // endorsement (who endorsed whom). Plain view models only: the rows also
 // render in the browser, for "Load more" and the workspace's selection.
 
-import { Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Avatar, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorAvatar, ActorHandle, ActorLink, ActorName } from "@/components/actor";
+import { ActorHandle, ActorName, avatarOf, identityOf } from "@/components/actor";
 import { actorHref, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { ActivityRow, ProjectRow } from "@/components/records";
@@ -18,7 +18,7 @@ export function ListItemContent({ item }: { item: ListItem }) {
     case "account":
       return (
         <IntentLink href={actorHref(item.actor)} className="list-item-main">
-          <ActorAvatar actor={item.actor} />
+          <Avatar {...avatarOf(item.actor)} />
           <span className="list-item-text">
             <ActorName actor={item.actor} className="list-item-title" />
             <ActorHandle actor={item.actor} className="list-item-meta" />
@@ -29,23 +29,45 @@ export function ListItemContent({ item }: { item: ListItem }) {
       return (
         <ProjectRow
           project={item.project}
-          end={item.author && <ActorLink actor={item.author} className="list-item-who" />}
+          end={
+            item.author && (
+              <IdentityLink
+                {...identityOf(item.author)}
+                href={actorHref(item.author)}
+                className="list-item-who"
+              />
+            )
+          }
         />
       );
     case "activity":
       return (
         <ActivityRow
           activity={item.activity}
-          end={<ActorLink actor={item.activity.author} className="list-item-who" />}
+          end={
+            <IdentityLink
+              {...identityOf(item.activity.author)}
+              href={actorHref(item.activity.author)}
+              className="list-item-who"
+            />
+          }
         />
       );
     case "endorsement":
       return (
         <span className="list-item-main list-item-endorsement">
-          <ActorLink actor={item.issuer} className="list-item-who" />
+          <IdentityLink
+            {...identityOf(item.issuer)}
+            href={actorHref(item.issuer)}
+            className="list-item-who"
+          />
           <ArrowRight size={16} aria-label="endorsed" />
           {item.subject ? (
-            <ActorLink actor={item.subject} className="list-item-who" />
+            <IdentityLink
+              {...identityOf(item.subject)}
+              href={actorHref(item.subject)}
+              className="list-item-who"
+            />
           ) : (
             <span>an account</span>
           )}

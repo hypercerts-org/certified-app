@@ -1,9 +1,8 @@
 "use client";
 
-import { Banner, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Banner, CopyableId, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { HandleId } from "@/components/account-ids";
 import {
   confirmGroupAccountEmail,
   confirmGroupAccountPasswordReset,
@@ -134,7 +133,12 @@ export function GroupAccountManager({
           }
         >
           {currentHandle ? (
-            <HandleId handle={currentHandle} />
+            <CopyableId
+              value={currentHandle}
+              displayValue={`@${currentHandle}`}
+              label="Handle"
+              wrap
+            />
           ) : (
             <Text size="body-sm" tone="muted">
               No handle verified

@@ -4,7 +4,8 @@
 // (the badges it created, each with an Award action). Plain endorsements are
 // in Endorsements, not here.
 
-import { ActorLink } from "@/components/actor";
+import { IdentityLink } from "@hypercerts-org/ui-react";
+import { actorHref, identityOf } from "@/components/actor";
 import { AwardBadgeDialog, BadgeResponseButtons, NewBadgeDialog } from "@/components/badge-dialogs";
 import { BadgeList, IssuedBadgeList } from "@/components/badges";
 import { IntentLink } from "@/components/intent-link";
@@ -65,7 +66,11 @@ export function AwardedBadges({ badges }: { badges: AwardedBadge[] }) {
         <>
           To{" "}
           {recipient.kind === "account" ? (
-            <ActorLink actor={recipient.actor} avatar={false} />
+            <IdentityLink
+              {...identityOf(recipient.actor)}
+              href={actorHref(recipient.actor)}
+              avatar={false}
+            />
           ) : (
             <IntentLink href={recipient.href} dir="auto">
               {recipient.title}

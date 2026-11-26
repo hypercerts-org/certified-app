@@ -5,6 +5,7 @@ import {
   Banner,
   Button,
   Field,
+  IdentityRow,
   ResponsiveDialog,
   Select,
   Text,
@@ -14,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ActorRow } from "@/components/actor";
+import { identityOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import type { OwnershipTransferStatus } from "@/lib/cgs";
 import {
@@ -175,8 +176,8 @@ export function GroupOwnershipSection({
               </Banner>
             )}
             {proposedMember ? (
-              <ActorRow
-                actor={proposedMember.actor}
+              <IdentityRow
+                {...identityOf(proposedMember.actor)}
                 href={actorHref(proposedMember.actor)}
                 secondary="Proposed owner"
               />

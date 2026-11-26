@@ -8,10 +8,18 @@
 // worth in one post. Plain view models: the first page renders on the
 // server, later pages here, for Load more.
 
-import { Button, ErrorMessage, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { Folder, SquareCheckBig } from "lucide-react";
+import {
+  Avatar,
+  AvatarStack,
+  Button,
+  ErrorMessage,
+  IdentityLink,
+  Skeleton,
+  Text,
+} from "@hypercerts-org/ui-react";
+import { SquareCheckBig } from "lucide-react";
 import { type ReactNode, useCallback } from "react";
-import { ActorAvatar, ActorLink, ActorStack, AvatarStack } from "@/components/actor";
+import { avatarOf, identityOf } from "@/components/actor";
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
@@ -25,7 +33,14 @@ const plural = (n: number, one: string, many: string) =>
   `${numberFormat.format(n)} ${n === 1 ? one : many}`;
 
 export function Name({ actor }: { actor: ActorCard }) {
-  return <ActorLink actor={actor} avatar={false} className="post-name" />;
+  return (
+    <IdentityLink
+      {...identityOf(actor)}
+      href={actorHref(actor)}
+      avatar={false}
+      className="post-name"
+    />
+  );
 }
 
 export function PageLink({ link }: { link: FeedLink }) {
@@ -63,7 +78,7 @@ export function Names({
 }
 
 function Face({ actor, size = "md" }: { actor: ActorCard; size?: "sm" | "md" }) {
-  return <ActorAvatar actor={actor} size={size} />;
+  return <Avatar {...avatarOf(actor)} size={size} />;
 }
 
 /** A record the post is about: its title, a line under it and its summary. */
@@ -176,26 +191,17 @@ function TargetName({ target }: { target: FeedTarget }) {
  */
 function TargetFaces({ targets, total }: { targets: FeedTarget[]; total: number }) {
   return (
-    <AvatarStack total={total}>
-      {targets.flatMap((target) =>
-        target.kind === "wallet"
-          ? []
-          : [
-              target.kind === "account" ? (
-                <Face key={targetKey(target)} actor={target.actor} size="sm" />
-              ) : (
-                <span key={targetKey(target)} className="avatar-stack-thumb">
-                  {target.imageUrl ? (
-                    // biome-ignore lint/performance/noImgElement: indexed images come from many hosts
-                    <img src={target.imageUrl} alt="" loading="lazy" />
-                  ) : (
-                    <Folder size={12} aria-hidden />
-                  )}
-                </span>
-              ),
-            ],
+    <AvatarStack
+      ring="panel"
+      total={total}
+      avatars={targets.flatMap((target) =>
+        target.kind === "account"
+          ? [avatarOf(target.actor)]
+          : target.kind === "record"
+            ? [{ name: target.title, src: target.imageUrl, shape: "square" as const }]
+            : [],
       )}
-    </AvatarStack>
+    />
   );
 }
 
@@ -277,7 +283,7 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
         ),
         body:
           row.count > 1 ? (
-            <ActorStack actors={row.subjects} total={row.count} />
+            <AvatarStack avatars={row.subjects.map(avatarOf)} total={row.count} ring="panel" />
           ) : (
             <Note note={row.note} />
           ),
@@ -323,7 +329,7 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
         ),
         body:
           row.count > 1 && row.recipients.length > 1 ? (
-            <ActorStack actors={row.recipients} total={row.count} />
+            <AvatarStack avatars={row.recipients.map(avatarOf)} total={row.count} ring="panel" />
           ) : undefined,
       };
     case "followers":
@@ -338,7 +344,10 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
             followed {me}
           </>
         ),
-        body: row.count > 1 ? <ActorStack actors={row.actors} total={row.count} /> : undefined,
+        body:
+          row.count > 1 ? (
+            <AvatarStack avatars={row.actors.map(avatarOf)} total={row.count} ring="panel" />
+          ) : undefined,
       };
     case "following":
       return {
@@ -352,7 +361,10 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
             />
           </>
         ),
-        body: row.count > 1 ? <ActorStack actors={row.actors} total={row.count} /> : undefined,
+        body:
+          row.count > 1 ? (
+            <AvatarStack avatars={row.actors.map(avatarOf)} total={row.count} ring="panel" />
+          ) : undefined,
       };
     case "projectsFollowed":
       return {

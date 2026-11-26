@@ -1,7 +1,7 @@
-import { Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Heading, IdentityLink, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { Folder } from "lucide-react";
 import type { ReactNode } from "react";
-import { ActorHandle, ActorLink, ActorRow, actorHref } from "@/components/actor";
+import { ActorHandle, actorHref, identityOf } from "@/components/actor";
 import { IntentLink } from "@/components/intent-link";
 import { activityMeta, projectMeta } from "@/components/records";
 import type { ActivityCard, ActorCard, ProjectCard } from "@/lib/hypercerts/views";
@@ -41,11 +41,12 @@ export function ProjectCardView({
   return (
     <li className="project-card">
       {author && (
-        <ActorRow
-          actor={author}
+        <IdentityRow
+          {...identityOf(author)}
           href={actorHref(author)}
           size="sm"
           secondary={<ActorHandle actor={author} />}
+          className="above-card-link"
         />
       )}
       <div className="project-card-image">
@@ -128,7 +129,13 @@ export function ActivityPost({
             {byOther && (
               <>
                 {meta && " · "}
-                by <ActorLink actor={activity.author} avatar={false} />
+                by{" "}
+                <IdentityLink
+                  {...identityOf(activity.author)}
+                  href={actorHref(activity.author)}
+                  avatar={false}
+                  className="above-card-link"
+                />
               </>
             )}
           </Text>

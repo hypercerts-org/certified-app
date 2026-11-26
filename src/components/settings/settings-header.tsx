@@ -3,9 +3,9 @@
 // ("Personal settings", "Group settings"), the account's name and its handle
 // (and, for a group, the user's role in it), with the page's links at the end.
 
-import { Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Avatar, Skeleton, Text } from "@hypercerts-org/ui-react";
 import type { ReactNode } from "react";
-import { ActorAvatar, type ActorLike } from "@/components/actor";
+import { type ActorLike, avatarOf } from "@/components/actor";
 import { PageTitle } from "@/components/page-title";
 import { nameOf } from "@/lib/hypercerts/views";
 
@@ -29,7 +29,7 @@ export function SettingsHeader({
   return (
     <header className="settings-header">
       <div className="settings-header-identity">
-        <ActorAvatar actor={actor} size="lg" />
+        <Avatar {...avatarOf(actor)} size="lg" />
         <div className="settings-header-text">
           <PageTitle>{title}</PageTitle>
           <div className="settings-header-who">

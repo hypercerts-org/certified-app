@@ -240,7 +240,11 @@ export function AppPasswordsRow() {
                     Copy this password into <strong>{created.name}</strong> now, where it asks for
                     your password. It won&apos;t be shown again.
                   </Text>
-                  <CopyableId value={created.password} label={`App password for ${created.name}`} />
+                  <CopyableId
+                    value={created.password}
+                    label={`App password for ${created.name}`}
+                    wrap
+                  />
                 </div>
               </Banner>
             )}

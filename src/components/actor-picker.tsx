@@ -6,10 +6,10 @@
 // picking a row. The toolkit's Combobox does the keyboard and ARIA; spread
 // Field's props into it.
 
-import { Combobox, ComboboxOption } from "@hypercerts-org/ui-react";
+import { Avatar, Combobox, ComboboxOption } from "@hypercerts-org/ui-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ActorAvatar } from "@/components/actor";
+import { avatarOf } from "@/components/actor";
 import type { SearchActorHit } from "@/lib/search";
 import { useSettled } from "@/lib/use-settled";
 
@@ -96,7 +96,7 @@ export function ActorPicker({
       renderItem={({ item, index: _index, ...option }) => (
         <ComboboxOption key={item.id} {...option}>
           <span className="search-row">
-            <ActorAvatar actor={item} size="sm" />
+            <Avatar {...avatarOf(item)} size="sm" />
             <span className="search-row-text">
               <span className="ellipsis" dir="auto">
                 {item.displayName}

@@ -1330,12 +1330,6 @@ button.menu-row:disabled:not([aria-current]) {
   grid-area: avatar;
 }
 
-/* Organizations get a square avatar, as on the staging redesign. */
-.avatar-square,
-.avatar-square img {
-  border-radius: var(--hc-radius-control);
-}
-
 @media (min-width: 48rem) {
   .profile-avatar {
     inline-size: 6rem;
@@ -2017,60 +2011,6 @@ a.post-amount:hover {
   text-underline-offset: 0.2em;
 }
 
-/* Faces overlap a little, each ringed in the page colour. */
-/* Several small pictures at once (AvatarStack, src/components/actor.tsx):
-   overlapping, each ringed in the background it sits on, the rest marked
-   with "…". A card sets the ring to its own surface. */
-.avatar-stack {
-  --avatar-stack-ring: var(--hc-surface-page);
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-}
-
-.post-card .avatar-stack,
-.tile .avatar-stack {
-  --avatar-stack-ring: var(--hc-surface-panel);
-}
-
-.avatar-stack :where(.actor-avatar),
-.avatar-stack-thumb,
-.avatar-stack-more {
-  box-shadow: 0 0 0 2px var(--avatar-stack-ring);
-}
-
-.avatar-stack > * + * {
-  margin-inline-start: -0.375rem;
-}
-
-/* A record among them (a project a gift went to): a small rounded square. */
-.avatar-stack-thumb,
-.avatar-stack-more {
-  display: inline-grid;
-  place-items: center;
-  inline-size: 1.5rem;
-  block-size: 1.5rem;
-  overflow: hidden;
-  background: var(--hc-surface-tint);
-  color: var(--hc-text-muted);
-}
-
-.avatar-stack > .avatar-stack-thumb {
-  border-radius: var(--hc-radius-tag);
-}
-
-.avatar-stack-thumb img {
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: cover;
-}
-
-.avatar-stack-more {
-  border-radius: 50%;
-  font-size: var(--hc-type-micro);
-  line-height: 1;
-}
-
 .trust-counts {
   margin: 0;
   color: var(--hc-text-muted);
@@ -2696,32 +2636,6 @@ a.explore-account-link:hover .list-item-title {
   font-size: var(--hc-type-body-sm);
 }
 
-/* A link to an account (ActorLink, src/components/actor.tsx): its picture
-   and name, or the name alone; the name underlines on hover, everywhere. */
-/* :where() keeps it overridable: a place's own class (an author column's
-   width) wins over these defaults. */
-:where(.actor-link) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  color: var(--hc-text-ink);
-  vertical-align: bottom;
-  text-decoration: none;
-}
-
-.actor-link-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actor-link:hover .actor-link-name {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
 .list-item-endorsement {
   flex-wrap: wrap;
 }
@@ -2769,13 +2683,6 @@ a.explore-account-link:hover .list-item-title {
 .list-back:hover {
   background: var(--hc-fill-subtle);
   color: var(--hc-text-ink);
-}
-
-/* Narrow: an author column keeps the avatar, not the name. */
-@media (width < 40rem) {
-  .list-item-who .actor-link-name {
-    display: none;
-  }
 }
 
 /* Badges (src/components/badges.tsx): tiles on the Overview, rows on the
@@ -2918,10 +2825,6 @@ a.explore-account-link:hover .list-item-title {
   gap: 0 var(--space-2);
   color: var(--hc-text-muted);
   font-size: var(--hc-type-label);
-}
-
-.ledger-detail .actor-link {
-  color: inherit;
 }
 
 .ledger-tx {
@@ -4005,10 +3908,6 @@ a.badge-title:hover {
     inline-size: auto;
   }
 
-  .explore-row .list-item-who .actor-link-name {
-    display: none;
-  }
-
   .explore-row-who-skeleton,
   .explore-handle {
     display: none;
@@ -4144,8 +4043,8 @@ a.badge-title:hover {
   align-items: center;
 }
 
-/* DatePicker width bridge lives in Toolkit bridges below. */
-.date-field > :first-child {
+/* The date picker (fullWidth) takes the row's room beside its clear button. */
+.date-field-picker {
   flex: 1;
   min-inline-size: 0;
 }
@@ -4654,71 +4553,8 @@ a.badge-title:hover {
   color: var(--hc-text-muted);
 }
 
-/* An account (src/components/actor.tsx). Its picture's fallback disc is
-   opaque: the toolkit's fill is translucent, so overlapping avatars showed
-   through each other (gap: the toolkit's Avatar fill). */
-.actor-avatar {
-  background:
-    linear-gradient(var(--hc-fill-subtle), var(--hc-fill-subtle)), var(--hc-surface-panel);
-}
-
-.actor-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-inline-size: 0;
-}
-
-.actor-row-main {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-inline-size: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.actor-row-text {
-  display: flex;
-  flex-direction: column;
-  min-inline-size: 0;
-}
-
-.actor-row-name,
-.actor-row-secondary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actor-row-name {
-  color: var(--hc-text-ink);
-  font-size: var(--hc-type-body-sm);
-  font-weight: var(--hc-weight-medium);
-}
-
-.overview-rows .actor-row-name {
-  font-size: var(--hc-type-body);
-}
-
-.actor-row-secondary {
-  color: var(--hc-text-muted);
-  font-size: var(--hc-type-micro);
-}
-
-.actor-row-action {
-  flex: none;
-}
-
-a.actor-row-main:hover .actor-row-name {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
 /* Account links inside a card whose title link covers it (.card-link). */
-.post .actor-link,
-.project-card .actor-row {
+.above-card-link {
   position: relative;
   z-index: 1;
 }
@@ -4753,23 +4589,37 @@ a.actor-row-main:hover .actor-row-name {
   display: none;
 }
 
-/* SearchInput has its own clear button; Chrome and Safari add a second one
-   to every search field. */
-input[type="search"]::-webkit-search-cancel-button {
-  appearance: none;
-}
-
-/* DatePicker renders inline-block; stretch it to the column's width (gap:
-   DatePicker fullWidth prop, docs/toolkit-gaps.md). */
-.date-field > :first-child > * {
-  inline-size: 100%;
-}
-
-/* Touch screens: our compact 14px --hc-type-body overrides the toolkit's
-   16px pointer-coarse safeguard, so keep text controls at 16px on coarse
-   pointers to prevent iOS Safari focus auto-zoom (docs/toolkit-gaps.md). */
+/* Touch screens: the toolkit's Textarea and Select stay at body-sm (14px),
+   under the 16px at which iOS Safari zooms into a focused field; its inputs
+   already step up (gap: field-touch on Textarea and Select). */
 @media (pointer: coarse) {
-  :is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea, select) {
+  textarea,
+  select {
     font-size: 1rem;
+  }
+}
+
+/* An author column on a narrow screen keeps the avatar, not the name: the
+   name is hidden from sight but still names the link (gap: IdentityLink
+   hiding its name on narrow screens). */
+@media (width < 40rem) {
+  .list-item-who > [dir="auto"] {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@container explore (inline-size < 44rem) {
+  .explore-row .list-item-who > [dir="auto"] {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

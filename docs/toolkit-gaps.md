@@ -12,17 +12,14 @@ are the rules in the "Toolkit bridges" section at the end of
 
 ## Bridged in CSS today
 
-| Gap                    | Proposal                                                                                                                                                         | Bridge in the app                                                                           |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Square avatars         | `Avatar shape="circle" \| "square"`                                                                                                                              | `.avatar-square` (Avatar's own `className`)                                                 |
-| Opaque avatar fallback | `Avatar` fallback background is opaque so overlapping avatars don't bleed through each other                                                                     | `.actor-avatar` (`globals.css`)                                                             |
-| Unframed empty state   | `EmptyState variant="plain"`, and `actions` for several buttons that wrap                                                                                        | `.empty` (`Empty`, `empty.tsx`)                                                             |
-| Fading long text       | `ExpandableText variant="fade"`: the last lines fade out, and the toggle is a plain underlined link without a chevron                                            | `.expandable-fade`                                                                          |
-| Double clear button    | `SearchInput` hides the browser's own clear button (`::-webkit-search-cancel-button`) beside its own                                                             | `input[type="search"]::-webkit-search-cancel-button`                                        |
-| Full-width date picker | `DatePicker fullWidth` prop so it fills its column like `Input` without reaching into its wrapper                                                                | `.date-field > :first-child > *`                                                            |
-| Touch input 16px floor | Pin coarse-pointer text inputs to `1rem` independent of `--hc-type-body`, so compact themes (14px body) still prevent iOS Safari focus zoom                      | `@media (pointer: coarse)` input/textarea/select rule in `globals.css`                      |
-| App density            | A compact Certified type scale for applications (14px body, 28px page titles), and a body font size in `base.css`, which sets none                               | the type tokens and `body` rule in the theme block of `globals.css`                         |
-| Tooltips at the edge   | Button tooltips stay inside the viewport (align to the edge or flip), and add no width while hidden (today a hidden tooltip near the right edge widens the page) | a short `tooltip` on the profile's "More actions" button; `.site-main { overflow-x: clip }` |
+| Gap                                 | Proposal                                                                                                                                                         | Bridge in the app                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Unframed empty state                | `EmptyState variant="plain"`, and `actions` for several buttons that wrap                                                                                        | `.empty` (`Empty`, `empty.tsx`)                                                             |
+| Fading long text                    | `ExpandableText variant="fade"`: the last lines fade out, and the toggle is a plain underlined link without a chevron                                            | `.expandable-fade`                                                                          |
+| IdentityLink name on narrow screens | `IdentityLink` hides its name from sight below a width (still the link's name), keeping the avatar                                                               | `.list-item-who > [dir="auto"]` (`globals.css`)                                             |
+| Touch font on Textarea and Select   | `Textarea` and `Select` step up to `field-touch` on touch screens, as inputs do since 0.3.4                                                                      | `@media (pointer: coarse)` `textarea, select` rule in `globals.css`                         |
+| App density                         | A compact Certified type scale for applications (14px body, 28px page titles), and a body font size in `base.css`, which sets none                               | the type tokens and `body` rule in the theme block of `globals.css`                         |
+| Tooltips at the edge                | Button tooltips stay inside the viewport (align to the edge or flip), and add no width while hidden (today a hidden tooltip near the right edge widens the page) | a short `tooltip` on the profile's "More actions" button; `.site-main { overflow-x: clip }` |
 
 ## Built in the app
 
@@ -39,12 +36,18 @@ are the rules in the "Toolkit bridges" section at the end of
 | Search in a GET form | `SearchInput` with `name`, `inputRef`, a plain-form submit mode without debounce, a shortcut hint                                                 | the sidebar's search (`sidebar-nav.tsx`)                             |
 | Toasts with actions  | `Toast` action buttons, pause on hover and focus, an imperative `toast()`; or a documented theme mapping for Sonner                               | Sonner, themed in `globals.css`                                      |
 | Facts                | `DescriptionList`: label and value pairs                                                                                                          | the profile rail's `.facts`, the workspace's `.overview-id-list`     |
-| Avatar stack         | `AvatarStack`: overlapping faces ringed in the page colour, "+N"                                                                                  | `.trust-faces` (`profile-header.tsx`)                                |
 
 ## Shipped
 
-In `@hypercerts-org/ui-react` 0.3.3, and in use: `Button pressed` on
-`secondary` and `ghost`, `MenuButton size="sm"`, `Checkbox align`,
-`CopyableId wrap`, `InputGroupInput invalid`, and `Combobox` with `Field`'s
-props, `size`, `inline`, `listboxClassName` and `leading` / `trailing` slots
-(the site search and `ActorPicker`).
+In `@hypercerts-org/ui-react`, and in use:
+
+- 0.3.3: `Button pressed` on `secondary` and `ghost`, `MenuButton size="sm"`,
+  `Checkbox align`, `CopyableId wrap`, `InputGroupInput invalid`, and
+  `Combobox` with `Field`'s props, `size`, `inline`, `listboxClassName` and
+  `leading` / `trailing` slots (the site search and `ActorPicker`).
+- 0.3.4: `Avatar shape` and an opaque fallback, `IdentityRow avatarShape`,
+  `IdentityLink`, `AvatarStack` (the app's `ActorAvatar`, `ActorLink`,
+  `ActorRow` and stacks; `actor.tsx` now only maps an account to their
+  props), `DatePicker fullWidth`, the touch-screen font floor on inputs, and
+  `SearchInput` without the browser's second clear button. `CopyableId wrap`
+  replaces `HandleId` and `PermanentId`.

@@ -2,9 +2,8 @@
 // left one): the account's figures, each a link to its tab; where it is; its
 // identifiers. Like the intro beside a Facebook profile's feed.
 
-import { Card, Heading, Skeleton } from "@hypercerts-org/ui-react";
+import { Card, CopyableId, Heading, Skeleton } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
-import { HandleId, PermanentId } from "@/components/account-ids";
 import { skeletonSlots } from "@/components/cards";
 import { LocationCard } from "@/components/location-card";
 import { type Stat, StatRow } from "@/components/stat-row";
@@ -131,14 +130,14 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
             <div className="fact">
               <dt>Handle</dt>
               <dd>
-                <HandleId handle={handle} />
+                <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
               </dd>
             </div>
           )}
           <div className="fact">
             <dt>Permanent ID</dt>
             <dd>
-              <PermanentId value={did} />
+              <CopyableId value={did} label="Permanent ID" wrap />
             </dd>
           </div>
         </dl>

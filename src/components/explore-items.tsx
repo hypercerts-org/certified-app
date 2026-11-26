@@ -2,8 +2,8 @@
 // when, the author and how long ago) or a gallery of cards. Plain view models
 // only: the first page renders on the server, later ones in the browser.
 
-import { Card, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { ActorAvatar, ActorHandle, ActorLink, ActorName } from "@/components/actor";
+import { Avatar, Card, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ActorHandle, ActorName, avatarOf, identityOf } from "@/components/actor";
 import { ActivityPost, actorHref, ProjectCardView, skeletonSlots } from "@/components/cards";
 import { IntentLink } from "@/components/intent-link";
 import { ActivityRow, ProjectRow, RecordRowSkeleton } from "@/components/records";
@@ -31,7 +31,11 @@ function ExploreActivityRow({ activity }: { activity: ExploreActivity }) {
         activity={activity}
         end={
           <>
-            <ActorLink actor={activity.author} className="list-item-who" />
+            <IdentityLink
+              {...identityOf(activity.author)}
+              href={actorHref(activity.author)}
+              className="list-item-who"
+            />
             <AgeText age={activity.age} />
           </>
         }
@@ -47,7 +51,11 @@ function ExploreProjectRow({ project }: { project: ExploreProject }) {
         project={project}
         end={
           <>
-            <ActorLink actor={project.author} className="list-item-who" />
+            <IdentityLink
+              {...identityOf(project.author)}
+              href={actorHref(project.author)}
+              className="list-item-who"
+            />
             <AgeText age={project.age} />
           </>
         }
@@ -60,7 +68,7 @@ function AccountRow({ account }: { account: ExploreAccount }) {
   return (
     <li className="list-item explore-row">
       <IntentLink href={actorHref(account)} className="list-item-main">
-        <ActorAvatar actor={account} />
+        <Avatar {...avatarOf(account)} />
         <span className="list-item-text">
           <ActorName actor={account} className="list-item-title" />
           {account.description && (
@@ -82,7 +90,7 @@ function AccountCard({ account }: { account: ExploreAccount }) {
   return (
     <Card as="li" variant="panel" className="explore-account-card">
       <IntentLink href={actorHref(account)} className="explore-account-link">
-        <ActorAvatar actor={account} size="lg" />
+        <Avatar {...avatarOf(account)} size="lg" />
         <span className="list-item-text">
           <ActorName actor={account} className="list-item-title" />
           <ActorHandle actor={account} className="list-item-meta" />

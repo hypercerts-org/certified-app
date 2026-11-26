@@ -2,9 +2,8 @@
 // what stays put. Its figures (RecordFigures) and its facts and permanent ID
 // (RecordFacts), as a profile's column has the account's.
 
-import { Card, Heading } from "@hypercerts-org/ui-react";
+import { Card, CopyableId, Heading } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
-import { PermanentId } from "@/components/account-ids";
 import { type Stat, StatRow } from "@/components/stat-row";
 import { getFundingSummary, getRecordBadges } from "@/lib/hypercerts/queries";
 
@@ -95,7 +94,7 @@ export function RecordFacts({
         <div className="fact">
           <dt>Permanent ID</dt>
           <dd>
-            <PermanentId value={uri} />
+            <CopyableId value={uri} label="Permanent ID" wrap />
           </dd>
         </div>
       </dl>
