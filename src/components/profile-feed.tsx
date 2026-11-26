@@ -36,7 +36,7 @@ export function PageLink({ link }: { link: FeedLink }) {
 }
 
 /** "A, B and 3 others": the first few named, the rest counted. */
-function Names({
+export function Names({
   items,
   count,
   others = "others",
@@ -66,7 +66,7 @@ function Face({ actor, size = "md" }: { actor: ActorCard; size?: "sm" | "md" }) 
 }
 
 /** A record the post is about: its title, a line under it and its summary. */
-function RecordText({
+export function RecordText({
   href,
   title,
   meta,
@@ -97,7 +97,7 @@ function RecordText({
 }
 
 /** A record's picture, the post's full width. */
-function Media({ href, src }: { href: string; src: string | null }) {
+export function Media({ href, src }: { href: string; src: string | null }) {
   if (!src) return null;
   return (
     <IntentLink href={href} className="post-media" tabIndex={-1} aria-hidden>

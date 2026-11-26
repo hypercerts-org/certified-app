@@ -32,7 +32,7 @@ export function SiteHeader() {
         <nav aria-label="Main" className="site-nav desktop-only">
           <Suspense fallback={null}>
             <SignedIn>
-              <Destinations variant="top" only={["workspace"]} />
+              <Destinations variant="top" only={["workspace", "feed"]} />
             </SignedIn>
           </Suspense>
           <Destinations variant="top" only={["network", "apps"]} />
@@ -46,7 +46,7 @@ export function SiteHeader() {
       <nav aria-label="Main" className="bottom-nav phone-only">
         <Suspense fallback={null}>
           <SignedIn>
-            <Destinations variant="bottom" only={["workspace"]} />
+            <Destinations variant="bottom" only={["workspace", "feed"]} />
           </SignedIn>
         </Suspense>
         <Destinations variant="bottom" only={["network", "apps"]} />

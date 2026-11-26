@@ -22,6 +22,7 @@ import {
   LogOut,
   type LucideIcon,
   MessageSquare,
+  Newspaper,
   Plus,
   Settings,
   UserRound,
@@ -58,7 +59,7 @@ export type Account = Identity & {
 // it becomes a menu of its pages when Feed, Map and the others arrive.
 
 type Destination = {
-  key: "workspace" | "network" | "apps";
+  key: "workspace" | "feed" | "network" | "apps";
   label: string;
   href: string;
   icon: LucideIcon;
@@ -75,6 +76,13 @@ const DESTINATIONS: readonly Destination[] = [
     href: "/workspace",
     icon: FolderOpen,
     isActive: (pathname) => WORKSPACE_PATH.test(pathname),
+  },
+  {
+    key: "feed",
+    label: "Feed",
+    href: "/feed",
+    icon: Newspaper,
+    isActive: under("/feed"),
   },
   {
     key: "network",

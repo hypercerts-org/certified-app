@@ -54,7 +54,9 @@ function workspaceItems(overview: string, badgesBadge?: ReactNode): Item[] {
 }
 
 // The Feed follows your account, so it is signed-in only.
-const FEED: readonly Item[] = [{ label: "Feed", icon: Newspaper, href: null }];
+const FEED: readonly Item[] = [
+  { label: "Feed", icon: Newspaper, href: "/feed", isActive: under("/feed") },
+];
 
 const NETWORK: readonly Item[] = [
   { label: "Explore", icon: Compass, href: "/explore", isActive: under("/explore") },
