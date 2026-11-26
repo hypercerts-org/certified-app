@@ -2440,6 +2440,8 @@ button.workspace-nav-item:hover,
 
 .sidebar-search input {
   inline-size: 100%;
+  /* The toolkit's input is taller; the sidebar's field stays compact. */
+  block-size: 2.25rem;
   min-block-size: 2.25rem;
   /* Room for the search icon before the text and the shortcut hint after it. */
   padding-inline: 2.125rem 4rem;
@@ -2457,6 +2459,7 @@ button.workspace-nav-item:hover,
 
 .sidebar-search-icon {
   position: absolute;
+  z-index: 1;
   inset-inline-start: 0.625rem;
   color: var(--hc-text-muted);
   pointer-events: none;
@@ -2464,6 +2467,7 @@ button.workspace-nav-item:hover,
 
 .sidebar-search-kbd {
   position: absolute;
+  z-index: 1;
   inset-inline-end: 0.5rem;
   padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--hc-line-hairline);
@@ -2475,8 +2479,62 @@ button.workspace-nav-item:hover,
 }
 
 /* Typing replaces the hint. */
-.sidebar-search input:not(:placeholder-shown) ~ .sidebar-search-kbd {
+.sidebar-search:has(input:not(:placeholder-shown)) .sidebar-search-kbd {
   display: none;
+}
+
+/* The typeahead (sidebar-search.tsx): the toolkit's Combobox fills the
+   field, and its list may be wider than the sidebar, over the page. */
+.sidebar-search-box {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.sidebar-search-box [role="listbox"] {
+  inline-size: max(100%, 22rem);
+  max-block-size: min(32rem, 70vh);
+  right: auto;
+}
+
+.search-group {
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-label);
+  font-weight: var(--hc-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.search-row-text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.search-row-meta {
+  color: var(--hc-text-muted);
+  font-size: var(--hc-type-label);
+}
+
+.search-row-image {
+  flex: none;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: var(--hc-radius-control);
+  object-fit: cover;
+}
+
+.search-row-icon {
+  flex: none;
+  inline-size: 1.5rem;
+  color: var(--hc-text-muted);
 }
 
 /* Only the list scrolls, when the window is too short for it: scrolling the
