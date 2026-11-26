@@ -18,8 +18,8 @@ import { ActorRow } from "@/components/actor";
 import { actorHref } from "@/components/cards";
 import type { OwnershipTransferStatus } from "@/lib/cgs";
 import {
-  acceptGroupOwnershipTransfer,
   type AuditEntryView,
+  acceptGroupOwnershipTransfer,
   cancelGroupOwnershipTransfer,
   destroyGroupAccount,
   getGroupAuditLog,
@@ -202,7 +202,7 @@ export function GroupOwnershipSection({
             )}
             {eligibleTargets.length === 0 ? (
               <Text size="body-sm" tone="muted">
-                This group has no other members yet. Add someone under Members and roles first.
+                This group has no other members yet. Add someone under Members above first.
               </Text>
             ) : (
               <div className="settings-form">

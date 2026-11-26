@@ -7,7 +7,6 @@ import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/
 import {
   groupSettingsAccess,
   loadGroupIdentity,
-  loadOwnershipTransfer,
   ROLE_PHRASE,
   resolveGroupParam,
   SettingsAccessFallback,
@@ -42,36 +41,24 @@ async function GroupSettingsGate({
     return <SettingsAccessFallback kind={access.status} path={base} groupDid={groupDid} />;
   }
 
-  const [{ name, handle, actor }, transfer] = await Promise.all([
-    loadGroupIdentity(groupDid),
-    loadOwnershipTransfer(access.session, groupDid),
-  ]);
-
-  const showOwnership =
-    access.isOwner || Boolean(transfer?.pending && transfer.proposedOwner === access.user.did);
+  const { name, handle, actor } = await loadGroupIdentity(groupDid);
   const canEditProfile = access.isAdmin || access.isSelfOwned;
 
   const tabs: ProfileTab[] = [
     { label: "Account", href: base },
     ...(canEditProfile ? [{ label: "Profile", href: `${base}/profile` }] : []),
     { label: "Social graph", href: `${base}/social-graph` },
-    { label: "Members and roles", href: `${base}/members` },
-    ...(showOwnership ? [{ label: "Transfer ownership", href: `${base}/ownership` }] : []),
     { label: "Activity log", href: `${base}/activity` },
-    ...(access.isOwner ? [{ label: "Group status", href: `${base}/status` }] : []),
     ...(access.isSelfOwned ? [{ label: "Appearance", href: `${base}/appearance` }] : []),
   ];
 
   const legacyHashes: Record<string, string> = {
     ...(canEditProfile ? { profile: `${base}/profile` } : {}),
     "social-graph": `${base}/social-graph`,
-    members: `${base}/members`,
     activity: `${base}/activity`,
     ...(access.isSelfOwned
       ? { appearance: `${base}/appearance`, theme: `${base}/appearance` }
       : {}),
-    ...(showOwnership ? { ownership: `${base}/ownership` } : {}),
-    ...(access.isOwner ? { status: `${base}/status`, danger: `${base}/status` } : {}),
   };
 
   const avatarActor = {
@@ -110,9 +97,7 @@ function GroupSettingsShell() {
   return (
     <div className="page">
       <SettingsHeaderSkeleton title="Group settings" />
-      <ProfileTabsSkeleton
-        labels={["Account", "Profile", "Social graph", "Members and roles", "Activity log"]}
-      />
+      <ProfileTabsSkeleton labels={["Account", "Profile", "Social graph", "Activity log"]} />
       <SettingsRowsSkeleton rows={4} />
     </div>
   );

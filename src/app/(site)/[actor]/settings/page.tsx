@@ -6,6 +6,11 @@ import {
   GroupPasswordResetRow,
 } from "@/components/settings/group-account-controls";
 import {
+  GroupMembersGroup,
+  GroupOwnershipGroup,
+  GroupStatusGroup,
+} from "@/components/settings/group-settings-sections";
+import {
   loadGroupIdentity,
   readPersonalAccountDetails,
   requireGroupSettings,
@@ -90,6 +95,17 @@ async function GroupAccountSettings({ params }: { params: Promise<{ actor: strin
           </SettingsRow>
         )}
       </SettingsGroup>
+
+      {/* Each streams in on its own, under the account's rows. */}
+      <Suspense fallback={<SettingsRowsSkeleton rows={3} />}>
+        <GroupMembersGroup access={access} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <GroupOwnershipGroup access={access} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <GroupStatusGroup access={access} />
+      </Suspense>
     </SettingsSection>
   );
 }
