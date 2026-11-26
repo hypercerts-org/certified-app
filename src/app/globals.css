@@ -450,6 +450,26 @@ button.menu-row:disabled:not([aria-current]) {
   min-inline-size: 0;
 }
 
+/* The account's name and handle, one block: no paragraph spacing between them. */
+.settings-header-who > * {
+  margin: 0;
+}
+
+.settings-header-name {
+  font-weight: var(--hc-weight-medium);
+}
+
+/* The size of the large ActorAvatar it stands in for. */
+.settings-header-avatar-skeleton {
+  flex: none;
+  inline-size: 4rem;
+  block-size: 4rem;
+}
+
+.settings-header-lines-skeleton {
+  inline-size: 14rem;
+}
+
 .settings-header-actions {
   display: flex;
   flex-wrap: wrap;

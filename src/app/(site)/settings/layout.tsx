@@ -1,10 +1,8 @@
-import { Button, Text } from "@hypercerts-org/ui-react";
+import { Button } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
-import { ActorAvatar } from "@/components/actor";
 import { actorHref } from "@/components/cards";
-import { PageHeader, PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import {
   personalSettingsAccess,
@@ -12,6 +10,7 @@ import {
   SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
 import { SettingsHashRedirect } from "@/components/settings/settings-hash-redirect";
+import { SettingsHeader, SettingsHeaderSkeleton } from "@/components/settings/settings-header";
 import { getActor } from "@/lib/hypercerts/queries";
 import { groupSettingsHref } from "@/lib/routes";
 import { signInHref } from "@/lib/validate";
@@ -60,20 +59,15 @@ async function PersonalSettingsGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="page">
-      <header className="settings-header">
-        <div className="settings-header-identity">
-          <ActorAvatar actor={avatarActor} size="lg" />
-          <div className="settings-header-text">
-            <PageTitle>Settings</PageTitle>
-            <Text tone="muted">Manage your profile and account on Certified.</Text>
-          </div>
-        </div>
-        <div className="settings-header-actions">
+      <SettingsHeader
+        title="Personal settings"
+        actor={avatarActor}
+        actions={
           <Button href={actorHref(actor ?? access.user.did)} variant="secondary" size="sm">
             View profile
           </Button>
-        </div>
-      </header>
+        }
+      />
       <SettingsHashRedirect routes={LEGACY_HASHES} />
       <ProfileTabs label="Settings sections" tabs={PERSONAL_TABS} />
       {children}
@@ -84,7 +78,7 @@ async function PersonalSettingsGate({ children }: { children: ReactNode }) {
 function PersonalSettingsShell() {
   return (
     <div className="page">
-      <PageHeader title="Settings" description="Manage your profile and account on Certified." />
+      <SettingsHeaderSkeleton title="Personal settings" />
       <ProfileTabsSkeleton labels={PERSONAL_TABS.map((t) => t.label)} />
       <SettingsRowsSkeleton rows={5} />
     </div>

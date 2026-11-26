@@ -1,10 +1,8 @@
-import { Button, Text } from "@hypercerts-org/ui-react";
+import { Button } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
-import { ActorAvatar } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
-import { PageHeader, PageTitle } from "@/components/page-title";
 import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import {
   groupSettingsAccess,
@@ -16,7 +14,7 @@ import {
   SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
 import { SettingsHashRedirect } from "@/components/settings/settings-hash-redirect";
-import { groupSettingsHref } from "@/lib/routes";
+import { SettingsHeader, SettingsHeaderSkeleton } from "@/components/settings/settings-header";
 import { signInHref } from "@/lib/validate";
 
 export const metadata: Metadata = {
@@ -31,8 +29,11 @@ async function GroupSettingsGate({
   params: Promise<{ actor: string }>;
   children: ReactNode;
 }) {
-  const groupDid = await resolveGroupParam((await params).actor);
-  const base = groupSettingsHref(groupDid);
+  const { actor: address } = await params;
+  const groupDid = await resolveGroupParam(address);
+  // The tabs under the address this page was opened at (its DID, or its
+  // handle), so the open tab shows as selected either way.
+  const base = `/${address}/settings`;
   const access = await groupSettingsAccess(groupDid);
 
   if (access.status === "signed-out") redirect(signInHref(base));
@@ -83,23 +84,21 @@ async function GroupSettingsGate({
 
   return (
     <div className="page">
-      <header className="settings-header">
-        <div className="settings-header-identity">
-          <ActorAvatar actor={avatarActor} size="lg" />
-          <div className="settings-header-text">
-            <PageTitle>{access.isSelfOwned ? "Settings" : name}</PageTitle>
-            <Text tone="muted">{ROLE_PHRASE[access.role] ?? "You belong to this group."}</Text>
-          </div>
-        </div>
-        <div className="settings-header-actions">
-          <Button href={actorHref(actor ?? groupDid)} variant="secondary" size="sm">
-            View profile
-          </Button>
-          <Button href={workspaceHref(groupDid)} variant="secondary" size="sm">
-            Open workspace
-          </Button>
-        </div>
-      </header>
+      <SettingsHeader
+        title="Group settings"
+        actor={avatarActor}
+        note={ROLE_PHRASE[access.role] ?? "You belong to this group."}
+        actions={
+          <>
+            <Button href={actorHref(actor ?? groupDid)} variant="secondary" size="sm">
+              View profile
+            </Button>
+            <Button href={workspaceHref(groupDid)} variant="secondary" size="sm">
+              Open workspace
+            </Button>
+          </>
+        }
+      />
       <SettingsHashRedirect routes={legacyHashes} />
       <ProfileTabs label="Group settings sections" tabs={tabs} />
       {children}
@@ -110,7 +109,7 @@ async function GroupSettingsGate({
 function GroupSettingsShell() {
   return (
     <div className="page">
-      <PageHeader title="Group settings" />
+      <SettingsHeaderSkeleton title="Group settings" />
       <ProfileTabsSkeleton
         labels={["Account", "Profile", "Social graph", "Members and roles", "Activity log"]}
       />
