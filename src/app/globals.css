@@ -1813,10 +1813,48 @@ a.post-amount:hover {
   min-inline-size: 0;
 }
 
+/* The toolkit's Checkbox lines its box up with a label's first line; an
+   endorser's label is a picture beside two lines, so the box centres on it,
+   and every wrapper may shrink so a long name or handle ends in an ellipsis
+   inside the box. */
+:where(.feed-evaluator-row) > label {
+  flex: 1;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+:where(.feed-evaluator-row > label) > span:first-child {
+  margin-block-start: 0;
+}
+
+:where(.feed-evaluator-row > label) > span:last-child,
+:where(.feed-evaluator-row > label > span:last-child) > span {
+  min-inline-size: 0;
+}
+
 .feed-evaluator-label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+/* Endorser rows on their way (network-feed.tsx, EvaluatorListSkeleton). */
+.feed-evaluator-check-skeleton {
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  margin-inline-end: var(--space-1);
+}
+
+.feed-evaluator-avatar-skeleton {
+  flex: none;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+
+.feed-evaluator-text-skeleton {
+  flex: 1;
   min-inline-size: 0;
 }
 

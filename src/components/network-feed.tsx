@@ -8,12 +8,14 @@ import {
   Eyebrow,
   LoadMoreSentinel,
   ResponsiveDialog,
+  Skeleton,
   Text,
 } from "@hypercerts-org/ui-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { AlertCircle, Filter, Inbox, Newspaper, RotateCcw, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, Filter, Inbox, Newspaper, RotateCcw } from "lucide-react";
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActorAvatar, ActorLink, ActorStack } from "@/components/actor";
+import { skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { PageHeader } from "@/components/page-title";
 import {
@@ -39,6 +41,9 @@ import {
 } from "@/lib/feed-grouping";
 import { type ActorCard, nameOf, type Page } from "@/lib/hypercerts/views";
 import { groupSettingsHref } from "@/lib/routes";
+
+/** Whose feed it is: the signed-in account, or the group it acts as. */
+export type FeedViewer = { viewerDid: string; asGroup: boolean };
 
 const FEED_DESCRIPTION =
   "New activities, projects, updates and endorsements from accounts you follow and your trusted endorsers.";
@@ -268,12 +273,136 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
   }
 }
 
+// Which trusted endorsers count: all of them, less the ones the viewer turned
+// off (`excluded`). Kept as what is off, not what is on, so the filters work
+// before the endorsers' list has loaded, and the default ("all") needs no list.
+
+/** One endorser's row: its checkbox, picture, name and handle, cut off with an ellipsis. */
+function EvaluatorRow({
+  evaluator,
+  checked,
+  onToggle,
+}: {
+  evaluator: ActorCard;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const name = nameOf(evaluator);
+  return (
+    <li className="feed-evaluator-row">
+      <Checkbox
+        checked={checked}
+        onChange={onToggle}
+        label={
+          <span className="feed-evaluator-label">
+            <ActorAvatar actor={evaluator} size="sm" />
+            <span className="feed-evaluator-text">
+              <span className="ellipsis" dir="auto">
+                {name}
+              </span>
+              {evaluator.handle && name !== `@${evaluator.handle}` && (
+                <span className="feed-evaluator-handle ellipsis">@{evaluator.handle}</span>
+              )}
+            </span>
+          </span>
+        }
+      />
+      <ActorLink actor={evaluator} avatar={false} className="visually-hidden" />
+    </li>
+  );
+}
+
+/** The endorsers, once loaded (a Suspense boundary shows their skeleton until then). */
+function EvaluatorList({
+  evaluators,
+  excluded,
+  onToggle,
+}: {
+  evaluators: Promise<ActorCard[]>;
+  excluded: ReadonlySet<string>;
+  onToggle: (did: string) => void;
+}) {
+  const list = use(evaluators);
+  if (list.length === 0) {
+    return (
+      <Text size="body-sm" tone="muted">
+        No trusted endorsers right now.
+      </Text>
+    );
+  }
+  return (
+    <ul className="feed-filter-list">
+      {list.map((evaluator) => (
+        <EvaluatorRow
+          key={evaluator.did}
+          evaluator={evaluator}
+          checked={!excluded.has(evaluator.did)}
+          onToggle={() => onToggle(evaluator.did)}
+        />
+      ))}
+    </ul>
+  );
+}
+
+/** Endorser rows on their way: a checkbox, a picture and two lines each. */
+function EvaluatorListSkeleton() {
+  return (
+    <ul className="feed-filter-list" aria-hidden>
+      {skeletonSlots(5).map((slot) => (
+        <li key={slot} className="feed-evaluator-row">
+          <span className="feed-evaluator-label">
+            <Skeleton variant="box" className="feed-evaluator-check-skeleton" />
+            <Skeleton variant="circle" className="feed-evaluator-avatar-skeleton" />
+            <Skeleton variant="text" lines={2} className="feed-evaluator-text-skeleton" />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** "None" turns every endorser off, so it needs the list; "All" doesn't. */
+function NoneLink({
+  evaluators,
+  onExclude,
+}: {
+  evaluators: Promise<ActorCard[]>;
+  onExclude: (dids: string[]) => void;
+}) {
+  const list = use(evaluators);
+  return (
+    <button
+      type="button"
+      className="feed-filter-link"
+      onClick={() => onExclude(list.map((e) => e.did))}
+    >
+      None
+    </button>
+  );
+}
+
+type FilterPanelProps = {
+  evaluators: Promise<ActorCard[]>;
+  excluded: ReadonlySet<string>;
+  onToggleEvaluator: (did: string) => void;
+  onSetExcluded: (dids: string[]) => void;
+  orgTiers: ReadonlySet<OrgQualityTier>;
+  onToggleOrgTier: (tier: OrgQualityTier) => void;
+  includeUnrated: boolean;
+  onToggleUnrated: () => void;
+  isDefault: boolean;
+  onReset: () => void;
+};
+
+/**
+ * The feed's filters. Everything here shows at once; only the endorsers'
+ * list waits for its data, in its own boundary.
+ */
 function FilterPanel({
   evaluators,
-  selectedEvaluators,
+  excluded,
   onToggleEvaluator,
-  onSelectAllEvaluators,
-  onClearEvaluators,
+  onSetExcluded,
   orgTiers,
   onToggleOrgTier,
   includeUnrated,
@@ -281,67 +410,31 @@ function FilterPanel({
   isDefault,
   onReset,
   showReset,
-}: {
-  evaluators: readonly ActorCard[];
-  selectedEvaluators: ReadonlySet<string>;
-  onToggleEvaluator: (did: string) => void;
-  onSelectAllEvaluators: () => void;
-  onClearEvaluators: () => void;
-  orgTiers: ReadonlySet<OrgQualityTier>;
-  onToggleOrgTier: (tier: OrgQualityTier) => void;
-  includeUnrated: boolean;
-  onToggleUnrated: () => void;
-  isDefault: boolean;
-  onReset: () => void;
-  showReset: boolean;
-}) {
+}: FilterPanelProps & { showReset: boolean }) {
   return (
     <div className="feed-filters">
-      {evaluators.length > 0 && (
-        <section className="feed-filter-group">
-          <div className="feed-filter-head">
-            <Eyebrow as="p">Trusted endorsers</Eyebrow>
-            <div className="feed-filter-links">
-              {selectedEvaluators.size < evaluators.length ? (
-                <button type="button" className="feed-filter-link" onClick={onSelectAllEvaluators}>
-                  All
-                </button>
-              ) : (
-                <button type="button" className="feed-filter-link" onClick={onClearEvaluators}>
-                  None
-                </button>
-              )}
-            </div>
+      <section className="feed-filter-group">
+        <div className="feed-filter-head">
+          <Eyebrow as="p">Trusted endorsers</Eyebrow>
+          <div className="feed-filter-links">
+            {excluded.size > 0 ? (
+              <button type="button" className="feed-filter-link" onClick={() => onSetExcluded([])}>
+                All
+              </button>
+            ) : (
+              <Suspense fallback={null}>
+                <NoneLink evaluators={evaluators} onExclude={onSetExcluded} />
+              </Suspense>
+            )}
           </div>
-          <Text size="body-sm" tone="muted">
-            Include accounts endorsed by these organizations.
-          </Text>
-          <ul className="feed-filter-list">
-            {evaluators.map((evaluator) => (
-              <li key={evaluator.did} className="feed-evaluator-row">
-                <Checkbox
-                  checked={selectedEvaluators.has(evaluator.did)}
-                  onChange={() => onToggleEvaluator(evaluator.did)}
-                  label={
-                    <span className="feed-evaluator-label">
-                      <ActorAvatar actor={evaluator} size="sm" />
-                      <span className="feed-evaluator-text">
-                        <span className="ellipsis">{nameOf(evaluator)}</span>
-                        {evaluator.handle && nameOf(evaluator) !== `@${evaluator.handle}` && (
-                          <span className="feed-evaluator-handle ellipsis">
-                            @{evaluator.handle}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  }
-                />
-                <ActorLink actor={evaluator} avatar={false} className="visually-hidden" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        </div>
+        <Text size="body-sm" tone="muted">
+          Include accounts endorsed by these organizations.
+        </Text>
+        <Suspense fallback={<EvaluatorListSkeleton />}>
+          <EvaluatorList evaluators={evaluators} excluded={excluded} onToggle={onToggleEvaluator} />
+        </Suspense>
+      </section>
 
       <section className="feed-filter-group">
         <Eyebrow as="p">Organization quality</Eyebrow>
@@ -376,67 +469,58 @@ function FilterPanel({
   );
 }
 
-export function NetworkFeed({
-  viewerDid,
-  asGroup,
-  evaluators,
-  initial,
-  initialFailed,
+/** The header's line: whose follows the feed draws on, once the viewer is known. */
+function FeedDescription({ viewer }: { viewer: Promise<FeedViewer | null> }) {
+  return use(viewer)?.asGroup ? FEED_DESCRIPTION_GROUP : FEED_DESCRIPTION;
+}
+
+type FeedFilters = {
+  excludedParam: string;
+  orgQualityParam: string;
+  includeUnrated: boolean;
+  kindsParam: string;
+  isDefault: boolean;
+  onReset: () => void;
+};
+
+/**
+ * The feed itself: the server's first page (for the default filters), then
+ * pages from /api/feed as the filters change or the reader scrolls. Inside a
+ * Suspense boundary: until the viewer and the first page are known, the
+ * timeline's skeleton shows.
+ */
+function FeedList({
+  viewer,
+  firstPage,
+  filters,
 }: {
-  viewerDid: string;
-  asGroup: boolean;
-  evaluators: ActorCard[];
-  initial: Page<NetworkFeedEntry> | null;
-  initialFailed: boolean;
+  viewer: Promise<FeedViewer | null>;
+  firstPage: Promise<Page<NetworkFeedEntry> | null>;
+  filters: FeedFilters;
 }) {
-  const defaultEvaluatorSet = useMemo(() => new Set(evaluators.map((e) => e.did)), [evaluators]);
-  const [selectedEvaluators, setSelectedEvaluators] = useState<Set<string>>(
-    () => new Set(evaluators.map((e) => e.did)),
-  );
-  const [orgTiers, setOrgTiers] = useState<Set<OrgQualityTier>>(
-    () => new Set(DEFAULT_ORG_QUALITY.allowed),
-  );
-  const [includeUnrated, setIncludeUnrated] = useState(DEFAULT_ORG_QUALITY.includeUnrated);
-  const [kindGroups, setKindGroups] = useState<Set<FeedKindGroupId>>(() => new Set());
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const isDefaultFilters =
-    kindGroups.size === 0 &&
-    includeUnrated === DEFAULT_ORG_QUALITY.includeUnrated &&
-    setsEqual(orgTiers, DEFAULT_ORG_SET) &&
-    setsEqual(selectedEvaluators, defaultEvaluatorSet);
-
-  const changedCount =
-    kindGroups.size +
-    (includeUnrated === DEFAULT_ORG_QUALITY.includeUnrated ? 0 : 1) +
-    setDiffCount(orgTiers, DEFAULT_ORG_SET) +
-    setDiffCount(selectedEvaluators, defaultEvaluatorSet);
-
-  const evaluatorParam = useMemo(
-    () => [...selectedEvaluators].sort().join(",") || "none",
-    [selectedEvaluators],
-  );
-  const orgQualityParam = useMemo(() => [...orgTiers].sort().join(",") || "none", [orgTiers]);
-  const kindsParam = useMemo(() => resolveKinds(kindGroups).sort().join(","), [kindGroups]);
+  const v = use(viewer);
+  const first = use(firstPage);
+  const viewerDid = v?.viewerDid ?? "";
+  const { excludedParam, orgQualityParam, includeUnrated, kindsParam, isDefault } = filters;
 
   const buildUrl = useCallback(
     (cursor?: string) => {
       const qs = new URLSearchParams();
-      qs.set("evaluators", evaluatorParam);
+      if (excludedParam) qs.set("excludeEvaluators", excludedParam);
       qs.set("orgQuality", orgQualityParam);
       qs.set("includeUnrated", includeUnrated ? "true" : "false");
       if (kindsParam) qs.set("kinds", kindsParam);
       if (cursor) qs.set("cursor", cursor);
       return `/api/feed?${qs.toString()}`;
     },
-    [evaluatorParam, orgQualityParam, includeUnrated, kindsParam],
+    [excludedParam, orgQualityParam, includeUnrated, kindsParam],
   );
 
   const query = useInfiniteQuery<Page<NetworkFeedEntry>, Error>({
     queryKey: [
       "network-feed",
       viewerDid,
-      evaluatorParam,
+      excludedParam,
       orgQualityParam,
       includeUnrated,
       kindsParam,
@@ -448,10 +532,8 @@ export function NetworkFeed({
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor ?? undefined,
-    initialData:
-      isDefaultFilters && initial && !initialFailed
-        ? { pages: [initial], pageParams: [undefined] }
-        : undefined,
+    initialData: isDefault && first ? { pages: [first], pageParams: [undefined] } : undefined,
+    enabled: Boolean(v),
     staleTime: 60_000,
     retry: 1,
   });
@@ -474,7 +556,7 @@ export function NetworkFeed({
   // Auto-load additional pages when endorsement bursts collapse a page into
   // too few visible cards, capped at MAX_AUTO_LOADS per filter combination.
   const autoLoadsRef = useRef({ key: "", count: 0 });
-  const filterKey = `${viewerDid}|${evaluatorParam}|${orgQualityParam}|${includeUnrated}|${kindsParam}`;
+  const filterKey = `${viewerDid}|${excludedParam}|${orgQualityParam}|${includeUnrated}|${kindsParam}`;
   useEffect(() => {
     if (autoLoadsRef.current.key !== filterKey) {
       autoLoadsRef.current = { key: filterKey, count: 0 };
@@ -493,15 +575,120 @@ export function NetworkFeed({
     query.fetchNextPage,
   ]);
 
+  const syncHref = v?.asGroup
+    ? `${groupSettingsHref(viewerDid)}/bluesky-sync`
+    : "/settings/bluesky-sync";
+
+  if (!v || (query.isError && grouped.length === 0)) {
+    return (
+      <Empty
+        icon={AlertCircle}
+        title="Couldn't load the feed"
+        description="The feed service didn't respond. Try again in a moment."
+        action={
+          v ? (
+            <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
+              Try again
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  }
+  if (query.isPending) return <ProfileFeedSkeleton />;
+  if (grouped.length === 0) {
+    return !isDefault ? (
+      <Empty
+        icon={Inbox}
+        title="Nothing matches your filters"
+        description="No recent activities, projects, updates or endorsements pass the filters you set."
+        action={
+          <Button variant="secondary" size="sm" onClick={filters.onReset}>
+            Reset filters
+          </Button>
+        }
+      />
+    ) : (
+      <Empty
+        icon={Newspaper}
+        title="Your feed is quiet"
+        description="Follow accounts on Explore, or import your Bluesky follows in Settings, to see new work here."
+        action={
+          <div className="feed-empty-actions">
+            <Button href="/explore/accounts" variant="primary" size="sm">
+              Find accounts
+            </Button>
+            <Button href={syncHref} variant="secondary" size="sm">
+              Sync Bluesky follows
+            </Button>
+          </div>
+        }
+      />
+    );
+  }
+  return (
+    <div className="stack">
+      <ul className="post-feed">
+        {grouped.map((item) => (
+          <NetworkFeedPost key={item.key} item={item} />
+        ))}
+      </ul>
+      {query.isFetchNextPageError && (
+        <ErrorMessage live>Couldn&apos;t load more items. Try again.</ErrorMessage>
+      )}
+      <LoadMoreSentinel
+        onLoadMore={() => void query.fetchNextPage()}
+        loading={query.isFetchingNextPage}
+        hasMore={query.hasNextPage}
+        label="Load more"
+      />
+    </div>
+  );
+}
+
+/**
+ * The network feed page. Its frame shows at once (the title, the content-type
+ * chips, the filters); two parts load on their own, each with a skeleton
+ * shaped like it: the feed, and the list of trusted endorsers.
+ */
+export function NetworkFeed({
+  viewer,
+  evaluators,
+  firstPage,
+}: {
+  viewer: Promise<FeedViewer | null>;
+  evaluators: Promise<ActorCard[]>;
+  firstPage: Promise<Page<NetworkFeedEntry> | null>;
+}) {
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const [orgTiers, setOrgTiers] = useState<Set<OrgQualityTier>>(
+    () => new Set(DEFAULT_ORG_QUALITY.allowed),
+  );
+  const [includeUnrated, setIncludeUnrated] = useState(DEFAULT_ORG_QUALITY.includeUnrated);
+  const [kindGroups, setKindGroups] = useState<Set<FeedKindGroupId>>(() => new Set());
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const isDefaultFilters =
+    kindGroups.size === 0 &&
+    includeUnrated === DEFAULT_ORG_QUALITY.includeUnrated &&
+    setsEqual(orgTiers, DEFAULT_ORG_SET) &&
+    excluded.size === 0;
+
+  const changedCount =
+    kindGroups.size +
+    (includeUnrated === DEFAULT_ORG_QUALITY.includeUnrated ? 0 : 1) +
+    setDiffCount(orgTiers, DEFAULT_ORG_SET) +
+    excluded.size;
+
   const resetFilters = useCallback(() => {
-    setSelectedEvaluators(new Set(evaluators.map((e) => e.did)));
+    setExcluded(new Set());
     setOrgTiers(new Set(DEFAULT_ORG_QUALITY.allowed));
     setIncludeUnrated(DEFAULT_ORG_QUALITY.includeUnrated);
     setKindGroups(new Set());
-  }, [evaluators]);
+  }, []);
 
   const toggleEvaluator = useCallback((did: string) => {
-    setSelectedEvaluators((prev) => {
+    setExcluded((prev) => {
       const next = new Set(prev);
       if (next.has(did)) next.delete(did);
       else next.add(did);
@@ -527,16 +714,20 @@ export function NetworkFeed({
     });
   }, []);
 
-  const socialGraphHref = asGroup
-    ? `${groupSettingsHref(viewerDid)}/social-graph`
-    : "/settings/social-graph";
+  const filters: FeedFilters = {
+    excludedParam: [...excluded].sort().join(","),
+    orgQualityParam: [...orgTiers].sort().join(",") || "none",
+    includeUnrated,
+    kindsParam: resolveKinds(kindGroups).sort().join(","),
+    isDefault: isDefaultFilters,
+    onReset: resetFilters,
+  };
 
-  const filterPanelProps = {
+  const filterPanelProps: FilterPanelProps = {
     evaluators,
-    selectedEvaluators,
+    excluded,
     onToggleEvaluator: toggleEvaluator,
-    onSelectAllEvaluators: () => setSelectedEvaluators(new Set(evaluators.map((e) => e.did))),
-    onClearEvaluators: () => setSelectedEvaluators(new Set()),
+    onSetExcluded: (dids) => setExcluded(new Set(dids)),
     orgTiers,
     onToggleOrgTier: toggleOrgTier,
     includeUnrated,
@@ -549,7 +740,12 @@ export function NetworkFeed({
     <div className="page feed-page">
       <PageHeader
         title="Feed"
-        description={asGroup ? FEED_DESCRIPTION_GROUP : FEED_DESCRIPTION}
+        description={
+          // The personal wording until the viewer is known (a moment); a group's then.
+          <Suspense fallback={FEED_DESCRIPTION}>
+            <FeedDescription viewer={viewer} />
+          </Suspense>
+        }
         actions={
           <Button
             variant="secondary"
@@ -590,66 +786,9 @@ export function NetworkFeed({
 
       <div className="feed-layout">
         <div className="feed-main">
-          {query.isPending ? (
-            <ProfileFeedSkeleton />
-          ) : query.isError && grouped.length === 0 ? (
-            <Empty
-              icon={AlertCircle}
-              title="Couldn't load the feed"
-              description="The feed service didn't respond. Try again in a moment."
-              action={
-                <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
-                  Try again
-                </Button>
-              }
-            />
-          ) : grouped.length === 0 ? (
-            !isDefaultFilters ? (
-              <Empty
-                icon={Inbox}
-                title="Nothing matches your filters"
-                description="No recent activities, projects, updates or endorsements pass the filters you set."
-                action={
-                  <Button variant="secondary" size="sm" onClick={resetFilters}>
-                    Reset filters
-                  </Button>
-                }
-              />
-            ) : (
-              <Empty
-                icon={selectedEvaluators.size === 0 ? Users : Newspaper}
-                title="Your feed is quiet"
-                description="Follow accounts on Explore, or import your Bluesky follows in Settings, to see new work here."
-                action={
-                  <div className="feed-empty-actions">
-                    <Button href="/explore/accounts" variant="primary" size="sm">
-                      Find accounts
-                    </Button>
-                    <Button href={socialGraphHref} variant="secondary" size="sm">
-                      Sync Bluesky follows
-                    </Button>
-                  </div>
-                }
-              />
-            )
-          ) : (
-            <div className="stack">
-              <ul className="post-feed">
-                {grouped.map((item) => (
-                  <NetworkFeedPost key={item.key} item={item} />
-                ))}
-              </ul>
-              {query.isFetchNextPageError && (
-                <ErrorMessage live>Couldn&apos;t load more items. Try again.</ErrorMessage>
-              )}
-              <LoadMoreSentinel
-                onLoadMore={() => void query.fetchNextPage()}
-                loading={query.isFetchingNextPage}
-                hasMore={query.hasNextPage}
-                label="Load more"
-              />
-            </div>
-          )}
+          <Suspense fallback={<ProfileFeedSkeleton />}>
+            <FeedList viewer={viewer} firstPage={firstPage} filters={filters} />
+          </Suspense>
         </div>
 
         <aside className="feed-rail" aria-label="Feed filters">

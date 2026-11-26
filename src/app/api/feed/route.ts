@@ -37,11 +37,26 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: "InvalidCursor" }, { status: 400, headers: privateHeaders });
     }
 
-    // Evaluators: omitted → use curated defaults; `none` → no expansion; else comma-separated DIDs.
+    // Evaluators: omitted → the curated defaults, less any in `excludeEvaluators`
+    // (what the feed page sends: the ones the viewer turned off); `none` → no
+    // expansion; else comma-separated DIDs.
     const rawEvaluators = params.get("evaluators");
     let trustedEvaluators: string[];
     if (rawEvaluators === null) {
-      trustedEvaluators = (await getTrustedEvaluators()).map((e) => e.did);
+      const excluded = (params.get("excludeEvaluators") ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (excluded.length > 128 || excluded.some((did) => !isDid(did))) {
+        return Response.json(
+          { error: "InvalidEvaluators" },
+          { status: 400, headers: privateHeaders },
+        );
+      }
+      const off = new Set(excluded);
+      trustedEvaluators = (await getTrustedEvaluators())
+        .map((e) => e.did)
+        .filter((did) => !off.has(did));
     } else if (rawEvaluators === "" || rawEvaluators === "none") {
       trustedEvaluators = [];
     } else {
