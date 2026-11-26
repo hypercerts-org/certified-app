@@ -27,7 +27,7 @@ import {
 } from "@/lib/hypercerts/group-actions";
 import { nameOf } from "@/lib/hypercerts/views";
 import type { GroupMemberRow } from "./settings-access";
-import { SettingsCard } from "./settings-frame";
+import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
 
 function formatShortDate(iso?: string): string {
   if (!iso) return "";
@@ -143,119 +143,106 @@ export function GroupOwnershipSection({
 
   return (
     <>
-      {pending ? (
-        <SettingsCard
-          title="Transfer in progress"
-          description={
-            isRecipient
-              ? "You've been proposed as this group's owner. Accepting makes you the owner, and the current owner becomes an admin."
-              : "Nothing changes until the proposed owner accepts. You can cancel it before then."
-          }
-          hint={`Proposed ${formatShortDate(transfer.createdAt)} — expires ${formatShortDate(transfer.expiresAt)} if not accepted.`}
-          actions={
-            isRecipient ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={busy}
-                  onClick={() => void handleCancel()}
-                >
-                  Decline
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setConfirmAccept(true)}
-                >
-                  Accept ownership
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={busy}
-                onClick={() => void handleCancel()}
-              >
-                Cancel transfer
-              </Button>
-            )
-          }
-        >
-          <div className="stack">
+      <SettingsGroup title="Transfer ownership">
+        {pending ? (
+          <SettingsRow
+            label="Pending transfer"
+            description={
+              isRecipient
+                ? "Accepting makes you the owner, and the current owner becomes an admin."
+                : "Nothing changes until the proposed owner accepts."
+            }
+            actions={
+              isRecipient ? (
+                <>
+                  <SettingsAction tone="muted" disabled={busy} onClick={() => void handleCancel()}>
+                    Decline
+                  </SettingsAction>
+                  <SettingsAction disabled={busy} onClick={() => setConfirmAccept(true)}>
+                    Accept
+                  </SettingsAction>
+                </>
+              ) : (
+                <SettingsAction disabled={busy} onClick={() => void handleCancel()}>
+                  Cancel transfer
+                </SettingsAction>
+              )
+            }
+          >
             {error && (
               <Banner tone="danger" role="alert">
                 {error}
               </Banner>
             )}
-            <div className="settings-value-box">
-              {proposedMember ? (
-                <ActorRow
-                  actor={proposedMember.actor}
-                  href={actorHref(proposedMember.actor)}
-                  secondary="Proposed owner"
-                />
-              ) : (
-                <Text size="body-sm" tone="ink">
-                  {transfer.proposedOwner}
-                </Text>
-              )}
-            </div>
-          </div>
-        </SettingsCard>
-      ) : (
-        <SettingsCard
-          title="New owner"
-          description="Pick an existing member. Nothing changes until they accept."
-          hint="Moves control within Certified; doesn't hand over PDS sign-in credentials."
-          actions={
-            eligibleTargets.length > 0 ? (
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={!targetDid || busy}
-                loading={busy}
-                onClick={() => setConfirmPropose(true)}
-              >
-                Propose transfer
-              </Button>
-            ) : undefined
-          }
-        >
-          {error && (
-            <Banner tone="danger" role="alert">
-              {error}
-            </Banner>
-          )}
-          {eligibleTargets.length === 0 ? (
+            {proposedMember ? (
+              <ActorRow
+                actor={proposedMember.actor}
+                href={actorHref(proposedMember.actor)}
+                secondary="Proposed owner"
+              />
+            ) : (
+              <Text size="body-sm" tone="ink">
+                {transfer.proposedOwner}
+              </Text>
+            )}
             <Text size="body-sm" tone="muted">
-              This group has no other members yet. Add someone under Members and roles first.
+              Proposed {formatShortDate(transfer.createdAt)} — expires{" "}
+              {formatShortDate(transfer.expiresAt)} if not accepted.
             </Text>
-          ) : (
-            <div className="settings-form">
-              <Field label="Member">
-                {(field) => (
-                  <Select
-                    {...field}
-                    value={targetDid}
-                    onChange={(e) => setTargetDid(e.currentTarget.value)}
-                    disabled={busy}
+          </SettingsRow>
+        ) : (
+          <SettingsRow
+            label="New owner"
+            description="Pick an existing member. Nothing changes until they accept."
+          >
+            {error && (
+              <Banner tone="danger" role="alert">
+                {error}
+              </Banner>
+            )}
+            {eligibleTargets.length === 0 ? (
+              <Text size="body-sm" tone="muted">
+                This group has no other members yet. Add someone under Members and roles first.
+              </Text>
+            ) : (
+              <div className="settings-form">
+                <Field label="Member">
+                  {(field) => (
+                    <Select
+                      {...field}
+                      value={targetDid}
+                      onChange={(e) => setTargetDid(e.currentTarget.value)}
+                      disabled={busy}
+                    >
+                      <option value="">Select a member…</option>
+                      {eligibleTargets.map((m) => (
+                        <option key={m.actor.did} value={m.actor.did}>
+                          {m.actor.handle ? `@${m.actor.handle}` : nameOf(m.actor)}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+                <div className="settings-form-actions">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!targetDid || busy}
+                    loading={busy}
+                    onClick={() => setConfirmPropose(true)}
                   >
-                    <option value="">Select a member…</option>
-                    {eligibleTargets.map((m) => (
-                      <option key={m.actor.did} value={m.actor.did}>
-                        {m.actor.handle ? `@${m.actor.handle}` : nameOf(m.actor)}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </Field>
-            </div>
-          )}
-        </SettingsCard>
-      )}
+                    Propose transfer
+                  </Button>
+                </div>
+              </div>
+            )}
+            <Text size="body-sm" tone="muted">
+              Moves control of the group within Certified; doesn&apos;t hand over the group
+              account&apos;s PDS sign-in credentials.
+            </Text>
+          </SettingsRow>
+        )}
+      </SettingsGroup>
 
       <ResponsiveDialog
         open={confirmPropose}
@@ -349,70 +336,67 @@ export function GroupAuditLogSection({
   };
 
   return (
-    <SettingsCard
-      title="Audit log"
-      description="Recorded actions taken on this group's behalf."
-      actions={
-        cursor ? (
-          <Button variant="secondary" size="sm" loading={loading} onClick={() => void loadMore()}>
-            Load more
-          </Button>
-        ) : undefined
-      }
-    >
+    <SettingsGroup title="Audit log" description="Recorded actions taken on this group's behalf.">
       {entries.length === 0 ? (
         <Text size="body-sm" tone="muted">
           No activity recorded yet.
         </Text>
       ) : (
-        <ul className="divided settings-list">
-          {entries.map((entry) => (
-            <li key={entry.id} className="settings-audit-item">
-              <div className="settings-audit-head">
-                <Text as="span" tone="ink" className="settings-audit-action">
-                  {entry.action}
-                </Text>
-                <Badge
-                  variant={
-                    entry.result === "permitted"
-                      ? "success"
-                      : entry.result === "denied"
-                        ? "danger"
-                        : "neutral"
-                  }
-                >
-                  {entry.result}
-                </Badge>
-              </div>
-              <div className="settings-audit-meta">
-                <Text as="span" size="body-sm" tone="muted">
-                  by{" "}
-                  <Link
-                    href={actorHref(entry.actorHandle ?? entry.actorDid)}
-                    className="inline-link"
+        <div className="stack">
+          <ul className="divided settings-list">
+            {entries.map((entry) => (
+              <li key={entry.id} className="settings-audit-item">
+                <div className="settings-audit-head">
+                  <Text as="span" tone="ink" className="settings-audit-action">
+                    {entry.action}
+                  </Text>
+                  <Badge
+                    variant={
+                      entry.result === "permitted"
+                        ? "success"
+                        : entry.result === "denied"
+                          ? "danger"
+                          : "neutral"
+                    }
                   >
-                    {entry.actorHandle ? `@${entry.actorHandle}` : entry.actorDisplayName}
-                  </Link>
-                </Text>
-                <Text as="span" size="body-sm" tone="muted">
-                  <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
-                </Text>
-              </div>
-              {(entry.collection || entry.rkey) && (
-                <Text size="body-sm" tone="muted" className="settings-audit-code">
-                  {[entry.collection, entry.rkey].filter(Boolean).join(" / ")}
-                </Text>
-              )}
-            </li>
-          ))}
-        </ul>
+                    {entry.result}
+                  </Badge>
+                </div>
+                <div className="settings-audit-meta">
+                  <Text as="span" size="body-sm" tone="muted">
+                    by{" "}
+                    <Link
+                      href={actorHref(entry.actorHandle ?? entry.actorDid)}
+                      className="inline-link"
+                    >
+                      {entry.actorHandle ? `@${entry.actorHandle}` : entry.actorDisplayName}
+                    </Link>
+                  </Text>
+                  <Text as="span" size="body-sm" tone="muted">
+                    <time dateTime={entry.createdAt}>{formatDateTime(entry.createdAt)}</time>
+                  </Text>
+                </div>
+                {(entry.collection || entry.rkey) && (
+                  <Text size="body-sm" tone="muted" className="settings-audit-code">
+                    {[entry.collection, entry.rkey].filter(Boolean).join(" / ")}
+                  </Text>
+                )}
+              </li>
+            ))}
+          </ul>
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
+          {cursor && (
+            <Button variant="secondary" size="sm" loading={loading} onClick={() => void loadMore()}>
+              Load more
+            </Button>
+          )}
+        </div>
       )}
-      {error && (
-        <Banner tone="danger" role="alert">
-          {error}
-        </Banner>
-      )}
-    </SettingsCard>
+    </SettingsGroup>
   );
 }
 
@@ -460,27 +444,26 @@ export function GroupStatusSection({
 
   return (
     <>
-      <SettingsCard
-        title="Turn back into a regular account"
-        description="Members can no longer act for it and the group features go away. The account, its handle and everything it published stay, and you can make it a group again later."
-        hint="Reversible — nothing in the repository is deleted."
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={destroying}
-            onClick={() => setConfirmOpen(true)}
-          >
-            Turn back into a regular account
-          </Button>
-        }
-      >
-        {error && (
-          <Banner tone="danger" role="alert">
-            {error}
-          </Banner>
-        )}
-      </SettingsCard>
+      <SettingsGroup title="Group status">
+        <SettingsRow
+          label="Turn back into a regular account"
+          description="Members can no longer act for it and group features go away. Nothing is deleted, and you can make it a group again later."
+          actions={
+            <SettingsAction disabled={destroying} onClick={() => setConfirmOpen(true)}>
+              Turn back
+            </SettingsAction>
+          }
+        >
+          <Text size="body-sm" tone="muted">
+            Active group on Certified
+          </Text>
+          {error && (
+            <Banner tone="danger" role="alert">
+              {error}
+            </Banner>
+          )}
+        </SettingsRow>
+      </SettingsGroup>
 
       <ResponsiveDialog
         open={confirmOpen}

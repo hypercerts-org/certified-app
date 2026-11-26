@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { AppPasswordsSection } from "@/components/settings/app-passwords-section";
 import {
   requirePersonalSettings,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
 import { SettingsSection } from "@/components/settings/settings-frame";
 
@@ -13,7 +13,7 @@ async function PersonalAppPasswords() {
   const access = await requirePersonalSettings("/settings/app-passwords");
   if (!access) return null;
   return (
-    <SettingsSection description="Passwords that let other AT Protocol apps sign in as you. Each is shown once, and you can revoke it any time.">
+    <SettingsSection>
       <AppPasswordsSection />
     </SettingsSection>
   );
@@ -21,7 +21,7 @@ async function PersonalAppPasswords() {
 
 export default function PersonalAppPasswordsSettingsPage() {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={2} />}>
       <PersonalAppPasswords />
     </Suspense>
   );

@@ -419,84 +419,218 @@ button.menu-row:disabled:not([aria-current]) {
   }
 }
 
+/* Settings: full-width editorial 3-column hairline layout. */
+
 .settings {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  max-inline-size: 46rem;
+  gap: var(--space-10);
+  inline-size: 100%;
+}
+
+.settings-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.settings-header-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.settings-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.settings-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .settings-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .settings-panel-intro {
   margin: 0;
 }
 
-/* Vercel-style two-zone settings card: crisp panel body + tinted footer bar
-   that anchors every card's actions on one consistent right edge. */
-.settings-card {
-  padding: 0;
-  overflow: hidden;
-}
-
-.settings-card-body {
+.settings-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-6);
-}
-
-.settings-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
-.settings-card-head-action {
+.settings-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: var(--divider);
+}
+
+.settings-group-action {
   flex-shrink: 0;
 }
 
-.settings-card-footer {
+.settings-rows {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
-  background: var(--hc-surface-tint);
-  border-block-start: var(--divider);
+  flex-direction: column;
 }
 
-.settings-card-hint {
-  flex: 1 1 14rem;
+.settings-row {
+  display: grid;
+  grid-template-columns: clamp(14rem, 28%, 20rem) minmax(0, 1fr) minmax(5rem, auto);
+  gap: var(--space-4) var(--space-8);
+  align-items: start;
+  padding-block: var(--space-5);
+  border-block-end: var(--divider);
+}
+
+.settings-row:last-child {
+  border-block-end: none;
+}
+
+.settings-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   min-inline-size: 0;
 }
 
-.settings-card-actions {
+.settings-row-title {
+  font-size: var(--hc-type-body);
+  font-weight: var(--hc-weight-medium);
+  line-height: var(--hc-type-body-lh);
+  color: var(--hc-text-ink);
+}
+
+.settings-row-desc {
+  margin: 0;
+}
+
+.settings-row-value {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.settings-row-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  margin-inline-start: auto;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  min-inline-size: 5rem;
 }
 
-/* Uniform read-only value well inside a settings card body. */
-.settings-value-box {
+/* Quiet right-column action link ("Edit", "Delete", "Upload", "Manage"). */
+.settings-action {
   display: inline-flex;
   align-items: center;
-  align-self: flex-start;
-  max-inline-size: 100%;
-  min-block-size: 2.25rem;
-  padding: var(--space-1) var(--space-3);
+  gap: var(--space-1);
+  padding: 0;
+  font: inherit;
+  font-size: var(--hc-type-body);
+  font-weight: var(--hc-weight-medium);
+  line-height: var(--hc-type-body-lh);
+  color: var(--hc-text-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hc-line-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  transition:
+    color 120ms ease,
+    text-decoration-color 120ms ease;
+}
+
+.settings-action:hover:not(:disabled) {
+  text-decoration-color: var(--hc-text-ink);
+}
+
+.settings-action:focus-visible {
+  outline: 2px solid var(--hc-focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--hc-radius-control);
+}
+
+.settings-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.settings-action-muted {
+  color: var(--hc-text-muted);
+  text-decoration: none;
+}
+
+.settings-action-muted:hover:not(:disabled) {
+  color: var(--hc-text-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hc-line-strong);
+}
+
+.settings-action-danger {
+  color: var(--hc-status-danger-text);
+  text-decoration-color: var(--hc-status-danger-line);
+}
+
+.settings-action-danger:hover:not(:disabled) {
+  text-decoration-color: var(--hc-status-danger-text);
+}
+
+/* Profile media thumbnails inside a settings row. */
+.settings-avatar-preview {
+  display: block;
+  inline-size: 3.5rem;
+  block-size: 3.5rem;
+  object-fit: cover;
+  border: var(--divider);
+  border-radius: 9999px;
   background: var(--hc-surface-tint);
+}
+
+.settings-avatar-preview[data-organization] {
+  border-radius: var(--hc-radius-card);
+}
+
+.settings-banner-preview {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 20rem;
+  aspect-ratio: 16 / 5;
+  object-fit: cover;
   border: var(--divider);
   border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
+}
+
+.settings-logo-preview {
+  display: block;
+  max-inline-size: 14rem;
+  max-block-size: 3.5rem;
+  object-fit: contain;
+  padding: var(--space-2) var(--space-3);
+  border: var(--divider);
+  border-radius: var(--hc-radius-control);
+  background: var(--hc-surface-tint);
 }
 
 .settings-form {
@@ -504,7 +638,14 @@ button.menu-row:disabled:not([aria-current]) {
   flex-direction: column;
   gap: var(--space-4);
   inline-size: 100%;
-  max-inline-size: 26rem;
+  max-inline-size: 32rem;
+}
+
+.settings-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .settings-inline-actions {
@@ -512,6 +653,34 @@ button.menu-row:disabled:not([aria-current]) {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+.settings-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-url-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.settings-url-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.settings-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2) var(--space-4);
 }
 
 .settings-list {
@@ -624,17 +793,36 @@ button.menu-row:disabled:not([aria-current]) {
   gap: var(--space-3);
 }
 
+.settings-multiline {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .break-anywhere {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 639px) {
-  .settings-card-body {
-    padding: var(--space-4);
+@media (max-width: 767px) {
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3) var(--space-4);
   }
 
-  .settings-card-footer {
-    padding: var(--space-3) var(--space-4);
+  .settings-row-label {
+    grid-column: 1 / -1;
+  }
+
+  .settings-row-value {
+    grid-column: 1;
+  }
+
+  .settings-row-actions {
+    grid-column: 2;
+    min-inline-size: 0;
+  }
+
+  .settings-url-editor-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

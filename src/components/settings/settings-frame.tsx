@@ -1,7 +1,8 @@
-import { Card, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { type ReactNode, useId } from "react";
+import { Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
+import Link from "next/link";
+import { type ButtonHTMLAttributes, type ReactNode, useId } from "react";
 
-/** Standard content stack for a settings sub-page: optional muted intro + settings cards. */
+/** Full-width settings sub-page wrapper. */
 export function SettingsSection({
   description,
   children,
@@ -21,36 +22,23 @@ export function SettingsSection({
   );
 }
 
-/**
- * Structured Vercel-style settings card built on `@hypercerts-org/ui-react`'s
- * `Card`: crisp surface body for title, description and value/form, paired
- * with a tinted footer bar holding a quiet left-aligned hint and consistently
- * right-aligned action buttons.
- */
-export function SettingsCard({
+/** A titled group of hairline-separated settings rows (e.g. "Details", "Organization details"). */
+export function SettingsGroup({
   title,
   description,
-  headerAction,
-  hint,
-  actions,
+  action,
   children,
 }: {
-  title: string;
+  title?: string;
   description?: ReactNode;
-  /** Optional control aligned to the top-right of the card header. */
-  headerAction?: ReactNode;
-  /** Quiet helper copy aligned to the left of the footer bar. */
-  hint?: ReactNode;
-  /** Action button(s) aligned to the right of the footer bar. */
-  actions?: ReactNode;
-  children?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
 }) {
   const titleId = useId();
-  const hasFooter = hint !== undefined || actions !== undefined;
   return (
-    <Card variant="panel" as="section" aria-labelledby={titleId} className="settings-card">
-      <div className="settings-card-body">
-        <div className="settings-card-head">
+    <section className="settings-group" aria-labelledby={title ? titleId : undefined}>
+      {title && (
+        <div className="settings-group-head">
           <div className="section-heading">
             <Heading level={2} size="heading" id={titleId}>
               {title}
@@ -61,43 +49,102 @@ export function SettingsCard({
               </Text>
             )}
           </div>
-          {headerAction && <div className="settings-card-head-action">{headerAction}</div>}
-        </div>
-        {children}
-      </div>
-      {hasFooter && (
-        <div className="settings-card-footer">
-          <div className="settings-card-hint">
-            {hint ? (
-              <Text size="body-sm" tone="muted">
-                {hint}
-              </Text>
-            ) : null}
-          </div>
-          {actions && <div className="settings-card-actions">{actions}</div>}
+          {action && <div className="settings-group-action">{action}</div>}
         </div>
       )}
-    </Card>
+      <div className="settings-rows">{children}</div>
+    </section>
   );
 }
 
-const SKELETON_KEYS = ["card-1", "card-2", "card-3", "card-4", "card-5"] as const;
-
-/** Card-shaped loading placeholders matching `SettingsCard` geometry. */
-export function SettingsCardsSkeleton({ count = 3 }: { count?: number }) {
+/**
+ * Full-width 3-column editorial settings row separated by hairlines:
+ *   Left   — label + optional 1-line description
+ *   Middle — current value or expanded inline editor
+ *   Right  — quiet right-aligned text action(s) ("Edit", "Delete  Upload", etc.)
+ */
+export function SettingsRow({
+  label,
+  description,
+  actions,
+  children,
+}: {
+  label: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
-    <div className="settings" aria-hidden>
-      {SKELETON_KEYS.slice(0, count).map((key) => (
-        <Card key={key} variant="panel" className="settings-card">
-          <div className="settings-card-body">
-            <Skeleton variant="line" className="skeleton-heading" />
-            <Skeleton variant="text" lines={2} />
-          </div>
-          <div className="settings-card-footer">
+    <div className="settings-row">
+      <div className="settings-row-label">
+        <span className="settings-row-title">{label}</span>
+        {description && (
+          <Text size="body-sm" tone="muted" className="settings-row-desc">
+            {description}
+          </Text>
+        )}
+      </div>
+      <div className="settings-row-value">{children}</div>
+      {actions !== undefined && <div className="settings-row-actions">{actions}</div>}
+    </div>
+  );
+}
+
+/** Quiet underlined text action for the right column of a `SettingsRow`. */
+export function SettingsAction({
+  tone = "default",
+  href,
+  className,
+  children,
+  ...rest
+}: {
+  tone?: "default" | "muted" | "danger";
+  href?: string;
+  className?: string;
+  children: ReactNode;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
+  const cls = [
+    "settings-action",
+    tone === "muted" && "settings-action-muted",
+    tone === "danger" && "settings-action-danger",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (href) {
+    return (
+      <Link href={href} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" className={cls} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+const SKELETON_KEYS = ["row-1", "row-2", "row-3", "row-4", "row-5", "row-6"] as const;
+
+/** Row-shaped loading placeholders matching `SettingsRow` geometry. */
+export function SettingsRowsSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="settings-rows" aria-hidden>
+      {SKELETON_KEYS.slice(0, rows).map((key) => (
+        <div key={key} className="settings-row">
+          <div className="settings-row-label">
+            <Skeleton variant="line" className="skeleton-label" />
             <Skeleton variant="line" className="skeleton-meta" />
-            <Skeleton variant="box" className="skeleton-control" />
           </div>
-        </Card>
+          <div className="settings-row-value">
+            <Skeleton variant="line" className="skeleton-heading" />
+          </div>
+          <div className="settings-row-actions">
+            <Skeleton variant="line" className="skeleton-label" />
+          </div>
+        </div>
       ))}
     </div>
   );

@@ -1,4 +1,4 @@
-import type { LexMap } from "@atproto/lex";
+import { type LexMap, parseCid, type TypedBlobRef } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecordSigner } from "@/lib/atproto/created-via";
@@ -10,6 +10,8 @@ import {
   findEndorsementDefinition,
   organizationRepository,
   ownRepository,
+  patchOrganization,
+  patchProfile,
   type Repository,
   removeItemsFromList,
   updateListDetails,
@@ -394,6 +396,131 @@ describe("list record mutations", () => {
       expect.objectContaining({ items: [{ itemIdentifier: a2 }] }),
       "list1",
       CURRENT_CID,
+    );
+  });
+});
+
+describe("patchProfile and patchOrganization", () => {
+  const BLOB_REF: TypedBlobRef = {
+    $type: "blob",
+    ref: parseCid("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
+    mimeType: "image/png",
+    size: 1234,
+  };
+
+  function makeRepo(current: { cid: string; value: LexMap } | null) {
+    const putRecord = vi.fn(async (_record: LexMap, _rkey: string, _swap?: string) => ({
+      uri: `at://${user}/app.certified.actor.profile/self`,
+      cid: "bafypatched",
+    }));
+    const createRecord = vi.fn(async () => ({
+      uri: `at://${user}/app.certified.actor.organization/self`,
+      cid: "bafycreated",
+    }));
+    const repo: Repository = {
+      did: user,
+      getRecord: async () => current,
+      listRecords: async () => ({ records: [] }),
+      putRecord,
+      createRecord,
+      deleteRecord: async () => {},
+    };
+    return { repo, putRecord, createRecord };
+  }
+
+  it("patches selected profile fields while preserving untouched fields and supporting blob set/clear", async () => {
+    const { repo, putRecord } = makeRepo({
+      cid: CURRENT_CID,
+      value: {
+        $type: "app.certified.actor.profile",
+        displayName: "Keep Me",
+        pronouns: "they/them",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+
+    const saved = await patchProfile(
+      repo,
+      { website: "https://example.org", langs: ["en", "sv"], avatar: BLOB_REF },
+      CURRENT_CID,
+      sign,
+    );
+
+    expect(saved.cid).toBe("bafypatched");
+    expect(saved.displayName).toBe("Keep Me");
+    expect(saved.pronouns).toBe("they/them");
+    expect(saved.website).toBe("https://example.org");
+    expect(saved.langs).toEqual(["en", "sv"]);
+    expect(saved.avatarUrl).toContain(
+      "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+    );
+    expect(putRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: "Keep Me",
+        pronouns: "they/them",
+        website: "https://example.org",
+        langs: ["en", "sv"],
+        avatar: { $type: "org.hypercerts.defs#smallImage", image: BLOB_REF },
+      }),
+      "self",
+      CURRENT_CID,
+    );
+  });
+
+  it("refuses patchProfile on compare-and-swap CID mismatch", async () => {
+    const { repo, putRecord } = makeRepo({
+      cid: CURRENT_CID,
+      value: { $type: "app.certified.actor.profile", createdAt: "2026-01-01T00:00:00.000Z" },
+    });
+    const err = await failureOf(patchProfile(repo, { pronouns: "she/her" }, "bafystale", sign));
+    expect(err).toMatchObject({ name: "WriteError", reason: "conflict" });
+    expect(putRecord).not.toHaveBeenCalled();
+  });
+
+  it("creates an organization record with foundedDate, urls, longDescription, visibility, and logo", async () => {
+    const { repo, createRecord } = makeRepo(null);
+    const saved = await patchOrganization(
+      repo,
+      {
+        legalName: "Forest Collective",
+        publicEmail: "hello@forest.org",
+        organizationType: ["nonprofit", "community"],
+        foundedDate: "2021-05-10",
+        urls: [{ url: "https://forest.org/donate", label: "Donate" }],
+        longDescription: "Long form mission statement.",
+        visibility: "unlisted",
+        langs: ["en"],
+        logo: BLOB_REF,
+      },
+      null,
+      sign,
+    );
+
+    expect(saved).toMatchObject({
+      exists: true,
+      cid: "bafycreated",
+      legalName: "Forest Collective",
+      publicEmail: "hello@forest.org",
+      organizationType: ["nonprofit", "community"],
+      foundedDate: "2021-05-10",
+      urls: [{ url: "https://forest.org/donate", label: "Donate" }],
+      longDescription: "Long form mission statement.",
+      visibility: "unlisted",
+      langs: ["en"],
+    });
+    expect(createRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        $type: "app.certified.actor.organization",
+        legalName: "Forest Collective",
+        foundedDate: "2021-05-10T00:00:00.000Z",
+        longDescription: {
+          $type: "org.hypercerts.defs#descriptionString",
+          value: "Long form mission statement.",
+        },
+        visibility: "unlisted",
+        logo: { $type: "org.hypercerts.defs#smallImage", image: BLOB_REF },
+      }),
+      "self",
     );
   });
 });

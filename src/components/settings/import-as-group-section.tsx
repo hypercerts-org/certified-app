@@ -3,17 +3,17 @@
 import { Banner, Button, ResponsiveDialog, Text } from "@hypercerts-org/ui-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { NewGroupDialog } from "@/components/group-dialogs";
 import { groupSettingsHref } from "@/lib/routes";
 import { promotePersonalAccountToGroup } from "@/lib/settings-actions";
-import { SettingsCard } from "./settings-frame";
+import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
 import { UnlockFields, useUnlockSession } from "./unlock-session";
 
 /**
- * Promotes the signed-in personal account into a CGS group (`app.certified.group.import`),
- * or opens the New group dialog to create a separate group alongside it.
+ * Create a new group alongside your personal account, or promote the signed-in
+ * account into a CGS group (`app.certified.group.import`).
  */
 export function ImportAsGroupSection({
   did,
@@ -24,10 +24,10 @@ export function ImportAsGroupSection({
   handle: string | null;
   pdsDomain: string;
 }) {
-  const formId = useId();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [asking, setAsking] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [promotedError, setPromotedError] = useState<string | null>(null);
@@ -53,59 +53,91 @@ export function ImportAsGroupSection({
 
   return (
     <>
-      <SettingsCard
-        title="Create a new group"
-        description="Want a shared group alongside your personal account? Create a separate group account that teammates can help manage."
-        hint="You start as the group's owner and can invite members."
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => setNewGroupOpen(true)}>
-            Create new group
-          </Button>
-        }
-      />
-
-      <SettingsCard
-        title="Turn this account into a group"
-        description={
-          <>
-            <strong>{accountLabel}</strong> becomes a group with you as its owner, so teammates can
-            help manage it. Its handle, profile and records stay, nothing is deleted, and you can
-            turn it back into a regular account later.
-          </>
-        }
-        hint="Your password is used once to authorize the group service and is never stored."
-        actions={
-          <Button
-            type="submit"
-            form={formId}
-            variant="primary"
-            size="sm"
-            loading={unlock.submitting}
-            disabled={!unlock.canSubmit}
-          >
-            Turn into a group
-          </Button>
-        }
-      >
-        <form
-          id={formId}
-          className="settings-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!unlock.canSubmit) return;
-            if (confirmed) void unlock.submit();
-            else setAsking(true);
-          }}
+      <SettingsGroup title="Groups">
+        <SettingsRow
+          label="Create a new group"
+          description="Keep this as your personal account and start a shared group alongside it."
+          actions={<SettingsAction onClick={() => setNewGroupOpen(true)}>Create</SettingsAction>}
         >
-          <UnlockFields state={unlock} />
-          {promotedError && !unlock.error && (
-            <Banner tone="danger" role="alert">
-              {promotedError}
-            </Banner>
+          <Text size="body-sm" tone="muted">
+            You start as the group&apos;s owner and can invite teammates.
+          </Text>
+        </SettingsRow>
+
+        <SettingsRow
+          label="Turn this account into a group"
+          description={
+            <>
+              Convert <strong>{accountLabel}</strong> into a group so several people can manage it.
+              Its handle and records stay, and you can turn it back later.
+            </>
+          }
+          actions={
+            converting ? null : (
+              <SettingsAction
+                onClick={() => {
+                  setPromotedError(null);
+                  setConverting(true);
+                }}
+              >
+                Convert
+              </SettingsAction>
+            )
+          }
+        >
+          {converting ? (
+            <form
+              className="settings-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!unlock.canSubmit) return;
+                if (confirmed) void unlock.submit();
+                else setAsking(true);
+              }}
+            >
+              <UnlockFields
+                state={unlock}
+                intro="Enter your account password to confirm. It's used once to authorize the group service and is never stored."
+              />
+              {promotedError && !unlock.error && (
+                <Banner tone="danger" role="alert">
+                  {promotedError}
+                </Banner>
+              )}
+              <div className="settings-form-actions">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={unlock.submitting}
+                  disabled={!unlock.canSubmit}
+                >
+                  Turn into a group
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={unlock.submitting}
+                  onClick={() => {
+                    unlock.reset();
+                    setConverting(false);
+                    setConfirmed(false);
+                    setPromotedError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <Text size="body-sm" tone="muted">
+              Personal account
+            </Text>
           )}
-        </form>
-      </SettingsCard>
+        </SettingsRow>
+      </SettingsGroup>
 
       <ResponsiveDialog
         open={asking}

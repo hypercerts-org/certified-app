@@ -9,6 +9,7 @@ import {
   currentDatetimeString,
   type LexMap,
   type l,
+  type TypedBlobRef,
   XrpcError,
   XrpcResponseError,
 } from "@atproto/lex";
@@ -22,7 +23,9 @@ import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 import {
+  avatarUrl,
   ENDORSEMENT_BADGE_TYPE,
+  imageUrl,
   PLAIN_ENDORSEMENT,
   type ProfileFields,
   type ProfileVersion,
@@ -30,10 +33,13 @@ import {
 } from "./views";
 
 const profile = app.certified.actor.profile;
+const organization = app.certified.actor.organization;
 const badgeDefinition = app.certified.badge.definition;
 const badgeAward = app.certified.badge.award;
 const collection = org.hypercerts.collection;
 const descriptionString = org.hypercerts.defs.descriptionString;
+const smallImage = org.hypercerts.defs.smallImage;
+const largeImage = org.hypercerts.defs.largeImage;
 
 /**
  * Why a write failed. "unknown": it was sent but no answer came back
@@ -280,6 +286,322 @@ export async function updateProfile(
   }
   // The version the PDS stored, which a later index read must show.
   return { uri: stored.uri, cid: stored.cid, ...profileFields(signed) };
+}
+
+// ---------------------------------------------------------------------------
+// Full Profile & Organization record reads/patches (Profile Settings)
+// ---------------------------------------------------------------------------
+
+export type ProfileDetails = {
+  cid: string | null;
+  displayName: string;
+  description: string;
+  pronouns: string;
+  website: string;
+  langs: string[];
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+};
+
+export type ProfilePatch = {
+  displayName?: string;
+  description?: string;
+  pronouns?: string;
+  website?: string;
+  langs?: string[];
+  /** Pass a TypedBlobRef to set a new uploaded image, `null` to delete, `undefined` to keep. */
+  avatar?: TypedBlobRef | null;
+  banner?: TypedBlobRef | null;
+};
+
+function readLangs(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function toProfileDetails(
+  did: string,
+  cid: string | null,
+  record: LexMap | undefined,
+): ProfileDetails {
+  return {
+    cid,
+    displayName: typeof record?.displayName === "string" ? record.displayName : "",
+    description: typeof record?.description === "string" ? record.description : "",
+    pronouns: typeof record?.pronouns === "string" ? record.pronouns : "",
+    website: typeof record?.website === "string" ? record.website : "",
+    langs: readLangs(record?.langs),
+    avatarUrl: record?.avatar ? avatarUrl(did, record.avatar) : null,
+    bannerUrl: record?.banner ? imageUrl(did, record.banner, "banner") : null,
+  };
+}
+
+/** Reads the full `app.certified.actor.profile/self` record from `repo`'s PDS. */
+export async function getProfileDetails(repo: Repository): Promise<ProfileDetails> {
+  const current = await repo.getRecord(profile.$type, "self");
+  return toProfileDetails(repo.did, current?.cid ?? null, current?.value);
+}
+
+/**
+ * Patches selected fields on `app.certified.actor.profile/self`, keeping all
+ * untouched fields intact, validating against the lexicon, and signing with
+ * `createdVia`. Enforces compare-and-swap via `expectedCid`.
+ */
+export async function patchProfile(
+  repo: Repository,
+  patch: ProfilePatch,
+  expectedCid: string | null,
+  sign: RecordSigner,
+): Promise<ProfileDetails> {
+  const current = await repo.getRecord(profile.$type, "self");
+  if ((current?.cid ?? null) !== expectedCid) throw conflict();
+
+  const record: LexMap = {
+    ...current?.value,
+    $type: profile.$type,
+    createdAt: current?.value.createdAt ?? currentDatetimeString(),
+  };
+
+  for (const key of ["displayName", "description", "pronouns", "website"] as const) {
+    if (patch[key] !== undefined) {
+      const value = patch[key].trim();
+      if (value) record[key] = value;
+      else delete record[key];
+    }
+  }
+  if (patch.langs !== undefined) {
+    const cleaned = patch.langs.map((tag) => tag.trim()).filter(Boolean);
+    if (cleaned.length > 0) record.langs = cleaned;
+    else delete record.langs;
+  }
+  if (patch.avatar !== undefined) {
+    if (patch.avatar === null) delete record.avatar;
+    else record.avatar = { $type: smallImage.$type, image: patch.avatar };
+  }
+  if (patch.banner !== undefined) {
+    if (patch.banner === null) delete record.banner;
+    else record.banner = { $type: largeImage.$type, image: patch.banner };
+  }
+
+  const checked = profile.$safeValidate(record);
+  if (!checked.success) throw new WriteError("invalid", checked.reason.message);
+
+  const signed = await sign(checked.value, { repositoryDid: repo.did });
+  let stored: StoredRecord;
+  try {
+    stored = current
+      ? await repo.putRecord(signed, "self", current.cid)
+      : await repo.createRecord(signed, "self");
+  } catch (err) {
+    const failure = writeFailure(err);
+    if (!current && failure instanceof XrpcResponseError) {
+      if (await repo.getRecord(profile.$type, "self")) throw conflict();
+    }
+    throw failure;
+  }
+
+  const expected = (await cidForLex(signed)).toString();
+  if (expected !== stored.cid) {
+    logError("[writes] stored CID differs from the signed profile's", null, {
+      uri: stored.uri,
+      stored: stored.cid,
+      signed: expected,
+    });
+  }
+  return toProfileDetails(repo.did, stored.cid, signed);
+}
+
+export type OrganizationUrlItem = { url: string; label: string };
+
+export type OrganizationDetails = {
+  exists: boolean;
+  cid: string | null;
+  legalName: string;
+  logoUrl: string | null;
+  publicEmail: string;
+  organizationType: string[];
+  /** ISO date `YYYY-MM-DD`, or empty string when unset. */
+  foundedDate: string;
+  urls: OrganizationUrlItem[];
+  locationUri: string | null;
+  longDescription: string;
+  /** True when the record stores a Leaflet document or external ref rather than inline text. */
+  longDescriptionReadOnly: boolean;
+  visibility: "public" | "unlisted";
+  langs: string[];
+};
+
+export type OrganizationPatch = {
+  legalName?: string;
+  logo?: TypedBlobRef | null;
+  publicEmail?: string;
+  organizationType?: string[];
+  /** `YYYY-MM-DD` or empty string to clear. */
+  foundedDate?: string;
+  urls?: OrganizationUrlItem[];
+  location?: StoredRecord | null;
+  longDescription?: string;
+  visibility?: "public" | "unlisted";
+  langs?: string[];
+};
+
+function readOrganizationUrls(value: unknown): OrganizationUrlItem[] {
+  if (!Array.isArray(value)) return [];
+  const out: OrganizationUrlItem[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const url = (item as { url?: unknown }).url;
+    const label = (item as { label?: unknown }).label;
+    if (typeof url === "string" && url.trim()) {
+      out.push({ url: url.trim(), label: typeof label === "string" ? label.trim() : "" });
+    }
+  }
+  return out;
+}
+
+function readLongDescription(value: unknown): { text: string; readOnly: boolean } {
+  if (!value) return { text: "", readOnly: false };
+  if (typeof value === "string") return { text: value, readOnly: false };
+  if (typeof value === "object") {
+    const rec = value as { $type?: unknown; value?: unknown };
+    if (rec.$type === descriptionString.$type && typeof rec.value === "string") {
+      return { text: rec.value, readOnly: false };
+    }
+    return { text: "", readOnly: true };
+  }
+  return { text: "", readOnly: false };
+}
+
+function toOrganizationDetails(
+  did: string,
+  cid: string | null,
+  record: LexMap | undefined,
+): OrganizationDetails {
+  const longDesc = readLongDescription(record?.longDescription);
+  const rawFounded = typeof record?.foundedDate === "string" ? record.foundedDate : "";
+  const foundedDate = /^\d{4}-\d{2}-\d{2}/.test(rawFounded) ? rawFounded.slice(0, 10) : "";
+  const loc = record?.location as { uri?: unknown } | undefined;
+  return {
+    exists: cid !== null,
+    cid,
+    legalName: typeof record?.legalName === "string" ? record.legalName : "",
+    logoUrl: record?.logo ? imageUrl(did, record.logo, "card") : null,
+    publicEmail: typeof record?.publicEmail === "string" ? record.publicEmail : "",
+    organizationType: readLangs(record?.organizationType),
+    foundedDate,
+    urls: readOrganizationUrls(record?.urls),
+    locationUri: typeof loc?.uri === "string" ? loc.uri : null,
+    longDescription: longDesc.text,
+    longDescriptionReadOnly: longDesc.readOnly,
+    visibility: record?.visibility === "unlisted" ? "unlisted" : "public",
+    langs: readLangs(record?.langs),
+  };
+}
+
+/** Reads `app.certified.actor.organization/self` from `repo`'s PDS. */
+export async function getOrganizationDetails(repo: Repository): Promise<OrganizationDetails> {
+  const current = await repo.getRecord(organization.$type, "self");
+  return toOrganizationDetails(repo.did, current?.cid ?? null, current?.value);
+}
+
+/**
+ * Patches selected fields on `app.certified.actor.organization/self`, keeping
+ * untouched fields intact, validating against the lexicon, and signing with
+ * `createdVia`.
+ */
+export async function patchOrganization(
+  repo: Repository,
+  patch: OrganizationPatch,
+  expectedCid: string | null,
+  sign: RecordSigner,
+): Promise<OrganizationDetails> {
+  const current = await repo.getRecord(organization.$type, "self");
+  if ((current?.cid ?? null) !== expectedCid) throw conflict();
+
+  const record: LexMap = {
+    ...current?.value,
+    $type: organization.$type,
+    createdAt: current?.value.createdAt ?? currentDatetimeString(),
+  };
+
+  if (patch.legalName !== undefined) {
+    const value = patch.legalName.trim();
+    if (value) record.legalName = value;
+    else delete record.legalName;
+  }
+  if (patch.publicEmail !== undefined) {
+    const value = patch.publicEmail.trim();
+    if (value) record.publicEmail = value;
+    else delete record.publicEmail;
+  }
+  if (patch.logo !== undefined) {
+    if (patch.logo === null) delete record.logo;
+    else record.logo = { $type: smallImage.$type, image: patch.logo };
+  }
+  if (patch.organizationType !== undefined) {
+    const cleaned = [...new Set(patch.organizationType.map((t) => t.trim()).filter(Boolean))];
+    if (cleaned.length > 0) record.organizationType = cleaned;
+    else delete record.organizationType;
+  }
+  if (patch.foundedDate !== undefined) {
+    const value = patch.foundedDate.trim();
+    if (value) record.foundedDate = `${value}T00:00:00.000Z`;
+    else delete record.foundedDate;
+  }
+  if (patch.urls !== undefined) {
+    const cleaned = patch.urls
+      .map((item) => ({
+        url: item.url.trim(),
+        ...(item.label.trim() ? { label: item.label.trim() } : {}),
+      }))
+      .filter((item) => item.url.length > 0);
+    if (cleaned.length > 0) record.urls = cleaned;
+    else delete record.urls;
+  }
+  if (patch.location !== undefined) {
+    if (patch.location === null) delete record.location;
+    else record.location = { uri: patch.location.uri, cid: patch.location.cid };
+  }
+  if (patch.longDescription !== undefined) {
+    const value = patch.longDescription.trim();
+    if (value) record.longDescription = { $type: descriptionString.$type, value };
+    else delete record.longDescription;
+  }
+  if (patch.visibility !== undefined) {
+    record.visibility = patch.visibility;
+  }
+  if (patch.langs !== undefined) {
+    const cleaned = patch.langs.map((tag) => tag.trim()).filter(Boolean);
+    if (cleaned.length > 0) record.langs = cleaned;
+    else delete record.langs;
+  }
+
+  const checked = organization.$safeValidate(record);
+  if (!checked.success) throw new WriteError("invalid", checked.reason.message);
+
+  const signed = await sign(checked.value, { repositoryDid: repo.did });
+  let stored: StoredRecord;
+  try {
+    stored = current
+      ? await repo.putRecord(signed, "self", current.cid)
+      : await repo.createRecord(signed, "self");
+  } catch (err) {
+    const failure = writeFailure(err);
+    if (!current && failure instanceof XrpcResponseError) {
+      if (await repo.getRecord(organization.$type, "self")) throw conflict();
+    }
+    throw failure;
+  }
+
+  const expected = (await cidForLex(signed)).toString();
+  if (expected !== stored.cid) {
+    logError("[writes] stored CID differs from the signed organization's", null, {
+      uri: stored.uri,
+      stored: stored.cid,
+      signed: expected,
+    });
+  }
+  return toOrganizationDetails(repo.did, stored.cid, signed);
 }
 
 /** More badge definitions than an account plausibly keeps; guards against looping cursors. */

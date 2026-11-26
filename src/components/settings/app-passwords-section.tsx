@@ -11,7 +11,7 @@ import {
   Text,
 } from "@hypercerts-org/ui-react";
 import { KeyRound } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Empty } from "@/components/empty";
 import {
@@ -23,7 +23,7 @@ import {
   revokePersonalAppPassword,
   unlockPersonalSession,
 } from "@/lib/settings-actions";
-import { SettingsCard, SettingsCardsSkeleton } from "./settings-frame";
+import { SettingsAction, SettingsGroup, SettingsRow, SettingsRowsSkeleton } from "./settings-frame";
 import { UnlockDialog, useUnlockSession } from "./unlock-session";
 
 function formatDate(iso: string): string {
@@ -37,7 +37,6 @@ function formatDate(iso: string): string {
  * elevated PDS password session.
  */
 export function AppPasswordsSection() {
-  const createFormId = useId();
   const [status, setStatus] = useState<"checking" | "locked" | "unlocked">("checking");
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [items, setItems] = useState<AppPasswordInfo[]>([]);
@@ -148,22 +147,23 @@ export function AppPasswordsSection() {
   };
 
   if (status === "checking") {
-    return <SettingsCardsSkeleton count={1} />;
+    return <SettingsRowsSkeleton rows={2} />;
   }
 
   if (status === "locked") {
     return (
       <>
-        <SettingsCard
-          title="Unlock app passwords"
-          description="Confirm your account password to view, create, or revoke app passwords."
-          hint="Your unlocked session expires automatically after 10 minutes."
-          actions={
-            <Button variant="secondary" size="sm" onClick={() => setUnlockOpen(true)}>
-              Unlock
-            </Button>
-          }
-        />
+        <SettingsGroup title="App passwords">
+          <SettingsRow
+            label="Unlock app passwords"
+            description="Confirm your password to view, create, or revoke app passwords."
+            actions={<SettingsAction onClick={() => setUnlockOpen(true)}>Unlock</SettingsAction>}
+          >
+            <Text size="body-sm" tone="muted">
+              Locked — sessions close automatically after 10 minutes
+            </Text>
+          </SettingsRow>
+        </SettingsGroup>
         <UnlockDialog
           open={unlockOpen}
           onClose={() => setUnlockOpen(false)}
@@ -177,113 +177,111 @@ export function AppPasswordsSection() {
 
   return (
     <>
-      <SettingsCard
-        title="Add app password"
-        description="Create a dedicated password for another AT Protocol app or CLI."
-        hint="The generated password is shown once after creation."
-        actions={
-          <Button
-            type="submit"
-            form={createFormId}
-            variant="primary"
-            size="sm"
-            loading={creating}
-            disabled={!name.trim() || creating}
-          >
-            Create app password
-          </Button>
+      <SettingsGroup
+        title="App passwords"
+        action={
+          <SettingsAction tone="muted" disabled={locking} onClick={() => void handleLock()}>
+            Lock session
+          </SettingsAction>
         }
       >
-        <form
-          id={createFormId}
-          className="settings-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleCreate();
-          }}
+        <SettingsRow
+          label="Add app password"
+          description="Give it a name so you remember which app uses it."
         >
-          <Field label="Name" description="Choose a label so you remember which app uses it.">
-            {(field) => (
-              <Input
-                {...field}
-                value={name}
-                onChange={(e) => setName(e.currentTarget.value)}
-                placeholder="e.g. Bluesky CLI"
-                maxLength={100}
-                disabled={creating}
-                required
-              />
+          <form
+            className="settings-form"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+          >
+            <Field label="Name">
+              {(field) => (
+                <Input
+                  {...field}
+                  value={name}
+                  onChange={(e) => setName(e.currentTarget.value)}
+                  placeholder="e.g. Bluesky CLI"
+                  maxLength={100}
+                  disabled={creating}
+                  required
+                />
+              )}
+            </Field>
+            {createError && (
+              <Banner tone="danger" role="alert">
+                {createError}
+              </Banner>
             )}
-          </Field>
-          {createError && (
-            <Banner tone="danger" role="alert">
-              {createError}
+            <div className="settings-form-actions">
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={creating}
+                disabled={!name.trim() || creating}
+              >
+                Create app password
+              </Button>
+            </div>
+          </form>
+          {created && (
+            <Banner tone="warning">
+              <div className="stack">
+                <Text size="body-sm" tone="ink">
+                  Copy the password for <strong>{created.name}</strong> now — it won&apos;t be shown
+                  again.
+                </Text>
+                <CopyableId value={created.password} label={`App password for ${created.name}`} />
+              </div>
             </Banner>
           )}
-        </form>
-        {created && (
-          <Banner tone="warning">
-            <div className="stack">
-              <Text size="body-sm" tone="ink">
-                Copy the password for <strong>{created.name}</strong> now — it won&apos;t be shown
-                again.
-              </Text>
-              <CopyableId value={created.password} label={`App password for ${created.name}`} />
-            </div>
-          </Banner>
-        )}
-      </SettingsCard>
+        </SettingsRow>
 
-      <SettingsCard
-        title="Active app passwords"
-        description="Revoking a password immediately signs out any app using it."
-        headerAction={
-          <Button variant="ghost" size="sm" loading={locking} onClick={() => void handleLock()}>
-            Lock session
-          </Button>
-        }
-      >
-        {loading && items.length === 0 ? (
-          <Skeleton variant="text" lines={3} />
-        ) : loadError ? (
-          <div className="stack">
-            <Banner tone="danger">{loadError}</Banner>
-            <Button variant="secondary" size="sm" onClick={() => void refresh()}>
-              Try again
-            </Button>
-          </div>
-        ) : items.length === 0 ? (
-          <Empty
-            icon={KeyRound}
-            title="No app passwords yet"
-            description="Create one above to let another AT Protocol client sign in."
-          />
-        ) : (
-          <ul className="divided settings-list">
-            {items.map((item) => (
-              <li key={item.name} className="settings-list-row">
-                <div className="settings-list-row-text">
-                  <Text as="span" tone="ink">
-                    {item.name}
-                  </Text>
-                  <Text as="span" size="body-sm" tone="muted">
-                    Created {formatDate(item.createdAt)}
-                  </Text>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  aria-label={`Revoke ${item.name}`}
-                  onClick={() => setConfirmRevoke(item.name)}
-                >
-                  Revoke
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </SettingsCard>
+        <SettingsRow
+          label="Active passwords"
+          description="Revoking a password immediately signs out any app using it."
+        >
+          {loading && items.length === 0 ? (
+            <Skeleton variant="text" lines={3} />
+          ) : loadError ? (
+            <div className="stack">
+              <Banner tone="danger">{loadError}</Banner>
+              <SettingsAction onClick={() => void refresh()}>Try again</SettingsAction>
+            </div>
+          ) : items.length === 0 ? (
+            <Empty
+              icon={KeyRound}
+              title="No app passwords yet"
+              description="Create one above to let another AT Protocol client sign in."
+            />
+          ) : (
+            <ul className="divided settings-list">
+              {items.map((item) => (
+                <li key={item.name} className="settings-list-row">
+                  <div className="settings-list-row-text">
+                    <Text as="span" tone="ink">
+                      {item.name}
+                    </Text>
+                    <Text as="span" size="body-sm" tone="muted">
+                      Created {formatDate(item.createdAt)}
+                    </Text>
+                  </div>
+                  <SettingsAction
+                    tone="danger"
+                    aria-label={`Revoke ${item.name}`}
+                    onClick={() => setConfirmRevoke(item.name)}
+                  >
+                    Revoke
+                  </SettingsAction>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SettingsRow>
+      </SettingsGroup>
 
       <ResponsiveDialog
         open={confirmRevoke !== null}

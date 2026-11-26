@@ -7,9 +7,9 @@ import { AddMemberDialog, MemberActions } from "@/components/group-dialogs";
 import {
   loadGroupMembers,
   requireGroupSettings,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
-import { SettingsCard, SettingsSection } from "@/components/settings/settings-frame";
+import { SettingsGroup, SettingsSection } from "@/components/settings/settings-frame";
 import { nameOf } from "@/lib/hypercerts/views";
 
 export const metadata: Metadata = { title: "Members and roles" };
@@ -21,18 +21,17 @@ async function GroupMembers({ params }: { params: Promise<{ actor: string }> }) 
   const members = await loadGroupMembers(access.groupDid);
 
   return (
-    <SettingsSection description="Who can act for this group, and what each person can do.">
-      <SettingsCard
-        title="Members"
+    <SettingsSection>
+      <SettingsGroup
+        title={`Members (${members.length})`}
         description={
           access.isOwner
-            ? "You can add members, change roles, and remove admins and members."
+            ? "Add members, change roles, and remove admins and members."
             : access.isAdmin
-              ? "You can add and remove members. Only the owner changes roles."
+              ? "Add and remove members. Only the owner changes roles."
               : "The owner and admins manage who belongs to this group."
         }
-        headerAction={access.isAdmin ? <AddMemberDialog groupDid={access.groupDid} /> : undefined}
-        hint={`${members.length} ${members.length === 1 ? "member" : "members"} in this group.`}
+        action={access.isAdmin ? <AddMemberDialog groupDid={access.groupDid} /> : undefined}
       >
         <ul className="divided settings-list">
           {members.map(({ actor, role, roleLabel }) => {
@@ -66,7 +65,7 @@ async function GroupMembers({ params }: { params: Promise<{ actor: string }> }) 
             );
           })}
         </ul>
-      </SettingsCard>
+      </SettingsGroup>
     </SettingsSection>
   );
 }
@@ -75,7 +74,7 @@ export default function GroupMembersSettingsPage({
   params,
 }: PageProps<"/[actor]/settings/members">) {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={3} />}>
       <GroupMembers params={params} />
     </Suspense>
   );

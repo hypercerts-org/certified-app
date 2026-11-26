@@ -1,7 +1,7 @@
 "use client";
 
 import { Banner, Button, CopyableId, Field, Input, Skeleton, Text } from "@hypercerts-org/ui-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   confirmGroupAccountEmail,
@@ -16,14 +16,14 @@ import {
   updateGroupAccountEmail,
   updateGroupAccountHandle,
 } from "@/lib/settings-actions";
-import { EmailCard, HandleCard } from "./account-controls";
-import { SettingsCard, SettingsCardsSkeleton } from "./settings-frame";
+import { EmailRow, HandleRow } from "./account-controls";
+import { SettingsAction, SettingsRow } from "./settings-frame";
 import { UnlockDialog, useUnlockSession } from "./unlock-session";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Admin/owner handle + email cards for a non-self group.
+ * Admin/owner handle + email rows for a non-self group.
  * Locked: handle is read-only, email is hidden until unlocked with the group's
  * password (short-lived Valkey session on the group's PDS).
  */
@@ -107,43 +107,49 @@ export function GroupAccountManager({
   };
 
   if (checking) {
-    return <SettingsCardsSkeleton count={2} />;
+    return (
+      <>
+        <SettingsRow label="Handle" description="The @handle people use to find this group.">
+          <Skeleton variant="line" className="skeleton-heading" />
+        </SettingsRow>
+        <SettingsRow
+          label="Email"
+          description="Used to sign in directly to this group's PDS account."
+        >
+          <Skeleton variant="line" className="skeleton-heading" />
+        </SettingsRow>
+      </>
+    );
   }
 
   if (!unlocked) {
     return (
       <>
-        <SettingsCard
-          title="Handle"
+        <SettingsRow
+          label="Handle"
           description="The @handle people use to find this group on Certified."
-          hint="Unlock with the group's password to change its handle or set a custom domain."
           actions={
-            <Button variant="secondary" size="sm" onClick={() => setUnlockOpen(true)}>
-              Unlock to edit
-            </Button>
+            <SettingsAction onClick={() => setUnlockOpen(true)}>Unlock to edit</SettingsAction>
           }
         >
-          <div className="settings-value-box">
-            {currentHandle ? (
-              <CopyableId value={currentHandle} displayValue={`@${currentHandle}`} label="Handle" />
-            ) : (
-              <Text size="body-sm" tone="muted">
-                No handle verified
-              </Text>
-            )}
-          </div>
-        </SettingsCard>
+          {currentHandle ? (
+            <CopyableId value={currentHandle} displayValue={`@${currentHandle}`} label="Handle" />
+          ) : (
+            <Text size="body-sm" tone="muted">
+              No handle verified
+            </Text>
+          )}
+        </SettingsRow>
 
-        <SettingsCard
-          title="Email"
+        <SettingsRow
+          label="Email"
           description="Used to sign in directly to this group's PDS account and recover its password."
-          hint="Hidden until unlocked with the group's password."
-          actions={
-            <Button variant="secondary" size="sm" onClick={() => setUnlockOpen(true)}>
-              Unlock group account
-            </Button>
-          }
-        />
+          actions={<SettingsAction onClick={() => setUnlockOpen(true)}>Unlock</SettingsAction>}
+        >
+          <Text size="body-sm" tone="muted">
+            Locked — unlock with the group&apos;s password to view or change
+          </Text>
+        </SettingsRow>
 
         <UnlockDialog
           open={unlockOpen}
@@ -162,7 +168,7 @@ export function GroupAccountManager({
 
   return (
     <>
-      <HandleCard
+      <HandleRow
         did={groupDid}
         initialHandle={currentHandle}
         pdsDomain={pdsDomain}
@@ -175,33 +181,29 @@ export function GroupAccountManager({
       />
 
       {emailLoading ? (
-        <SettingsCard
-          title="Email"
+        <SettingsRow
+          label="Email"
           description="Used to sign in directly to this group's PDS account and recover its password."
         >
-          <Skeleton variant="box" className="skeleton-control" />
-        </SettingsCard>
+          <Skeleton variant="line" className="skeleton-heading" />
+        </SettingsRow>
       ) : emailError ? (
-        <SettingsCard
-          title="Email"
+        <SettingsRow
+          label="Email"
           description="Used to sign in directly to this group's PDS account and recover its password."
-          actions={
-            <Button variant="secondary" size="sm" onClick={() => void loadEmail()}>
-              Try again
-            </Button>
-          }
+          actions={<SettingsAction onClick={() => void loadEmail()}>Try again</SettingsAction>}
         >
           <Banner tone="danger">{emailError}</Banner>
-        </SettingsCard>
+        </SettingsRow>
       ) : (
-        <EmailCard
+        <EmailRow
           initialEmail={email}
           initialConfirmed={emailConfirmed}
           description="Used to sign in directly to this group's PDS account and recover its password."
-          headerAction={
-            <Button variant="ghost" size="sm" loading={locking} onClick={() => void handleLock()}>
-              Lock account
-            </Button>
+          extraAction={
+            <SettingsAction tone="muted" disabled={locking} onClick={() => void handleLock()}>
+              Lock
+            </SettingsAction>
           }
           callbacks={{
             requestUpdate: () => requestGroupAccountEmailUpdate(groupDid),
@@ -217,13 +219,9 @@ export function GroupAccountManager({
 }
 
 /**
- * Admin/owner password reset card for a non-self group.
- * The caller enters the group's own email, receives a reset code from the PDS,
- * and sets a new password (verified against `groupDid` server-side).
+ * Admin/owner password reset row for a non-self group.
  */
-export function GroupPasswordResetCard({ groupDid }: { groupDid: string }) {
-  const requestFormId = useId();
-  const confirmFormId = useId();
+export function GroupPasswordResetRow({ groupDid }: { groupDid: string }) {
   const [step, setStep] = useState<"idle" | "request" | "confirm" | "done">("idle");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -286,67 +284,34 @@ export function GroupPasswordResetCard({ groupDid }: { groupDid: string }) {
     }
   };
 
+  const editing = step === "request" || step === "confirm";
+
   return (
-    <SettingsCard
-      title="Password"
-      description="Set a new password for the group with a code sent to its sign-in email. Enter the group's email, not your own."
-      hint="Requires access to the group's recovery mailbox."
+    <SettingsRow
+      label="Password"
+      description="Reset the group's PDS password with a code sent to its sign-in email."
       actions={
-        step === "request" ? (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setStep("idle");
-                setError(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" form={requestFormId} variant="primary" size="sm" loading={busy}>
-              Send reset code
-            </Button>
-          </>
-        ) : step === "confirm" ? (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setStep("idle");
-                setError(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" form={confirmFormId} variant="primary" size="sm" loading={busy}>
-              Reset password
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
+        editing ? null : (
+          <SettingsAction
             onClick={() => {
               setError(null);
               setStep("request");
             }}
           >
-            Reset password
-          </Button>
+            Reset
+          </SettingsAction>
         )
       }
     >
+      {step === "idle" && (
+        <Text as="span" tone="ink">
+          ••••••••••••
+        </Text>
+      )}
       {step === "done" && <Banner tone="success">The group&apos;s password has been reset.</Banner>}
 
       {step === "request" && (
         <form
-          id={requestFormId}
           className="settings-form"
           noValidate
           onSubmit={(e) => {
@@ -375,12 +340,28 @@ export function GroupPasswordResetCard({ groupDid }: { groupDid: string }) {
               {error}
             </Banner>
           )}
+          <div className="settings-form-actions">
+            <Button type="submit" variant="primary" size="sm" loading={busy}>
+              Send reset code
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setStep("idle");
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       )}
 
       {step === "confirm" && (
         <form
-          id={confirmFormId}
           className="settings-form"
           noValidate
           onSubmit={(e) => {
@@ -432,8 +413,25 @@ export function GroupPasswordResetCard({ groupDid }: { groupDid: string }) {
               {error}
             </Banner>
           )}
+          <div className="settings-form-actions">
+            <Button type="submit" variant="primary" size="sm" loading={busy}>
+              Reset password
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setStep("idle");
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         </form>
       )}
-    </SettingsCard>
+    </SettingsRow>
   );
 }

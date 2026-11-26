@@ -4,7 +4,8 @@ import { extractPdsUrl } from "@atproto/did";
 import { AtprotoHandleResolverNode } from "@atproto/oauth-client-node";
 import { safeFetchWrap } from "@atproto-labs/fetch-node";
 import { createIdentityResolver } from "@atproto-labs/identity-resolver";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
+import { tags } from "@/lib/hypercerts/cache";
 
 // Handles, which the API's views don't carry yet (README, spike finding 4;
 // TECH-896). Resolved with the AT Protocol identity resolver the OAuth client
@@ -24,6 +25,7 @@ const resolver = createIdentityResolver({
 async function resolveHandle(did: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
+  cacheTag(tags.actor(did));
   const { handle } = await resolver.resolve(did);
   // The resolver reports "handle.invalid" unless the handle points back to the DID.
   return handle === "handle.invalid" ? null : handle;
@@ -32,8 +34,10 @@ async function resolveHandle(did: string): Promise<string | null> {
 async function resolveDidOf(handle: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
+  cacheTag(`handle:${handle}`);
   // Resolving a handle also checks that the DID claims it back.
   const { did, handle: verified } = await resolver.resolve(handle);
+  if (verified !== "handle.invalid") cacheTag(tags.actor(did));
   return verified === "handle.invalid" ? null : did;
 }
 

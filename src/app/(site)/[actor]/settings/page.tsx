@@ -1,18 +1,17 @@
-import { Button, CopyableId, Text } from "@hypercerts-org/ui-react";
+import { CopyableId, Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
-import { actorHref } from "@/components/cards";
-import { EmailCard, HandleCard, PasswordResetCard } from "@/components/settings/account-controls";
+import { EmailRow, HandleRow, PasswordResetRow } from "@/components/settings/account-controls";
 import {
   GroupAccountManager,
-  GroupPasswordResetCard,
+  GroupPasswordResetRow,
 } from "@/components/settings/group-account-controls";
 import {
   loadGroupIdentity,
   readPersonalAccountDetails,
   requireGroupSettings,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
-import { SettingsCard, SettingsSection } from "@/components/settings/settings-frame";
+import { SettingsGroup, SettingsRow, SettingsSection } from "@/components/settings/settings-frame";
 import { SignOutForm } from "@/components/sign-out-form";
 
 async function GroupAccountSettings({ params }: { params: Promise<{ actor: string }> }) {
@@ -28,54 +27,47 @@ async function GroupAccountSettings({ params }: { params: Promise<{ actor: strin
   const handle = ownDetails?.handle ?? groupHandle;
   const description =
     isSelfOwned || isAdmin
-      ? "This group's profile, handle and permanent ID, sign-in email and password."
-      : "This group's handle and permanent ID.";
+      ? "This group's permanent ID, handle, sign-in email, and password."
+      : "This group's permanent ID and handle.";
 
   return (
-    <SettingsSection description={description}>
-      {(isAdmin || isSelfOwned) && (
-        <SettingsCard
-          title="Profile"
-          description="The group's name, picture, bio and links, as others see them."
-          hint="Publicly visible on this group's Certified profile."
-          actions={
-            <Button href={`${actorHref(groupDid)}/edit`} variant="secondary" size="sm">
-              Edit profile
-            </Button>
-          }
-        />
-      )}
-
-      {isSelfOwned ? (
-        <>
-          <HandleCard
-            did={groupDid}
-            initialHandle={handle}
-            pdsDomain={pdsDomain}
-            description="The @handle people use to find this group on Certified."
-          />
-          <EmailCard
-            initialEmail={ownDetails?.email ?? null}
-            initialConfirmed={ownDetails?.emailConfirmed ?? true}
-            description="Used to sign in and to recover this account."
-          />
-          <PasswordResetCard
-            email={ownDetails?.email ?? null}
-            description="Lets you sign in to other AT Protocol apps with this handle."
-          />
-        </>
-      ) : isAdmin ? (
-        <>
-          <GroupAccountManager groupDid={groupDid} currentHandle={handle} pdsDomain={pdsDomain} />
-          <GroupPasswordResetCard groupDid={groupDid} />
-        </>
-      ) : (
-        <SettingsCard
-          title="Handle"
-          description="The @handle people use to find this group on Certified."
-          hint="Only group admins and the owner can change the handle."
+    <SettingsSection>
+      <SettingsGroup title="Account" description={description}>
+        <SettingsRow
+          label="Permanent ID"
+          description="This group's DID. Unlike its handle, it never changes."
         >
-          <div className="settings-value-box">
+          <CopyableId value={groupDid} label="Permanent ID" />
+        </SettingsRow>
+
+        {isSelfOwned ? (
+          <>
+            <HandleRow
+              did={groupDid}
+              initialHandle={handle}
+              pdsDomain={pdsDomain}
+              description="The @handle people use to find this group on Certified."
+            />
+            <EmailRow
+              initialEmail={ownDetails?.email ?? null}
+              initialConfirmed={ownDetails?.emailConfirmed ?? true}
+              description="Used to sign in and to recover this account."
+            />
+            <PasswordResetRow
+              email={ownDetails?.email ?? null}
+              description="Lets you sign in to other AT Protocol apps with this handle."
+            />
+          </>
+        ) : isAdmin ? (
+          <>
+            <GroupAccountManager groupDid={groupDid} currentHandle={handle} pdsDomain={pdsDomain} />
+            <GroupPasswordResetRow groupDid={groupDid} />
+          </>
+        ) : (
+          <SettingsRow
+            label="Handle"
+            description="The @handle people use to find this group on Certified. Only admins and the owner can change it."
+          >
             {handle ? (
               <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" />
             ) : (
@@ -83,34 +75,28 @@ async function GroupAccountSettings({ params }: { params: Promise<{ actor: strin
                 No handle verified
               </Text>
             )}
-          </div>
-        </SettingsCard>
-      )}
+          </SettingsRow>
+        )}
 
-      <SettingsCard
-        title="Permanent ID"
-        description="This group's DID. Unlike its handle it never changes, so apps and records refer to the group by it."
-      >
-        <div className="settings-value-box">
-          <CopyableId value={groupDid} label="Permanent ID" />
-        </div>
-      </SettingsCard>
-
-      {isSelfOwned && (
-        <SettingsCard
-          title="Session"
-          description="Sign this browser out of Certified."
-          hint="Other browsers signed in to this account stay active."
-          actions={<SignOutForm>Sign out</SignOutForm>}
-        />
-      )}
+        {isSelfOwned && (
+          <SettingsRow
+            label="Session"
+            description="Sign this browser out of Certified. Other browsers stay signed in."
+            actions={<SignOutForm buttonClassName="settings-action">Sign out</SignOutForm>}
+          >
+            <Text size="body-sm" tone="muted">
+              Signed in on this browser.
+            </Text>
+          </SettingsRow>
+        )}
+      </SettingsGroup>
     </SettingsSection>
   );
 }
 
 export default function GroupAccountSettingsPage({ params }: PageProps<"/[actor]/settings">) {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={3} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={4} />}>
       <GroupAccountSettings params={params} />
     </Suspense>
   );

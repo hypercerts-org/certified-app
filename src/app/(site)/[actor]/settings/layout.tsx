@@ -1,9 +1,10 @@
-import { Button } from "@hypercerts-org/ui-react";
+import { Button, Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
-import { workspaceHref } from "@/components/cards";
-import { PageHeader } from "@/components/page-title";
+import { ActorAvatar } from "@/components/actor";
+import { actorHref, workspaceHref } from "@/components/cards";
+import { PageHeader, PageTitle } from "@/components/page-title";
 import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import {
   groupSettingsAccess,
@@ -12,7 +13,7 @@ import {
   ROLE_PHRASE,
   resolveGroupParam,
   SettingsAccessFallback,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
 import { SettingsHashRedirect } from "@/components/settings/settings-hash-redirect";
 import { groupSettingsHref } from "@/lib/routes";
@@ -40,25 +41,28 @@ async function GroupSettingsGate({
     return <SettingsAccessFallback kind={access.status} path={base} groupDid={groupDid} />;
   }
 
-  const [{ name }, transfer] = await Promise.all([
+  const [{ name, handle, actor }, transfer] = await Promise.all([
     loadGroupIdentity(groupDid),
     loadOwnershipTransfer(access.session, groupDid),
   ]);
 
   const showOwnership =
     access.isOwner || Boolean(transfer?.pending && transfer.proposedOwner === access.user.did);
+  const canEditProfile = access.isAdmin || access.isSelfOwned;
 
   const tabs: ProfileTab[] = [
     { label: "Account", href: base },
-    ...(access.isSelfOwned ? [{ label: "Appearance", href: `${base}/appearance` }] : []),
+    ...(canEditProfile ? [{ label: "Profile", href: `${base}/profile` }] : []),
     { label: "Social graph", href: `${base}/social-graph` },
     { label: "Members and roles", href: `${base}/members` },
     ...(showOwnership ? [{ label: "Transfer ownership", href: `${base}/ownership` }] : []),
     { label: "Activity log", href: `${base}/activity` },
     ...(access.isOwner ? [{ label: "Group status", href: `${base}/status` }] : []),
+    ...(access.isSelfOwned ? [{ label: "Appearance", href: `${base}/appearance` }] : []),
   ];
 
   const legacyHashes: Record<string, string> = {
+    ...(canEditProfile ? { profile: `${base}/profile` } : {}),
     "social-graph": `${base}/social-graph`,
     members: `${base}/members`,
     activity: `${base}/activity`,
@@ -69,17 +73,33 @@ async function GroupSettingsGate({
     ...(access.isOwner ? { status: `${base}/status`, danger: `${base}/status` } : {}),
   };
 
+  const avatarActor = {
+    did: groupDid,
+    handle,
+    displayName: actor?.displayName ?? name,
+    avatarUrl: actor?.avatarUrl ?? null,
+    isOrganization: true,
+  };
+
   return (
     <div className="page">
-      <PageHeader
-        title={access.isSelfOwned ? "Settings" : `${name} settings`}
-        description={ROLE_PHRASE[access.role] ?? "You belong to this group."}
-        actions={
+      <header className="settings-header">
+        <div className="settings-header-identity">
+          <ActorAvatar actor={avatarActor} size="lg" />
+          <div className="settings-header-text">
+            <PageTitle>{access.isSelfOwned ? "Settings" : name}</PageTitle>
+            <Text tone="muted">{ROLE_PHRASE[access.role] ?? "You belong to this group."}</Text>
+          </div>
+        </div>
+        <div className="settings-header-actions">
+          <Button href={actorHref(actor ?? groupDid)} variant="secondary" size="sm">
+            View profile
+          </Button>
           <Button href={workspaceHref(groupDid)} variant="secondary" size="sm">
             Open workspace
           </Button>
-        }
-      />
+        </div>
+      </header>
       <SettingsHashRedirect routes={legacyHashes} />
       <ProfileTabs label="Group settings sections" tabs={tabs} />
       {children}
@@ -92,9 +112,9 @@ function GroupSettingsShell() {
     <div className="page">
       <PageHeader title="Group settings" />
       <ProfileTabsSkeleton
-        labels={["Account", "Social graph", "Members and roles", "Activity log"]}
+        labels={["Account", "Profile", "Social graph", "Members and roles", "Activity log"]}
       />
-      <SettingsCardsSkeleton count={3} />
+      <SettingsRowsSkeleton rows={4} />
     </div>
   );
 }

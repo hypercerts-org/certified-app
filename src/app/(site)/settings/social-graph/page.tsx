@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   requirePersonalSettings,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
 import { SettingsSection } from "@/components/settings/settings-frame";
 import { SocialGraphSection } from "@/components/settings/social-graph-section";
@@ -13,7 +13,7 @@ async function PersonalSocialGraph() {
   const access = await requirePersonalSettings("/settings/social-graph");
   if (!access) return null;
   return (
-    <SettingsSection description="The accounts you follow. What they publish shows in your feed.">
+    <SettingsSection>
       <SocialGraphSection repoDid={access.user.did} allowExport />
     </SettingsSection>
   );
@@ -21,7 +21,7 @@ async function PersonalSocialGraph() {
 
 export default function PersonalSocialGraphSettingsPage() {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={2} />}>
       <PersonalSocialGraph />
     </Suspense>
   );

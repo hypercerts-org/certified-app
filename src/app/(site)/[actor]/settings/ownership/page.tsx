@@ -7,9 +7,9 @@ import {
   loadGroupMembers,
   loadOwnershipTransfer,
   requireGroupSettings,
-  SettingsCardsSkeleton,
+  SettingsRowsSkeleton,
 } from "@/components/settings/settings-access";
-import { SettingsCard, SettingsSection } from "@/components/settings/settings-frame";
+import { SettingsGroup, SettingsRow, SettingsSection } from "@/components/settings/settings-frame";
 
 export const metadata: Metadata = { title: "Transfer ownership" };
 
@@ -26,18 +26,23 @@ async function GroupOwnership({ params }: { params: Promise<{ actor: string }> }
   const isRecipient = Boolean(transfer?.pending && transfer.proposedOwner === access.user.did);
   if (!access.isOwner && !isRecipient) {
     return (
-      <SettingsSection description="Only the group's owner or a proposed new owner can manage ownership transfers.">
-        <SettingsCard title="Transfer ownership">
-          <Text size="body-sm" tone="muted">
-            There is no pending ownership transfer for you on this group.
-          </Text>
-        </SettingsCard>
+      <SettingsSection>
+        <SettingsGroup title="Transfer ownership">
+          <SettingsRow
+            label="Ownership"
+            description="Only the group's owner or a proposed new owner can manage transfers."
+          >
+            <Text size="body-sm" tone="muted">
+              There is no pending ownership transfer for you on this group.
+            </Text>
+          </SettingsRow>
+        </SettingsGroup>
       </SettingsSection>
     );
   }
 
   return (
-    <SettingsSection description="Hand this group to another member. They become the owner once they accept, and you become an admin. An unaccepted transfer expires after 7 days.">
+    <SettingsSection>
       <GroupOwnershipSection
         groupDid={access.groupDid}
         groupName={name}
@@ -55,7 +60,7 @@ export default function GroupOwnershipSettingsPage({
   params,
 }: PageProps<"/[actor]/settings/ownership">) {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={2} />}>
       <GroupOwnership params={params} />
     </Suspense>
   );

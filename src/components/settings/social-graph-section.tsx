@@ -20,7 +20,7 @@ import {
   importBlueskyFollows,
   type SocialGraphComparison,
 } from "@/lib/settings-actions";
-import { SettingsCard, SettingsCardsSkeleton } from "./settings-frame";
+import { SettingsAction, SettingsGroup, SettingsRow, SettingsRowsSkeleton } from "./settings-frame";
 
 const CHUNK_SIZE = 50;
 
@@ -37,7 +37,6 @@ export function SocialGraphSection({
   description = "Your follows on Certified and on Bluesky are kept apart. Choose which accounts to sync before anything changes.",
 }: {
   repoDid: string;
-  /** True for personal accounts; false for groups (CGS doesn't write Bluesky follows). */
   allowExport: boolean;
   description?: string;
 }) {
@@ -161,22 +160,19 @@ export function SocialGraphSection({
   };
 
   if (loading && !data) {
-    return <SettingsCardsSkeleton count={1} />;
+    return <SettingsRowsSkeleton rows={2} />;
   }
 
   if (error && !data) {
     return (
-      <SettingsCard
-        title="Sync with Bluesky"
-        description={description}
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => void load()}>
-            Try again
-          </Button>
-        }
-      >
-        <Banner tone="danger">{error}</Banner>
-      </SettingsCard>
+      <SettingsGroup title="Sync with Bluesky" description={description}>
+        <SettingsRow
+          label="Comparison"
+          actions={<SettingsAction onClick={() => void load()}>Try again</SettingsAction>}
+        >
+          <Banner tone="danger">{error}</Banner>
+        </SettingsRow>
+      </SettingsGroup>
     );
   }
 
@@ -188,57 +184,80 @@ export function SocialGraphSection({
 
   return (
     <>
-      <SettingsCard
+      <SettingsGroup
         title="Sync with Bluesky"
         description={description}
-        headerAction={
-          <Button variant="ghost" size="sm" loading={loading} onClick={() => void load()}>
+        action={
+          <SettingsAction tone="muted" disabled={loading} onClick={() => void load()}>
             Refresh
-          </Button>
+          </SettingsAction>
         }
-        hint={
-          inSync && !truncatedImport
-            ? "Certified and Bluesky follow graphs are in sync."
-            : "You choose individual accounts in the next step."
-        }
-        actions={
-          <>
-            {allowExport && (
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={truncatedExport || data.onlyCertified.length === 0}
-                onClick={() => openModal("export")}
-              >
-                Follow on Bluesky ({data.onlyCertified.length})
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              size="sm"
+      >
+        <SettingsRow
+          label="Follow graphs"
+          description="Comparing records on your personal data server."
+        >
+          <StatRow
+            label="Follow counts"
+            stats={[
+              { label: "Certified follows", value: data.certifiedCount },
+              { label: "Bluesky follows", value: data.blueskyCount },
+              { label: "In both", value: data.inBothCount },
+            ]}
+          />
+          {truncatedImport && (
+            <Banner tone="warning">
+              One of your follow lists has more than 10,000 accounts, so automatic diffing is paused
+              to avoid creating duplicate follows.
+            </Banner>
+          )}
+          {inSync && !truncatedImport && (
+            <Text size="body-sm" tone="muted">
+              Certified and Bluesky follow graphs are in sync.
+            </Text>
+          )}
+        </SettingsRow>
+
+        <SettingsRow
+          label="Bluesky → Certified"
+          description="Bring accounts you follow on Bluesky into your Certified feed."
+          actions={
+            <SettingsAction
               disabled={truncatedImport || data.onlyBluesky.length === 0}
               onClick={() => openModal("import")}
             >
-              Import from Bluesky ({data.onlyBluesky.length})
-            </Button>
-          </>
-        }
-      >
-        <StatRow
-          label="Follow counts"
-          stats={[
-            { label: "Certified follows", value: data.certifiedCount },
-            { label: "Bluesky follows", value: data.blueskyCount },
-            { label: "In both", value: data.inBothCount },
-          ]}
-        />
-        {truncatedImport && (
-          <Banner tone="warning">
-            One of your follow lists has more than 10,000 accounts, so automatic diffing is paused
-            to avoid creating duplicate follows.
-          </Banner>
+              Import
+            </SettingsAction>
+          }
+        >
+          <Text size="body-sm" tone={data.onlyBluesky.length > 0 ? "ink" : "muted"}>
+            {data.onlyBluesky.length === 0
+              ? "Nothing new to import"
+              : `${data.onlyBluesky.length} ${data.onlyBluesky.length === 1 ? "account" : "accounts"} only on Bluesky`}
+          </Text>
+        </SettingsRow>
+
+        {allowExport && (
+          <SettingsRow
+            label="Certified → Bluesky"
+            description="Follow on Bluesky the accounts you currently follow on Certified."
+            actions={
+              <SettingsAction
+                disabled={truncatedExport || data.onlyCertified.length === 0}
+                onClick={() => openModal("export")}
+              >
+                Follow on Bluesky
+              </SettingsAction>
+            }
+          >
+            <Text size="body-sm" tone={data.onlyCertified.length > 0 ? "ink" : "muted"}>
+              {data.onlyCertified.length === 0
+                ? "Nothing new to export"
+                : `${data.onlyCertified.length} ${data.onlyCertified.length === 1 ? "account" : "accounts"} only on Certified`}
+            </Text>
+          </SettingsRow>
         )}
-      </SettingsCard>
+      </SettingsGroup>
 
       <ResponsiveDialog
         open={direction !== null}

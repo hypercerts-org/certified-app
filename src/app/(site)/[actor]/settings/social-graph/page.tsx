@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { requireGroupSettings, SettingsCardsSkeleton } from "@/components/settings/settings-access";
+import { requireGroupSettings, SettingsRowsSkeleton } from "@/components/settings/settings-access";
 import { SettingsSection } from "@/components/settings/settings-frame";
 import { SocialGraphSection } from "@/components/settings/social-graph-section";
 
@@ -10,7 +10,7 @@ async function GroupSocialGraph({ params }: { params: Promise<{ actor: string }>
   const access = await requireGroupSettings(params, "/social-graph");
   if (!access) return null;
   return (
-    <SettingsSection description="The accounts this group follows. What they publish shows in the group's feed.">
+    <SettingsSection>
       <SocialGraphSection
         repoDid={access.groupDid}
         allowExport={access.isSelfOwned}
@@ -24,7 +24,7 @@ export default function GroupSocialGraphSettingsPage({
   params,
 }: PageProps<"/[actor]/settings/social-graph">) {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={2} />}>
       <GroupSocialGraph params={params} />
     </Suspense>
   );

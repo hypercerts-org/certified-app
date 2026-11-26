@@ -1,60 +1,29 @@
-import { Text } from "@hypercerts-org/ui-react";
 import type { Metadata } from "next";
-import { notFound, redirect, unstable_rethrow } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { PageHeader } from "@/components/page-title";
-import { ProfileForm, ProfileFormSkeleton } from "@/components/profile-form";
-import { SignInAgain } from "@/components/sign-out-form";
-import { getUser, readOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
-import { editableRepository, getProfile } from "@/lib/hypercerts/writes";
-import { logError } from "@/lib/log";
+import { SettingsRowsSkeleton } from "@/components/settings/settings-access";
+import { getUser } from "@/lib/auth/dal";
+import { groupSettingsHref } from "@/lib/routes";
 import { isDid, signInHref } from "@/lib/validate";
 
 export const metadata: Metadata = { title: "Edit profile", robots: { index: false } };
 
-async function Editor({ params }: Pick<PageProps<"/[actor]/edit">, "params">) {
+async function RedirectToProfileSettings({
+  params,
+}: Pick<PageProps<"/[actor]/edit">, "params">): Promise<never> {
   const did = decodeURIComponent((await params).actor);
   if (!isDid(did)) notFound();
-  const here = `/${did}/edit`;
-  if (!(await getUser())) redirect(signInHref(here));
-
-  try {
-    const session = await readOAuthSession();
-    if (session === null || session === "expired") {
-      return (
-        <SignInAgain path={here}>
-          Your sign-in has expired. Sign in again to edit this profile.
-        </SignInAgain>
-      );
-    }
-    const repository = await editableRepository(session, did);
-    if (!repository) {
-      return (
-        <Text>
-          You can't edit this profile. Only the account itself and a group's admins and owners can.
-        </Text>
-      );
-    }
-    // The PDS's copy, not the index's: the form must start from the current version.
-    return <ProfileForm did={did} current={await getProfile(repository)} />;
-  } catch (err) {
-    unstable_rethrow(err);
-    if (!(err instanceof SessionUnavailableError)) logError("[profile] read failed", err, { did });
-    return (
-      <Text tone="muted">This profile can't be loaded right now. Please try again shortly.</Text>
-    );
-  }
+  const user = await getUser();
+  if (!user) redirect(signInHref(`/${did}/edit`));
+  if (did === user.did) redirect("/settings/profile");
+  redirect(`${groupSettingsHref(did)}/profile`);
 }
 
 export default function EditProfilePage(props: PageProps<"/[actor]/edit">) {
   return (
     <div className="page">
-      <PageHeader
-        title="Edit profile"
-        description="Saved to the account's own repository, and signed by certified.app so other apps can see where the change was made."
-      />
-      <Suspense fallback={<ProfileFormSkeleton />}>
-        <Editor params={props.params} />
+      <Suspense fallback={<SettingsRowsSkeleton rows={4} />}>
+        <RedirectToProfileSettings params={props.params} />
       </Suspense>
     </div>
   );

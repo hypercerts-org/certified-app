@@ -138,15 +138,21 @@ export async function updateOwnHandle(rawHandle: string): Promise<SimpleResult> 
       body: { handle },
     });
     if (!res.ok) {
-      return {
-        ok: false,
-        message: await readPdsError(
-          res,
-          "Couldn't update your handle. Check that it's available or that the DNS record has propagated.",
-        ),
-      };
+      const pdsMessage = await readPdsError(
+        res,
+        "Couldn't update your handle. Check that it's available or that the DNS record has propagated.",
+      );
+      if (/missing required scope/i.test(pdsMessage)) {
+        return {
+          ok: false,
+          message:
+            "Your current sign-in doesn't have permission to change your handle. Sign out and sign back in, then try again.",
+        };
+      }
+      return { ok: false, message: pdsMessage };
     }
     updateTag(tags.actor(session.did));
+    updateTag(`handle:${handle}`);
     return { ok: true };
   } catch (err) {
     if (!(err instanceof SessionUnavailableError)) {

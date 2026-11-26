@@ -112,7 +112,7 @@ export async function requirePersonalSettings(
   if (access.status === "self-group") {
     const suffix = path === "/settings" ? "" : path.slice("/settings".length);
     const groupTarget =
-      suffix === "/appearance" || suffix === "/social-graph"
+      suffix === "/profile" || suffix === "/appearance" || suffix === "/social-graph"
         ? `${groupSettingsHref(access.did)}${suffix}`
         : groupSettingsHref(access.did);
     redirect(groupTarget);
@@ -251,7 +251,7 @@ export async function requireGroupSettings(
   return access.status === "ok" ? access : null;
 }
 
-/** Group display name and verified handle, cached per request. */
+/** Group display name, verified handle, and actor detail, cached per request. */
 export const loadGroupIdentity = cache(async (groupDid: l.DidString) => {
   const [actor, resolvedHandle] = await Promise.all([
     getActor(groupDid).catch(() => null),
@@ -259,7 +259,7 @@ export const loadGroupIdentity = cache(async (groupDid: l.DidString) => {
   ]);
   const handle = resolvedHandle ?? actor?.handle ?? null;
   const name = actor ? nameOf(actor) : handle ? `@${handle}` : groupDid;
-  return { name, handle };
+  return { name, handle, actor };
 });
 
 /** Group members with resolved actor cards, sorted Owner → Admin → Member. */
@@ -340,4 +340,4 @@ export function SettingsAccessFallback({
   );
 }
 
-export { SettingsCardsSkeleton } from "./settings-frame";
+export { SettingsRowsSkeleton } from "./settings-frame";

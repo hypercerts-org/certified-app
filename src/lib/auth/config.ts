@@ -11,11 +11,12 @@ import "server-only";
 export const CERTIFIED_PDS_URL = process.env.CERTIFIED_PDS_URL ?? "https://certified.one";
 
 /**
- * `transition:generic` lets the session write any record and request service
- * auth for the Certified Group Service. Narrow it to granular permission
- * scopes once Certified's PDS is known to support them.
+ * `transition:generic` lets the session write records and request service auth
+ * for the Certified Group Service; `identity:handle` permits handle updates
+ * (`com.atproto.identity.updateHandle`); `account:email` lets the session read
+ * the account's email address from `com.atproto.server.getSession`.
  */
-export const OAUTH_SCOPE = "atproto transition:generic";
+export const OAUTH_SCOPE = "atproto transition:generic identity:handle account:email";
 
 export const CALLBACK_PATH = "/oauth/callback";
 

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { GroupAuditLogSection } from "@/components/settings/group-sections";
-import { requireGroupSettings, SettingsCardsSkeleton } from "@/components/settings/settings-access";
-import { SettingsCard, SettingsSection } from "@/components/settings/settings-frame";
+import { requireGroupSettings, SettingsRowsSkeleton } from "@/components/settings/settings-access";
+import { SettingsGroup, SettingsRow, SettingsSection } from "@/components/settings/settings-frame";
 import { queryGroupAuditLog } from "@/lib/cgs";
 import type { AuditEntryView } from "@/lib/hypercerts/group-actions";
 import { getActorCards } from "@/lib/hypercerts/queries";
@@ -18,12 +18,14 @@ async function GroupActivityLog({ params }: { params: Promise<{ actor: string }>
 
   if (!access.isAdmin) {
     return (
-      <SettingsSection description="Recent actions taken in this group.">
-        <SettingsCard title="Audit log">
-          <Text size="body-sm" tone="muted">
-            Only admins and owners can view the activity log.
-          </Text>
-        </SettingsCard>
+      <SettingsSection>
+        <SettingsGroup title="Activity log">
+          <SettingsRow label="Access" description="Recent actions taken in this group.">
+            <Text size="body-sm" tone="muted">
+              Only admins and owners can view the activity log.
+            </Text>
+          </SettingsRow>
+        </SettingsGroup>
       </SettingsSection>
     );
   }
@@ -52,13 +54,13 @@ async function GroupActivityLog({ params }: { params: Promise<{ actor: string }>
   }
 
   return (
-    <SettingsSection description="Recent actions taken in this group.">
+    <SettingsSection>
       {loadError ? (
-        <SettingsCard title="Audit log">
+        <SettingsGroup title="Activity log">
           <Banner tone="danger">
             Couldn&apos;t load the activity log right now. Reload the page to try again.
           </Banner>
-        </SettingsCard>
+        </SettingsGroup>
       ) : (
         <GroupAuditLogSection
           groupDid={access.groupDid}
@@ -74,7 +76,7 @@ export default function GroupActivitySettingsPage({
   params,
 }: PageProps<"/[actor]/settings/activity">) {
   return (
-    <Suspense fallback={<SettingsCardsSkeleton count={1} />}>
+    <Suspense fallback={<SettingsRowsSkeleton rows={3} />}>
       <GroupActivityLog params={params} />
     </Suspense>
   );
