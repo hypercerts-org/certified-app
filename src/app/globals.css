@@ -1279,12 +1279,6 @@ button.menu-row:disabled:not([aria-current]) {
   text-decoration: underline;
 }
 
-.overview-id {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 /* Public profile (src/components/profile-header.tsx and the (profile) pages). */
 /* A profile, a project or an activity, centered at its own width: the header
    across the top, then two columns (.page-columns), each no wider than its

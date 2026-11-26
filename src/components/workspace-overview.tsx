@@ -367,8 +367,6 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
   const account = actor ?? { did, handle, displayName: did, avatarUrl: null };
   const bio = firstLine(actor?.description ?? null);
   const website = actor?.website ?? null;
-  const isOrganization = actor?.isOrganization ?? false;
-  const idTitleId = useId();
 
   return (
     <>
@@ -401,34 +399,22 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
           )}
         </div>
       </div>
-      <section aria-labelledby={idTitleId} className="overview-id">
-        <div className="section-heading">
-          <Heading level={2} size="heading" id={idTitleId}>
-            ID
-          </Heading>
-          <Text tone="muted">
-            {isOrganization
-              ? "Identifies this group's account in every app."
-              : "Identifies your account in every app."}
-          </Text>
-        </div>
-        <dl className="facts">
-          {handle && (
-            <div className="fact">
-              <dt>Handle</dt>
-              <dd>
-                <HandleId handle={handle} />
-              </dd>
-            </div>
-          )}
+      <dl className="facts">
+        {handle && (
           <div className="fact">
-            <dt>Permanent ID</dt>
+            <dt>Handle</dt>
             <dd>
-              <PermanentId value={did} />
+              <HandleId handle={handle} />
             </dd>
           </div>
-        </dl>
-      </section>
+        )}
+        <div className="fact">
+          <dt>Permanent ID</dt>
+          <dd>
+            <PermanentId value={did} />
+          </dd>
+        </div>
+      </dl>
     </>
   );
 }
