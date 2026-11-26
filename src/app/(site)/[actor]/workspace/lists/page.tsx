@@ -5,9 +5,9 @@ import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { NewListDialog } from "@/components/list-dialogs";
-import { PageTitle } from "@/components/page-title";
 import { ListGroups, ListGroupsSkeleton } from "@/components/profile-lists";
 import { workspaceDid } from "@/components/workspace-access";
+import { WorkspaceSectionHead } from "@/components/workspace-section-head";
 import { listLists } from "@/lib/hypercerts/queries";
 
 // Workspace → Lists: the account's lists as its profile shows them, grouped by
@@ -26,7 +26,6 @@ async function Lists({ params }: { params: Promise<{ actor: string }> }) {
         icon={ListChecks}
         title="No lists yet"
         description="A list gathers activities, projects, accounts or endorsements to show together on the profile, like a funding round's applicants."
-        action={<NewListDialog repo={did} />}
       />
     );
   }
@@ -51,16 +50,18 @@ async function NewListAction({ params }: { params: Promise<{ actor: string }> })
 /** The workspace account's lists, to open and manage. */
 export default function ListsPage({ params }: PageProps<"/[actor]/workspace/lists">) {
   return (
-    <div className="workspace-lists">
-      <div className="workspace-heading">
-        <PageTitle className="workspace-title">Lists</PageTitle>
-        <Suspense fallback={null}>
-          <NewListAction params={params} />
-        </Suspense>
-      </div>
+    <>
+      <WorkspaceSectionHead
+        title="Lists"
+        action={
+          <Suspense fallback={null}>
+            <NewListAction params={params} />
+          </Suspense>
+        }
+      />
       <Suspense fallback={<ListGroupsSkeleton />}>
         <Lists params={params} />
       </Suspense>
-    </div>
+    </>
   );
 }

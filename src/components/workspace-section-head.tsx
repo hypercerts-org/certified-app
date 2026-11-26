@@ -3,10 +3,11 @@ import { PageTitle } from "@/components/page-title";
 
 /**
  * A workspace section's head: its title, then its tab bar (`tabs`, usually
- * ProfileTabs streaming in its counts) on the section's hairline, with an
- * action at the bar's right end when the section has one (New badge,
- * Endorse someone). Every workspace section with tabs uses this, so the bar
- * and its line look the same in all of them.
+ * ProfileTabs streaming in its counts) on the section's hairline, with its
+ * main action at the bar's right end when the section has one (Create badge,
+ * Endorse someone; see SECTION_ACTION). Every workspace section uses this,
+ * so the bar, its line and the action sit the same in all of them; one
+ * without tabs (Lists) keeps the line and the action.
  */
 export function WorkspaceSectionHead({
   title,
@@ -14,7 +15,7 @@ export function WorkspaceSectionHead({
   action,
 }: {
   title: string;
-  tabs: ReactNode;
+  tabs?: ReactNode;
   action?: ReactNode;
 }) {
   return (

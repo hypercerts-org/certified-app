@@ -25,6 +25,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "sonner";
+import { ROW_ACTION, SECTION_ACTION } from "@/lib/button-roles";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import { workspaceHref } from "@/lib/routes";
 
@@ -66,12 +67,7 @@ export function EndorsementVisibilityButton({
   };
 
   return (
-    <Button
-      variant={hidden ? "primary" : "secondary"}
-      size="sm"
-      disabled={pending}
-      onClick={toggle}
-    >
+    <Button {...ROW_ACTION} disabled={pending} onClick={toggle}>
       {hidden ? "Show on profile" : "Hide from profile"}
     </Button>
   );
@@ -140,7 +136,7 @@ export function RevokeEndorsementButton({
 
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
+      <Button {...ROW_ACTION} onClick={() => setConfirming(true)}>
         Revoke
       </Button>
       <ResponsiveDialog
@@ -223,8 +219,7 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
   return (
     <>
       <Button
-        variant="secondary"
-        size="sm"
+        {...SECTION_ACTION}
         onClick={() => {
           setError(null);
           setOpen(true);

@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { switchActingAs } from "@/lib/acting-as-actions";
+import { ROW_ACTION } from "@/lib/button-roles";
 import * as groupActions from "@/lib/hypercerts/group-actions";
 
 /** "New group": registers a group on CGS and initializes its organization record. */
@@ -112,8 +113,7 @@ export function NewGroupDialog({
     <>
       {!controlled && (
         <Button
-          variant="ghost"
-          size="sm"
+          {...ROW_ACTION}
           onClick={() => {
             setError(null);
             setOpen(true);

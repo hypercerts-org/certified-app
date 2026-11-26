@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useId, useState } from "react";
 import { toast } from "sonner";
 import { LIST_KINDS, type ListKind } from "@/components/workspace-lists";
+import { ROW_ACTION, SECTION_ACTION } from "@/lib/button-roles";
 import * as listActions from "@/lib/hypercerts/list-actions";
 
 /** A dialog's two buttons: Cancel, and its primary/destructive action. */
@@ -46,16 +47,17 @@ function Footer({
 function Opener({
   icon,
   label,
-  primary = false,
+  main = false,
   onOpen,
 }: {
   icon: ReactNode;
   label: string;
-  primary?: boolean;
+  /** The screen's main action (New list, Add items); the others are secondary. */
+  main?: boolean;
   onOpen: () => void;
 }) {
   return (
-    <Button variant={primary ? "primary" : "secondary"} size="sm" onClick={onOpen}>
+    <Button {...(main ? SECTION_ACTION : ROW_ACTION)} onClick={onOpen}>
       {icon}
       {label}
     </Button>
@@ -122,6 +124,7 @@ export function NewListDialog({ repo }: { repo: string }) {
       <Opener
         icon={<Plus size={16} aria-hidden />}
         label="New list"
+        main
         onOpen={() => {
           setError(null);
           setOpen(true);
@@ -380,7 +383,7 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
       <Opener
         icon={<ListPlus size={16} aria-hidden />}
         label="Add items"
-        primary
+        main
         onOpen={() => {
           setError(null);
           setOpen(true);

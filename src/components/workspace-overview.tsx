@@ -230,15 +230,15 @@ async function RecordsSection({ did }: { did: string }) {
           action={
             <div className="empty-actions">
               {/* Without records, a way to start; the projects page has these too. */}
-              <Button href={`${work}/new-activity`} variant="primary">
+              <Button href={`${work}/new-activity`} variant="primary" size="sm">
                 <Plus size={16} aria-hidden />
                 New activity
               </Button>
-              <Button href={`${work}/new-project`} variant="secondary">
+              <Button href={`${work}/new-project`} variant="secondary" size="sm">
                 <Plus size={16} aria-hidden />
                 New project
               </Button>
-              <Button href="/explore" variant="secondary">
+              <Button href="/explore" variant="secondary" size="sm">
                 <Search size={16} aria-hidden />
                 Find accounts
               </Button>

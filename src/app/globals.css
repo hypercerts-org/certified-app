@@ -2543,22 +2543,6 @@ a.explore-account-link:hover .list-item-title {
 }
 
 /* Workspace → Lists: the title with New list beside it, then the groups. */
-.workspace-lists {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  /* The groups' width, so New list ends where the rows do. */
-  max-inline-size: 48rem;
-}
-
-.workspace-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
 /* Managing a list in the workspace: its actions, then the selection bar. */
 .manage-list {
   display: flex;
@@ -3621,6 +3605,8 @@ a.badge-title:hover {
    raised off the line the tabs sit on. */
 .workspace-tabbar-action {
   margin-block-end: var(--space-2);
+  /* At the end even without tabs before it (Lists). */
+  margin-inline-start: auto;
 }
 
 .endorsement-row-end {

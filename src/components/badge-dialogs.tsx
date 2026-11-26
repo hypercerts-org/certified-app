@@ -26,6 +26,7 @@ import { Award, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ROW_ACTION, SECTION_ACTION } from "@/lib/button-roles";
 import * as badgeActions from "@/lib/hypercerts/badge-actions";
 import { workspaceHref } from "@/lib/routes";
 
@@ -82,8 +83,7 @@ export function BadgeResponseButtons({
     <>
       {kind !== "accepted" && (
         <Button
-          variant="primary"
-          size="sm"
+          {...ROW_ACTION}
           loading={pending && acting === "accepted"}
           disabled={pending}
           onClick={() => respond("accepted")}
@@ -93,8 +93,7 @@ export function BadgeResponseButtons({
       )}
       {kind !== "rejected" && (
         <Button
-          variant="secondary"
-          size="sm"
+          {...ROW_ACTION}
           loading={pending && acting === "rejected"}
           disabled={pending}
           onClick={() => respond("rejected")}
@@ -178,8 +177,7 @@ export function NewBadgeDialog({ repo }: { repo: string }) {
   return (
     <>
       <Button
-        variant="secondary"
-        size="sm"
+        {...SECTION_ACTION}
         onClick={() => {
           setError(null);
           setIconError(null);
@@ -399,8 +397,7 @@ export function AwardBadgeDialog({
   return (
     <>
       <Button
-        variant="secondary"
-        size="sm"
+        {...ROW_ACTION}
         onClick={() => {
           setError(null);
           setOpen(true);
