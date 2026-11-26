@@ -78,12 +78,8 @@ export function RecordMenu({
       <Menu>
         <MenuTrigger asChild>
           {/* The full name for screen readers; on hover, a short tooltip. */}
-          {/* Beside small buttons (Follow, Like, Share), so small too: menu-button-sm. */}
-          <MenuButton
-            label={`More actions for ${title}`}
-            tooltip="More actions"
-            className="menu-button-sm"
-          />
+          {/* Beside small buttons (Follow, Like, Share), so small too. */}
+          <MenuButton label={`More actions for ${title}`} tooltip="More actions" size="sm" />
         </MenuTrigger>
         <MenuContent label={`Actions for this ${what}`} align="end">
           <MenuItem

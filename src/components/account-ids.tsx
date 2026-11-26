@@ -7,9 +7,7 @@ import { CopyableId } from "@hypercerts-org/ui-react";
 
 /** An account's handle, "@name.example", copied without the "@". */
 export function HandleId({ handle, label = "Handle" }: { handle: string; label?: string }) {
-  return (
-    <CopyableId value={handle} displayValue={`@${handle}`} label={label} className="account-id" />
-  );
+  return <CopyableId value={handle} displayValue={`@${handle}`} label={label} wrap />;
 }
 
 /**
@@ -17,5 +15,5 @@ export function HandleId({ handle, label = "Handle" }: { handle: string; label?:
  * never shortened, so it reads the same everywhere.
  */
 export function PermanentId({ value, label = "Permanent ID" }: { value: string; label?: string }) {
-  return <CopyableId value={value} displayValue={value} label={label} className="account-id" />;
+  return <CopyableId value={value} displayValue={value} label={label} wrap />;
 }

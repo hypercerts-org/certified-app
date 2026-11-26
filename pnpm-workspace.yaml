@@ -3,6 +3,6 @@
 allowBuilds:
   core-js: false
 minimumReleaseAgeExclude:
-  - "@hypercerts-org/ui-react@0.3.2"
+  - "@hypercerts-org/ui-react@0.3.3"
   - "@hypercerts-org/api@0.4.0"
   - "@hypercerts-org/certified-group-service@0.1.0"

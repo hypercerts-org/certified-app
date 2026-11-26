@@ -189,6 +189,7 @@ export function ActivityForm({
                                   {(wiring) => (
                                     <ActorPicker
                                       {...wiring}
+                                      label="Contributor"
                                       value={field.state.value}
                                       onChange={(next) => field.handleChange(next)}
                                       onBlur={field.handleBlur}

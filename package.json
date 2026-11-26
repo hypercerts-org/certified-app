@@ -36,7 +36,7 @@
     "@hypercerts-org/certified-group-service": "0.1.0",
     "@hypercerts-org/lexicon": "2.0.1",
     "@hypercerts-org/sdk": "file:vendor/hypercerts-org-sdk-0.0.0.tgz",
-    "@hypercerts-org/ui-react": "0.3.2",
+    "@hypercerts-org/ui-react": "0.3.3",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-query": "5.107.1",
     "@vercel/functions": "3.11.0",

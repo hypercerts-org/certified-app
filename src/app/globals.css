@@ -1412,6 +1412,7 @@ button.menu-row:disabled:not([aria-current]) {
   grid-area: actions;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
   min-block-size: 2.25rem;
 }
@@ -1795,25 +1796,6 @@ a.post-amount:hover {
 .feed-evaluator-row {
   display: flex;
   align-items: center;
-  min-inline-size: 0;
-}
-
-/* The toolkit's Checkbox lines its box up with a label's first line; an
-   endorser's label is a picture beside two lines, so the box centres on it,
-   and every wrapper may shrink so a long name or handle ends in an ellipsis
-   inside the box. */
-:where(.feed-evaluator-row) > label {
-  flex: 1;
-  align-items: center;
-  min-inline-size: 0;
-}
-
-:where(.feed-evaluator-row > label) > span:first-child {
-  margin-block-start: 0;
-}
-
-:where(.feed-evaluator-row > label) > span:last-child,
-:where(.feed-evaluator-row > label > span:last-child) > span {
   min-inline-size: 0;
 }
 
@@ -2410,50 +2392,15 @@ button.workspace-nav-item:hover,
   color: var(--hc-text-muted);
 }
 
-.sidebar-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.sidebar-search input {
-  inline-size: 100%;
-  /* The toolkit's input is taller; the sidebar's field stays compact. */
-  block-size: 2.25rem;
-  min-block-size: 2.25rem;
-  /* Room for the search icon before the text and the shortcut hint after it. */
-  padding-inline: 2.125rem 4rem;
-  border: 1px solid var(--hc-line-hairline);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-page);
-  color: var(--hc-text-ink);
-  font: inherit;
-  font-size: var(--hc-type-body-sm);
-}
-
-.sidebar-search input::placeholder {
-  color: var(--hc-text-muted);
-}
-
-.sidebar-search-icon {
-  position: absolute;
-  z-index: 1;
-  inset-inline-start: 0.625rem;
-  color: var(--hc-text-muted);
-  pointer-events: none;
-}
-
+/* The site's search (site-search.tsx): the toolkit's Combobox, with the
+   search icon and the shortcut hint in its slots. */
 .sidebar-search-kbd {
-  position: absolute;
-  z-index: 1;
-  inset-inline-end: 0.5rem;
+  display: block;
   padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--hc-line-hairline);
   border-radius: var(--space-1);
-  color: var(--hc-text-muted);
   font-family: inherit;
   font-size: var(--hc-type-label);
-  pointer-events: none;
 }
 
 /* Typing replaces the hint. */
@@ -2461,36 +2408,10 @@ button.workspace-nav-item:hover,
   display: none;
 }
 
-/* The typeahead (sidebar-search.tsx): the toolkit's Combobox fills the
-   field, and its list may be wider than the sidebar, over the page. */
-.sidebar-search-box {
-  flex: 1;
-  min-inline-size: 0;
-}
-
-.sidebar-search-box [role="listbox"] {
+/* Over the page, the list may be wider than the sidebar (its own className). */
+.sidebar-search-list {
   inline-size: max(100%, 22rem);
   max-block-size: min(32rem, 70vh);
-  right: auto;
-}
-
-/* In the phone's search dialog the results lie under the box, in the dialog. */
-.search-box-inline {
-  flex-wrap: wrap;
-}
-
-/* The icon stays in the input (2.25rem high), not centred on input and list. */
-.search-box-inline .sidebar-search-icon {
-  inset-block-start: 0.625rem;
-}
-
-.search-box-inline [role="listbox"] {
-  position: static;
-  inline-size: 100%;
-  max-block-size: none;
-  margin-block-start: var(--space-2);
-  border: none;
-  box-shadow: none;
 }
 
 .search-group {
@@ -2625,8 +2546,7 @@ button.sidebar-item:hover,
   border-block-start: var(--divider);
 }
 
-:where(.sidebar-item, .sidebar-account, .sidebar-brand):focus-visible,
-.sidebar-search input:focus-visible {
+:where(.sidebar-item, .sidebar-account, .sidebar-brand):focus-visible {
   outline: 2px solid var(--hc-focus-ring);
   outline-offset: 2px;
 }
@@ -3966,16 +3886,6 @@ a.badge-title:hover {
   block-size: 4.5rem;
 }
 
-/* An account's handle or permanent ID (src/components/account-ids.tsx):
-   in full, wrapping on a narrow screen rather than running off it. */
-.account-id {
-  max-inline-size: 100%;
-}
-
-.account-id > span:first-child {
-  overflow-wrap: anywhere;
-}
-
 /* Explore: the tabs, a toolbar, then rows or a gallery (as on staging). */
 .explore-panel {
   container: explore / inline-size;
@@ -4399,20 +4309,13 @@ a.badge-title:hover {
   aspect-ratio: 16 / 9;
 }
 
-/* A record page's actions beside its title: Follow, and for whoever may
-   change it the three-dot menu (record-menu). */
-/* A header's buttons (a profile's, a project's, an activity's): one row,
-   each button stretched to its 2.25rem height, whatever the toolkit's size.
-   The "…" MenuButton is 40px square on its own; here it is the row's height
-   (menu-button-sm), so Follow, Like, Share and "…" line up. */
-button.menu-button-sm {
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
-}
-
+/* A header's buttons (a profile's, a project's, an activity's): one row of
+   small buttons, "…" (MenuButton size="sm") the same height. The row keeps
+   their height while the viewer's actions load, so nothing moves. */
 .record-head-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
   min-block-size: 2.25rem;
 }
@@ -4713,81 +4616,11 @@ button.menu-button-sm {
   outline-offset: 2px;
 }
 
-/* The account picker's typeahead (actor-picker.tsx). */
-.typeahead {
-  position: relative;
-}
-
-.typeahead-field {
-  position: relative;
-}
-
-.typeahead-spinner {
-  position: absolute;
-  inset-inline-end: var(--space-3);
-  inset-block-start: 50%;
-  display: inline-flex;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.typeahead-menu {
-  position: absolute;
-  inset-block-start: calc(100% + var(--space-1));
-  inset-inline: 0;
-  z-index: 40;
-  max-block-size: 20rem;
-  overflow-y: auto;
-  margin: 0;
-  padding: var(--space-1);
-  border: var(--divider);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-panel);
-  box-shadow: var(--hc-shadow-md);
-  list-style: none;
-}
-
-.typeahead-option {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--hc-radius-control);
-  color: var(--hc-text-ink);
-  cursor: pointer;
-}
-
-.typeahead-option--active,
-.typeahead-option:hover {
-  background: var(--hc-fill-subtle);
-}
-
-.typeahead-text {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-inline-size: 0;
-}
-
-.typeahead-primary {
-  overflow: hidden;
-  color: var(--hc-text-ink);
-  font-size: var(--hc-type-body-sm);
-  font-weight: var(--hc-weight-medium);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.typeahead-secondary {
-  overflow: hidden;
-  color: var(--hc-text-muted);
-  font-size: var(--hc-type-micro);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.typeahead-tag {
+/* The account picker's "Certified" mark (actor-picker.tsx); its rows are
+   the site search's (.search-row). */
+.actor-picker-tag {
   flex: none;
+  margin-inline-start: auto;
   padding: var(--space-0-5) var(--space-1);
   border: var(--divider);
   border-radius: var(--hc-radius-control);
@@ -4918,12 +4751,6 @@ a.actor-row-main:hover .actor-row-name {
 
 .expandable-fade > button[aria-expanded] > svg {
   display: none;
-}
-
-/* Button pressed: the toolkit adds its pressed fill, but the variant's
-   transparent background wins, so a pressed button looks unpressed. */
-button[aria-pressed="true"] {
-  background-color: var(--hc-fill-subtle);
 }
 
 /* SearchInput has its own clear button; Chrome and Safari add a second one

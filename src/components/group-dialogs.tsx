@@ -200,7 +200,7 @@ export function NewGroupDialog({
                       value={created.accountPassword}
                       displayValue={created.accountPassword}
                       label="Account password"
-                      className="account-id"
+                      wrap
                     />
                   </dd>
                 </div>
@@ -226,10 +226,10 @@ export function NewGroupDialog({
               label="Handle"
               description="Letters, numbers, and hyphens. You can connect a custom domain later in group settings."
             >
-              {({ invalid: _invalid, ...inputField }) => (
+              {(field) => (
                 <InputGroup>
                   <InputGroupInput
-                    {...inputField}
+                    {...field}
                     value={handle}
                     onChange={(e) => setHandle(e.currentTarget.value)}
                     placeholder="my-group"

@@ -297,6 +297,7 @@ function EvaluatorRow({
   return (
     <li className="feed-evaluator-row">
       <Checkbox
+        align="center"
         checked={checked}
         onChange={onToggle}
         label={

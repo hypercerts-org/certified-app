@@ -444,6 +444,7 @@ export function AwardBadgeDialog({
             {(field) => (
               <ActorPicker
                 {...field}
+                label="Recipient"
                 value={subject}
                 onChange={setSubject}
                 placeholder="@hypercerts.org or https://certified.app/…"

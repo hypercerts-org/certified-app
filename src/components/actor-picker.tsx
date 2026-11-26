@@ -1,202 +1,112 @@
 "use client";
 
-// Shared AT Protocol / Certified actor typeahead input backed by
-// `/api/search?scope=actors`. Used in Add member, Endorse someone, Award
-// badge, and Activity contributors. Free-form text (DIDs, URLs, AT-URIs, or
-// names) still submits cleanly without picking a row.
+// An account field with suggestions as you type (/api/search?scope=actors):
+// Add member, Endorse someone, Award badge, and an activity's contributors.
+// Free-form text (a DID, a link, an AT-URI, a name) still submits without
+// picking a row. The toolkit's Combobox does the keyboard and ARIA; spread
+// Field's props into it.
 
-import { Input, LoadingSpinner } from "@hypercerts-org/ui-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { Combobox, ComboboxOption } from "@hypercerts-org/ui-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ActorAvatar } from "@/components/actor";
 import type { SearchActorHit } from "@/lib/search";
+import { useSettled } from "@/lib/use-settled";
+
+/** Keystrokes settle this long before a search goes out. */
+const DEBOUNCE_MS = 200;
+/** Shorter than this, a search would match nearly everything. */
+const MIN_QUERY = 2;
+
+type ActorItem = SearchActorHit & { id: string };
+
+/** A pasted link or AT-URI is an answer already, not a search. */
+const isAddress = (q: string) => /^(https?|at):\/\//.test(q);
 
 export function ActorPicker({
-  id,
   value,
   onChange,
   onSelectActor,
-  onBlur,
+  label = "Account",
   placeholder = "@alice.bsky.social",
-  required,
-  disabled,
-  invalid,
-  "aria-describedby": ariaDescribedBy,
-  "aria-label": ariaLabel,
-  /** How a picked actor fills the input: `"handle"` (default) or `"did"`. */
   valueFormat = "handle",
+  ...field
 }: {
-  id?: string;
   value: string;
   onChange: (next: string) => void;
   onSelectActor?: (actor: SearchActorHit) => void;
-  onBlur?: () => void;
+  /** The input's accessible name: the Field's label. */
+  label?: string;
   placeholder?: string;
+  /** How a picked account fills the input: its handle (default) or its DID. */
+  valueFormat?: "handle" | "did";
+  id?: string;
+  "aria-describedby"?: string;
+  invalid?: boolean;
   required?: boolean;
   disabled?: boolean;
-  invalid?: boolean;
-  "aria-describedby"?: string;
-  "aria-label"?: string;
-  valueFormat?: "handle" | "did";
+  onBlur?: () => void;
 }) {
-  const listboxId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [results, setResults] = useState<SearchActorHit[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  // Suppress re-query right after the user explicitly selects a suggestion.
-  const pickedRef = useRef<string | null>(null);
+  // What a picked row put in the input: no search for it.
+  const [picked, setPicked] = useState<string | null>(null);
+  const query = useSettled(value.trim(), DEBOUNCE_MS);
+  const searching = query.length >= MIN_QUERY && !isAddress(query) && query !== picked;
 
-  useEffect(() => {
-    const q = value.trim();
-    if (
-      !open ||
-      q.length < 2 ||
-      q.startsWith("http://") ||
-      q.startsWith("https://") ||
-      q.startsWith("at://") ||
-      pickedRef.current === q
-    ) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
+  const results = useQuery<ActorItem[]>({
+    queryKey: ["actor-picker", query],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ q: query, scope: "actors", limit: "6" });
+      const res = await fetch(`/api/search?${params}`, { signal });
+      if (!res.ok) throw new Error(`Search failed (${res.status})`);
+      const data = (await res.json()) as { actors?: SearchActorHit[] };
+      return (data.actors ?? []).map((actor) => ({ ...actor, id: actor.did }));
+    },
+    enabled: searching,
+    staleTime: 60_000,
+    // The last suggestions stay while the next ones load, so the list doesn't jump.
+    placeholderData: keepPreviousData,
+  });
 
-    const controller = new AbortController();
-    setLoading(true);
-    const timer = window.setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `/api/search?${new URLSearchParams({ q, scope: "actors", limit: "6" })}`,
-          { signal: controller.signal },
-        );
-        if (!res.ok) return;
-        const data = (await res.json()) as { actors?: SearchActorHit[] };
-        if (!controller.signal.aborted) {
-          setResults(data.actors ?? []);
-          setActiveIndex(-1);
-        }
-      } catch {
-        // Aborted or transient network failure; keep manual typing working.
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, 200);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [value, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [open]);
-
-  const choose = (actor: SearchActorHit) => {
-    const next = valueFormat === "did" ? actor.did : actor.handle ? `@${actor.handle}` : actor.did;
-    pickedRef.current = next;
-    onChange(next);
-    onSelectActor?.(actor);
-    setOpen(false);
-    setResults([]);
-    setActiveIndex(-1);
-  };
-
-  const showMenu = open && (loading || results.length > 0);
+  const items = searching ? (results.data ?? []) : [];
 
   return (
-    <div ref={rootRef} className="typeahead">
-      <div className="typeahead-field">
-        <Input
-          id={id}
-          role="combobox"
-          aria-expanded={showMenu}
-          aria-controls={showMenu ? listboxId : undefined}
-          aria-activedescendant={
-            showMenu && activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined
-          }
-          aria-autocomplete="list"
-          aria-describedby={ariaDescribedBy}
-          aria-label={ariaLabel}
-          autoComplete="off"
-          value={value}
-          placeholder={placeholder}
-          required={required}
-          disabled={disabled}
-          invalid={invalid}
-          onFocus={() => setOpen(true)}
-          onBlur={() => {
-            onBlur?.();
-          }}
-          onChange={(event) => {
-            pickedRef.current = null;
-            onChange(event.currentTarget.value);
-            setOpen(true);
-          }}
-          onKeyDown={(event) => {
-            if (!showMenu || results.length === 0) return;
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              setActiveIndex((prev) => (prev + 1) % results.length);
-            } else if (event.key === "ArrowUp") {
-              event.preventDefault();
-              setActiveIndex((prev) => (prev <= 0 ? results.length - 1 : prev - 1));
-            } else if (event.key === "Enter" && activeIndex >= 0) {
-              event.preventDefault();
-              choose(results[activeIndex]);
-            } else if (event.key === "Escape") {
-              event.preventDefault();
-              setOpen(false);
-            }
-          }}
-        />
-        {loading && (
-          <span className="typeahead-spinner" aria-hidden>
-            <LoadingSpinner size={14} label="Searching accounts" />
-          </span>
-        )}
-      </div>
-
-      {showMenu && results.length > 0 && (
-        <div id={listboxId} role="listbox" className="typeahead-menu">
-          {results.map((actor, index) => (
-            <div
-              key={actor.did}
-              id={`${listboxId}-${index}`}
-              role="option"
-              tabIndex={-1}
-              aria-selected={index === activeIndex}
-              className={
-                index === activeIndex
-                  ? "typeahead-option typeahead-option--active"
-                  : "typeahead-option"
-              }
-              onMouseDown={(event) => {
-                event.preventDefault();
-                choose(actor);
-              }}
-              onMouseEnter={() => setActiveIndex(index)}
-            >
-              <ActorAvatar actor={actor} size="sm" />
-              <span className="typeahead-text">
-                <span className="typeahead-primary" dir="auto">
-                  {actor.displayName}
-                </span>
-                {actor.handle && <span className="typeahead-secondary">@{actor.handle}</span>}
+    <Combobox<ActorItem>
+      {...field}
+      label={label}
+      value={value}
+      onValueChange={(next) => {
+        setPicked(null);
+        onChange(next);
+      }}
+      items={items}
+      open={open && searching}
+      onOpenChange={setOpen}
+      onSelect={(actor) => {
+        const next =
+          valueFormat === "did" ? actor.did : actor.handle ? `@${actor.handle}` : actor.did;
+        setPicked(next);
+        onChange(next);
+        onSelectActor?.(actor);
+        setOpen(false);
+      }}
+      placeholder={placeholder}
+      loading={searching && results.isFetching}
+      emptyMessage={null}
+      renderItem={({ item, index: _index, ...option }) => (
+        <ComboboxOption key={item.id} {...option}>
+          <span className="search-row">
+            <ActorAvatar actor={item} size="sm" />
+            <span className="search-row-text">
+              <span className="ellipsis" dir="auto">
+                {item.displayName}
               </span>
-              {actor.certified && <span className="typeahead-tag">Certified</span>}
-            </div>
-          ))}
-        </div>
+              {item.handle && <span className="search-row-meta ellipsis">@{item.handle}</span>}
+            </span>
+            {item.certified && <span className="actor-picker-tag">Certified</span>}
+          </span>
+        </ComboboxOption>
       )}
-    </div>
+    />
   );
 }

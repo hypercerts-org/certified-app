@@ -180,10 +180,10 @@ export function HandleRow({
             }}
           >
             <Field label="New handle" error={error ?? undefined}>
-              {({ invalid: _invalid, ...inputField }) => (
+              {(field) => (
                 <InputGroup>
                   <InputGroupInput
-                    {...inputField}
+                    {...field}
                     value={prefix}
                     onChange={(e) => setPrefix(e.currentTarget.value)}
                     placeholder="your-name"
@@ -312,23 +312,13 @@ export function HandleRow({
               <div className="fact">
                 <dt>Host</dt>
                 <dd>
-                  <CopyableId
-                    value={dnsHost}
-                    displayValue={dnsHost}
-                    label="DNS host"
-                    className="account-id"
-                  />
+                  <CopyableId value={dnsHost} displayValue={dnsHost} label="DNS host" wrap />
                 </dd>
               </div>
               <div className="fact">
                 <dt>Value</dt>
                 <dd>
-                  <CopyableId
-                    value={dnsValue}
-                    displayValue={dnsValue}
-                    label="DNS value"
-                    className="account-id"
-                  />
+                  <CopyableId value={dnsValue} displayValue={dnsValue} label="DNS value" wrap />
                 </dd>
               </div>
             </dl>

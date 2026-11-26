@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ActorAvatar } from "@/components/actor";
 import type { SearchResults, SearchRow } from "@/lib/search";
+import { useSettled } from "@/lib/use-settled";
 
 /** Keystrokes settle this long before a search goes out. */
 const DEBOUNCE_MS = 250;
@@ -32,16 +33,6 @@ const GROUP_LABEL: Record<SearchRow["kind"], string | null> = {
 };
 
 type Item = SearchRow | { id: "explore"; kind: "explore"; href: string; title: string };
-
-/** `value`, once it has stopped changing for `ms`. */
-function useSettled(value: string, ms: number) {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(value), ms);
-    return () => clearTimeout(timer);
-  }, [value, ms]);
-  return settled;
-}
 
 const exploreHref = (query: string) => `/explore?q=${encodeURIComponent(query)}`;
 
@@ -81,7 +72,7 @@ function SearchBox({
   onNavigate?: () => void;
 }) {
   const router = useRouter();
-  const box = useRef<HTMLFormElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const query = useSettled(value.trim(), DEBOUNCE_MS);
@@ -90,7 +81,7 @@ function SearchBox({
   // The server can't know the platform, so the hint appears once mounted.
   const [shortcut, setShortcut] = useState<string | null>(null);
   useEffect(() => {
-    if (inline) box.current?.querySelector("input")?.focus();
+    if (inline) input.current?.focus();
     if (!withShortcut) return;
     const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
     const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent;
@@ -98,9 +89,8 @@ function SearchBox({
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        const input = box.current?.querySelector("input");
-        input?.focus();
-        input?.select();
+        input.current?.focus();
+        input.current?.select();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -139,7 +129,7 @@ function SearchBox({
   const go = (href: string) => {
     setOpen(false);
     setValue("");
-    box.current?.querySelector("input")?.blur();
+    input.current?.blur();
     onNavigate?.();
     router.push(href);
   };
@@ -147,8 +137,7 @@ function SearchBox({
   return (
     <search>
       <form
-        ref={box}
-        className={inline ? "sidebar-search search-box-inline" : "sidebar-search"}
+        className="sidebar-search"
         // Enter with no row picked: the search on Explore, as before.
         onSubmit={(event) => {
           event.preventDefault();
@@ -156,7 +145,6 @@ function SearchBox({
           go(typed ? exploreHref(typed) : "/explore");
         }}
       >
-        <Search size={16} aria-hidden className="sidebar-search-icon" />
         <Combobox<Item>
           value={value}
           onValueChange={setValue}
@@ -168,7 +156,19 @@ function SearchBox({
           loading={searching && results.isFetching}
           emptyMessage={null}
           onSelect={(item) => go(item.href)}
-          className="sidebar-search-box"
+          inputRef={input}
+          size="sm"
+          inline={inline}
+          // Over the page, the list may be wider than the sidebar.
+          listboxClassName={inline ? undefined : "sidebar-search-list"}
+          leading={<Search size={16} aria-hidden />}
+          trailing={
+            shortcut && (
+              <kbd className="sidebar-search-kbd" aria-hidden>
+                {shortcut}
+              </kbd>
+            )
+          }
           renderItem={({ item, index, ...option }) => {
             const group = item.kind === "explore" ? null : GROUP_LABEL[item.kind];
             const startsGroup = group && (index === 0 || items[index - 1].kind !== item.kind);
@@ -198,11 +198,6 @@ function SearchBox({
             );
           }}
         />
-        {shortcut && (
-          <kbd className="sidebar-search-kbd" aria-hidden>
-            {shortcut}
-          </kbd>
-        )}
       </form>
     </search>
   );
