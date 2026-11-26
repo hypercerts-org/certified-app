@@ -112,7 +112,7 @@ export async function requirePersonalSettings(
   if (access.status === "self-group") {
     const suffix = path === "/settings" ? "" : path.slice("/settings".length);
     const groupTarget =
-      suffix === "/profile" || suffix === "/appearance" || suffix === "/social-graph"
+      suffix === "/profile" || suffix === "/appearance" || suffix === "/bluesky-sync"
         ? `${groupSettingsHref(access.did)}${suffix}`
         : groupSettingsHref(access.did);
     redirect(groupTarget);

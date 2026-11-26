@@ -47,14 +47,14 @@ async function GroupSettingsGate({
   const tabs: ProfileTab[] = [
     { label: "Account", href: base },
     ...(canEditProfile ? [{ label: "Profile", href: `${base}/profile` }] : []),
-    { label: "Social graph", href: `${base}/social-graph` },
+    { label: "Bluesky sync", href: `${base}/bluesky-sync` },
     { label: "Activity log", href: `${base}/activity` },
     ...(access.isSelfOwned ? [{ label: "Appearance", href: `${base}/appearance` }] : []),
   ];
 
   const legacyHashes: Record<string, string> = {
     ...(canEditProfile ? { profile: `${base}/profile` } : {}),
-    "social-graph": `${base}/social-graph`,
+    "social-graph": `${base}/bluesky-sync`,
     activity: `${base}/activity`,
     ...(access.isSelfOwned
       ? { appearance: `${base}/appearance`, theme: `${base}/appearance` }
@@ -97,7 +97,7 @@ function GroupSettingsShell() {
   return (
     <div className="page">
       <SettingsHeaderSkeleton title="Group settings" />
-      <ProfileTabsSkeleton labels={["Account", "Profile", "Social graph", "Activity log"]} />
+      <ProfileTabsSkeleton labels={["Account", "Profile", "Bluesky sync", "Activity log"]} />
       <SettingsRowsSkeleton rows={4} />
     </div>
   );

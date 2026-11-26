@@ -6,7 +6,7 @@
 //   reject OAuth tokens: personal email changes, app passwords, and non-self
 //   group handle/email management
 // - Promoting the signed-in account into a CGS group (`app.certified.group.import`)
-// - Social graph sync between Certified (`app.certified.graph.follow`) and
+// - Bluesky sync: follows between Certified (`app.certified.graph.follow`) and
 //   Bluesky (`app.bsky.graph.follow`)
 
 import { currentDatetimeString, type l, XrpcError, XrpcResponseError } from "@atproto/lex";

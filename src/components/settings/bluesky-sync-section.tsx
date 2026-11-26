@@ -31,7 +31,7 @@ type Direction = "import" | "export";
  * lets the user selectively import (Bluesky → Certified) or, for personal
  * accounts, export (Certified → Bluesky).
  */
-export function SocialGraphSection({
+export function BlueskySyncSection({
   repoDid,
   allowExport,
   description = "Your follows on Certified and on Bluesky are kept apart. Choose which accounts to sync before anything changes.",
