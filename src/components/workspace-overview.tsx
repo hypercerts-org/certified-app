@@ -18,19 +18,12 @@
 // skeleton shaped like it. All but the organizations are cached public data
 // about the account, so a prefetching link brings them along.
 
-import {
-  Button,
-  Card,
-  CopyableId,
-  Eyebrow,
-  Heading,
-  Skeleton,
-  Text,
-} from "@hypercerts-org/ui-react";
+import { Button, Card, Eyebrow, Heading, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { ArrowUpRight, FileBadge, Link2, Plus, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, Suspense, useId } from "react";
+import { HandleId, PermanentId } from "@/components/account-ids";
 import { ActorAvatar, ActorHandle, ActorLink, ActorRow } from "@/components/actor";
 import { actorHref, workspaceHref } from "@/components/cards";
 import { Empty } from "@/components/empty";
@@ -419,29 +412,19 @@ function IdentityView({ did, actor }: { did: string; actor: ActorDetail | null }
               : "Identifies your account in every app."}
           </Text>
         </div>
-        <dl className="overview-id-list divided">
+        <dl className="facts">
           {handle && (
-            <div className="overview-id-item">
+            <div className="fact">
               <dt>Handle</dt>
               <dd>
-                <CopyableId
-                  value={handle}
-                  displayValue={`@${handle}`}
-                  label="Handle"
-                  className="overview-id-field"
-                />
+                <HandleId handle={handle} />
               </dd>
             </div>
           )}
-          <div className="overview-id-item">
+          <div className="fact">
             <dt>Permanent ID</dt>
             <dd>
-              <CopyableId
-                value={did}
-                truncateTo={10}
-                label="Permanent ID"
-                className="overview-id-field"
-              />
+              <PermanentId value={did} />
             </dd>
           </div>
         </dl>

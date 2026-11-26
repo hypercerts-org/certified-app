@@ -23,6 +23,7 @@ import { Plus, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { HandleId, PermanentId } from "@/components/account-ids";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { ROW_ACTION } from "@/lib/button-roles";
 import * as groupActions from "@/lib/hypercerts/group-actions";
@@ -175,37 +176,28 @@ export function NewGroupDialog({
         {created ? (
           <div className="stack">
             {created.profileNote && <Banner tone="warning">{created.profileNote}</Banner>}
-            <dl className="overview-id-list">
-              <div className="overview-id-item">
+            <dl className="facts">
+              <div className="fact">
                 <dt>Handle</dt>
                 <dd>
-                  <CopyableId
-                    value={created.handle}
-                    displayValue={`@${created.handle}`}
-                    label="Group handle"
-                    className="overview-id-field"
-                  />
+                  <HandleId handle={created.handle} label="Group handle" />
                 </dd>
               </div>
-              <div className="overview-id-item">
+              <div className="fact">
                 <dt>Permanent ID</dt>
                 <dd>
-                  <CopyableId
-                    value={created.groupDid}
-                    truncateTo={12}
-                    label="Group DID"
-                    className="overview-id-field"
-                  />
+                  <PermanentId value={created.groupDid} label="Group permanent ID" />
                 </dd>
               </div>
               {created.accountPassword && (
-                <div className="overview-id-item">
+                <div className="fact">
                   <dt>Account password</dt>
                   <dd>
                     <CopyableId
                       value={created.accountPassword}
+                      displayValue={created.accountPassword}
                       label="Account password"
-                      className="overview-id-field"
+                      className="account-id"
                     />
                   </dd>
                 </div>

@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { HandleId } from "@/components/account-ids";
 import type { ActionFailure, SimpleResult } from "@/lib/settings-actions";
 import {
   confirmOwnPasswordReset,
@@ -230,7 +231,7 @@ export function HandleRow({
             </div>
           </form>
         ) : handle ? (
-          <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" />
+          <HandleId handle={handle} />
         ) : (
           <Text size="body-sm" tone="muted">
             No handle verified
@@ -315,8 +316,8 @@ export function HandleRow({
 
         {domainStep === "dns" && (
           <div className="stack">
-            <dl className="overview-id-list divided">
-              <div className="overview-id-item">
+            <dl className="facts">
+              <div className="fact">
                 <dt>Type</dt>
                 <dd>
                   <Text as="span" size="body-sm" tone="ink">
@@ -324,16 +325,26 @@ export function HandleRow({
                   </Text>
                 </dd>
               </div>
-              <div className="overview-id-item">
+              <div className="fact">
                 <dt>Host</dt>
                 <dd>
-                  <CopyableId value={dnsHost} label="DNS host" className="overview-id-field" />
+                  <CopyableId
+                    value={dnsHost}
+                    displayValue={dnsHost}
+                    label="DNS host"
+                    className="account-id"
+                  />
                 </dd>
               </div>
-              <div className="overview-id-item">
+              <div className="fact">
                 <dt>Value</dt>
                 <dd>
-                  <CopyableId value={dnsValue} label="DNS value" className="overview-id-field" />
+                  <CopyableId
+                    value={dnsValue}
+                    displayValue={dnsValue}
+                    label="DNS value"
+                    className="account-id"
+                  />
                 </dd>
               </div>
             </dl>

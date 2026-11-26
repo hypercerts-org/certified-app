@@ -1285,30 +1285,6 @@ button.menu-row:disabled:not([aria-current]) {
   gap: var(--space-3);
 }
 
-.overview-id-list {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-}
-
-.overview-id-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-block: var(--space-3);
-}
-
-.overview-id-item dt {
-  color: var(--hc-text-body);
-  font-size: var(--hc-type-body-sm);
-  font-weight: var(--hc-weight-medium);
-}
-
-.overview-id-item dd {
-  min-inline-size: 0;
-  margin: 0;
-}
-
 /* Public profile (src/components/profile-header.tsx and the (profile) pages). */
 /* A profile, a project or an activity, centered at its own width: the header
    across the top, then two columns (.page-columns), each no wider than its
@@ -3902,16 +3878,14 @@ a.badge-title:hover {
   block-size: 4.5rem;
 }
 
-.overview-id-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-block-size: 2.75rem;
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
-  border: 1px solid var(--hc-line-hairline);
-  border-radius: var(--hc-radius-control);
-  background: var(--hc-surface-tint);
-  font-family: var(--hc-font-mono);
+/* An account's handle or permanent ID (src/components/account-ids.tsx):
+   in full, wrapping on a narrow screen rather than running off it. */
+.account-id {
+  max-inline-size: 100%;
+}
+
+.account-id > span:first-child {
+  overflow-wrap: anywhere;
 }
 
 /* Explore: the tabs, a toolbar, then rows or a gallery (as on staging). */

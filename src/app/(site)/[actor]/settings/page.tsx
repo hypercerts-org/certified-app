@@ -1,5 +1,6 @@
-import { CopyableId, Text } from "@hypercerts-org/ui-react";
+import { Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
+import { HandleId, PermanentId } from "@/components/account-ids";
 import { EmailRow, HandleRow, PasswordResetRow } from "@/components/settings/account-controls";
 import {
   GroupAccountManager,
@@ -42,7 +43,7 @@ async function GroupAccountSettings({ params }: { params: Promise<{ actor: strin
           label="Permanent ID"
           description="This group's DID. Unlike its handle, it never changes."
         >
-          <CopyableId value={groupDid} label="Permanent ID" />
+          <PermanentId value={groupDid} />
         </SettingsRow>
 
         {isSelfOwned ? (
@@ -74,7 +75,7 @@ async function GroupAccountSettings({ params }: { params: Promise<{ actor: strin
             description="The @handle people use to find this group on Certified. Only admins and the owner can change it."
           >
             {handle ? (
-              <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" />
+              <HandleId handle={handle} />
             ) : (
               <Text size="body-sm" tone="muted">
                 No handle verified
