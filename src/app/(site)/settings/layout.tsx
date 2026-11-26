@@ -25,7 +25,6 @@ const PERSONAL_TABS = [
   { label: "Profile", href: "/settings/profile" },
   { label: "Groups", href: "/settings/groups" },
   { label: "Social graph", href: "/settings/social-graph" },
-  { label: "App passwords", href: "/settings/app-passwords" },
   { label: "Appearance", href: "/settings/appearance" },
 ];
 
@@ -35,7 +34,7 @@ const LEGACY_HASHES: Readonly<Record<string, string>> = {
   theme: "/settings/appearance",
   "social-graph": "/settings/social-graph",
   "bluesky-follows": "/settings/social-graph",
-  "app-passwords": "/settings/app-passwords",
+  "app-passwords": "/settings",
   group: "/settings/groups",
   groups: "/settings/groups",
 };

@@ -1,6 +1,7 @@
 import { CopyableId, Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { EmailRow, HandleRow, PasswordResetRow } from "@/components/settings/account-controls";
+import { AppPasswordsRow } from "@/components/settings/app-passwords-row";
 import {
   readPersonalAccountDetails,
   requirePersonalSettings,
@@ -20,7 +21,7 @@ async function AccountSettings() {
     <SettingsSection>
       <SettingsGroup
         title="Account"
-        description="Your permanent ID, handle, sign-in email, password, and active session."
+        description="Your permanent ID, handle, sign-in email, passwords, and active session."
       >
         <SettingsRow
           label="Permanent ID"
@@ -34,6 +35,8 @@ async function AccountSettings() {
         <EmailRow initialEmail={email} initialConfirmed={emailConfirmed} />
 
         <PasswordResetRow email={email} />
+
+        <AppPasswordsRow />
 
         <SettingsRow
           label="Session"

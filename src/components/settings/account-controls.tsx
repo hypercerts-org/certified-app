@@ -762,7 +762,7 @@ export function EmailRow({
 
 export function PasswordResetRow({
   email,
-  description = "Lets you sign in to other AT Protocol apps, like Bluesky, with your handle.",
+  description = "Your account's own password. Keep it to yourself: give other apps an app password instead.",
 }: {
   email: string | null;
   description?: string;
