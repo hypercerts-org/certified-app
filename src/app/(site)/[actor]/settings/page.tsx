@@ -6,13 +6,13 @@ import {
   GroupAccountManager,
   GroupPasswordResetRow,
 } from "@/components/settings/group-account-controls";
-import { HandleRow } from "@/components/settings/handle-row";
-import { PasswordResetRow } from "@/components/settings/password-reset-row";
 import {
   GroupMembersGroup,
   GroupOwnershipGroup,
   GroupStatusGroup,
 } from "@/components/settings/group-settings-sections";
+import { HandleRow } from "@/components/settings/handle-row";
+import { PasswordResetRow } from "@/components/settings/password-reset-row";
 import {
   loadGroupIdentity,
   readPersonalAccountDetails,

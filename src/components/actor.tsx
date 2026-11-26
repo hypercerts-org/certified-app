@@ -10,7 +10,9 @@ import { Avatar } from "@hypercerts-org/ui-react";
 import type { ComponentProps, ReactNode } from "react";
 import { IntentLink } from "@/components/intent-link";
 import { type ActorCard, nameOf } from "@/lib/hypercerts/views";
+
 export { actorHref } from "@/lib/routes";
+
 import { actorHref } from "@/lib/routes";
 
 /**
