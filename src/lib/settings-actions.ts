@@ -29,10 +29,12 @@ import {
 } from "@/lib/auth/elevated-session";
 import { CgsAuthError, canEdit, forgetMemberships, importGroup, isMember } from "@/lib/cgs";
 import { tags } from "@/lib/hypercerts/cache";
+import { waitForIndex } from "@/lib/hypercerts/index-wait";
 import { getActorCards } from "@/lib/hypercerts/queries";
 import { sdkContext, writeTo } from "@/lib/hypercerts/sdk";
 import type { ActorCard } from "@/lib/hypercerts/views";
 import { repositoryFor } from "@/lib/hypercerts/writes";
+import { resolveHandleFresh } from "@/lib/identity";
 import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
 
@@ -151,8 +153,10 @@ export async function updateOwnHandle(rawHandle: string): Promise<SimpleResult> 
       }
       return { ok: false, message: pdsMessage };
     }
+    await waitForIndex(async () => (await resolveHandleFresh(session.did)) === handle, 5_000);
     updateTag(tags.actor(session.did));
-    updateTag(`handle:${handle}`);
+    updateTag(tags.handle(handle));
+    updateTag(tags.explore());
     return { ok: true };
   } catch (err) {
     if (!(err instanceof SessionUnavailableError)) {
@@ -722,7 +726,10 @@ export async function updateGroupAccountHandle(
         message: await readPdsError(r.response, "Couldn't update the group's handle."),
       };
     }
+    await waitForIndex(async () => (await resolveHandleFresh(groupDid)) === handle, 5_000);
     updateTag(tags.actor(groupDid));
+    updateTag(tags.handle(handle));
+    updateTag(tags.explore());
     return { ok: true };
   } catch (err) {
     logError("[settings] updateGroupAccountHandle failed", err, { groupDid });

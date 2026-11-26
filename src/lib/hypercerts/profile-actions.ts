@@ -161,7 +161,7 @@ export async function saveProfileField(input: {
     }
 
     const saved = await patchProfile(repository, patch, expectedCid, await getRecordSigner());
-    await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid);
+    await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid, 5_000);
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
     return { ok: true, data: saved };
@@ -258,7 +258,7 @@ export async function saveProfileMedia(
       expectedCid,
       signer,
     );
-    await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid);
+    await waitForIndex(async () => (await getIndexedProfile(repo))?.cid === saved.cid, 5_000);
     updateTag(tags.actor(repo));
     updateTag(tags.explore());
     return {

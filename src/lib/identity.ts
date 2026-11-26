@@ -13,6 +13,10 @@ import { tags } from "@/lib/hypercerts/cache";
 // prerendering pages, where the OAuth client can't start. Its fetch refuses
 // private and local addresses (SSRF-safe), since anyone can point a handle at
 // any domain.
+//
+// `createIdentityResolver` wraps its DID resolver in an in-memory cache that
+// Next.js `updateTag` cannot clear, so every call passes `{ noCache: true }`
+// and lets Next.js's tagged `"use cache"` own the caching.
 
 /** Refuses private and local addresses: for any URL a record or DID names. */
 export const safeFetch = safeFetchWrap({ allowImplicitRedirect: true });
@@ -26,7 +30,7 @@ async function resolveHandle(did: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
-  const { handle } = await resolver.resolve(did);
+  const { handle } = await resolver.resolve(did, { noCache: true });
   // The resolver reports "handle.invalid" unless the handle points back to the DID.
   return handle === "handle.invalid" ? null : handle;
 }
@@ -34,11 +38,24 @@ async function resolveHandle(did: string): Promise<string | null> {
 async function resolveDidOf(handle: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(`handle:${handle}`);
+  cacheTag(tags.handle(handle));
   // Resolving a handle also checks that the DID claims it back.
-  const { did, handle: verified } = await resolver.resolve(handle);
+  const { did, handle: verified } = await resolver.resolve(handle, { noCache: true });
   if (verified !== "handle.invalid") cacheTag(tags.actor(did));
   return verified === "handle.invalid" ? null : did;
+}
+
+/**
+ * Resolves a DID's verified handle directly past every cache, for checking
+ * whether a handle change has propagated before expiring cached pages.
+ */
+export async function resolveHandleFresh(did: string): Promise<string | null> {
+  try {
+    const { handle } = await resolver.resolve(did, { noCache: true });
+    return handle === "handle.invalid" ? null : handle;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -80,6 +97,7 @@ export async function getHandle(did: string): Promise<string | null> {
 export async function getPdsUrl(did: string): Promise<string> {
   "use cache";
   cacheLife("hours");
-  const { didDoc } = await resolver.resolve(did);
+  cacheTag(tags.actor(did));
+  const { didDoc } = await resolver.resolve(did, { noCache: true });
   return extractPdsUrl(didDoc).origin;
 }

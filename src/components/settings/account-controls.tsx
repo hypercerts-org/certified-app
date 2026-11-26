@@ -12,6 +12,7 @@ import {
   ResponsiveDialog,
   Text,
 } from "@hypercerts-org/ui-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ export function HandleRow({
   onSave?: (handle: string) => Promise<SimpleResult>;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const domainFormId = useId();
   const [handle, setHandle] = useState(initialHandle);
   const [editing, setEditing] = useState(false);
@@ -112,6 +114,7 @@ export function HandleRow({
       setHandle(next);
       setEditing(false);
       toast(`Handle updated to @${next}`);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setSaving(false);
@@ -143,6 +146,7 @@ export function HandleRow({
       setHandle(normalizedDomain);
       setDomainStep("done");
       toast(`Handle updated to @${normalizedDomain}`);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setVerifying(false);

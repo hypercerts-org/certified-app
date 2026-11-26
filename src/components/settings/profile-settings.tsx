@@ -14,6 +14,7 @@ import {
   Textarea,
   toISODate,
 } from "@hypercerts-org/ui-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useRef, useState } from "react";
@@ -122,6 +123,7 @@ export function ProfileSettings({
   initialLocationName: string | null;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState(initialProfile);
   const [org, setOrg] = useState(initialOrganization);
   const [orgExpanded, setOrgExpanded] = useState(initialOrganization.exists || isGroup);
@@ -248,6 +250,7 @@ export function ProfileSettings({
       setProfile(result.data);
       setEditing(null);
       toast.success(successMessage);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setSaving(false);
@@ -275,6 +278,7 @@ export function ProfileSettings({
       if (nextLocationName !== undefined) setLocationName(nextLocationName);
       setEditing(null);
       toast.success(successMessage);
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setSaving(false);
@@ -322,6 +326,7 @@ export function ProfileSettings({
         setProfile((prev) => ({ ...prev, cid: result.cid, bannerUrl: result.url }));
         toast.success("Banner updated.");
       }
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setMediaBusy(null);
@@ -353,6 +358,7 @@ export function ProfileSettings({
         setProfile((prev) => ({ ...prev, cid: result.cid, bannerUrl: null }));
         toast.success("Banner removed.");
       }
+      void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       router.refresh();
     } finally {
       setMediaBusy(null);

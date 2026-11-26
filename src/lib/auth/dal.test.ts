@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheTag: vi.fn() }));
 vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
 
 const mocks = {

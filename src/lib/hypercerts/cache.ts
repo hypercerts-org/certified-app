@@ -2,7 +2,10 @@
 // (./queries) and the actions that expire it. Their lifetime is the "public"
 // cacheLife profile in next.config.ts.
 export const tags = {
+  /** Signed-in browser session read via `"use cache: private"` (`getUser()`). */
+  session: () => "session",
   actor: (did: string) => `actor:${did}`,
+  handle: (handle: string) => `handle:${handle.toLowerCase()}`,
   activities: (author: string) => `activities:${author}`,
   projects: (author: string) => `projects:${author}`,
   project: (uri: string) => `project:${uri}`,

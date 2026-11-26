@@ -59,8 +59,10 @@ vi.mock("@/lib/hypercerts/sdk", () => ({
   sdkContext: mocks.sdkContext,
   writeTo: vi.fn(),
 }));
+vi.mock("@/lib/hypercerts/index-wait", () => ({ waitForIndex: vi.fn(async () => true) }));
 vi.mock("@/lib/hypercerts/queries", () => ({ getActorCards: mocks.getActorCards }));
 vi.mock("@/lib/hypercerts/writes", () => ({ repositoryFor: mocks.repositoryFor }));
+vi.mock("@/lib/identity", () => ({ resolveHandleFresh: vi.fn(async () => null) }));
 vi.mock("@/lib/log", () => ({ logError: () => {} }));
 
 const alice = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";

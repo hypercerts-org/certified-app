@@ -16,8 +16,11 @@ const TIMEOUT_MS = 3_000;
  * pages then catch up as their cache refreshes). A failing check counts as
  * not yet.
  */
-export async function waitForIndex(indexed: () => Promise<boolean>): Promise<boolean> {
-  const deadline = Date.now() + TIMEOUT_MS;
+export async function waitForIndex(
+  indexed: () => Promise<boolean>,
+  timeoutMs = TIMEOUT_MS,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
   for (let delay = 150; ; delay = Math.min(delay * 2, 800)) {
     if (await indexed().catch(() => false)) return true;
     if (Date.now() + delay > deadline) return false;

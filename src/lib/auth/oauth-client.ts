@@ -71,13 +71,16 @@ async function createClient(): Promise<NodeOAuthClient> {
 }
 
 let client: Promise<NodeOAuthClient> | undefined;
+let clientScope: string | undefined;
 
-/** The process-wide OAuth client. A failed setup is retried on the next call. */
+/** The process-wide OAuth client. A failed setup or scope change rebuilds it. */
 export function getOAuthClient(): Promise<NodeOAuthClient> {
-  if (!client) {
+  if (!client || clientScope !== OAUTH_SCOPE) {
+    clientScope = OAUTH_SCOPE;
     client = createClient();
     client.catch(() => {
       client = undefined;
+      clientScope = undefined;
     });
   }
   return client;

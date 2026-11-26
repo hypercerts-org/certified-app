@@ -4,7 +4,9 @@
 import "server-only";
 
 import { isExpectedSessionError, type OAuthSession } from "@atproto/oauth-client-node";
+import { cacheTag } from "next/cache";
 import { connection } from "next/server";
+import { tags } from "@/lib/hypercerts/cache";
 import { logError } from "@/lib/log";
 import { getOAuthClient } from "./oauth-client";
 import { endAppSession, readAppSession } from "./session";
@@ -18,6 +20,7 @@ export type User = { did: string };
  */
 export async function getUser(): Promise<User | null> {
   "use cache: private";
+  cacheTag(tags.session());
   const session = await readAppSession();
   return session ? { did: session.did } : null;
 }
