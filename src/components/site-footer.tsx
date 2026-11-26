@@ -1,6 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { Wordmark } from "@/components/wordmark";
 
 const COPYRIGHT_YEAR = 2026;
 
@@ -14,18 +14,7 @@ export function SiteFooter({ variant = "app" }: { variant?: "app" | "landing" })
     <footer className={variant === "landing" ? "site-footer site-footer--landing" : "site-footer"}>
       <div className="site-footer-row">
         <div className="site-footer-left">
-          <span className="site-footer-brand">
-            <Image
-              src="/brand/wordmark/certified_wordmark_black.svg"
-              alt="Certified"
-              width={72}
-              height={14}
-              className="site-footer-wordmark"
-            />
-            <span className="site-footer-suffix" aria-hidden>
-              .app
-            </span>
-          </span>
+          <Wordmark variant="certified-app" faded height={14} className="site-footer-wordmark" />
           <span className="site-footer-copy">© {COPYRIGHT_YEAR} Hypercerts Foundation</span>
         </div>
         <nav className="site-footer-nav" aria-label="Footer links">

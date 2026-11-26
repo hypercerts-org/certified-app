@@ -1,11 +1,11 @@
 import { Container, Skeleton } from "@hypercerts-org/ui-react";
-import Image from "next/image";
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { cache, type ReactNode, Suspense } from "react";
 import { MobileSearchButton } from "@/components/global-search";
 import { SignInButton } from "@/components/sign-in-button";
 import { type Account, Destinations, HeaderAccountMenus } from "@/components/site-nav";
+import { Wordmark } from "@/components/wordmark";
 import { getActingAs } from "@/lib/acting-as";
 import { CERTIFIED_PDS_URL } from "@/lib/auth/config";
 import { getUser } from "@/lib/auth/dal";
@@ -21,14 +21,8 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header-row">
-        <Link href="/" className="brand" aria-label="Certified home">
-          <Image
-            src="/brand/wordmark/certified_wordmark_black.svg"
-            alt="Certified"
-            width={99}
-            height={19}
-            preload
-          />
+        <Link href="/" className="brand" aria-label="Certified.app home">
+          <Wordmark variant="certified-app" faded height={18} decorative />
         </Link>
         <nav aria-label="Main" className="site-nav desktop-only">
           <Suspense fallback={null}>
