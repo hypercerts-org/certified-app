@@ -14,9 +14,11 @@ import {
   Textarea,
 } from "@hypercerts-org/ui-react";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useId, useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
+import { workspaceHref } from "@/lib/routes";
 
 /** Optimistic Hide from profile / Show on profile toggle for a received endorsement. */
 export function EndorsementVisibilityButton({
@@ -126,8 +128,13 @@ export function RevokeEndorsementButton({
   );
 }
 
-/** "Endorse someone": dialog to endorse an account by handle, DID, or profile link, with optional note. */
+/**
+ * "Endorse someone": dialog to endorse an account by handle, DID, or profile
+ * link, with optional note. Once sent, it opens the Given tab, where the new
+ * endorsement shows.
+ */
 export function EndorseSomeoneDialog({ repo }: { repo: string }) {
+  const router = useRouter();
   const formId = useId();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState("");
@@ -171,6 +178,7 @@ export function EndorseSomeoneDialog({ repo }: { repo: string }) {
       setOpen(false);
       reset();
       toast("Endorsement sent");
+      router.push(`${workspaceHref(repo)}/endorsements/given`);
     } finally {
       setSubmitting(false);
     }
