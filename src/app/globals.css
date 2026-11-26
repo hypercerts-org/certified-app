@@ -4407,11 +4407,20 @@ a.badge-title:hover {
 
 /* A record page's actions beside its title: Follow, and for whoever may
    change it the three-dot menu (record-menu). */
+/* A header's buttons (a profile's, a project's, an activity's): one row,
+   each button stretched to its 2.25rem height, whatever the toolkit's size.
+   The "…" MenuButton is 40px square on its own; here it is the row's height
+   (menu-button-sm), so Follow, Like, Share and "…" line up. */
+button.menu-button-sm {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+}
+
 .record-head-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: var(--space-2);
+  min-block-size: 2.25rem;
 }
 
 /* An activity's title block and its actions, side by side above the picture. */

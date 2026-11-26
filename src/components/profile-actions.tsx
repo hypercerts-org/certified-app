@@ -272,7 +272,11 @@ export function VisitorActions({
         <MenuTrigger asChild>
           {/* The full name for screen readers; on hover, a tooltip short enough
               not to run past the page's edge (it centers on the button). */}
-          <MenuButton label={`More actions for ${title}`} tooltip="More actions" />
+          <MenuButton
+            label={`More actions for ${title}`}
+            tooltip="More actions"
+            className="menu-button-sm"
+          />
         </MenuTrigger>
         <MenuContent label="More actions" align="end">
           <MenuItem disabled title={COMING_SOON}>

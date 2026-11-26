@@ -46,7 +46,12 @@ export function RecordMenu({
       <Menu>
         <MenuTrigger asChild>
           {/* The full name for screen readers; on hover, a short tooltip. */}
-          <MenuButton label={`Actions for ${title}`} tooltip={`Edit or delete this ${what}`} />
+          {/* Beside small buttons (Follow, Like, Share), so small too: menu-button-sm. */}
+          <MenuButton
+            label={`Actions for ${title}`}
+            tooltip={`Edit or delete this ${what}`}
+            className="menu-button-sm"
+          />
         </MenuTrigger>
         <MenuContent label={`Actions for this ${what}`} align="end">
           <MenuItem onClick={() => router.push(editHref)}>
