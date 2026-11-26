@@ -20,6 +20,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import * as likeActions from "@/lib/hypercerts/like-actions";
+import { signInHref } from "@/lib/validate";
 
 const numberFormat = new Intl.NumberFormat("en");
 const ACTING_AS_CHANGED_EVENT = "certified:acting-as-changed";
@@ -99,7 +100,7 @@ export function LikeButton({
       return;
     }
     if (actor === null || actor === undefined) {
-      router.push(`/sign-in?${new URLSearchParams({ returnTo: returnPath })}`);
+      router.push(signInHref(returnPath));
       return;
     }
 

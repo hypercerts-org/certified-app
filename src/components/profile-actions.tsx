@@ -29,6 +29,7 @@ import { LinkPending } from "@/components/link-pending";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import * as followActions from "@/lib/hypercerts/follow-actions";
 import type { EndorsementRef, FollowRef } from "@/lib/hypercerts/views";
+import { signInHref } from "@/lib/validate";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
 export async function copyToClipboard(text: string, what: string) {
@@ -160,11 +161,7 @@ export function FollowControl({
 }) {
   if (actor) return <FollowButton key={actor} repo={actor} subject={subject} rendered={follow} />;
   return (
-    <Button
-      href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
-      variant="primary"
-      size="sm"
-    >
+    <Button href={signInHref(path)} variant="primary" size="sm">
       <UserPlus size={16} aria-hidden />
       Follow
     </Button>
@@ -246,11 +243,7 @@ export function EndorseControl({
   if (actor)
     return <EndorseButton key={actor} repo={actor} subject={subject} rendered={endorsement} />;
   return (
-    <Button
-      href={`/sign-in?${new URLSearchParams({ returnTo: path })}`}
-      variant="secondary"
-      size="sm"
-    >
+    <Button href={signInHref(path)} variant="secondary" size="sm">
       <ThumbsUp size={16} aria-hidden />
       Endorse
     </Button>
@@ -305,7 +298,7 @@ export function VisitorActions({
           <MenuItem
             onClick={() => {
               if (!actor) {
-                router.push(`/sign-in?${new URLSearchParams({ returnTo: path })}`);
+                router.push(signInHref(path));
                 return;
               }
               setListOpen(true);

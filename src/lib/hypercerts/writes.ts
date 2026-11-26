@@ -33,17 +33,19 @@ const smallImage = org.hypercerts.defs.smallImage;
 const largeImage = org.hypercerts.defs.largeImage;
 
 /**
- * Why a write failed. "unknown": it was sent but no answer came back
- * (timeout, dropped connection, 5xx), so it may or may not have been stored;
- * never retry blindly, read the record to find out. Every other reason means
- * nothing was written.
+ * Why a direct repository write failed. "unknown": it was sent but no answer
+ * came back (timeout, dropped connection, 5xx), so it may or may not have been
+ * stored; never retry blindly, read the record to find out. Every other reason
+ * means nothing was written. Distinct from SDK-level `WriteFailure` in
+ * `./sdk.ts`, which maps network/rate-limit errors to `"unavailable"` and does
+ * not expose compare-and-swap `"conflict"`.
  */
-export type WriteFailure = "conflict" | "forbidden" | "invalid" | "unknown";
+export type RepoWriteFailure = "conflict" | "forbidden" | "invalid" | "unknown";
 
 /** A refused write, or one whose outcome is unknown. For "invalid", `message` is safe to show. */
 export class WriteError extends Error {
   constructor(
-    readonly reason: WriteFailure,
+    readonly reason: RepoWriteFailure,
     message: string,
   ) {
     super(message);

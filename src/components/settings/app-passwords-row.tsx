@@ -20,15 +20,13 @@ import {
 } from "@hypercerts-org/ui-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { lockPersonalSession, unlockPersonalSession } from "@/lib/settings/account-actions";
 import {
-  type AppPasswordInfo,
-  type CreatedAppPassword,
   createPersonalAppPassword,
   listPersonalAppPasswords,
-  lockPersonalSession,
   revokePersonalAppPassword,
-  unlockPersonalSession,
-} from "@/lib/settings-actions";
+} from "@/lib/settings/app-password-actions";
+import type { AppPasswordInfo, CreatedAppPassword } from "@/lib/settings/types";
 import { SettingsAction, SettingsRow } from "./settings-frame";
 import { UnlockDialog, useUnlockSession } from "./unlock-session";
 

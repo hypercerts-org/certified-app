@@ -35,10 +35,7 @@ import { resolveAccountDid } from "@/lib/hypercerts/resolve-target";
 import { sdkContext } from "@/lib/hypercerts/sdk";
 import { logError } from "@/lib/log";
 import { workspaceHref } from "@/lib/routes";
-import { isDid } from "@/lib/validate";
-
-const HANDLE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isDid, isEmail, isHandleLabel } from "@/lib/validate";
 
 export type GroupActionFailure = { ok: false; message: string };
 
@@ -69,7 +66,7 @@ function normalizeHandle(raw: string): string | null {
   if (!cleaned) return null;
   const suffix = `.${defaultGroupDomain().toLowerCase()}`;
   const label = cleaned.endsWith(suffix) ? cleaned.slice(0, -suffix.length) : cleaned;
-  if (!label || label.length > 63 || !HANDLE_LABEL.test(label)) return null;
+  if (!isHandleLabel(label)) return null;
   return label;
 }
 
@@ -112,7 +109,7 @@ export async function createGroup(input: {
     };
   }
   const email = typeof input?.email === "string" ? input.email.trim() : "";
-  if (email && (email.length > 254 || !EMAIL.test(email))) {
+  if (email && !isEmail(email)) {
     return { ok: false, message: "Enter a valid email address, or leave it blank." };
   }
   const displayName = typeof input?.displayName === "string" ? input.displayName.trim() : "";

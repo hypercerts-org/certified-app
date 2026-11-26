@@ -21,7 +21,7 @@ import {
   type SearchResults,
   type SearchRow,
 } from "@/lib/search";
-import { isDid } from "@/lib/validate";
+import { isDid, isHandle } from "@/lib/validate";
 
 // The sidebar search's dropdown: the best few activities, projects and
 // accounts for what is typed so far (lib/search.ts ranks them), plus a row
@@ -90,7 +90,7 @@ async function fetchBlueskyActors(
 async function searchActors(q: string, limit: number): Promise<SearchActorHit[]> {
   const cleaned = q.replace(/^@/, "").trim();
   const [direct, certifiedPage, bsky] = await Promise.all([
-    isDid(cleaned) || /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(cleaned)
+    isDid(cleaned) || isHandle(cleaned)
       ? getActor(cleaned).catch((err) => {
           logError("[search] direct actor lookup failed", err);
           return null;

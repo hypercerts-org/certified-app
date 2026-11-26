@@ -1,8 +1,10 @@
 import { Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { PermanentId } from "@/components/account-ids";
-import { EmailRow, HandleRow, PasswordResetRow } from "@/components/settings/account-controls";
 import { AppPasswordsRow } from "@/components/settings/app-passwords-row";
+import { EmailRow } from "@/components/settings/email-row";
+import { HandleRow } from "@/components/settings/handle-row";
+import { PasswordResetRow } from "@/components/settings/password-reset-row";
 import {
   readPersonalAccountDetails,
   requirePersonalSettings,
