@@ -682,6 +682,14 @@ export async function deleteBadgeAward(repo: Repository, rkey: string): Promise<
  * client's SSRF-safe resolver. Returns null when the record doesn't exist.
  */
 export async function resolvePublicRecordRef(uri: string): Promise<StoredRecord | null> {
+  const found = await resolvePublicRecord(uri);
+  return found ? { uri: found.uri, cid: found.cid } : null;
+}
+
+/** Like resolvePublicRecordRef, with the record's value too. */
+export async function resolvePublicRecord(
+  uri: string,
+): Promise<(StoredRecord & { value: unknown }) | null> {
   const parts = uri.slice("at://".length).split("/");
   if (parts.length !== 3) return null;
   const [did, collectionNsid, rkey] = parts;
@@ -696,7 +704,7 @@ export async function resolvePublicRecordRef(uri: string): Promise<StoredRecord 
       collectionNsid as l.NsidString,
       rkey,
     );
-    return found ? { uri, cid: found.cid } : null;
+    return found ? { uri, cid: found.cid, value: found.value } : null;
   } catch (err) {
     logError("[writes] public record ref lookup failed", err, { uri });
     return null;

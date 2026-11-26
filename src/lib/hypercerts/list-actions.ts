@@ -22,12 +22,12 @@ import {
   removeItemsFromList,
   repositoryFor,
   resolveAccountProfileRef,
-  resolvePublicRecordRef,
+  resolvePublicRecord,
   updateListDetails,
   WriteError,
 } from "@/lib/hypercerts/writes";
 import { getDid } from "@/lib/identity";
-import type { ListKind } from "@/lib/lists";
+import { fitsList, type ListKind } from "@/lib/lists";
 import { workspaceHref } from "@/lib/routes";
 import { isAtUri, isDid, isRkey } from "@/lib/validate";
 
@@ -46,7 +46,16 @@ export type ListActionFailed = { ok: false; reason: ListFailure; message: string
 export type CreateListResult = { ok: true; href: string; indexed: boolean } | ListActionFailed;
 export type EditListResult = { ok: true; indexed: boolean } | ListActionFailed;
 export type AddListItemsResult =
-  | { ok: true; added: number; skipped: number; unresolved: string[]; indexed: boolean }
+  | {
+      ok: true;
+      added: number;
+      skipped: number;
+      /** Lines naming nothing that could be found. */
+      unresolved: string[];
+      /** Lines naming a record this list doesn't hold (a project in an activities list). */
+      wrongKind: string[];
+      indexed: boolean;
+    }
   | ListActionFailed;
 export type RemoveListItemsResult =
   | { ok: true; removed: number; indexed: boolean }
@@ -175,19 +184,23 @@ export async function editList(
   }
 }
 
-/** Resolves a pasted line (handle, DID, Certified URL, or AT-URI) to a strongRef. */
-async function resolveLineToRef(line: string) {
+/**
+ * Resolves a pasted line (handle, DID, Certified URL, or AT-URI) to the
+ * record it names, with its value (an account: its profile record).
+ */
+async function resolveLine(line: string) {
   const parsed = parseTarget(line);
   if (!parsed) return null;
-  if (parsed.kind === "uri") return resolvePublicRecordRef(parsed.uri);
+  if (parsed.kind === "uri") return resolvePublicRecord(parsed.uri);
   if (parsed.kind === "record-path") {
     const did = isDid(parsed.actor) ? parsed.actor : await getDid(parsed.actor);
     if (!did) return null;
-    return resolvePublicRecordRef(`at://${did}/${parsed.collection}/${parsed.rkey}`);
+    return resolvePublicRecord(`at://${did}/${parsed.collection}/${parsed.rkey}`);
   }
   const did = parsed.kind === "did" ? parsed.did : await getDid(parsed.handle);
   if (!did) return null;
-  return resolveAccountProfileRef(did as l.DidString);
+  const ref = await resolveAccountProfileRef(did as l.DidString);
+  return ref && { ...ref, value: null };
 }
 
 /** Adds one or many pasted items (handles, DIDs, Certified URLs, or AT-URIs) to a list. */
@@ -217,21 +230,29 @@ export async function addListItems(
     const cleaned = [...new Set(rawLines.map((line) => line.trim()).filter(Boolean))];
     if (cleaned.length === 0) return fail("invalid", "add items", "Paste at least one item.");
 
+    const repository = await repositoryFor(session, repo);
+    const list = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
+    if (!list) return fail("invalid", "add items", "This list no longer exists.");
+
     const resolved = await Promise.all(
-      cleaned.map(async (line) => ({ line, ref: await resolveLineToRef(line) })),
+      cleaned.map(async (line) => ({ line, record: await resolveLine(line) })),
     );
-    const refs = resolved.flatMap((entry) => (entry.ref ? [entry.ref] : []));
-    const unresolved = resolved.filter((entry) => !entry.ref).map((entry) => entry.line);
+    const unresolved = resolved.filter((entry) => !entry.record).map((entry) => entry.line);
+    // Found, but not what this list holds (an activity pasted into a projects list).
+    const wrongKind: string[] = [];
+    const refs = resolved.flatMap(({ line, record }) => {
+      if (!record) return [];
+      if (!fitsList(list.value.type, record.uri, record.value)) {
+        wrongKind.push(line);
+        return [];
+      }
+      return [{ uri: record.uri, cid: record.cid }];
+    });
 
     if (refs.length === 0) {
-      return fail(
-        "invalid",
-        "add items",
-        "None of those items could be found. Check the handles, links, or AT-URIs.",
-      );
+      return { ok: true, added: 0, skipped: 0, unresolved, wrongKind, indexed: true };
     }
 
-    const repository = await repositoryFor(session, repo);
     const { stored, added, skipped } = await addItemsToList(
       repository,
       rkey,
@@ -247,7 +268,7 @@ export async function addListItems(
       updateTag(tags.list(uri));
       updateTag(tags.projects(repo));
     }
-    return { ok: true, added, skipped, unresolved, indexed };
+    return { ok: true, added, skipped, unresolved, wrongKind, indexed };
   } catch (err) {
     const mapped = mapError(err, "add list items");
     return fail(mapped.reason, "add items", mapped.message);

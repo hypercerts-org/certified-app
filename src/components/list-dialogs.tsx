@@ -361,14 +361,27 @@ export function AddItemsDialog({ repo, rkey, noun }: { repo: string; rkey: strin
       }
       if (result.skipped > 0) parts.push(`${result.skipped} already in list`);
       if (result.unresolved.length > 0) parts.push(`${result.unresolved.length} not found`);
+      if (result.wrongKind.length > 0) {
+        parts.push(`${result.wrongKind.length} not ${noun === "activity" ? "an" : "a"} ${noun}`);
+      }
       toast(parts.join(" · ") || "No new items added");
 
-      if (result.unresolved.length > 0) {
-        // Keep unresolved lines so the user can fix typos without re-pasting.
-        setText(result.unresolved.join("\n"));
-        setError(
-          `Couldn't resolve ${result.unresolved.length === 1 ? "this entry" : "these entries"}. Check and try again.`,
-        );
+      const kept = [...result.unresolved, ...result.wrongKind];
+      if (kept.length > 0) {
+        // Keep the lines that weren't added, to fix them without pasting again.
+        setText(kept.join("\n"));
+        const problems: string[] = [];
+        if (result.unresolved.length > 0) {
+          problems.push(
+            `${result.unresolved.length === 1 ? "One entry" : `${result.unresolved.length} entries`} couldn't be found. Check the handle or link.`,
+          );
+        }
+        if (result.wrongKind.length > 0) {
+          problems.push(
+            `This list holds only ${noun === "activity" ? "activities" : `${noun}s`}, and ${result.wrongKind.length === 1 ? "one entry is" : `${result.wrongKind.length} entries are`} something else.`,
+          );
+        }
+        setError(problems.join(" "));
       } else {
         setText("");
         setOpen(false);
@@ -530,8 +543,9 @@ export function DeleteListDialog({
             </Banner>
           )}
           <Text>
-            The list and its {itemCount === 1 ? "one item" : `${itemCount} items`} leave the
-            profile. The accounts and records it lists aren't touched. This can't be undone.
+            {itemCount === 0
+              ? "The list leaves the profile. This can't be undone."
+              : `The list and its ${itemCount === 1 ? "one item" : `${itemCount} items`} leave the profile. The accounts and records it lists aren't touched. This can't be undone.`}
           </Text>
         </div>
       </ResponsiveDialog>

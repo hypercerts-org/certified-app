@@ -15,7 +15,7 @@ const mocks = {
   addItemsToList: vi.fn(),
   removeItemsFromList: vi.fn(),
   deleteCollectionRecord: vi.fn(),
-  resolvePublicRecordRef: vi.fn(),
+  resolvePublicRecord: vi.fn(),
   resolveAccountProfileRef: vi.fn(),
   getDid: vi.fn(),
   waitForIndex: vi.fn(),
@@ -56,7 +56,7 @@ vi.mock("@/lib/hypercerts/writes", async (importOriginal) => {
     addItemsToList: (...args: unknown[]) => mocks.addItemsToList(...args),
     removeItemsFromList: (...args: unknown[]) => mocks.removeItemsFromList(...args),
     deleteCollectionRecord: (...args: unknown[]) => mocks.deleteCollectionRecord(...args),
-    resolvePublicRecordRef: (...args: unknown[]) => mocks.resolvePublicRecordRef(...args),
+    resolvePublicRecord: (...args: unknown[]) => mocks.resolvePublicRecord(...args),
     resolveAccountProfileRef: (...args: unknown[]) => mocks.resolveAccountProfileRef(...args),
   };
 });
@@ -70,7 +70,11 @@ const ORG = "did:plc:org111111111111111111111";
 const OTHER = "did:plc:other1111111111111111111";
 const LIST_URI = `at://${USER}/org.hypercerts.collection/list1`;
 const FAKE_SESSION = { did: USER, fetchHandler: vi.fn() } as unknown as OAuthSession;
-const FAKE_REPO = { did: USER };
+/** The list being added to: an activities list. */
+const FAKE_REPO = {
+  did: USER,
+  getRecord: vi.fn(async () => ({ cid: "bafylist", value: { type: "list:certs", items: [] } })),
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -96,10 +100,11 @@ beforeEach(() => {
     uri: `at://${OTHER}/app.certified.actor.profile/self`,
     cid: "bafyprof",
   });
-  mocks.resolvePublicRecordRef.mockResolvedValue({
-    uri: `at://${OTHER}/org.hypercerts.claim.activity/a1`,
-    cid: "bafyact",
-  });
+  mocks.resolvePublicRecord.mockImplementation(async (uri: string) => ({
+    uri,
+    cid: uri.includes("claim.activity") ? "bafyact" : "bafyproj",
+    value: uri.includes("claim.activity") ? {} : { type: "project" },
+  }));
 });
 
 describe("createList", () => {
@@ -166,7 +171,7 @@ describe("editList & deleteList", () => {
 });
 
 describe("addListItems & removeListItems", () => {
-  it("resolves handles and record URIs while reporting unresolved lines", async () => {
+  it("adds what the list holds, and reports lines not found or of another kind", async () => {
     mocks.getDid.mockImplementation(async (handle: string) =>
       handle === "alice.bsky.social" ? OTHER : null,
     );
@@ -174,23 +179,33 @@ describe("addListItems & removeListItems", () => {
       "@alice.bsky.social",
       "not-a-valid-entry",
       `at://${OTHER}/org.hypercerts.claim.activity/a1`,
+      `at://${OTHER}/org.hypercerts.collection/p1`,
     ]);
 
+    // An activities list: the activity goes in; the account and the project don't.
     expect(res).toMatchObject({
       ok: true,
       added: 1,
       skipped: 0,
       unresolved: ["not-a-valid-entry"],
+      wrongKind: ["@alice.bsky.social", `at://${OTHER}/org.hypercerts.collection/p1`],
     });
     expect(mocks.addItemsToList).toHaveBeenCalledWith(
       FAKE_REPO,
       "list1",
-      [
-        { uri: `at://${OTHER}/app.certified.actor.profile/self`, cid: "bafyprof" },
-        { uri: `at://${OTHER}/org.hypercerts.claim.activity/a1`, cid: "bafyact" },
-      ],
+      [{ uri: `at://${OTHER}/org.hypercerts.claim.activity/a1`, cid: "bafyact" }],
       expect.anything(),
     );
+  });
+
+  it("writes nothing when no line fits the list", async () => {
+    const res = await addListItems(USER, "list1", [`at://${OTHER}/org.hypercerts.collection/p1`]);
+    expect(res).toMatchObject({
+      ok: true,
+      added: 0,
+      wrongKind: [`at://${OTHER}/org.hypercerts.collection/p1`],
+    });
+    expect(mocks.addItemsToList).not.toHaveBeenCalled();
   });
 
   it("removes selected AT-URIs and rejects non-URI inputs", async () => {

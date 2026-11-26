@@ -54,7 +54,9 @@ async function Content({ params }: { params: Promise<{ actor: string; rkey: stri
         </PageTitle>
       </div>
       <Text tone="muted">
-        {kind.label} list · {list.itemCount === 1 ? "1 item" : `${list.itemCount} items`}
+        {/* An empty list's "No items yet" below says it; no "0 items" here. */}
+        {kind.label} list
+        {list.itemCount > 0 && ` · ${list.itemCount === 1 ? "1 item" : `${list.itemCount} items`}`}
       </Text>
       {(list.description ?? list.summary) && (
         <Text className="prewrap" dir="auto">
