@@ -9,6 +9,8 @@ import {
   activityFrom,
 } from "@/components/activity-page";
 import { ProfileRailSkeleton } from "@/components/profile-rail";
+import { nameOf } from "@/lib/hypercerts/views";
+import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
 // An activity: its header across the top, then (as on a project) the tabs
 // and the open tab on the left, and the side column on the right.
@@ -16,8 +18,16 @@ import { ProfileRailSkeleton } from "@/components/profile-rail";
 export async function generateMetadata({
   params,
 }: LayoutProps<"/[actor]/activity/[rkey]">): Promise<Metadata> {
-  const { activity } = await activityFrom(params);
-  return { title: activity.title };
+  const { activity, base } = await activityFrom(params);
+  const author = nameOf(activity.author);
+  const fallback = `Activity by ${author} on Certified.`;
+  return pageMetadata({
+    title: activity.title,
+    description: trimMetaDescription(activity.summary, fallback),
+    path: base,
+    image: activity.imageUrl,
+    type: "article",
+  });
 }
 
 export default function ActivityLayout({

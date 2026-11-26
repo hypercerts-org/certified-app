@@ -15,6 +15,7 @@ import { ActorAvatar, ActorLink, ActorStack, AvatarStack } from "@/components/ac
 import { activityHref, actorHref, badgeHref, projectHref, skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
 import { IntentLink } from "@/components/intent-link";
+import { LikeScope, PostLikeButton } from "@/components/like-button";
 import { activityMeta, projectMeta } from "@/components/records";
 import type { ActorCard, FeedLink, FeedRow, FeedTarget, Page } from "@/lib/hypercerts/views";
 import { useCursorPages } from "@/lib/use-cursor-pages";
@@ -204,7 +205,13 @@ const GIFTS: Record<"received" | "given" | "recorded", string> = {
   recorded: "recorded",
 };
 
-type Parts = { who: ActorCard; line: ReactNode; body?: ReactNode; media?: ReactNode };
+type Parts = {
+  who: ActorCard;
+  line: ReactNode;
+  body?: ReactNode;
+  media?: ReactNode;
+  actions?: ReactNode;
+};
 
 /**
  * What a post is about when that isn't the owner's account: a project, on
@@ -231,6 +238,7 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
           />
         ),
         media: <Media href={href} src={row.activity.imageUrl} />,
+        actions: <PostLikeButton subject={row.activity.uri} />,
       };
     }
     case "project": {
@@ -247,6 +255,7 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
           />
         ),
         media: <Media href={href} src={row.project.imageUrl} />,
+        actions: <PostLikeButton subject={row.project.uri} />,
       };
     }
     case "endorsed":
@@ -412,7 +421,7 @@ function parts(row: FeedRow, owner: ActorCard, subject?: FeedSubject): Parts {
  * the date under it, then what it was about. The account feed's posts and a
  * project's timeline are all this.
  */
-export function Post({ who, line, date, body, media }: Parts & { date: string | null }) {
+export function Post({ who, line, date, body, media, actions }: Parts & { date: string | null }) {
   return (
     <li className="post-card">
       <div className="post-main">
@@ -428,6 +437,7 @@ export function Post({ who, line, date, body, media }: Parts & { date: string | 
         {body}
       </div>
       {media}
+      {actions && <div className="post-actions">{actions}</div>}
     </li>
   );
 }
@@ -442,6 +452,12 @@ export function FeedPost({
   subject?: FeedSubject;
 }) {
   return <Post {...parts(row, owner, subject)} date={row.date} />;
+}
+
+function feedLikeSubject(row: FeedRow): string | null {
+  if (row.kind === "activity") return row.activity.uri;
+  if (row.kind === "project") return row.project.uri;
+  return null;
 }
 
 /** The feed, with Load more. */
@@ -464,20 +480,26 @@ export function ProfileFeed({ owner, initial }: { owner: ActorCard; initial: Pag
       />
     );
   }
+  const likeSubjects = items.flatMap((row) => {
+    const uri = feedLikeSubject(row);
+    return uri ? [uri] : [];
+  });
   return (
-    <div className="stack">
-      <ul className="post-feed">
-        {items.map((row) => (
-          <FeedPost key={row.key} row={row} owner={owner} />
-        ))}
-      </ul>
-      {error && <ErrorMessage live>{error}</ErrorMessage>}
-      {hasMore && (
-        <Button variant="secondary" loading={loading} onClick={loadMore}>
-          Load more
-        </Button>
-      )}
-    </div>
+    <LikeScope subjects={likeSubjects}>
+      <div className="stack">
+        <ul className="post-feed">
+          {items.map((row) => (
+            <FeedPost key={row.key} row={row} owner={owner} />
+          ))}
+        </ul>
+        {error && <ErrorMessage live>{error}</ErrorMessage>}
+        {hasMore && (
+          <Button variant="secondary" loading={loading} onClick={loadMore}>
+            Load more
+          </Button>
+        )}
+      </div>
+    </LikeScope>
   );
 }
 

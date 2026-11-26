@@ -7,7 +7,6 @@ vi.mock("server-only", () => ({}));
 const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
   mayPublish: vi.fn<(...args: unknown[]) => Promise<boolean>>(),
-  getRecordSigner: vi.fn(),
   createCollection: vi.fn(),
   getIndexedList: vi.fn(),
   repositoryFor: vi.fn(),
@@ -29,7 +28,6 @@ vi.mock("@/lib/auth/dal", () => ({
 }));
 vi.mock("@/lib/atproto/app-key", () => ({
   assertWritesAllowed: () => {},
-  getRecordSigner: () => mocks.getRecordSigner(),
 }));
 vi.mock("@/lib/hypercerts/publish-access", () => ({
   mayPublish: (...args: unknown[]) => mocks.mayPublish(...args),
@@ -80,7 +78,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
   mocks.mayPublish.mockResolvedValue(true);
-  mocks.getRecordSigner.mockResolvedValue(vi.fn());
   mocks.repositoryFor.mockResolvedValue(FAKE_REPO);
   mocks.waitForIndex.mockResolvedValue(true);
   mocks.createCollection.mockResolvedValue({ uri: LIST_URI, cid: "bafylist", tags: [], items: [] });
@@ -142,12 +139,10 @@ describe("editList & deleteList", () => {
   it("updates list details and expires list + projects + actor tags", async () => {
     const res = await editList(USER, "list1", { title: "Renamed", description: "Updated" });
     expect(res).toEqual({ ok: true, indexed: true });
-    expect(mocks.updateListDetails).toHaveBeenCalledWith(
-      FAKE_REPO,
-      "list1",
-      { title: "Renamed", description: "Updated" },
-      expect.anything(),
-    );
+    expect(mocks.updateListDetails).toHaveBeenCalledWith(FAKE_REPO, "list1", {
+      title: "Renamed",
+      description: "Updated",
+    });
     expect(mocks.updateTag.mock.calls.flat()).toEqual([
       `list:${LIST_URI}`,
       `projects:${USER}`,
@@ -190,12 +185,9 @@ describe("addListItems & removeListItems", () => {
       unresolved: ["not-a-valid-entry"],
       wrongKind: ["@alice.bsky.social", `at://${OTHER}/org.hypercerts.collection/p1`],
     });
-    expect(mocks.addItemsToList).toHaveBeenCalledWith(
-      FAKE_REPO,
-      "list1",
-      [{ uri: `at://${OTHER}/org.hypercerts.claim.activity/a1`, cid: "bafyact" }],
-      expect.anything(),
-    );
+    expect(mocks.addItemsToList).toHaveBeenCalledWith(FAKE_REPO, "list1", [
+      { uri: `at://${OTHER}/org.hypercerts.claim.activity/a1`, cid: "bafyact" },
+    ]);
   });
 
   it("writes nothing when no line fits the list", async () => {
@@ -216,11 +208,6 @@ describe("addListItems & removeListItems", () => {
     const uri = `at://${OTHER}/org.hypercerts.claim.activity/a1`;
     const res = await removeListItems(USER, "list1", [uri]);
     expect(res).toEqual({ ok: true, removed: 1, indexed: true });
-    expect(mocks.removeItemsFromList).toHaveBeenCalledWith(
-      FAKE_REPO,
-      "list1",
-      new Set([uri]),
-      expect.anything(),
-    );
+    expect(mocks.removeItemsFromList).toHaveBeenCalledWith(FAKE_REPO, "list1", new Set([uri]));
   });
 });

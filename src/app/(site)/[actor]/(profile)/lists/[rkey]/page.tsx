@@ -9,6 +9,7 @@ import { ListItemsSkeleton } from "@/components/list-items";
 import { getActor, getList, getListItems } from "@/lib/hypercerts/queries";
 import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
+import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
 /** A record key as AT Protocol allows it; anything else is no list. */
 const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
@@ -19,7 +20,17 @@ export async function generateMetadata({
   const { actor: id, rkey } = await params;
   const actor = await getActor(decodeURIComponent(id));
   const list = actor && RKEY.test(rkey) ? await getList(actor.did, rkey) : null;
-  return { title: list ? `${list.title} (${actor ? nameOf(actor) : ""})` : "Not found" };
+  if (!actor || !list) return { title: "Not found", robots: { index: false } };
+  const owner = nameOf(actor);
+  const slug = actor.handle ?? actor.did;
+  return pageMetadata({
+    title: `${list.title} (${owner})`,
+    description: trimMetaDescription(
+      list.description ?? list.summary,
+      `${list.kind} list curated by ${owner} on Certified.`,
+    ),
+    path: `/${encodeURIComponent(slug)}/lists/${encodeURIComponent(rkey)}`,
+  });
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists/[rkey]">, "params">) {

@@ -1,9 +1,6 @@
 "use client";
 
 // The profile header's actions and tabs: the client-side pieces.
-//
-// Add to list is a placeholder until the Hypercerts SDK ships list writes:
-// shown, so the page has its final shape, but disabled.
 
 import {
   Button,
@@ -13,19 +10,28 @@ import {
   MenuItem,
   MenuTrigger,
 } from "@hypercerts-org/ui-react";
-import { Check, Copy, Link2, ListPlus, Pencil, ThumbsUp, UserPlus } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Link2,
+  ListPlus,
+  Pencil,
+  ThumbsUp,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { COMING_SOON } from "@/components/coming-soon";
+import { AddToListDialog } from "@/components/add-to-list-dialog";
 import { LinkPending } from "@/components/link-pending";
 import * as endorsementActions from "@/lib/hypercerts/endorsement-actions";
 import * as followActions from "@/lib/hypercerts/follow-actions";
 import type { EndorsementRef, FollowRef } from "@/lib/hypercerts/views";
 
 /** Copies `text`, and says so (or that it failed) in a toast. */
-async function copy(text: string, what: string) {
+export async function copyToClipboard(text: string, what: string) {
   try {
     await navigator.clipboard.writeText(text);
     toast(`${what} copied`);
@@ -35,10 +41,18 @@ async function copy(text: string, what: string) {
 }
 
 /**
- * Shares the profile's address: the system share sheet where there is one
+ * Shares a page's address: the system share sheet where there is one
  * (phones), otherwise a copy to the clipboard.
  */
-export function ShareButton({ path, title }: { path: string; title: string }) {
+export function ShareButton({
+  path,
+  title,
+  what = "Profile link",
+}: {
+  path: string;
+  title: string;
+  what?: string;
+}) {
   const share = async () => {
     const url = new URL(path, window.location.origin).href;
     if (navigator.share) {
@@ -49,7 +63,7 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
       }
       return;
     }
-    await copy(url, "Profile link");
+    await copyToClipboard(url, what);
   };
   return (
     <Button variant="secondary" size="sm" onClick={share}>
@@ -250,6 +264,7 @@ export function EndorseControl({
  */
 export function VisitorActions({
   did,
+  handle,
   path,
   title,
   actor,
@@ -257,12 +272,20 @@ export function VisitorActions({
   endorsement,
 }: {
   did: string;
+  handle?: string | null;
   path: string;
   title: string;
   actor: string | null;
   follow: FollowRef | null;
   endorsement: EndorsementRef | null;
 }) {
+  const router = useRouter();
+  const [listOpen, setListOpen] = useState(false);
+  const blueskyUrl =
+    handle && !handle.startsWith("did:")
+      ? `https://bsky.app/profile/${encodeURIComponent(handle)}`
+      : null;
+
   return (
     <>
       <FollowControl subject={did} path={path} actor={actor} follow={follow} />
@@ -279,16 +302,40 @@ export function VisitorActions({
           />
         </MenuTrigger>
         <MenuContent label="More actions" align="end">
-          <MenuItem disabled title={COMING_SOON}>
+          <MenuItem
+            onClick={() => {
+              if (!actor) {
+                router.push(`/sign-in?${new URLSearchParams({ returnTo: path })}`);
+                return;
+              }
+              setListOpen(true);
+            }}
+          >
             <ListPlus size={16} aria-hidden />
             Add to list
           </MenuItem>
-          <MenuItem onClick={() => void copy(did, "Permanent ID")}>
+          <MenuItem onClick={() => void copyToClipboard(did, "Permanent ID")}>
             <Copy size={16} aria-hidden />
             Copy Permanent ID
           </MenuItem>
+          {blueskyUrl && (
+            <MenuItem onClick={() => window.open(blueskyUrl, "_blank", "noopener,noreferrer")}>
+              <ExternalLink size={16} aria-hidden />
+              Open on Bluesky
+            </MenuItem>
+          )}
         </MenuContent>
       </Menu>
+      {actor && (
+        <AddToListDialog
+          open={listOpen}
+          onClose={() => setListOpen(false)}
+          repo={actor}
+          kind="Accounts"
+          target={did}
+          targetLabel={title}
+        />
+      )}
     </>
   );
 }

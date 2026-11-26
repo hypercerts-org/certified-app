@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { HandleId, PermanentId } from "@/components/account-ids";
+import { ActorPicker } from "@/components/actor-picker";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { ROW_ACTION } from "@/lib/button-roles";
 import * as groupActions from "@/lib/hypercerts/group-actions";
@@ -380,13 +381,13 @@ export function AddMemberDialog({ groupDid }: { groupDid: string }) {
           )}
           <Field
             label="Account"
-            description="A handle (@name.bsky.social), DID, or Certified link."
+            description="Search by name or handle, or paste a DID or Certified link."
           >
             {(field) => (
-              <Input
+              <ActorPicker
                 {...field}
                 value={target}
-                onChange={(e) => setTarget(e.currentTarget.value)}
+                onChange={setTarget}
                 placeholder="@alice.bsky.social"
                 required
               />

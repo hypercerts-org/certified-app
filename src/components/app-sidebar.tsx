@@ -1,14 +1,14 @@
 import { Skeleton } from "@hypercerts-org/ui-react";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { HelpMenu } from "@/components/help-menu";
 import { SidebarGroup, SidebarRows } from "@/components/sidebar-nav";
-import { SidebarSearch } from "@/components/sidebar-search";
 import { getAccount, getNavigationIdentity, SignedIn } from "@/components/site-header";
 import { SidebarAccountMenu } from "@/components/site-nav";
+import { SidebarSearch } from "@/components/site-search";
 import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
+import { Wordmark } from "@/components/wordmark";
 import { groupSettingsHref } from "@/lib/routes";
 
 // The app's navigation from 64rem, after the staging redesign: a sidebar on
@@ -24,17 +24,8 @@ import { groupSettingsHref } from "@/lib/routes";
 export function AppSidebar() {
   return (
     <header className="app-sidebar">
-      <Link href="/" className="sidebar-brand" aria-label="Certified home">
-        <Image
-          src="/brand/wordmark/certified_wordmark_black.svg"
-          alt=""
-          width={99}
-          height={19}
-          preload
-        />
-        <span className="sidebar-brand-suffix" aria-hidden>
-          .app
-        </span>
+      <Link href="/" className="sidebar-brand" aria-label="Certified.app home">
+        <Wordmark variant="certified-app" faded height={18} decorative />
       </Link>
       <Suspense fallback={null}>
         <AccountSlot />

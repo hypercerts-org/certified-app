@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ActorAvatar } from "@/components/actor";
 import { getAccount } from "@/components/site-header";
+import { Wordmark } from "@/components/wordmark";
 
 /**
  * The landing page's chrome: the Certified.app wordmark, and Sign in (or,
@@ -14,17 +14,8 @@ export default function LandingTopBar() {
   return (
     <>
       <div className="lp-topbar">
-        <Link href="/welcome" className="lp-topbar__home" aria-label="Certified home">
-          <Image
-            src="/brand/wordmark/certified_wordmark_black.svg"
-            alt=""
-            width={94}
-            height={18}
-            preload
-          />
-          <span className="sidebar-brand-suffix" aria-hidden>
-            .app
-          </span>
+        <Link href="/welcome" className="lp-topbar__home" aria-label="Certified.app home">
+          <Wordmark variant="certified-app" faded height={18} decorative />
         </Link>
       </div>
       <div className="lp-topbar__actions">

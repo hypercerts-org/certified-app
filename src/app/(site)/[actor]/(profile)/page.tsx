@@ -6,6 +6,7 @@ import { getActor, getProfileFeed } from "@/lib/hypercerts/queries";
 import type { ActorCard } from "@/lib/hypercerts/views";
 import { nameOf } from "@/lib/hypercerts/views";
 import { profileActor } from "@/lib/profile-route";
+import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
 // The profile's Overview, the left column under the tabs: About (an
 // organization's long description) as the first card, then the feed of what
@@ -15,7 +16,25 @@ import { profileActor } from "@/lib/profile-route";
 
 export async function generateMetadata({ params }: PageProps<"/[actor]">): Promise<Metadata> {
   const actor = await getActor(decodeURIComponent((await params).actor));
-  return { title: actor ? nameOf(actor) : "Not found" };
+  if (!actor) return { title: "Not found", robots: { index: false } };
+  const name = nameOf(actor);
+  const slug = actor.handle ?? actor.did;
+  const bio = actor.profile.description || actor.longDescription;
+  const fallback = actor.handle
+    ? `${name} (@${actor.handle}) on Certified — projects, activities, badges and endorsements.`
+    : `${name} on Certified — projects, activities, badges and endorsements.`;
+  return pageMetadata({
+    title: actor.handle && name !== `@${actor.handle}` ? `${name} (@${actor.handle})` : name,
+    description: trimMetaDescription(bio, fallback),
+    path: `/${encodeURIComponent(slug)}`,
+    image: actor.bannerUrl ?? actor.avatarUrl,
+    card: actor.bannerUrl
+      ? "summary_large_image"
+      : actor.avatarUrl
+        ? "summary"
+        : "summary_large_image",
+    type: "profile",
+  });
 }
 
 async function Feed({ owner }: { owner: ActorCard }) {

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Suspense } from "react";
 import AiWorld from "@/components/landing/ai-world";
 import ClosingCta from "@/components/landing/closing-cta";
@@ -12,17 +11,19 @@ import OrganizationsStrip from "@/components/landing/organizations-strip";
 import PartnerApps from "@/components/landing/partner-apps";
 import Trust from "@/components/landing/trust";
 import WhatLivesHere from "@/components/landing/what-lives-here";
+import { SiteFooter } from "@/components/site-footer";
+import { pageMetadata } from "@/lib/seo";
 import "../landing.css";
 
 const TITLE = "Certified — One account. Your work. Recognized everywhere.";
 const DESCRIPTION =
   "Your profile, your work, and your supporters in one account — recognized on every app in the network, independent of any single platform.";
 
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
+export const metadata = pageMetadata({
+  absoluteTitle: TITLE,
   description: DESCRIPTION,
-  openGraph: { title: TITLE, description: DESCRIPTION, siteName: "Certified", type: "website" },
-};
+  path: "/welcome",
+});
 
 // The landing page for visitors who aren't signed in, after staging's
 // /welcome: the same sections and copy (components/landing, styles in
@@ -49,6 +50,7 @@ export default function WelcomePage() {
       <OrganizationsStrip />
       <FaqSection />
       <ClosingCta />
+      <SiteFooter variant="landing" />
     </div>
   );
 }

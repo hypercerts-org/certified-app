@@ -191,7 +191,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
             <ProjectFollow uri={uri} author={actor.did} path={base} />
           </Suspense>
           <Suspense fallback={null}>
-            <RecordActions uri={uri} title={project.title} />
+            <RecordActions uri={uri} path={base} title={project.title} />
           </Suspense>
         </div>
       </div>

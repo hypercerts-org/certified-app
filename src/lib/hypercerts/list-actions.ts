@@ -2,20 +2,20 @@
 
 // Workspace → Lists actions: creating lists with @hypercerts-org/sdk/collection,
 // and editing list details, adding/removing items, and deleting lists via
-// writes.ts (signed with createdVia, compare-and-swap on CID) until the SDK
-// supports collection edits and deletes.
+// writes.ts (compare-and-swap on CID) until the SDK supports collection edits
+// and deletes.
 
 import type { l } from "@atproto/lex";
 import { createCollection } from "@hypercerts-org/sdk/collection";
 import { updateTag } from "next/cache";
-import { getRecordSigner } from "@/lib/atproto/app-key";
 import { getOAuthSession } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
 import { mayPublish } from "@/lib/hypercerts/publish-access";
-import { getIndexedList } from "@/lib/hypercerts/queries";
+import { getIndexedList, getIndexedListsByType } from "@/lib/hypercerts/queries";
 import { parseTarget } from "@/lib/hypercerts/resolve-target";
 import { sdkContext, type WriteFailure, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
+import { didOf } from "@/lib/hypercerts/views";
 import {
   addItemsToList,
   deleteCollectionRecord,
@@ -166,12 +166,7 @@ export async function editList(
     if (!(await mayPublish(session, repo))) return fail("forbidden", "update the list");
 
     const repository = await repositoryFor(session, repo);
-    const saved = await updateListDetails(
-      repository,
-      rkey,
-      { title, description },
-      await getRecordSigner(),
-    );
+    const saved = await updateListDetails(repository, rkey, { title, description });
     const uri = listUri(repo, rkey);
     const indexed = await waitForIndex(async () => (await getIndexedList(uri))?.cid === saved.cid);
     updateTag(tags.list(uri));
@@ -253,12 +248,7 @@ export async function addListItems(
       return { ok: true, added: 0, skipped: 0, unresolved, wrongKind, indexed: true };
     }
 
-    const { stored, added, skipped } = await addItemsToList(
-      repository,
-      rkey,
-      refs,
-      await getRecordSigner(),
-    );
+    const { stored, added, skipped } = await addItemsToList(repository, rkey, refs);
     const uri = listUri(repo, rkey);
     const indexed =
       added === 0
@@ -300,12 +290,7 @@ export async function removeListItems(
     if (!(await mayPublish(session, repo))) return fail("forbidden", "remove items");
 
     const repository = await repositoryFor(session, repo);
-    const { stored, removed } = await removeItemsFromList(
-      repository,
-      rkey,
-      new Set(uris),
-      await getRecordSigner(),
-    );
+    const { stored, removed } = await removeItemsFromList(repository, rkey, new Set(uris));
     const uri = listUri(repo, rkey);
     const indexed =
       removed === 0
@@ -344,5 +329,195 @@ export async function deleteList(repo: string, rkey: string): Promise<DeleteList
   } catch (err) {
     const mapped = mapError(err, "delete list");
     return fail(mapped.reason, "delete the list", mapped.message);
+  }
+}
+
+export type ListMembershipRow = {
+  uri: string;
+  rkey: string;
+  title: string;
+  itemCount: number;
+  included: boolean;
+};
+
+export type ListsForItemResult = { ok: true; lists: ListMembershipRow[] } | ListActionFailed;
+export type ToggleListItemResult =
+  | { ok: true; included: boolean; indexed: boolean }
+  | ListActionFailed;
+export type CreateListWithItemResult =
+  | { ok: true; list: ListMembershipRow; indexed: boolean }
+  | ListActionFailed;
+
+function targetMatchesItem(kind: ListKind["label"], target: string, itemUri: string): boolean {
+  if (kind === "Accounts") return didOf(itemUri) === target;
+  return itemUri === target;
+}
+
+/**
+ * Reads `repo`'s lists of `kind` (`Accounts`, `Activities`, `Projects`) and
+ * whether each already contains `target` (a DID for Accounts, else an AT-URI).
+ */
+export async function getListsForItem(
+  repo: string,
+  kind: ListKind["label"],
+  target: string,
+): Promise<ListsForItemResult> {
+  const collectionType = COLLECTION_TYPES[kind];
+  const validTarget = kind === "Accounts" ? isDid(target) : isAtUri(target);
+  if (typeof repo !== "string" || !isDid(repo) || !collectionType || !validTarget) {
+    return fail("invalid", "load lists");
+  }
+  try {
+    const session = await getOAuthSession();
+    if (!session) return fail("signed-out", "load lists");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "load lists");
+
+    const lists = await getIndexedListsByType(repo, collectionType);
+    return {
+      ok: true,
+      lists: lists.map((list) => ({
+        uri: list.uri,
+        rkey: list.rkey,
+        title: list.title,
+        itemCount: list.itemCount,
+        included: list.itemUris.some((itemUri) => targetMatchesItem(kind, target, itemUri)),
+      })),
+    };
+  } catch (err) {
+    const mapped = mapError(err, "load lists for item");
+    return fail(mapped.reason, "load lists", mapped.message);
+  }
+}
+
+/** Adds or removes `target` (DID for accounts, AT-URI for records) in list `rkey` of `repo`. */
+export async function setListMembership(
+  repo: string,
+  rkey: string,
+  input: { kind: ListKind["label"]; target: string; include: boolean },
+): Promise<ToggleListItemResult> {
+  const validTarget =
+    input?.kind === "Accounts" ? isDid(input.target) : isAtUri(input?.target ?? "");
+  if (
+    typeof repo !== "string" ||
+    !isDid(repo) ||
+    typeof rkey !== "string" ||
+    !isRkey(rkey) ||
+    !COLLECTION_TYPES[input?.kind] ||
+    !validTarget ||
+    typeof input.include !== "boolean"
+  ) {
+    return fail("invalid", "update the list");
+  }
+
+  try {
+    const session = await getOAuthSession();
+    if (!session) return fail("signed-out", "update the list");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "update the list");
+
+    const repository = await repositoryFor(session, repo);
+    const uri = listUri(repo, rkey);
+
+    if (input.include) {
+      const resolved =
+        input.kind === "Accounts"
+          ? await resolveAccountProfileRef(input.target as l.DidString)
+          : await resolvePublicRecord(input.target);
+      if (!resolved) {
+        return fail("invalid", "add to the list", "This item couldn't be resolved.");
+      }
+      const { stored, added } = await addItemsToList(repository, rkey, [
+        { uri: resolved.uri, cid: resolved.cid },
+      ]);
+      const indexed =
+        added === 0
+          ? true
+          : await waitForIndex(async () => (await getIndexedList(uri))?.cid === stored.cid);
+      if (added > 0) {
+        updateTag(tags.list(uri));
+        updateTag(tags.projects(repo));
+      }
+      return { ok: true, included: true, indexed };
+    }
+
+    const existing = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
+    if (!existing) return fail("invalid", "update the list", "This list no longer exists.");
+    const items = Array.isArray(existing.value.items) ? existing.value.items : [];
+    const matchingUris = items
+      .map((item) => (item as { itemIdentifier?: { uri?: string } })?.itemIdentifier?.uri)
+      .filter((itemUri): itemUri is string =>
+        typeof itemUri === "string" ? targetMatchesItem(input.kind, input.target, itemUri) : false,
+      );
+    if (matchingUris.length === 0) return { ok: true, included: false, indexed: true };
+
+    const { stored, removed } = await removeItemsFromList(repository, rkey, new Set(matchingUris));
+    const indexed =
+      removed === 0
+        ? true
+        : await waitForIndex(async () => (await getIndexedList(uri))?.cid === stored.cid);
+    if (removed > 0) {
+      updateTag(tags.list(uri));
+      updateTag(tags.projects(repo));
+    }
+    return { ok: true, included: false, indexed };
+  } catch (err) {
+    const mapped = mapError(err, "toggle list item");
+    return fail(mapped.reason, "update the list", mapped.message);
+  }
+}
+
+/** Creates a new list of `kind` in `repo` and immediately adds `target` to it. */
+export async function createListWithItem(
+  repo: string,
+  input: { kind: ListKind["label"]; title: string; target: string },
+): Promise<CreateListWithItemResult> {
+  const collectionType = COLLECTION_TYPES[input?.kind];
+  const title = typeof input?.title === "string" ? input.title.trim() : "";
+  const validTarget =
+    input?.kind === "Accounts" ? isDid(input.target) : isAtUri(input?.target ?? "");
+  if (typeof repo !== "string" || !isDid(repo) || !collectionType || !validTarget) {
+    return fail("invalid", "create the list");
+  }
+  if (!title) return fail("invalid", "create the list", "Add a name for the list.");
+  if (title.length > 256) {
+    return fail("invalid", "create the list", "Name must be 256 characters or fewer.");
+  }
+
+  try {
+    const session = await getOAuthSession();
+    if (!session) return fail("signed-out", "create the list");
+    if (!(await mayPublish(session, repo))) return fail("forbidden", "create the list");
+
+    const resolved =
+      input.kind === "Accounts"
+        ? await resolveAccountProfileRef(input.target as l.DidString)
+        : await resolvePublicRecord(input.target);
+    if (!resolved) {
+      return fail("invalid", "create the list", "This item couldn't be resolved.");
+    }
+
+    const created = await createCollection(
+      await sdkContext(session),
+      { title, type: collectionType },
+      writeTo(session, repo),
+    );
+    const rkey = created.uri.split("/").pop() ?? "";
+    const repository = await repositoryFor(session, repo);
+    const { stored } = await addItemsToList(repository, rkey, [
+      { uri: resolved.uri, cid: resolved.cid },
+    ]);
+    const indexed = await waitForIndex(
+      async () => (await getIndexedList(created.uri))?.cid === stored.cid,
+    );
+    updateTag(tags.list(created.uri));
+    updateTag(tags.projects(repo));
+    updateTag(tags.actor(repo));
+    return {
+      ok: true,
+      list: { uri: created.uri, rkey, title, itemCount: 1, included: true },
+      indexed,
+    };
+  } catch (err) {
+    const mapped = mapError(err, "create list with item");
+    return fail(mapped.reason, "create the list", mapped.message);
   }
 }

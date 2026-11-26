@@ -253,6 +253,7 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
   return (
     <VisitorActions
       did={actor.did}
+      handle={actor.handle}
       path={base}
       title={nameOf(actor)}
       actor={actingAs}

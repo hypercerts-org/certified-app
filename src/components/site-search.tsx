@@ -1,15 +1,17 @@
 "use client";
 
-// The sidebar's search, from any page: as you type, the best few activities,
+// The site's search, from any page (in the sidebar; on a phone, behind the
+// header's search button): as you type, the best few activities,
 // projects and accounts (Certified's first, then Bluesky's), and a row
 // straight to a pasted handle, DID or link (/api/search, lib/search.ts). The
 // last row, or Enter with no row picked, runs the search on Explore, with
-// every result. Ctrl K (⌘K on Apple devices) puts the cursor in it.
+// every result. In the sidebar, Ctrl K (⌘K on Apple devices) puts the cursor
+// in it.
 //
 // The toolkit's Combobox does the typeahead's keyboard and ARIA; this keeps
 // the fetch, the groups and the rows, after staging's global search.
 
-import { Combobox, ComboboxOption } from "@hypercerts-org/ui-react";
+import { Button, Combobox, ComboboxOption, ResponsiveDialog } from "@hypercerts-org/ui-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRight, Folder, Search, SquareCheckBig } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -63,7 +65,21 @@ function RowPicture({ item }: { item: Item }) {
   return <Icon size={16} aria-hidden className="search-row-icon" />;
 }
 
-export function SidebarSearch() {
+/**
+ * The search box and its results. `shortcut`: Ctrl K / ⌘K focuses it, with
+ * the hint shown (the sidebar's). `inline`: the results lie under the box
+ * instead of over the page (the phone's dialog), and it takes the focus.
+ * `onNavigate`: after a row or Enter leads somewhere.
+ */
+function SearchBox({
+  shortcut: withShortcut = false,
+  inline = false,
+  onNavigate,
+}: {
+  shortcut?: boolean;
+  inline?: boolean;
+  onNavigate?: () => void;
+}) {
   const router = useRouter();
   const box = useRef<HTMLFormElement>(null);
   const [value, setValue] = useState("");
@@ -74,6 +90,8 @@ export function SidebarSearch() {
   // The server can't know the platform, so the hint appears once mounted.
   const [shortcut, setShortcut] = useState<string | null>(null);
   useEffect(() => {
+    if (inline) box.current?.querySelector("input")?.focus();
+    if (!withShortcut) return;
     const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
     const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent;
     setShortcut(/mac|iphone|ipad|ipod/i.test(platform) ? "⌘K" : "Ctrl K");
@@ -87,7 +105,7 @@ export function SidebarSearch() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [withShortcut, inline]);
 
   const results = useQuery<SearchResults>({
     queryKey: ["sidebar-search", query],
@@ -122,6 +140,7 @@ export function SidebarSearch() {
     setOpen(false);
     setValue("");
     box.current?.querySelector("input")?.blur();
+    onNavigate?.();
     router.push(href);
   };
 
@@ -129,7 +148,7 @@ export function SidebarSearch() {
     <search>
       <form
         ref={box}
-        className="sidebar-search"
+        className={inline ? "sidebar-search search-box-inline" : "sidebar-search"}
         // Enter with no row picked: the search on Explore, as before.
         onSubmit={(event) => {
           event.preventDefault();
@@ -145,7 +164,7 @@ export function SidebarSearch() {
           open={open && searching}
           onOpenChange={setOpen}
           label="Search Certified"
-          placeholder="Search"
+          placeholder={inline ? "Accounts, projects, activities…" : "Search"}
           loading={searching && results.isFetching}
           emptyMessage={null}
           onSelect={(item) => go(item.href)}
@@ -186,5 +205,35 @@ export function SidebarSearch() {
         )}
       </form>
     </search>
+  );
+}
+
+/** The sidebar's search, with Ctrl K / ⌘K. */
+export function SidebarSearch() {
+  return <SearchBox shortcut />;
+}
+
+/** On narrow screens (no sidebar): a search button in the header, opening the search in a dialog. */
+export function MobileSearchButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Search Certified"
+        onClick={() => setOpen(true)}
+      >
+        <Search size={18} aria-hidden />
+      </Button>
+      <ResponsiveDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Search Certified"
+        size="sm"
+      >
+        {open && <SearchBox inline onNavigate={() => setOpen(false)} />}
+      </ResponsiveDialog>
+    </>
   );
 }

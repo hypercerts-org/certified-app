@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BadgePage, BadgePageSkeleton, badgeFrom } from "@/components/badge-page";
+import { nameOf } from "@/lib/hypercerts/views";
+import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
 // Prerender one known badge at build time; every other badge gets the app
 // shell first and is then rendered and cached per URL.
@@ -11,8 +13,15 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: PageProps<"/[actor]/badge/[rkey]">): Promise<Metadata> {
-  const { badge } = await badgeFrom(params);
-  return { title: badge.title };
+  const { badge, base } = await badgeFrom(params);
+  const issuer = nameOf(badge.issuer);
+  return pageMetadata({
+    title: badge.title,
+    description: trimMetaDescription(badge.description, `Badge issued by ${issuer} on Certified.`),
+    path: base,
+    image: badge.iconUrl,
+    card: badge.iconUrl ? "summary" : "summary_large_image",
+  });
 }
 
 /** A badge, and the accounts that accepted it. */

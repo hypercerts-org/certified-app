@@ -91,7 +91,7 @@ export async function ActivityRail({ params }: { params: ActivityParams }) {
 
 /** Title, by whom, when and in what scope; its picture beside, as a blog post's hero. */
 export async function ActivityHeader({ params }: { params: ActivityParams }) {
-  const { activity, uri } = await activityFrom(params);
+  const { activity, uri, base } = await activityFrom(params);
   // When, then the work scope, as Explore's rows say them.
   const meta = [activity.period ?? activity.createdAt, activity.scope].filter(Boolean).join(" · ");
   return (
@@ -115,7 +115,7 @@ export async function ActivityHeader({ params }: { params: ActivityParams }) {
         </div>
         <div className="record-head-actions">
           <Suspense fallback={null}>
-            <RecordActions uri={uri} title={activity.title} />
+            <RecordActions uri={uri} path={base} title={activity.title} />
           </Suspense>
         </div>
       </div>

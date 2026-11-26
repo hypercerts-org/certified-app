@@ -17,6 +17,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { ActorAvatar, ActorLink, ActorStack } from "@/components/actor";
 import { skeletonSlots } from "@/components/cards";
 import { Empty } from "@/components/empty";
+import { LikeScope, PostLikeButton } from "@/components/like-button";
 import { PageHeader } from "@/components/page-title";
 import {
   Media,
@@ -122,6 +123,7 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
             />
           }
           media={<Media href={entry.href} src={entry.imageUrl} />}
+          actions={<PostLikeButton subject={entry.uri} />}
         />
       );
 
@@ -148,6 +150,7 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
             />
           }
           media={<Media href={entry.href} src={entry.imageUrl} />}
+          actions={<PostLikeButton subject={entry.uri} />}
         />
       );
 
@@ -194,6 +197,7 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
             ) : undefined
           }
           media={targetHref ? <Media href={targetHref} src={entry.imageUrl} /> : undefined}
+          actions={<PostLikeButton subject={entry.uri} />}
         />
       );
     }
@@ -216,6 +220,7 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
               </blockquote>
             ) : undefined
           }
+          actions={<PostLikeButton subject={entry.uri} />}
         />
       );
 
@@ -242,6 +247,7 @@ function NetworkFeedPost({ item }: { item: GroupedFeedItem }) {
               </Text>
             ) : undefined
           }
+          actions={<PostLikeButton subject={entry.uri} />}
         />
       );
 
@@ -627,22 +633,37 @@ function FeedList({
     );
   }
   return (
-    <div className="stack">
-      <ul className="post-feed">
-        {grouped.map((item) => (
-          <NetworkFeedPost key={item.key} item={item} />
-        ))}
-      </ul>
-      {query.isFetchNextPageError && (
-        <ErrorMessage live>Couldn&apos;t load more items. Try again.</ErrorMessage>
+    // Likes for every post that can be liked, fetched in one batch.
+    <LikeScope
+      subjects={grouped.flatMap((item) =>
+        item.type === "entry" &&
+        (item.entry.kind === "cert.create" ||
+          item.entry.kind === "collection.create" ||
+          item.entry.kind === "project.created_with_cert" ||
+          item.entry.kind === "update.create" ||
+          item.entry.kind === "evaluation.create" ||
+          item.entry.kind === "measurement.create")
+          ? [item.entry.uri]
+          : [],
       )}
-      <LoadMoreSentinel
-        onLoadMore={() => void query.fetchNextPage()}
-        loading={query.isFetchingNextPage}
-        hasMore={query.hasNextPage}
-        label="Load more"
-      />
-    </div>
+    >
+      <div className="stack">
+        <ul className="post-feed">
+          {grouped.map((item) => (
+            <NetworkFeedPost key={item.key} item={item} />
+          ))}
+        </ul>
+        {query.isFetchNextPageError && (
+          <ErrorMessage live>Couldn&apos;t load more items. Try again.</ErrorMessage>
+        )}
+        <LoadMoreSentinel
+          onLoadMore={() => void query.fetchNextPage()}
+          loading={query.isFetchingNextPage}
+          hasMore={query.hasNextPage}
+          label="Load more"
+        />
+      </div>
+    </LikeScope>
   );
 }
 

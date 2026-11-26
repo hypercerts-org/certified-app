@@ -7,7 +7,6 @@ vi.mock("server-only", () => ({}));
 
 const mocks = {
   getOAuthSession: vi.fn<() => Promise<OAuthSession | null>>(),
-  getRecordSigner: vi.fn(),
   editableRepository: vi.fn(),
   patchProfile: vi.fn(),
   patchOrganization: vi.fn(),
@@ -21,7 +20,6 @@ const mocks = {
 };
 
 vi.mock("next/cache", () => ({ updateTag: (...args: unknown[]) => mocks.updateTag(...args) }));
-vi.mock("@/lib/atproto/app-key", () => ({ getRecordSigner: () => mocks.getRecordSigner() }));
 vi.mock("@/lib/auth/dal", () => ({
   getOAuthSession: () => mocks.getOAuthSession(),
   SessionUnavailableError: class SessionUnavailableError extends Error {},
@@ -73,7 +71,6 @@ const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getOAuthSession.mockResolvedValue(FAKE_SESSION);
-  mocks.getRecordSigner.mockResolvedValue(vi.fn());
   mocks.editableRepository.mockResolvedValue(FAKE_REPO);
   mocks.sdkContext.mockResolvedValue({ ctx: true });
   mocks.uploadBlob.mockResolvedValue(BLOB_REF);
@@ -178,12 +175,7 @@ describe("saveProfileMedia", () => {
     const res = await saveProfileMedia(fd);
     expect(res).toEqual({ ok: true, cid: "bafynologo", url: null });
     expect(mocks.uploadBlob).not.toHaveBeenCalled();
-    expect(mocks.patchOrganization).toHaveBeenCalledWith(
-      FAKE_REPO,
-      { logo: null },
-      "bafyprev",
-      expect.anything(),
-    );
+    expect(mocks.patchOrganization).toHaveBeenCalledWith(FAKE_REPO, { logo: null }, "bafyprev");
   });
 });
 
@@ -243,7 +235,6 @@ describe("saveOrganizationField", () => {
         location: { uri: `at://${USER}/app.certified.location/loc1`, cid: "bafyloc" },
       }),
       null,
-      expect.anything(),
     );
     expect(mocks.updateTag.mock.calls.flat()).toEqual([
       `actor:${USER}`,

@@ -1,7 +1,6 @@
 "use server";
 
 import { updateTag } from "next/cache";
-import { getRecordSigner } from "@/lib/atproto/app-key";
 import { getOAuthSession, SessionUnavailableError } from "@/lib/auth/dal";
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
@@ -44,7 +43,7 @@ const failure = (reason: SaveFailure, message = MESSAGES[reason]): SaveProfileRe
 
 /**
  * Saves the display name and description of profile `repo`: the signed-in
- * user's own, or an organization's they manage, signed by the app.
+ * user's own, or an organization's they manage.
  * `expectedCid` is the version the user was editing (null: there was no
  * profile); a newer version is never overwritten. The arguments come from
  * the browser, so they are checked here again.
@@ -55,7 +54,7 @@ export async function saveProfile(input: {
   expectedCid: string | null;
 }): Promise<SaveProfileResult> {
   // The lexicon's byte limits, as a cheap bound before calling the PDS; the
-  // record is validated exactly before it is signed.
+  // record is validated exactly before it is written.
   const { displayName, description } = input?.fields ?? {};
   const { repo, expectedCid } = input ?? {};
   if (
@@ -79,7 +78,6 @@ export async function saveProfile(input: {
       repository,
       { displayName: displayName.trim(), description: description.trim() },
       expectedCid,
-      await getRecordSigner(),
     );
     // Then the public pages, expired, render the save from the index.
     const indexed = await waitForIndex(

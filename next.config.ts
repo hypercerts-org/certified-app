@@ -31,6 +31,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/settings/organizations", destination: "/workspace", permanent: true },
+      { source: "/settings/security", destination: "/settings", permanent: true },
+      { source: "/settings/account", destination: "/settings", permanent: true },
+      { source: "/search", destination: "/explore", permanent: true },
+      { source: "/connected-apps", destination: "/apps", permanent: true },
+      { source: "/profile/:handle", destination: "/:handle", permanent: true },
+      { source: "/activity/:did/:rkey", destination: "/:did/activity/:rkey", permanent: true },
+      { source: "/project/:did/:rkey", destination: "/:did/project/:rkey", permanent: true },
       {
         source: "/:actor/project/:rkey/updates",
         destination: "/:actor/project/:rkey",

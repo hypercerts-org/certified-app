@@ -1,6 +1,7 @@
 import { Container } from "@hypercerts-org/ui-react";
 import { type ReactNode, Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SiteFooter } from "@/components/site-footer";
 import { SignedOutBar, SiteHeader } from "@/components/site-header";
 
 // From 64rem the sidebar is the navigation, on the left; narrower, the top bar
@@ -18,6 +19,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <Container as="main" className="site-main">
           {children}
         </Container>
+        <SiteFooter />
       </div>
     </div>
   );
