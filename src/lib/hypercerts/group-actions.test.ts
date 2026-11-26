@@ -40,6 +40,11 @@ vi.mock("@hypercerts-org/sdk/organization", async (importOriginal) => {
     createOrganization: (...args: unknown[]) => mocks.createOrganization(...args),
   };
 });
+vi.mock("@/lib/hypercerts/index-wait", () => ({ waitForIndex: vi.fn(async () => true) }));
+vi.mock("@/lib/hypercerts/queries", () => ({
+  getActorCards: vi.fn(async () => []),
+  getIndexedProfile: vi.fn(async () => null),
+}));
 vi.mock("@/lib/hypercerts/resolve-target", () => ({
   resolveAccountDid: (...args: unknown[]) => mocks.resolveAccountDid(...args),
 }));
@@ -77,9 +82,9 @@ beforeEach(() => {
 });
 
 describe("createGroup", () => {
-  it("appends the default PDS domain to bare handles, registers on CGS, and initializes organization via SDK", async () => {
+  it("sends the bare handle label to CGS (stripping the default PDS suffix) and initializes organization via SDK", async () => {
     const res = await createGroup({
-      handle: "forest-co",
+      handle: "forest-co.certified.one",
       displayName: "Forest Collective",
       description: "Stewardship network",
       email: "team@forest.example",
@@ -94,7 +99,7 @@ describe("createGroup", () => {
       profileNote: undefined,
     });
     expect(mocks.registerGroup).toHaveBeenCalledWith(FAKE_SESSION, {
-      handle: "forest-co.certified.one",
+      handle: "forest-co",
       email: "team@forest.example",
     });
     expect(mocks.forgetMemberships).toHaveBeenCalledWith(USER);

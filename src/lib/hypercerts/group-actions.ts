@@ -30,7 +30,8 @@ import {
   setGroupMemberRole,
 } from "@/lib/cgs";
 import { tags } from "@/lib/hypercerts/cache";
-import { getActorCards } from "@/lib/hypercerts/queries";
+import { waitForIndex } from "@/lib/hypercerts/index-wait";
+import { getActorCards, getIndexedProfile } from "@/lib/hypercerts/queries";
 import { resolveAccountDid } from "@/lib/hypercerts/resolve-target";
 import { sdkContext } from "@/lib/hypercerts/sdk";
 import { logError } from "@/lib/log";
@@ -38,7 +39,6 @@ import { workspaceHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
 
 const HANDLE_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
-const FULL_HANDLE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type GroupActionFailure = { ok: false; message: string };
@@ -60,14 +60,18 @@ function defaultGroupDomain(): string {
   return new URL(CERTIFIED_PDS_URL).hostname;
 }
 
-/** Normalizes a bare label ("my-org") or full handle ("my-org.certified.one"). */
+/**
+ * Normalizes a group handle into the bare subdomain label CGS's
+ * `app.certified.group.register` expects (`^[a-zA-Z0-9-]+$`). Accepts either
+ * `"my-group"` or `"my-group.certified.one"`.
+ */
 function normalizeHandle(raw: string): string | null {
   const cleaned = raw.trim().replace(/^@/, "").toLowerCase();
-  if (!cleaned || cleaned.length > 253) return null;
-  if (cleaned.includes(".")) return FULL_HANDLE.test(cleaned) ? cleaned : null;
-  if (!HANDLE_LABEL.test(cleaned)) return null;
-  const full = `${cleaned}.${defaultGroupDomain()}`;
-  return full.length <= 253 ? full : null;
+  if (!cleaned) return null;
+  const suffix = `.${defaultGroupDomain().toLowerCase()}`;
+  const label = cleaned.endsWith(suffix) ? cleaned.slice(0, -suffix.length) : cleaned;
+  if (!label || label.length > 63 || !HANDLE_LABEL.test(label)) return null;
+  return label;
 }
 
 function cgsErrorMessage(err: unknown, fallback: string, specific?: Record<string, string>) {
@@ -78,6 +82,9 @@ function cgsErrorMessage(err: unknown, fallback: string, specific?: Record<strin
     }
     if (err.status >= 500) {
       return "We couldn't confirm whether the change succeeded. Reload to check.";
+    }
+    if (err.status >= 400 && err.status < 500 && err.message?.trim()) {
+      return err.message.trim();
     }
   } else if (err instanceof XrpcError) {
     return "We couldn't confirm whether the change succeeded. Reload to check.";
@@ -133,7 +140,7 @@ export async function createGroup(input: {
     // without hiding the one-time accountPassword.
     let profileNote: string | undefined;
     try {
-      await createOrganization(
+      const initialized = await createOrganization(
         await sdkContext(session),
         {
           organization: {},
@@ -144,6 +151,12 @@ export async function createGroup(input: {
         },
         { repo: registered.groupDid },
       );
+      if (initialized.profile?.cid) {
+        const expectedCid = initialized.profile.cid;
+        await waitForIndex(
+          async () => (await getIndexedProfile(registered.groupDid))?.cid === expectedCid,
+        );
+      }
     } catch (err) {
       logError("[groups] initial organization record failed", err, {
         groupDid: registered.groupDid,

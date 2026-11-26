@@ -35,7 +35,7 @@ export const cgs = new Client({
       ...init,
       redirect: "error",
       signal: AbortSignal.any([
-        AbortSignal.timeout(10_000),
+        AbortSignal.timeout(15_000),
         ...(init?.signal ? [init.signal] : []),
       ]),
     }),

@@ -10,6 +10,9 @@ import {
   CopyableId,
   Field,
   Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   ResponsiveDialog,
   SegmentedControl,
   Text,
@@ -20,6 +23,7 @@ import { Plus, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { switchActingAs } from "@/lib/acting-as-actions";
 import * as groupActions from "@/lib/hypercerts/group-actions";
 
 /** "New group": registers a group on CGS and initializes its organization record. */
@@ -49,6 +53,7 @@ export function NewGroupDialog({
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [openingWorkspace, setOpeningWorkspace] = useState(false);
   const [created, setCreated] = useState<Extract<
     groupActions.CreateGroupResult,
     { ok: true }
@@ -64,7 +69,7 @@ export function NewGroupDialog({
   };
 
   const close = () => {
-    if (submitting) return;
+    if (submitting || openingWorkspace) return;
     const wasCreated = created !== null;
     setOpen(false);
     reset();
@@ -124,22 +129,32 @@ export function NewGroupDialog({
         title={created ? "Group created" : "New group"}
         description={
           created
-            ? "Save the recovery password below before closing — it is shown only once."
+            ? created.accountPassword
+              ? "Save the recovery password below before closing — it is shown only once."
+              : "Your group is ready. You can open its workspace or invite members from group settings."
             : "Create a shared group account on Certified. You start as its owner and can invite teammates."
         }
         footer={
           created ? (
             <>
-              <Button variant="secondary" onClick={close}>
+              <Button variant="secondary" disabled={openingWorkspace} onClick={close}>
                 Done
               </Button>
               <Button
                 variant="primary"
-                onClick={() => {
-                  const href = created.href;
+                loading={openingWorkspace}
+                onClick={async () => {
+                  const { groupDid, href } = created;
+                  setOpeningWorkspace(true);
+                  try {
+                    await switchActingAs(groupDid);
+                  } finally {
+                    setOpeningWorkspace(false);
+                  }
                   setOpen(false);
                   reset();
                   router.push(href);
+                  router.refresh();
                 }}
               >
                 Open workspace
@@ -160,7 +175,7 @@ export function NewGroupDialog({
         {created ? (
           <div className="stack">
             {created.profileNote && <Banner tone="warning">{created.profileNote}</Banner>}
-            <dl className="overview-id-list divided">
+            <dl className="overview-id-list">
               <div className="overview-id-item">
                 <dt>Handle</dt>
                 <dd>
@@ -214,17 +229,23 @@ export function NewGroupDialog({
             )}
             <Field
               label="Handle"
-              description={`Enter a short name (becomes name.${pdsDomain}) or a full handle.`}
+              description="Letters, numbers, and hyphens. You can connect a custom domain later in group settings."
             >
-              {(field) => (
-                <Input
-                  {...field}
-                  value={handle}
-                  onChange={(e) => setHandle(e.currentTarget.value)}
-                  placeholder={`my-org`}
-                  maxLength={253}
-                  required
-                />
+              {({ invalid: _invalid, ...inputField }) => (
+                <InputGroup>
+                  <InputGroupInput
+                    {...inputField}
+                    value={handle}
+                    onChange={(e) => setHandle(e.currentTarget.value)}
+                    placeholder="my-group"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    maxLength={63}
+                    required
+                  />
+                  <InputGroupAddon>.{pdsDomain}</InputGroupAddon>
+                </InputGroup>
               )}
             </Field>
             <Field label="Display name" description="Optional. Shown on the group's profile.">
