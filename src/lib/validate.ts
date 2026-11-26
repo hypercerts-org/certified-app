@@ -16,6 +16,27 @@ export function isRkey(value: string): boolean {
   return /^[A-Za-z0-9._:~-]{1,512}$/.test(value);
 }
 
+/** Syntactically valid AT Protocol handle / DNS domain name (at least two labels). */
+export function isHandle(value: string): boolean {
+  return (
+    value.length > 0 &&
+    value.length <= 253 &&
+    /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(value)
+  );
+}
+
+/** Syntactically valid single DNS label for a PDS subdomain handle prefix. */
+export function isHandleLabel(value: string): boolean {
+  return (
+    value.length > 0 && value.length <= 63 && /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i.test(value)
+  );
+}
+
+/** Basic email address format check (bounded to RFC 5321 max length). */
+export function isEmail(value: string): boolean {
+  return value.length > 0 && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export function cursorParam(value: string | null): string | undefined {
   return value && value.length <= 512 ? value : undefined;
 }

@@ -6,10 +6,7 @@
 import "server-only";
 
 import { getDid } from "@/lib/identity";
-import { isAtUri, isDid, isRkey } from "@/lib/validate";
-
-const HANDLE =
-  /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+import { isAtUri, isDid, isHandle, isRkey } from "@/lib/validate";
 
 const PATH_COLLECTIONS: Record<string, string> = {
   project: "org.hypercerts.collection",
@@ -68,7 +65,7 @@ export function parseTarget(raw: string): ParsedTarget | null {
     const [first, second, third] = segments;
     if (RESERVED_SEGMENTS.has(first.toLowerCase())) return null;
     const actor = first.replace(/^@/, "");
-    if (!isDid(actor) && !HANDLE.test(actor)) return null;
+    if (!isDid(actor) && !isHandle(actor)) return null;
 
     if (second && third && PATH_COLLECTIONS[second] && isRkey(third)) {
       return {
@@ -83,7 +80,7 @@ export function parseTarget(raw: string): ParsedTarget | null {
 
   const stripped = trimmed.replace(/^@/, "");
   if (isDid(stripped)) return { kind: "did", did: stripped };
-  if (HANDLE.test(stripped)) return { kind: "handle", handle: stripped };
+  if (isHandle(stripped)) return { kind: "handle", handle: stripped };
   return null;
 }
 

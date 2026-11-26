@@ -24,6 +24,11 @@ const HOLDS: Record<string, { collections: string[]; type?: string }> = {
   "list:endorsements": { collections: ["app.certified.badge.award"] },
 };
 
+/** Whether `type` is one of the typed list collection types (not a project). */
+export function isListType(type: unknown): boolean {
+  return typeof type === "string" && Object.hasOwn(HOLDS, type);
+}
+
 /**
  * Whether record `uri` (with its `value`) belongs in a list of type
  * `listType`: an activity in an activities list, a project (not another

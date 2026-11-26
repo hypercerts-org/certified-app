@@ -1,11 +1,13 @@
 import { Text } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { HandleId, PermanentId } from "@/components/account-ids";
-import { EmailRow, HandleRow, PasswordResetRow } from "@/components/settings/account-controls";
+import { EmailRow } from "@/components/settings/email-row";
 import {
   GroupAccountManager,
   GroupPasswordResetRow,
 } from "@/components/settings/group-account-controls";
+import { HandleRow } from "@/components/settings/handle-row";
+import { PasswordResetRow } from "@/components/settings/password-reset-row";
 import {
   GroupMembersGroup,
   GroupOwnershipGroup,

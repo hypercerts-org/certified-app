@@ -20,8 +20,17 @@ import {
 } from "react";
 import { toast } from "sonner";
 import * as likeActions from "@/lib/hypercerts/like-actions";
+import { signInHref } from "@/lib/validate";
 
 const numberFormat = new Intl.NumberFormat("en");
+const ACTING_AS_CHANGED_EVENT = "certified:acting-as-changed";
+
+/** Notifies mounted `<LikeScope>` providers to re-fetch likes after `switchActingAs`. */
+export function notifyActingAsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ACTING_AS_CHANGED_EVENT));
+  }
+}
 
 export type LikeEntry = { count: number; likeUri: string | null };
 
@@ -48,6 +57,8 @@ export function LikeButton({
   initialLikeUri,
   variant = "header",
   onSync,
+  loadFailed = false,
+  onRetryLoad,
 }: {
   subject: string;
   /** Return path if a signed-out visitor clicks Like. */
@@ -59,6 +70,9 @@ export function LikeButton({
   variant?: "header" | "post";
   /** Optional callback to keep a parent `LikeScope` map in sync after toggle. */
   onSync?: (subject: string, next: LikeEntry) => void;
+  /** True when batch hydration failed, so clicking retries instead of staying stuck disabled. */
+  loadFailed?: boolean;
+  onRetryLoad?: () => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,12 +90,17 @@ export function LikeButton({
   }, [initialCount, initialLikeUri]);
 
   const liked = state.likeUri !== null;
-  const hydrating = actor === undefined;
+  const hydrating = actor === undefined && !loadFailed;
 
   const toggle = () => {
     if (hydrating || pending) return;
-    if (actor === null) {
-      router.push(`/sign-in?${new URLSearchParams({ returnTo: returnPath })}`);
+    if (actor === undefined && loadFailed) {
+      toast.error("Couldn't load likes right now. Retrying…");
+      onRetryLoad?.();
+      return;
+    }
+    if (actor === null || actor === undefined) {
+      router.push(signInHref(returnPath));
       return;
     }
 
@@ -165,6 +184,8 @@ type LikeScopeValue = {
   /** `undefined` until `/api/likes` resolves, then DID or `null`. */
   actor: string | null | undefined;
   entries: Record<string, LikeEntry>;
+  loadFailed: boolean;
+  retry: () => void;
   sync: (subject: string, next: LikeEntry) => void;
 };
 
@@ -173,18 +194,35 @@ const LikeScopeContext = createContext<LikeScopeValue | null>(null);
 /**
  * Batches like counts and viewer state for every `subjects` AT-URI rendered
  * inside a timeline or feed, issuing one `/api/likes` request per batch of new
- * subjects (including after Load more).
+ * subjects (including after Load more). Resets automatically when the user
+ * switches "Act as" so likes always write as the active account.
  */
 export function LikeScope({ subjects, children }: { subjects: string[]; children: ReactNode }) {
   const [actor, setActor] = useState<string | null | undefined>(undefined);
   const [entries, setEntries] = useState<Record<string, LikeEntry>>({});
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [epoch, setEpoch] = useState(0);
   const fetchedRef = useRef<Set<string>>(new Set());
+
+  const resetScope = useCallback(() => {
+    fetchedRef.current.clear();
+    setActor(undefined);
+    setEntries({});
+    setLoadFailed(false);
+    setEpoch((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener(ACTING_AS_CHANGED_EVENT, resetScope);
+    return () => window.removeEventListener(ACTING_AS_CHANGED_EVENT, resetScope);
+  }, [resetScope]);
 
   const subjectsKey = useMemo(
     () => [...new Set(subjects.filter(Boolean))].sort().join("\n"),
     [subjects],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `epoch` intentionally triggers re-fetch on account switch or manual retry
   useEffect(() => {
     const all = subjectsKey ? subjectsKey.split("\n") : [];
     const missing = all.filter((uri) => !fetchedRef.current.has(uri));
@@ -192,6 +230,7 @@ export function LikeScope({ subjects, children }: { subjects: string[]; children
 
     const controller = new AbortController();
     let settled = false;
+    setLoadFailed(false);
     for (const uri of missing) fetchedRef.current.add(uri);
 
     const batches: string[][] = [];
@@ -230,6 +269,7 @@ export function LikeScope({ subjects, children }: { subjects: string[]; children
       .catch(() => {
         // Release URIs so Strict Mode remount or a retry can re-fetch cleanly.
         for (const uri of missing) fetchedRef.current.delete(uri);
+        if (!controller.signal.aborted) setLoadFailed(true);
       });
 
     return () => {
@@ -238,13 +278,21 @@ export function LikeScope({ subjects, children }: { subjects: string[]; children
         for (const uri of missing) fetchedRef.current.delete(uri);
       }
     };
-  }, [subjectsKey]);
+  }, [subjectsKey, epoch]);
 
   const sync = useCallback((subject: string, next: LikeEntry) => {
     setEntries((prev) => ({ ...prev, [subject]: next }));
   }, []);
 
-  const value = useMemo(() => ({ actor, entries, sync }), [actor, entries, sync]);
+  const retry = useCallback(() => {
+    setLoadFailed(false);
+    setEpoch((n) => n + 1);
+  }, []);
+
+  const value = useMemo(
+    () => ({ actor, entries, loadFailed, retry, sync }),
+    [actor, entries, loadFailed, retry, sync],
+  );
 
   return <LikeScopeContext value={value}>{children}</LikeScopeContext>;
 }
@@ -261,6 +309,8 @@ export function PostLikeButton({ subject }: { subject: string }) {
       initialLikeUri={entry?.likeUri ?? null}
       variant="post"
       onSync={ctx?.sync}
+      loadFailed={ctx?.loadFailed ?? false}
+      onRetryLoad={ctx?.retry}
     />
   );
 }

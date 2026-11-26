@@ -14,7 +14,6 @@ import {
   type Repository,
   removeItemsFromList,
   updateListDetails,
-  updateProfile,
   WriteError,
 } from "./writes";
 
@@ -91,7 +90,7 @@ describe("organization writes through CGS", () => {
       return Response.json({ token: "token" });
     });
     const repo = await organizationRepository(session, org);
-    expect(await updateProfile(repo, NEW, CURRENT_CID)).toMatchObject({
+    expect(await patchProfile(repo, NEW, CURRENT_CID)).toMatchObject({
       cid: "bafynew",
       displayName: "New",
     });
@@ -115,7 +114,7 @@ describe("organization writes through CGS", () => {
 
   it("refuses to write when the profile changed since it was loaded", async () => {
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, "bafyolder"));
+    const err = await failureOf(patchProfile(repo, NEW, "bafyolder"));
     expect(err).toMatchObject({ name: "WriteError", reason: "conflict" });
     expect(requests).toHaveLength(1);
   });
@@ -123,35 +122,35 @@ describe("organization writes through CGS", () => {
   it("reports CGS refusing the user's role as forbidden", async () => {
     cgsAnswer = () => Response.json({ error: "Forbidden", message: "No" }, { status: 403 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
+    const err = await failureOf(patchProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "forbidden" });
   });
 
   it("reports a 5xx from CGS as an unknown outcome, never as a refusal", async () => {
     cgsAnswer = () => Response.json({ error: "UpstreamFailure" }, { status: 502 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
+    const err = await failureOf(patchProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a write that got no answer as an unknown outcome", async () => {
     cgsAnswer = () => Promise.reject(new TypeError("fetch failed"));
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
+    const err = await failureOf(patchProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a success answer it can't read as an unknown outcome", async () => {
     cgsAnswer = () => new Response("<html>gateway</html>", { status: 200 });
     const repo = await organizationRepository(fakeSession(), org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
+    const err = await failureOf(patchProfile(repo, NEW, CURRENT_CID));
     expect(err).toMatchObject({ name: "WriteError", reason: "unknown" });
   });
 
   it("reports a token the PDS wouldn't mint as never sent, not as unknown", async () => {
     const session = fakeSession(() => Response.json({ error: "AuthRequired" }, { status: 401 }));
     const repo = await organizationRepository(session, org);
-    const err = await failureOf(updateProfile(repo, NEW, CURRENT_CID));
+    const err = await failureOf(patchProfile(repo, NEW, CURRENT_CID));
     expect(err).toBeInstanceOf(CgsAuthError);
     expect(requests.some((r) => r.url.includes("groups.certified.app"))).toBe(false);
   });
@@ -168,7 +167,7 @@ describe("own-repository writes", () => {
       }
       return Response.json({ error: "InvalidRequest", message: "exists" }, { status: 400 });
     });
-    const err = await failureOf(updateProfile(ownRepository(session), NEW, null));
+    const err = await failureOf(patchProfile(ownRepository(session), NEW, null));
     expect(err).toBeInstanceOf(WriteError);
     expect(err).toMatchObject({ reason: "conflict" });
   });
@@ -409,6 +408,41 @@ describe("list record mutations", () => {
       "list1",
       CURRENT_CID,
     );
+  });
+
+  it("refuses to edit, mutate, or delete a project collection through list helpers", async () => {
+    const project = {
+      cid: CURRENT_CID,
+      value: {
+        $type: "org.hypercerts.collection",
+        title: "Real Project",
+        type: "project",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    };
+    const { repo, putRecord, deleteRecord } = mockRepo(project);
+    const ref = { uri: `at://${user}/org.hypercerts.claim.activity/a1`, cid: CURRENT_CID };
+
+    expect(
+      await failureOf(updateListDetails(repo, "proj1", { title: "X", description: "" })),
+    ).toMatchObject({
+      name: "WriteError",
+      reason: "invalid",
+    });
+    expect(await failureOf(addItemsToList(repo, "proj1", [ref]))).toMatchObject({
+      name: "WriteError",
+      reason: "invalid",
+    });
+    expect(await failureOf(removeItemsFromList(repo, "proj1", new Set([ref.uri])))).toMatchObject({
+      name: "WriteError",
+      reason: "invalid",
+    });
+    expect(await failureOf(deleteCollectionRecord(repo, "proj1"))).toMatchObject({
+      name: "WriteError",
+      reason: "invalid",
+    });
+    expect(putRecord).not.toHaveBeenCalled();
+    expect(deleteRecord).not.toHaveBeenCalled();
   });
 });
 

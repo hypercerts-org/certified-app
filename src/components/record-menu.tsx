@@ -24,6 +24,7 @@ import { ComingSoonButton } from "@/components/coming-soon";
 import { LikeButton } from "@/components/like-button";
 import { copyToClipboard, ShareButton } from "@/components/profile-actions";
 import type { ListKind } from "@/lib/lists";
+import { signInHref } from "@/lib/validate";
 
 export function RecordMenu({
   uri,
@@ -88,7 +89,7 @@ export function RecordMenu({
           <MenuItem
             onClick={() => {
               if (!actor) {
-                router.push(`/sign-in?${new URLSearchParams({ returnTo: path })}`);
+                router.push(signInHref(path));
                 return;
               }
               setListOpen(true);

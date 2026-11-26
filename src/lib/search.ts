@@ -25,6 +25,16 @@ export type SearchRow = {
   round: boolean;
 };
 
+export type SearchActorHit = {
+  did: string;
+  handle: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  isOrganization: boolean;
+  certified: boolean;
+  href: string;
+};
+
 export type SearchResults = {
   /** A pasted handle, DID or link: straight to its page. */
   go: SearchRow | null;
@@ -111,25 +121,29 @@ export function goRow(query: string): SearchRow | null {
   });
   switch (parsed.kind) {
     case "handle":
-      if (/^https?:\/\//.test(query.trim()))
-        return row(new URL(query.trim()).pathname, query.trim());
       // A bare word ("forest") is not a handle; a handle has a dot.
-      return parsed.handle.includes(".") ? row(`/${parsed.handle}`, `@${parsed.handle}`) : null;
+      // Always build a canonical single-slash path (never raw URL.pathname,
+      // which can start with "//evil.com" and trigger an open redirect).
+      return parsed.handle.includes(".")
+        ? row(`/${encodeURIComponent(parsed.handle)}`, `@${parsed.handle}`)
+        : null;
     case "did":
-      return /^https?:\/\//.test(query.trim())
-        ? row(new URL(query.trim()).pathname, query.trim())
-        : row(`/${parsed.did}`, parsed.did);
-    case "record-path":
-      // A pasted Certified link: its own page.
-      return row(new URL(query.trim()).pathname, query.trim());
+      return row(`/${parsed.did}`, parsed.did);
+    case "record-path": {
+      const seg = parsed.collection === "org.hypercerts.claim.activity" ? "activity" : "project";
+      const actorSeg = parsed.actor.startsWith("did:")
+        ? parsed.actor
+        : encodeURIComponent(parsed.actor);
+      return row(`/${actorSeg}/${seg}/${encodeURIComponent(parsed.rkey)}`, query.trim());
+    }
     case "uri": {
       const [, , did, collection, rkey] = parsed.uri.split("/");
       if (!rkey) return row(`/${did}`, did);
       if (collection === "org.hypercerts.claim.activity") {
-        return row(`/${did}/activity/${rkey}`, `Activity ${rkey}`);
+        return row(`/${did}/activity/${encodeURIComponent(rkey)}`, `Activity ${rkey}`);
       }
       if (collection === "org.hypercerts.collection") {
-        return row(`/${did}/project/${rkey}`, `Project ${rkey}`);
+        return row(`/${did}/project/${encodeURIComponent(rkey)}`, `Project ${rkey}`);
       }
       return null;
     }

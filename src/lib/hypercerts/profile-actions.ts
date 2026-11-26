@@ -27,15 +27,15 @@ import {
   resolvePublicRecordRef,
   WriteError,
 } from "@/lib/hypercerts/writes";
+import { detectImageMime } from "@/lib/image-mime";
 import { type LocationChoice, locationProblem, newLocationRecord } from "@/lib/location-choice";
 import { logError } from "@/lib/log";
 import { safeUrl } from "@/lib/safe-url";
-import { isDid } from "@/lib/validate";
+import { isDid, isEmail } from "@/lib/validate";
 
 const MAX_SMALL_IMAGE = 5_000_000; // 5 MB (org.hypercerts.defs#smallImage)
 const MAX_LARGE_IMAGE = 10_000_000; // 10 MB (org.hypercerts.defs#largeImage)
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type ProfileActionFailure = {
   ok: false;
@@ -44,40 +44,6 @@ type ProfileActionFailure = {
 };
 
 export type ProfileActionResult<T> = { ok: true; data: T } | ProfileActionFailure;
-
-/** Sniffs PNG, JPEG, or WebP magic bytes so uploads never trust client MIME headers alone. */
-function detectImageMime(bytes: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | null {
-  if (
-    bytes.length >= 8 &&
-    bytes[0] === 0x89 &&
-    bytes[1] === 0x50 &&
-    bytes[2] === 0x4e &&
-    bytes[3] === 0x47 &&
-    bytes[4] === 0x0d &&
-    bytes[5] === 0x0a &&
-    bytes[6] === 0x1a &&
-    bytes[7] === 0x0a
-  ) {
-    return "image/png";
-  }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return "image/jpeg";
-  }
-  if (
-    bytes.length >= 12 &&
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50
-  ) {
-    return "image/webp";
-  }
-  return null;
-}
 
 function mapError(err: unknown, label: string): ProfileActionFailure {
   if (err instanceof WriteError) {
@@ -298,7 +264,7 @@ export async function saveOrganizationField(input: {
 
   if (patch.publicEmail !== undefined) {
     const trimmed = patch.publicEmail.trim();
-    if (trimmed && !EMAIL_RE.test(trimmed)) {
+    if (trimmed && !isEmail(trimmed)) {
       return { ok: false, reason: "invalid", message: "Enter a valid public email address." };
     }
   }

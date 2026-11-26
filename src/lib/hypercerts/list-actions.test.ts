@@ -9,6 +9,7 @@ const mocks = {
   mayPublish: vi.fn<(...args: unknown[]) => Promise<boolean>>(),
   createCollection: vi.fn(),
   getIndexedList: vi.fn(),
+  getIndexedListsByType: vi.fn(),
   repositoryFor: vi.fn(),
   updateListDetails: vi.fn(),
   addItemsToList: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/lib/hypercerts/index-wait", () => ({
 }));
 vi.mock("@/lib/hypercerts/queries", () => ({
   getIndexedList: (...args: unknown[]) => mocks.getIndexedList(...args),
+  getIndexedListsByType: (...args: unknown[]) => mocks.getIndexedListsByType(...args),
 }));
 vi.mock("@/lib/identity", () => ({
   getDid: (...args: unknown[]) => mocks.getDid(...args),
@@ -56,9 +58,16 @@ vi.mock("@/lib/hypercerts/writes", async (importOriginal) => {
   };
 });
 
-const { createList, editList, addListItems, removeListItems, deleteList } = await import(
-  "./list-actions"
-);
+const {
+  createList,
+  editList,
+  addListItems,
+  removeListItems,
+  deleteList,
+  getListsForItem,
+  setListMembership,
+  createListWithItem,
+} = await import("./list-actions");
 
 const USER = "did:plc:user11111111111111111111";
 const ORG = "did:plc:org111111111111111111111";
@@ -68,7 +77,9 @@ const FAKE_SESSION = { did: USER, fetchHandler: vi.fn() } as unknown as OAuthSes
 /** The list being added to: an activities list. */
 const FAKE_REPO = {
   did: USER,
-  getRecord: vi.fn(async () => ({ cid: "bafylist", value: { type: "list:certs", items: [] } })),
+  getRecord: vi.fn<() => Promise<{ cid: string; value: Record<string, unknown> } | null>>(
+    async () => ({ cid: "bafylist", value: { type: "list:certs", items: [] } }),
+  ),
 };
 
 beforeEach(() => {
@@ -206,5 +217,151 @@ describe("addListItems & removeListItems", () => {
     const res = await removeListItems(USER, "list1", [uri]);
     expect(res).toEqual({ ok: true, removed: 1, indexed: true });
     expect(mocks.removeItemsFromList).toHaveBeenCalledWith(FAKE_REPO, "list1", new Set([uri]));
+  });
+});
+
+describe("visitor list actions (getListsForItem, setListMembership, createListWithItem)", () => {
+  it("getListsForItem matches account DIDs in Accounts lists and AT-URIs in record lists", async () => {
+    expect(await getListsForItem(USER, "Accounts", "not-a-did")).toMatchObject({
+      ok: false,
+      reason: "invalid",
+    });
+
+    mocks.getIndexedListsByType.mockResolvedValueOnce([
+      {
+        uri: LIST_URI,
+        rkey: "list1",
+        title: "Partners",
+        itemCount: 1,
+        itemUris: [`at://${OTHER}/app.certified.actor.profile/self`],
+      },
+      {
+        uri: `at://${USER}/org.hypercerts.collection/list2`,
+        rkey: "list2",
+        title: "Empty",
+        itemCount: 0,
+        itemUris: [],
+      },
+    ]);
+
+    const res = await getListsForItem(USER, "Accounts", OTHER);
+    expect(res).toEqual({
+      ok: true,
+      lists: [
+        { uri: LIST_URI, rkey: "list1", title: "Partners", itemCount: 1, included: true },
+        {
+          uri: `at://${USER}/org.hypercerts.collection/list2`,
+          rkey: "list2",
+          title: "Empty",
+          itemCount: 0,
+          included: false,
+        },
+      ],
+    });
+  });
+
+  it("setListMembership rejects non-list/Project collections and mismatched item kinds", async () => {
+    const activityUri = `at://${OTHER}/org.hypercerts.claim.activity/a1`;
+    const projectUri = `at://${OTHER}/org.hypercerts.collection/p1`;
+
+    // Target rkey is actually a Project (type: "project"), not a list:certs record.
+    FAKE_REPO.getRecord.mockResolvedValueOnce({
+      cid: "bafyproj",
+      value: { type: "project", items: [] },
+    });
+    expect(
+      await setListMembership(USER, "proj1", {
+        kind: "Activities",
+        target: activityUri,
+        include: true,
+      }),
+    ).toMatchObject({ ok: false, reason: "invalid" });
+    expect(mocks.addItemsToList).not.toHaveBeenCalled();
+
+    // Target rkey is an Activities list, but the item is a Project (fails fitsList).
+    expect(
+      await setListMembership(USER, "list1", {
+        kind: "Activities",
+        target: projectUri,
+        include: true,
+      }),
+    ).toMatchObject({ ok: false, reason: "invalid" });
+    expect(mocks.addItemsToList).not.toHaveBeenCalled();
+
+    // Happy path: add activity, then remove it.
+    expect(
+      await setListMembership(USER, "list1", {
+        kind: "Activities",
+        target: activityUri,
+        include: true,
+      }),
+    ).toEqual({ ok: true, included: true, indexed: true });
+    expect(mocks.addItemsToList).toHaveBeenCalledWith(FAKE_REPO, "list1", [
+      { uri: activityUri, cid: "bafyact" },
+    ]);
+
+    FAKE_REPO.getRecord.mockResolvedValueOnce({
+      cid: "bafylist",
+      value: { type: "list:certs", items: [{ itemIdentifier: { uri: activityUri } }] },
+    });
+    expect(
+      await setListMembership(USER, "list1", {
+        kind: "Activities",
+        target: activityUri,
+        include: false,
+      }),
+    ).toEqual({ ok: true, included: false, indexed: true });
+    expect(mocks.removeItemsFromList).toHaveBeenCalledWith(
+      FAKE_REPO,
+      "list1",
+      new Set([activityUri]),
+    );
+  });
+
+  it("createListWithItem rejects wrong-kind targets before creating and handles partial failure cleanly", async () => {
+    const projectUri = `at://${OTHER}/org.hypercerts.collection/p1`;
+    const activityUri = `at://${OTHER}/org.hypercerts.claim.activity/a1`;
+
+    // Rejects project passed into an Activities list before creating any collection.
+    expect(
+      await createListWithItem(USER, {
+        kind: "Activities",
+        title: "Round 4",
+        target: projectUri,
+      }),
+    ).toMatchObject({ ok: false, reason: "invalid" });
+    expect(mocks.createCollection).not.toHaveBeenCalled();
+
+    // Happy path.
+    expect(
+      await createListWithItem(USER, {
+        kind: "Activities",
+        title: "Round 4",
+        target: activityUri,
+      }),
+    ).toEqual({
+      ok: true,
+      list: { uri: LIST_URI, rkey: "list1", title: "Round 4", itemCount: 1, included: true },
+      indexed: true,
+    });
+
+    // Partial failure: createCollection succeeds, addItemsToList throws.
+    mocks.updateTag.mockClear();
+    mocks.addItemsToList.mockRejectedValueOnce(new WriteError("unknown", "timeout"));
+    const partial = await createListWithItem(USER, {
+      kind: "Activities",
+      title: "Round 5",
+      target: activityUri,
+    });
+    expect(partial.ok).toBe(false);
+    if (!partial.ok) {
+      expect(partial.reason).toBe("unknown");
+      expect(partial.message).toMatch(/Created "Round 5", but couldn't add/i);
+    }
+    expect(mocks.updateTag.mock.calls.flat()).toEqual([
+      `list:${LIST_URI}`,
+      `projects:${USER}`,
+      `actor:${USER}`,
+    ]);
   });
 });

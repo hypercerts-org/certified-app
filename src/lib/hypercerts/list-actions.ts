@@ -416,6 +416,12 @@ export async function setListMembership(
 
     const repository = await repositoryFor(session, repo);
     const uri = listUri(repo, rkey);
+    const expectedType = COLLECTION_TYPES[input.kind];
+    const existing = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
+    if (!existing) return fail("invalid", "update the list", "This list no longer exists.");
+    if (existing.value.type !== expectedType) {
+      return fail("invalid", "update the list", "This list doesn't hold this type of item.");
+    }
 
     if (input.include) {
       const resolved =
@@ -424,6 +430,10 @@ export async function setListMembership(
           : await resolvePublicRecord(input.target);
       if (!resolved) {
         return fail("invalid", "add to the list", "This item couldn't be resolved.");
+      }
+      const resolvedValue = "value" in resolved ? resolved.value : null;
+      if (!fitsList(expectedType, resolved.uri, resolvedValue)) {
+        return fail("invalid", "add to the list", "This item doesn't belong in this list.");
       }
       const { stored, added } = await addItemsToList(repository, rkey, [
         { uri: resolved.uri, cid: resolved.cid },
@@ -439,8 +449,6 @@ export async function setListMembership(
       return { ok: true, included: true, indexed };
     }
 
-    const existing = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
-    if (!existing) return fail("invalid", "update the list", "This list no longer exists.");
     const items = Array.isArray(existing.value.items) ? existing.value.items : [];
     const matchingUris = items
       .map((item) => (item as { itemIdentifier?: { uri?: string } })?.itemIdentifier?.uri)
@@ -494,6 +502,10 @@ export async function createListWithItem(
     if (!resolved) {
       return fail("invalid", "create the list", "This item couldn't be resolved.");
     }
+    const resolvedValue = "value" in resolved ? resolved.value : null;
+    if (!fitsList(collectionType, resolved.uri, resolvedValue)) {
+      return fail("invalid", "create the list", "This item doesn't belong in this list.");
+    }
 
     const created = await createCollection(
       await sdkContext(session),
@@ -501,12 +513,26 @@ export async function createListWithItem(
       writeTo(session, repo),
     );
     const rkey = created.uri.split("/").pop() ?? "";
-    const repository = await repositoryFor(session, repo);
-    const { stored } = await addItemsToList(repository, rkey, [
-      { uri: resolved.uri, cid: resolved.cid },
-    ]);
+    let storedCid = created.cid;
+    try {
+      const repository = await repositoryFor(session, repo);
+      const { stored } = await addItemsToList(repository, rkey, [
+        { uri: resolved.uri, cid: resolved.cid },
+      ]);
+      storedCid = stored.cid;
+    } catch (addErr) {
+      updateTag(tags.list(created.uri));
+      updateTag(tags.projects(repo));
+      updateTag(tags.actor(repo));
+      const mapped = mapError(addErr, "add initial list item");
+      return fail(
+        mapped.reason,
+        "add to the new list",
+        `Created "${title}", but couldn't add this item to it. Select it in the list above to try adding it again.`,
+      );
+    }
     const indexed = await waitForIndex(
-      async () => (await getIndexedList(created.uri))?.cid === stored.cid,
+      async () => (await getIndexedList(created.uri))?.cid === storedCid,
     );
     updateTag(tags.list(created.uri));
     updateTag(tags.projects(repo));

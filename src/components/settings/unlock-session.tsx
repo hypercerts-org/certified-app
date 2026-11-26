@@ -2,7 +2,7 @@
 
 import { Banner, Button, Field, Input, ResponsiveDialog, Text } from "@hypercerts-org/ui-react";
 import { type ReactNode, useCallback, useId, useState } from "react";
-import type { UnlockActionResult } from "@/lib/settings-actions";
+import type { UnlockActionResult } from "@/lib/settings/types";
 
 export type UnlockState = {
   password: string;

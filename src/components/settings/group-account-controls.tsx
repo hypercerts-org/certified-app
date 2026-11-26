@@ -1,6 +1,6 @@
 "use client";
 
-import { Banner, Button, Field, Input, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Banner, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { HandleId } from "@/components/account-ids";
@@ -16,12 +16,12 @@ import {
   unlockGroupSession,
   updateGroupAccountEmail,
   updateGroupAccountHandle,
-} from "@/lib/settings-actions";
-import { EmailRow, HandleRow } from "./account-controls";
+} from "@/lib/settings/account-actions";
+import { EmailRow } from "./email-row";
+import { HandleRow } from "./handle-row";
+import { PasswordResetRow } from "./password-reset-row";
 import { SettingsAction, SettingsRow } from "./settings-frame";
 import { UnlockDialog, useUnlockSession } from "./unlock-session";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Admin/owner handle + email rows for a non-self group.
@@ -219,220 +219,24 @@ export function GroupAccountManager({
   );
 }
 
-/**
- * Admin/owner password reset row for a non-self group.
- */
+/** Admin/owner password reset row for a non-self group. */
 export function GroupPasswordResetRow({ groupDid }: { groupDid: string }) {
-  const [step, setStep] = useState<"idle" | "request" | "confirm" | "done">("idle");
-  const [email, setEmail] = useState("");
-  const [token, setToken] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const sendCode = async () => {
-    const trimmed = email.trim();
-    if (!EMAIL_RE.test(trimmed)) {
-      setError("Enter a valid email address for this group.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await requestGroupAccountPasswordReset(groupDid, trimmed);
-      if (!res.ok) {
-        setError(res.message);
-        return;
-      }
-      setStep("confirm");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const resetPassword = async () => {
-    if (!token.trim()) {
-      setError("Enter the code sent to the group's email.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords don't match.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await confirmGroupAccountPasswordReset(groupDid, {
-        token: token.trim(),
-        password,
-      });
-      if (!res.ok) {
-        setError(res.message);
-        return;
-      }
-      setStep("done");
-      setToken("");
-      setPassword("");
-      setConfirm("");
-      toast("Group password reset");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const editing = step === "request" || step === "confirm";
-
   return (
-    <SettingsRow
-      label="Password"
+    <PasswordResetRow
+      email={null}
       description="Reset the group's PDS password with a code sent to its sign-in email."
-      actions={
-        editing ? null : (
-          <SettingsAction
-            onClick={() => {
-              setError(null);
-              setStep("request");
-            }}
-          >
-            Reset
-          </SettingsAction>
-        )
-      }
-    >
-      {step === "idle" && (
-        <Text as="span" tone="ink">
-          ••••••••••••
-        </Text>
-      )}
-      {step === "done" && <Banner tone="success">The group&apos;s password has been reset.</Banner>}
-
-      {step === "request" && (
-        <form
-          className="settings-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            void sendCode();
-          }}
-        >
-          <Field
-            label="Group email"
-            description="Enter the group's own email address, not your personal email."
-          >
-            {(field) => (
-              <Input
-                {...field}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.currentTarget.value)}
-                placeholder="team@example.org"
-                disabled={busy}
-                required
-              />
-            )}
-          </Field>
-          {error && (
-            <Banner tone="danger" role="alert">
-              {error}
-            </Banner>
-          )}
-          <div className="settings-form-actions">
-            <Button type="submit" variant="primary" size="sm" loading={busy}>
-              Send reset code
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setStep("idle");
-                setError(null);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {step === "confirm" && (
-        <form
-          className="settings-form"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            void resetPassword();
-          }}
-        >
-          <Field label="Reset code" description={`Sent to ${email}.`}>
-            {(field) => (
-              <Input
-                {...field}
-                value={token}
-                onChange={(e) => setToken(e.currentTarget.value)}
-                autoComplete="one-time-code"
-                placeholder="Code from the email"
-                disabled={busy}
-                required
-              />
-            )}
-          </Field>
-          <Field label="New password" description="At least 8 characters.">
-            {(field) => (
-              <Input
-                {...field}
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.currentTarget.value)}
-                disabled={busy}
-                required
-              />
-            )}
-          </Field>
-          <Field label="Confirm new password">
-            {(field) => (
-              <Input
-                {...field}
-                type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.currentTarget.value)}
-                disabled={busy}
-                required
-              />
-            )}
-          </Field>
-          {error && (
-            <Banner tone="danger" role="alert">
-              {error}
-            </Banner>
-          )}
-          <div className="settings-form-actions">
-            <Button type="submit" variant="primary" size="sm" loading={busy}>
-              Reset password
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => {
-                setStep("idle");
-                setError(null);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-    </SettingsRow>
+      actionLabel="Reset"
+      emailLabel="Group email"
+      emailDescription="Enter the group's own email address, not your personal email."
+      emailPlaceholder="team@example.org"
+      invalidEmailMessage="Enter a valid email address for this group."
+      sendCodeLabel="Send reset code"
+      missingCodeMessage="Enter the code sent to the group's email."
+      submitLabel="Reset password"
+      doneMessage="The group's password has been reset."
+      toastMessage="Group password reset"
+      onRequest={(addr) => requestGroupAccountPasswordReset(groupDid, addr)}
+      onConfirm={(input) => confirmGroupAccountPasswordReset(groupDid, input)}
+    />
   );
 }

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { NewGroupDialog } from "@/components/group-dialogs";
 import { groupSettingsHref } from "@/lib/routes";
-import { promotePersonalAccountToGroup } from "@/lib/settings-actions";
+import { promotePersonalAccountToGroup } from "@/lib/settings/group-import-action";
 import { SettingsAction, SettingsGroup, SettingsRow } from "./settings-frame";
 import { UnlockFields, useUnlockSession } from "./unlock-session";
 
@@ -44,7 +44,7 @@ export function ImportAsGroupSection({
     if (res.status === "ok") {
       void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast(`@${res.handle || handle || did} is now a group`);
-      router.push(`${groupSettingsHref(res.groupDid)}/members`);
+      router.push(groupSettingsHref(res.groupDid));
       router.refresh();
       return { ok: true, status: "ok" };
     }

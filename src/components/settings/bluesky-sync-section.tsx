@@ -18,8 +18,8 @@ import {
   compareSocialGraph,
   exportCertifiedFollowsToBluesky,
   importBlueskyFollows,
-  type SocialGraphComparison,
-} from "@/lib/settings-actions";
+} from "@/lib/settings/bluesky-sync-actions";
+import type { SocialGraphComparison } from "@/lib/settings/types";
 import { SettingsAction, SettingsGroup, SettingsRow, SettingsRowsSkeleton } from "./settings-frame";
 
 const CHUNK_SIZE = 50;
