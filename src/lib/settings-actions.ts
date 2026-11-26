@@ -1027,13 +1027,13 @@ export async function importBlueskyFollows(
 
     const context = await sdkContext(session);
     const repoOpt = writeTo(session, repoDid);
-    let imported = 0;
+    const importedDids: string[] = [];
     const errors: { subjectDid: string; message: string }[] = [];
 
     for (const subjectDid of uniqueDids) {
       try {
         await followAccount(context, { subject: { did: subjectDid } }, repoOpt);
-        imported++;
+        importedDids.push(subjectDid);
       } catch (err) {
         const reason = writeFailure(err, "importBlueskyFollow");
         errors.push({
@@ -1046,11 +1046,15 @@ export async function importBlueskyFollows(
       }
     }
 
-    if (imported > 0) {
+    if (importedDids.length > 0) {
       updateTag(tags.follows(repoDid));
       updateTag(tags.actor(repoDid));
+      for (const subjectDid of importedDids) {
+        updateTag(tags.follows(subjectDid));
+        updateTag(tags.actor(subjectDid));
+      }
     }
-    return { ok: true, imported, failed: errors.length, errors };
+    return { ok: true, imported: importedDids.length, failed: errors.length, errors };
   } catch (err) {
     if (!(err instanceof SessionUnavailableError)) {
       logError("[settings] importBlueskyFollows failed", err, { repoDid });

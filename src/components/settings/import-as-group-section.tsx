@@ -44,7 +44,7 @@ export function ImportAsGroupSection({
     if (res.status === "ok") {
       void queryClient.invalidateQueries({ queryKey: ["me", "organizations"] });
       toast(`@${res.handle || handle || did} is now a group`);
-      router.push(`${groupSettingsHref(res.groupDid)}/members`);
+      router.push(groupSettingsHref(res.groupDid));
       router.refresh();
       return { ok: true, status: "ok" };
     }

@@ -513,12 +513,26 @@ export async function createListWithItem(
       writeTo(session, repo),
     );
     const rkey = created.uri.split("/").pop() ?? "";
-    const repository = await repositoryFor(session, repo);
-    const { stored } = await addItemsToList(repository, rkey, [
-      { uri: resolved.uri, cid: resolved.cid },
-    ]);
+    let storedCid = created.cid;
+    try {
+      const repository = await repositoryFor(session, repo);
+      const { stored } = await addItemsToList(repository, rkey, [
+        { uri: resolved.uri, cid: resolved.cid },
+      ]);
+      storedCid = stored.cid;
+    } catch (addErr) {
+      updateTag(tags.list(created.uri));
+      updateTag(tags.projects(repo));
+      updateTag(tags.actor(repo));
+      const mapped = mapError(addErr, "add initial list item");
+      return fail(
+        mapped.reason,
+        "add to the new list",
+        `Created "${title}", but couldn't add this item to it. Select it in the list above to try adding it again.`,
+      );
+    }
     const indexed = await waitForIndex(
-      async () => (await getIndexedList(created.uri))?.cid === stored.cid,
+      async () => (await getIndexedList(created.uri))?.cid === storedCid,
     );
     updateTag(tags.list(created.uri));
     updateTag(tags.projects(repo));

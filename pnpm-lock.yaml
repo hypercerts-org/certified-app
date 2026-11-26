@@ -172,9 +172,6 @@ importers:
       '@atproto-labs/identity-resolver':
         specifier: 0.4.13
         version: 0.4.13
-      '@atproto/crypto':
-        specifier: 0.5.7
-        version: 0.5.7
       '@atproto/did':
         specifier: 0.5.6
         version: 0.5.6
@@ -239,9 +236,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.6.3
         version: 2.6.3
-      '@ipld/dag-cbor':
-        specifier: 10.0.2
-        version: 10.0.2
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -251,9 +245,6 @@ importers:
       '@types/react-dom':
         specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      multiformats:
-        specifier: 13.4.2
-        version: 13.4.2
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -344,10 +335,6 @@ packages:
 
   '@atproto/common@0.8.12':
     resolution: {integrity: sha512-fB91o0FSCYW17rKtBM8Xk03txLDJqthEMhUzF1vjeNnr2QXlrVxgVOjMWYwppjeaECvTB6dRRKf/xLDBdKLtlg==}
-    engines: {node: '>=22'}
-
-  '@atproto/crypto@0.5.7':
-    resolution: {integrity: sha512-r3uizKlzcBVRJ4mQMXlsRVZMSfAcZ9tr/dijnJ95C1aNGvV5k9bQ+Hvu6OLnwsnVTISzYRkgAfJCDNLCrOBilw==}
     engines: {node: '>=22'}
 
   '@atproto/crypto@0.5.8':
@@ -769,9 +756,6 @@ packages:
     engines: {node: '>=20.9.0'}
     cpu: [x64]
     os: [win32]
-
-  '@ipld/dag-cbor@10.0.2':
-    resolution: {integrity: sha512-1eCD4YMTlkx5i36oQUmeAojLS/wu+XCd1Gs31BA0afk0TaVkhnyMofIAT/pi0wV3HS3/G7QSN/1NibhiksMyZQ==}
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -1286,10 +1270,6 @@ packages:
     resolution: {integrity: sha512-6/viltD51JklRhq4L7jC3zgy6gryuG5xfZ3kzpE+PravtyeQLeQmCYLREhQH7pWENg5pY4Yu/XCd6a7dKScVlw==}
     hasBin: true
 
-  cborg@6.2.1:
-    resolution: {integrity: sha512-DwiF3Jd5RW6kJuTQMzQb/sdZD03utp15EcQNOMTvE/ZYCdDPzETsGOY5lj8imKxbsEuYvOzcMSiKLiT4C2/2Lw==}
-    hasBin: true
-
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
@@ -1503,9 +1483,6 @@ packages:
 
   multiformats@13.4.2:
     resolution: {integrity: sha512-eh6eHCrRi1+POZ3dA+Dq1C6jhP1GNtr9CRINMb67OKzqW9I5DUuZM/3jLPlzhgpGeiNUlEGEbkCYChXMCc/8DQ==}
-
-  multiformats@14.0.5:
-    resolution: {integrity: sha512-vbIm83F2yZ1pWJGS0yl0ysracIvv56LtbrIyiIQHoLdYDJOMoLfVFsXhh9DUH4SFdkdkFhucyWniihsNzVEjkQ==}
 
   multiformats@9.9.0:
     resolution: {integrity: sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==}
@@ -2078,12 +2055,6 @@ snapshots:
       multiformats: 13.4.2
       pino: 10.4.0
 
-  '@atproto/crypto@0.5.7':
-    dependencies:
-      '@noble/curves': 1.9.7
-      '@noble/hashes': 1.8.0
-      uint8arrays: 5.1.1
-
   '@atproto/crypto@0.5.8':
     dependencies:
       '@noble/curves': 1.9.7
@@ -2562,11 +2533,6 @@ snapshots:
   '@img/sharp-win32-x64@0.35.5':
     optional: true
 
-  '@ipld/dag-cbor@10.0.2':
-    dependencies:
-      cborg: 6.2.1
-      multiformats: 14.0.5
-
   '@jridgewell/resolve-uri@3.1.2': {}
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
@@ -2901,8 +2867,6 @@ snapshots:
 
   cborg@4.5.8: {}
 
-  cborg@6.2.1: {}
-
   chai@6.3.0: {}
 
   client-only@0.0.1: {}
@@ -3081,8 +3045,6 @@ snapshots:
   minimist@1.2.8: {}
 
   multiformats@13.4.2: {}
-
-  multiformats@14.0.5: {}
 
   multiformats@9.9.0: {}
 

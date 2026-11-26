@@ -28,7 +28,6 @@
   "dependencies": {
     "@atproto-labs/fetch-node": "0.4.5",
     "@atproto-labs/identity-resolver": "0.4.13",
-    "@atproto/crypto": "0.5.7",
     "@atproto/did": "0.5.6",
     "@atproto/lex": "0.4.4",
     "@atproto/lex-cbor": "0.1.9",
@@ -52,11 +51,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
-    "@ipld/dag-cbor": "10.0.2",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "multiformats": "13.4.2",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
   }

@@ -68,33 +68,36 @@ report what you could not check (signed-in pages need a sign-in).
   `components/landing/*` and `landing.css`.
 - `(site)/layout.tsx`: the chrome (sidebar from 64rem, top bar below).
   The account parts stream in through `getAccount()`.
-  - Public and cached: `/explore/*`, `/apps`, profiles `/{handle}` with
-    tabs (the `(profile)` group), `/{did}/project/{rkey}/*`,
-    `/{did}/activity/{rkey}/*`, `/{did}/badge/{rkey}`.
-  - Per viewer: `/workspace`, `/{did}/workspace/**` (Overview,
+  - Public and cached: `/explore/*`, `/apps`, `/terms`, `/privacy`, `/imprint`,
+    `/dsa`, profiles `/{handle}` with tabs (the `(profile)` group),
+    `/{did}/project/{rkey}/*`, `/{did}/activity/{rkey}/*`, `/{did}/badge/{rkey}`.
+  - Per viewer: `/feed`, `/workspace`, `/{did}/workspace/**` (Overview,
     `/projects/*`, `/badges/*`, `/endorsements/*`, `/followers/*`,
-    `/lists/*`), `/{did}/edit`, `/settings`, `/sign-in`.
+    `/lists/*`), `/{did}/edit`, `/settings/**`, `/{did}/settings/**`, `/sign-in`.
   - `not-found.tsx`, `error.tsx`.
-- Route handlers: `/api/activities`, `/api/explore`, `/api/followers`,
-  `/api/following`, `/api/lists/items`, `/api/badges/holders`,
-  `/api/receipts` (public, CDN cached), `/api/places` (private, rate-limited),
-  `/api/me/organizations` (private), `/oauth/*`, `/.well-known/*`.
+- Route handlers: `/api/activities`, `/api/explore`, `/api/profile-feed`,
+  `/api/lists/items`, `/api/badges/holders`, `/api/receipts`, `/api/search`
+  (public, CDN cached), `/api/feed`, `/api/likes`, `/api/places` (private,
+  `no-store`), `/api/me/organizations` (private), `/oauth/*`, `/.well-known/*`.
 
 **Modules** (`src/lib`), each the only place for its job:
 
-| Module                                           | Owns                                                                              |
-| ------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `hypercerts/queries.ts`                          | Every read from the Hypercerts API                                                |
-| `hypercerts/views.ts`                            | Mapping API views to plain view models; `safeUrl`                                 |
-| `hypercerts/cache.ts`                            | Cache tag names                                                                   |
-| `hypercerts/sdk.ts`, `writes.ts`, `*-actions.ts` | Repository writes (SDK + CGS/PDS stopgaps) and Server Actions                     |
-| `cgs.ts`                                         | The Certified Group Service: memberships, `isMember`, `canEdit`, group/org writes |
-| `auth/dal.ts`                                    | Who is signed in: `getUser`, `readOAuthSession`, `getOAuthSession`                |
-| `memberships.ts`                                 | Your memberships for display, `mayEditAccount`                                    |
-| `acting-as.ts`                                   | Whom you act as (display only, never writes)                                      |
-| `identity.ts`                                    | Handles ↔ DIDs, verified both ways                                                |
-| `routes.ts`                                      | Pure href builders (`workspaceHref`, `projectHref`, `activityHref`, `badgeHref`)  |
-| `validate.ts`                                    | `isDid`, `isAtUri`, `isRkey`, `returnPath`, `signInHref`                          |
+| Module                                            | Owns                                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `hypercerts/queries.ts`                           | Reads from the Hypercerts API                                                                                      |
+| `views-service.ts`                                | Reads from the Hypercerts Feed / Views service                                                                     |
+| `hypercerts/views.ts`                             | Mapping API views to plain view models; `safeUrl`                                                                  |
+| `hypercerts/cache.ts`                             | Cache tag names                                                                                                    |
+| `hypercerts/sdk.ts`, `writes.ts`, `*-actions.ts`  | Repository writes (SDK + CGS/PDS stopgaps) and Server Actions                                                      |
+| `settings-actions.ts`, `auth/elevated-session.ts` | Account/group PDS settings, elevated password sessions, Bluesky sync                                               |
+| `cgs.ts`                                          | The Certified Group Service: memberships, `isMember`, `canEdit`, group/org ops                                     |
+| `auth/dal.ts`                                     | Who is signed in: `getUser`, `readOAuthSession`, `getOAuthSession`                                                 |
+| `memberships.ts`                                  | Your memberships for display, `mayEditAccount`, `getGroupMembers`                                                  |
+| `acting-as.ts`                                    | Whom you act as (display only, never writes)                                                                       |
+| `identity.ts`                                     | Handles ↔ DIDs, verified both ways                                                                                 |
+| `routes.ts`                                       | Pure href builders (`actorHref`, `workspaceHref`, `groupSettingsHref`, `projectHref`, `activityHref`, `badgeHref`) |
+| `search.ts`, `seo.ts`                             | Live search ranking/types and OpenGraph/canonical metadata                                                         |
+| `validate.ts`                                     | `isDid`, `isAtUri`, `isRkey`, `returnPath`, `signInHref`                                                           |
 
 Components to reuse rather than rewrite: `PageTitle`, `ComingSoonButton`,
 `IntentLink`, `LinkPending`, `ProfileTabs` (tabs as links), `PeopleList`,
@@ -114,8 +117,9 @@ cite file and line for each finding.
 
 ### A. Data access
 
-- A1. API reads only in `queries.ts`, writes only in `writes.ts` (called
-  from Server Actions in `actions.ts`), CGS calls only in `cgs.ts`.
+- A1. Hypercerts API reads only in `queries.ts` (Feed/Views in `views-service.ts`),
+  repository writes only in `sdk.ts` or `writes.ts` (called from Server Actions in
+  `*-actions.ts` / `settings-actions.ts`), CGS calls only in `cgs.ts`.
 - A2. A public read is `'use cache'` with `publicData(tag)`. Tags are keyed
   by DID or AT-URI, never by a handle or raw URL value (a save expires
   `tags.actor(did)`).

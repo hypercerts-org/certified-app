@@ -11,8 +11,10 @@ export function SettingsHashRedirect({ routes }: { routes: Readonly<Record<strin
   const router = useRouter();
   useEffect(() => {
     const raw = window.location.hash.replace(/^#/, "").toLowerCase();
-    const target = routes[raw];
-    if (target) router.replace(target);
+    if (Object.hasOwn(routes, raw)) {
+      const target = routes[raw];
+      if (target) router.replace(target);
+    }
   }, [router, routes]);
   return null;
 }

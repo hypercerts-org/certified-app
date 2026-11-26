@@ -2,7 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { forgetMemberships } from "@/lib/cgs";
+import { forgetMemberships, readCachedMemberships } from "@/lib/cgs";
 import { tags } from "@/lib/hypercerts/cache";
 import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
@@ -19,9 +19,13 @@ export async function signOut(form?: FormData): Promise<void> {
     const session = await readAppSession();
     await endAppSession({ revokeIfLast: true });
     if (session) {
+      const memberships = (await readCachedMemberships(session.did).catch(() => undefined)) ?? [];
       await Promise.all([
         forgetMemberships(session.did),
         endElevatedSession({ kind: "personal", callerDid: session.did }),
+        ...memberships.map((m) =>
+          endElevatedSession({ kind: "group", callerDid: session.did, groupDid: m.groupDid }),
+        ),
       ]);
     }
   } catch (err) {
