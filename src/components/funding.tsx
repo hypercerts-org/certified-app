@@ -136,7 +136,7 @@ export async function ProfileFunding({
   params: Promise<{ actor: string }>;
   which: Which;
 }) {
-  const { actor, base } = await profileActor(params, FUNDING_TABS[which].path);
+  const { actor, base } = await profileActor(params);
   const did = actor.did;
   return (
     <div className="profile-list-page funding-page">

@@ -36,7 +36,7 @@ export async function generateMetadata({
 async function Content({ params }: Pick<PageProps<"/[actor]/lists/[rkey]">, "params">) {
   const { rkey } = await params;
   if (!RKEY.test(rkey)) notFound();
-  const { actor, base } = await profileActor(params, `/lists/${rkey}`);
+  const { actor, base } = await profileActor(params);
   const list = await getList(actor.did, rkey);
   if (!list) notFound();
   const first = await getListItems(list);

@@ -155,7 +155,15 @@ async function placeOf(record: Parameters<typeof toPlace>[0], did: string): Prom
   return place && label ? { ...place, short: label } : place;
 }
 
-export async function getActor(actor: string): Promise<ActorDetail | null> {
+/**
+ * An account as the API has it: its profile and organization records, read
+ * in one or two API calls, with `handle` and `place` still null. Those two
+ * need lookups outside the API (the handle checked against its DID document
+ * and domain, the place's name from a geocoder), which can take a second;
+ * pages show this first and stream them in (getActor, getHandle,
+ * getActorPlace).
+ */
+export async function getActorCore(actor: string): Promise<ActorDetail | null> {
   "use cache";
   // Anything else in the URL (a stray /favicon.png, a probe) is no account:
   // answered without an API call or cache tag pollution.
@@ -165,15 +173,12 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   // getProfile accepts a handle or DID; getOrganization needs the DID and
   // fails for accounts without an organization record (people). An
   // organization can exist without a profile, so a DID gets the organization
-  // lookup either way. Given a DID, all three lookups run at once; given a
+  // lookup either way. Given a DID, both lookups run at once; given a
   // handle, the profile names the DID first.
-  const lookups = (did: Did) =>
-    Promise.all([
-      api.xrpcSafe(app.certified.actor.getOrganization, { params: { actor: did }, ...read() }),
-      getHandle(did),
-    ]);
+  const organizationOf = (did: Did) =>
+    api.xrpcSafe(app.certified.actor.getOrganization, { params: { actor: did }, ...read() });
   const isDid = actor.startsWith("did:");
-  const byDid = isDid ? lookups(actor as Did) : null;
+  const byDid = isDid ? organizationOf(actor as Did) : null;
   const profile = await api.xrpcSafe(app.certified.actor.getProfile, {
     params: { actor: actor as l.AtIdentifierString },
     ...read(),
@@ -190,23 +195,53 @@ export async function getActor(actor: string): Promise<ActorDetail | null> {
   // Tagged by DID too, whatever the URL said: a profile save expires
   // tags.actor(did), and the page at /{handle} must go with it.
   if (actor !== did) cacheTag(tags.actor(did));
-  const [organization, handle] = await (byDid ?? lookups(did));
+  const organization = await (byDid ?? organizationOf(did));
 
-  if (organization.success) {
-    const detail = { ...toActorDetail(organization.body.actor), handle };
-    // The view carries the organization's location record: no second call.
-    const record = organization.body.actor.location?.record;
-    if (!record) return detail;
-    return { ...detail, place: await placeOf(record, did) };
-  }
+  if (organization.success) return toActorDetail(organization.body.actor);
   if (!notFound(organization)) throw organization;
   if (profile.success) {
-    return { ...toActorDetail({ did, profile: profile.body.profile, organization: null }), handle };
+    return toActorDetail({ did, profile: profile.body.profile, organization: null });
   }
   // No Certified records at all: the account all the same (shown by its
   // handle, nameOf), so links from followers and endorsements don't lead to
   // "not found".
-  return { ...toActorDetail({ did, profile: null, organization: null }), handle };
+  return toActorDetail({ did, profile: null, organization: null });
+}
+
+/**
+ * Where an organization is, as a place with a short name: its location
+ * record (the organization view carries it), coordinates from a blob when the
+ * record keeps them there, and the name from the geocoder.
+ */
+export async function getActorPlace(did: string): Promise<Place | null> {
+  "use cache";
+  publicData(tags.actor(did));
+  const organization = await api.xrpcSafe(app.certified.actor.getOrganization, {
+    params: { actor: did as Did },
+    ...read(),
+  });
+  if (!organization.success) {
+    if (notFound(organization)) return null;
+    throw organization;
+  }
+  const record = organization.body.actor.location?.record;
+  return record ? placeOf(record, did) : null;
+}
+
+/** The account in full: getActorCore with its verified handle and its place. */
+export async function getActor(actor: string): Promise<ActorDetail | null> {
+  "use cache";
+  if (!isDidParam(actor) && !l.isHandleString(actor)) return null;
+  publicData(tags.actor(actor));
+  const core = await getActorCore(actor);
+  if (!core) return null;
+  if (actor !== core.did) cacheTag(tags.actor(core.did));
+  // Both outside the API, and independent: at once.
+  const [handle, place] = await Promise.all([
+    getHandle(core.did),
+    core.isOrganization ? getActorPlace(core.did) : null,
+  ]);
+  return { ...core, handle, place };
 }
 
 /**
@@ -263,7 +298,11 @@ export async function listProjectsPage(options: {
   return { items: collections.map(toProjectCard), cursor: cursor ?? null };
 }
 
-export async function getProject(uri: string): Promise<ProjectDetail | null> {
+/**
+ * The project as the API has it: its author's card without a handle (the
+ * handle needs outside lookups). A project's page shows this first.
+ */
+export async function getProjectRecord(uri: string): Promise<ProjectDetail | null> {
   "use cache";
   publicData(tags.project(uri));
 
@@ -271,12 +310,29 @@ export async function getProject(uri: string): Promise<ProjectDetail | null> {
     params: { uri: uri as AtUri },
     ...read(),
   });
-  if (result.success) {
-    const [project] = await withHandlesIn([toProjectDetail(result.body.collection)], "author");
-    return project;
-  }
+  if (result.success) return toProjectDetail(result.body.collection);
   if (notFound(result)) return null;
   throw result;
+}
+
+/** The project with its author's verified handle. */
+export async function getProject(uri: string): Promise<ProjectDetail | null> {
+  "use cache";
+  publicData(tags.project(uri));
+  const project = await getProjectRecord(uri);
+  if (!project) return null;
+  const [withHandle] = await withHandlesIn([project], "author");
+  return withHandle;
+}
+
+/**
+ * The DID a route's account segment names: itself when it is one; for a
+ * handle, from the API's profile lookup (getActorCore), without checking the
+ * handle both ways. For record pages, whose records are found by DID.
+ */
+export async function didOfSegment(segment: string): Promise<string | null> {
+  if (isDidParam(segment)) return segment;
+  return (await getActorCore(segment))?.did ?? null;
 }
 
 export async function listProjectActivitiesPage(options: {
@@ -1941,7 +1997,12 @@ export type ActivityDetail = ActivityCard & {
   contributors: Contributor[];
 };
 
-export async function getActivity(uri: string): Promise<ActivityDetail | null> {
+/**
+ * The activity as the API has it: its author's and contributors' cards
+ * without handles (handles need outside lookups, one account each). An
+ * activity's page shows this first.
+ */
+export async function getActivityRecord(uri: string): Promise<ActivityDetail | null> {
   "use cache";
   publicData(tags.activities(didOf(uri)));
 
@@ -1954,17 +2015,29 @@ export async function getActivity(uri: string): Promise<ActivityDetail | null> {
     throw result;
   }
   const { activity } = result.body;
-  const contributors = toContributors(activity.contributors);
+  return {
+    ...toActivityCard(activity),
+    shortDescription: activity.record.shortDescription?.trim() || null,
+    description: richTextOf(activity.record.description),
+    contributors: toContributors(activity.contributors),
+  };
+}
+
+/** The activity with its author's and contributors' verified handles, for links. */
+export async function getActivity(uri: string): Promise<ActivityDetail | null> {
+  "use cache";
+  publicData(tags.activities(didOf(uri)));
+  const activity = await getActivityRecord(uri);
+  if (!activity) return null;
+  const { contributors } = activity;
   const [[card], actors] = await Promise.all([
-    withHandlesIn([toActivityCard(activity)], "author"),
+    withHandlesIn([activity], "author"),
     withHandles(contributors.flatMap((c) => (c.actor ? [c.actor] : []))),
   ]);
   // The accounts, with their handles for links, back in their places.
   let next = 0;
   return {
     ...card,
-    shortDescription: activity.record.shortDescription?.trim() || null,
-    description: richTextOf(activity.record.description),
     contributors: contributors.map((c) => (c.actor ? { ...c, actor: actors[next++] } : c)),
   };
 }

@@ -251,7 +251,7 @@ export async function ProfileBadges({
   params: Promise<{ actor: string }>;
   which: Which;
 }) {
-  const { actor, base } = await profileActor(params, BADGE_TABS[which].path);
+  const { actor, base } = await profileActor(params);
   const [received, issued, projects] = await Promise.all([
     getBadges(actor.did),
     getIssuedBadges(actor.did),

@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: PageProps<"/[actor]/lists">):
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/lists">, "params">) {
-  const { actor, base } = await profileActor(params, "/lists");
+  const { actor, base } = await profileActor(params);
   const { lists, more } = await listLists(actor.did);
   if (lists.length === 0) return <Empty icon={ListChecks} title="No lists yet" />;
   return (

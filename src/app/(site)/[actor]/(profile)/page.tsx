@@ -5,6 +5,7 @@ import { ProfileFeed, ProfileFeedSkeleton } from "@/components/profile-feed";
 import { getActor, getProfileFeed } from "@/lib/hypercerts/queries";
 import type { ActorCard } from "@/lib/hypercerts/views";
 import { nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 import { profileActor } from "@/lib/profile-route";
 import { pageMetadata, trimMetaDescription } from "@/lib/seo";
 
@@ -37,19 +38,20 @@ export async function generateMetadata({ params }: PageProps<"/[actor]">): Promi
   });
 }
 
+/** The feed, and its owner's handle for the links in it: both at once. */
 async function Feed({ owner }: { owner: ActorCard }) {
-  const initial = await getProfileFeed(owner.did);
-  return <ProfileFeed owner={owner} initial={initial} />;
+  const [initial, handle] = await Promise.all([getProfileFeed(owner.did), getHandle(owner.did)]);
+  return <ProfileFeed owner={{ ...owner, handle }} initial={initial} />;
 }
 
 async function Overview({ params }: Pick<PageProps<"/[actor]">, "params">) {
-  const { actor } = await profileActor(params, "");
+  const { actor } = await profileActor(params);
   // The header's lead is the bio, so an organization's longer description
   // gets a card of its own.
   const about = actor.profile.description.trim() ? actor.longDescription : null;
   const owner: ActorCard = {
     did: actor.did,
-    handle: actor.handle,
+    handle: null,
     displayName: actor.displayName,
     description: null,
     avatarUrl: actor.avatarUrl,

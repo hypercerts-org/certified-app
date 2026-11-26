@@ -3,7 +3,12 @@ import "server-only";
 import { extractPdsUrl } from "@atproto/did";
 import { AtprotoHandleResolverNode } from "@atproto/oauth-client-node";
 import { safeFetchWrap } from "@atproto-labs/fetch-node";
-import { createIdentityResolver } from "@atproto-labs/identity-resolver";
+import {
+  type AtprotoDid,
+  type AtprotoIdentityResolver,
+  createIdentityResolver,
+  extractNormalizedHandle,
+} from "@atproto-labs/identity-resolver";
 import { cacheLife, cacheTag } from "next/cache";
 import { tags } from "@/lib/hypercerts/cache";
 
@@ -17,22 +22,38 @@ import { tags } from "@/lib/hypercerts/cache";
 // `createIdentityResolver` wraps its DID resolver in an in-memory cache that
 // Next.js `updateTag` cannot clear, so every call passes `{ noCache: true }`
 // and lets Next.js's tagged `"use cache"` own the caching.
+//
+// An account's DID document is read once (didDocument) and serves both its
+// handle and its PDS: resolving the DID in full would also check the handle
+// again, a second round trip to plc.directory and the handle's domain on the
+// way to every blob.
 
 /** Refuses private and local addresses: for any URL a record or DID names. */
 export const safeFetch = safeFetchWrap({ allowImplicitRedirect: true });
 const fetch = safeFetch;
-const resolver = createIdentityResolver({
-  fetch,
-  handleResolver: new AtprotoHandleResolverNode({ fetch }),
-});
+const handleResolver = new AtprotoHandleResolverNode({ fetch });
+// Given a handle resolver it is always the AT Protocol resolver, whose
+// document-only lookup this uses.
+const resolver = createIdentityResolver({ fetch, handleResolver }) as AtprotoIdentityResolver;
+
+/** The account's DID document. Throws when it can't be read; failures aren't cached. */
+async function didDocument(did: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(tags.actor(did));
+  return resolver.getDocumentFromDid(did as AtprotoDid, { noCache: true });
+}
 
 async function resolveHandle(did: string): Promise<string | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
-  const { handle } = await resolver.resolve(did, { noCache: true });
-  // The resolver reports "handle.invalid" unless the handle points back to the DID.
-  return handle === "handle.invalid" ? null : handle;
+  // The handle the document claims, only if that handle points back to the
+  // DID (as the resolver's own resolveFromDid checks it).
+  const handle = extractNormalizedHandle(await didDocument(did));
+  if (!handle) return null;
+  const pointsTo = await handleResolver.resolve(handle, { noCache: true }).catch(() => null);
+  return pointsTo === did ? handle : null;
 }
 
 async function resolveDidOf(handle: string): Promise<string | null> {
@@ -98,6 +119,5 @@ export async function getPdsUrl(did: string): Promise<string> {
   "use cache";
   cacheLife("hours");
   cacheTag(tags.actor(did));
-  const { didDoc } = await resolver.resolve(did, { noCache: true });
-  return extractPdsUrl(didDoc).origin;
+  return extractPdsUrl(await didDocument(did)).origin;
 }

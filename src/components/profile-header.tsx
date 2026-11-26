@@ -15,8 +15,15 @@ import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
 import { getAlsoOn } from "@/lib/also-on";
+import { getHandle } from "@/lib/identity";
 import { getUser } from "@/lib/auth/dal";
-import { getEndorsement, getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
+import {
+  getActorPlace,
+  getEndorsement,
+  getEndorsers,
+  getFollow,
+  getFollowCounts,
+} from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditAccount } from "@/lib/memberships";
 import { groupSettingsHref } from "@/lib/routes";
@@ -153,17 +160,41 @@ async function AppsAndLinks({
   );
 }
 
+/** The name, when the profile gives none: the handle, once it is checked; the DID until then. */
+async function HandleName({ actor }: { actor: ActorDetail }) {
+  const handle = await getHandle(actor.did);
+  return (
+    <ProfileName did={actor.did} rendered={actor.profile} fallback={nameOf({ ...actor, handle })} />
+  );
+}
+
+/** An organization's place, last on the meta line: it takes a geocoder (getActorPlace). */
+async function PlaceFact({ did, after }: { did: string; after: boolean }) {
+  const place = await getActorPlace(did);
+  if (!place?.short) return null;
+  return (
+    <>
+      {after && <span aria-hidden> · </span>}
+      <span className="profile-meta-item">{place.short}</span>
+    </>
+  );
+}
+
+/**
+ * The header from the account as the API has it (getActorCore): its handle
+ * and its place need outside lookups, so the parts that show them stream in.
+ */
 export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: string }) {
   const meta = actor.isOrganization
     ? [
         actor.organizationTypes
           .map((type) => type.charAt(0).toUpperCase() + type.slice(1))
           .join(", "),
-        actor.place?.short,
         actor.foundedDate && `Founded ${actor.foundedDate}`,
       ]
     : [actor.pronouns, actor.joined && `Joined ${actor.joined}`];
   const facts = meta.filter((item): item is string => Boolean(item));
+  const named = actor.displayName !== actor.did;
   const bio = actor.profile.description.trim() || null;
   const lead = bio ?? (actor.isOrganization ? actor.longDescription : null);
   const accountLinks = links(actor);
@@ -184,10 +215,20 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
         <div className="profile-identity">
           <PageTitle className="profile-name">
             <span dir="auto">
-              <ProfileName did={actor.did} rendered={actor.profile} fallback={nameOf(actor)} />
+              {named ? (
+                <ProfileName did={actor.did} rendered={actor.profile} fallback={nameOf(actor)} />
+              ) : (
+                <Suspense
+                  fallback={
+                    <ProfileName did={actor.did} rendered={actor.profile} fallback={actor.did} />
+                  }
+                >
+                  <HandleName actor={actor} />
+                </Suspense>
+              )}
             </span>
           </PageTitle>
-          {facts.length > 0 && (
+          {(facts.length > 0 || actor.isOrganization) && (
             <p className="profile-meta">
               {facts.map((fact, i) => (
                 <Fragment key={fact}>
@@ -195,6 +236,11 @@ export function ProfileHeader({ actor, base }: { actor: ActorDetail; base: strin
                   <span className="profile-meta-item">{fact}</span>
                 </Fragment>
               ))}
+              {actor.isOrganization && (
+                <Suspense fallback={null}>
+                  <PlaceFact did={actor.did} after={facts.length > 0} />
+                </Suspense>
+              )}
             </p>
           )}
         </div>
@@ -240,23 +286,29 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
   const actingAs = await getActingAs();
   if (actingAs === actor.did) {
     // Acting as an organization, only its admins and owners may edit it.
-    const [canEdit, user] = await Promise.all([mayEditAccount(actor.did), getUser()]);
+    const [canEdit, user, handle] = await Promise.all([
+      mayEditAccount(actor.did),
+      getUser(),
+      getHandle(actor.did),
+    ]);
     const editHref = canEdit
       ? user?.did === actor.did
         ? "/settings/profile"
         : `${groupSettingsHref(actor.did)}/profile`
       : null;
-    return <OwnerActions editHref={editHref} path={base} title={nameOf(actor)} />;
+    return <OwnerActions editHref={editHref} path={base} title={nameOf({ ...actor, handle })} />;
   }
-  const [follow, endorsement] = actingAs
-    ? await Promise.all([getFollow(actingAs, actor.did), getEndorsement(actingAs, actor.did)])
-    : [null, null];
+  const [follow, endorsement, handle] = await Promise.all([
+    actingAs ? getFollow(actingAs, actor.did) : null,
+    actingAs ? getEndorsement(actingAs, actor.did) : null,
+    getHandle(actor.did),
+  ]);
   return (
     <VisitorActions
       did={actor.did}
-      handle={actor.handle}
+      handle={handle}
       path={base}
-      title={nameOf(actor)}
+      title={nameOf({ ...actor, handle })}
       actor={actingAs}
       follow={follow}
       endorsement={endorsement}

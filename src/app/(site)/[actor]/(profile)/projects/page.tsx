@@ -13,7 +13,7 @@ export async function generateMetadata({
 }
 
 async function Content({ params }: Pick<PageProps<"/[actor]/projects">, "params">) {
-  const { actor } = await profileActor(params, "/projects");
+  const { actor } = await profileActor(params);
   return <ProjectsTile did={actor.did} />;
 }
 

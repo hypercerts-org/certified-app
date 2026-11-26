@@ -5,18 +5,19 @@
 // and Badges (when it has any), Funding. On the right what stays put: its
 // figures, the projects it is part of, and its identifiers.
 
-import { Eyebrow, IdentityLink, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { Eyebrow, IdentityRow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { identityOf } from "@/components/actor";
 import { actorHref } from "@/components/cards";
+import { AuthorLink } from "@/components/author-link";
 import { PageTitle } from "@/components/page-title";
 import { ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
 import { RecordActions } from "@/components/record-actions";
 import { PartOf } from "@/components/record-context";
 import { RecordFacts, RecordFigures } from "@/components/record-rail";
 import { TileSlot } from "@/components/tile-slot";
-import { getActivity, getActor, getRecordBadges } from "@/lib/hypercerts/queries";
+import { didOfSegment, getActivityRecord, getRecordBadges } from "@/lib/hypercerts/queries";
 import type { Contributor } from "@/lib/hypercerts/views";
 
 export type ActivityParams = Promise<{ actor: string; rkey: string }>;
@@ -24,15 +25,21 @@ export type ActivityParams = Promise<{ actor: string; rkey: string }>;
 /** A record key as AT Protocol allows it; anything else is no activity. */
 const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
-/** The activity these params name, and its pages' base address; else a 404. */
+/**
+ * The activity these params name, and its pages' base address; else a 404.
+ * As the API has it (getActivityRecord): its accounts' cards come without
+ * handles, which take outside lookups (AuthorLink and the Contributors tab
+ * add them).
+ */
 export async function activityFrom(params: ActivityParams) {
   const { actor: id, rkey } = await params;
   if (!RKEY.test(rkey)) notFound();
-  // The route accepts a handle or DID; the record's URI needs the DID.
-  const actor = await getActor(decodeURIComponent(id));
-  if (!actor) notFound();
-  const uri = `at://${actor.did}/org.hypercerts.claim.activity/${rkey}`;
-  const activity = await getActivity(uri);
+  // The route accepts a handle or DID; the record's URI needs the DID, which
+  // a DID in the URL already is.
+  const did = await didOfSegment(decodeURIComponent(id));
+  if (!did) notFound();
+  const uri = `at://${did}/org.hypercerts.claim.activity/${rkey}`;
+  const activity = await getActivityRecord(uri);
   if (!activity) notFound();
   return { activity, uri, base: `/${decodeURIComponent(id)}/activity/${rkey}` };
 }
@@ -104,7 +111,7 @@ export async function ActivityHeader({ params }: { params: ActivityParams }) {
           </PageTitle>
           <div className="project-meta">
             <Text as="span" size="body-sm">
-              <IdentityLink {...identityOf(activity.author)} href={actorHref(activity.author)} />
+              <AuthorLink author={activity.author} />
             </Text>
             {meta && (
               <Text as="span" size="body-sm" tone="muted">

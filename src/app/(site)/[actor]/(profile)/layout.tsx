@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { type ProfileTab, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
+import { ProfileAddress } from "@/components/profile-address";
 import { ProfileHeader, ProfileHeaderSkeleton } from "@/components/profile-header";
 import { ProfileRail, ProfileRailSkeleton } from "@/components/profile-rail";
 import {
   type Count,
-  getActor,
+  getActorCore,
   getBadges,
   getEndorsements,
   getFollowCounts,
@@ -14,12 +15,17 @@ import {
   getRecordCounts,
   hasFunding,
 } from "@/lib/hypercerts/queries";
-import { profileBase } from "@/lib/profile-route";
+import { canonicalProfileBase, profileBase } from "@/lib/profile-route";
 
 // A public profile: the header, then its pages as tabs beside its facts. Each tab is its own
 // URL, prerendered and cached like the rest of the profile; only the header's
 // actions depend on who is viewing. Profiles live at their handle; a page
-// opened by DID redirects there (src/lib/profile-route.ts).
+// opened by DID moves there (src/lib/profile-route.ts).
+//
+// Everything here starts from the account as the API has it (getActorCore,
+// one or two API calls), not from its checked handle: checking a handle takes
+// outside lookups, up to a second for an account nobody opened lately. The
+// parts that show the handle or the place stream in on their own.
 
 // Prerender one known organization at build time; every other actor gets the
 // app shell first and is then rendered and cached per URL (ISR).
@@ -29,7 +35,7 @@ export async function generateStaticParams() {
 
 async function Header({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
-  const actor = await getActor(decodeURIComponent(id));
+  const actor = await getActorCore(decodeURIComponent(id));
   if (!actor) notFound();
   return <ProfileHeader actor={actor} base={profileBase(id)} />;
 }
@@ -37,7 +43,7 @@ async function Header({ params }: { params: Promise<{ actor: string }> }) {
 /** The tabs, over the left column: they switch what it shows. */
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
-  const actor = await getActor(decodeURIComponent(id));
+  const actor = await getActorCore(decodeURIComponent(id));
   if (!actor) return null;
   const base = profileBase(id);
   return (
@@ -50,9 +56,16 @@ async function Nav({ params }: { params: Promise<{ actor: string }> }) {
 /** The right column, the same on every tab. */
 async function Rail({ params }: { params: Promise<{ actor: string }> }) {
   const id = (await params).actor;
-  const actor = await getActor(decodeURIComponent(id));
+  const actor = await getActorCore(decodeURIComponent(id));
   if (!actor) return null;
   return <ProfileRail actor={actor} base={profileBase(id)} />;
+}
+
+/** Moves the page to the profile's own address, once its handle is checked. */
+async function Address({ params }: { params: Promise<{ actor: string }> }) {
+  const id = (await params).actor;
+  const to = await canonicalProfileBase(id);
+  return to ? <ProfileAddress from={profileBase(id)} to={to} /> : null;
 }
 
 const value = (count: Count | number) => (typeof count === "number" ? count : count.value);
@@ -182,6 +195,9 @@ async function TabsWithCounts({ did, base }: { did: string; base: string }) {
 export default function ProfileLayout({ children, params }: LayoutProps<"/[actor]">) {
   return (
     <div className="page profile">
+      <Suspense fallback={null}>
+        <Address params={params} />
+      </Suspense>
       <Suspense fallback={<ProfileHeaderSkeleton />}>
         <Header params={params} />
       </Suspense>

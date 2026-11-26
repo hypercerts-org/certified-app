@@ -21,6 +21,7 @@ import {
 } from "@/components/record-context";
 import { getTimeline, type TimelineItem, type TimelineOn } from "@/lib/hypercerts/queries";
 import { type ActorCard, humanize } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 
 /** Posts shown before the rest fold away. */
 const SHOWN = 10;
@@ -188,7 +189,13 @@ export async function RecordTimeline({
   /** Nothing at all when empty: the page already shows something (an activity's text). */
   emptyless?: boolean;
 }) {
-  const items = await getTimeline(uri);
+  // The owner's handle (for the links to it) alongside the timeline: a card
+  // as the API has it comes without one.
+  const [items, ownerHandle] = await Promise.all([
+    getTimeline(uri),
+    owner.handle ? owner.handle : getHandle(owner.did),
+  ]);
+  owner = { ...owner, handle: ownerHandle };
   if (items.length === 0) {
     if (emptyless) return null;
     return (

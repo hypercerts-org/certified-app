@@ -4,11 +4,11 @@
 // happened in it), Activities, Followers, Badges, Funding. On the right what
 // stays put: its figures, where it is, and its identifiers.
 
-import { ExpandableText, Eyebrow, IdentityLink, Skeleton, Text } from "@hypercerts-org/ui-react";
+import { ExpandableText, Eyebrow, Skeleton, Text } from "@hypercerts-org/ui-react";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { actorHref, identityOf } from "@/components/actor";
 import { AlsoOn } from "@/components/also-on";
+import { AuthorLink } from "@/components/author-link";
 import { LocationCard } from "@/components/location-card";
 import { PageTitle } from "@/components/page-title";
 import { FollowControl, ProfileTabs, ProfileTabsSkeleton } from "@/components/profile-actions";
@@ -18,11 +18,11 @@ import { RichText } from "@/components/rich-text";
 import { TileSlot } from "@/components/tile-slot";
 import { getActingAs } from "@/lib/acting-as";
 import {
-  getActor,
+  didOfSegment,
   getEntityFollow,
   getPlace,
-  getProject,
   getProjectFollowers,
+  getProjectRecord,
   getRecordBadges,
 } from "@/lib/hypercerts/queries";
 import { leadOf } from "@/lib/rich-text";
@@ -34,17 +34,22 @@ const RKEY = /^[A-Za-z0-9._:~-]{1,512}$/;
 
 const numberFormat = new Intl.NumberFormat("en");
 
-/** The project these params name, its author, and its pages' base address; else a 404. */
+/**
+ * The project these params name and its pages' base address; else a 404. As
+ * the API has it (getProjectRecord): its author's card comes without a
+ * handle, which takes outside lookups (AuthorLink streams it in).
+ */
 export async function projectFrom(params: ProjectParams) {
   const { actor: id, rkey } = await params;
   if (!RKEY.test(rkey)) notFound();
-  // The route accepts a handle or DID; the collection URI needs the DID.
-  const actor = await getActor(decodeURIComponent(id));
-  if (!actor) notFound();
-  const uri = `at://${actor.did}/org.hypercerts.collection/${rkey}`;
-  const project = await getProject(uri);
+  // The route accepts a handle or DID; the collection URI needs the DID,
+  // which a DID in the URL already is.
+  const did = await didOfSegment(decodeURIComponent(id));
+  if (!did) notFound();
+  const uri = `at://${did}/org.hypercerts.collection/${rkey}`;
+  const project = await getProjectRecord(uri);
   if (!project) notFound();
-  return { actor, project, uri, base: `/${decodeURIComponent(id)}/project/${rkey}` };
+  return { project, uri, base: `/${decodeURIComponent(id)}/project/${rkey}` };
 }
 
 /** "158 followers", beside the author. */
@@ -125,7 +130,7 @@ async function ProjectLocation({
 /** The side column: where, what was measured, attachments; each only when there is one. */
 /** The column beside every tab: figures, where it is, and what identifies it. */
 export async function ProjectRail({ params }: { params: ProjectParams }) {
-  const { actor, project, uri, base } = await projectFrom(params);
+  const { project, uri, base } = await projectFrom(params);
   return (
     <>
       <TileSlot title="In numbers" skeleton={null}>
@@ -136,7 +141,7 @@ export async function ProjectRail({ params }: { params: ProjectParams }) {
           <ProjectLocation
             locationUri={project.locationUri}
             title={project.title}
-            imageUrl={project.imageUrl ?? actor.avatarUrl}
+            imageUrl={project.imageUrl ?? project.author.avatarUrl}
           />
         </TileSlot>
       )}
@@ -146,7 +151,7 @@ export async function ProjectRail({ params }: { params: ProjectParams }) {
 }
 
 export async function ProjectHeader({ params }: { params: ProjectParams }) {
-  const { actor, project, uri, base } = await projectFrom(params);
+  const { project, uri, base } = await projectFrom(params);
   const lead = leadOf(project.summary, project.description);
   return (
     <>
@@ -164,7 +169,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
           </PageTitle>
           <div className="project-meta">
             <Text as="span" size="body-sm">
-              <IdentityLink {...identityOf(actor)} href={actorHref(actor)} />
+              <AuthorLink author={project.author} />
             </Text>
             <Suspense fallback={null}>
               <FollowerCount uri={uri} />
@@ -188,7 +193,7 @@ export async function ProjectHeader({ params }: { params: ProjectParams }) {
         </div>
         <div className="record-head-actions">
           <Suspense fallback={null}>
-            <ProjectFollow uri={uri} author={actor.did} path={base} />
+            <ProjectFollow uri={uri} author={project.authorDid} path={base} />
           </Suspense>
           <Suspense fallback={null}>
             <RecordActions uri={uri} path={base} title={project.title} />

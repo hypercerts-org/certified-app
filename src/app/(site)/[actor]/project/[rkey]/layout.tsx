@@ -22,8 +22,8 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: LayoutProps<"/[actor]/project/[rkey]">): Promise<Metadata> {
-  const { actor, project, base } = await projectFrom(params);
-  const author = nameOf(actor);
+  const { project, base } = await projectFrom(params);
+  const author = nameOf(project.author);
   const fallback = `Project by ${author} on Certified.`;
   return pageMetadata({
     title: project.title,

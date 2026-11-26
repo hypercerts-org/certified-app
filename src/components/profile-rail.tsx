@@ -8,6 +8,7 @@ import { skeletonSlots } from "@/components/cards";
 import { LocationCard } from "@/components/location-card";
 import { type Stat, StatRow } from "@/components/stat-row";
 import {
+  getActorPlace,
   getBadges,
   getFundingSummary,
   getIssuedBadges,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/hypercerts/queries";
 import type { ActorDetail } from "@/lib/hypercerts/views";
 import { nameOf } from "@/lib/hypercerts/views";
+import { getHandle } from "@/lib/identity";
 
 const numberFormat = new Intl.NumberFormat("en");
 const countLabel = (count: number, more: boolean) =>
@@ -97,15 +99,43 @@ async function Received({ did, base }: { did: string; base: string }) {
   );
 }
 
+/** Where an organization is: its place takes a geocoder, so it comes on its own. */
+async function Location({ actor }: { actor: ActorDetail }) {
+  const place = await getActorPlace(actor.did);
+  return place ? (
+    <LocationCard place={place} who={nameOf(actor)} imageUrl={actor.avatarUrl} />
+  ) : null;
+}
+
+/** The handle, once it is checked both ways (its DID document and its domain). */
+async function HandleFact({ did }: { did: string }) {
+  const handle = await getHandle(did);
+  if (!handle) return null;
+  return (
+    <div className="fact">
+      <dt>Handle</dt>
+      <dd>
+        <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * From the account as the API has it (getActorCore); the place and the
+ * handle need outside lookups and stream in.
+ */
 export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string }) {
-  const { did, handle } = actor;
+  const { did } = actor;
   return (
     <>
       <Suspense fallback={null}>
         <Figures did={did} base={base} />
       </Suspense>
-      {actor.place && (
-        <LocationCard place={actor.place} who={nameOf(actor)} imageUrl={actor.avatarUrl} />
+      {actor.isOrganization && (
+        <Suspense fallback={null}>
+          <Location actor={actor} />
+        </Suspense>
       )}
       <Card variant="panel" className="overview-box rail-card">
         <Heading level={2} size="heading">
@@ -126,14 +156,9 @@ export function ProfileRail({ actor, base }: { actor: ActorDetail; base: string 
               <dd>{actor.joined}</dd>
             </div>
           )}
-          {handle && (
-            <div className="fact">
-              <dt>Handle</dt>
-              <dd>
-                <CopyableId value={handle} displayValue={`@${handle}`} label="Handle" wrap />
-              </dd>
-            </div>
-          )}
+          <Suspense fallback={null}>
+            <HandleFact did={did} />
+          </Suspense>
           <div className="fact">
             <dt>Permanent ID</dt>
             <dd>

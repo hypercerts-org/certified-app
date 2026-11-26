@@ -24,7 +24,7 @@ const numberFormat = new Intl.NumberFormat("en");
 const tabCount = (n: number) => (n > 0 ? numberFormat.format(n) : undefined);
 
 async function Content({ params }: Pick<PageProps<"/[actor]/following">, "params">) {
-  const { actor, base } = await profileActor(params, "/following");
+  const { actor, base } = await profileActor(params);
   const [page, projects, counts] = await Promise.all([
     listFollows(actor.did, "following"),
     listProjectsFollowed(actor.did),

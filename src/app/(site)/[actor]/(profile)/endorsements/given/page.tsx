@@ -19,7 +19,7 @@ const numberFormat = new Intl.NumberFormat("en");
 const tabCount = (n: number) => (n > 0 ? numberFormat.format(n) : undefined);
 
 async function Content({ params }: Pick<PageProps<"/[actor]/endorsements/given">, "params">) {
-  const { actor, base } = await profileActor(params, "/endorsements/given");
+  const { actor, base } = await profileActor(params);
   const [page, counts] = await Promise.all([
     listEndorsements(actor.did, "given"),
     getEndorsements(actor.did),
