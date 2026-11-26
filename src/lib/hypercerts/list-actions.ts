@@ -416,6 +416,12 @@ export async function setListMembership(
 
     const repository = await repositoryFor(session, repo);
     const uri = listUri(repo, rkey);
+    const expectedType = COLLECTION_TYPES[input.kind];
+    const existing = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
+    if (!existing) return fail("invalid", "update the list", "This list no longer exists.");
+    if (existing.value.type !== expectedType) {
+      return fail("invalid", "update the list", "This list doesn't hold this type of item.");
+    }
 
     if (input.include) {
       const resolved =
@@ -424,6 +430,10 @@ export async function setListMembership(
           : await resolvePublicRecord(input.target);
       if (!resolved) {
         return fail("invalid", "add to the list", "This item couldn't be resolved.");
+      }
+      const resolvedValue = "value" in resolved ? resolved.value : null;
+      if (!fitsList(expectedType, resolved.uri, resolvedValue)) {
+        return fail("invalid", "add to the list", "This item doesn't belong in this list.");
       }
       const { stored, added } = await addItemsToList(repository, rkey, [
         { uri: resolved.uri, cid: resolved.cid },
@@ -439,8 +449,6 @@ export async function setListMembership(
       return { ok: true, included: true, indexed };
     }
 
-    const existing = await repository.getRecord("org.hypercerts.collection" as l.NsidString, rkey);
-    if (!existing) return fail("invalid", "update the list", "This list no longer exists.");
     const items = Array.isArray(existing.value.items) ? existing.value.items : [];
     const matchingUris = items
       .map((item) => (item as { itemIdentifier?: { uri?: string } })?.itemIdentifier?.uri)
@@ -493,6 +501,10 @@ export async function createListWithItem(
         : await resolvePublicRecord(input.target);
     if (!resolved) {
       return fail("invalid", "create the list", "This item couldn't be resolved.");
+    }
+    const resolvedValue = "value" in resolved ? resolved.value : null;
+    if (!fitsList(collectionType, resolved.uri, resolvedValue)) {
+      return fail("invalid", "create the list", "This item doesn't belong in this list.");
     }
 
     const created = await createCollection(

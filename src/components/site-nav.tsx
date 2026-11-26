@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { ActorAvatar, type ActorLike, ActorName } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
 import { NewGroupDialog } from "@/components/group-dialogs";
+import { notifyActingAsChanged } from "@/components/like-button";
 import { LinkPending } from "@/components/link-pending";
 import { SignInButton } from "@/components/sign-in-button";
 import { SignOutForm } from "@/components/sign-out-form";
@@ -222,6 +223,7 @@ function useSwitchActingAs(account: Account) {
         toast.error(`Couldn't switch to ${nameOf(target)}. Try again.`);
         return;
       }
+      notifyActingAsChanged();
       if (WORKSPACE_PATH.test(pathname)) toWorkspace(target.did);
       if (!previous) {
         toast(`Switched back to ${nameOf(target)}`);

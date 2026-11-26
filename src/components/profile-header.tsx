@@ -10,15 +10,16 @@ import Link from "next/link";
 import { Fragment, type ReactNode, Suspense } from "react";
 import { ActorAvatar, ActorName, ActorStack } from "@/components/actor";
 import { AlsoOnRow } from "@/components/also-on";
-import { actorHref } from "@/components/cards";
 import { PageTitle } from "@/components/page-title";
 import { OwnerActions, VisitorActions } from "@/components/profile-actions";
 import { ProfileDescription, ProfileName } from "@/components/profile-text";
 import { getActingAs } from "@/lib/acting-as";
 import { getAlsoOn } from "@/lib/also-on";
+import { getUser } from "@/lib/auth/dal";
 import { getEndorsement, getEndorsers, getFollow, getFollowCounts } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, nameOf } from "@/lib/hypercerts/views";
 import { mayEditAccount } from "@/lib/memberships";
+import { groupSettingsHref } from "@/lib/routes";
 
 /** One of the header's links: Bluesky as its icon, an email as itself, the rest by label. */
 function ProfileLink({ link }: { link: AccountLink }) {
@@ -239,13 +240,13 @@ async function ViewerActions({ actor, base }: { actor: ActorDetail; base: string
   const actingAs = await getActingAs();
   if (actingAs === actor.did) {
     // Acting as an organization, only its admins and owners may edit it.
-    return (
-      <OwnerActions
-        editHref={(await mayEditAccount(actor.did)) ? `${actorHref(actor.did)}/edit` : null}
-        path={base}
-        title={nameOf(actor)}
-      />
-    );
+    const [canEdit, user] = await Promise.all([mayEditAccount(actor.did), getUser()]);
+    const editHref = canEdit
+      ? user?.did === actor.did
+        ? "/settings/profile"
+        : `${groupSettingsHref(actor.did)}/profile`
+      : null;
+    return <OwnerActions editHref={editHref} path={base} title={nameOf(actor)} />;
   }
   const [follow, endorsement] = actingAs
     ? await Promise.all([getFollow(actingAs, actor.did), getEndorsement(actingAs, actor.did)])

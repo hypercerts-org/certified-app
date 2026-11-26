@@ -2,6 +2,15 @@
 // (src/lib/*) and UI components (src/components/*), keeping src/lib free of
 // UI imports.
 
+/**
+ * An account's profile: at its handle when known (the address people share),
+ * otherwise at its DID, which redirects to the handle.
+ */
+export function actorHref(actor: string | { did: string; handle: string | null }) {
+  if (typeof actor === "string") return `/${actor}`;
+  return `/${actor.handle ?? actor.did}`;
+}
+
 /** An account's workspace. */
 export function workspaceHref(did: string) {
   return `/${did}/workspace`;

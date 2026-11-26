@@ -25,6 +25,7 @@ import { useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { HandleId, PermanentId } from "@/components/account-ids";
 import { ActorPicker } from "@/components/actor-picker";
+import { notifyActingAsChanged } from "@/components/like-button";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { ROW_ACTION } from "@/lib/button-roles";
 import * as groupActions from "@/lib/hypercerts/group-actions";
@@ -149,7 +150,8 @@ export function NewGroupDialog({
                   const { groupDid, href } = created;
                   setOpeningWorkspace(true);
                   try {
-                    await switchActingAs(groupDid);
+                    const switched = await switchActingAs(groupDid);
+                    if (switched.ok) notifyActingAsChanged();
                   } finally {
                     setOpeningWorkspace(false);
                   }

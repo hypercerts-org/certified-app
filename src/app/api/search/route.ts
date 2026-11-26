@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { actorHref } from "@/components/cards";
 import {
   exploreAccounts,
   exploreActivities,
@@ -8,7 +7,8 @@ import {
 } from "@/lib/hypercerts/queries";
 import { nameOf } from "@/lib/hypercerts/views";
 import { logError } from "@/lib/log";
-import { activityHref, projectHref } from "@/lib/routes";
+import { activityHref, actorHref, projectHref } from "@/lib/routes";
+import { safeUrl } from "@/lib/safe-url";
 import {
   ACCOUNT_CANDIDATES,
   goRow,
@@ -17,6 +17,7 @@ import {
   relevance,
   SEARCH_CANDIDATES,
   SEARCH_GROUP_ROWS,
+  type SearchActorHit,
   type SearchResults,
   type SearchRow,
 } from "@/lib/search";
@@ -29,83 +30,59 @@ import { isDid } from "@/lib/validate";
 // CDN may keep a query's answer for a minute.
 //
 // With `scope=actors` it answers the account pickers instead (ActorPicker:
-// Add member, Endorse someone, Award badge, contributors, funding parties):
+// Add member, Endorse someone, Award badge, contributors):
 // `{ actors }`, an account a handle or DID names first, then Certified
 // accounts, then Bluesky's.
 
 const MAX_QUERY = 200;
 const PUBLIC_BSKY_APPVIEW = "https://public.api.bsky.app";
-const BLUESKY_SEARCH = "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors";
 const cacheHeaders = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
 
-type BlueskyActor = { did: string; handle: string; displayName?: string; avatar?: string };
-
-/** Accounts on Bluesky matching `query`; none when Bluesky doesn't answer in time. */
-async function blueskyAccounts(query: string): Promise<BlueskyActor[]> {
-  try {
-    const url = new URL(BLUESKY_SEARCH);
-    url.searchParams.set("q", query);
-    url.searchParams.set("limit", String(ACCOUNT_CANDIDATES));
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { actors?: BlueskyActor[] };
-    return body.actors ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export type SearchActorHit = {
-  did: string;
-  handle: string | null;
-  displayName: string;
-  avatarUrl: string | null;
-  isOrganization: boolean;
-  certified: boolean;
-  href: string;
-};
-
-export type SearchRecordHit = {
-  uri: string;
-  title: string;
-  authorName: string;
-  href: string;
-};
-
-type BskyActor = {
+type RawBlueskyActor = {
   did?: string;
   handle?: string;
   displayName?: string;
   avatar?: string;
 };
 
-async function searchBlueskyActors(q: string, limit: number): Promise<SearchActorHit[]> {
+type BlueskyActor = {
+  did: string;
+  handle: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  href: string;
+};
+
+/** Accounts on Bluesky matching `query`; none when Bluesky doesn't answer in time. */
+async function fetchBlueskyActors(
+  endpoint: "searchActors" | "searchActorsTypeahead",
+  query: string,
+  limit: number,
+): Promise<BlueskyActor[]> {
   try {
-    const url = new URL("/xrpc/app.bsky.actor.searchActorsTypeahead", PUBLIC_BSKY_APPVIEW);
-    url.searchParams.set("q", q);
+    const url = new URL(`/xrpc/app.bsky.actor.${endpoint}`, PUBLIC_BSKY_APPVIEW);
+    url.searchParams.set("q", query);
     url.searchParams.set("limit", String(limit));
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(4_000),
+      signal: AbortSignal.timeout(3_500),
     });
     if (!res.ok) return [];
-    const data = (await res.json()) as { actors?: BskyActor[] };
+    const data = (await res.json()) as { actors?: RawBlueskyActor[] };
     return (data.actors ?? [])
-      .filter((a): a is BskyActor & { did: string } => typeof a.did === "string")
+      .filter((a): a is RawBlueskyActor & { did: string } => typeof a.did === "string")
       .map((a) => {
         const handle = typeof a.handle === "string" && a.handle ? a.handle : null;
         return {
           did: a.did,
           handle,
           displayName: a.displayName?.trim() || (handle ? `@${handle}` : a.did),
-          avatarUrl: typeof a.avatar === "string" && a.avatar ? a.avatar : null,
-          isOrganization: false,
-          certified: false,
-          href: `/${encodeURIComponent(handle ?? a.did)}`,
+          avatarUrl: typeof a.avatar === "string" ? (safeUrl(a.avatar, true) ?? null) : null,
+          href: handle ? `/${encodeURIComponent(handle)}` : `/${a.did}`,
         };
       });
   } catch (err) {
-    logError("[search] bluesky typeahead failed", err);
+    logError(`[search] bluesky ${endpoint} failed`, err);
     return [];
   }
 }
@@ -114,13 +91,16 @@ async function searchActors(q: string, limit: number): Promise<SearchActorHit[]>
   const cleaned = q.replace(/^@/, "").trim();
   const [direct, certifiedPage, bsky] = await Promise.all([
     isDid(cleaned) || /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(cleaned)
-      ? getActor(cleaned).catch(() => null)
+      ? getActor(cleaned).catch((err) => {
+          logError("[search] direct actor lookup failed", err);
+          return null;
+        })
       : Promise.resolve(null),
-    exploreAccounts({ query: cleaned, sort: "newest", type: "all", limit }).catch(() => ({
-      items: [],
-      cursor: null,
-    })),
-    searchBlueskyActors(cleaned, limit),
+    exploreAccounts({ query: cleaned, sort: "newest", type: "all", limit }).catch((err) => {
+      logError("[search] certified accounts failed", err);
+      return { items: [], cursor: null };
+    }),
+    fetchBlueskyActors("searchActorsTypeahead", cleaned, limit),
   ]);
 
   const seen = new Set<string>();
@@ -157,7 +137,11 @@ async function searchActors(q: string, limit: number): Promise<SearchActorHit[]>
   }
 
   for (const actor of bsky) {
-    push(actor);
+    push({
+      ...actor,
+      isOrganization: false,
+      certified: false,
+    });
   }
 
   return merged.slice(0, limit);
@@ -191,7 +175,7 @@ export async function GET(request: NextRequest) {
       logError("[search] accounts failed", err);
       return { items: [] };
     }),
-    blueskyAccounts(query),
+    fetchBlueskyActors("searchActors", query, ACCOUNT_CANDIDATES),
   ]);
 
   const results: SearchResults = {
@@ -236,7 +220,7 @@ export async function GET(request: NextRequest) {
         (a): SearchRow => ({
           id: a.did,
           kind: "account",
-          href: `/${a.handle ?? a.did}`,
+          href: a.handle ? `/${encodeURIComponent(a.handle)}` : `/${a.did}`,
           title: nameOf(a),
           meta: a.handle && nameOf(a) !== `@${a.handle}` ? `@${a.handle}` : null,
           imageUrl: a.avatarUrl,
@@ -247,16 +231,16 @@ export async function GET(request: NextRequest) {
       // name or handle has what was typed, best match first.
       rank(
         query,
-        bluesky.filter((a) => relevance(query, `${a.displayName ?? ""} ${a.handle}`) > 0),
-        (a) => ({ primary: `${a.displayName ?? ""} ${a.handle}` }),
+        bluesky.filter((a) => a.handle && relevance(query, `${a.displayName} ${a.handle}`) > 0),
+        (a) => ({ primary: `${a.displayName} ${a.handle ?? ""}` }),
       ).map((a) => ({
         did: a.did,
         id: a.did,
         kind: "account" as const,
-        href: `/${a.handle}`,
-        title: a.displayName?.trim() || `@${a.handle}`,
-        meta: `@${a.handle} · On Bluesky`,
-        imageUrl: a.avatar ?? null,
+        href: a.href,
+        title: a.displayName,
+        meta: a.handle ? `@${a.handle} · On Bluesky` : "On Bluesky",
+        imageUrl: a.avatarUrl,
         round: true,
       })),
       new Set(accounts.items.map((a) => a.did)),

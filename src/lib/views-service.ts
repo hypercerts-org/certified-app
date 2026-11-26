@@ -423,31 +423,36 @@ export async function getNetworkFeed(query: NetworkFeedQuery): Promise<Page<Netw
   return { items, cursor };
 }
 
-/**
- * Curated list of default trusted endorsers (`list:accounts`), cached publicly.
- * Returns an empty list on error so the feed still works with direct follows.
- */
-export async function getTrustedEvaluators(): Promise<ActorCard[]> {
+async function cachedTrustedEvaluators(): Promise<ActorCard[]> {
   "use cache";
   cacheLife("public");
   const listUri = `at://${TRUSTED_EVALUATORS_DID}/org.hypercerts.collection/${TRUSTED_EVALUATORS_RKEY}`;
   cacheTag(tags.list(listUri));
 
-  try {
-    const list = await getList(TRUSTED_EVALUATORS_DID, TRUSTED_EVALUATORS_RKEY);
-    if (!list) return [];
-    const seen = new Set<string>();
-    const dids: string[] = [];
-    for (const uri of list.itemUris) {
-      const did = uri.split("/")[2];
-      if (did && isDid(did) && !seen.has(did)) {
-        seen.add(did);
-        dids.push(did);
-      }
+  const list = await getList(TRUSTED_EVALUATORS_DID, TRUSTED_EVALUATORS_RKEY);
+  if (!list) return [];
+  const seen = new Set<string>();
+  const dids: string[] = [];
+  for (const uri of list.itemUris) {
+    const did = uri.split("/")[2];
+    if (did && isDid(did) && !seen.has(did)) {
+      seen.add(did);
+      dids.push(did);
     }
-    if (dids.length === 0) return [];
-    for (const did of dids) cacheTag(tags.actor(did));
-    return await getActorCards(dids);
+  }
+  if (dids.length === 0) return [];
+  for (const did of dids) cacheTag(tags.actor(did));
+  return await getActorCards(dids);
+}
+
+/**
+ * Curated list of default trusted endorsers (`list:accounts`), cached publicly.
+ * Errors throw out of `"use cache"` (never cached) and degrade to `[]` here so
+ * the feed still works with direct follows.
+ */
+export async function getTrustedEvaluators(): Promise<ActorCard[]> {
+  try {
+    return await cachedTrustedEvaluators();
   } catch (err) {
     logError("[feed] trusted evaluators load failed", err);
     return [];

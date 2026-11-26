@@ -76,12 +76,14 @@ export const getMemberships = cache(async (): Promise<Membership[] | "expired" |
   return listMembershipsForDisplay(session);
 });
 
-async function rememberedGroupMembers(groupDid: string): Promise<GroupMember[]> {
+async function rememberedGroupMembers(groupDid: string, callerDid: string): Promise<GroupMember[]> {
   "use cache: private";
   cacheLife({ stale: 300, revalidate: 300, expire: 300 });
   cacheTag(tags.groupMembers(groupDid));
   const members = await readCachedGroupMembers(groupDid);
-  if (!members) throw new CacheMissError("group members");
+  if (!members?.some((m) => m.did === callerDid)) {
+    throw new CacheMissError("group members");
+  }
   return members;
 }
 
@@ -95,7 +97,7 @@ export const getGroupMembers = cache(
     const user = await getUser();
     if (!user) return null;
     try {
-      return await rememberedGroupMembers(groupDid);
+      return await rememberedGroupMembers(groupDid, user.did);
     } catch (err) {
       unstable_rethrow(err);
       if (!isCacheMiss(err)) {

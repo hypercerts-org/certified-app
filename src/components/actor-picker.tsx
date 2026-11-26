@@ -2,13 +2,13 @@
 
 // Shared AT Protocol / Certified actor typeahead input backed by
 // `/api/search?scope=actors`. Used in Add member, Endorse someone, Award
-// badge, Activity contributors, and Funding party pickers. Free-form text
-// (DIDs, URLs, AT-URIs, or names) still submits cleanly without picking a row.
+// badge, and Activity contributors. Free-form text (DIDs, URLs, AT-URIs, or
+// names) still submits cleanly without picking a row.
 
 import { Input, LoadingSpinner } from "@hypercerts-org/ui-react";
 import { useEffect, useId, useRef, useState } from "react";
-import type { SearchActorHit } from "@/app/api/search/route";
 import { ActorAvatar } from "@/components/actor";
+import type { SearchActorHit } from "@/lib/search";
 
 export function ActorPicker({
   id,

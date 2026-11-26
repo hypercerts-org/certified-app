@@ -20,7 +20,6 @@ import {
   forgetGroupMembers,
   forgetMemberships,
   type GroupAuditEntry,
-  getOwnershipTransferStatus,
   listGroupMembers,
   type OwnershipTransferStatus,
   proposeOwnershipTransfer,
@@ -374,26 +373,6 @@ export async function getGroupAuditLog(groupDid: string, cursor?: string): Promi
 export type OwnershipTransferResult =
   | { ok: true; transfer: OwnershipTransferStatus }
   | GroupActionFailure;
-
-/** Reads any pending ownership transfer visible to the caller (owner or proposed recipient). */
-export async function getGroupOwnershipTransfer(
-  groupDid: string,
-): Promise<OwnershipTransferResult> {
-  if (typeof groupDid !== "string" || !isDid(groupDid)) {
-    return { ok: false, message: "Invalid group." };
-  }
-  try {
-    const session = await getOAuthSession();
-    if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
-    const transfer = await getOwnershipTransferStatus(session, groupDid as l.DidString);
-    return { ok: true, transfer };
-  } catch (err) {
-    return {
-      ok: false,
-      message: cgsErrorMessage(err, "Couldn't check for a pending ownership transfer."),
-    };
-  }
-}
 
 /** Proposes transferring group ownership to an existing non-owner member (owner only). */
 export async function proposeGroupOwnershipTransfer(

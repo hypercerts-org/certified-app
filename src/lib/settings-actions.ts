@@ -9,7 +9,7 @@
 // - Bluesky sync: follows between Certified (`app.certified.graph.follow`) and
 //   Bluesky (`app.bsky.graph.follow`)
 
-import { currentDatetimeString, type l, XrpcError, XrpcResponseError } from "@atproto/lex";
+import { type l, XrpcError, XrpcResponseError } from "@atproto/lex";
 import { createOrganization } from "@hypercerts-org/sdk/organization";
 import { followAccount } from "@hypercerts-org/sdk/social";
 import { updateTag } from "next/cache";
@@ -30,9 +30,9 @@ import { CgsAuthError, canEdit, forgetMemberships, importGroup, isMember } from 
 import { tags } from "@/lib/hypercerts/cache";
 import { waitForIndex } from "@/lib/hypercerts/index-wait";
 import { getActorCards } from "@/lib/hypercerts/queries";
-import { sdkContext, writeTo } from "@/lib/hypercerts/sdk";
+import { sdkContext, writeFailure, writeTo } from "@/lib/hypercerts/sdk";
 import type { ActorCard } from "@/lib/hypercerts/views";
-import { repositoryFor } from "@/lib/hypercerts/writes";
+import { createBlueskyFollow, repositoryFor, WriteError } from "@/lib/hypercerts/writes";
 import { resolveHandleFresh } from "@/lib/identity";
 import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
@@ -41,7 +41,7 @@ const FULL_HANDLE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_APP_PW_NAME = 100;
 const MAX_FOLLOW_SCAN = 10_000;
-const MAX_SYNC_BATCH = 100;
+const MAX_SYNC_BATCH = 25;
 
 export type ActionFailure = { ok: false; message: string; locked?: boolean };
 export type SimpleResult = { ok: true } | ActionFailure;
@@ -92,38 +92,8 @@ function unlockMessage(status: EstablishResult["status"]): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Personal Account: Handle, Session Email Read, Password Reset
+// Personal Account: Handle & Password Reset
 // ---------------------------------------------------------------------------
-
-/** Reads the signed-in account's email via its OAuth session (or null if unavailable). */
-export async function readOwnSessionInfo(): Promise<
-  { ok: true; handle: string | null; email: string | null; emailConfirmed: boolean } | ActionFailure
-> {
-  try {
-    const session = await getOAuthSession();
-    if (!session) return { ok: false, message: "Your session has ended. Sign in again." };
-    const res = await callOAuthPds(session, "com.atproto.server.getSession");
-    if (!res.ok) {
-      return { ok: false, message: await readPdsError(res, "Couldn't read account details.") };
-    }
-    const data = (await res.json()) as {
-      handle?: string;
-      email?: string;
-      emailConfirmed?: boolean;
-    };
-    return {
-      ok: true,
-      handle: typeof data.handle === "string" ? data.handle : null,
-      email: typeof data.email === "string" ? data.email : null,
-      emailConfirmed: Boolean(data.emailConfirmed),
-    };
-  } catch (err) {
-    if (!(err instanceof SessionUnavailableError)) {
-      logError("[settings] readOwnSessionInfo failed", err);
-    }
-    return { ok: false, message: "Couldn't read account details right now." };
-  }
-}
 
 /** Updates the signed-in account's handle (subdomain or verified custom domain). */
 export async function updateOwnHandle(rawHandle: string): Promise<SimpleResult> {
@@ -525,8 +495,14 @@ export async function promotePersonalAccountToGroup(input: {
         ownerDid: session.did,
       });
     } catch (err) {
-      // Revoke the newly minted app password on failure so no orphan remains.
-      if (mintedName) {
+      // Only revoke the minted app password when we know CGS did NOT commit
+      // the import (4xx refusal or service-auth failure before CGS was called).
+      // On 5xx/timeouts CGS may have stored the password already; revoking it
+      // would brick the newly imported group.
+      const definitelyNotCommitted =
+        err instanceof CgsAuthError ||
+        (err instanceof XrpcResponseError && err.status >= 400 && err.status < 500);
+      if (mintedName && definitelyNotCommitted) {
         await callElevatedPds(scope, "com.atproto.server.revokeAppPassword", {
           method: "POST",
           body: { name: mintedName },
@@ -1059,8 +1035,14 @@ export async function importBlueskyFollows(
         await followAccount(context, { subject: { did: subjectDid } }, repoOpt);
         imported++;
       } catch (err) {
-        logError("[settings] importBlueskyFollow failed", err, { repoDid, subjectDid });
-        errors.push({ subjectDid, message: "Couldn't import this follow." });
+        const reason = writeFailure(err, "importBlueskyFollow");
+        errors.push({
+          subjectDid,
+          message:
+            reason === "unknown"
+              ? "Couldn't confirm whether this follow was imported. Reload to check."
+              : "Couldn't import this follow.",
+        });
       }
     }
 
@@ -1103,26 +1085,19 @@ export async function exportCertifiedFollowsToBluesky(
 
     for (const subjectDid of uniqueDids) {
       try {
-        const res = await callOAuthPds(session, "com.atproto.repo.createRecord", {
-          method: "POST",
-          body: {
-            repo: session.did,
-            collection: "app.bsky.graph.follow",
-            record: {
-              $type: "app.bsky.graph.follow",
-              subject: subjectDid,
-              createdAt: currentDatetimeString(),
-            },
-          },
-        });
-        if (!res.ok) {
-          errors.push({ subjectDid, message: "Couldn't add this follow on Bluesky." });
-        } else {
-          imported++;
-        }
+        await createBlueskyFollow(session, subjectDid as l.DidString);
+        imported++;
       } catch (err) {
+        const unknown =
+          (err instanceof WriteError && err.reason === "unknown") ||
+          (!(err instanceof WriteError) && !(err instanceof XrpcResponseError));
         logError("[settings] exportCertifiedFollow failed", err, { subjectDid });
-        errors.push({ subjectDid, message: "Couldn't add this follow on Bluesky." });
+        errors.push({
+          subjectDid,
+          message: unknown
+            ? "Couldn't confirm whether this follow was added on Bluesky. Reload to check."
+            : "Couldn't add this follow on Bluesky.",
+        });
       }
     }
 

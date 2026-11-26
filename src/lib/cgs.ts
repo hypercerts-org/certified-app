@@ -219,7 +219,9 @@ export async function listGroupMembersForDisplay(
     logError("[cgs] group members cache read failed", err, { groupDid });
     return undefined;
   });
-  if (cached) return cached;
+  // Only serve the shared cache when the caller is actually in that cached
+  // roster; non-members (or newly added members) fall through to live CGS.
+  if (cached?.some((m) => m.did === session.did)) return cached;
   const members = await listGroupMembers(session, groupDid);
   await groupMembersCache
     .set(groupDid, members)

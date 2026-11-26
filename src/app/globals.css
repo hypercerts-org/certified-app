@@ -947,17 +947,6 @@ button.menu-row:disabled:not([aria-current]) {
   white-space: pre-line;
 }
 
-.profile-form {
-  max-inline-size: 36rem;
-}
-
-.profile-form fieldset {
-  min-inline-size: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
 /* The toast after switching whom you act as (Sonner renders its frame). */
 .switch-toast {
   display: flex;

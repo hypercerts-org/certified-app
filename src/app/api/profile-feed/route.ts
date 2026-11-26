@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { getProfileFeed } from "@/lib/hypercerts/queries";
+import { logError } from "@/lib/log";
 import { isDid } from "@/lib/validate";
 
 // Later pages of a profile's feed, for "Load more". Public data, so the CDN
@@ -18,5 +19,13 @@ export async function GET(request: NextRequest) {
   if (cursor !== null && (cursor.length > 4096 || !/^[\w-]*$/.test(cursor))) {
     return Response.json({ error: "InvalidCursor" }, { status: 400 });
   }
-  return Response.json(await getProfileFeed(did, cursor || undefined), { headers: cacheHeaders });
+  try {
+    return Response.json(await getProfileFeed(did, cursor || undefined), { headers: cacheHeaders });
+  } catch (err) {
+    logError("[profile-feed] GET /api/profile-feed failed", err, { did });
+    return Response.json(
+      { error: "ProfileFeedUnavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }

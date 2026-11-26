@@ -75,6 +75,15 @@ describe("getMemberships & getGroupMembers", () => {
     mocks.readOAuthSession.mockResolvedValueOnce("expired");
     expect(await getGroupMembers(ORG_ADMIN)).toBe("expired");
   });
+
+  it("does not serve cached group members to a caller absent from the cached roster", async () => {
+    mocks.readCachedGroupMembers.mockResolvedValueOnce([
+      { did: "did:plc:someoneelse11111111111111", role: "owner", addedAt: "2026-11-01T00:00:00Z" },
+    ]);
+    await getGroupMembers(ORG_ADMIN);
+    expect(mocks.readOAuthSession).toHaveBeenCalledTimes(1);
+    expect(mocks.listGroupMembersForDisplay).toHaveBeenCalledWith(FAKE_SESSION, ORG_ADMIN);
+  });
 });
 
 describe("mayEditAccount", () => {

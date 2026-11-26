@@ -69,4 +69,12 @@ describe("goRow", () => {
     expect(goRow("forest")).toBeNull();
     expect(goRow("solar power")).toBeNull();
   });
+
+  it("never returns protocol-relative hrefs for URLs with extra leading slashes", () => {
+    expect(goRow("https://certified.app//evil.com")?.href).toBe("/evil.com");
+    expect(goRow("https://certified.app//evil.com/project/3k2a")?.href).toBe(
+      "/evil.com/project/3k2a",
+    );
+    expect(goRow("https://certified.app//did:plc:abc123")?.href).toBe("/did:plc:abc123");
+  });
 });

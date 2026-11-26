@@ -1,3 +1,4 @@
+import { XrpcResponseError } from "@atproto/lex";
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -55,11 +56,23 @@ vi.mock("@hypercerts-org/sdk/social", () => ({
 }));
 vi.mock("@/lib/hypercerts/sdk", () => ({
   sdkContext: mocks.sdkContext,
+  writeFailure: vi.fn(() => "unavailable"),
   writeTo: vi.fn(),
 }));
 vi.mock("@/lib/hypercerts/index-wait", () => ({ waitForIndex: vi.fn(async () => true) }));
 vi.mock("@/lib/hypercerts/queries", () => ({ getActorCards: mocks.getActorCards }));
-vi.mock("@/lib/hypercerts/writes", () => ({ repositoryFor: mocks.repositoryFor }));
+vi.mock("@/lib/hypercerts/writes", () => ({
+  createBlueskyFollow: vi.fn(),
+  repositoryFor: mocks.repositoryFor,
+  WriteError: class WriteError extends Error {
+    constructor(
+      readonly reason: string,
+      message: string,
+    ) {
+      super(message);
+    }
+  },
+}));
 vi.mock("@/lib/identity", () => ({ resolveHandleFresh: vi.fn(async () => null) }));
 vi.mock("@/lib/log", () => ({ logError: () => {} }));
 
@@ -104,7 +117,7 @@ describe("settings actions", () => {
     expect(mocks.updateTag).toHaveBeenCalledWith(`memberships:${alice}`);
   });
 
-  it("revokes the minted app password if CGS import fails so no orphan stays behind", async () => {
+  it("revokes the minted app password on a definite 4xx CGS refusal so no orphan stays behind", async () => {
     mocks.establishElevatedSession.mockResolvedValue({ status: "ok" });
     mocks.callElevatedPds
       .mockResolvedValueOnce({
@@ -116,13 +129,50 @@ describe("settings actions", () => {
         }),
       })
       .mockResolvedValueOnce({ kind: "ok", response: new Response(null, { status: 200 }) });
-    mocks.importGroup.mockRejectedValue(new Error("boom"));
+    mocks.importGroup.mockRejectedValue(
+      new XrpcResponseError({} as never, new Response(null, { status: 409 }), {
+        encoding: "application/json",
+        body: {
+          error: "GroupAlreadyRegistered",
+          message: "Already registered",
+        },
+      }),
+    );
 
     const res = await promotePersonalAccountToGroup({ password: "my-password" });
     expect(res.ok).toBe(false);
 
     expect(mocks.callElevatedPds).toHaveBeenCalledTimes(2);
     expect(mocks.callElevatedPds.mock.calls[1]?.[1]).toBe("com.atproto.server.revokeAppPassword");
+    expect(mocks.endElevatedSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT revoke the minted app password on 5xx/unknown CGS errors so a committed import is not bricked", async () => {
+    mocks.establishElevatedSession.mockResolvedValue({ status: "ok" });
+    mocks.callElevatedPds.mockResolvedValueOnce({
+      kind: "ok",
+      response: Response.json({
+        name: "Certified Group Service (abcd)",
+        password: "xxxx-xxxx-xxxx-xxxx",
+        createdAt: "2026-11-26T00:00:00.000Z",
+      }),
+    });
+    mocks.importGroup.mockRejectedValue(
+      new XrpcResponseError({} as never, new Response(null, { status: 502 }), {
+        encoding: "application/json",
+        body: {
+          error: "UpstreamFailure",
+          message: "Gateway timeout",
+        },
+      }),
+    );
+
+    const res = await promotePersonalAccountToGroup({ password: "my-password" });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.message).toMatch(/couldn't confirm/i);
+
+    // Only createAppPassword ran — revokeAppPassword was NOT called.
+    expect(mocks.callElevatedPds).toHaveBeenCalledTimes(1);
     expect(mocks.endElevatedSession).toHaveBeenCalledTimes(1);
   });
 

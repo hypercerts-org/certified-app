@@ -1485,16 +1485,9 @@ export async function getIndexedList(
 
 const REACTION_BATCH = 50;
 
-/**
- * Cached like counts for up to many record AT-URIs, batched via
- * `app.certified.feed.getReactionCounts`. Degrades to empty counts on outage
- * so reaction reads never break a page.
- */
-export async function getLikeCounts(subjects: string[]): Promise<Record<string, number>> {
+async function cachedLikeCounts(unique: string[]): Promise<Record<string, number>> {
   "use cache";
   cacheLife("public");
-  const unique = [...new Set(subjects)].filter(Boolean).sort();
-  if (unique.length === 0) return {};
   for (const uri of unique) cacheTag(tags.likes(uri));
 
   const counts: Record<string, number> = {};
@@ -1504,17 +1497,13 @@ export async function getLikeCounts(subjects: string[]): Promise<Record<string, 
   }
   await Promise.all(
     batches.map(async (batch) => {
-      try {
-        const res = await api.call(
-          app.certified.feed.getReactionCounts,
-          { subjects: batch as AtUri[] },
-          read(),
-        );
-        for (const item of res.counts) {
-          counts[item.subject] = item.likeCount;
-        }
-      } catch (err) {
-        logError("[likes] getReactionCounts failed", err, { count: batch.length });
+      const res = await api.call(
+        app.certified.feed.getReactionCounts,
+        { subjects: batch as AtUri[] },
+        read(),
+      );
+      for (const item of res.counts) {
+        counts[item.subject] = item.likeCount;
       }
     }),
   );
@@ -1522,18 +1511,28 @@ export async function getLikeCounts(subjects: string[]): Promise<Record<string, 
 }
 
 /**
- * Cached check of which `subjects` `actor` has liked, returning a map of
- * subject AT-URI -> like record AT-URI (or null).
+ * Cached like counts for up to many record AT-URIs, batched via
+ * `app.certified.feed.getReactionCounts`. Errors throw out of `"use cache"`
+ * (so outages are never cached) and degrade to empty counts here.
  */
-export async function getActorLikesForSubjects(
+export async function getLikeCounts(subjects: string[]): Promise<Record<string, number>> {
+  const unique = [...new Set(subjects)].filter(Boolean).sort();
+  if (unique.length === 0) return {};
+  try {
+    return await cachedLikeCounts(unique);
+  } catch (err) {
+    logError("[likes] getReactionCounts failed", err, { count: unique.length });
+    return {};
+  }
+}
+
+async function cachedActorLikesForSubjects(
   actor: string,
-  subjects: string[],
+  unique: string[],
 ): Promise<Record<string, string | null>> {
   "use cache";
   cacheLife("public");
   cacheTag(tags.actorLikes(actor));
-  const unique = [...new Set(subjects)].filter(Boolean).sort();
-  if (unique.length === 0) return {};
 
   const likes: Record<string, string | null> = {};
   const batches: string[][] = [];
@@ -1542,21 +1541,35 @@ export async function getActorLikesForSubjects(
   }
   await Promise.all(
     batches.map(async (batch) => {
-      try {
-        const res = await api.call(
-          app.certified.feed.getActorReactions,
-          { actor: actor as Did, subjects: batch as AtUri[] },
-          read(),
-        );
-        for (const row of res.results) {
-          likes[row.subject] = row.like?.uri ?? null;
-        }
-      } catch (err) {
-        logError("[likes] getActorReactions failed", err, { actor, count: batch.length });
+      const res = await api.call(
+        app.certified.feed.getActorReactions,
+        { actor: actor as Did, subjects: batch as AtUri[] },
+        read(),
+      );
+      for (const row of res.results) {
+        likes[row.subject] = row.like?.uri ?? null;
       }
     }),
   );
   return likes;
+}
+
+/**
+ * Cached check of which `subjects` `actor` has liked, returning a map of
+ * subject AT-URI -> like record AT-URI (or null). Errors never populate cache.
+ */
+export async function getActorLikesForSubjects(
+  actor: string,
+  subjects: string[],
+): Promise<Record<string, string | null>> {
+  const unique = [...new Set(subjects)].filter(Boolean).sort();
+  if (unique.length === 0) return {};
+  try {
+    return await cachedActorLikesForSubjects(actor, unique);
+  } catch (err) {
+    logError("[likes] getActorReactions failed", err, { actor, count: unique.length });
+    return {};
+  }
 }
 
 /** Uncached check of whether `actor` currently likes `subject` in the index. */

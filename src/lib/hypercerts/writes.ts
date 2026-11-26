@@ -19,16 +19,9 @@ import { app as cgsLexicons } from "@hypercerts-org/certified-group-service";
 import { app, org } from "@hypercerts-org/lexicon";
 import { getOAuthClient } from "@/lib/auth/oauth-client";
 import { canEdit, cgs, cgsAuth } from "@/lib/cgs";
+import { isListType } from "@/lib/lists";
 import { logError } from "@/lib/log";
-import {
-  avatarUrl,
-  ENDORSEMENT_BADGE_TYPE,
-  imageUrl,
-  PLAIN_ENDORSEMENT,
-  type ProfileFields,
-  type ProfileVersion,
-  profileUri,
-} from "./views";
+import { avatarUrl, ENDORSEMENT_BADGE_TYPE, imageUrl, PLAIN_ENDORSEMENT } from "./views";
 
 const profile = app.certified.actor.profile;
 const organization = app.certified.actor.organization;
@@ -77,8 +70,8 @@ export type Repository = {
   ): Promise<{ records: { uri: string; cid: string; value: LexMap }[]; cursor?: string }>;
   /** Replaces the record if it is still version `swapRecord` (compare-and-swap). */
   putRecord(record: TypedRecord, rkey: string, swapRecord: string): Promise<StoredRecord>;
-  /** Creates the record; fails if one exists. */
-  createRecord(record: TypedRecord, rkey: string): Promise<StoredRecord>;
+  /** Creates the record; fails if one exists when `rkey` is given. */
+  createRecord(record: TypedRecord, rkey?: string): Promise<StoredRecord>;
   /** Deletes the record, optionally checking `swapRecord`. */
   deleteRecord(collection: l.NsidString, rkey: string, swapRecord?: string): Promise<void>;
 };
@@ -157,7 +150,7 @@ export async function organizationRepository(
     createRecord: async (record, rkey) => {
       return cgs.call(
         createRecord,
-        { repo: did, collection: record.$type, rkey, record },
+        { repo: did, collection: record.$type, ...(rkey && { rkey }), record },
         { headers: await cgsAuth(session, createRecord) },
       );
     },
@@ -188,22 +181,6 @@ export async function editableRepository(
   return did === session.did ? ownRepository(session) : organizationRepository(session, did);
 }
 
-/** The profile fields this app edits, as they appear on a record. */
-function profileFields(record: LexMap | undefined): ProfileFields {
-  return {
-    displayName: typeof record?.displayName === "string" ? record.displayName : "",
-    description: typeof record?.description === "string" ? record.description : "",
-  };
-}
-
-/** The repository's profile, from its PDS; null when it has none. */
-export async function getProfile(repo: Repository): Promise<ProfileVersion | null> {
-  const current = await repo.getRecord(profile.$type, "self");
-  return current
-    ? { uri: profileUri(repo.did), cid: current.cid, ...profileFields(current.value) }
-    : null;
-}
-
 /**
  * A failed write's meaning. Only a 4xx answer proves nothing was stored; a
  * 5xx (from the PDS, CGS or a proxy in front of them) or no answer at all
@@ -222,58 +199,21 @@ function writeFailure(err: unknown): unknown {
   return err;
 }
 
-/**
- * Sets the profile's display name and description, keeping every other field
- * as stored. `expectedCid` is the version the user edited (null: no profile
- * yet); if the profile changed since, this throws a WriteError with reason
- * "conflict" instead of overwriting.
- */
-export async function updateProfile(
-  repo: Repository,
-  fields: ProfileFields,
-  expectedCid: string | null,
-): Promise<ProfileVersion> {
-  const current = await repo.getRecord(profile.$type, "self");
-  if ((current?.cid ?? null) !== expectedCid) throw conflict();
-
-  const record: LexMap = {
-    ...current?.value,
-    $type: profile.$type,
-    createdAt: current?.value.createdAt ?? currentDatetimeString(),
-  };
-  for (const name of ["displayName", "description"] as const) {
-    if (fields[name]) record[name] = fields[name];
-    else delete record[name];
-  }
-  const checked = profile.$safeValidate(record);
-  if (!checked.success) throw new WriteError("invalid", checked.reason.message);
-
-  let stored: StoredRecord;
+/** Creates an `app.bsky.graph.follow` record in the signed-in user's personal PDS. */
+export async function createBlueskyFollow(
+  session: OAuthSession,
+  subjectDid: l.DidString,
+): Promise<StoredRecord> {
+  const repo = ownRepository(session);
   try {
-    // A first profile is created instead, which fails rather than overwrites
-    // if one appeared meanwhile.
-    stored = current
-      ? await repo.putRecord(checked.value, "self", current.cid)
-      : await repo.createRecord(checked.value, "self");
-  } catch (err) {
-    const failure = writeFailure(err);
-    if (!current && failure instanceof XrpcResponseError) {
-      // The create was refused: most likely a profile now exists.
-      if (await repo.getRecord(profile.$type, "self")) throw conflict();
-    }
-    throw failure;
-  }
-
-  const expected = (await cidForLex(checked.value)).toString();
-  if (expected !== stored.cid) {
-    logError("[writes] stored CID differs from the written record's", null, {
-      uri: stored.uri,
-      stored: stored.cid,
-      expected,
+    return await repo.createRecord({
+      $type: "app.bsky.graph.follow" as l.NsidString,
+      subject: subjectDid,
+      createdAt: currentDatetimeString(),
     });
+  } catch (err) {
+    throw writeFailure(err);
   }
-  // The version the PDS stored, which a later index read must show.
-  return { uri: stored.uri, cid: stored.cid, ...profileFields(checked.value) };
 }
 
 // ---------------------------------------------------------------------------
@@ -729,6 +669,12 @@ async function putCollectionRecord(
   }
 }
 
+function assertIsList(record: { value: LexMap }) {
+  if (!isListType(record.value.type)) {
+    throw new WriteError("invalid", "This collection is not a list.");
+  }
+}
+
 /** Updates a list's title and description, keeping its type, items, and other fields intact. */
 export async function updateListDetails(
   repo: Repository,
@@ -737,6 +683,7 @@ export async function updateListDetails(
 ): Promise<StoredRecord> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
+  assertIsList(current);
 
   const record: LexMap = { ...current.value, title: fields.title };
   if (fields.description) {
@@ -758,6 +705,7 @@ export async function addItemsToList(
 ): Promise<{ stored: StoredRecord; added: number; skipped: number }> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
+  assertIsList(current);
   const uri = `at://${repo.did}/${collection.$type}/${rkey}`;
 
   const existingItems = Array.isArray(current.value.items) ? current.value.items : [];
@@ -798,6 +746,7 @@ export async function removeItemsFromList(
 ): Promise<{ stored: StoredRecord; removed: number }> {
   const current = await repo.getRecord(collection.$type, rkey);
   if (!current) throw new WriteError("invalid", "This list no longer exists.");
+  assertIsList(current);
   const uri = `at://${repo.did}/${collection.$type}/${rkey}`;
 
   const existingItems = Array.isArray(current.value.items) ? current.value.items : [];
@@ -817,7 +766,10 @@ export async function removeItemsFromList(
   return { stored, removed };
 }
 
-/** Deletes a collection record (`org.hypercerts.collection`) from `repo`. */
+/** Deletes a list record (`org.hypercerts.collection` with a list type) from `repo`. */
 export async function deleteCollectionRecord(repo: Repository, rkey: string): Promise<void> {
+  const current = await repo.getRecord(collection.$type, rkey);
+  if (!current) return;
+  assertIsList(current);
   return deleteRecordIdempotent(repo, collection.$type, rkey);
 }

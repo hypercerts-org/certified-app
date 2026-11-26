@@ -249,6 +249,30 @@ describe("CGS calls", () => {
       expect(minted).toHaveLength(2);
     });
 
+    it("does not return cached group members to a caller not present in that cached roster", async () => {
+      vi.stubGlobal("fetch", async () =>
+        Response.json({
+          members: [{ did: user, role: "owner", addedAt: "2026-11-01T00:00:00.000Z" }],
+        }),
+      );
+      const { session } = fakeSession();
+      await listGroupMembersForDisplay(session, org);
+
+      const outsiderMinted: URL[] = [];
+      const outsider = {
+        did: "did:plc:outsider1111111111111111",
+        fetchHandler: async (path: string) => {
+          outsiderMinted.push(new URL(path, "https://pds.example"));
+          return Response.json({ token: "token" });
+        },
+      } as unknown as OAuthSession;
+      vi.stubGlobal("fetch", async () =>
+        Response.json({ error: "Forbidden", message: "Not a member" }, { status: 403 }),
+      );
+      await expect(listGroupMembersForDisplay(outsider, org)).rejects.toThrow();
+      expect(outsiderMinted).toHaveLength(1);
+    });
+
     it("calls import, destroy, audit.query, and ownershipTransfer endpoints with matching lxm", async () => {
       vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
         const request = new Request(input, init);
