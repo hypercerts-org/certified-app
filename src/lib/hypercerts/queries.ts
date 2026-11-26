@@ -826,8 +826,9 @@ export async function listProjectsFollowed(
       read(),
     );
     for (const item of out.entities) {
-      const entity = item.entity as { $type?: string } & CollectionViewLike;
-      if (entity.$type !== "org.hypercerts.collection.getCollection#collectionView") continue;
+      // Null when the followed project is gone (deleted, or not indexed): skip it.
+      const entity = item.entity as ({ $type?: string } & CollectionViewLike) | null;
+      if (entity?.$type !== "org.hypercerts.collection.getCollection#collectionView") continue;
       const view = entity as unknown as Parameters<typeof toProjectDetail>[0];
       rows.push({
         follow: { uri: item.follow.uri, cid: item.follow.cid },
@@ -2783,8 +2784,11 @@ async function feedSourcePage(
       );
       return {
         events: out.entities.flatMap((item): FeedEvent[] => {
-          const entity = item.entity as { $type?: string } & CollectionViewLike;
-          if (entity.$type !== "org.hypercerts.collection.getCollection#collectionView") return [];
+          // Null when the followed project is gone (deleted, or not indexed): skip it.
+          const entity = item.entity as ({ $type?: string } & CollectionViewLike) | null;
+          if (entity?.$type !== "org.hypercerts.collection.getCollection#collectionView") {
+            return [];
+          }
           const project = toProjectCard(entity as Parameters<typeof toProjectCard>[0]);
           return [
             {
