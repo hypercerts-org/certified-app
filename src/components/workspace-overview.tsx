@@ -48,6 +48,7 @@ import {
 } from "@/lib/hypercerts/queries";
 import { type ActorCard, type ActorDetail, endorsementLine, nameOf } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
+import { groupSettingsHref } from "@/lib/routes";
 
 const LATEST_RECORDS = 4;
 
@@ -503,10 +504,12 @@ export type GroupMemberView = {
 /** Members of an organization workspace, with CGS team management for admins & owners. */
 export function GroupMembersSection({
   groupDid,
+  callerDid,
   members,
   viewerRole,
 }: {
   groupDid: string;
+  callerDid?: string;
   members: GroupMemberView[] | "unavailable" | "expired";
   viewerRole: string | null;
 }) {
@@ -526,29 +529,39 @@ export function GroupMembersSection({
         </Text>
       ) : (
         <ul className="overview-rows divided">
-          {members.map((member) => (
-            <li key={member.actor.did} className="overview-row-dated">
-              <ActorRow
-                actor={member.actor}
-                href={actorHref(member.actor)}
-                secondary={[member.roleLabel, member.actor.handle && `@${member.actor.handle}`]
-                  .filter(Boolean)
-                  .join(" · ")}
-              />
-              {member.role !== "owner" && (
-                <MemberActions
-                  groupDid={groupDid}
-                  memberDid={member.actor.did}
-                  memberName={nameOf(member.actor)}
-                  role={member.role}
-                  canChangeRole={isOwner}
-                  canRemove={isAdmin}
+          {members.map((member) => {
+            const isSelf = callerDid !== undefined && member.actor.did === callerDid;
+            const canRemove =
+              !isSelf &&
+              member.role !== "owner" &&
+              (isOwner || (isAdmin && member.role === "member"));
+            return (
+              <li key={member.actor.did} className="overview-row-dated">
+                <ActorRow
+                  actor={member.actor}
+                  href={actorHref(member.actor)}
+                  secondary={[member.roleLabel, member.actor.handle && `@${member.actor.handle}`]
+                    .filter(Boolean)
+                    .join(" · ")}
                 />
-              )}
-            </li>
-          ))}
+                {member.role !== "owner" && (
+                  <MemberActions
+                    groupDid={groupDid}
+                    memberDid={member.actor.did}
+                    memberName={nameOf(member.actor)}
+                    role={member.role}
+                    canChangeRole={isOwner}
+                    canRemove={canRemove}
+                  />
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
+      <Link href={groupSettingsHref(groupDid)} className="overview-see-all">
+        Group settings
+      </Link>
     </Section>
   );
 }

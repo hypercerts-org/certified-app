@@ -1,81 +1,79 @@
-import { Button, CopyableId, SettingRow, Skeleton } from "@hypercerts-org/ui-react";
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { type ReactNode, Suspense } from "react";
+import { Button, CopyableId } from "@hypercerts-org/ui-react";
+import { Suspense } from "react";
 import { actorHref, workspaceHref } from "@/components/cards";
-import { PageHeader } from "@/components/page-title";
+import { EmailCard, HandleCard, PasswordResetCard } from "@/components/settings/account-controls";
+import {
+  readPersonalAccountDetails,
+  requirePersonalSettings,
+  SettingsCardsSkeleton,
+} from "@/components/settings/settings-access";
+import { SettingsCard, SettingsSection } from "@/components/settings/settings-frame";
 import { SignOutForm } from "@/components/sign-out-form";
-import { getUser } from "@/lib/auth/dal";
-import { signInHref } from "@/lib/validate";
 
-export const metadata: Metadata = { title: "Settings", robots: { index: false } };
+async function AccountSettings() {
+  const access = await requirePersonalSettings("/settings");
+  if (!access) return null;
 
-// Settings for the person signed in, whichever workspace is open. An
-// organization's profile is edited from its workspace.
+  const { user, session, pdsDomain } = access;
+  const { handle, email, emailConfirmed } = await readPersonalAccountDetails(session, user.did);
 
-const ROWS = [
-  { title: "Profile", description: "Your name and description, as others see them." },
-  {
-    title: "Organizations",
-    description: "The organizations you belong to are listed in your workspace.",
-  },
-  {
-    title: "Permanent ID",
-    description:
-      "Your account's DID. Unlike a handle it never changes, so apps and records refer to you by it.",
-  },
-  { title: "Session", description: "Sign this browser out of Certified." },
-];
-
-/** The rows, each with its control: the same while it loads, with skeletons for controls. */
-function SettingRows({ controls }: { controls: ReactNode[] }) {
   return (
-    <div className="settings">
-      {ROWS.map((row, i) => (
-        <SettingRow key={row.title} title={row.title} description={row.description}>
-          {controls[i]}
-        </SettingRow>
-      ))}
-    </div>
+    <SettingsSection description="Your profile, handle, sign-in email, password and permanent ID.">
+      <SettingsCard
+        title="Profile"
+        description="Your name, picture, bio and links, as others see them."
+        hint="Publicly visible on your Certified profile."
+        actions={
+          <Button href={`${actorHref(user.did)}/edit`} variant="secondary" size="sm">
+            Edit profile
+          </Button>
+        }
+      />
+
+      <HandleCard did={user.did} initialHandle={handle} pdsDomain={pdsDomain} />
+
+      <EmailCard initialEmail={email} initialConfirmed={emailConfirmed} />
+
+      <PasswordResetCard email={email} />
+
+      <SettingsCard
+        title="Groups"
+        description="The groups you belong to are listed in your workspace, or you can create or convert one under Groups."
+        actions={
+          <>
+            <Button href="/settings/groups" variant="secondary" size="sm">
+              Manage groups
+            </Button>
+            <Button href={workspaceHref(user.did)} variant="secondary" size="sm">
+              Open workspace
+            </Button>
+          </>
+        }
+      />
+
+      <SettingsCard
+        title="Permanent ID"
+        description="Your account's DID. Unlike your handle it never changes, so apps and records refer to you by it."
+      >
+        <div className="settings-value-box">
+          <CopyableId value={user.did} label="Permanent ID" />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Session"
+        description="Sign this browser out of Certified."
+        hint="Other browsers signed in to this account stay active."
+        actions={<SignOutForm>Sign out</SignOutForm>}
+      />
+    </SettingsSection>
   );
 }
 
-async function Settings() {
-  const user = await getUser();
-  if (!user) redirect(signInHref("/settings"));
+export default function PersonalAccountSettingsPage() {
   return (
-    <SettingRows
-      controls={[
-        <Button key="profile" href={`${actorHref(user.did)}/edit`} variant="secondary" size="sm">
-          Edit profile
-        </Button>,
-        <Button key="workspace" href={workspaceHref(user.did)} variant="secondary" size="sm">
-          Open workspace
-        </Button>,
-        <CopyableId key="id" value={user.did} label="Permanent ID" />,
-        <SignOutForm key="session">Sign out</SignOutForm>,
-      ]}
-    />
-  );
-}
-
-function SettingsSkeleton() {
-  return (
-    <SettingRows
-      controls={ROWS.map((row) => (
-        <Skeleton key={row.title} variant="box" className="skeleton-control" />
-      ))}
-    />
-  );
-}
-
-export default function SettingsPage() {
-  return (
-    <div className="page">
-      <PageHeader title="Settings" description="Your account on Certified." />
-      <Suspense fallback={<SettingsSkeleton />}>
-        <Settings />
-      </Suspense>
-    </div>
+    <Suspense fallback={<SettingsCardsSkeleton count={4} />}>
+      <AccountSettings />
+    </Suspense>
   );
 }

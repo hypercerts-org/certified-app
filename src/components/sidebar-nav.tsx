@@ -67,9 +67,9 @@ const ECOSYSTEM: readonly Item[] = [
   { label: "Apps", icon: LayoutGrid, href: "/apps", isActive: under("/apps") },
 ];
 
-const SETTINGS: readonly Item[] = [
-  { label: "Settings", icon: Settings, href: "/settings", isActive: under("/settings") },
-];
+function settingsItems(href = "/settings", label = "Settings"): Item[] {
+  return [{ label, icon: Settings, href, isActive: under(href) }];
+}
 
 function Row({ item, pathname }: { item: Item; pathname: string | null }) {
   const { label, icon: Icon, href } = item;
@@ -111,13 +111,16 @@ function RowsHere({ items }: { items: readonly Item[] }) {
  */
 export function SidebarRows(
   props:
-    | { group: "network" | "feed" | "ecosystem" | "settings" }
+    | { group: "network" | "feed" | "ecosystem" }
+    | { group: "settings"; href?: string; label?: string }
     | { group: "workspace"; overview: string; badgesBadge?: ReactNode },
 ) {
   const items =
     props.group === "workspace"
       ? workspaceItems(props.overview, props.badgesBadge)
-      : { network: NETWORK, feed: FEED, ecosystem: ECOSYSTEM, settings: SETTINGS }[props.group];
+      : props.group === "settings"
+        ? settingsItems(props.href, props.label)
+        : { network: NETWORK, feed: FEED, ecosystem: ECOSYSTEM }[props.group];
   return (
     <Suspense fallback={<RowsView items={items} pathname={null} />}>
       <RowsHere items={items} />

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { forgetMemberships } from "@/lib/cgs";
 import { logError } from "@/lib/log";
 import { returnPath } from "@/lib/validate";
+import { endElevatedSession } from "./elevated-session";
 import { endAppSession, readAppSession } from "./session";
 
 /**
@@ -15,7 +16,12 @@ export async function signOut(form?: FormData): Promise<void> {
   try {
     const session = await readAppSession();
     await endAppSession({ revokeIfLast: true });
-    if (session) await forgetMemberships(session.did);
+    if (session) {
+      await Promise.all([
+        forgetMemberships(session.did),
+        endElevatedSession({ kind: "personal", callerDid: session.did }),
+      ]);
+    }
   } catch (err) {
     // The cookie is already cleared; a Valkey failure leaves at most an orphaned
     // session record, which expires.

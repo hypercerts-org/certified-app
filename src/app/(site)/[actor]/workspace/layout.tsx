@@ -2,8 +2,9 @@ import { Skeleton } from "@hypercerts-org/ui-react";
 import { Suspense } from "react";
 import { workspaceHref } from "@/components/cards";
 import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
-import { WorkspaceAccess } from "@/components/workspace-access";
+import { isOwnWorkspace, WorkspaceAccess } from "@/components/workspace-access";
 import { WorkspaceNav, WorkspaceNavView } from "@/components/workspace-nav";
+import { groupSettingsHref } from "@/lib/routes";
 import { isDid } from "@/lib/validate";
 
 async function Nav({ params }: { params: Promise<{ actor: string }> }) {
@@ -14,9 +15,12 @@ async function Nav({ params }: { params: Promise<{ actor: string }> }) {
     return <WorkspaceNavView overview="/workspace" />;
   }
   const overview = isDid(did) ? workspaceHref(did) : "/workspace";
+  const isGroup = isDid(did) && !(await isOwnWorkspace(did));
   return (
     <WorkspaceNav
       overview={overview}
+      settingsHref={isGroup ? groupSettingsHref(did) : "/settings"}
+      settingsLabel={isGroup ? "Group settings" : "Settings"}
       badgesBadge={
         isDid(did) ? (
           <Suspense fallback={null}>

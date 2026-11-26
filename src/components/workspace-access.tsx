@@ -89,8 +89,8 @@ export async function WorkspaceAccess({
     case "not-member":
       return (
         <Text>
-          This isn't one of your workspaces. You can open your own and those of the organizations
-          you belong to.
+          This isn't one of your workspaces. You can open your own and those of the groups you
+          belong to.
         </Text>
       );
     case "unavailable":

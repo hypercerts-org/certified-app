@@ -17,14 +17,20 @@ import { WORKSPACE_SECTIONS } from "@/components/workspace-sections";
 /** `overview` is the workspace's own address. */
 export function WorkspaceNav({
   overview,
+  settingsHref = "/settings",
+  settingsLabel = "Settings",
   badgesBadge,
 }: {
   overview: string;
+  settingsHref?: string;
+  settingsLabel?: string;
   badgesBadge?: ReactNode;
 }) {
   return (
     <WorkspaceNavView
       overview={overview}
+      settingsHref={settingsHref}
+      settingsLabel={settingsLabel}
       pathname={decodeURIComponent(usePathname())}
       badgesBadge={badgesBadge}
     />
@@ -34,10 +40,14 @@ export function WorkspaceNav({
 /** The nav for a known path; with no path (before the URL is read), nothing is marked current. */
 export function WorkspaceNavView({
   overview,
+  settingsHref = "/settings",
+  settingsLabel = "Settings",
   pathname,
   badgesBadge,
 }: {
   overview: string;
+  settingsHref?: string;
+  settingsLabel?: string;
   pathname?: string;
   badgesBadge?: ReactNode;
 }) {
@@ -73,9 +83,9 @@ export function WorkspaceNavView({
           <HelpMenu className="workspace-nav-item" />
         </li>
         <li>
-          <Link prefetch href="/settings" className="workspace-nav-item">
+          <Link prefetch href={settingsHref} className="workspace-nav-item">
             <Settings size={20} strokeWidth={1.5} aria-hidden />
-            Settings
+            {settingsLabel}
             <LinkPending />
           </Link>
         </li>

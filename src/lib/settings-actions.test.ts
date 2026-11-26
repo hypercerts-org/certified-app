@@ -1,0 +1,173 @@
+import type { OAuthSession } from "@atproto/oauth-client-node";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  compareSocialGraph,
+  confirmGroupAccountPasswordReset,
+  promotePersonalAccountToGroup,
+  unlockGroupSession,
+} from "./settings-actions";
+
+const mocks = vi.hoisted(() => ({
+  getOAuthSession: vi.fn(),
+  assertWritesAllowed: vi.fn(),
+  establishElevatedSession: vi.fn(),
+  endElevatedSession: vi.fn(async () => {}),
+  callElevatedPds: vi.fn(),
+  callPublicPds: vi.fn(),
+  verifyGroupPassword: vi.fn(),
+  importGroup: vi.fn(),
+  canEdit: vi.fn(),
+  isMember: vi.fn(),
+  forgetMemberships: vi.fn(async () => {}),
+  createOrganization: vi.fn(async () => ({})),
+  sdkContext: vi.fn(async () => ({})),
+  repositoryFor: vi.fn(),
+  getActorCards: vi.fn(async () => []),
+  updateTag: vi.fn(),
+}));
+
+vi.mock("next/cache", () => ({ updateTag: mocks.updateTag }));
+vi.mock("@/lib/atproto/app-key", () => ({ assertWritesAllowed: mocks.assertWritesAllowed }));
+vi.mock("@/lib/auth/dal", () => ({
+  getOAuthSession: mocks.getOAuthSession,
+  SessionUnavailableError: class SessionUnavailableError extends Error {},
+}));
+vi.mock("@/lib/auth/elevated-session", () => ({
+  establishElevatedSession: mocks.establishElevatedSession,
+  endElevatedSession: mocks.endElevatedSession,
+  callElevatedPds: mocks.callElevatedPds,
+  callOAuthPds: vi.fn(),
+  callPublicPds: mocks.callPublicPds,
+  hasElevatedSession: vi.fn(),
+  readPdsError: vi.fn(async () => "PDS error"),
+  verifyGroupPassword: mocks.verifyGroupPassword,
+}));
+vi.mock("@/lib/cgs", () => ({
+  CgsAuthError: class CgsAuthError extends Error {},
+  canEdit: mocks.canEdit,
+  forgetMemberships: mocks.forgetMemberships,
+  importGroup: mocks.importGroup,
+  isMember: mocks.isMember,
+}));
+vi.mock("@hypercerts-org/sdk/organization", () => ({
+  createOrganization: mocks.createOrganization,
+}));
+vi.mock("@hypercerts-org/sdk/social", () => ({
+  followAccount: vi.fn(),
+}));
+vi.mock("@/lib/hypercerts/sdk", () => ({
+  sdkContext: mocks.sdkContext,
+  writeTo: vi.fn(),
+}));
+vi.mock("@/lib/hypercerts/queries", () => ({ getActorCards: mocks.getActorCards }));
+vi.mock("@/lib/hypercerts/writes", () => ({ repositoryFor: mocks.repositoryFor }));
+vi.mock("@/lib/log", () => ({ logError: () => {} }));
+
+const alice = "did:plc:ewvi7nxzyoun6zhxrhs64oiz";
+const group = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
+const bob = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb";
+const carol = "did:plc:cccccccccccccccccccccccc";
+const fakeSession = { did: alice } as unknown as OAuthSession;
+
+describe("settings actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getOAuthSession.mockResolvedValue(fakeSession);
+  });
+
+  it("keeps the minted app password active when promotePersonalAccountToGroup succeeds", async () => {
+    mocks.establishElevatedSession.mockResolvedValue({ status: "ok" });
+    mocks.callElevatedPds.mockResolvedValueOnce({
+      kind: "ok",
+      response: Response.json({
+        name: "Certified Group Service (abcd)",
+        password: "xxxx-xxxx-xxxx-xxxx",
+        createdAt: "2026-11-26T00:00:00.000Z",
+      }),
+    });
+    mocks.importGroup.mockResolvedValue({ groupDid: alice, handle: "alice.certified.one" });
+
+    const res = await promotePersonalAccountToGroup({ password: "my-password" });
+    expect(res).toEqual({
+      ok: true,
+      status: "ok",
+      groupDid: alice,
+      handle: "alice.certified.one",
+    });
+
+    // Only createAppPassword was called — NOT revokeAppPassword (CGS needs the credential!).
+    expect(mocks.callElevatedPds).toHaveBeenCalledTimes(1);
+    expect(mocks.callElevatedPds.mock.calls[0]?.[1]).toBe("com.atproto.server.createAppPassword");
+    // Elevated session is closed afterwards and membership cache cleared.
+    expect(mocks.endElevatedSession).toHaveBeenCalledTimes(1);
+    expect(mocks.forgetMemberships).toHaveBeenCalledWith(alice);
+    expect(mocks.updateTag).toHaveBeenCalledWith(`memberships:${alice}`);
+  });
+
+  it("revokes the minted app password if CGS import fails so no orphan stays behind", async () => {
+    mocks.establishElevatedSession.mockResolvedValue({ status: "ok" });
+    mocks.callElevatedPds
+      .mockResolvedValueOnce({
+        kind: "ok",
+        response: Response.json({
+          name: "Certified Group Service (abcd)",
+          password: "xxxx-xxxx-xxxx-xxxx",
+          createdAt: "2026-11-26T00:00:00.000Z",
+        }),
+      })
+      .mockResolvedValueOnce({ kind: "ok", response: new Response(null, { status: 200 }) });
+    mocks.importGroup.mockRejectedValue(new Error("boom"));
+
+    const res = await promotePersonalAccountToGroup({ password: "my-password" });
+    expect(res.ok).toBe(false);
+
+    expect(mocks.callElevatedPds).toHaveBeenCalledTimes(2);
+    expect(mocks.callElevatedPds.mock.calls[1]?.[1]).toBe("com.atproto.server.revokeAppPassword");
+    expect(mocks.endElevatedSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects group unlock when caller is not an admin or owner on CGS", async () => {
+    mocks.canEdit.mockResolvedValue(false);
+    const res = await unlockGroupSession(group, { password: "secret" });
+    expect(res.ok).toBe(false);
+    expect(mocks.establishElevatedSession).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a clear error if a group password reset applied to a different account", async () => {
+    mocks.canEdit.mockResolvedValue(true);
+    mocks.callPublicPds.mockResolvedValue(new Response(null, { status: 200 }));
+    mocks.verifyGroupPassword.mockResolvedValue(false);
+
+    const res = await confirmGroupAccountPasswordReset(group, {
+      token: "123456",
+      password: "new-password-123",
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.message).toMatch(/different account/i);
+  });
+
+  it("refuses social graph comparison for non-members and computes diffs accurately", async () => {
+    mocks.isMember.mockResolvedValueOnce(false);
+    const denied = await compareSocialGraph(group);
+    expect(denied.ok).toBe(false);
+
+    mocks.isMember.mockResolvedValueOnce(true);
+    mocks.repositoryFor.mockResolvedValue({
+      listRecords: async (collection: string) => ({
+        records:
+          collection === "app.certified.graph.follow"
+            ? [{ value: { subject: { did: bob } } }]
+            : [{ value: { subject: bob } }, { value: { subject: carol } }],
+      }),
+    });
+    const res = await compareSocialGraph(group);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.certifiedCount).toBe(1);
+      expect(res.blueskyCount).toBe(2);
+      expect(res.inBothCount).toBe(1);
+      expect(res.onlyBluesky.map((a) => a.did)).toEqual([carol]);
+      expect(res.onlyCertified).toEqual([]);
+    }
+  });
+});

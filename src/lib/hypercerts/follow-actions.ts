@@ -91,8 +91,8 @@ function message(reason: FollowFailure, action: Action, kind: Kind, asOrganizati
         return "Your sign-in doesn't allow this. Sign out and sign in again.";
       }
       return action === "follow"
-        ? "The organization refused the follow. Check that you're still a member."
-        : "Only the organization's admins and owners can undo a follow another member made.";
+        ? "The group refused the follow. Check that you're still a member."
+        : "Only the group's admins and owners can undo a follow another member made.";
     case "invalid":
       return action === "follow"
         ? `This ${kind} can't be followed.`

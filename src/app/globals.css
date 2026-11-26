@@ -422,7 +422,220 @@ button.menu-row:disabled:not([aria-current]) {
 .settings {
   display: flex;
   flex-direction: column;
-  max-inline-size: 48rem;
+  gap: var(--space-5);
+  max-inline-size: 46rem;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings-panel-intro {
+  margin: 0;
+}
+
+/* Vercel-style two-zone settings card: crisp panel body + tinted footer bar
+   that anchors every card's actions on one consistent right edge. */
+.settings-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.settings-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-card-head-action {
+  flex-shrink: 0;
+}
+
+.settings-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  background: var(--hc-surface-tint);
+  border-block-start: var(--divider);
+}
+
+.settings-card-hint {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+
+.settings-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+/* Uniform read-only value well inside a settings card body. */
+.settings-value-box {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  max-inline-size: 100%;
+  min-block-size: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  background: var(--hc-surface-tint);
+  border: var(--divider);
+  border-radius: var(--hc-radius-control);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  inline-size: 100%;
+  max-inline-size: 26rem;
+}
+
+.settings-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.settings-list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+}
+
+.settings-list-row:first-child {
+  padding-block-start: 0;
+}
+
+.settings-list-row:last-child {
+  padding-block-end: 0;
+}
+
+.settings-list-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-inline-size: 0;
+}
+
+.settings-audit-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+}
+
+.settings-audit-item:first-child {
+  padding-block-start: 0;
+}
+
+.settings-audit-item:last-child {
+  padding-block-end: 0;
+}
+
+.settings-audit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-audit-action {
+  font-family: var(--hc-font-mono);
+  font-size: var(--hc-type-body-sm);
+}
+
+.settings-audit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.settings-audit-code {
+  font-family: var(--hc-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.settings-sync-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.settings-sync-list {
+  display: flex;
+  flex-direction: column;
+  max-block-size: 22rem;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.settings-sync-row {
+  padding-block: var(--space-2);
+}
+
+.settings-sync-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-sync-actor-text {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.settings-sync-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.break-anywhere {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .settings-card-body {
+    padding: var(--space-4);
+  }
+
+  .settings-card-footer {
+    padding: var(--space-3) var(--space-4);
+  }
 }
 
 .app-link {

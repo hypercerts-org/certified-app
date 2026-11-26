@@ -71,8 +71,8 @@ function message(reason: EndorseFailure, action: Action, asOrganization: boolean
         return "Your sign-in doesn't allow this. Sign out and sign in again.";
       }
       return action === "endorse"
-        ? "The organization refused the endorsement. Check that you're still a member."
-        : "Only the organization's admins and owners can revoke an endorsement another member made.";
+        ? "The group refused the endorsement. Check that you're still a member."
+        : "Only the group's admins and owners can revoke an endorsement another member made.";
     case "invalid":
       return action === "endorse"
         ? "This account can't be endorsed."
@@ -272,9 +272,7 @@ export async function endorseFromWorkspace(
       return {
         ok: false,
         reason: "invalid",
-        message: asOrganization
-          ? "An organization can't endorse itself."
-          : "You can't endorse yourself.",
+        message: asOrganization ? "A group can't endorse itself." : "You can't endorse yourself.",
       };
     }
     const existing = await getIndexedEndorsement(repo, target).catch((err) => {

@@ -1,16 +1,23 @@
 import type { OAuthSession } from "@atproto/oauth-client-node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  acceptOwnershipTransfer,
   addGroupMember,
   CgsAuthError,
+  cancelOwnershipTransfer,
   canEdit,
+  destroyGroup,
   forgetGroupMembers,
   forgetMemberships,
+  getOwnershipTransferStatus,
+  importGroup,
   isMember,
   listGroupMembers,
   listGroupMembersForDisplay,
   listMemberships,
   listMembershipsForDisplay,
+  proposeOwnershipTransfer,
+  queryGroupAuditLog,
   registerGroup,
   removeGroupMember,
   setGroupMemberRole,
@@ -95,9 +102,7 @@ describe("CGS calls", () => {
       "/xrpc/com.atproto.server.getServiceAuth",
     ]);
     for (const url of minted) {
-      expect(url.searchParams.get("aud")).toBe(
-        "did:web:groups.certified.app#certified_group_service",
-      );
+      expect(url.searchParams.get("aud")).toBe("did:web:groups.certified.app");
       expect(url.searchParams.get("lxm")).toBe("app.certified.groups.membership.list");
     }
     expect(requests.map((r) => r.headers.get("authorization"))).toEqual([
@@ -242,6 +247,84 @@ describe("CGS calls", () => {
       await forgetGroupMembers(org);
       await listGroupMembersForDisplay(session, org);
       expect(minted).toHaveLength(2);
+    });
+
+    it("calls import, destroy, audit.query, and ownershipTransfer endpoints with matching lxm", async () => {
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = new Request(input, init);
+        requests.push(request);
+        const path = new URL(request.url).pathname;
+        if (path.endsWith("group.import")) {
+          return Response.json({ groupDid: user, handle: "alice.certified.one" });
+        }
+        if (path.endsWith("group.destroy")) {
+          return Response.json({ groupDid: org });
+        }
+        if (path.endsWith("audit.query")) {
+          return Response.json({
+            entries: [
+              {
+                id: "1",
+                actorDid: user,
+                action: "member.add",
+                result: "permitted",
+                createdAt: "2026-11-26T00:00:00.000Z",
+              },
+            ],
+          });
+        }
+        if (path.endsWith("ownershipTransfer.status")) {
+          return Response.json({ groupDid: org, pending: false });
+        }
+        if (path.endsWith("ownershipTransfer.propose")) {
+          return Response.json({
+            groupDid: org,
+            proposedOwner: memberOf,
+            proposedBy: user,
+            createdAt: "2026-11-26T00:00:00.000Z",
+            expiresAt: "2026-12-03T00:00:00.000Z",
+          });
+        }
+        if (path.endsWith("ownershipTransfer.accept")) {
+          return Response.json({
+            groupDid: org,
+            owner: memberOf,
+            previousOwner: user,
+            updatedAt: "2026-11-26T00:00:00.000Z",
+          });
+        }
+        if (path.endsWith("ownershipTransfer.cancel")) {
+          return Response.json({ groupDid: org, cancelled: true });
+        }
+        return Response.json({});
+      });
+
+      const { session, minted } = fakeSession();
+      expect(await importGroup(session, { appPassword: "pw" })).toEqual({
+        groupDid: user,
+        handle: "alice.certified.one",
+      });
+      expect(await queryGroupAuditLog(session, org)).toMatchObject({
+        entries: [{ id: "1", action: "member.add", result: "permitted" }],
+      });
+      expect(await getOwnershipTransferStatus(session, org)).toMatchObject({ pending: false });
+      await proposeOwnershipTransfer(session, org, memberOf);
+      await acceptOwnershipTransfer(session, org);
+      await cancelOwnershipTransfer(session, org);
+      await destroyGroup(session, org);
+
+      expect(minted.map((url) => url.searchParams.get("lxm"))).toEqual([
+        "app.certified.group.import",
+        "app.certified.group.audit.query",
+        "app.certified.group.ownershipTransfer.status",
+        "app.certified.group.ownershipTransfer.propose",
+        "app.certified.group.ownershipTransfer.accept",
+        "app.certified.group.ownershipTransfer.cancel",
+        "app.certified.group.destroy",
+      ]);
+      // destroy passes repo as a query param (its lexicon has no input body).
+      const destroyReq = requests.at(-1);
+      expect(new URL(destroyReq?.url ?? "").searchParams.get("repo")).toBe(org);
     });
   });
 });

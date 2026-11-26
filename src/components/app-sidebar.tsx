@@ -8,6 +8,7 @@ import { SidebarGroup, SidebarRows, SidebarSearch } from "@/components/sidebar-n
 import { getAccount, getNavigationIdentity, SignedIn } from "@/components/site-header";
 import { SidebarAccountMenu } from "@/components/site-nav";
 import { UnclaimedBadgesPill } from "@/components/unclaimed-badges-pill";
+import { groupSettingsHref } from "@/lib/routes";
 
 // The app's navigation from 64rem, after the staging redesign: a sidebar on
 // the left, full height, in place of the top bar (site-header.tsx), which
@@ -59,9 +60,7 @@ export function AppSidebar() {
           <HelpMenu className="sidebar-item" />
         </li>
         <Suspense fallback={null}>
-          <SignedIn>
-            <SidebarRows group="settings" />
-          </SignedIn>
+          <SettingsSlot />
         </Suspense>
       </ul>
     </header>
@@ -92,6 +91,20 @@ function AccountControlSkeleton() {
       <Skeleton variant="box" className="skeleton-person-avatar" />
       <Skeleton variant="text" lines={2} className="sidebar-account-text" />
     </div>
+  );
+}
+
+/** Signed in, settings for whomever you act as (your own, or the active group's). */
+async function SettingsSlot() {
+  const identity = await getNavigationIdentity();
+  if (!identity) return null;
+  const isOrg = identity.actingAs !== identity.did;
+  return (
+    <SidebarRows
+      group="settings"
+      href={isOrg ? groupSettingsHref(identity.actingAs) : "/settings"}
+      label={isOrg ? "Group settings" : "Settings"}
+    />
   );
 }
 

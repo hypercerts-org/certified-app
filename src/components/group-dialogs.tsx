@@ -125,7 +125,7 @@ export function NewGroupDialog({
         description={
           created
             ? "Save the recovery password below before closing — it is shown only once."
-            : "Create a shared organization account on Certified. You start as its owner and can invite teammates."
+            : "Create a shared group account on Certified. You start as its owner and can invite teammates."
         }
         footer={
           created ? (
@@ -233,7 +233,7 @@ export function NewGroupDialog({
                   {...field}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.currentTarget.value)}
-                  placeholder="My Organization"
+                  placeholder="My Group"
                   maxLength={640}
                 />
               )}

@@ -42,8 +42,7 @@ export async function RecordEditor({
     if (!repository) {
       return (
         <Text>
-          You can't edit this {what}. Only the account itself and an organization's admins and
-          owners can.
+          You can't edit this {what}. Only the account itself and a group's admins and owners can.
         </Text>
       );
     }

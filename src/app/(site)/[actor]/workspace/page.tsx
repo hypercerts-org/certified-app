@@ -77,7 +77,14 @@ async function GroupMembers({ did }: { did: string }) {
         roleLabel: ROLE_LABEL[member.role] ?? member.role,
       }))
       .sort((a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9));
-    return <GroupMembersSection groupDid={did} members={members} viewerRole={viewerRole} />;
+    return (
+      <GroupMembersSection
+        groupDid={did}
+        callerDid={user.did}
+        members={members}
+        viewerRole={viewerRole}
+      />
+    );
   } catch (err) {
     unstable_rethrow(err);
     if (!(err instanceof SessionUnavailableError)) {

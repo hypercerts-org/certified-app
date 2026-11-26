@@ -33,7 +33,6 @@ import { Suspense, useId, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ActorAvatar, type ActorLike, ActorName } from "@/components/actor";
 import { actorHref, WORKSPACE_PATH, workspaceHref, workspaceSection } from "@/components/cards";
-import { COMING_SOON } from "@/components/coming-soon";
 import { NewGroupDialog } from "@/components/group-dialogs";
 import { LinkPending } from "@/components/link-pending";
 import { SignInButton } from "@/components/sign-in-button";
@@ -41,6 +40,7 @@ import { SignOutForm } from "@/components/sign-out-form";
 import { switchActingAs } from "@/lib/acting-as-actions";
 import { nameOf, type ProfileFields } from "@/lib/hypercerts/views";
 import type { Organization } from "@/lib/organizations";
+import { groupSettingsHref } from "@/lib/routes";
 
 /** The signed-in account, as the header shows it. */
 export type Account = Identity & {
@@ -336,7 +336,7 @@ function ActAsRow({
         </span>
         {active && <Check size={16} aria-label="Current" />}
       </button>
-      {settings ? (
+      {settings && (
         <Link
           href={settings.href}
           className="act-as-settings"
@@ -345,16 +345,6 @@ function ActAsRow({
         >
           <Settings size={16} aria-hidden />
         </Link>
-      ) : (
-        <span
-          className="act-as-settings"
-          aria-disabled="true"
-          title={COMING_SOON}
-          role="img"
-          aria-label={`${nameOf(identity)} settings (coming soon)`}
-        >
-          <Settings size={16} aria-hidden />
-        </span>
       )}
     </li>
   );
@@ -396,7 +386,7 @@ function ActAsList({
         ) : organizations.isError ? (
           <li className="menu-row">
             <Text size="body-sm" tone="muted">
-              Your organizations can't be loaded right now.
+              Your groups can't be loaded right now.
             </Text>
           </li>
         ) : (
@@ -407,7 +397,11 @@ function ActAsList({
               secondary={rowSecondary(organization.roleLabel, organization.handle)}
               active={activeDid === organization.did}
               onSwitch={onSwitch}
-              settings={null}
+              settings={{
+                href: groupSettingsHref(organization.did),
+                label: `${nameOf(organization)} settings`,
+                onNavigate,
+              }}
             />
           ))
         )}

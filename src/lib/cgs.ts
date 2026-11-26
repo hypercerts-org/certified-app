@@ -57,8 +57,11 @@ export class CgsAuthError extends Error {
  */
 export async function cgsAuth(session: OAuthSession, method: { $lxm: l.NsidString }) {
   try {
+    // CGS verifies service-level methods (membership.list, register, import)
+    // against the bare service DID without a `#service_id` fragment, and
+    // accepts the bare service DID on all group-scoped methods too.
     const { token } = await new Client(session).call(com.atproto.server.getServiceAuth, {
-      aud: `${CGS_DID}#certified_group_service`,
+      aud: CGS_DID,
       lxm: method.$lxm,
     });
     return { authorization: `Bearer ${token}` };
@@ -276,4 +279,139 @@ export async function setGroupMemberRole(
     { repo: groupDid, memberDid, role },
     { headers: await cgsAuth(session, setRole) },
   );
+}
+
+export type GroupAuditEntry = {
+  id: string;
+  actorDid: string;
+  targetDid?: string;
+  action: string;
+  collection?: string;
+  rkey?: string;
+  result: string;
+  detail?: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type OwnershipTransferStatus = {
+  groupDid: string;
+  pending: boolean;
+  proposedOwner?: string;
+  proposedBy?: string;
+  createdAt?: string;
+  expiresAt?: string;
+};
+
+/**
+ * Promotes the signed-in account into a CGS group using an app password for
+ * that account. CGS requires `iss === groupDid`, so the imported account is
+ * always `session.did`.
+ */
+export async function importGroup(
+  session: OAuthSession,
+  input: { appPassword: string; ownerDid?: l.DidString },
+) {
+  assertWritesAllowed();
+  const method = app.certified.group.import;
+  return cgs.call(
+    method,
+    {
+      groupDid: session.did,
+      appPassword: input.appPassword,
+      ownerDid: input.ownerDid ?? session.did,
+    },
+    { headers: await cgsAuth(session, method) },
+  );
+}
+
+/** Removes a group from CGS (owner only). The underlying PDS account stays intact. */
+export async function destroyGroup(session: OAuthSession, groupDid: l.DidString) {
+  assertWritesAllowed();
+  const method = app.certified.group.destroy;
+  return cgs.call(method, undefined, {
+    params: { repo: groupDid },
+    headers: await cgsAuth(session, method),
+  });
+}
+
+/** Queries a page of a group's audit log on CGS (admin or owner). */
+export async function queryGroupAuditLog(
+  session: OAuthSession,
+  groupDid: l.DidString,
+  options?: { limit?: number; cursor?: string },
+): Promise<{ entries: GroupAuditEntry[]; cursor?: string }> {
+  const query = app.certified.group.audit.query;
+  const result = await cgs.call(
+    query,
+    {
+      repo: groupDid,
+      limit: options?.limit ?? 50,
+      ...(options?.cursor && { cursor: options.cursor }),
+    },
+    { headers: await cgsAuth(session, query) },
+  );
+  return {
+    cursor: result.cursor,
+    entries: result.entries.map((entry) => ({
+      id: entry.id,
+      actorDid: entry.actorDid,
+      targetDid: entry.targetDid,
+      action: entry.action,
+      collection: entry.collection,
+      rkey: entry.rkey,
+      result: entry.result,
+      detail: entry.detail as Record<string, unknown> | undefined,
+      createdAt: entry.createdAt,
+    })),
+  };
+}
+
+/** Reports any pending ownership transfer visible to the caller (owner or proposed recipient). */
+export async function getOwnershipTransferStatus(
+  session: OAuthSession,
+  groupDid: l.DidString,
+): Promise<OwnershipTransferStatus> {
+  const status = app.certified.group.ownershipTransfer.status;
+  const result = await cgs.call(
+    status,
+    { repo: groupDid },
+    { headers: await cgsAuth(session, status) },
+  );
+  return {
+    groupDid: result.groupDid,
+    pending: result.pending,
+    proposedOwner: result.proposedOwner,
+    proposedBy: result.proposedBy,
+    createdAt: result.createdAt,
+    expiresAt: result.expiresAt,
+  };
+}
+
+/** Proposes transferring group ownership to an existing member (owner only). */
+export async function proposeOwnershipTransfer(
+  session: OAuthSession,
+  groupDid: l.DidString,
+  newOwner: l.DidString,
+) {
+  assertWritesAllowed();
+  const propose = app.certified.group.ownershipTransfer.propose;
+  return cgs.call(
+    propose,
+    { repo: groupDid, newOwner },
+    { headers: await cgsAuth(session, propose) },
+  );
+}
+
+/** Accepts a pending ownership transfer (proposed owner only). */
+export async function acceptOwnershipTransfer(session: OAuthSession, groupDid: l.DidString) {
+  assertWritesAllowed();
+  const accept = app.certified.group.ownershipTransfer.accept;
+  return cgs.call(accept, { repo: groupDid }, { headers: await cgsAuth(session, accept) });
+}
+
+/** Cancels or declines a pending ownership transfer (owner or proposed owner). */
+export async function cancelOwnershipTransfer(session: OAuthSession, groupDid: l.DidString) {
+  assertWritesAllowed();
+  const cancel = app.certified.group.ownershipTransfer.cancel;
+  return cgs.call(cancel, { repo: groupDid }, { headers: await cgsAuth(session, cancel) });
 }

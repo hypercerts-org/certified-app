@@ -35,6 +35,14 @@ class CacheMissError extends Error {
   }
 }
 
+/**
+ * Next.js `"use cache"` serializes errors thrown across the cache boundary,
+ * dropping the prototype chain, so check `name` in addition to `instanceof`.
+ */
+function isCacheMiss(err: unknown): boolean {
+  return err instanceof CacheMissError || (err instanceof Error && err.name === "CacheMissError");
+}
+
 /** Five minutes, as in Valkey; at least five minutes keeps it in the prefetched shell. */
 async function rememberedMemberships(did: string): Promise<Membership[]> {
   "use cache: private";
@@ -60,7 +68,7 @@ export const getMemberships = cache(async (): Promise<Membership[] | "expired" |
     return await rememberedMemberships(user.did);
   } catch (err) {
     unstable_rethrow(err); // Next's own signals (prerendering, redirects) pass through
-    if (!(err instanceof CacheMissError)) logError("[memberships] cache read failed", err);
+    if (!isCacheMiss(err)) logError("[memberships] cache read failed", err);
   }
   const session = await readOAuthSession();
   if (session === null) return null;
@@ -90,7 +98,7 @@ export const getGroupMembers = cache(
       return await rememberedGroupMembers(groupDid);
     } catch (err) {
       unstable_rethrow(err);
-      if (!(err instanceof CacheMissError)) {
+      if (!isCacheMiss(err)) {
         logError("[memberships] group members cache read failed", err, { groupDid });
       }
     }

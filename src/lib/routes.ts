@@ -7,6 +7,11 @@ export function workspaceHref(did: string) {
   return `/${did}/workspace`;
 }
 
+/** An organization's settings page (its members may open it). */
+export function groupSettingsHref(did: string) {
+  return `/${did}/settings`;
+}
+
 /** `/workspace`, and any account's workspace or profile editor; group 1 is the DID. */
 export const WORKSPACE_PATH = /^\/(?:workspace|(did:[^/]+)\/(?:workspace|edit))(?:\/|$)/;
 

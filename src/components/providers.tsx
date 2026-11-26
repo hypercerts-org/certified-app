@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import { IntentLink } from "@/components/intent-link";
+import { ThemeSync } from "@/components/theme-control";
 
 // TanStack Query: "load more" lists, the write overlay's index polling and
 // the forms' mutations. As in the Next.js guide: a new client per server
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={getQueryClient()}>
       <UIProvider link={IntentLink}>
+        <ThemeSync />
         {children}
         {/* Above the phone tab bar, which covers the bottom 3.5rem. */}
         <Toaster
